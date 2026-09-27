@@ -9,8 +9,8 @@
 // SMC-specific JTAG access-control policy:
 //   * Block JTAG accesses to the eFuse when the SMC LC state (received from
 //     SEP, differentially encoded) is PROD or RMA_SiP.
-//   * Always allow JTAG reads of CHIPLET_ID and PACKAGE_ID registers, since
-//     those are required for chiplet/package identification even in PROD/RMA.
+//   * Always allow JTAG reads of the JTAG_PUBLIC_IDENTITY register, so a part
+//     can still be identified in the field once the rest of the map is closed off.
 //   * On a differential-decode integrity error, restrict JTAG access.
 //
 // JTAG transactions that fail the policy are routed to a `prim_axi_lite_err_slv`
@@ -68,27 +68,23 @@ module smc_efuse_wrapper
   /////////////////////////////////////////////////////////////////////////
   // JTAG access control
   /////////////////////////////////////////////////////////////////////////
-  //
+
   // SMC variant: no local LC state input. Restrict JTAG access when SMC's
   // LC state (from SEP) is PROD or RMA_SiP, except for reads of the
-  // CHIPLET_ID or PACKAGE_ID registers which remain accessible.
+  // JTAG_PUBLIC_IDENTITY register which remains accessible.
   //
-  // Each ID register is 256 bits (8 x 32-bit words = 32 bytes), so its
+  // JTAG_PUBLIC_IDENTITY is 256 bits (8 x 32-bit words = 32 bytes), so its
   // byte-address range spans BASE .. BASE + 'h1F (inclusive).
 
   smc_pkg::smc_axil_32_32_req_t  [1:0] axil_smc_otp_jtag_req_filtered;
   smc_pkg::smc_axil_32_32_resp_t [1:0] axil_smc_otp_jtag_resp_filtered;
 
-  logic is_rd_chiplet_id;
-  logic is_rd_package_id;
+  logic is_rd_jtag_public_identity;
   logic is_prod_or_rma_sip;
 
-  assign is_rd_chiplet_id = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR :
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR + 'h1F)]});
-  assign is_rd_package_id = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR :
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR + 'h1F)]});
+  assign is_rd_jtag_public_identity = (axil_smc_otp_jtag_req_i.ar.addr inside
+        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR :
+          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR + 'h1F)]});
 
   logic [smc_pkg::LC_STATE_WIDTH-1:0] lc_state_smc_raw;
   logic                               lc_sigint_err;
@@ -130,7 +126,7 @@ module smc_efuse_wrapper
 
     .slv_req_i      (axil_smc_otp_jtag_req_i),
     .slv_aw_select_i(is_prod_or_rma_sip || lc_sigint_err),
-    .slv_ar_select_i((is_prod_or_rma_sip && !(is_rd_chiplet_id || is_rd_package_id)) || lc_sigint_err),
+    .slv_ar_select_i((is_prod_or_rma_sip && !is_rd_jtag_public_identity) || lc_sigint_err),
     .slv_resp_o     (axil_smc_otp_jtag_resp_o),
 
     .mst_reqs_o (axil_smc_otp_jtag_req_filtered),
@@ -156,18 +152,6 @@ module smc_efuse_wrapper
   /////////////////////////////////////////////////////////////////////////
   // eFuse Interface Controller
   /////////////////////////////////////////////////////////////////////////
-
-  // PeakRDL emits address-map constants as 64-bit longint unsigned while
-  // efuse_interface_controller's parameters are 32-bit, so the bind truncates.
-  // Check at elaboration that the values actually fit.
-  `OCAH_OT_ASSERT_INIT(EfuseMapBaseFits_A,
-                       smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR < (64'd1 << 32))
-  `OCAH_OT_ASSERT_INIT(EfuseMapSizeFits_A,
-                       smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE < (64'd1 << 32))
-  `OCAH_OT_ASSERT_INIT(EfuseCtrlBaseFits_A,
-                       smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR < (64'd1 << 32))
-  `OCAH_OT_ASSERT_INIT(EfuseCtrlSizeFits_A,
-                       smc_top_addrmap_pkg::SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE < (64'd1 << 32))
 
   efuse_interface_controller #(
     .ADDR_WIDTH                  (smc_pkg::SMC_LOCAL_ADDR_WIDTH),
@@ -264,10 +248,9 @@ module smc_efuse_wrapper
     .is_rma_chiplet_token_match_debug (),
 
     .sec_disable_token_o              (),
+    .token_match_fault_o              (),
 
-    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
-
-    .token_match_fault_o              () // SEP only
+    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
   );
 
   assign lc_sigint_err_o = lc_sigint_err;

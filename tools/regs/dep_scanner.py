@@ -13,8 +13,8 @@ transitive `` `include `` closure from the compiler's FileInfo, and writes
 so make adds the includes as prerequisites of the block's outputs. The depfile
 is one of its own targets, so an include change re-scans the closure. Paths are
 absolute (the depfile is a gitignored build artifact). The top RDL and UDP are
-excluded: they are already static prerequisites, and no committed RDL is ever
-made a target.
+excluded: they are already static prerequisites. Empty rules for includes
+(gcc -MP style) let make rescan after an include is removed or relocated.
 """
 
 import argparse
@@ -61,6 +61,8 @@ def main() -> None:
         if includes:
             prereqs = " ".join(str(p) for p in includes)
             f.write(f"{' '.join(targets)}: {prereqs}\n")
+            for include in includes:
+                f.write(f"{include}:\n")
         else:
             f.write("# no included RDLs\n")
 

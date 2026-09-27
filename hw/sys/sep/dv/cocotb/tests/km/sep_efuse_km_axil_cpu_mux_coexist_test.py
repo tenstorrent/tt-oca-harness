@@ -21,11 +21,12 @@ Two independent verdicts are required:
      LSU bus). Plus the base test's automatic post-sense shadow compare proves the
      sensed CHIPLET_UID actually equals the staged image (0xDEADBEEF).
 
-The observer is READ-ONLY and the contended window is FIXED, because cocotb
-cannot deposit an internal register without a force port. Mutual non-starvation is
-therefore proven by the host completing all CONTENDED_LOOPS (final COUNT) AND the
-KM making progress (CHANGES > 0) in the same window, rather than by releasing the
-host loop with a marker once the KM has been observed.
+Delta vs the reference suite: its observer deposits a UVM_DONE marker to release a
+waiting host loop; cocotb cannot deposit an internal register without a force
+port, so here the host loop is a FIXED contended window and the observer is
+read-only. Mutual non-starvation is proven by the host completing all
+CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in the same
+window.
 """
 
 from __future__ import annotations
@@ -162,6 +163,6 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
             f"{bad_tag} KM MMR tag/ordering failures (cross-attribution at the mux)"
         )
         self.logger.info(
-            "coexist observer PASS: both CPUs contended at the eFuse mux, host "
+            "CHK-COEXIST PASS: both CPUs contended at the eFuse mux, host "
             "data uncorrupted, KM progress monotonic and correctly attributed"
         )

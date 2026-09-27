@@ -1,0 +1,112 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-prod-rom-spi-manifest]]
+== SPI and manifest processing
+
+=== Flash transports
+
+`include/boot_flash.h` presents one flash-offset interface to the manifest
+loader. `BOOT_SPI_CONTROLLER_OT` selects the implementation at build time:
+
+* The default (`BOOT_SPI_CONTROLLER_OT=1`) uses the OpenTitan SPI host. It issues
+  command/FIFO transfers and drains its receive FIFO through the secure DMA
+  (`BOOT_OT_SPI_USE_PIO=0`). The `pio-toolchain-images` profile selects CPU
+  programmed I/O (`BOOT_OT_SPI_USE_PIO=1`) and writes its ROM to `build_pio/`.
+* `BOOT_SPI_CONTROLLER_OT=0` selects the memory-mapped Cadence xSPI XIP aperture
+  and secure DMA. The open `src/sep_spi.c` is a weak unavailable-device
+  implementation that an integration can override.
+
+Controller initialization receives the clock selected earlier in the boot.
+Failure is not immediately terminal because the loader can proceed to another
+configured slot.
+
+=== Boot source and slot selection
+
+The SPI path uses fixed manifest offsets:
+
+[cols="2,2,4",options="header"]
+|===
+|Slot |Manifest offset |Selection
+
+|Primary
+|`0x0000_1000`
+|First unless `rotate_update` is set.
+
+|Backup
+|`0x0004_1000`
+|Second unless `rotate_update` is set.
+|===
+
+On recovery or secondary boot, the ROM does not use either SPI offset. It waits
+for `SMC_SEP_STATUS_MANIFEST_READY`, reads the manifest offset from SMC scratch
+register 8, and adds that offset to the SEP-visible SMC SRAM base.
+
+=== Manifest layout
+
+The manifest is an OCA classic manifest with a 4096-byte body. Bytes
+`[0, 3172)` are the signed region -- everything from the magic through the
+four-byte `0xCA` trailer at offset 3168 -- which both the RSA signature and the
+manifest hash cover. Bytes `[3172, 4096)` are the unsigned tail holding the
+signature, the manifest hash and the payload offset. Because the payload offset
+is in that tail it is attacker-controlled even on a validly signed manifest, so
+the ROM bounds it against the region the slot may reach rather than trusting it.
+The payload begins with a `PTOC` header followed by the image entries and their
+image data.
+
+The format and its numeric constants come from the OCA specification and its
+layout header, `tools/tt-oca-manifest/validators/oca/lib/oca_layout_classic.h`,
+vendored as a submodule. The YAML files under `configs/` are test-image producer
+inputs; they do not supersede the format the library consumes on BL0's behalf.
+
+=== Per-slot validation
+
+For each selected slot, BL0 performs this sequence:
+
+. Read the fixed manifest header into SEP SRAM.
+. Validate the identifier, major version, manifest length, alignment, payload
+  offset and length, SRAM bounds, and non-overlap.
+. Verify the manifest hash.
+. Decide whether secure boot is active and apply selected lifecycle, chiplet
+  ID, and package ID usage constraints.
+. Read any permitted manifest extension and stage the payload.
+. Under secure boot, check rollback, authorize and check the root key, verify
+  RSA-3072, verify the payload hash, and decrypt an encrypted payload.
+  Without secure boot, still verify the payload hash.
+. Validate the TOC, image count, image order and bounds, per-image hashes, and
+  the presence and placement of SEP BL1.
+
+An encrypted payload is authenticated as ciphertext before decryption. The TOC
+inside it is interpreted only after decryption.
+
+=== Retry behavior
+
+The SPI path can attempt both slots. `rotate_update` exchanges their order. A
+failed attempt records its error; before another attempt BL0 clears the SEP
+SRAM staging region and reinitializes the flash controller. A failed
+reinitialization is terminal because the remaining slot cannot be read.
+
+The SMC-SRAM path has one source and no alternate slot. Exhausting the
+available attempts reports `SEP_MSG_MANIFEST_LOAD_FAILED` and enters the common
+failure path.
+
+=== Verification evidence
+
+`hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_ot_secure_boot_test.py` exercises
+the signed OpenTitan SPI-host DMA path. It requires evidence that the ROM took
+the SPI source, read the primary manifest at `0x1000`, started RSA
+verification, accepted the signature, and completed crypto validation. It also
+forbids `SBOOT_OFF`, so a silent downgrade cannot satisfy the test.
+
+That testcase supplies OTBN entropy through the
+`+sep_crypto_edn_force` DV shortcut because the current BL0 does not bring up
+the entropy-source, CSRNG, and EDN chain. The test therefore demonstrates the
+manifest, transport, OTBN RSA, and handoff path; it does not demonstrate ROM
+entropy-chain initialization.
+
+The DMA and PIO receive paths are covered separately because they are separate
+datapaths. `sep_rom_ot_pio_boot_test` runs the `build_pio` image, which does
+not link `ot_spi_flash_read_dma` at all, so passing one of the two proves
+nothing about the other. `hw/sys/sep/dv/testlists/rom_fw.toml` lists the whole
+ROM regression; the cases named here are the ones that bear directly on
+manifest and transport processing, not the extent of ROM coverage.

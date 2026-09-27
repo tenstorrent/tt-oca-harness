@@ -39,7 +39,7 @@ AVSBUS_TIMEOUT_READS = [
     ("AVS_CONFIG", smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CONFIG_BASE_ADDR")),
 ]
 
-# Positive-control bound. Generous on purpose -- it exists only so a wedged
+# Positive-control bound. Generous -- it exists only so a wedged
 # bench cannot hang the shared CSR master; expiry is a FAILURE of the positive
 # control (asserted below), never a pass ([TIMEOUT-MUST-FAIL]).
 _UNGATED_PROBE_BOUND_NS = 4000
@@ -84,11 +84,11 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
         await self.csr_read("CLOCK_GATE_CONTROL_AVS_OFF", CLOCK_GATE_CONTROL, expected=ungated)
         for name, addr in AVSBUS_TIMEOUT_READS:
             before = self.timeouts
-            t0 = get_sim_time(units="ns")
+            t0 = get_sim_time(unit="ns")
             rdata = await self.csr_read_bounded(
                 f"{name}_UNGATED", addr, timeout_ns=_UNGATED_PROBE_BOUND_NS
             )
-            latency = int(get_sim_time(units="ns") - t0)
+            latency = int(get_sim_time(unit="ns") - t0)
             assert self.timeouts == before, (
                 f"{name}: the AVS_CFG window did NOT answer within "
                 f"{_UNGATED_PROBE_BOUND_NS} ns with AVS_CG_EN cleared "

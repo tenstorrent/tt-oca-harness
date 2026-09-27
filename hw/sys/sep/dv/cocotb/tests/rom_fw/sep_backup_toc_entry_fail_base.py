@@ -9,7 +9,6 @@ fires. Members select the defect and plaintext or encrypted; the ROM must then h
 from __future__ import annotations
 
 import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -18,7 +17,6 @@ from rom_fw.sep_backup_payload_fail_base import sep_backup_payload_fail_base
 
 
 class sep_backup_toc_entry_fail_base(sep_backup_payload_fail_base):
-
     entry_defect: str = ""
     encrypted: bool = False
 
@@ -36,8 +34,7 @@ class sep_backup_toc_entry_fail_base(sep_backup_payload_fail_base):
         cls.backup_defect_marker = ted.DEFECT_TOKEN[cls.entry_defect]
 
         # ERR_BAD_MAGIC is excluded: it is the primary's failover trigger, not a competing verdict.
-        forbidden = ted.neighbouring_errors(cls.entry_defect,
-                                            exclude=(ted.ERR_BAD_MAGIC,))
+        forbidden = ted.neighbouring_errors(cls.entry_defect, exclude=(ted.ERR_BAD_MAGIC,))
         forbidden += list(ted.other_payload_tokens(cls.entry_defect))
         forbidden += list(ted.DECRYPT_FAILURE_TOKENS)
         if not cls.encrypted:
@@ -104,17 +101,33 @@ class sep_backup_toc_entry_fail_base(sep_backup_payload_fail_base):
             )
             self.logger.info(
                 "CHK-DECRYPT-ARM: backup@%d -> %s@%d -> %s@%d -> %s@%d, each "
-                "decryption marker exactly once", i_bsrc, ted.DECRYPT_START, i_ds,
-                ted.DECRYPT_OK, i_do, token, i_token,
+                "decryption marker exactly once",
+                i_bsrc,
+                ted.DECRYPT_START,
+                i_ds,
+                ted.DECRYPT_OK,
+                i_do,
+                token,
+                i_token,
             )
 
-        ted.assert_served_entry_field(self.logger, self._flash, "backup",
-                                      self.entry_defect, self._served,
-                                      self._payload_offset)
+        ted.assert_served_entry_field(
+            self.logger,
+            self._flash,
+            "backup",
+            self.entry_defect,
+            self._served,
+            self._payload_offset,
+        )
 
         self.logger.info(
             "CHK-TOC-ENTRY-RULE: backup@%d violated %s, was announced %s@%d and "
             "refused %s@%d after its crypto chain passed; the run ended terminal "
-            "with no slot accepted", i_bsrc, self.entry_defect, token, i_token,
-            backup_err, i_err,
+            "with no slot accepted",
+            i_bsrc,
+            self.entry_defect,
+            token,
+            i_token,
+            backup_err,
+            i_err,
         )

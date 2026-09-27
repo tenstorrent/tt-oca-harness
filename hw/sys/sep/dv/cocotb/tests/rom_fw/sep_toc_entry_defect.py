@@ -75,10 +75,19 @@ def other_payload_tokens(defect: str) -> tuple[str, ...]:
 
 
 def neighbouring_errors(defect: str, *, exclude: tuple[int, ...] = ()) -> list[str]:
-    codes = (sibling_error(defect), ERR_BAD_IMAGE_TYPE, ERR_IMAGE_HASH_MISMATCH,
-             td.ERR_BAD_MAGIC, td.ERR_BAD_VERSION, td.ERR_BAD_LENGTH,
-             td.ERR_BAD_TOC_ID, td.ERR_BAD_TOC_VERSION, td.ERR_TOC_COUNT,
-             td.ERR_PAYLOAD_TOO_LARGE, td.ERR_NO_BL1_IMAGE)
+    codes = (
+        sibling_error(defect),
+        ERR_BAD_IMAGE_TYPE,
+        ERR_IMAGE_HASH_MISMATCH,
+        td.ERR_BAD_MAGIC,
+        td.ERR_BAD_VERSION,
+        td.ERR_BAD_LENGTH,
+        td.ERR_BAD_TOC_ID,
+        td.ERR_BAD_TOC_VERSION,
+        td.ERR_TOC_COUNT,
+        td.ERR_PAYLOAD_TOO_LARGE,
+        td.ERR_NO_BL1_IMAGE,
+    )
     # exclude admits codes produced elsewhere, e.g. the backup family's primary BAD_MAGIC.
     return [f"MANIFEST_ERR=0x{c:08x}" for c in codes if c not in exclude]
 
@@ -91,8 +100,12 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
 
     if defect == ORDER:
         geometry = pm.make_images_out_of_order(
-            buf, slot, second_offset=SECOND_IMAGE_OFFSET,
-            second_length=SECOND_IMAGE_LENGTH, second_type=SECOND_IMAGE_TYPE)
+            buf,
+            slot,
+            second_offset=SECOND_IMAGE_OFFSET,
+            second_length=SECOND_IMAGE_LENGTH,
+            second_type=SECOND_IMAGE_TYPE,
+        )
         detail = (
             f"image_count 1 -> 2; entry 0 keeps SEP_BL1 at "
             f"0x{geometry['first_offset']:x} length 0x{geometry['first_length']:x}; "
@@ -104,15 +117,17 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
         expect = SECOND_IMAGE_OFFSET
     else:
         was = pm.set_toc_entry_length(buf, slot, SIZE_ENTRY_INDEX, BAD_IMAGE_LENGTH)
-        detail = (f"image 0 length 0x{was:x} -> 0x{BAD_IMAGE_LENGTH:x}, which is "
-                  f"{BAD_IMAGE_LENGTH % 4} modulo 4; its digest was recomputed over "
-                  f"the newly declared range")
+        detail = (
+            f"image 0 length 0x{was:x} -> 0x{BAD_IMAGE_LENGTH:x}, which is "
+            f"{BAD_IMAGE_LENGTH % 4} modulo 4; its digest was recomputed over "
+            f"the newly declared range"
+        )
         expect = BAD_IMAGE_LENGTH
 
     p = pm.payload_base(buf, slot)
     # For an encrypted slot this is ciphertext, the only form the flash device holds.
-    stored = bytes(buf[p + off:p + off + size])
-    now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off:off + size]), "little")
+    stored = bytes(buf[p + off : p + off + size])
+    now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off : off + size]), "little")
     if now != expect:
         raise AssertionError(
             f"{slot} TOC {FIELD_NAME[defect]} reads 0x{now:x} after the mutation, "
@@ -125,18 +140,29 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
         "0 < n <= %d, payload_length agreeing with the manifest, every image type "
         "known, every declared range inside the payload and matching its own digest "
         "-- so %s is the only rule validate_manifest_payload can refuse this slot on",
-        slot, defect, "ENCRYPTED" if encrypted else "plaintext", detail,
-        p + off, stored.hex(), pm.TOC_MAJOR_VERSION, pm.TOC_MAX_IMAGE_COUNT,
+        slot,
+        defect,
+        "ENCRYPTED" if encrypted else "plaintext",
+        detail,
+        p + off,
+        stored.hex(),
+        pm.TOC_MAJOR_VERSION,
+        pm.TOC_MAX_IMAGE_COUNT,
         DEFECT_TOKEN[defect].split(" idx=")[0],
     )
     return stored
 
 
-def assert_served_entry_field(logger, flash, slot: str, defect: str,
-                              expected: bytes, payload_offset: int) -> None:
+def assert_served_entry_field(
+    logger, flash, slot: str, defect: str, expected: bytes, payload_offset: int
+) -> None:
     off, _size = FIELD[defect]
     # One SPI read must cover the field; the ROM fetches the payload in a single transfer.
     fd.assert_served_field(
-        logger, flash, slot, payload_offset + off, expected,
+        logger,
+        flash,
+        slot,
+        payload_offset + off,
+        expected,
         f"{slot} TOC {FIELD_NAME[defect]}",
     )

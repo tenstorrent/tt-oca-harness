@@ -10,3 +10,4 @@
 
 include::SEP_TB_ARCH.adoc[leveloffset=0]
 include::SEP_VPLAN.adoc[leveloffset=0]
+include::SEP_FCOV.adoc[leveloffset=0]

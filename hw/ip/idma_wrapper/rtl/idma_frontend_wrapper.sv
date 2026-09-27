@@ -136,7 +136,7 @@ module idma_frontend_wrapper #(
         .r_chan_t  (slv_axi_r_chan_t),
         .axi_req_t (slv_axi_req_t),
         .axi_resp_t(slv_axi_resp_t)
-      ) dma_ctrl_axi_cut (
+      ) u_dma_ctrl_axi_cut (
         .clk_i     (clk_i),
         .rst_ni    (rst_ni),
         .slv_req_i (dma_ctrl_axi_req_i[i]),
@@ -156,7 +156,7 @@ module idma_frontend_wrapper #(
         .axi_rsp_t   (slv_axi_resp_t),
         .reg_req_t   (reg_req_t),
         .reg_rsp_t   (reg_resp_t)
-      ) axi_to_reg (
+      ) u_axi_to_reg (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
 
@@ -179,7 +179,7 @@ module idma_frontend_wrapper #(
         .reg_req_t     (reg_req_t),
         .reg_rsp_t     (reg_resp_t),
         .dma_req_t     (idma_nd_req_t)
-      ) iDMA_frontend (
+      ) u_iDMA_frontend (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
 
@@ -199,7 +199,7 @@ module idma_frontend_wrapper #(
 
       idma_transfer_id_gen #(
         .IdWidth(32)  // next_id counter is 32 bits wide
-      ) idma_transfer_id_gen (
+      ) u_idma_transfer_id_gen (
         .clk_i        (clk_i),
         .rst_ni       (rst_ni),
         .issue_i      (fe_req_valid[i] && fe_req_ready[i]),
@@ -215,7 +215,7 @@ module idma_frontend_wrapper #(
       stream_fifo #(
         .DEPTH(F2M_FIFO_DEPTH),
         .T    (idma_nd_req_t)
-      ) F2M_request_fifo (
+      ) u_F2M_request_fifo (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
 
@@ -239,7 +239,7 @@ module idma_frontend_wrapper #(
         .idma_rsp_t   (idma_resp_t),
         .idma_nd_req_t(idma_nd_req_t),
         .RepWidths    ({RepWidth, RepWidth})
-      ) iDMA_2d_midend (
+      ) u_iDMA_2d_midend (
         .clk_i (clk_i),
         .rst_ni(rst_ni),
 

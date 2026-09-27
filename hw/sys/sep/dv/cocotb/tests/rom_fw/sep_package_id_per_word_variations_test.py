@@ -9,7 +9,6 @@ Needs ``+sep_smc_fuse_sense_done`` and ``+sep_crypto_edn_force``.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_device_id_variation_base import sep_device_id_variation_base
 

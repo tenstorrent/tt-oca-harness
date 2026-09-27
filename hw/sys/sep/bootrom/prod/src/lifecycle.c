@@ -16,7 +16,6 @@
 
 #include "bl0_state.h"
 #include "errors.h"
-#include "manifest.h"
 #include "rom_mmio.h"
 #include "rom_virt_console.h"
 #include "sep.h"
@@ -28,8 +27,8 @@
 
 uint32_t lc_read_state(void) {
     uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
-    // The efuse field is 8-bit, differentially encoded by RTL; the low nibble
-    // carries the decoded lifecycle state.
+    // The eFuse field is 8 bits, differentially encoded by the RTL; the low
+    // nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
            0xFu;
 }
@@ -71,29 +70,6 @@ bool lc_state_is_rma(uint32_t lc_state) {
     return (lc_state >= LC_STATE_RMA_SIP_LO && lc_state <= LC_STATE_RMA_CHIPLET_HI);
 }
 
-int lc_state_to_manifest_bit(uint32_t lc_state) {
-    // Map decoded LC state to manifest usage_constraints.life_cycle_states bit.
-    // These bit positions are defined in manifest.h (LC_STATES_BIT_*).
-    switch (lc_state) {
-    case LC_STATE_TEST_DEV:
-        return LC_STATES_BIT_TEST_DEV; // bit 0
-    case LC_STATE_PROD:
-        return LC_STATES_BIT_PROD; // bit 1
-    case LC_STATE_PROD_END:
-        return LC_STATES_BIT_PROD_END; // bit 2
-    case LC_STATE_RMA_SIP_LO:
-    case LC_STATE_RMA_SIP_HI:
-        return LC_STATES_BIT_RMA_SOP; // bit 3
-    case LC_STATE_RMA_CHIPLET_LO:
-    case 0x5u:
-    case 0x6u:
-    case LC_STATE_RMA_CHIPLET_HI:
-        return LC_STATES_BIT_RMA_CHIPLET; // bit 4
-    default:
-        return -1;
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Feature control and demotion registers
 // ---------------------------------------------------------------------------
@@ -123,7 +99,7 @@ void lc_write_demotion_2(bool demote, bool lock) {
 }
 
 // ---------------------------------------------------------------------------
-// Full lifecycle policy
+// Full lifecycle policy ([S11])
 // ---------------------------------------------------------------------------
 
 // Error code for lifecycle validation failure.
@@ -153,7 +129,6 @@ uint32_t rom_lifecycle_policy(void) {
         // SMC continue running in an unknown state.
         uint32_t smc_base = sep_get_smc_base();
         uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        // reset_n is active low, so clearing the four core bits asserts reset.
         rst &= ~(uint32_t)SMC_CPU_CTRL_RESET_CTRL_CORE_MASK;
         mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
         simputshex32("SMC_RESET_ON_INVALID_LC=", rst);

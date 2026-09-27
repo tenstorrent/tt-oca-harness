@@ -31,14 +31,20 @@ INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES = 6
 # one JTAG-AXI write and one JTAG-AXI read of the output-fabric window. The
 # OBSERVED count is measured by the scoreboard's per-bus tally inside
 # record_protocol_vip (driver-stamped, one per completed access), never passed in
-# from here -- passing this constant as both the observation and the floor made
-# the scoreboard assert `2 >= 2` ([NO-ALWAYS-PASS-CHECKER]).
+# from here -- a constant used as both observation and floor would make the
+# scoreboard assert `2 >= 2` ([NO-ALWAYS-PASS-CHECKER]).
 MIN_JTAG_AXI_ACCESSES = 2
 
 
 @pyuvm.test()
 class smc_input_output_fabric_wr_rd_test(smc_base_test):
     """Run output-fabric write/read through JTAG AXI with responder checks."""
+
+    required_evidence = (
+        "CHK-INPUT-OUTPUT-FABRIC-WR-RD",
+        "CHK-NONVAC",
+    )
+    min_evidence = 2
 
     auto_protocol_vip = False
 
@@ -93,8 +99,8 @@ class smc_input_output_fabric_wr_rd_test(smc_base_test):
             csr_accesses=cfg_seq.accesses,
             min_csr_accesses=INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES,
             # The two JTAG-AXI fabric accesses are reported in their own field:
-            # folding them into csr_accesses made the record state a count of
-            # CSR traffic that never happened. The observed count is MEASURED by
+            # folded into csr_accesses they would make the record state a count
+            # of CSR traffic that never happened. The observed count is MEASURED by
             # record_protocol_vip from the scoreboard's JTAG AXI tally; only the
             # floor is written here, so the scoreboard's
             # `fabric_accesses >= min_fabric_accesses` compares a measurement
@@ -114,4 +120,13 @@ class smc_input_output_fabric_wr_rd_test(smc_base_test):
                 f"(updates={self.env.scoreboard.memory_model_updates_seen} "
                 f"checks={self.env.scoreboard.memory_model_checks_seen})"
             ),
+        )
+        cocotb.log.info(
+            "CHK-NONVAC: protocol-VIP record accepted with csr_accesses=%d against "
+            "floor %d and jtag_axi_accesses=%d against floor %d; the scoreboard "
+            "rejects the record, and the run fails, below either floor",
+            cfg_seq.accesses,
+            INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES,
+            self.env.scoreboard.axi_accesses_by_bus.get("JTAG AXI", 0),
+            MIN_JTAG_AXI_ACCESSES,
         )

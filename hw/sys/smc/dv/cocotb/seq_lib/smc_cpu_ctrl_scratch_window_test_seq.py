@@ -50,11 +50,11 @@ assert sum(1 for _v in DUMMY_ROM_RESETS.values() if _v) >= 3, (
     f"DUMMY_ROM resets are no longer discriminating: {DUMMY_ROM_RESETS}"
 )
 _ROM_PROBE = 0xA5A5_5A5A_C3C3_3C3C
-# CORE_RESET_PULSE_COUNT is deliberately NOT swept: cpu_ctrl.rdl gives it
+# CORE_RESET_PULSE_COUNT is NOT swept: cpu_ctrl.rdl gives it
 # `sw = ['r','rw']` / `hw = ['r','w']`, i.e. it carries hardware-driven fields
-# (core_resets_done). As the CLA sweep showed with `Timestamp`, a register the
-# hardware drives cannot be held to its RDL reset, and masking it correctly
-# would need field masks this testcase does not import.
+# (core_resets_done). A register the hardware drives cannot be held to its RDL
+# reset, and masking it correctly would need field masks this testcase does not
+# import.
 
 
 class smc_cpu_ctrl_scratch_window_test_seq(SmcCsrSeq):

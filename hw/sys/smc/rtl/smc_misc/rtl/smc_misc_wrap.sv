@@ -20,10 +20,6 @@ module smc_misc_wrap #(
   // Lifecycle state
   input  logic [LC_STATE_WIDTH-1:0] lc_state_i,
 
-  // RAS bank settings
-  output logic [3:0] ras_bank_chip_o,
-  output logic [3:0] ras_bank_instance_o,
-
   // NDM Reset signals (connected to SMU)
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
   output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o
@@ -84,7 +80,7 @@ module smc_misc_wrap #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i            (clk_i),
     .rst_ni           (rst_ni),
     .test_i           (test_en_i),
@@ -104,7 +100,7 @@ module smc_misc_wrap #(
   //////////////////////////
 
   // 8 scratch registers that are reset by cold reset
-  scratch_reg smc_scratch_reg_cold (
+  scratch_reg u_smc_scratch_reg_cold (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -131,7 +127,7 @@ module smc_misc_wrap #(
   );
 
   // 8 scratch registers that are reset by cold and warm reset
-  scratch_reg smc_scratch_reg_cold_warm (
+  scratch_reg u_smc_scratch_reg_cold_warm (
     .clk            (clk_i),
     .arst_n         (rst_ni && rst_warm_ni),
 
@@ -163,16 +159,15 @@ module smc_misc_wrap #(
 
   logic [63:0] version_id;
 
-  smc_version_id_wrap smc_version_id_wrap (.version_id_o(version_id));
+  smc_version_id_wrap u_smc_version_id_wrap (.version_id_o(version_id));
 
   ///////////////////////////
   // Chip Config Registers //
   ///////////////////////////
 
-  chip_config_reg_pkg::chip_config__in_t      hwif_in;
-  chip_config_reg_pkg::chip_config__out_t     hwif_out;
+  chip_config_reg_pkg::chip_config__in_t hwif_in;
 
-  chip_config_reg smc_chip_config_reg (
+  chip_config_reg u_smc_chip_config_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -197,17 +192,13 @@ module smc_misc_wrap #(
     .s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.data),
     .s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.resp),
 
-    .hwif_in(hwif_in),
-    .hwif_out(hwif_out)
+    .hwif_in(hwif_in)
   );
 
   assign hwif_in.VERSION_LO.version_lo.next = version_id[31:0];
   assign hwif_in.VERSION_HI.version_hi.next = version_id[63:32];
   assign hwif_in.CHIP_ID.chip_id.next = CHIP_ID;
   assign hwif_in.LC_STATE.lc_state.next = lc_state_i;
-
-  assign ras_bank_chip_o = hwif_out.RAS_BANK_INFO.bank_chip.value;
-  assign ras_bank_instance_o = hwif_out.RAS_BANK_INFO.bank_instance.value;
 
   ///////////////////////
   // NDM Reset Control //
@@ -216,7 +207,7 @@ module smc_misc_wrap #(
   ndm_reset_reg_pkg::ndm_reset__in_t  ndm_hwif_in;
   ndm_reset_reg_pkg::ndm_reset__out_t ndm_hwif_out;
 
-  ndm_reset_reg smc_ndm_reset_reg (
+  ndm_reset_reg u_smc_ndm_reset_reg (
     .clk(clk_i),
     .arst_n(rst_ni),
 
@@ -263,7 +254,7 @@ module smc_misc_wrap #(
     .RESP           (axi_pkg::RESP_DECERR),
     .RESP_WIDTH     (32),
     .RESP_DATA      (32'hBADCAB1E)
-  ) prim_axi_lite_err_slv (
+  ) u_prim_axi_lite_err_slv (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
     .axil_req_i (from_demux_reg_axi_lite_req[smc_misc_pkg::ERR_SLV]),

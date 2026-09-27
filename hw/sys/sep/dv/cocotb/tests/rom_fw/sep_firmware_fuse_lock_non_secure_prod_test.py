@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_fuse_lock_base import EFUSE_DIR, LC_RAW_PROD, sep_fuse_lock_base
 
 

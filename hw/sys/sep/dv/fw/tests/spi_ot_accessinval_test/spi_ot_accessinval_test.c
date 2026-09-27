@@ -30,10 +30,6 @@
  * Note: Actual ACCESSINVAL triggering requires UVM-level TB injection of
  * non-contiguous byte enables on the TXDATA register write — not testable
  * via CPU firmware.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_accessinval_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -57,22 +53,21 @@ int main(void) {
            "gate).\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
-    spi_controller__CFG_t cfg;
+    spi_controller__CONTROL_t ctrl;
+    spi_controller__CONFIGOPTS_t cfg;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
     uint32_t dummy;
 
-
     /* Enable controller */
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     cfg.w = 0;
     cfg.f.CLKDIV = spi_clkdiv();
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
 
     /* ------------------------------------------------------------------ */
@@ -98,7 +93,7 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* Full-word write (SW → byte-enable = 4'b1111, valid) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x12345678);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 32-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
@@ -110,7 +105,7 @@ int main(void) {
 
     /* Half-word store (SH → contiguous 2-byte enable, valid) */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    *(volatile uint16_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 0x5678u;
+    *(volatile uint16_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x5678u;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 16-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
@@ -122,7 +117,7 @@ int main(void) {
 
     /* Byte store (SB → single-byte enable, valid) */
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    *(volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 0x78u;
+    *(volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x78u;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 8-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
@@ -195,7 +190,7 @@ int main(void) {
     /* ------------------------------------------------------------------ */
     printf("\nStep 6: ACCESSINVAL W1C does not affect other ERROR_STATUS bits\n");
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR); /* trigger UNDERFLOW */
+    dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); /* trigger UNDERFLOW */
     (void)dummy;
     err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  UNDERFLOW triggered: ERROR_STATUS=0x%08x, UNDERFLOW=%u\n", err_status.w,

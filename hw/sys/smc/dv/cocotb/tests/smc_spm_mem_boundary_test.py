@@ -16,17 +16,24 @@ _EDGE_COUNT = 3
 class smc_spm_mem_boundary_test(smc_base_test):
     """SPM first/next/last 64-bit word write/readback via SEP_IN AXI."""
 
+    required_evidence = (
+        "CHK-SPM-MEM-BASIC",
+        "CHK-SPM-MEM-SPM_HI",
+        "CHK-SPM-MEM-SPM_LO",
+        "CHK-SPM-MEM-SPM_LO_NEXT",
+    )
+    min_evidence = 4
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
         seq = smc_spm_mem_boundary_test_seq("spm_mem_boundary_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # `lo_ok`/`mid_ok`/`hi_ok` now carry the WORDS read back, not flags, so
-        # `assert a and b and c` would only be testing that three non-zero
-        # patterns are non-zero. The scoreboard already enforces each word
-        # against its own `expected=`, and asserting the three are distinct
-        # would be implied by those three exact compares -- the same
-        # dominated-assert trap this campaign has been removing.
+        # `lo_ok`/`mid_ok`/`hi_ok` carry the WORDS read back, so
+        # `assert a and b and c` would only test that three non-zero patterns
+        # are non-zero. The scoreboard already enforces each word against its
+        # own `expected=`, and asserting the three are distinct would be
+        # implied by those three exact compares.
         #
         # What is NOT implied, and is what this gate checks: that all three
         # readbacks happened at all. A body that returned early, or a future

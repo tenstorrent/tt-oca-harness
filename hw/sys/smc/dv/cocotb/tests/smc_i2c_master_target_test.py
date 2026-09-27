@@ -14,6 +14,16 @@ from smc_base_test import smc_base_test
 class smc_i2c_master_target_test(smc_base_test):
     """U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads."""
 
+    required_evidence = (
+        "CHK-I2C0-HOST-REPEATED-START",
+        "CHK-I2C0-HOST-WRITE",
+        "CHK-I2C0-OVRD-PAD",
+        "CHK-I2C0-SMBUS-ARA",
+        "CHK-I2C0-SMBUS-PEC",
+        "CHK-I2C0-U4-2-SMBUS",
+    )
+    min_evidence = 6
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -25,17 +35,13 @@ class smc_i2c_master_target_test(smc_base_test):
             f"ara={seq.dut_smbus_ara_ok}"
         )
         # Byte verdict: owned solely by the sequence, where the bytes are
-        # measured. `assert got == bytes([_I2C_WRITE_BYTE])`
-        # (smc_i2c_master_target_test_seq.py:355, EEPROM VIP mem[0x10]) and
-        # `assert rdata == _SMBUS_ARA_REPLY` (:480, I2C0_RDATA from the ARA
-        # responder) both run *before* the sequence returns, so a test-level
-        # `obs == exp` compare here -- and the scoreboard's
-        # `expected_bytes`/`observed_bytes` compare it fed -- were downstream of
-        # those asserts on the same constants: guaranteed equal, unable to fail
-        # on any RTL, yet presented as the byte golden ([NO-DUMMY-DEAD-CODE]).
-        # Both duplicates are removed; the measured values are still reported
-        # below (and in `details=` on the protocol-VIP record) so the kept log
-        # carries what was read, without restating a compare it did not make.
+        # measured. `assert got == bytes([_I2C_WRITE_BYTE])` (EEPROM VIP
+        # mem[0x10]) and `assert rdata == _SMBUS_ARA_REPLY` (I2C0_RDATA from the
+        # ARA responder) both run *before* the sequence returns, so a test-level
+        # `obs == exp` compare here would sit downstream of those asserts on the
+        # same constants and could not fail on any RTL ([NO-DUMMY-DEAD-CODE]).
+        # The measured values are reported below (and in `details=` on the
+        # protocol-VIP record) so the kept log carries what was read.
         obs = seq.obs_host_write + seq.obs_smbus_ara
         self.logger.info(
             "I2C U4-2 measured bytes 0x%s (EEPROM VIP mem[0x10]=0x%s + "
@@ -48,10 +54,8 @@ class smc_i2c_master_target_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 59-61 accesses observed across the
-            # retained regression runs (the I2C HOSTIDLE/RXEMPTY polls are a
-            # timing-dependent remainder), so the floor is set below the minimum
-            # observed. Literal here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the I2C HOSTIDLE/RXEMPTY polls are timing-dependent.
             min_csr_accesses=50,
             csr_accesses=seq.accesses,
             proxy=False,

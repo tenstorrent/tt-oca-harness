@@ -78,10 +78,20 @@ def other_payload_tokens(defect: str) -> tuple[str, ...]:
 
 
 def neighbouring_errors(defect: str, *, exclude: tuple[int, ...] = ()) -> list[str]:
-    codes = (sibling_error(defect), ERR_IMAGE_OOB, ted.ERR_BAD_IMAGE_TYPE,
-             ted.ERR_IMAGE_HASH_MISMATCH, td.ERR_BAD_MAGIC, td.ERR_BAD_VERSION,
-             td.ERR_BAD_LENGTH, td.ERR_BAD_TOC_ID, td.ERR_BAD_TOC_VERSION,
-             td.ERR_TOC_COUNT, td.ERR_PAYLOAD_TOO_LARGE, td.ERR_NO_BL1_IMAGE)
+    codes = (
+        sibling_error(defect),
+        ERR_IMAGE_OOB,
+        ted.ERR_BAD_IMAGE_TYPE,
+        ted.ERR_IMAGE_HASH_MISMATCH,
+        td.ERR_BAD_MAGIC,
+        td.ERR_BAD_VERSION,
+        td.ERR_BAD_LENGTH,
+        td.ERR_BAD_TOC_ID,
+        td.ERR_BAD_TOC_VERSION,
+        td.ERR_TOC_COUNT,
+        td.ERR_PAYLOAD_TOO_LARGE,
+        td.ERR_NO_BL1_IMAGE,
+    )
     # exclude admits codes produced elsewhere, e.g. the backup family's primary BAD_MAGIC.
     drop = set(exclude) | {EXPECTED_ERROR[defect]}
     return [f"MANIFEST_ERR=0x{c:08x}" for c in codes if c not in drop]
@@ -96,25 +106,28 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
 
     if defect == BOUND:
         bound = pm.toc_entry_lower_bound(buf, slot, BOUND_ENTRY_INDEX)
-        was = pm.set_toc_entry_offset(buf, slot, BOUND_ENTRY_INDEX,
-                                      BOUND_IMAGE_OFFSET)
-        detail = (f"image {BOUND_ENTRY_INDEX} offset 0x{was:x} -> "
-                  f"0x{BOUND_IMAGE_OFFSET:x}, which is BELOW the {bound}-byte TOC "
-                  f"region the ROM seeds prev_end with, so the declared body would "
-                  f"begin inside the metadata being parsed; its digest was "
-                  f"recomputed over the newly declared range")
+        was = pm.set_toc_entry_offset(buf, slot, BOUND_ENTRY_INDEX, BOUND_IMAGE_OFFSET)
+        detail = (
+            f"image {BOUND_ENTRY_INDEX} offset 0x{was:x} -> "
+            f"0x{BOUND_IMAGE_OFFSET:x}, which is BELOW the {bound}-byte TOC "
+            f"region the ROM seeds prev_end with, so the declared body would "
+            f"begin inside the metadata being parsed; its digest was "
+            f"recomputed over the newly declared range"
+        )
         expect = BOUND_IMAGE_OFFSET
     else:
         was = pm.set_toc_payload_length(buf, slot, BAD_TOC_PAYLOAD_LENGTH)
-        detail = (f"TOC payload_length {was} -> {BAD_TOC_PAYLOAD_LENGTH}, against "
-                  f"the manifest's {p_len}; the TOC claims "
-                  f"{BAD_TOC_PAYLOAD_LENGTH - p_len} bytes MORE than were loaded")
+        detail = (
+            f"TOC payload_length {was} -> {BAD_TOC_PAYLOAD_LENGTH}, against "
+            f"the manifest's {p_len}; the TOC claims "
+            f"{BAD_TOC_PAYLOAD_LENGTH - p_len} bytes MORE than were loaded"
+        )
         expect = BAD_TOC_PAYLOAD_LENGTH
 
     p = pm.payload_base(buf, slot)
     # For an encrypted slot this is ciphertext, the only form the flash device holds.
-    stored = bytes(buf[p + off:p + off + size])
-    now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off:off + size]), "little")
+    stored = bytes(buf[p + off : p + off + size])
+    now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off : off + size]), "little")
     if now != expect:
         raise AssertionError(
             f"{slot} TOC {FIELD_NAME[defect]} reads 0x{now:x} after the mutation, "
@@ -127,18 +140,29 @@ def plant(logger, buf: bytearray, slot: str, defect: str) -> bytes:
         "0 < n <= %d, every image type known, every declared range inside the "
         "payload and matching its own digest -- so %s is the only rule "
         "validate_manifest_payload can refuse this slot on",
-        slot, defect, "ENCRYPTED" if encrypted else "plaintext", detail,
-        p + off, stored.hex(), pm.TOC_MAJOR_VERSION, pm.TOC_MAX_IMAGE_COUNT,
+        slot,
+        defect,
+        "ENCRYPTED" if encrypted else "plaintext",
+        detail,
+        p + off,
+        stored.hex(),
+        pm.TOC_MAJOR_VERSION,
+        pm.TOC_MAX_IMAGE_COUNT,
         DEFECT_TOKEN[defect].rstrip("=").split(" idx=")[0],
     )
     return stored
 
 
-def assert_served_bound_field(logger, flash, slot: str, defect: str,
-                              expected: bytes, payload_offset: int) -> None:
+def assert_served_bound_field(
+    logger, flash, slot: str, defect: str, expected: bytes, payload_offset: int
+) -> None:
     off, _size = FIELD[defect]
     # Encrypted slots hold identical ciphertext here; only the flash address names the slot.
     fd.assert_served_field(
-        logger, flash, slot, payload_offset + off, expected,
+        logger,
+        flash,
+        slot,
+        payload_offset + off,
+        expected,
         f"{slot} {FIELD_NAME[defect]}",
     )

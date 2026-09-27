@@ -70,7 +70,8 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
         # A write hit places the four-bit region index in remap_debug_t[7:4].
         # Selecting region 8..15 makes the upper debug bits nonzero.
         await alias._wr(cfg.access_addr, cfg.marker)
-        debug_lane = (self.rd(cocotb.top.ext_debug_bus_o) >> 192) & 0xFFFF
+        debug_raw = self.rd_known(cocotb.top.ext_debug_bus_o, 0xFFFF << 192)
+        debug_lane = (debug_raw >> 192) & 0xFFFF
         assert (debug_lane >> 8) == 0, (
             f"remap debug lane reserved [15:8]=0x{debug_lane >> 8:02x}, expected 0"
         )

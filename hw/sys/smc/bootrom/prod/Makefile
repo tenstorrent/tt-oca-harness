@@ -9,7 +9,8 @@
 #   make BUILD_TYPE=debug        # debug build
 #   make RISCV_TOOLCHAIN=/path/to/bin   # explicit toolchain override
 #
-# Requires: riscv64-unknown-elf-gcc (and friends) on PATH, or RISCV_TOOLCHAIN set.
+# Requires: RISCV_TOOLCHAIN pointing at a picolibc-enabled
+# riscv64-unknown-elf-* bin dir, or scripts/docker-run.sh.
 
 # =============================================================================
 # CONFIGURATION
@@ -32,10 +33,14 @@ CONFIG := smc
 # =============================================================================
 
 # RISCV_TOOLCHAIN may be set externally (env var or make argument) to the
-# *directory* containing the toolchain binaries.  When empty the tools are
-# resolved from PATH, matching the convention used by hw/common/dv/fw/compile.mk
-# and hw/common/dv/fw/toolchain.mk.
+# *directory* containing the toolchain binaries. When empty, compiler-dependent
+# targets run through scripts/docker-run.sh run-here.
 RISCV_TOOLCHAIN ?=
+PROD_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+OCAH_ROOT  ?= $(abspath $(PROD_DIR)/../../../../..)
+OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
+UV = uv
+PYTHON ?= $(UV) --directory "$(OCAH_ROOT)" run --locked python3
 
 ifneq ($(RISCV_TOOLCHAIN),)
   _TC_PREFIX := $(RISCV_TOOLCHAIN)/
@@ -59,16 +64,16 @@ ARCHFLAGS := -march=$(ARCH) -mabi=$(ABI) -mtune=rocket
 # DIRECTORY STRUCTURE
 # =============================================================================
 
-SRC_DIR    := src
-INCLUDE_DIR := include
-DRIVERS_DIR := drivers
-LIB_DIR    := lib
-BOOT_DIR   := boot
-LINKER_DIR := linker
-REG_DIR    := registers
-SCRIPTS_DIR := scripts
+SRC_DIR    := $(PROD_DIR)/src
+INCLUDE_DIR := $(PROD_DIR)/include
+DRIVERS_DIR := $(PROD_DIR)/drivers
+LIB_DIR    := $(PROD_DIR)/lib
+BOOT_DIR   := $(PROD_DIR)/boot
+LINKER_DIR := $(PROD_DIR)/linker
+REG_DIR    := $(PROD_DIR)/registers
+SCRIPTS_DIR := $(PROD_DIR)/scripts
 
-BUILD_DIR  := build
+BUILD_DIR  := $(PROD_DIR)/build
 # DV-only ROM padding self-test builds (never a production image).
 # ROM_PADDING_SELFTEST=1 jumps into EBREAK padding; =2 executes a generic EBREAK.
 ROM_PADDING_SELFTEST ?=
@@ -235,14 +240,52 @@ ECC_HEX_FILE     := $(HEX_DIR)/$(TARGET).ecc.hex
 BIN64_FILE       := $(HEX_DIR)/$(TARGET).bin64
 MAP_FILE         := $(OUT_DIR)/$(TARGET).map
 DISASM_FILE      := $(DISASM_DIR)/$(TARGET).dis
+SYM_FILE         := $(HEX_DIR)/$(TARGET).sym
 
 # =============================================================================
 # BUILD RULES
 # =============================================================================
 
-.PHONY: all
-all: info $(ELF_FILE) $(BIN_FILE) $(HEX_FILE) $(PRELOAD_HEX_FILE) \
-     $(ECC_HEX_FILE) $(BIN64_FILE) $(DISASM_FILE) size
+.PHONY: all toolchain-images toolchain-images-build pack-images
+all:
+	$(MAKE) toolchain-images
+	$(MAKE) pack-images
+
+toolchain-images:
+	@if [ -n "$(RISCV_TOOLCHAIN)" ]; then \
+	  $(MAKE) toolchain-images-build; \
+	elif [ -x "$(OCAH_DOCKER_RUN)" ]; then \
+	  echo "[bootrom] RISCV_TOOLCHAIN is unset; building in the OCAH toolchain container"; \
+	  env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS \
+	    "$(OCAH_DOCKER_RUN)" run-here \
+	    $(MAKE) -C "$(PROD_DIR)" \
+	    BUILD_TYPE="$(BUILD_TYPE)" TARGET="$(TARGET)" CHIP_ARCH="$(CHIP_ARCH)" \
+	    ENABLE_RELEASE_PRINTS="$(ENABLE_RELEASE_PRINTS)" \
+	    ROM_PADDING_SELFTEST="$(ROM_PADDING_SELFTEST)" I3C_CORE="$(I3C_CORE)" \
+	    EXTRA_DEFINES="$(EXTRA_DEFINES)" \
+	    NONFREE_DRIVER_SOURCES="$(NONFREE_DRIVER_SOURCES)" \
+	    RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build; \
+	else \
+	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
+	  exit 1; \
+	fi
+
+toolchain-images-build: info $(ELF_FILE) $(BIN_FILE) $(HEX_FILE) \
+     $(DISASM_FILE) $(SYM_FILE) size
+
+pack-images:
+	@test -f "$(BIN_FILE)" && test -f "$(HEX_FILE)" || { \
+	  echo "error: ROM toolchain images are missing; run 'make toolchain-images' first" >&2; \
+	  exit 1; \
+	}
+	@echo "PRELOAD $(PRELOAD_HEX_FILE)"
+	@$(PYTHON) $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py \
+	    $(HEX_FILE) --out_file $(PRELOAD_HEX_FILE)
+	@echo "ECC $(ECC_HEX_FILE)"
+	@$(PYTHON) $(SCRIPTS_DIR)/gen_64b_ecc.py $(BIN_FILE) $(ECC_HEX_FILE)
+	@echo "BIN64 $(BIN64_FILE)"
+	@$(PYTHON) $(SCRIPTS_DIR)/bin_to_64b.py \
+	    --input $(BIN_FILE) --output $(BIN64_FILE)
 
 .PHONY: info
 info:
@@ -318,15 +361,21 @@ $(HEX_FILE): $(ELF_FILE) | $(HEX_DIR)
 # Post-processing scripts live in scripts/ next to this Makefile.
 $(PRELOAD_HEX_FILE): $(HEX_FILE) | $(HEX_DIR)
 	@echo "PRELOAD $@"
-	@python3 $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py $< --out_file $@
+	@$(PYTHON) $(SCRIPTS_DIR)/update_smc_hex_to_preload_addr.py $< --out_file $@
 
 $(ECC_HEX_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "ECC $@"
-	@python3 $(SCRIPTS_DIR)/gen_64b_ecc.py $< $@
+	@$(PYTHON) $(SCRIPTS_DIR)/gen_64b_ecc.py $< $@
 
 $(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "BIN64 $@"
-	@python3 $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
+	@$(PYTHON) $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
+
+# nm listing next to the images: the DV processor-state monitors symbolize
+# retired PCs from it.
+$(SYM_FILE): $(ELF_FILE) | $(HEX_DIR)
+	@echo "SYM $@"
+	@$(NM) -B -n $< > $@
 
 # -d (code sections) not -D (all sections): binutils 2.44 objdump aborts on -D
 # for this image's NOBITS/.stack layout, and disassembling data is noise anyway.
@@ -387,7 +436,9 @@ help:
 	@echo "  make                         - release build"
 	@echo "  make BUILD_TYPE=debug        - debug build"
 	@echo "  make RISCV_TOOLCHAIN=/path   - explicit toolchain directory"
+	@echo "  (unset RISCV_TOOLCHAIN uses scripts/docker-run.sh run-here)"
 	@echo "  make clean                   - remove build/"
 	@echo "  make check                   - validate build environment"
 
-.PHONY: all info clean distclean debug release size memory check check-toolchain help
+.PHONY: all toolchain-images toolchain-images-build pack-images info clean \
+        distclean debug release size memory check check-toolchain help

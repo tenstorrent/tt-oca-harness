@@ -7,7 +7,7 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_efuse_map</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
@@ -15,8 +15,8 @@
 <tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x14</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
-<tr><td>0x20</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
+<tr><td>0x18</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x20</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
 <tr><td>0x28</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x48</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x68</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
@@ -30,38 +30,31 @@
 <tr><td>0x14C</td><td><a href="#SYS_UID">SYS_UID</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x16C</td><td><a href="#STATUS_RPT">STATUS_RPT</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x170</td><td><a href="#ROM_CTL">ROM_CTL</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x174</td><td><a href="#SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x178</td><td><a href="#SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x17C</td><td><a href="#SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x180</td><td><a href="#SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x184</td><td><a href="#SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x188</td><td><a href="#SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18C</td><td><a href="#SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x190</td><td><a href="#SPI_PHY_MISC">SPI_PHY_MISC</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x194</td><td><a href="#SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x198</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x1B8</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x1D8</td><td><a href="#REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1DC</td><td><a href="#REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
-<tr><td>0x1E0</td><td><a href="#CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x200</td><td><a href="#CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x220</td><td><a href="#SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x240</td><td><a href="#SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x260</td><td><a href="#SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x280</td><td><a href="#SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x2A0</td><td><a href="#SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x2C0</td><td><a href="#SEP_SIP_ID">SEP_SIP_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x2E0</td><td><a href="#SEP_SYS_ID">SEP_SYS_ID</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x300</td><td><a href="#spare0">spare0</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x320</td><td><a href="#spare1">spare1</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x340</td><td><a href="#spare2">spare2</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x360</td><td><a href="#spare3">spare3</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x380</td><td><a href="#spare4">spare4</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x3A0</td><td><a href="#spare5">spare5</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x3C0</td><td><a href="#spare6">spare6</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x3E0</td><td><a href="#spare7">spare7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x174</td><td><a href="#SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x178</td><td><a href="#CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x198</td><td><a href="#CHIPLET_PUBK_HASH1">CHIPLET_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1B8</td><td><a href="#REQUIRED_SIGNERS">REQUIRED_SIGNERS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1BC</td><td><a href="#REQUIRED_ALGS">REQUIRED_ALGS</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x1C0</td><td><a href="#CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x1E0</td><td><a href="#CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x200</td><td><a href="#SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x220</td><td><a href="#SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x240</td><td><a href="#SIP_PUBK_HASH1">SIP_PUBK_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x260</td><td><a href="#SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x280</td><td><a href="#SEP_CHIPLET_ID">SEP_CHIPLET_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2A0</td><td><a href="#SEP_SIP_ID">SEP_SIP_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2C0</td><td><a href="#SEP_SYS_ID">SEP_SYS_ID</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x2E0</td><td><a href="#spare0">spare0</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x300</td><td><a href="#spare1">spare1</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x320</td><td><a href="#spare2">spare2</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x340</td><td><a href="#spare3">spare3</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x360</td><td><a href="#spare4">spare4</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x380</td><td><a href="#spare5">spare5</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3A0</td><td><a href="#spare6">spare6</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3C0</td><td><a href="#spare7">spare7</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x3E0</td><td><a href="#spare8">spare8</a></td><td>R</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="LOCKS">LOCKS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -91,8 +84,8 @@
 <tr><td>40</td><td>CHIPLET_PUBK_HASH1_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
 <tr><td>39</td><td>CHIPLET_PUBK_HASH0_READ_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
 <tr><td>38</td><td>CHIPLET_PUBK_HASH0_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>37</td><td>SPI_CONFIG_EN_READ_LOCK</td><td>RW</td><td>0x0</td><td>spi_config_en_read_lock, when set, the SPI_CONFIG group is not read-able (neither the eFuse nor the shadow register)</td></tr>
-<tr><td>36</td><td>SPI_CONFIG_EN_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spi_config_en_write_lock, when set, the SPI_CONFIG group is not write-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>37</td><td>SYSCLK_FREQ_MHZ_READ_LOCK</td><td>RW</td><td>0x0</td><td>sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
+<tr><td>36</td><td>SYSCLK_FREQ_MHZ_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
 <tr><td>35</td><td>ROM_CTL_READ_LOCK</td><td>RW</td><td>0x0</td><td>rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
 <tr><td>34</td><td>ROM_CTL_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)</td></tr>
 <tr><td>33</td><td>STATUS_RPT_READ_LOCK</td><td>RW</td><td>0x0</td><td>status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)</td></tr>
@@ -133,7 +126,9 @@
 <h3 id="LOCKS_SPARE">LOCKS_SPARE</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>SPARE_LOCK_RSVD</td><td>RW</td><td>0x0</td><td>Unassigned lock slots 40-47. Reserved for future field lock assignments.</td></tr>
+<tr><td>31:18</td><td>SPARE_LOCK_RSVD</td><td>RW</td><td>0x0</td><td>Unassigned lock slots 41-47. Reserved for future field lock assignments.</td></tr>
+<tr><td>17</td><td>SPARE8_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare8_read_lock (slot 40): when set, spare8 is not read-able.</td></tr>
+<tr><td>16</td><td>SPARE8_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare8_write_lock (slot 40): when set, spare8 is not write-able.</td></tr>
 <tr><td>15</td><td>SPARE7_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare7_read_lock (slot 39): when set, spare7 is not read-able.</td></tr>
 <tr><td>14</td><td>SPARE7_WRITE_LOCK</td><td>RW</td><td>0x0</td><td>spare7_write_lock (slot 39): when set, spare7 is not write-able.</td></tr>
 <tr><td>13</td><td>SPARE6_READ_LOCK</td><td>RW</td><td>0x0</td><td>spare6_read_lock (slot 38): when set, spare6 is not read-able.</td></tr>
@@ -173,31 +168,25 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="SYS_DIS">SYS_DIS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
 <table>
@@ -267,52 +256,11 @@
 <tr><td>5:1</td><td>rom_swap_ctrl</td><td>R</td><td>0x0</td><td>controls how the rom slices are swapped</td></tr>
 <tr><td>0</td><td>rom_endianness_ctrl</td><td>R</td><td>0x0</td><td>controls the endianness of the rom data out. 0-&gt;little endian; 1-&gt;big endian</td></tr>
 </table>
-<h3 id="SEP_SPI_CTRL_FIELD_EN">SEP_SPI_CTRL_FIELD_EN</h3>
+<h3 id="SYSCLK_FREQ_MHZ">SYSCLK_FREQ_MHZ</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:19</td><td>spi_control_field_en_rsvd</td><td>R</td><td>0x0</td><td>Reserved 13 bits</td></tr>
-<tr><td>18:8</td><td>smu_pll_sysclk</td><td>R</td><td>0x0</td><td>11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0</td></tr>
-<tr><td>7:0</td><td>spi_control_field_en</td><td>R</td><td>0x0</td><td>8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1-&gt;enabled; 0-&gt;disabled</td></tr>
-</table>
-<h3 id="SPI_DISCOVERY_CTRL">SPI_DISCOVERY_CTRL</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>discovery</td><td>R</td><td>0x0</td><td>spi discovery control reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DQ_TIMING">SPI_PHY_DQ_TIMING</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dq_timing</td><td>R</td><td>0x0</td><td>spi phy dq timing reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DQS_TIMING">SPI_PHY_DQS_TIMING</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dqs_timing</td><td>R</td><td>0x0</td><td>spi phy dqs timing reg</td></tr>
-</table>
-<h3 id="SPI_PHY_GATE_LPBK">SPI_PHY_GATE_LPBK</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>gate_lpbk</td><td>R</td><td>0x0</td><td>spi phy gate lpbk ctrl reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DLL_SLAVE">SPI_PHY_DLL_SLAVE</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dll_slave</td><td>R</td><td>0x0</td><td>spi phy dll slv ctrl reg</td></tr>
-</table>
-<h3 id="SPI_PHY_DLL_MASTER">SPI_PHY_DLL_MASTER</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>dll_master</td><td>R</td><td>0x0</td><td>spi phy dll mst ctrl reg</td></tr>
-</table>
-<h3 id="SPI_PHY_MISC">SPI_PHY_MISC</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>misc</td><td>R</td><td>0x0</td><td>spi init phy misc</td></tr>
-</table>
-<h3 id="SPI_RB_VALID_TIME">SPI_RB_VALID_TIME</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>rb_valid_time</td><td>R</td><td>0x0</td><td>spi init rb valid time</td></tr>
+<tr><td>31:11</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
+<tr><td>10:0</td><td>sysclk_freq_mhz</td><td>R</td><td>0x0</td><td>Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_HASH0">CHIPLET_PUBK_HASH0</h3>
 <table>
@@ -386,41 +334,46 @@
 <h3 id="spare0">spare0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare1">spare1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare2">spare2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare3">spare3</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare4">spare4</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare5">spare5</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare6">spare6</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 <h3 id="spare7">spare7</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).</td></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
+</table>
+<h3 id="spare8">spare8</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>255:0</td><td>rsvd</td><td>R</td><td>0x0</td><td>Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).</td></tr>
 </table>
 </div>

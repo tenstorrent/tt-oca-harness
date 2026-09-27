@@ -1,18 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap Round 4: SMC_XVISOR_REMAP full sweep (TC_SMC_P1CG_20).
+"""SMC_XVISOR_REMAP full sweep (TC_SMC_P1CG_20).
 
-RTL exposes an 8-entry hypervisor remap table (PeakRDL map
-SMC_XVISOR_REMAP_0..7, ATTRS-only per entry). This is a direct sibling of
-the already-covered ALIAS_REMAP and MMODE_REMAP tables, but no prior
-P0/P1 test reached it. Strict reads (each requiring an OKAY AXI response)
-prove per-entry CSR decode + reset invariants without any BFM/firmware.
+The generated map declares an 8-entry hypervisor remap table
+(SMC_XVISOR_REMAP_0..7, ATTRS-only per entry), a sibling of the ALIAS_REMAP and
+MMODE_REMAP tables. Two legs, both scoreboard-compared: every entry reads its
+generated reset, and every entry then holds a distinct pattern while the other
+seven hold theirs, so a decode that aliases two entries -- or an undecoded
+window that answers OKAY with zeros -- fails the readback.
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+
+import cocotb
 
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -34,7 +37,7 @@ from smc_reg import (  # noqa: E402
 )
 
 # Per-entry REGION_ATTRS addresses from the generated map. Reset is 0 per
-# output_remap.rdl (offset[55:0]=0x0, remap disabled) — RDL-traceable.
+# output_remap.rdl (offset[55:0]=0x0, remap disabled) -- RDL-traceable.
 XVISOR_REMAP_ATTRS_ADDRS = (
     SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
     SMC_XVISOR_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
@@ -45,16 +48,65 @@ XVISOR_REMAP_ATTRS_ADDRS = (
     SMC_XVISOR_REMAP_6__REGION_REGION_ATTRS_REG_ADDR,
     SMC_XVISOR_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
 )
+# One distinct pattern per entry inside the 56-bit `offset` field
+# (output_remap.rdl); bits [63:56] stay 0. No outbound traffic runs while the
+# table holds them, and every entry is restored to its reset afterwards.
+XVISOR_REMAP_PATTERNS = tuple((0x5A5 << 40) | ((i + 1) << 12) for i in range(8))
+assert len(set(XVISOR_REMAP_PATTERNS)) == len(XVISOR_REMAP_ATTRS_ADDRS)
+# 8 reset reads + 8 x (pattern write, pattern read, restore write, restore read).
+EXPECTED_ACCESSES = 8 + 4 * 8
 
 
 class smc_xvisor_remap_test_seq(SmcCsrSeq):
     async def body(self) -> None:
-        # XVISOR_REMAP 0..7 (ATTRS-only per entry). Asserting reset=0 verifies
-        # per-entry decode AND the spec-defined reset content, not merely OKAY.
+        # XVISOR_REMAP 0..7 (ATTRS-only per entry). The reset read proves the
+        # generated reset content of each address; on its own it cannot tell
+        # eight registers from one aliased register or an OKAY-zero hole.
+        observed = []
         for i, addr in enumerate(XVISOR_REMAP_ATTRS_ADDRS):
-            await self.csr_read(
-                f"XVISOR_REMAP_{i}_ATTRS",
-                addr,
-                expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+            observed.append(
+                await self.csr_read(
+                    f"XVISOR_REMAP_{i}_ATTRS",
+                    addr,
+                    expected=OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                    length=8,
+                )
             )
         assert self.accesses == len(XVISOR_REMAP_ATTRS_ADDRS), "XVISOR_REMAP sweep count mismatch"
+        cocotb.log.info(
+            "CHK-XVISOR-REMAP-RESET-DEFAULT: XVISOR_REMAP_0..%d REGION_ATTRS at "
+            "%#x..%#x read %s over SEP_IN AXI, each an OKAY scoreboard value "
+            "compare against the RDL reset %#x",
+            len(XVISOR_REMAP_ATTRS_ADDRS) - 1,
+            XVISOR_REMAP_ATTRS_ADDRS[0],
+            XVISOR_REMAP_ATTRS_ADDRS[-1],
+            [f"{value:#x}" for value in observed],
+            OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+        )
+        # Per-entry decode: all eight patterns are written before any is read
+        # back, so an aliased pair holds the last pattern written and the first
+        # readback of the pair fails; every entry is then restored and re-read.
+        await self.rw_coresident(
+            [
+                (
+                    f"XVISOR_REMAP_{i}_ATTRS",
+                    addr,
+                    XVISOR_REMAP_PATTERNS[i],
+                    OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+                )
+                for i, addr in enumerate(XVISOR_REMAP_ATTRS_ADDRS)
+            ],
+            length=8,
+        )
+        assert self.accesses == EXPECTED_ACCESSES, (
+            f"XVISOR_REMAP body issued {self.accesses} accesses, expected {EXPECTED_ACCESSES}"
+        )
+        cocotb.log.info(
+            "CHK-XVISOR-REMAP-CORESIDENT: XVISOR_REMAP_0..%d REGION_ATTRS each held its own "
+            "pattern (%s) while the other seven held theirs and read it back exactly, then "
+            "read back the RDL reset %#x after the restore write; every readback a scoreboard "
+            "value compare",
+            len(XVISOR_REMAP_ATTRS_ADDRS) - 1,
+            ", ".join(f"{p:#x}" for p in XVISOR_REMAP_PATTERNS),
+            OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+        )

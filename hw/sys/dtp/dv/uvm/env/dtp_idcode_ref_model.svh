@@ -10,11 +10,11 @@
 // per scan item so the scoreboard pairs the two streams in lockstep: IR
 // scans, scans under another instruction, and scans under an unknown
 // instruction carry no contract. No comparison, no reporting. The cocotb
-// realization has no twin yet (DTP_TB_ARCH).
+// realization has no twin (DTP_TB_ARCH).
 //
-// expected_idcode defaults to the public DTP elaboration's value; a system
-// bench that embeds DTP (SMU) sets it from its own configuration before
-// build_phase, so the same model judges the embedded instance.
+// expected_idcode defaults to the public DTP elaboration's value; a bench
+// that embeds DTP sets it from its own configuration before build_phase, so
+// the same model judges the embedded instance.
 
 `uvm_analysis_imp_decl(_dtp_idcode_event)
 
@@ -47,8 +47,7 @@ class dtp_idcode_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, dtp_exp
     exp.timestamp = t.end_time;
     exp.compare   = 1'b0;
     if (t.is_ir) m_model.on_ir_scan(t);
-    else if (m_model.ir_known() && (t.bit_count != 0) &&
-                 (m_model.ir() == jtag_inst_reg_pkg::IDCODE_INSTR)) begin
+    else if (m_model.ir_known() && (t.bit_count != 0) && (m_model.ir() == IDCODE_INSTR)) begin
       int unsigned width = (t.bit_count < 32) ? t.bit_count : 32;
       exp.compare   = 1'b1;
       exp.mask      = ocah_rng::bit_mask(width);

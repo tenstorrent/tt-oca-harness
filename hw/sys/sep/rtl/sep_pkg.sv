@@ -471,9 +471,9 @@ SEP_ROM_MUX_NUM_PORTS
   parameter int unsigned AP_REMAP_SEL_W = $clog2(NUM_AP_OUTPUT_REMAP_REGIONS);
   parameter int unsigned NUM_STEE_OUTPUT_REMAP_REGIONS = 16;
   parameter int unsigned STEE_REMAP_SEL_W = $clog2(NUM_STEE_OUTPUT_REMAP_REGIONS);
-  parameter int unsigned ALIAS_REMAP_IDX_START = 12;
-  parameter int unsigned NUM_AP_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
-  parameter int unsigned NUM_STEE_OUTPUT_REMAP_IDX_START = 19;  //  512KB region granularity
+  parameter int unsigned ALIAS_REMAP_IDX_START = 12;  // 4KB region granularity
+  parameter int unsigned AP_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
+  parameter int unsigned STEE_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
 
   // Fixed size of the SEP local alias remap window. This is decoupled from the
   // SMU-programmable SEP_REGION_SIZE CSR (exported as sep_region_size_o to size the
@@ -505,6 +505,7 @@ SEP_ROM_MUX_NUM_PORTS
   /////////////////////////////////////
 
   typedef struct packed {
+    logic abr;
     logic trng;
     logic kmac;
     logic hmac;
@@ -513,10 +514,11 @@ SEP_ROM_MUX_NUM_PORTS
     logic km;
   } sep_sw_rst_t;
 
-  // One bit per isolatable AXI-Lite path in sep_crypto. trng_* are the
-  // converted CSR paths to the internal TRNG complex; host_* are the SEP host
-  // paths to the accelerator wrappers; km_* are the Key Manager master paths
-  // to its slaves. Same layout is used for isolate_req and isolated.
+  // One bit per isolatable AXI path in sep_crypto. trng_* are the converted
+  // CSR paths to the internal TRNG complex; host_* are the SEP host paths to
+  // the accelerator wrappers; km_* are the Key Manager master paths to its
+  // slaves. ABR's host path is full AXI; the other paths are AXI-Lite. The
+  // same layout is used for isolate_req and isolated.
   typedef struct packed {
     logic trng_entropy_source;
     logic trng_csrng;
@@ -525,6 +527,7 @@ SEP_ROM_MUX_NUM_PORTS
     logic host_aes;
     logic host_hmac;
     logic host_kmac;
+    logic host_abr;
     logic km_otbn;
     logic km_aes;
     logic km_hmac;
@@ -726,9 +729,9 @@ SEP_ROM_MUX_NUM_PORTS
   // JTAG SEP Reset Control
   typedef struct packed {
     // jtag_ptap sizes the SEP IC_RESET slice from $bits(type)/2 and maps the
-    // ovrd and val sub-structs independently by packed bit index. TRNG sits
-    // at each sub-struct's MSB, so it takes the new top port and the
-    // existing port indices keep their TDR positions.
+    // ovrd and val sub-structs independently by packed bit index. Fields run
+    // from TDI to TDO in declaration order.
+    logic abr_jtag_rst_n_ovrd;
     logic trng_jtag_rst_n_ovrd;
     logic sep_reset_n_ovrd;
     logic kmac_jtag_rst_n_ovrd;
@@ -739,6 +742,7 @@ SEP_ROM_MUX_NUM_PORTS
   } jtag_sep_reset_ctrl_ovrd_t;
 
   typedef struct packed {
+    logic abr_jtag_rst_n_val;
     logic trng_jtag_rst_n_val;
     logic sep_reset_n_val;
     logic kmac_jtag_rst_n_val;

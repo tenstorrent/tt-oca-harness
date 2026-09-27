@@ -74,7 +74,10 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
         assert hasattr(dut, "tb_ss0_warm_reset_n"), "tb_ss0_warm_reset_n missing"
         nbits = len(dut.tb_jtag_reset_ctrl.value)
         want_bits = jtag_smc_reset_ctrl_width()
-        assert nbits == want_bits, f"jtag_reset_ctrl width {nbits} want {want_bits} from smc_pkg.sv"
+        assert nbits == want_bits, (
+            f"jtag_reset_ctrl width {nbits} want {want_bits} from the DV-owned IC_RESET slice "
+            "table in smc_addr_map"
+        )
 
         dut.rst_cool_ni.value = 1
         dut.tb_cfg_flr_pf_active.value = 0
@@ -148,6 +151,19 @@ class smc_jtag_reset_ctrl_test_seq(SmcCsrSeq):
             "CHK-JTAG-RST-SS0: pin 1→0→1 CSR stayed 0x%x→0x%x (not SW write)",
             warm_csr,
             warm_hold,
+        )
+        # Positive control for the two driven leaves of the DV-owned bit layout:
+        # each moved its own reset pin (and the SS0 leaf left rst_cool_no
+        # released), which a wrong position or a swapped ovrd/val half cannot do.
+        cocotb.log.info(
+            "JTAG reset_ctrl layout: cool_reset_n ovrd/val bits %d/%d moved rst_cool_no; "
+            "ss_warm_reset_n[0] ovrd/val bits %d/%d moved ss0_warm_reset_n with rst_cool_no "
+            "held; slice width %d",
+            jtag_smc_reset_ctrl_bit("cool_reset_n_ovrd"),
+            jtag_smc_reset_ctrl_bit("cool_reset_n_val"),
+            jtag_smc_reset_ctrl_bit("ss_warm_reset_n_ovrd", 0),
+            jtag_smc_reset_ctrl_bit("ss_warm_reset_n_val", 0),
+            want_bits,
         )
         cocotb.log.info(
             "CHK-JTAG-RST-BASIC: cool=%s ss0=%s",

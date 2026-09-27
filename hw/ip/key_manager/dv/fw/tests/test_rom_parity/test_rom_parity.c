@@ -160,18 +160,10 @@ int main(void) {
             rom_parity_bit = KMCSR_IRQ_STATUS_REG.f.rom_parity_err ? 1 : 0;
         }
 
-        /* After disabling injection and waiting, new instruction fetches should have
-         * good parity. If the bit is still set, it's from old in-flight fetches.
-         * Verify that the clear operation itself works by checking we can read the register. */
+        /* ROM instruction fetches cannot be paused, so a rom_parity_err raised by a fetch
+         * issued before injection was disabled may survive the clears above; the subtest
+         * checks that injection can be disabled and that the sticky bit accepts W1C. */
         TEST_LOG("  Final IRQ_STATUS: 0x%08X (ROM bit=%d)", irq_status, rom_parity_bit);
-
-        /* The key verification is that:
-         * 1. Injection was successfully disabled (testbench command worked)
-         * 2. Clear operation works (we can write to the register)
-         * 3. After waiting, if bit is still set, it's from old fetches, not new ones
-         *
-         * Since we can't prevent instruction fetches, we accept that the bit might
-         * be set from old fetches, but verify the infrastructure works correctly. */
         TEST_LOG("  Parity injection disabled successfully");
         TEST_LOG("  (Note: ROM parity bit may be set from in-flight instruction fetches)");
     }

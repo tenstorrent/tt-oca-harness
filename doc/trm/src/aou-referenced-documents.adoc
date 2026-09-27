@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU Appendix B. Referenced Documents
+:description: Documents referenced by the AoU microarchitecture specification.
+
+:sectnums!:
+
+This is the reference list from the AoU microarchitecture specification.
+For references from all TRM chapters, see
+xref:referenced-documents.adoc[Referenced Documents].
+
+include::aou:partial$referenced-documents.adoc[]

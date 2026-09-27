@@ -14,7 +14,7 @@
 // (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
 // Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
-// PARITY-PLUS over reference suite: the reference test only checks "DMA done + no SPI error"
+// Beyond the reference suite: the reference test only checks "DMA done + no SPI error"
 // because it clocks idle MISO (no flash model) and leaves the received data
 // unchecked. Here the OSS flash BFM is preloaded with a known constant (0xA5),
 // the firmware issues a real flash READ (0x03), and then VALUE-CHECKS that every
@@ -22,7 +22,7 @@
 // SPI->DMA->SRAM data path, not just completion. It also proves the DMA STATUS
 // RW1C clear contract (write-1-clear -> reads back 0).
 //
-// main() returns the error count; start.S turns 0 -> PASS magic, non-zero ->
+// main() returns the error count; crt0.s turns 0 -> PASS magic, non-zero ->
 // FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard gates on.
 
 #include <stdint.h>
@@ -64,10 +64,10 @@ int main(void) {
     // --- OpenTitan SPI host init ---------------------------------------------
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
     // controller + output.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
-           (RX_WATERMARK << SPI_CONTROLLER__CTRL__RX_WATERMARK_bp) |
-               SPI_CONTROLLER__CTRL__OUTPUT_EN_bm | SPI_CONTROLLER__CTRL__SPIEN_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           (RX_WATERMARK << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
+               SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm | SPI_CONTROLLER__CONTROL__SPIEN_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     sep_mbx_puts("STEP SPI host configured: RX watermark, clock divider, enable\n");
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
@@ -94,18 +94,18 @@ int main(void) {
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
     sep_mbx_puts("STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake\n");
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
-               OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+               OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DST_ADDR);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
-               SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset |
-                   (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4));
+               SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset,
+                                 SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
                SECURE_DMA__SRC_CONFIG__WRAP_bm); // fixed RXDATA register
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
-               SECURE_DMA__SRC_CONFIG__INCREMENT_bm); // walk through SRAM
+               SECURE_DMA__DST_CONFIG__INCREMENT_bm); // walk through SRAM
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, RX_SIZE);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
@@ -117,18 +117,18 @@ int main(void) {
     // TX segment: opcode 0x03 + 24-bit address 0 (4 bytes, LSB-first in TXDATA),
     // CS held asserted (CSAAT). RX segment: clock in RX_SIZE bytes, release CS.
     // The flash BFM streams its preloaded 0xA5 bytes back on MISO.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR,
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
            SPI_READ_OPCODE); // 0x03, then addr bytes 0,0,0
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
-           (SPI_CMD_DIR_TX << SPI_CONTROLLER__CMD__DIRECTION_bp) | SPI_CONTROLLER__CMD__CSAAT_bm |
-               ((4u - 1u) << SPI_CONTROLLER__CMD__LEN_bp));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           (SPI_CMD_DIR_TX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
+               SPI_CONTROLLER__COMMAND__CSAAT_bm | ((4u - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host stuck after command phase\n");
         errors++;
     }
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
-           (SPI_CMD_DIR_RX << SPI_CONTROLLER__CMD__DIRECTION_bp) |
-               ((RX_SIZE - 1u) << SPI_CONTROLLER__CMD__LEN_bp));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+           (SPI_CMD_DIR_RX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
+               ((RX_SIZE - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     sep_mbx_puts("STEP flash READ issued: opcode 0x03 + 24-bit address\n");
 
     // --- Wait for the DMA to drain all chunks --------------------------------
@@ -166,14 +166,28 @@ int main(void) {
     }
 
     // --- SPI controller must be clean ----------------------------------------
-    if (spi_wait_idle(SPI_POLL_TIMEOUT) != 0) {
+    int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);
+    if (!spi_idle) {
         sep_mbx_puts("FAIL: SPI host stuck active\n");
         errors++;
     }
-    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR) != 0) {
+    uint32_t spi_err_status = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (spi_err_status != 0) {
         sep_mbx_puts("FAIL: SPI error status set\n");
         errors++;
     }
+
+    // CHK-NOERR evidence: the four values the legs above already read, so the
+    // checker is auditable from the log rather than only from a silent pass.
+    sep_mbx_puts("CHK-NOERR: dma_status=");
+    sep_mbx_puthex(status_after_clear);
+    sep_mbx_puts(" dma_err_code=");
+    sep_mbx_puthex(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+    sep_mbx_puts(" spi_idle=");
+    sep_mbx_putc(spi_idle ? '1' : '0');
+    sep_mbx_puts(" spi_err_status=");
+    sep_mbx_puthex(spi_err_status);
+    sep_mbx_putc('\n');
 
     // --- Value-check the received data ---------------------------------------
     // The OSS OcahSpiFlash BFM preloads RX_PATTERN across the read window, so

@@ -10,7 +10,7 @@
  ) (
    input                    clk_i,
    input                    rst_ni,
-@@ -14,13 +15,24 @@
+@@ -14,12 +15,22 @@
    output logic [Width-1:0] q_o
  );
  

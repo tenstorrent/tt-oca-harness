@@ -9,8 +9,7 @@
 // DUT's tb_top, never here.
 //
 // This is the SystemVerilog side of ocah_jtag_vip; the cocotb BFM lives in
-// the sibling Python modules. Framework-specific agents (uvm/, cocotb/) will
-// join this interface as the VIP grows per-framework folders.
+// the sibling cocotb/ modules and the SV-UVM agent in uvm/.
 
 interface ocah_jtag_if;
 

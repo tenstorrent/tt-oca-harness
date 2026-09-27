@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_primary_fail_backup_boot_base import (
@@ -20,8 +19,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 _BAD_IDENTIFIER = b"\x99\x99\x99\x99"
@@ -31,37 +33,43 @@ _HASH_OK = "MANIFEST_HASH_OK"
 
 
 @pyuvm.test()
-class sep_firmware_primary_manifest_identifier_test(
-        sep_primary_fail_backup_boot_base):
-    """Primary identifier is not TBL1 -> BAD_MAGIC -> the backup boots."""
+class sep_firmware_primary_manifest_identifier_test(sep_primary_fail_backup_boot_base):
+    """Primary identifier is not OCAC -> BAD_MAGIC -> the backup boots."""
 
     # BAD_MAGIC prints no per-reason token; check_transport() attributes it instead.
     primary_defect_marker = ""
     primary_expected_error = MANIFEST_ERR_BAD_MAGIC
     primary_expected_rsa_starts = 0
     efuse_preload = _EFUSE_PRELOAD
-    extra_forbidden = (_HASH_MISMATCH, "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-                       "PLD_HASH_MISMATCH", fd.LC_MARKER, fd.CHIPLET_MARKER,
-                       fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        _HASH_MISMATCH,
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
     extra_required = ("PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        before = bytes(buf[mm.PRIMARY_MANIFEST_OFFSET:mm.PRIMARY_MANIFEST_OFFSET + 4])
+        before = bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
         assert before == mm.MANIFEST_MAGIC, (
             f"primary identifier is already {before!r}, expected "
             f"{mm.MANIFEST_MAGIC!r}: the shipped image is not the valid baseline "
             f"this testcase mutates away from"
         )
-        mm.set_identifier(buf, "primary", _BAD_IDENTIFIER)
-        after = bytes(buf[mm.PRIMARY_MANIFEST_OFFSET:mm.PRIMARY_MANIFEST_OFFSET + 4])
+        mm.break_magic(buf, "primary", _BAD_IDENTIFIER)
+        after = bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
         assert after == _BAD_IDENTIFIER, (
             f"identifier is {after!r} after the write, expected "
             f"{_BAD_IDENTIFIER!r}; the mutation did not land"
         )
         self.logger.info(
-            "CHK-STIMULUS-IDENTIFIER: primary manifest_identifier %r -> %r, TBS "
+            "CHK-STIMULUS-IDENTIFIER: primary manifest_identifier %r -> %r, signed region "
             "re-hashed so the identifier is the slot's only defect",
-            before, after,
+            before,
+            after,
         )
 
     def check_efuse(self, image) -> None:
@@ -74,8 +82,7 @@ class sep_firmware_primary_manifest_identifier_test(
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
         n_ok = fd.count(console, _HASH_OK)
         assert n_ok == 1, (
@@ -92,5 +99,10 @@ class sep_firmware_primary_manifest_identifier_test(
         self.logger.info(
             "CHK-IDENTIFIER: %s@%d inside the primary attempt (read@%d, backup "
             "read@%d), and %s appears exactly once at %d -- the backup's",
-            slot_err, i_err, i_psrc, i_bsrc, _HASH_OK, i_ok,
+            slot_err,
+            i_err,
+            i_psrc,
+            i_bsrc,
+            _HASH_OK,
+            i_ok,
         )

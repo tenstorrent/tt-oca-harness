@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_primary_fail_backup_boot_base import (
@@ -19,23 +18,32 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
-_MANIFEST_ERR_BAD_VERSION = 0x0003_0003
+_MANIFEST_ERR_BAD_VERSION = mm.boot_err("OCA_FAIL_FORMAT_VERSION_MISMATCH")
 
 _BAD_MAJOR_VERSION = 99
 
 # The backup's validation stages, in the order the ROM emits them.
-_BACKUP_CHAIN = ("MANIFEST_HASH_OK", "RSA_VERIFY_START", "SIG_VALID",
-                 "PLD_HASH_OK", "CRYPTO_VALIDATE_OK", "MANIFEST_OK",
-                 "BL1_COPIED", "BL1_JUMP=")
+_BACKUP_CHAIN = (
+    "MANIFEST_HASH_OK",
+    "RSA_VERIFY_START",
+    "SIG_VALID",
+    "PLD_HASH_OK",
+    "CRYPTO_VALIDATE_OK",
+    "MANIFEST_OK",
+    "BL1_COPIED",
+    "BL1_JUMP=",
+)
 
 
 @pyuvm.test()
-class sep_firmware_validate_backup_manifest_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_validate_backup_manifest_test(sep_primary_fail_backup_boot_base):
     """Primary refused on its major version; the backup validates end to end."""
 
     primary_defect_marker = ""
@@ -44,10 +52,17 @@ class sep_firmware_validate_backup_manifest_test(
     efuse_preload = _EFUSE_PRELOAD
     extra_required = _BACKUP_CHAIN
     # The backup must pass every check and the primary must stop at the header check.
-    extra_forbidden = ("MANIFEST_HASH_MISMATCH", "PLD_HASH_MISMATCH",
-                       "CRYPTO_FAIL=", "RSA_VERIFY_FAIL", "MANIFEST_ALL_FAILED",
-                       "IMAGE_HASH_MISMATCH", fd.LC_MARKER, fd.CHIPLET_MARKER,
-                       fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        "MANIFEST_HASH_MISMATCH",
+        "PLD_HASH_MISMATCH",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "MANIFEST_ALL_FAILED",
+        "IMAGE_HASH_MISMATCH",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         before = mm.manifest_version(buf, "primary")
@@ -68,9 +83,11 @@ class sep_firmware_validate_backup_manifest_test(
         )
         self.logger.info(
             "CHK-STIMULUS-VERSION: primary manifest_version_major %d -> %d "
-            "(minor stays 0, length stays %d), TBS re-hashed so the version is "
+            "(minor stays 0, length stays %d), signed region re-hashed so the version is "
             "the slot's only defect",
-            before[0], after[0], mm.MANIFEST_SIZE,
+            before[0],
+            after[0],
+            mm.MANIFEST_SIZE,
         )
 
     def check_efuse(self, image) -> None:
@@ -101,6 +118,7 @@ class sep_firmware_validate_backup_manifest_test(
         self.logger.info(
             "CHK-BACKUP-VALIDATED: backup read@%d then %s -- the backup manifest "
             "went through structure, hash, signature, payload hash, TOC, BL1 copy "
-            "and handoff", i_bsrc,
+            "and handoff",
+            i_bsrc,
             ", ".join(f"{m}@{p}" for m, p in zip(_BACKUP_CHAIN, positions)),
         )

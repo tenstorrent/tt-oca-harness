@@ -3,11 +3,10 @@
 //
 // Slave-side agent bundle: the reactive memory-backed responder.
 //
-// Reactive agent: there is deliberately NO sequencer — the driver answers
-// bus traffic on its own, and tests configure/inspect it through
-// ocah_axi_slave_sequence (exposed here pre-bound as `seq`). Bus observation
-// stays with the side-neutral passive ocah_axi_env; this agent does not
-// duplicate a monitor.
+// Reactive agent: there is NO sequencer — the driver answers bus traffic on
+// its own, and tests configure/inspect it through ocah_axi_slave_sequence
+// (exposed here pre-bound as `seq`). Bus observation stays with the
+// side-neutral passive ocah_axi_env; this agent does not duplicate a monitor.
 
 class ocah_axi_slave_agent extends uvm_agent;
   `uvm_component_utils(ocah_axi_slave_agent)

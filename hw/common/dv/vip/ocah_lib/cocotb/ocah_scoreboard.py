@@ -111,13 +111,7 @@ class OcahScoreboard(uvm_scoreboard):
                     f"required={int(feature.required)}"
                 ),
             )
-        if evidence.check_count == 0 and not any_required:
-            self.logger.info(
-                "%s: no feature compared and none required; no evidence to finalize",
-                self.name_tag,
-            )
-            return
-        evidence.finalize()
+        evidence.finalize(require_checks=any_required or evidence.check_count > 0)
 
     # ------------------------------------------------------------------
     # Feature registry (build_phase of the bench scoreboard).

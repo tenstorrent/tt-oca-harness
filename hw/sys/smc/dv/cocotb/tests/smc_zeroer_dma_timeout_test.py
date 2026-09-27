@@ -5,15 +5,6 @@
 Provenance: this test is enrolled against ``smc_zeroer_dma_timeout_test`` in
 ``hw/sys/smc/dv/docs/SMC_VPLAN.adoc`` (row "Zeroer / DMA / utility", P1-16
 ``zeroer_dma_utility``).
-
-NO DV-CARD RECORD-SHA256 IS CLAIMED HERE. No header is stamped here; one citing
-``DV-CARD: SMC_006 / RECORD-SHA256: 8434b588... / DV-CARD-SOURCE:
-hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1``. That file does not
-exist anywhere in the repository and SMC_VPLAN.adoc defines no ``SMC_006`` id and
-no record hashes, so the digest attested a record nobody can produce -- a
-provenance line that reads like verified traceability while being unverifiable. Restore a DV-CARD block here only when a real testcase
-record exists to hash; the auditor found the same fabricated header on ~8 further
-SMC cocotb tests.
 """
 
 from __future__ import annotations
@@ -29,7 +20,7 @@ from smc_base_test import smc_base_test
 # Composition (smc_zeroer_dma_timeout_test_seq, directed, no polling):
 #   6 output-fabric pass-all filter CSR writes
 # + ZEROER_CTRL_DEST_ADDR + ZEROER_CTRL_SIZE + ZEROER_CTRL_STATUS trigger
-# + 1 ZEROER_CTRL_STATUS readback (S4: armed INT_EN + deasserted busy status)
+# + 1 ZEROER_CTRL_STATUS readback (S4: armed INT_EN, STATUS masked)
 # + S5 busy-lifecycle control: ZEROER_CTRL_SIZE re-arm + ZEROER_CTRL_STATUS
 #   trigger + at least one busy poll read + at least one clear poll read. The
 #   two polls are bounded loops whose length is data-dependent, so only their
@@ -45,6 +36,18 @@ ZEROER_DMA_MIN_FABRIC_ACCESSES = 6
 class smc_zeroer_dma_timeout_test(smc_base_test):
     """Run zeroer over output-fabric payload bytes and check the model."""
 
+    required_evidence = (
+        "CHK-NONVAC",
+        "CHK-ZEROER-CMD-READBACK",
+        "CHK-ZEROER-CTRL-STATUS",
+        "CHK-ZEROER-REGION-DECODE",
+        "CHK-ZEROER-REGION-ZEROED",
+        "CHK-ZEROER-STATUS-BUSY-ASSERTED",
+        "CHK-ZEROER-STATUS-LIFECYCLE",
+        "CHK-ZEROER-TRIGGER-STARTS",
+    )
+    min_evidence = 8
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -58,11 +61,11 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
             # Not measured on this path, so `n/a` rather than a clean-looking 0.
             # `SmcCsrSeq.timeouts` is bumped only by `csr_read_bounded` /
             # `csr_short_timeout` (seq_lib/smc_csr_seq_utils.py); this sequence
-            # calls neither, so `seq.timeouts` was structurally 0 and printing it
-            # advertised a statistic never taken ([NO-DUMMY-DEAD-CODE])
-            # . The sequence's own bounded wait
-            # (`_wait_for_zeroer_write`) raises on expiry, so
-            # [TIMEOUT-MUST-FAIL] is carried there, not by this field.
+            # calls neither, so `seq.timeouts` is structurally 0 and printing it
+            # would advertise a statistic never taken ([NO-DUMMY-DEAD-CODE]).
+            # The sequence's own bounded wait (`_wait_for_zeroer_write`) raises
+            # on expiry, so [TIMEOUT-MUST-FAIL] is carried there, not by this
+            # field.
             timeouts=None,
             # The framework measures JTAG-AXI beats unconditionally and prints
             # them; without a floor the scoreboard's fabric assert is `6 >= 0`,

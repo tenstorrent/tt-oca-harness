@@ -1,8 +1,0 @@
-# SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-name: ocah-user-guide
-title: Open Chiplet Atlas Harness (OCAH) User Guide
-version: latest
-nav:
-  - modules/ROOT/nav.adoc

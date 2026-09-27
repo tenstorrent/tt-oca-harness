@@ -18,6 +18,15 @@ from smc_base_test import smc_base_test
 class smc_ss_reset_complete_test(smc_base_test):
     """Pin→CSR complete + SW warm SS0; not the FW handshake binary."""
 
+    required_evidence = (
+        "CHK-SS-COMPLETE-DROP",
+        "CHK-SS-COMPLETE-IDLE",
+        "CHK-SS-COMPLETE-RESTORE",
+        "CHK-SS-COMPLETE-SCRATCH-RW",
+        "CHK-SS-WARM-SS0",
+    )
+    min_evidence = 5
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
@@ -31,10 +40,9 @@ class smc_ss_reset_complete_test(smc_base_test):
         #     `_await_csr`, which RAISES unless the value equals what is being
         #     waited for. By the time this line runs they cannot hold anything
         #     else, so comparing them adds no failure mode. Same for
-        #     `warm_pins` via `_await_warm_pin`. Both gates are retained only as
-        #     a guard against a future refactor that made those helpers
-        #     non-raising -- they are NOT this testcase's proof, and the
-        #     sequence's bounded waits are.
+        #     `warm_pins` via `_await_warm_pin`. Both gates only guard against a
+        #     refactor that makes those helpers non-raising -- they are NOT this
+        #     testcase's proof; the sequence's bounded waits are.
         #
         #   * `warm_csr` IS a real gate: those three words come from plain
         #     `csr_read` with no `expected=`, and the sequence asserts only bit

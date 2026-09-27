@@ -25,8 +25,8 @@
 // image (bl0_state.bl1_image_src_addr), not from the ICCM copy it executes from.
 //
 // No crt0: BL1 inherits CPU state (SP, PMA, mtvec) from the ROM, and it uses
-// the inherited SP from its first instruction — _start's own prologue pushes ra
-// (see build/bl1_pass_test.dis). So BL1's stack frames land in the ROM's DCCM
+// the inherited SP from its first instruction — _start's own prologue pushes ra.
+// So BL1's stack frames land in the ROM's DCCM
 // stack window, below __stack_top; that is safe only because __stack_top sits
 // __bl0_state_reserve bytes below the top of DCCM, so a downward-growing stack
 // cannot reach bl0_state. BL1's own data window stops short of the same
@@ -90,6 +90,11 @@ static inline void bl1_puts(const char *s) {
 // ---------------------------------------------------------------------------
 // Hex print helper for debug output
 // ---------------------------------------------------------------------------
+static char bl1_hex_digit(uint8_t nibble) {
+    if (nibble < 10u) return (char)('0' + nibble);
+    return (char)('A' + nibble - 10u);
+}
+
 static void bl1_puthex32(uint32_t val) {
     // Avoid static const array — -fdata-sections puts it in .rodata.xxx
     // which may not be included in the data binary.
@@ -98,7 +103,7 @@ static void bl1_puthex32(uint32_t val) {
     buf[1] = 'x';
     for (int i = 7; i >= 0; i--) {
         uint8_t nib = (uint8_t)((val >> (4u * (uint32_t)i)) & 0xFu);
-        buf[2 + (7 - i)] = (char)(nib < 10u ? '0' + nib : 'A' + nib - 10u);
+        buf[2 + (7 - i)] = bl1_hex_digit(nib);
     }
     buf[10] = '\0';
     bl1_puts(buf);
@@ -117,9 +122,10 @@ static void bl1_puthex32(uint32_t val) {
 // DCCM is readable from here because BL1 runs on the same CPU and the LSU
 // decodes the DCCM window directly; the inherited SP is the standing proof.
 //
-// A failed verify is fatal here: continuing would dereference
-// sep_sram_manifest_addr out of a struct just proved not to be a bl0_state — a
-// wild pointer, which is the exact failure this check exists to stop.
+// A failed verify is fatal here. The reference BL1 only prints and continues,
+// but continuing means dereferencing sep_sram_manifest_addr out of a struct we
+// just proved is not a bl0_state — a wild pointer, which is the exact failure
+// this check exists to stop.
 // ---------------------------------------------------------------------------
 #define SEP_SRAM_LO ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
 #define SEP_SRAM_HI ((uint32_t)(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE))
@@ -163,22 +169,17 @@ static int bl1_verify_bl0_state(void) {
         return 1;
     }
 
-    // The boot measurement, printed here rather than by the ROM. BL0 emits only
-    // the digest's first word and its four inputs, so this is the only place the
-    // full 32 bytes reach the log -- and reading them from bl0_state proves the
-    // digest survived the handoff, which a ROM-side dump would not. DV compares
-    // these bytes against a Python golden built from the inputs BL0 reported.
-    //
-    // Big-endian per byte, matching how sha256() fills the digest, so the log
-    // text can be compared to hashlib's hexdigest() without reordering.
-    bl1_puts("BL0S_MEAS=");
+    // Emit the enrolled boot-state soft PCR in digest byte order. DV rebuilds
+    // the packed boot_state_record and applies the two-stage extend operation
+    // from measurement.c, so this proves the enrolled value survived handoff.
+    bl1_puts("BL0S_BOOT_PCR=");
     for (uint32_t i = 0; i < SHA256_DIGEST_SIZE_BYTES; ++i) {
-        uint8_t b = s->measurement[i];
+        uint8_t b = s->soft_pcr[MEAS_SLOT_BOOT_STATE][i];
         char pair[3];
         uint8_t hi = (uint8_t)(b >> 4);
         uint8_t lo = (uint8_t)(b & 0xFu);
-        pair[0] = (char)(hi < 10u ? '0' + hi : 'A' + hi - 10u);
-        pair[1] = (char)(lo < 10u ? '0' + lo : 'A' + lo - 10u);
+        pair[0] = bl1_hex_digit(hi);
+        pair[1] = bl1_hex_digit(lo);
         pair[2] = '\0';
         bl1_puts(pair);
     }
@@ -289,15 +290,16 @@ static inline void bl1_outbound_filter_init(void) {
 // ---------------------------------------------------------------------------
 // Final verdict — cold_scratch[0] (the only completion channel)
 //
-// Mirrors the ROM's errors.h VERDICT_OUT / TEST_*_CODE so one probe reads
-// both. Duplicated here rather than included because the ROM's errors.h pulls in
-// sep.h, rom_virt_console.h and status_ring.h -- far too much for a flat SRAM
-// payload. Keep the constants in step with that header.
+// Mirrors the ROM's errors.h VERDICT_OUT / TEST_*_CODE, and the reference's
+// sep_common.h, so one probe reads any of the three. Duplicated here
+// rather than included because the ROM's errors.h pulls in sep.h,
+// rom_virt_console.h and status_ring.h -- far too much for a flat SRAM payload.
+// Keep the constants in step with that header.
 //
-// cold_scratch is a SEP register and works from the first instruction. The DV
-// outbound mailbox at 0x80000000 is outside SEP, behind an outbound filter that
-// blocks by default, so reporting there would work only after
-// bl1_outbound_filter_init().
+// The DV outbound mailbox at 0x80000000 is outside SEP, behind an outbound
+// filter that blocks by default, so it is usable only after
+// bl1_outbound_filter_init(); cold_scratch is a SEP register and works from
+// the first instruction, so the verdict goes there.
 // ---------------------------------------------------------------------------
 #define VERDICT_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define TEST_PASS_CODE 0xACAFACA1u
@@ -330,10 +332,10 @@ __attribute__((section(".text.init"))) void _start(void) {
         }
         // Both terms are 4-byte aligned: the TOC image offset is 0x1000 and the
         // linker aligns .data's load address.
-        const uint32_t *s = (const uint32_t *)(uintptr_t)(
-            s0->bl1_image_src_addr
-            + ((uint32_t)(uintptr_t)&__data_load_start
-               - (uint32_t)OCH_SEP_TOP_SEP_ICCM_BASE_ADDR));
+        const uint32_t *s =
+            (const uint32_t *)(uintptr_t)(s0->bl1_image_src_addr +
+                                          ((uint32_t)(uintptr_t)&__data_load_start -
+                                           (uint32_t)OCH_SEP_TOP_SEP_ICCM_BASE_ADDR));
         for (uint32_t *d = &__data_start; d < &__data_end; ++d, ++s) *d = *s;
     }
 
@@ -343,9 +345,9 @@ __attribute__((section(".text.init"))) void _start(void) {
 
     bl1_puts("BL1\n");
 
-    // Handoff contract check, before the outbound filter is touched: nothing
-    // should act on the contract before it is checked, and the FAIL report goes
-    // to cold_scratch[0], which needs no filter open.
+    // Handoff contract check, first thing and before the outbound filter is
+    // touched: its FAIL report goes to cold_scratch[0], which needs no open
+    // filter, so the check runs before anything acts on the contract.
     bl1_puts("BL0S_CHK\n");
     if (bl1_verify_bl0_state()) {
         bl1_puts("BL0S_VERIFY_FAIL\n");

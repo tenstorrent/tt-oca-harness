@@ -18,6 +18,8 @@ ignore: |
   # Cross-file YAML anchors/aliases (this test-list format merges anchors
   # declared in a sibling file), which yamllint can't resolve per-file.
   hw/ip/i3ccore_wrap/dv/tb/yaml/
+  # Submodule: another repo's YAML, fixable only by a PR there.
+  hw/sys/sep/bootrom/prod/tools/tt-oca-manifest/
 
 rules:
   # Disabled like Ruff's E501: several long lines here are single tokens

@@ -6,8 +6,8 @@
  * @file test_km_cmd_sram_load_exec_crc.c
  * @brief CMD_SRAM_LOAD_EXEC bad-CRC → ROM_KM_UFAULT_FW_CRC unrecoverable fault.
  *
- * Sends CMD_SRAM_LOAD_EXEC with a valid 14-word image but a deliberately
- * corrupted CRC-32 trailer.  The handler streams the image, computes the
+ * Sends CMD_SRAM_LOAD_EXEC with a valid 14-word image but a corrupted
+ * CRC-32 trailer.  The handler streams the image, computes the
  * expected CRC, detects the mismatch, and triggers an unrecoverable fault
  * (ROM_KM_UFAULT_FW_CRC).
  *

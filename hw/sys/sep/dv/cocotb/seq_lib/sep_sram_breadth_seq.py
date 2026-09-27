@@ -17,7 +17,7 @@ WSTRB coverage note: cocotbext-axi ``init_write`` has no explicit-strobe argumen
 -- it derives the strobe from address+length, so only CONTIGUOUS byte runs are
 expressible. This rep walks all 36 contiguous masks (all 8 one-hot lanes + every
 contiguous multi-byte run). Arbitrary NON-contiguous masks (e.g. 0x05) are NOT
-expressible without a lower-level explicit-strobe write -- infra-gated/deferred.
+expressible without a lower-level explicit-strobe write.
 WSTRB=0x00 (all-zero strobe) is excluded (undefined per the SRAM spec).
 """
 
@@ -118,7 +118,7 @@ class SepSramBreadthCfg:
         b = self.base_addr
         return (
             f"seed={self.seed} wstrb_masks={len(self.wstrb_specs)} (all contiguous; "
-            f"non-contiguous infra-gated) wstrb@0x{b + self.wstrb_offset:08x} "
+            f"non-contiguous not walked) wstrb@0x{b + self.wstrb_offset:08x} "
             f"patterns={len(self.pattern_values)} pat@0x{b + self.pattern_offset:08x} "
             f"seq_words={self.seq_words} seq@0x{b + self.seq_offset:08x} "
             f"boundary=[0x{self.boundary_addrs[0]:08x},0x{self.boundary_addrs[1]:08x}]"

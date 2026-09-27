@@ -8,7 +8,6 @@ Needs ``+sep_crypto_edn_force``: both slots run a full RSA-3072 modexp on OTBN.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -17,10 +16,10 @@ from rom_fw import sep_toc_defect as td
 from rom_fw import sep_toc_entry_defect as ted
 from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boot_base
 
-ERR_PAYLOAD_HASH_MISMATCH = 0x0003_0017
-ERR_HASH_MISMATCH = 0x0003_000B
+ERR_PAYLOAD_HASH_MISMATCH = mm.boot_err("OCA_FAIL_PAYLOAD_HASH")
+ERR_HASH_MISMATCH = mm.boot_err("OCA_FAIL_MANIFEST_HASH")
 ERR_IMAGE_HASH_MISMATCH = ted.ERR_IMAGE_HASH_MISMATCH
-ERR_IMAGE_ALIGN = 0x0003_001B
+ERR_IMAGE_ALIGN = mm.boot_err("OCA_FAIL_PAYLOAD_TOC")
 
 _ENTRY_INDEX = 0
 _ZERO_DIGEST = b"\x00" * 32
@@ -42,9 +41,14 @@ for _must_stay in ("PLD_HASH_FAIL=", "IMAGE_HASH_MISMATCH", "IMAGE_HASH_TIMEOUT"
 _TIMEOUT_TOKEN = "PLD_HASH_TIMEOUT"
 
 _NEIGHBOUR_ERRORS = [
-    f"MANIFEST_ERR=0x{c:08x}" for c in (
-        ERR_HASH_MISMATCH, ERR_IMAGE_HASH_MISMATCH, ted.ERR_BAD_IMAGE_TYPE,
-        ted.ERR_IMAGE_OOB, ted.ERR_IMAGE_OVERLAP, ERR_IMAGE_ALIGN,
+    f"MANIFEST_ERR=0x{c:08x}"
+    for c in (
+        ERR_HASH_MISMATCH,
+        ERR_IMAGE_HASH_MISMATCH,
+        ted.ERR_BAD_IMAGE_TYPE,
+        ted.ERR_IMAGE_OOB,
+        ted.ERR_IMAGE_OVERLAP,
+        ERR_IMAGE_ALIGN,
     )
 ]
 
@@ -98,7 +102,8 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
         )
         # No re-seal, or the ROM rejects the slot at IMAGE_HASH_MISMATCH instead.
         self._served = pm.corrupt_toc_entry_hash(
-            buf, "primary", _ENTRY_INDEX, value=_ZERO_DIGEST, reseal=False)
+            buf, "primary", _ENTRY_INDEX, value=_ZERO_DIGEST, reseal=False
+        )
         assert self._served == _ZERO_DIGEST, (
             f"the stored digest is {self._served.hex()} but a cleartext payload "
             f"stores what was written; the mutation reached the wrong bytes"
@@ -111,7 +116,11 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
             "sha256(payload[:%d]) no longer matches the stored payload_hash while "
             "manifest_hash and the RSA signature still verify. The field sits at "
             "flash 0x%06x and the device must serve %s there",
-            _ENTRY_INDEX, self._served.hex(), hashed, field, hashed,
+            _ENTRY_INDEX,
+            self._served.hex(),
+            hashed,
+            field,
+            hashed,
             mm.slot_base("primary") + self._payload_offset + field,
             self._served.hex(),
         )
@@ -127,12 +136,9 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        i_token = fd.assert_slot_attributed(console, _TOKEN, after=i_psrc,
-                                            before=i_bsrc)
-        i_cf = fd.assert_slot_attributed(console, crypto_fail, after=i_token,
-                                         before=i_bsrc)
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_cf,
-                                          before=i_bsrc)
+        i_token = fd.assert_slot_attributed(console, _TOKEN, after=i_psrc, before=i_bsrc)
+        i_cf = fd.assert_slot_attributed(console, crypto_fail, after=i_token, before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_cf, before=i_bsrc)
 
         n_ok = fd.count(console, _HASH_OK)
         assert n_ok == 1, (
@@ -150,7 +156,7 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
         n_hash = fd.count(console, "MANIFEST_HASH_OK")
         assert n_hash == 2, (
             f"MANIFEST_HASH_OK appeared {n_hash} times, expected exactly 2 (one per "
-            f"slot): payload_hash sits inside the TBS and was left untouched, so the "
+            f"slot): payload_hash sits inside the signed region and was left untouched, so the "
             f"primary's manifest hash must still verify. Console: {console}"
         )
         i_mh = fd.first_index(console, "MANIFEST_HASH_OK")
@@ -164,12 +170,23 @@ class sep_firmware_cleartext_image_corrupt_hash_test(sep_primary_fail_backup_boo
             "verified; %s appeared once and only after the backup read@%d, so the "
             "primary's comparison reached a verdict of mismatch and the untouched "
             "backup booted",
-            i_psrc, i_mh, _TOKEN, i_token, crypto_fail, i_cf, slot_err, i_err,
-            _HASH_OK, i_bsrc,
+            i_psrc,
+            i_mh,
+            _TOKEN,
+            i_token,
+            crypto_fail,
+            i_cf,
+            slot_err,
+            i_err,
+            _HASH_OK,
+            i_bsrc,
         )
 
         fd.assert_served_field(
-            self.logger, flash, "primary",
+            self.logger,
+            flash,
+            "primary",
             self._payload_offset + pm.toc_entry_at(_ENTRY_INDEX) + pm.E_HASH,
-            self._served, f"primary TOC entry {_ENTRY_INDEX} image digest",
+            self._served,
+            f"primary TOC entry {_ENTRY_INDEX} image digest",
         )

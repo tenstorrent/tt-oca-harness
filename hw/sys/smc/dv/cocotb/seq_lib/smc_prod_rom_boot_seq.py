@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Boot the real SMC production ROM and follow its POST code to OCCP_PROC.
 
-This is the first sequence in the OSS tree that runs product firmware rather
-than a DV stub: the image is hw/sys/smc/bootrom/prod built with I3C_CORE=swap
-and preloaded into the CPU ROM array via +rom_bin64.
+Runs product firmware rather than a DV stub: the image is
+hw/sys/smc/bootrom/prod built with I3C_CORE=swap and preloaded into the CPU ROM
+array via +rom_bin64.
 
 The ROM publishes its own progress. smc_post_code_set_boot_phase() writes
 scratch register 1 (CPU_CTRL_SCRATCH_1, 0xC0039088) with boot phase in bits

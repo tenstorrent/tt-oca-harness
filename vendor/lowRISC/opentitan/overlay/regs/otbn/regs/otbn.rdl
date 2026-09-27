@@ -146,6 +146,12 @@ addrmap otbn {
             sw = rw;
             hw = rw;
             swmod = true;
+            desc = "An `MAI_SOFTWARE_ERROR` error was observed.";
+        } mai_software_error[8:8] = 0x0;
+        field {
+            sw = rw;
+            hw = rw;
+            swmod = true;
             desc = "A `IMEM_INTG_VIOLATION` error was observed.";
         } imem_intg_violation[16:16] = 0x0;
         field {

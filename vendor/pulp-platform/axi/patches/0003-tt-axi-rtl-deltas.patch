@@ -125,7 +125,7 @@
      .clk_i,   // Clock
      .rst_ni,  // Asynchronous reset active low
      .test_i,  // Testmode enable
-+    .sel_hash_i, // Hash selection (if enabled)  
++    .sel_hash_i, // Hash selection (if enabled)
      // slave port
      .slv_req_i       ( slv_req         ),
      .slv_aw_select_i ( slv_aw_select_i ),
@@ -547,14 +547,15 @@
    parameter int unsigned AXI_ADDR_WIDTH = 0,
 --- a/src/axi_isolate.sv
 +++ b/src/axi_isolate.sv
-@@ -145,6 +145,7 @@ module axi_isolate #(
+@@ -184,6 +184,7 @@ module axi_isolate #(
+     ) i_axi_demux (
        .clk_i,
        .rst_ni,
-       .test_i          ( 1'b0      ),
-+      .sel_hash_i      ( 2'd0      ),   // unused
-       .slv_req_i,
-       .slv_aw_select_i ( sel_aw_q  ),
-       .slv_ar_select_i ( sel_ar_q  ),
+       .test_i          ( 1'b0          ),
++      .sel_hash_i      ( 2'd0          ),   // unused
+       .slv_req_i       ( demux_slv_req ),
+       .slv_aw_select_i ( sel_aw_q      ),
+       .slv_ar_select_i ( sel_ar_q      ),
 --- a/src/axi_lite_demux.sv
 +++ b/src/axi_lite_demux.sv
 @@ -566,4 +566,4 @@ module axi_lite_demux_intf #(
@@ -618,7 +619,7 @@
      // R channel handshake control
      assign switch_r_id  = mst_r_chan.id[SlvAxiIDWidth+:MstIdxBits];
 -    assign slv_r_valids = (mst_r_valid) ? (1 << switch_r_id) : '0;
-+  
++
 +    assign slv_r_valids = (mst_r_valid) ? ({{NoSlvPorts_m_1{1'b0}},{1'b1}} << switch_r_id) : {NoSlvPorts{1'b0}};
  
      spill_register #(

@@ -3,18 +3,17 @@
 """Standalone KMAC-engine mode x strength breadth, RAND-REP (KMAC mode/strength breadth).
 
 Drives the OpenTitan KMAC engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the Phase-1 KM->KMAC
+firmware) across the SHA-3 / SHAKE / cSHAKE / KMAC family the KM->KMAC
 sideload KAT (`sep_km_kmac_sideload_kat_test`, KMAC-256 keyed via keymgr,
 cross-check only) does not reach:
 
     SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256,
     KMAC-128/256 across all five key lengths  (13 cells).
 
-Randomised KMAC mode / strength breadth against an exact golden. The other KMAC
-coverage is a keyed cross-check with no standalone SHA3/SHAKE/cSHAKE digest
-golden, so the pure-Python Keccak model (env/sep_kmac_golden.py: SHA3/SHAKE
-cross-checked against hashlib, cSHAKE/KMAC against NIST SP800-185) is the
-reference here. DISTINCT from
+Reference parity: the reference SEP KMAC coverage is a keyed KMAC cross-check (no
+standalone SHA3/SHAKE/cSHAKE digest golden), so the independent pure-Python Keccak
+golden (env/sep_kmac_golden.py: SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs
+NIST SP800-185) is the reference here. DISTINCT from
 `sep_km_kmac_sideload_kat_test` (KMAC-256 via sideload, cross-check) -- KMAC
 mode/strength breadth is standalone SW-key with an exact golden.
 
@@ -46,31 +45,35 @@ from __future__ import annotations
 import pyuvm
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import (
+    KMAC_KEY_LENGTHS,
+    KMAC_SHA3_DIGEST_BYTES,
+    KMAC_SHA3_STRENGTHS,
+    KMAC_XOF_STRENGTHS,
+)
 from sep_base_test import sep_base_test
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
-# (mode, sec/strength, output bytes, key_bits[kmac only], customization S)
-CELLS = [
-    # kmac_errchk.sv declares SHA3 legal at all four strengths, and
-    # KMAC_STRENGTH maps every one of them.
-    ("sha3", 224, 28, None, b""),
-    ("sha3", 256, 32, None, b""),
-    ("sha3", 384, 48, None, b""),
-    ("sha3", 512, 64, None, b""),
-    ("shake", 128, 32, None, b""),
-    ("shake", 256, 32, None, b""),
-    # cSHAKE is only defined with a non-empty customization; with N=S="" SP800-185
-    # collapses it to SHAKE (0x1F), but the engine in CShake mode always applies the
-    # cSHAKE 0x04 domain -- so exercise cSHAKE with a real customization string.
-    ("cshake", 128, 32, None, b"OSS DV cSHAKE"),
-    ("cshake", 256, 32, None, b"Email Signature"),
-    ("kmac", 128, 32, 128, b""),
-    ("kmac", 256, 64, 256, b"My Tagged Application"),
-    # KMAC_KEYLEN defines five key lengths; every one is walked.
-    ("kmac", 256, 32, 192, b""),
-    ("kmac", 256, 32, 384, b"Key384"),
-    ("kmac", 256, 32, 512, b"Key512"),
-]
+# Walk set: FIPS 202 SHA-3 family + kmac.adoc/RDL SHAKE/cSHAKE 128/256 +
+# keyed KMAC (cSHAKE + kmac_en) at those XOF strengths. XOF output lengths
+# and customization strings are the test instance. KEY_LEN widths are the
+# DV-owned walk (RDL has no enum).
+# cSHAKE needs a non-empty customization; N=S="" collapses to SHAKE in
+# SP800-185, so those cells use a real S.
+CELLS = (
+    [("sha3", s, KMAC_SHA3_DIGEST_BYTES[s], None, b"") for s in KMAC_SHA3_STRENGTHS]
+    + [("shake", s, 32, None, b"") for s in KMAC_XOF_STRENGTHS]
+    + [
+        ("cshake", 128, 32, None, b"OSS DV cSHAKE"),
+        ("cshake", 256, 32, None, b"Email Signature"),
+        ("kmac", 128, 32, 128, b""),
+        ("kmac", 256, 64, 256, b"My Tagged Application"),
+        ("kmac", 256, 32, 192, b""),
+        ("kmac", 256, 32, 384, b"Key384"),
+        ("kmac", 256, 32, 512, b"Key512"),
+    ]
+)
+assert {c[3] for c in CELLS if c[0] == "kmac"} == set(KMAC_KEY_LENGTHS)
 
 
 @pyuvm.test()
@@ -94,7 +97,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.kmac = SepKmac(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("KMAC mode/strength breadth KMAC mode x strength breadth: seed=%d", seed)
+        self.logger.info("KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
         # output, not on the loop's own trip count. Comparing `walked` only to a

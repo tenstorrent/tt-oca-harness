@@ -36,9 +36,7 @@ I2C_CTRL_TX_STRETCH_CTRL_EN = _field_mask(_I2C_H, "I2C__CTRL__TX_STRETCH_CTRL_EN
 
 I2C_STATUS_HOSTIDLE = _field_mask(_I2C_H, "I2C__STATUS__HOSTIDLE_bm")
 
-# Field masks for the timeout / FIFO-config CSR sweep. Additive: no existing
-# symbol changes, so the eight sequences that already import this helper are
-# unaffected.
+# Field masks for the timeout / FIFO-config CSR sweep.
 I2C_HOST_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__HOST_TIMEOUT_CTRL__VAL_bm")
 I2C_TARGET_TIMEOUT_CTRL_VAL = _field_mask(_I2C_H, "I2C__TARGET_TIMEOUT_CTRL__VAL_bm")
 I2C_TARGET_TIMEOUT_CTRL_EN = _field_mask(_I2C_H, "I2C__TARGET_TIMEOUT_CTRL__EN_bm")

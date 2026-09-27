@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary TAP reachable on the production wrapper, with the SEP running.
 
-This is the first wrapper test to drive JTAG rather than only pulse it into
-reset, and it is the enabler for the DTP/SEP probe anchors: those need a TAP
-that answers, and until now the wrapper tied TMS high and pulsed TCK from
-inside the testbench.
+This test drives JTAG on the wrapper rather than only pulsing it into reset;
+the DTP/SEP probe anchors need a TAP that answers.
 
 What it proves, in order:
 
@@ -21,13 +19,14 @@ What it proves, in order:
   S5  The IC_RESET override bits are clear. Every wrapper test rests on this --
       an asserted override holds SMC cold/fuse reset and the SEP never fetches,
       which is exactly the failure the base test's TAP reset walk exists to
-      prevent -- and nothing checked it until now.
+      prevent.
 """
 
 from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
+
 from seq_lib.wrapper_jtag import (
     PTAP_DEFAULT_IDCODE,
     PTAP_IR_WIDTH,
@@ -44,10 +43,18 @@ TCK_PERIODS_NS = (100, 200)
 class SmuWrapperJtagPtapSeq:
     """IDCODE + BYPASS on the wrapper PTAP, without disturbing the SEP."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = (
+        "SMU_WRAPPER_PTAP_OK",
+        "SMU_WRAPPER_PTAP_SEP_UNDISTURBED_OK",
+        "SMU_WRAPPER_IC_RESET_CLEAR_OK",
+    )
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     async def _idcode(self, jtag) -> int:
         got = await jtag.read_idcode()
@@ -58,13 +65,12 @@ class SmuWrapperJtagPtapSeq:
         return got
 
     async def _bypass(self, jtag) -> None:
-        await jtag.shift_ir(ptap_ir_opcode("BYPASS_INSTR"), width=PTAP_IR_WIDTH, back_to_rti=False)
+        await jtag.shift_ir(ptap_ir_opcode("BYPASS_3F"), width=PTAP_IR_WIDTH, back_to_rti=False)
         captured = int(await jtag.shift_dr(BYPASS_PATTERN, BYPASS_WIDTH, back_to_rti=True))
         require_tdo_resolved("BYPASS")
         mask = (1 << BYPASS_WIDTH) - 1
         # The shift register captures 0 and then returns TDI one bit later, so
-        # over an 8-bit scan TDO is the pattern shifted up by one, matching the
-        # bare `--dut smu` PTAP checker.
+        # over an 8-bit scan TDO is the pattern shifted up by one.
         want = (BYPASS_PATTERN << 1) & mask
         assert (captured & mask) == want, (
             f"BYPASS tdi=0x{BYPASS_PATTERN:02x} tdo=0x{captured & mask:02x} "
@@ -140,11 +146,7 @@ class SmuWrapperJtagPtapSeq:
             "0 -- the base test TAP reset walk really does clear the TDR)",
             smc_ovrd,
         )
-        for token in (
-            "SMU_WRAPPER_PTAP_OK",
-            "SMU_WRAPPER_PTAP_SEP_UNDISTURBED_OK",
-            "SMU_WRAPPER_IC_RESET_CLEAR_OK",
-        ):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

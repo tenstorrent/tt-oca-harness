@@ -70,8 +70,7 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
             f"{self.primary_match_words} makes word {derived} the first "
             f"disagreement, but this member asserts {self.reject_index}"
         )
-        below_clear = [i for i in range(self.reject_index)
-                       if not self.primary_mask & (1 << i)]
+        below_clear = [i for i in range(self.reject_index) if not self.primary_mask & (1 << i)]
         assert below_clear, (
             f"every word below {self.reject_index} is selected in mask "
             f"0x{self.primary_mask:02x}, so a ROM that ignored selector_bits "
@@ -80,8 +79,9 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
         )
         self._below_clear = tuple(below_clear)
 
-    def _plant_words(self, buf: bytearray, slot: str, mask: int,
-                     match_words: tuple[int, ...]) -> None:
+    def _plant_words(
+        self, buf: bytearray, slot: str, mask: int, match_words: tuple[int, ...]
+    ) -> None:
         base_bit = _SELECTOR_BASE[self.kind]
         for i in range(mm.DEVICE_ID_NUM_WORDS):
             if mask & (1 << i):
@@ -89,8 +89,7 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
         for i in match_words:
             mm.set_device_id_word(buf, slot, self.kind, i, MODEL_FUSE_WORD)
 
-    def _log_slot(self, buf: bytes, slot: str, mask: int,
-                  match_words: tuple[int, ...]) -> None:
+    def _log_slot(self, buf: bytes, slot: str, mask: int, match_words: tuple[int, ...]) -> None:
         sel = mm.selector_bits(buf, slot)
         mine = mm.device_id_words(buf, slot, self.kind)
         other = mm.device_id_words(buf, slot, _OTHER_KIND[self.kind])
@@ -98,10 +97,18 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
             "CHK-STIMULUS-%s: %s selector_bits=0x%016x -> %s byte 0x%02x, %s byte "
             "0x%02x. %s=%s (matching words %s hold the fuse-map value 0x%08x); "
             "%s=%s with its selector byte clear, so the other arm cannot fire",
-            self.kind.upper().replace("_", "-"), slot, sel, self.kind, mask,
-            _OTHER_KIND[self.kind], (sel >> _SELECTOR_BASE[_OTHER_KIND[self.kind]])
-            & 0xFF, self.kind, [f"0x{w:08x}" for w in mine], list(match_words),
-            MODEL_FUSE_WORD, _OTHER_KIND[self.kind],
+            self.kind.upper().replace("_", "-"),
+            slot,
+            sel,
+            self.kind,
+            mask,
+            _OTHER_KIND[self.kind],
+            (sel >> _SELECTOR_BASE[_OTHER_KIND[self.kind]]) & 0xFF,
+            self.kind,
+            [f"0x{w:08x}" for w in mine],
+            list(match_words),
+            MODEL_FUSE_WORD,
+            _OTHER_KIND[self.kind],
             [f"0x{w:08x}" for w in other],
         )
 
@@ -109,25 +116,27 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
         self._assert_contract()
         mm.verify_usage_constraints_layout(buf, "primary")
         mm.verify_device_id_layout(buf, "primary")
-        self._plant_words(buf, "primary", self.primary_mask,
-                          self.primary_match_words)
+        self._plant_words(buf, "primary", self.primary_mask, self.primary_match_words)
         self._log_slot(buf, "primary", self.primary_mask, self.primary_match_words)
         self.logger.info(
             "CHK-STIMULUS-DISCRIMINATION: word %d is selected and matches, words %s "
             "are NOT selected and mismatch, word %d is selected and mismatches. The "
             "arm returns on the first disagreement, so %s must be %d: %d would "
             "mean the value was ignored and %d would mean the selector was",
-            self.primary_match_words[0], list(self._below_clear),
-            self.reject_index, fd.device_id_tokens(self.kind)[0],
-            self.reject_index, self.primary_match_words[0], self._below_clear[0],
+            self.primary_match_words[0],
+            list(self._below_clear),
+            self.reject_index,
+            fd.device_id_tokens(self.kind)[0],
+            self.reject_index,
+            self.primary_match_words[0],
+            self._below_clear[0],
         )
 
     def prepare_backup(self, buf: bytearray) -> None:
         mm.verify_usage_constraints_layout(buf, "backup")
         mm.verify_device_id_layout(buf, "backup")
         full = (1 << mm.DEVICE_ID_NUM_WORDS) - 1
-        self._plant_words(buf, "backup", full,
-                          tuple(range(mm.DEVICE_ID_NUM_WORDS)))
+        self._plant_words(buf, "backup", full, tuple(range(mm.DEVICE_ID_NUM_WORDS)))
         pm.reseal(buf, "backup")
         self._log_slot(buf, "backup", full, tuple(range(mm.DEVICE_ID_NUM_WORDS)))
         self.logger.info(
@@ -136,7 +145,9 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
             "selector width and the slot must boot. Its %s selector byte stays clear "
             "over eight mismatching words, so a ROM applying one byte to both loops "
             "would refuse this slot instead",
-            mm.DEVICE_ID_NUM_WORDS, self.kind, _OTHER_KIND[self.kind],
+            mm.DEVICE_ID_NUM_WORDS,
+            self.kind,
+            _OTHER_KIND[self.kind],
         )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
@@ -145,8 +156,7 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
         pm.verify_sealed(buf, "backup")
         return super().mutate_flash_image(buf)
 
-    def _served_block(self, buf_sel: int, mine: list[int],
-                      other: list[int]) -> bytes:
+    def _served_block(self, buf_sel: int, mine: list[int], other: list[int]) -> bytes:
         if self.kind == "chiplet_id":
             return struct.pack(_BLOCK_FMT, buf_sel, *mine, *other)
         return struct.pack(_BLOCK_FMT, buf_sel, *other, *mine)
@@ -161,10 +171,15 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
         full = (1 << mm.DEVICE_ID_NUM_WORDS) - 1
 
         p_sel = mm.SHIPPED_SELECTOR_BITS | (self.primary_mask << base_bit)
-        p_mine = [MODEL_FUSE_WORD if i in self.primary_match_words else shipped
-                  for i in range(mm.DEVICE_ID_NUM_WORDS)]
+        p_mine = [
+            MODEL_FUSE_WORD if i in self.primary_match_words else shipped
+            for i in range(mm.DEVICE_ID_NUM_WORDS)
+        ]
         fd.assert_served_field(
-            self.logger, flash, "primary", _BLOCK_OFF,
+            self.logger,
+            flash,
+            "primary",
+            _BLOCK_OFF,
             self._served_block(p_sel, p_mine, [shipped] * mm.DEVICE_ID_NUM_WORDS),
             f"primary selector_bits + chiplet_id[8] + package_id[8] "
             f"({self.kind} mask 0x{self.primary_mask:02x}, matching words "
@@ -173,9 +188,15 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
 
         b_sel = mm.SHIPPED_SELECTOR_BITS | (full << base_bit)
         fd.assert_served_field(
-            self.logger, flash, "backup", _BLOCK_OFF,
-            self._served_block(b_sel, [MODEL_FUSE_WORD] * mm.DEVICE_ID_NUM_WORDS,
-                               [shipped] * mm.DEVICE_ID_NUM_WORDS),
+            self.logger,
+            flash,
+            "backup",
+            _BLOCK_OFF,
+            self._served_block(
+                b_sel,
+                [MODEL_FUSE_WORD] * mm.DEVICE_ID_NUM_WORDS,
+                [shipped] * mm.DEVICE_ID_NUM_WORDS,
+            ),
             f"backup selector_bits + chiplet_id[8] + package_id[8] "
             f"({self.kind} mask 0xff, every word matching)",
         )
@@ -189,13 +210,16 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
             "CHK-SELECTOR-DOMAINS: primary served %s byte 0x%02x / %s byte 0x00, "
             "backup served %s byte 0x%02x / %s byte 0x00, with the other arm's eight "
             "words mismatching in both slots",
-            self.kind, self.primary_mask, _OTHER_KIND[self.kind], self.kind, full,
+            self.kind,
+            self.primary_mask,
+            _OTHER_KIND[self.kind],
+            self.kind,
+            full,
             _OTHER_KIND[self.kind],
         )
 
     def check_constraint_evidence(self, console: list[str]) -> None:
-        fd.assert_device_id_mismatch(self.logger, console, self.kind,
-                                     self.reject_index)
+        fd.assert_device_id_mismatch(self.logger, console, self.kind, self.reject_index)
         # A model serving another value would silently turn matching words into mismatches.
         fuse_token = fd.device_id_tokens(self.kind)[1]
         fuse = fd.hex_value(console, fuse_token)
@@ -210,6 +234,10 @@ class sep_device_id_variation_base(sep_primary_usage_constraint_base):
             "was selected and equal to the fuse value 0x%08x, words %s were "
             "unselected and unequal to it, and the backup selected all %d words at "
             "that value and booted",
-            self.kind, self.reject_index, self.primary_match_words[0],
-            MODEL_FUSE_WORD, list(self._below_clear), mm.DEVICE_ID_NUM_WORDS,
+            self.kind,
+            self.reject_index,
+            self.primary_match_words[0],
+            MODEL_FUSE_WORD,
+            list(self._below_clear),
+            mm.DEVICE_ID_NUM_WORDS,
         )

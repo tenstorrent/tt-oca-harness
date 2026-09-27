@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_spi_pad_bfm_test"
+module = "smc_spi_pad_bfm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

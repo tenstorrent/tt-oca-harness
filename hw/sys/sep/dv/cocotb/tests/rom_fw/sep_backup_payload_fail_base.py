@@ -8,8 +8,9 @@ the run must end on MANIFEST_ALL_FAILED with the backup's own error code. The RO
 
 from __future__ import annotations
 
-from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
+from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
+from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _MANIFEST_OK = "MANIFEST_OK"
@@ -19,12 +20,10 @@ _SBOOT_OFF = "SBOOT_OFF"
 _BOOT_PROGRESS_MARKERS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
 # Printed only on the signed path, in this order.
-_CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK",
-                 "CRYPTO_VALIDATE_OK")
+_CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK", "CRYPTO_VALIDATE_OK")
 
 
 class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
-
     backup_defect_marker: str = ""
     expected_error: int = 0
     primary_expected_error: int = 0
@@ -52,8 +51,7 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
                 f"override _check to forbid the codes it could be confused with "
                 f"and to assert what the flash device served"
             )
-            neighbours = [m for m in self.extra_forbidden
-                          if m.startswith("MANIFEST_ERR=")]
+            neighbours = [m for m in self.extra_forbidden if m.startswith("MANIFEST_ERR=")]
             assert neighbours, (
                 f"{type(self).__name__} declares no backup_defect_marker and "
                 f"forbids no neighbouring MANIFEST_ERR= code, so a rejection by a "
@@ -84,10 +82,13 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             f"ROM gave up before evaluating the backup. Console: {console}"
         )
 
-        fd.assert_slot_attributed(console, primary_err, after=i_psrc,
-                                  before=i_bsrc)
-        log.info("CHK-FAILOVER-PRIMARY: primary@%d rejected with %s before the "
-                 "backup read@%d", i_psrc, primary_err, i_bsrc)
+        fd.assert_slot_attributed(console, primary_err, after=i_psrc, before=i_bsrc)
+        log.info(
+            "CHK-FAILOVER-PRIMARY: primary@%d rejected with %s before the backup read@%d",
+            i_psrc,
+            primary_err,
+            i_bsrc,
+        )
 
         previous = i_bsrc
         positions = []
@@ -113,24 +114,33 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             f"and its {_CRYPTO_CHAIN[0]}@{positions[0]}: the backup's integrity "
             f"check is not part of its own attempt. Console: {console}"
         )
-        log.info("CHK-BACKUP-CRYPTO: backup read@%d -> %s@%d -> %s -- signature "
-                 "verified before the payload was refused", i_bsrc, _HASH_OK,
-                 i_hash_ok, ", ".join(f"{m}@{p}" for m, p in
-                                      zip(_CRYPTO_CHAIN, positions)))
+        log.info(
+            "CHK-BACKUP-CRYPTO: backup read@%d -> %s@%d -> %s -- signature "
+            "verified before the payload was refused",
+            i_bsrc,
+            _HASH_OK,
+            i_hash_ok,
+            ", ".join(f"{m}@{p}" for m, p in zip(_CRYPTO_CHAIN, positions)),
+        )
 
         after = positions[-1]
         if self.backup_defect_marker:
-            after = fd.assert_slot_attributed(console, self.backup_defect_marker,
-                                              after=positions[-1], before=i_all)
+            after = fd.assert_slot_attributed(
+                console, self.backup_defect_marker, after=positions[-1], before=i_all
+            )
         fd.assert_slot_attributed(console, backup_err, after=after, before=i_all)
-        log.info("CHK-BACKUP-DEFECT: %s then %s, both after CRYPTO_VALIDATE_OK@%d "
-                 "and inside the backup attempt (..%d)",
-                 self.backup_defect_marker or "(this arm prints no token)",
-                 backup_err, positions[-1], i_all)
+        log.info(
+            "CHK-BACKUP-DEFECT: %s then %s, both after CRYPTO_VALIDATE_OK@%d "
+            "and inside the backup attempt (..%d)",
+            self.backup_defect_marker or "(this arm prints no token)",
+            backup_err,
+            positions[-1],
+            i_all,
+        )
 
         assert not any(_CRYPTO_FAIL in line for line in console), (
             f"ROM printed {_CRYPTO_FAIL}: a slot was refused inside "
-            f"manifest_crypto_validate, so the payload rejection under test is not "
+            f"oca_validate_manifest(), so the payload rejection under test is not "
             f"what ended this run. Console: {console}"
         )
         assert not any(_MANIFEST_OK in line for line in console), (
@@ -141,24 +151,31 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
             f"ROM printed {_SBOOT_OFF}: a slot took the secure-boot-disabled path, "
             f"so the backup's signature was never verified. Console: {console}"
         )
-        log.info("CHK-NOT-A-CRYPTO-FAILURE: neither %s, %s nor %s appeared",
-                 _CRYPTO_FAIL, _MANIFEST_OK, _SBOOT_OFF)
+        log.info(
+            "CHK-NOT-A-CRYPTO-FAILURE: neither %s, %s nor %s appeared",
+            _CRYPTO_FAIL,
+            _MANIFEST_OK,
+            _SBOOT_OFF,
+        )
 
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        status_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | status_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
+            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); "
             f"observed {status_hex}"
         )
         assert fw_done, (
             f"ROM never signalled completion; two rejected slots must converge on "
             f"a FAIL verdict. cold_scratch[1]: {status_hex}"
         )
-        assert not fw_pass, (
-            "ROM signalled PASS: it booted an image it was supposed to reject"
+        assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
+        log.info(
+            "CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
+            backup_err,
+            _ALL_FAILED,
+            expected_status,
         )
-        log.info("CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
-                 backup_err, _ALL_FAILED, expected_status)
 
         for marker in _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden):
             assert not any(marker in line for line in console), (
@@ -166,5 +183,7 @@ class sep_backup_payload_fail_base(sep_backup_manifest_fail_base):
                 f"continued booting a manifest it had already failed. "
                 f"Console: {console}"
             )
-        log.info("CHK-NO-BOOT: none of %s reached",
-                 ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)))
+        log.info(
+            "CHK-NO-BOOT: none of %s reached",
+            ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)),
+        )

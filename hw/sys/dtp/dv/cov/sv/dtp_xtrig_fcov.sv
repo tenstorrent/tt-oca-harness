@@ -9,10 +9,6 @@
 // decode the CSR writes, the P2P phases and the CTM source/destination
 // index bins follow the GPIO and matrix handshake pins.
 //
-// The SV-UVM tb shape ties the XTRIG CSR bus and the cross-trigger inputs
-// quiescent, so these bins collect only where the stimulus exists (the
-// cocotb flow today); DTP_FCOV.adoc records the simulator scoping.
-//
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers
 // on always_ff-driven variables; declare wires before use.
@@ -23,7 +19,7 @@ module dtp_xtrig_fcov (
   input wire        clk_i,
   input wire        rst_ni,
 
-  // XTRIG CSR AXI-Lite write channel (driven by the cocotb flow)
+  // XTRIG CSR AXI-Lite write channel (shared ocah_axi_vip master, both flows)
   input wire [31:0] axil_awaddr_i,
   input wire        axil_awvalid_i,
   input wire        axil_awready_i,
@@ -40,10 +36,12 @@ module dtp_xtrig_fcov (
   input wire [15:0] ctp_ack_in_din_i
 );
 
-  // CSR map constants (dtp_xtrig_types).
-  localparam logic [31:0] CtpBase = 32'h200;
-  localparam int unsigned CtpStride = 'h10;
-  localparam int unsigned NumCtp = 16;
+  import cross_trigger_network_addrmap_pkg::*;
+
+  // CSR windows of the cross-trigger network (generated address map).
+  localparam logic [31:0] CtpBase = 32'(CROSS_TRIGGER_NETWORK_CTP_BASE_ADDR(0));
+  localparam int unsigned CtpStride = int'(CROSS_TRIGGER_NETWORK_CTP_STRIDE);
+  localparam int unsigned NumCtp = int'(CROSS_TRIGGER_NETWORK_CTP_NUM);
   localparam logic [31:0] CtpEnd = CtpBase + 32'(NumCtp * CtpStride);
 
   wire in_reset = (rst_ni !== 1'b1);
@@ -272,19 +270,10 @@ module dtp_xtrig_fcov (
   // ------------------------------------------------------------------
   // Commercial-simulator covergroups mirroring the cover-property bins.
   // ------------------------------------------------------------------
-  function automatic logic [4:0] low_index16(logic [15:0] value);
-    for (int i = 0; i < 16; i++) begin
-      if (value[i]) return 5'(i);
-    end
-    return 5'd31;
-  endfunction
-
-  function automatic logic [4:0] low_index10(logic [9:0] value);
-    for (int i = 0; i < 10; i++) begin
-      if (value[i]) return 5'(i);
-    end
-    return 5'd31;
-  endfunction
+  // One port index space for both CTM index coverpoints: CTP ports occupy
+  // 0-15 and internal CTs 16-25, one bin per port as in the c_ctm_*_index_*
+  // cover properties.
+  localparam int unsigned IntPortBase = 16;
 
   covergroup cg_ctp with function sample (
       logic mode_p2p, logic inverted, logic [1:0] stretch_class
@@ -298,13 +287,22 @@ module dtp_xtrig_fcov (
   endgroup
 
   covergroup cg_ctm with function sample (
-      logic src_is_ctp, logic [4:0] src_idx, logic dst_is_ctp, logic [4:0] dst_idx
+      logic src_event,
+      logic src_is_ctp,
+      logic [4:0] src_idx,
+      logic dst_event,
+      logic dst_is_ctp,
+      logic [4:0] dst_idx
   );
     option.per_instance = 1;
-    cp_source_type: coverpoint src_is_ctp;
-    cp_dest_type: coverpoint dst_is_ctp;
-    cp_source_index: coverpoint src_idx {bins port[] = {[0 : 15]};}
-    cp_dest_index: coverpoint dst_idx {bins port[] = {[0 : 15]};}
+    cp_source_type: coverpoint src_is_ctp iff (src_event);
+    cp_dest_type: coverpoint dst_is_ctp iff (dst_event);
+    cp_source_index: coverpoint src_idx iff (src_event) {
+      bins ctp[] = {[0 : 15]}; bins internal[] = {[IntPortBase : IntPortBase + 9]};
+    }
+    cp_dest_index: coverpoint dst_idx iff (dst_event) {
+      bins ctp[] = {[0 : 15]}; bins internal[] = {[IntPortBase : IntPortBase + 9]};
+    }
   endgroup
 
   cg_ctp u_cg_ctp = new();
@@ -318,10 +316,22 @@ module dtp_xtrig_fcov (
       u_cg_ctp.sample(1'b0, 1'b0,
                       (stretch_val == 16'd0) ? 2'd0 : ((stretch_val >= 16'd15) ? 2'd2 : 2'd1));
     end
-    if (any_source_rise && any_dest_active) begin
-      u_cg_ctm.sample(ctm_source_ctp_e, ctm_source_ctp_e ? low_index16(ctp_src_rise) : low_index10(
-                      int_src_rise), ctm_dest_ctp_e, ctm_dest_ctp_e ? low_index16(ctp_dst_rise
-                      ) : low_index10(int_dst_rise));
+    // A destination rises one or more clocks after its source: the matrix
+    // registers its output and the CTP core adds synchroniser and handshake
+    // stages, so no single edge carries both ends of a route.
+    if (!in_reset) begin
+      for (int i = 0; i < 16; i++) begin
+        if (ctp_src_rise[i]) u_cg_ctm.sample(1'b1, 1'b1, 5'(i), 1'b0, 1'b0, 5'd0);
+        if (ctp_dst_rise[i]) u_cg_ctm.sample(1'b0, 1'b0, 5'd0, 1'b1, 1'b1, 5'(i));
+      end
+      for (int i = 0; i < 10; i++) begin
+        if (int_src_rise[i]) begin
+          u_cg_ctm.sample(1'b1, 1'b0, 5'(IntPortBase + i), 1'b0, 1'b0, 5'd0);
+        end
+        if (int_dst_rise[i]) begin
+          u_cg_ctm.sample(1'b0, 1'b0, 5'd0, 1'b1, 1'b0, 5'(IntPortBase + i));
+        end
+      end
     end
   end
 `endif

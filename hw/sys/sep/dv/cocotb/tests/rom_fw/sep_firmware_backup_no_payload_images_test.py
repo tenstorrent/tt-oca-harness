@@ -9,15 +9,13 @@ backup is refused on ``image_count == 0`` with ``MANIFEST_ERR_TOC_COUNT``.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_payload_mutate as pm
-from rom_fw import sep_toc_defect as td
 from rom_fw import sep_no_payload_images_base as npi
+from rom_fw import sep_toc_defect as td
 
 
 @pyuvm.test()
-class sep_firmware_backup_no_payload_images_test(
-        npi.sep_no_payload_images_terminal_base):
+class sep_firmware_backup_no_payload_images_test(npi.sep_no_payload_images_terminal_base):
     """Plaintext backup TOC image_count is 0 -> both slots refused -> halt."""
 
     primary_expected_error = npi.ERR_BAD_TOC_VERSION
@@ -33,9 +31,8 @@ class sep_firmware_backup_no_payload_images_test(
         off, size = npi.TOC_VERSION_FIELD
         was = pm.set_toc_version_major(buf, "primary", npi.TRIGGER_TOC_VERSION)
         p = pm.payload_base(buf, "primary")
-        self._primary_served = bytes(buf[p + off:p + off + size])
-        now = int.from_bytes(
-            bytes(pm.toc_plaintext(buf, "primary")[off:off + size]), "little")
+        self._primary_served = bytes(buf[p + off : p + off + size])
+        now = int.from_bytes(bytes(pm.toc_plaintext(buf, "primary")[off : off + size]), "little")
         assert now == npi.TRIGGER_TOC_VERSION, (
             f"primary TOC major_version reads {now} after the write, expected "
             f"{npi.TRIGGER_TOC_VERSION}; the failover trigger did not land"
@@ -46,5 +43,8 @@ class sep_firmware_backup_no_payload_images_test(
             "MANIFEST_ERR_BAD_TOC_VERSION -- a code distinct from the empty image "
             "list planted in the backup, reached through the primary's own verified "
             "crypto chain. The device must serve %s at flash 0x%06x",
-            was, now, self._primary_served.hex(), p + off,
+            was,
+            now,
+            self._primary_served.hex(),
+            p + off,
         )

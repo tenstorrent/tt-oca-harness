@@ -7,7 +7,11 @@ import cla_pkg::*;
 import dst_pkg::*;
 #(
   parameter CORE_INSTANCE = 1'b0,
-  parameter DEBUG_SIGNAL_WIDTH = 128
+  parameter DEBUG_SIGNAL_WIDTH = 128,
+  parameter bit TIMESTAMP_SYNC_SCHEME = 0,
+
+  localparam TIMESTAMP_UPPER_WIDTH = 56,
+  localparam TIMESTAMP_LOWER_WIDTH = 8
 )
 (
   input logic       clock,
@@ -83,6 +87,7 @@ import dst_pkg::*;
   input ClaCdbgclaxtriggertimestretchMmr_s            XtriggertimestretchMmr,
   input ClaCdbgclatimestampMmr_s                    ClatimestampMmr,
   input ClaCdbgclatimestampsyncMmr_s                ClatimestampsyncMmr,
+  input ClaCdbgclatimestampoffsetMmr_s              ClatimestampoffsetMmr,
   input ClaCdbgclatimestampconfigMmr_s              ClatimestampconfigMmr,
   input ClaCdbgclatimematchMmr_s                    ClatimematchMmr,
   input ClaCdbglfsrMmr_s                            ClaMmrCdbglfsr,
@@ -106,6 +111,7 @@ import dst_pkg::*;
 
 
   input logic                                     i_Time_Tick,
+  input logic [TIMESTAMP_UPPER_WIDTH-1:0]         i_ref_timestamp,
   input timestamp_s                               timestamp,
 // HW Write Ports
   output ClaCdbgclacounter0CfgMmrWr_s                 Clacounter0CfgMmrWr,
@@ -161,7 +167,6 @@ localparam DBG_SIGNAL_CONFIG = DEBUG_SIGNAL_WIDTH == 128 ? 1'b1 : 1'b0;
 
 counter_controls                    counter_actions[CLA_NUMBER_OF_COUNTERS];
 logic [CLA_NUMBER_OF_EVENTS-1:0]          event_bus, event_bus_mod;
-logic                                   timestamp_capture;
 
 logic [CLA_NUMBER_OF_ACTIONS-1:0]         next_node_action_bus[CLA_NUMBER_OF_NODES];
 logic [CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]  next_node_custom_action_bus[CLA_NUMBER_OF_NODES];
@@ -180,6 +185,7 @@ logic                                     time_match_event;
 ClacounterCfgMmr_s    ClacounterCfgMmr[CLA_NUMBER_OF_COUNTERS];
 
 logic   [DEBUG_SIGNAL_WIDTH-1:0] debug_signals_d1;
+logic   [63:0] cla_sync_timestamp;
 
 // Mux to align all the lanes of debug signals to the same clock edge based on the individual delays
 debug_signal_shift_mux #(
@@ -210,9 +216,7 @@ endgenerate
 // CLA Timesync
 
 logic i_xtrigger_ff, xtrigger_posedge;
-logic [63:0]              timestamp_nxt;
-logic timestamp_load;
-logic timestamp_resync;
+
 
 generic_dff #(
     .WIDTH       ($bits(logic)),
@@ -226,29 +230,72 @@ generic_dff #(
 );
 assign xtrigger_posedge = xtrigger_in[0] && ~i_xtrigger_ff;
 
-assign timestamp_resync = ClatimestampconfigMmr.TsSyncRaw;
-assign timestamp_load   = timestamp_resync && xtrigger_posedge;
-assign timestamp_nxt    = ClatimestampMmr.Timestamp +1;
+  assign o_cla_debug_marker = ClatimestampconfigMmr.DebugMarker;
 
-assign o_cla_debug_marker = ClatimestampconfigMmr.DebugMarker;
-assign o_cla_timesync_timestamp = ClatimestampMmr.Timestamp;
+if (TIMESTAMP_SYNC_SCHEME == 0) begin : gen_timestamp_sync_scheme_0
 
-always_comb begin
-  ClatimestampWr = '0;
-  ClatimestampconfigWr = '0;
+  logic [63:0]              timestamp_nxt;
+  logic timestamp_load;
+  logic timestamp_resync;
+  logic [63:0] timestamp_full;
+  assign timestamp_full = {ClatimestampMmr.TimestampUpper, ClatimestampMmr.TimestampLower};
+  assign timestamp_resync = ClatimestampconfigMmr.Resync;
+  assign timestamp_load   = timestamp_resync && xtrigger_posedge;
+  assign timestamp_nxt    = timestamp_full +1;
 
-  ClatimestampWr.Data.Timestamp = timestamp_load ? ClatimestampsyncMmr.TimestampSync :
-                                    i_Time_Tick  ? timestamp_nxt :
-                                                   ClatimestampMmr.Timestamp;
+  always_comb begin
+    ClatimestampWr = '0;
+    ClatimestampconfigWr = '0;
+    ClaMmrCdbgtimestampcaptureWr = '0;
 
-  ClatimestampconfigWr.Data.TsSyncRaw =  timestamp_load ? 1'b0 :
-                                                       ClatimestampconfigMmr.TsSyncRaw;
-  ClatimestampWr.TimestampWrEn = 1'b1;
-  ClatimestampconfigWr.TsSyncRawWrEn = 1'b1;
+    ClatimestampWr.Data.TimestampUpper = timestamp_load ? ClatimestampsyncMmr.TimestampSync[63:TIMESTAMP_LOWER_WIDTH] :
+                                      i_Time_Tick  ? timestamp_nxt[63:TIMESTAMP_LOWER_WIDTH] :
+                                                    timestamp_full[63:TIMESTAMP_LOWER_WIDTH];
+    ClatimestampWr.Data.TimestampLower = timestamp_load ? ClatimestampsyncMmr.TimestampSync[TIMESTAMP_LOWER_WIDTH-1:0] :
+                                      i_Time_Tick  ? timestamp_nxt[TIMESTAMP_LOWER_WIDTH-1:0] :
+                                                    timestamp_full[TIMESTAMP_LOWER_WIDTH-1:0];
 
+    ClatimestampconfigWr.Data.Resync =  timestamp_load ? 1'b0 :
+                                                        ClatimestampconfigMmr.Resync;
+    ClatimestampWr.TimestampUpperWrEn = 1'b1;
+    ClatimestampWr.TimestampLowerWrEn = 1'b1;
+    ClatimestampconfigWr.ResyncWrEn = 1'b1;
+  end
 
-
+  assign cla_sync_timestamp = timestamp_full;
 end
+
+else if (TIMESTAMP_SYNC_SCHEME == 1) begin : gen_timestamp_sync_scheme_1
+
+  logic [TIMESTAMP_UPPER_WIDTH-1:0] timestamp_upper, timestamp_compare_upper;
+  logic timestamp_upper_incr;
+
+  logic [TIMESTAMP_LOWER_WIDTH-1:0] timestamp_lower;
+
+  assign timestamp_upper = ClatimestampMmr.TimestampUpper;
+  assign timestamp_lower = ClatimestampMmr.TimestampLower;
+  assign timestamp_compare_upper = timestamp_upper - ClatimestampoffsetMmr.Offset;
+  assign timestamp_upper_incr = (timestamp_compare_upper != i_ref_timestamp);
+
+  always_comb begin
+    ClatimestampWr = '0;
+    ClatimestampconfigWr = '0;
+    ClaMmrCdbgtimestampcaptureWr = '0;
+
+    ClaMmrCdbgtimestampcaptureWr.TimestampWrEn = xtrigger_posedge && ClatimestampconfigMmr.TsCapture;
+    ClaMmrCdbgtimestampcaptureWr.Data.Timestamp = {ClatimestampMmr.TimestampUpper, TIMESTAMP_LOWER_WIDTH'(0)};
+
+    ClatimestampWr.Data.TimestampUpper = timestamp_upper_incr ? timestamp_upper + 1 : ClatimestampMmr.TimestampUpper;
+    ClatimestampWr.Data.TimestampLower = timestamp_upper_incr ? TIMESTAMP_LOWER_WIDTH'(0) : timestamp_lower+1;
+
+    ClatimestampWr.TimestampUpperWrEn = timestamp_upper_incr;
+    ClatimestampWr.TimestampLowerWrEn = 1'b1;
+  end
+
+  assign cla_sync_timestamp = {timestamp_upper, timestamp_lower};
+end
+
+assign o_cla_timesync_timestamp = cla_sync_timestamp;
 
 //Doing all these as we cannot typecast on output ports!!!
 assign ClacounterCfgMmr[0] = (ClacounterCfgMmr_s'(ClacounterCfg0Mmr));
@@ -587,12 +634,6 @@ end else begin: cla_snapshot_mmr_hi_tieoff_blk
 
 end
 
-always_comb begin
-    ClaMmrCdbgtimestampcaptureWr = '0;
-    ClaMmrCdbgtimestampcaptureWr.TimestampWrEn = timestamp_capture;
-    ClaMmrCdbgtimestampcaptureWr.Data.Timestamp = o_cla_timesync_timestamp;
-end
-
 
 //Delay debug signal by 1 clock. See bug RVDE  14490
 
@@ -721,7 +762,6 @@ cla_action_gen ClaActionGen
    .start_trace              ( external_action_trace_start ),
    .stop_trace               ( external_action_trace_stop ),
    .trace_pulse              ( external_action_trace_pulse ),
-   .timestamp_capture        ( timestamp_capture ),
    .xtrigger_out             ( xtrigger_out_pre_ff ),
    .self_filter              ( self_filter ),
    .custom_action_bus        ( external_action_custom ),

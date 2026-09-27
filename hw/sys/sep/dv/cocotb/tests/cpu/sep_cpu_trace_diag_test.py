@@ -22,7 +22,7 @@ Standard boot-scoreboard checks (banner + firmware PASS + PC advance) apply on
 top. The firmware image is fw/build/tests/cpu_trace_diag_test/*.{itcm,dtcm}.hex,
 built by the c_compile stage (make dv-fw-tests TEST=cpu_trace_diag_test).
 
-Stimulus is deliberately deterministic: the reconstruction is auditable only
+Stimulus is deterministic: the reconstruction is auditable only
 against a known call chain and a known trap site, and the prebuilt image fixes
 both at compile time (same shape as every cpu firmware test here). The seeded
 clock-timing randomization from sep_base_test still applies on top, so the
@@ -46,9 +46,10 @@ _ITCM_HEX = os.path.join(_FW_DIR, "cpu_trace_diag_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "cpu_trace_diag_test.dtcm.hex")
 
 _EXPECTED_LINE = "SEP CPU trace diag test"
-# main + diag_leaf1..3 are linking calls live at the ebreak; the trap frame
-# stacks on top. crt0's `call main` may add one more -- assert the floor.
-_MIN_STACK_DEPTH = 4
+# main + diag_leaf1..3 plus the trap frame. A floor of 4 is the chain
+# without the trap; the snapshot must include the trap as the innermost
+# frame. crt0's `call main` may add one more.
+_MIN_STACK_DEPTH = 5
 _MCAUSE_BREAKPOINT = 3
 _CHAIN_SYMBOLS = ("diag_leaf1", "diag_leaf2", "diag_leaf3", "main")
 
@@ -123,12 +124,22 @@ class sep_cpu_trace_diag_test(sep_base_test):
         )
         self.logger.info("CHK-CHAIN-SYM PASS: retirements cover %s", ", ".join(_CHAIN_SYMBOLS))
 
-        # CHK-DEPTH: the shadow stack tracked the chain plus the trap frame.
-        assert mon.max_depth >= _MIN_STACK_DEPTH, (
-            f"CHK-DEPTH FAIL: max shadow-stack depth {mon.max_depth} < {_MIN_STACK_DEPTH}"
+        # CHK-DEPTH: the snapshot taken at the breakpoint push, not the
+        # run-global max. The innermost frame must be the trap, so a chain
+        # that never trapped cannot satisfy the floor.
+        assert mon.trap_stack, "CHK-DEPTH FAIL: no trap-live stack snapshot"
+        assert mon.trap_stack[-1][0] == "trap", (
+            f"CHK-DEPTH FAIL: innermost trap-live frame is {mon.trap_stack[-1][0]!r}, "
+            "not the breakpoint trap"
+        )
+        assert mon.trap_depth >= _MIN_STACK_DEPTH, (
+            f"CHK-DEPTH FAIL: trap-live shadow-stack depth {mon.trap_depth} "
+            f"< {_MIN_STACK_DEPTH} (run-global max {mon.max_depth})"
         )
         self.logger.info(
-            "CHK-DEPTH PASS: max call depth %d (resync notes %d)",
+            "CHK-DEPTH PASS: trap-live depth %d with trap innermost "
+            "(run-global max %d, resync notes %d)",
+            mon.trap_depth,
             mon.max_depth,
             mon.resync_notes,
         )

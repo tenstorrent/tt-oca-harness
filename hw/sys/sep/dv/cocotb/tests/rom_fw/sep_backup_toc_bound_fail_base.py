@@ -9,7 +9,6 @@ fires. Members select the defect and plaintext or encrypted; the ROM must then h
 from __future__ import annotations
 
 import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -18,7 +17,6 @@ from rom_fw.sep_backup_payload_fail_base import sep_backup_payload_fail_base
 
 
 class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
-
     bound_defect: str = ""
     encrypted: bool = False
 
@@ -36,8 +34,7 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
         cls.backup_defect_marker = tbd.DEFECT_TOKEN[cls.bound_defect]
 
         # ERR_BAD_MAGIC is excluded: it is the primary's failover trigger, not a competing verdict.
-        forbidden = tbd.neighbouring_errors(cls.bound_defect,
-                                            exclude=(tbd.ERR_BAD_MAGIC,))
+        forbidden = tbd.neighbouring_errors(cls.bound_defect, exclude=(tbd.ERR_BAD_MAGIC,))
         forbidden += list(tbd.other_payload_tokens(cls.bound_defect))
         forbidden += list(tbd.DECRYPT_FAILURE_TOKENS)
         if not cls.encrypted:
@@ -105,18 +102,34 @@ class sep_backup_toc_bound_fail_base(sep_backup_payload_fail_base):
             )
             self.logger.info(
                 "CHK-DECRYPT-ARM: backup@%d -> %s@%d -> %s@%d -> %s@%d, each "
-                "decryption marker exactly once", i_bsrc, tbd.DECRYPT_START, i_ds,
-                tbd.DECRYPT_OK, i_do, token, i_token,
+                "decryption marker exactly once",
+                i_bsrc,
+                tbd.DECRYPT_START,
+                i_ds,
+                tbd.DECRYPT_OK,
+                i_do,
+                token,
+                i_token,
             )
 
         # Encrypted members: only the address separates the slots, as both ciphertexts agree here.
-        tbd.assert_served_bound_field(self.logger, self._flash, "backup",
-                                      self.bound_defect, self._served,
-                                      self._payload_offset)
+        tbd.assert_served_bound_field(
+            self.logger,
+            self._flash,
+            "backup",
+            self.bound_defect,
+            self._served,
+            self._payload_offset,
+        )
 
         self.logger.info(
             "CHK-TOC-BOUND-RULE: backup@%d violated %s, was announced %s@%d and "
             "refused %s@%d after its crypto chain passed; the run ended terminal "
-            "with no slot accepted", i_bsrc, self.bound_defect, token, i_token,
-            backup_err, i_err,
+            "with no slot accepted",
+            i_bsrc,
+            self.bound_defect,
+            token,
+            i_token,
+            backup_err,
+            i_err,
         )

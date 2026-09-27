@@ -47,34 +47,36 @@ static inline uint32_t sep_get_smc_base(void) {
 // the shape the index<<3 accessor below assumes, up to the highest index used
 // (15, MEM_REPAIR_STATUS).
 //
-// Simulation cannot catch a wrong value here: the testbench models the SMC as a
-// flat axi_sim_mem that answers at whatever address the ROM presents, so any
-// offset appears to work. This must match the generated SMC map.
+// Was 0x10100, which is unmapped in this design: it falls in the gap between
+// SMC_BASE_CONFIG (ends 0xC001004C) and SMC_ALIAS_REMAP (0xC0012000). Every
+// scratch access -- post code, virtual console, the manifest-address and
+// status-to-SEP handshake, the MBIST failure publication -- therefore went to a
+// hole. DV could not see it: the testbench models the SMC as a flat axi_sim_mem
+// seeded at whatever address the ROM reads, so any offset "works" in simulation.
 #define SMC_SCRATCH_BASE_OFFSET 0x39080u
 
 // CPU_CTRL reset control — holds the four SMC cores in reset.
 //
 // 0x39020 is SMC_TOP_SMC_CPU_CTRL_RESET_CTRL_BASE_ADDR (smc_addr.h), 0xC0039020
-// SMC-local. Same 0x39000 CPU_CTRL block as the scratch registers above, so it
-// belongs here and not beside its one caller: a second definition can drift to a
-// base that is still mapped, and the write then succeeds against the wrong target.
-//
-// core[0..3]_reset_n_n0_scan are bits [3:0] and are ACTIVE LOW with reset value
-// 1 (cpu_ctrl.rdl: "Reset control for the CPU, active low"). Clear them to hold
-// the cores in reset; setting them releases reset.
+// SMC-local. It is in the same 0x39000 CPU_CTRL block as the scratch registers.
+// Core reset_n bits [3:0] are active low: clear them to hold the cores in reset.
 #define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x39020u
 #define SMC_CPU_CTRL_RESET_CTRL_CORE_MASK 0xFu
 
-// Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE, RAS_BANK_INFO).
+// Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
 
-// SMC fuse map — chiplet/package ID for usage constraints.
+// SMC fuse map — chiplet/package ID for usage constraints ([S23]).
 // 8 × 32-bit words each. SEP reads via AXI: smc_base + offset.
 //
 // 0x7008 / 0x7028 are SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID / _PACKAGE_ID
 // (smc_addr.h), 0xC0007008 / 0xC0007028 SMC-local, inside SMC_EFUSE_MAP at
-// 0xC0007000. The block base is the part that has to be right: the low 12 bits
-// of a wrong base can still name the correct register within another block.
+// 0xC0007000.
+//
+// Were 0xB008 / 0xB028, which are unmapped here: that range lies between
+// DTP_CTRL_REG (0xC000B000) and DFX_CTRL (0xC000B800). Note the low 12 bits were
+// already right -- only the block base moved, 0xB000 -> 0x7000 -- which is the
+// same shape of drift as the DFX register below.
 #define SMC_FUSE_MAP_CHIPLET_ID_OFFSET 0x7008u
 #define SMC_FUSE_MAP_PACKAGE_ID_OFFSET 0x7028u
 #define SMC_LC_STATE_OFFSET 0x290Cu
@@ -89,14 +91,15 @@ static inline uint32_t sep_get_smc_base(void) {
 // SMC-local, the first register of the DFX_CTRL block (base 0xC000B800,
 // size 0x18: STATUS_SMU, DEBUG_CTRL at +8, DEBUG_BUS_MUX at +0x10).
 //
-// The pre-C boot gate in vector.S reads this register and fails closed, so on
-// silicon an unmapped read returning 0 halts every boot with
-// mem_repair_success clear.
+// Was 0xF800, unmapped in this design -- the gap between DFX_CTRL_DEBUG_BUS_MUX
+// (0xC000B810) and SMC_BASE_CONFIG (0xC0010000). The pre-C boot gate in vector.S
+// reads this register and fails closed, so on real silicon an unmapped read
+// returning 0 would halt every boot with mem_repair_success clear.
 //
-// The SEP->SMC address remap cannot correct a wrong offset: output_remap.sv
+// A SEP->SMC address remap cannot account for the difference: output_remap.sv
 // substitutes only bits [55:IdxStart] and passes [IdxStart-1:0] through
-// unchanged, with IdxStart = 19 (sep_pkg.sv, 512 KB granularity), and this
-// offset lies inside those preserved low bits.
+// unchanged, with IdxStart = 19 (sep_pkg.sv, 512 KB granularity). Both 0xF800
+// and 0xB800 lie inside those preserved low bits.
 #define SMC_DFX_CTRL_STATUS_SMU_OFFSET 0xB800u
 
 // DFX_CTRL_STATUS bitfield (same for SOC and SEP_SMC views).
@@ -119,8 +122,8 @@ static inline uint32_t sep_get_smc_base(void) {
 #define SMC_STRAP_PRIMARY_CHIPLET_BIT 25
 
 // STRAPS_HI (GPIO 32-60, bit index == GPIO index - 32):
-#define SMC_STRAP_MBIST_BYPASS_BIT_HI 22
-#define SMC_STRAP_ROTATE_UPDATE_BIT_HI 26
+#define SMC_STRAP_MBIST_BYPASS_BIT_HI 22  // GPIO 54
+#define SMC_STRAP_ROTATE_UPDATE_BIT_HI 26 // GPIO 58
 
 // Masks (applied to the corresponding 32-bit register read).
 #define SMC_STRAP_MEM_REPAIR_BYPASS_MASK (1u << SMC_STRAP_MEM_REPAIR_BYPASS_BIT)
@@ -198,6 +201,22 @@ static inline uint32_t smc_read_lc_state(void) {
 
 static inline uint32_t smc_read_dft_status(void) {
     return mmio_read32(sep_get_smc_base() + SMC_DFX_CTRL_STATUS_SMU_OFFSET);
+}
+
+// Fuse-sense completion is bit 0 of the SEP-local SMC_FUSE_SENSE_STATUS register;
+// the SMC senses the eFuse array and SEP observes the completion here.
+#define SMC_FUSE_SENSE_DONE_MASK 0x1u
+
+// Every fuse shadow read in the boot flow is downstream of this wait. A shadow
+// read taken before sensing completes returns zero, and zero is a legal encoding
+// for the fields that gate security: LC_STATE zero decodes as TEST_DEV, where
+// secure boot is optional, so an early lifecycle read fails open. Polled without
+// timeout -- the hang is the accepted failure mode ([SEP-ROM-CPU-080]).
+static inline void smc_wait_fuse_sense(void) {
+    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
+            SMC_FUSE_SENSE_DONE_MASK) == 0u) {
+        // spin
+    }
 }
 
 static inline uint32_t sep_get_smc_sram_base(void) {

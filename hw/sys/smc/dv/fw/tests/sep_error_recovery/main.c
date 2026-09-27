@@ -91,9 +91,8 @@ static uint32_t popcount(uint32_t x) {
 
 int main(void) {
     for (uint32_t req = 0; req < NUM_REQUESTS; req++) {
-        /* Signal ready.
-         * NOTE: DATA_SCRATCH_NUM is not cleared here to avoid a race where
-         * a lagging core could clobber data the testbench has already written. */
+        /* Signal ready. DATA_SCRATCH_NUM is not cleared: the testbench writes fresh
+         * operand data before writing the CMD scratch. */
         write_scratch(CMD_SCRATCH_NUM, 0U);
         write_scratch(RESULT_SCRATCH_NUM, 0U);
         write_scratch(STATUS_SCRATCH_NUM, 0U);
@@ -160,5 +159,5 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main intentionally not defined — crt0 default routes only
- * the boot hart to main(), non-boot harts spin in WFI. */
+/* secondary_main is not defined here: the crt0 weak default routes only the
+ * boot hart to main() and parks the other harts in WFI. */

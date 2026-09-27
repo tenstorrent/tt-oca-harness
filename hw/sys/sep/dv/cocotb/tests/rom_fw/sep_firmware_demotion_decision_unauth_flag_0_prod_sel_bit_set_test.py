@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD, selector bit 17 set, BL1 flag clear, BL2 flag SET -> BL1 wins, not demoted.
+"""PROD with BL1 valid/disabled and BL2 requested -> BL1 wins, not demoted.
 
-Only the BL1 flag may reach DEMOTE_1: a ROM that ORs the two flags or falls through
-to the BL2 arm fails, and the BL2 request must still be echoed and measured.
+Only the signed OCA BL1 decision may reach DEMOTE_1: a ROM that ORs the two
+requests or falls through to the BL2 arm fails.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 
 # Bit 2 carries the BL2 request, although measurement.h names it the BL2 decision.
@@ -18,16 +17,11 @@ _MEAS_LOCKED_BL2_ABSENT = "MEAS_DEMOTE=0x00000002"
 
 
 @pyuvm.test()
-class sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test(
-        sep_demotion_prod_base):
-    """PROD, selector set, BL1 flag clear, BL2 flag set: not demoted but locked."""
+class sep_firmware_demotion_bl1_disable_over_bl2_request_prod_test(sep_demotion_prod_base):
+    """BL1 valid/disabled overrides a BL2 request under PROD."""
 
-    required_markers = sep_demotion_prod_base.required_markers + (
-        _MEAS_LOCKED_BL2_COUNTED,
-    )
-    forbidden_markers = sep_demotion_prod_base.forbidden_markers + (
-        _MEAS_LOCKED_BL2_ABSENT,
-    )
+    required_markers = sep_demotion_prod_base.required_markers + (_MEAS_LOCKED_BL2_COUNTED,)
+    forbidden_markers = sep_demotion_prod_base.forbidden_markers + (_MEAS_LOCKED_BL2_ABSENT,)
 
     _SEL = 1
     _AUTH = 0

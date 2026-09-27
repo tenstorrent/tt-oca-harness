@@ -1,15 +1,16 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Self-contained AES-256-ECB encryption golden for the KM->AES sideload KAT.
+"""Self-contained AES encryption golden: ECB, CBC and CTR at 128/192/256.
+
+Serves the KM->AES sideload KAT and the AES mode x key-size breadth test.
 
 Pure-Python, with no third-party crypto dependency so the environment stays
-self-contained. An independent model of AES-256 block encryption, used to
-value-check the
-ciphertext the OpenTitan AES core produces. Derived independently from FIPS-197
-(the algorithm), NOT fitted to observed DUT output — fitting a golden to what the
-DUT already produces is the value-agnostic trap: the module self-tests against the FIPS-197 Appendix C.3 AES-256 known
-vector at import, so a transcription error in the S-box / key schedule / round
-math fails loudly here rather than silently agreeing with a broken DUT.
+self-contained. A reference implementation of AES block encryption that
+value-checks the ciphertext the OpenTitan AES core produces. Derived from FIPS-197,
+not from observed DUT output: the module self-tests at import against the FIPS-197
+Appendix C known vectors (AES-128/192/256) and the SP800-38A CBC/CTR vectors, so a
+transcription error in the S-box / key schedule / round math fails loudly here
+rather than silently agreeing with a broken DUT.
 
 Register byte/word convention (OpenTitan AES, vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc
 "all registers are little-endian", programmers_guide.md):
@@ -282,6 +283,7 @@ _SBOX = (
     0xBB,
     0x16,
 )
+_INV_SBOX = tuple(_SBOX.index(value) for value in range(256))
 
 _NB = 4  # columns in the AES state
 _NK = 8  # 32-bit words in an AES-256 key
@@ -347,6 +349,11 @@ def _shift_rows(state: list[list[int]]) -> None:
         state[row] = state[row][row:] + state[row][:row]
 
 
+def _inv_shift_rows(state: list[list[int]]) -> None:
+    for row in range(1, 4):
+        state[row] = state[row][-row:] + state[row][:-row]
+
+
 def _mix_columns(state: list[list[int]]) -> None:
     for col in range(_NB):
         s0, s1, s2, s3 = (state[r][col] for r in range(4))
@@ -354,6 +361,15 @@ def _mix_columns(state: list[list[int]]) -> None:
         state[1][col] = s0 ^ _gmul(s1, 2) ^ _gmul(s2, 3) ^ s3
         state[2][col] = s0 ^ s1 ^ _gmul(s2, 2) ^ _gmul(s3, 3)
         state[3][col] = _gmul(s0, 3) ^ s1 ^ s2 ^ _gmul(s3, 2)
+
+
+def _inv_mix_columns(state: list[list[int]]) -> None:
+    for col in range(_NB):
+        s0, s1, s2, s3 = (state[r][col] for r in range(4))
+        state[0][col] = _gmul(s0, 14) ^ _gmul(s1, 11) ^ _gmul(s2, 13) ^ _gmul(s3, 9)
+        state[1][col] = _gmul(s0, 9) ^ _gmul(s1, 14) ^ _gmul(s2, 11) ^ _gmul(s3, 13)
+        state[2][col] = _gmul(s0, 13) ^ _gmul(s1, 9) ^ _gmul(s2, 14) ^ _gmul(s3, 11)
+        state[3][col] = _gmul(s0, 11) ^ _gmul(s1, 13) ^ _gmul(s2, 9) ^ _gmul(s3, 14)
 
 
 def aes_encrypt_block(key: bytes, block: bytes) -> bytes:
@@ -379,8 +395,32 @@ def aes_encrypt_block(key: bytes, block: bytes) -> bytes:
     return bytes(state[row][col] for col in range(_NB) for row in range(4))
 
 
+def aes_decrypt_block(key: bytes, block: bytes) -> bytes:
+    """AES decrypt one 16-byte block (ECB, no padding). FIPS-197 InvCipher()."""
+    assert len(block) == 16, "AES block must be 16 bytes"
+    assert len(key) in (16, 24, 32), "AES key must be 16/24/32 bytes"
+    nk = len(key) // 4
+    nr = nk + 6
+    words = _key_expansion(key, nk, nr)
+    state = [[block[col * 4 + row] for col in range(_NB)] for row in range(4)]
+    _add_round_key(state, words, nr)
+    for rnd in range(nr - 1, 0, -1):
+        _inv_shift_rows(state)
+        for row in range(4):
+            for col in range(_NB):
+                state[row][col] = _INV_SBOX[state[row][col]]
+        _add_round_key(state, words, rnd)
+        _inv_mix_columns(state)
+    _inv_shift_rows(state)
+    for row in range(4):
+        for col in range(_NB):
+            state[row][col] = _INV_SBOX[state[row][col]]
+    _add_round_key(state, words, 0)
+    return bytes(state[row][col] for col in range(_NB) for row in range(4))
+
+
 def aes256_encrypt_block(key: bytes, block: bytes) -> bytes:
-    """AES-256 encrypt one block (kept for the ECB-256 KM AES sideload KAT)."""
+    """AES-256 encrypt one block."""
     assert len(key) == 32, "AES-256 key must be 32 bytes"
     return aes_encrypt_block(key, block)
 
@@ -420,6 +460,17 @@ def aes_cbc_encrypt(key: bytes, iv: bytes, data: bytes) -> bytes:
     for i in range(0, len(data), 16):
         prev = aes_encrypt_block(key, _xor(data[i : i + 16], prev))
         out += prev
+    return out
+
+
+def aes_cbc_decrypt(key: bytes, iv: bytes, data: bytes) -> bytes:
+    """CBC inverse (SP800-38A 6.2), without padding removal."""
+    assert len(iv) == 16 and len(data) % 16 == 0, "CBC IV=16B, data block-aligned"
+    out, prev = b"", iv
+    for i in range(0, len(data), 16):
+        block = data[i : i + 16]
+        out += _xor(aes_decrypt_block(key, block), prev)
+        prev = block
     return out
 
 
@@ -483,6 +534,10 @@ assert aes_encrypt_block(bytes(range(24)), _FIPS197_PT) == bytes.fromhex(
 assert aes256_encrypt_block(bytes(range(32)), _FIPS197_PT) == bytes.fromhex(
     "8ea2b7ca516745bfeafc49904b496089"
 ), "AES-256 ECB FIPS-197 C.3 self-test failed"
+assert (
+    aes_decrypt_block(bytes(range(32)), bytes.fromhex("8ea2b7ca516745bfeafc49904b496089"))
+    == _FIPS197_PT
+), "AES-256 inverse FIPS-197 C.3 self-test failed"
 
 # SP800-38A AES-128 CBC (F.2.1) and CTR (F.5.1), 2 blocks each.
 _SP38A_KEY = bytes.fromhex("2b7e151628aed2a6abf7158809cf4f3c")
@@ -492,6 +547,14 @@ assert aes_cbc_encrypt(
 ) == bytes.fromhex("7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b2"), (
     "AES-128 CBC SP800-38A F.2.1 self-test failed"
 )
+assert (
+    aes_cbc_decrypt(
+        _SP38A_KEY,
+        bytes.fromhex("000102030405060708090a0b0c0d0e0f"),
+        bytes.fromhex("7649abac8119b246cee98e9b12e9197d5086cb9b507219ee95db113a917678b2"),
+    )
+    == _SP38A_PT2
+), "AES-128 CBC inverse SP800-38A F.2.1 self-test failed"
 assert aes_ctr_encrypt(
     _SP38A_KEY, bytes.fromhex("f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"), _SP38A_PT2
 ) == bytes.fromhex("874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff"), (

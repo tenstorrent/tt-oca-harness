@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smc_flr_sanity_test (Batch D).
+"""Sequence for smc_flr_sanity_test.
 
-Scope, stated deliberately: this test verifies the *downstream* half of an FLR
+Scope: this test verifies the *downstream* half of an FLR
 recovery only -- the cool reset itself and the CSR path across it -- and drives
 it from the ``rst_cool_ni`` pin. It does NOT exercise the PCIe FLR request path.
 
@@ -10,8 +10,7 @@ The FLR trigger path (``cfg_flr_pf_active_i`` -> isolate-req CSR -> FLR delay /
 hold counters -> ``rst_cool_no``) is a real, available TB stimulus
 (``tb_top.sv:143`` ``tb_cfg_flr_pf_active``, wired at ``tb_top.sv:1244``) and is
 covered by the enrolled sibling ``smc_cool_reset_from_pcie_test``
-(``seq_lib/smc_cool_reset_from_pcie_test_seq.py``); the earlier claim here that
-the OSS TB exposes no FLR source is stale and has been removed. To keep the
+(``seq_lib/smc_cool_reset_from_pcie_test_seq.py``). To keep the
 attribution exact, this sequence asserts ``tb_cfg_flr_pf_active`` is inactive
 while it drives its own pin-cool pulse, so the observed cool reset can only have
 come from ``rst_cool_ni``.
@@ -26,18 +25,17 @@ post-release checks ([NO-ALWAYS-PASS-CHECKER]):
 * mid-assert: a bounded ``WAIT_STATE`` on ``rst_primary_ref/smc == 0`` while the
   cold-stable path stays released (``clk_rst.adoc``: cool reset is a
   primary-level reset). It also fixes the stimulus itself -- ``smc_reset_ctrl``
-  de-glitches ``rst_cool_ni`` over 32 ``clk_ref_i`` samples, so the former fixed
-  20-cycle hold was below the de-glitch window and was silently rejected: no
-  reset was ever taken. Holding the pin low until the reset is *observed* cannot
-  be too short.
+  de-glitches ``rst_cool_ni`` over 32 ``clk_ref_i`` samples, so a fixed hold
+  shorter than the de-glitch window is silently rejected and no reset is taken.
+  Holding the pin low until the reset is *observed* cannot be too short.
 * post-release: ``SCRATCH_COLD_WARM_0`` is read *before* being rewritten and
   must equal its mapped reset value, not the pattern written before the pulse --
   cool reaches the warm reset domain this register lives in. The following
   write/read-back is the positive control that the CSR path is alive again.
 
 Both waits are bounded and raise with the last observed state on expiry
-([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]); no fixed settle remains on the
-proof path.
+([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]); the proof path has no fixed
+settle.
 """
 
 from __future__ import annotations
@@ -82,12 +80,10 @@ EXPECTED_VALUE_CHECKS = 5
 class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
     """Pin-cool reset + CSR recovery sanity (FLR trigger path: see docstring).
 
-    Reset items come from ``SmcResetSeqBase`` -- including the ``expect_*``
-    keyword guard, without which a mistyped expectation becomes a silent
-    non-check -- the failure mode of building reset items with a bare
-    ``setattr`` loop. Only the dispatch is local: this
-    sequence runs on the SEP_IN AXI sequencer, so its reset items are handed to
-    the reset agent's sequencer via ``dispatch_reset``.
+    Reset items come from ``SmcResetSeqBase``, whose ``expect_*`` keyword guard
+    rejects a mistyped expectation. Only the dispatch is local: this sequence
+    runs on the SEP_IN AXI sequencer, so its reset items are handed to the reset
+    agent's sequencer via ``dispatch_reset``.
     """
 
     # Ceilings only, never the checked quantity (see the constants above).
@@ -151,7 +147,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self._reset_op("cool_rst_lo", SmcResetOp.COOL_RST_LO)
         # Hold rst_cool_ni low until the reset is really taken (mid-assert
         # FAIL-ON), never for a fixed count below the de-glitch window.
-        await self._wait_reset_state(
+        asserted = await self._wait_reset_state(
             "cool_asserted",
             COOL_ASSERT_BOUND_REF,
             expect_powergood_stable=1,
@@ -161,7 +157,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             expect_left_stable=True,
         )
         await self._reset_op("cool_rst_hi", SmcResetOp.COOL_RST_HI)
-        await self._wait_reset_state(
+        released = await self._wait_reset_state(
             "cool_released",
             COOL_RECOVER_BOUND_REF,
             expect_powergood_stable=1,
@@ -182,7 +178,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         )
         # Cool-effect compare, before any rewrite: the pre-cool pattern must be
         # gone and the mapped reset value back.
-        await self.csr_read(
+        post_cool = await self.csr_read(
             "SCRATCH_COLD_WARM_0_POST_COOL",
             SCRATCH_COLD_WARM_0.addr,
             expected=SCRATCH_COLD_WARM_0.expected,
@@ -194,7 +190,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         await self.csr_write(
             "SCRATCH_COLD_WARM_0_POST_COOL_RW", SCRATCH_COLD_WARM_0.addr, SCRATCH_PATTERN
         )
-        await self.csr_read(
+        post_cool_rw = await self.csr_read(
             "SCRATCH_COLD_WARM_0_POST_COOL_RW", SCRATCH_COLD_WARM_0.addr, expected=SCRATCH_PATTERN
         )
         await self.csr_write(
@@ -208,13 +204,10 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             assert s.rst_primary_smc_clk_n == 1, f"primary smc reset asserted at {s.get_name()}"
             assert s.rst_wdt_smc_clk_n == 1, f"wdt reset asserted at {s.get_name()}"
         self._assert_flr_pin_idle("post cool recovery")
-        # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` deliberately does NOT assert
-        # `timeouts == 0` here (it could not fail on this path -- a no-response
-        # raises in the AXI driver instead); what it does assert is that the
-        # scoreboard actually checked at least as many SYS AXI items as this
-        # sequence issued, which the sequence's own counter cannot see. The
-        # fail-capable value proof is the floor below.
+        # Loop integrity + scoreboard cross-check: the scoreboard must have
+        # checked at least as many SYS AXI items as this sequence issued, which
+        # the sequence's own counter cannot see (a no-response raises in the
+        # AXI driver). The fail-capable value proof is the floor below.
         self.assert_all_reachable(EXPECTED_ACCESSES, "FLR sanity CSR sweep")
         sb = self.env.scoreboard
         # Fail-capable floor: the scoreboard books a value check only after an
@@ -230,4 +223,21 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
         assert sb.reset_wait_checks_seen >= 2, (
             "expected the cool assert and release handshakes to be checked, "
             f"scoreboard saw {sb.reset_wait_checks_seen}"
+        )
+        cocotb.log.info(
+            "CHK-FLR-COOL-CSR-RECOVERY: rst_cool_ni pulse with cfg_flr_pf_active_i=0 "
+            "took rst_primary_{ref,smc} low after %d clk_ref_i cycles (bound %d) "
+            "and released them after %d (bound %d); SCRATCH_COLD_WARM_0 read %#010x "
+            "(its reset value) where %#010x was written before the pulse, then "
+            "%#010x on the post-cool write/read-back; the scoreboard checked %d "
+            "value compares and %d reset handshakes",
+            asserted.wait_ref_cycles,
+            COOL_ASSERT_BOUND_REF,
+            released.wait_ref_cycles,
+            COOL_RECOVER_BOUND_REF,
+            post_cool,
+            SCRATCH_PATTERN,
+            post_cool_rw,
+            sb.sys_axi_value_checks_seen,
+            sb.reset_wait_checks_seen,
         )

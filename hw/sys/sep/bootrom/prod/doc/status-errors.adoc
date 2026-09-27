@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-prod-rom-status-errors]]
+== Status and error reporting
+
+BL0 uses SEP cold scratch registers for channels that must be reachable before
+the outbound fabric and C runtime are available.
+
+[cols="1,3,5",options="header"]
+|===
+|Register |Channel |Contract
+
+|`cold_scratch[0]`
+|Terminal verdict
+|BL0 writes the failure value only. A successful boot transfers to BL1, which
+owns the pass verdict.
+
+|`cold_scratch[1]`
+|Machine-readable status
+|Carries encoded status and error values throughout assembly and C execution.
+
+|`cold_scratch[2]`
+|Virtual console
+|Carries packed debug characters when debug output is compiled in.
+
+|`cold_scratch[7]`
+|Warm-reset handler
+|Carries the BL1 ICCM re-entry address across a watchdog reset.
+|===
+
+=== Status encoding
+
+`include/errors.h` encodes a status as an eight-bit type, an eight-bit firmware
+stage ID, and a 16-bit value. BL0 uses information, warning, error, debug, and
+extended-information types. `include/status_values.h` is the authoritative
+registry for `SEP_MSG_*` values; consumers should use its names rather than
+copying numeric values from this document.
+
+Every status is written to `cold_scratch[1]`. Debug values stop there. Other
+types are also offered to the SMC-SRAM ring when ring reporting is enabled and
+valid.
+
+=== Status ring
+
+The status ring is lock-free: SEP advances `head`, and SMC advances `tail`.
+Before an entry write, BL0 validates the entry count, head, tail, remaining
+capacity, and destination address. An invalid state reports
+`SEP_MSG_STATUS_REPORTING_INVALID` through `cold_scratch[1]` and does not write
+the entry.
+
+Capacity is reserved by severity. Informational status preserves space for a
+warning and an error; warning status preserves space for an error. At the
+reservation boundary BL0 inserts the corresponding overflow marker. An error
+can use the final free entry.
+
+=== Trap handling
+
+The reset path first installs a stack-free trap vector. It records a general
+exception status followed by `mcause`, `mtval`, and `mepc`, then restores the
+decodable status word and writes the failure verdict. It uses only SEP scratch
+registers, so an early exception does not depend on external address decode.
+
+After the stack is valid, BL0 installs the C-capable trap vector. It reports
+the same CSRs through the debug console, writes the terminal failure verdict,
+and stops.
+
+=== Error convergence
+
+C error paths converge on `rom_err_fail()`. When `bl0_state` is initialized,
+the function stores the full error code there. It also publishes an encoded
+error in `cold_scratch[1]`, writes the failure verdict in
+`cold_scratch[0]`, and enters a `wfi` loop.
+
+Manifest failures use the `MANIFEST_ERR_*` namespace, formed as
+`OCA_BOOT_ERR_BASE | oca_result_t` -- the OCA library's verdict carried in the
+low byte. The enumeration is
+`tools/tt-oca-manifest/validators/oca/lib/oca_validator.h`, and
+`status_for_result()` in `src/oca_boot.c` is the only bridge between it and the
+`SEP_MSG_*` codes the status ring carries.
+Other terminal firmware errors are defined next to their owning implementation
+or in `include/errors.h`. These registries, rather than this document, are the
+source of numeric values.
+
+Memory-repair and MBIST failure can occur before the C runtime and
+`bl0_state` exist. That path records the raw DFX word in SMC scratch register
+10, leaves a terminal status in `cold_scratch[1]`, and stops without relying on
+the outbound mailbox.

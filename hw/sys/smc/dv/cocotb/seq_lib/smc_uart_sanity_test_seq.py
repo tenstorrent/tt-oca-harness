@@ -108,7 +108,7 @@ class smc_uart_sanity_test_seq(SmcCsrSeq):
             iir = await self.csr_read(f"IIR_{ctrl}_{tgt}", t["iir"])
             if _iir_pending(iir) and _iir_id(iir) == _INTR_RDR:
                 break
-            await Timer(100, units="ns")
+            await Timer(100, unit="ns")
         else:
             raise AssertionError(f"UART{ctrl}->UART{tgt}: RDR missing IIR=0x{iir:08x}")
         rx = int(await self.csr_read(f"RX_{ctrl}_{tgt}", t["rbr"])) & 0xFF

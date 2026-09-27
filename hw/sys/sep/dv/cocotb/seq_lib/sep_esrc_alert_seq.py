@@ -17,7 +17,7 @@ any real failure, which is what makes the aggregate slot provable per source.
 
 from __future__ import annotations
 
-from sep_reg_meta import ENTROPY_SOURCE
+from sep_reg_meta import ENTROPY_SOURCE, sym
 
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import (
@@ -38,15 +38,27 @@ from seq_lib.sep_esrc_bringup_seq import (
     RING_OSC_ALL_ON,
 )
 
-PF_BIT = 16
-ALERT_BIT = 10
-ERR_BIT = 11
+# Field masks come from the generated entropy_source export, like the addresses
+# and encodings in this file; a field that moves in the RDL moves these with it.
+PF_MASK = ENTROPY_SOURCE.fields("INTR_STATUS")["PERSISTENT_FAILURE"]["bm"]
+ALERT_MASK = ENTROPY_SOURCE.fields("MAIN_SM_STATUS")["ALERT"]["bm"]
+ERR_MASK = ENTROPY_SOURCE.fields("MAIN_SM_STATUS")["ERR"]["bm"]
+PF_BIT = PF_MASK.bit_length() - 1
+ALERT_BIT = ALERT_MASK.bit_length() - 1
+ERR_BIT = ERR_MASK.bit_length() - 1
+# Aggregator slot, not an RDL CSR field: no symbol exists for it.
 IRQ_AGG_IDX = 15  # PIC source 16
-PF_MASK = 1 << PF_BIT
-ALERT_MASK = 1 << ALERT_BIT
-ERR_MASK = 1 << ERR_BIT
 TRIP_WINDOW = 64
-TRIP_THRESHOLD = 1
+# Three failing windows, not one. At a threshold of one the alert comparator
+# (entropy_source.sv: alert_thresh_fail = ANY_FAIL_COUNT >= THRESHOLD) already
+# implies ANY_FAIL_COUNT >= 1, so the counter check could not fail on its own,
+# and no denomination -- windows, per-test pulses, or per-lane events -- is
+# distinguishable at a count of one.
+TRIP_THRESHOLD = 3
+# Windows keep accumulating between the trip and the poll that observes it, so
+# the upper bound carries slack. It stays far below the per-test pulse rate the
+# same run produces, which is what rejects a counter denominated in events.
+ANY_FAIL_SLACK = 8
 
 # entropy_source.rdl INTR_TEST: every source the register defines, each a
 # write-one-to-pulse singlepulse field. Taken from the generated export so a
@@ -66,9 +78,28 @@ assert len(INTR_SOURCES) == 8, (
     f"{[n for n, _ in INTR_SOURCES]}"
 )
 ANY_FAIL_MASK = ENTROPY_SOURCE.fields("ALERT_SUMMARY_FAIL_COUNTS")["ANY_FAIL_COUNT"]["bm"]
-REPCNT_FAIL_MASK = ENTROPY_SOURCE.fields("ALERT_FAIL_COUNTS")["REPCNT_FAIL_COUNT"]["bm"]
-REPCNT_FAIL_LSB = ENTROPY_SOURCE.fields("ALERT_FAIL_COUNTS")["REPCNT_FAIL_COUNT"]["bp"]
 HEALTH_STATUS_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_STATUS")["HEALTH_STATUS"]["bm"]
+
+# entropy_source.rdl HEALTH_TEST_STATUS: "repetition [0], APT high or low [3],
+# Markov high [4], and Markov low [5]". The generator-status registers carry the
+# same allocation. Bits 1:2 and 6:7 are reserved and must never latch.
+HEALTH_LANE_MASK = (1 << 0) | (1 << 3) | (1 << 4) | (1 << 5)
+HEALTH_RSVD_MASK = HEALTH_STATUS_MASK & ~HEALTH_LANE_MASK
+
+# The five per-lane fail counters. Each pair counts one pulse twice: a 32-bit
+# total cleared by health_test_clr, and a 4-bit alert counter cleared by
+# alert_cntrs_clr (entropy_source.sv u_entropy_src_cntr_reg_* instances). Two
+# different widths and two different clears off one event, so comparing them is
+# a DUT-to-DUT contract rather than a restatement.
+FAIL_LANES = ("REPCNT", "APT_HI", "APT_LO", "MARKOV_HI", "MARKOV_LO")
+TOTAL_FAILS_ADDR = {lane: sym(f"ENTROPY_SOURCE_{lane}_TOTAL_FAILS_REG_ADDR") for lane in FAIL_LANES}
+ALERT_FAIL_FIELD = {lane: f"{lane}_FAIL_COUNT" for lane in FAIL_LANES}
+
+# entropy_source.rdl instantiates one health-status register per generator.
+GENERATOR_HEALTH_ADDR = tuple(
+    sym(f"ENTROPY_SOURCE_GENERATOR_{n}_HEALTH_STATUS_REG_ADDR") for n in range(12)
+)
+assert len(GENERATOR_HEALTH_ADDR) == 12
 
 
 class SepEsrcAlert(SepAxiRegDriver):
@@ -108,12 +139,25 @@ class SepEsrcAlert(SepAxiRegDriver):
     async def read_any_fail_count(self) -> int:
         return (await self._rd(ESRC_ALERT_SUMMARY_FAIL_COUNTS)) & ANY_FAIL_MASK
 
-    async def read_repcnt_fail_count(self) -> int:
-        raw = await self._rd(ESRC_ALERT_FAIL_COUNTS)
-        return (raw & REPCNT_FAIL_MASK) >> REPCNT_FAIL_LSB
-
     async def read_health_status(self) -> int:
         return (await self._rd(ESRC_HEALTH_TEST_STATUS)) & HEALTH_STATUS_MASK
+
+    async def read_total_fails(self) -> dict[str, int]:
+        """The five 32-bit per-lane totals, counted since MODULE_ENABLE rose."""
+        return {lane: await self._rd(addr) for lane, addr in TOTAL_FAILS_ADDR.items()}
+
+    async def read_alert_fail_counts(self) -> dict[str, int]:
+        """The five 4-bit per-lane alert counters, from one ALERT_FAIL_COUNTS read."""
+        raw = await self._rd(ESRC_ALERT_FAIL_COUNTS)
+        out = {}
+        for lane, field in ALERT_FAIL_FIELD.items():
+            meta = ENTROPY_SOURCE.fields("ALERT_FAIL_COUNTS")[field]
+            out[lane] = (raw & meta["bm"]) >> meta["bp"]
+        return out
+
+    async def read_generator_health(self) -> list[int]:
+        """The twelve per-generator latched health-status bytes."""
+        return [(await self._rd(addr)) & 0xFF for addr in GENERATOR_HEALTH_ADDR]
 
     async def disable_health_tests(self) -> None:
         """Clear HEALTH_TEST_CTRL.ENABLE so no test can re-latch HEALTH_STATUS.

@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Filter multi-entry sweep (testlist group ``p1_coverage_gap_r2``).
+"""Filter multi-entry sweep.
 
 RTL exposes 16 inbound + 16 outbound filter entries; this sweep covers every
-one of the 32 slots rather than entry 0 of each direction.
+one of the 32 slots.
 
 Each of the 32 slots is proven *individually discriminable*, not merely
 "a window that answers 0x3000": every slot gets a signature value unique to
@@ -23,7 +23,7 @@ readback fails.
 
 Phase 1 checks the RDL reset content of every window before anything is
 written, and phases 4/5 restore and re-confirm the RDL default, so the run
-also keeps the reset-value evidence it had before.
+also carries reset-value evidence for every slot.
 """
 
 from __future__ import annotations
@@ -141,7 +141,7 @@ def _slot_signature(index: int, outbound: bool) -> int:
     ``src_id``/``group_id`` encode the index in two independent nibbles that
     move in opposite directions, so no two of the 32 slots share a value.
     ``entry_enabled`` (rdl:34), ``allow_ns`` (rdl:40), ``allow_burst``
-    (rdl:64) and the write-once ``locked`` (rdl:71) are deliberately left at
+    (rdl:64) and the write-once ``locked`` (rdl:71) are left at
     their reset value: the sweep must not arm or lock a filter.
     ``data_bus_width`` (rdl:46) is ``sw=r``, which is why the expected
     readback is the RDL default OR-ed with the signature.

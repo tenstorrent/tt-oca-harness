@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// VCS coverage scope for the smu wrapper DUT (`--dut smu`), the -cm_hier
+// counterpart of ../verilator/smu_wrapper_cov_scope.vlt. README.md beside
+// this file says what each line drops and why.
+
+-tree smu_wrapper_uvm_top 1
+-tree smu_wrapper_uvm_top.u_dut.u_smu
+-tree smu_wrapper_uvm_top.u_dut.u_smc_ip_integration
+-tree smu_wrapper_uvm_top.u_dut.u_sep_ip_integration
+-tree smu_wrapper_uvm_top.u_axi_out_bridge
+-tree smu_wrapper_uvm_top.u_axi_out_cut
+-tree smu_wrapper_uvm_top.u_axi_out_if
+
+begin assert
+-tree axi_pkg
+end

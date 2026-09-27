@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_jtag_dmi_smoke_test(smc_base_test):
     """U7-3: DTMCS + DMI read dmstatus.version==2 after dmactive."""
 
+    required_evidence = ("CHK-JTAG-DMI-SMOKE",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

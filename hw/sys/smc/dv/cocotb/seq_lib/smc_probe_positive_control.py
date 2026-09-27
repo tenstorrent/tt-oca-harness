@@ -37,22 +37,22 @@ proves a *change* instead, because its observables (the ``tb_core2pad_o`` /
 ``tb_core2pad_en_o`` pad-output vectors) are non-zero at idle -- it drives a real
 GPIO0 TX programming change, requires exactly one pad to move, and requires the
 bus to restore bit-for-bit.  The three ``tb_gpio_*_any`` OR-aggregates get **no**
-control on purpose: they read 1 from reset onward and nothing can drive them to 0,
+control: they read 1 from reset onward and nothing can drive them to 0,
 so they are declared unbackable (see below) rather than given a control that would
 certify nothing.
 
-``tb_axil_dtp_csr_active`` deliberately has **no** control here.
-``tb_top.sv:1151`` ties ``axil_dtp_csr_resp = '0'`` -- there is no responder, so
+``tb_axil_dtp_csr_active`` has **no** control here.
+``tb_top.sv`` ties ``axil_dtp_csr_resp = '0`` -- there is no responder, so
 an AXI-Lite access into the DTP CSR window would wedge instead of completing --
-and the DTP CSR boundary is a recorded TB-policy deferral
-(``hw/sys/smc/dv/README.md``).  It is
-listed in ``env.smc_probe_liveness.UNBACKABLE_PROBES`` and its idle value is
+and the DTP CSR boundary is outside this bench's scope
+(``hw/sys/smc/dv/README.md``). It is listed in
+``env.smc_probe_liveness.UNBACKABLE_PROBES`` and its idle value is
 OBSERVED-ONLY, never closure evidence.
 
-Model: ``smc_efuse_vip_utils.prove_efuse_bank_axil_activity``, which already
-proves ``tb_axil_efuse_bank_active`` this way (that probe and
-``tb_axil_any_master_active`` therefore need no new control here; the passive
-ledger credits them from the existing stimulus).
+:func:`prove_axil_efuse_bank_probe` reuses the window and RDL-sourced expected
+value that ``smc_efuse_vip_utils.prove_efuse_bank_axil_activity`` owns for the
+eFuse tests; ``tb_axil_any_master_active`` has no control of its own, the
+passive ledger credits it from the existing stimulus.
 """
 
 from __future__ import annotations
@@ -123,11 +123,9 @@ UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 # ETBEI/TTBEI = the transmitter-holding-register-empty interrupt enable and its
 # ITR (interrupt test register) counterpart. ITR is a real 16550 register in the
 # RTL, so raising the source through it is frontdoor CSR stimulus, not a TB
-# backdoor. Note (measured by mutation): with the TX FIFO empty after reset the
-# THRE source is already active, so the IER unmask is the load-bearing step --
-# removing it leaves tb_uart_irq_any at 0 and the control fails, while removing
-# only the ITR write still asserts. The ITR write is kept so the source is
-# raised deterministically rather than relying on the reset FIFO state.
+# backdoor. With the TX FIFO empty after reset the THRE source is already
+# active, so the IER unmask is what raises the aggregate; the ITR write raises
+# the source deterministically regardless of the reset FIFO state.
 IER_ETBEI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ETBEI_bm")
 ITR_TTBEI = _field_mask(_UART_H, "UART_16550_MAIN__ITR__TTBEI_bm")
 
@@ -592,14 +590,12 @@ async def _await_pad_bus(dut, predicate, label: str) -> tuple[int, int, int]:
 async def prove_gpio_pad_bus_probe(seq: SmcCsrSeq) -> None:
     """Positive control for the GPIO pad-output bus vectors.
 
-    Why this control and not one on the three ``tb_gpio_*_any`` aggregates:
-    ``tb_top.sv:1375-1377`` defines those as OR-reductions over the *whole* pad
-    bus, which carries idle-high LSIO pads (UART TX) and default-enabled pad
-    inputs. They read 1 from reset onward in every retained run and no frontdoor
-    stimulus can drive any of them to 0, so a net tied to constant 1 is
-    indistinguishable from the real aggregate and **no control on them can
-    exist**. They are declared in
-    ``env.smc_probe_liveness.UNBACKABLE_PROBES`` for exactly that reason.
+    The three ``tb_gpio_*_any`` aggregates admit no control: they are
+    OR-reductions over the *whole* pad bus (``tb_top.sv``), which carries
+    idle-high LSIO pads (UART TX) and default-enabled pad inputs, so they read 1
+    from reset onward and no frontdoor stimulus can drive any of them to 0; a
+    net tied to constant 1 is indistinguishable from the real aggregate. They
+    are declared in ``env.smc_probe_liveness.UNBACKABLE_PROBES``.
 
     The raw vectors ``tb_core2pad_o`` / ``tb_core2pad_en_o`` (tb_top.sv:1378-1379,
     mirrors of the same ``u_dut.u_smc.core2pad*_o`` nets the aggregates reduce)
@@ -806,22 +802,19 @@ class SmcProbePositiveControlSeq(SmcCsrSeq):
 class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
     """Cross-sample GPIO pad-bus compare with a *backed* FAIL-ON path.
 
-    What changed, and why. The previous version compared later samples of the
-    three ``tb_gpio_*_any`` aggregates against an earlier sample **of the same
-    probe**. That compare is fail-capable against a *moving* aggregate but not
-    against a *dead* one: those three observables are OR-reductions over the
-    whole pad bus (``tb_top.sv:1375-1377``), read 1 from reset onward in every
-    retained run, and no frontdoor stimulus can drive any of them to 0 -- so a
-    stuck-at-1, undriven or mis-bound net satisfied all six compares exactly as a
-    live quiet DUT did, and no control could ever tell the difference
-    (``[NEGATIVE-NEEDS-POSITIVE-CONTROL]``). The three aggregates are therefore
-    declared in ``env.smc_probe_liveness.UNBACKABLE_PROBES``: the scoreboard logs
-    them as OBSERVED-ONLY diagnostics and *refuses* a stated expectation on them.
+    The three ``tb_gpio_*_any`` aggregates are OR-reductions over the whole pad
+    bus (``tb_top.sv``), read 1 from reset onward, and no frontdoor stimulus can
+    drive any of them to 0, so a compare of a later sample against an earlier
+    sample of the same probe cannot separate a stuck-at-1, undriven or mis-bound
+    net from a live quiet DUT (``[NEGATIVE-NEEDS-POSITIVE-CONTROL]``). They are
+    declared in ``env.smc_probe_liveness.UNBACKABLE_PROBES``: the scoreboard
+    logs them as OBSERVED-ONLY diagnostics and *refuses* a stated expectation
+    on them.
 
-    The property moved to where it can be backed: the raw pad-output vectors
+    The backable property is on the raw pad-output vectors
     ``tb_core2pad_o`` / ``tb_core2pad_en_o`` (the same ``u_dut.u_smc.core2pad*_o``
-    nets the aggregates reduce, mirrored per-pad at ``tb_top.sv:1378-1379``).
-    Those *do* move under real frontdoor GPIO CSR programming, so:
+    nets the aggregates reduce, mirrored per-pad in ``tb_top.sv``). Those *do*
+    move under real frontdoor GPIO CSR programming, so:
 
     1. :func:`prove_gpio_pad_bus_probe` runs first (via
        :func:`ensure_gpio_pad_bus_control`) and proves this run's DUT moves both
@@ -838,8 +831,8 @@ class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
     exact cross-sample expectation on it would be flaky rather than proof -- see
     ``GPIO_STABLE_VECTOR_FIELDS``. Its value is reported as a diagnostic.
 
-    The expectation is still an *earlier* observation rather than the sample
-    being checked, and it is now on an observable proven able to change.
+    The expectation is an *earlier* observation rather than the sample being
+    checked, on an observable proven able to change.
     """
 
     def __init__(self, name: str, reference, samples: int = 2, gap_ref_cycles: int = 80) -> None:

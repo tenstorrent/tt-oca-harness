@@ -7,9 +7,14 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.5.29
-:revdate: 2026-09-02
+:revnumber: 0.5.33
+:revdate: 2026-09-11
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
+
+ifdef::backend-pdf[]
+[preface]
+== Documentation Overview
+endif::backend-pdf[]
 
 The Open Chiplet Atlas Harness (OCAH) is a chiplet design IP where the
 non-application-specific functions are integrated to form a chiplet design
@@ -17,6 +22,10 @@ framework. These non-application-specific functions include common chiplet
 subsystems like Security Processor (SEP), System Management Controller (SMC),
 System Management Network (SMN), AXI-over-UCIe bridge (AoU), Debug & Test Ports
 (DTP), etc.
+
+This manual is the architecture and register-level reference for those
+blocks. Motivation, use cases, and the OCA-layer feature overview are on
+xref:ocah-home::index.adoc[Home].
 
 ifdef::backend-html5[]
 == Documentation Overview
@@ -26,16 +35,96 @@ This documentation is organized into the following sections:
 ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
-* xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
+** xref:overview.adoc[Platform Overview]
+** xref:memory_map.adoc[OCAH Memory Map]
+** xref:power_domains.adoc[Power Domains]
+** xref:clock_domains.adoc[Clock Domains]
+** xref:reset.adoc[Reset]
+* OCAH Platform Components - The subsystems that make up the OCAH platform
+** xref:smu:index.adoc[System Management Unit (SMU)] - SMU composition, AXI crossbar and child subsystems
+*** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
+*** xref:sep:index.adoc[Security Processor (SEP)]
+*** xref:smc:index.adoc[System Management Controller (SMC)]
+** xref:smn.placeholder.adoc[System Management Network (SMN)]
+** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
+* xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
+* xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual
+* xref:dashboard.adoc[Verification Dashboard]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
 :imagesdir: ../assets
 ifndef::release[]
-include::revision.adoc[]
+include::revision.adoc[leveloffset=+1]
 endif::release[]
-= Introduction
-include::about-ocah.adoc[leveloffset=+1]
-include::architecture.adoc[]
+include::architecture.adoc[leveloffset=+1]
+
+== OCAH Platform Components
+include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+2]
+
+include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=+3]
+include::../../../hw/sys/dtp/doc/overview.adoc[leveloffset=+4]
+include::../../../hw/sys/dtp/doc/jtag.adoc[leveloffset=+4]
+include::../../../hw/ip/jtag/jtag_intf_unit/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/jtag/jtag_stap/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=+4]
+include::../../../hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=+4]
+include::../../../hw/sys/dtp/doc/clock_stop.adoc[leveloffset=+4]
+include::../../../hw/sys/dtp/doc/reference.adoc[leveloffset=+4]
+
+include::../../../hw/sys/sep/doc/index.adoc[leveloffset=+3]
+include::../../../hw/sys/sep/doc/introduction.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/threat_model.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/attack_countermeasures.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/overview.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/fabric.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/memory_map.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/cpu.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/rom.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/interrupts.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/crypto.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/trng.adoc[leveloffset=+5]
+include::../../../hw/ip/entropy_source/doc/architecture.adoc[leveloffset=+6]
+include::../../../hw/sys/sep/doc/aes.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/hmac.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/kmac.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/adams_bridge.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/otbn.adoc[leveloffset=+5]
+include::../../../hw/ip/key_manager/doc/index.adoc[leveloffset=+5]
+
+<<<
+
+include::../../../hw/sys/sep/doc/periphs.adoc[leveloffset=+4]
+include::../../../hw/sys/sep/doc/otp_fuse_controller.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/peripheral_subsystem.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/spi.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/watchdog.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/reset_controller.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/token_processing.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/security_disable.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/lifecycle_controller.adoc[leveloffset=+5]
+include::../../../hw/sys/sep/doc/test_mode.adoc[leveloffset=+4]
+
+include::../../../hw/sys/smc/doc/index.adoc[leveloffset=+3]
+include::../../../hw/sys/smc/doc/overview.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/clk_rst.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/periphs.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/cpu.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/interrupts.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/rom.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/fabric.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/dma.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/dfd.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/zeroer.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/scan_protection.adoc[leveloffset=+4]
+include::../../../hw/sys/smc/doc/memmap.adoc[leveloffset=+4]
+
+include::smn.placeholder.adoc[leveloffset=+2]
+include::aou.adoc[leveloffset=+2]
+
+include::ip-reference.adoc[leveloffset=+1]
+include::referenced-documents.adoc[leveloffset=+1]
 endif::backend-pdf[]

@@ -9,13 +9,13 @@ Needs ``+sep_crypto_edn_force``: both slots run a full RSA-3072 modexp on OTBN.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_primary_toc_fail_base import sep_primary_toc_fail_base
 
 
 @pyuvm.test()
 class sep_firmware_primary_non_encrypted_invalid_payload_image_count_test(
-        sep_primary_toc_fail_base):
+    sep_primary_toc_fail_base
+):
     """Plaintext primary TOC image_count is 257 -> refused -> the backup boots."""
 
     toc_field = "image_count"

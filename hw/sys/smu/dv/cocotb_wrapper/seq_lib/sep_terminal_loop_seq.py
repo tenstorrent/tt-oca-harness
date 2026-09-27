@@ -23,6 +23,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
 
 SEP_BOOT_ROM_BASE = 0x1004_0000
@@ -45,16 +46,23 @@ class SepTerminalLoopSeq:
     #: Cycle budget; a healthy image parks in a few thousand cycles.
     MAX_CYCLES_ENV = "SMU_SEP_FW_MAX_CYCLES"
     MAX_CYCLES_DEFAULT = 300_000
-    #: Evidence tokens emitted on success.
+    #: Evidence tokens emitted on success; declared to the test up front so its
+    #: gate fails a run that never reached the verdict below.
     EVIDENCE = ()
 
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
+
+    def _log_evidence(self, token: str) -> None:
+        """Emit ``token`` in the spellings the log consumers grep for."""
+        for fmt in ("EVIDENCE: %s", "EVIDENCE:%s", "EVIDENCE:CHK-%s", "EVIDENCE: CHK-%s"):
+            self.log.info(fmt, token)
 
     async def run(self) -> None:
         max_cycles = int(os.environ.get(self.MAX_CYCLES_ENV, str(self.MAX_CYCLES_DEFAULT)), 0)
@@ -95,6 +103,11 @@ class SepTerminalLoopSeq:
         assert fail_pcs, (
             f"{self.NAME}: no fail-loop symbol resolved, so a PASS could not be "
             "distinguished from the firmware never reporting anything"
+        )
+        assert pass_pc not in fail_pcs, (
+            f"{self.NAME}: pass loop 0x{pass_pc:08x} shares its address with fail loop "
+            f"{fail_pcs[pass_pc]!r}; the toolchain folded the two bodies and the "
+            "verdict would be a coin toss"
         )
 
         self.log.info("=" * 70)
@@ -226,8 +239,5 @@ class SepTerminalLoopSeq:
             len(pc_hist),
         )
         for token in self.EVIDENCE:
-            self.log.info("EVIDENCE: %s", token)
-            self.log.info("EVIDENCE:%s", token)
-            self.log.info("EVIDENCE:CHK-%s", token)
-            self.log.info("EVIDENCE: CHK-%s", token)
+            self._log_evidence(token)
         self.log.info("CHK-NONVAC: boot_rom < iccm < pass_loop ordering holds")

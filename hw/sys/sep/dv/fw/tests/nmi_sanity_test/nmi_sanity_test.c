@@ -105,7 +105,7 @@ int main(void) {
     // CHK-LOCK: set the lock (reads 1) AND prove a write after lock is ignored.
     nmi_lock_vector_reg();
     uint32_t lock_val = nmi_read_lock_reg();
-    int lock_ok = (lock_val == 0x1u);
+    int lock_ok = (lock_val == SEP_CPU_CTRL__SEP_NMI_VEC_LOCK__LOCK_bm);
     if (!lock_ok) {
         sep_mbx_puts("FAIL: SEP_NMI_VEC_LOCK not set ");
         sep_mbx_puthex(lock_val);
@@ -176,7 +176,8 @@ int main(void) {
             sep_mbx_putc('\n');
             errors++;
         } else {
-            sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark observed set in handler, cleared after, WDOG_CTRL disabled\n");
+            sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark observed set in handler, cleared "
+                         "after, WDOG_CTRL disabled\n");
         }
     }
 

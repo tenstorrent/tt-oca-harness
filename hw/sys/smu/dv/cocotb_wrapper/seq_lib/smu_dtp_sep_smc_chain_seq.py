@@ -2,13 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """All three subsystems active in one run: SEP decides, DTP enforces, SMC serves.
 
-The other anchors each cover part of this. smu_sep_lcc_flow_test has the SEP
-firmware drive the posture but only reads the DTP- and SMC-facing signals.
-smu_sep_dbg_gating_* proves DTP acts on the posture, but its SEP payload is
-hello_world and its SMC end is only a transaction count. Neither has all three
-subsystems doing something.
-
-Here they all do:
+smu_sep_lcc_flow_test covers the SEP posture alone and smu_sep_dbg_gating_*
+covers the DTP gate alone. Here all three subsystems act:
 
   SMC   firmware boots from ROM and writes its scratch0 marker.
   SEP   firmware (sep_smu_lcc_flow) sets DEMOTE_1/2 -- the one LCC input
@@ -31,6 +26,11 @@ The SEP therefore has to actually participate: with the demote ignored, the
 chain breaks. And the returned data is compared against the testbench's own view
 of SMC scratch0 rather than a hard-coded constant, so the check follows whatever
 the SMC firmware actually wrote.
+
+The posture after the demote is compared against seq_lib.smu_lifecycle_table:
+the state comes from the shadow-preload image the entry names, and the exported
+lc_state word and the debug-disable posture must be what the lifecycle
+specification gives for that state with both demotes set.
 """
 
 from __future__ import annotations
@@ -39,7 +39,10 @@ import os
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, load_syms
+from seq_lib.smu_addr_map import smc_indexed_addr
+from seq_lib.smu_lifecycle_table import lc_raw_from_shadow_preload, lc_state_name, posture
 from seq_lib.wrapper_jtag import (
     J2A_OP_READ,
     J2A_SIZE_4B,
@@ -55,7 +58,9 @@ from seq_lib.wrapper_jtag import (
 
 # SMC CPU_CTRL scratch0, SMC-local. The SMC arm firmware writes its marker here,
 # so a correct read returns something the SMC put there rather than a reset value.
-SMC_SCRATCH0_ADDR = 0xC003_9080
+SMC_SCRATCH0_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
+)  # SMC CPU_CTRL scratch0
 
 PASS_SYM = "sep_smu_lcc_flow_pass_loop"
 SETTLE_CYCLES = 2000
@@ -64,13 +69,20 @@ SETTLE_CYCLES = 2000
 class SmuDtpSepSmcChainSeq:
     """SEP sets the posture, DTP gates on it, SMC answers the resulting read."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SMU_DTP_SEP_SMC_CHAIN_OK", "SEP_POSTURE_GOVERNS_DTP_TO_SMC_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
+
+    def _rd_resolved(self, handle, name):
+        return self.test.read_int(handle, name, allow_xz=False)
 
     async def _await_sep_demote(self, pass_pc: int, max_cycles: int) -> None:
         """Run until the SEP firmware has finished setting both demotes."""
@@ -111,6 +123,17 @@ class SmuDtpSepSmcChainSeq:
         assert raw is not None, "+chain_expect_served is required"
         expect_served = bool(int(str(raw), 0))
 
+        preload = cocotb.plusargs.get("sep_shadow_reg_preload")
+        assert preload is not None, (
+            "+sep_shadow_reg_preload is required: it names the lifecycle state under test"
+        )
+        state = lc_state_name(lc_raw_from_shadow_preload(str(preload)))
+        want = posture(state, demoted=True)
+        assert want.smc_jtag2axi_disabled == (not expect_served), (
+            f"+chain_expect_served={int(expect_served)} contradicts the demoted {state} "
+            f"posture the specification gives (smc_jtag2axi disabled={want.smc_jtag2axi_disabled})"
+        )
+
         sym_path = str(cocotb.plusargs.get("sep_sym", "sep_smu_lcc_flow.tcm.sym"))
         syms = load_syms(sym_path)
         assert syms, f"no usable symbol table at {sym_path}"
@@ -127,16 +150,27 @@ class SmuDtpSepSmcChainSeq:
         # 2. SEP: run the firmware that drives the posture.
         await self._await_sep_demote(pass_pc, max_cycles)
 
-        lc_state = self._rd(self.dut.smc_lc_state_in_o, "smc_lc_state_in_o")
-        dbg_disable = self._rd(self.dut.lcc_dbg_disable_o, "lcc_dbg_disable_o")
+        lc_state = self._rd_resolved(self.dut.smc_lc_state_in_o, "smc_lc_state_in_o")
+        dbg_disable = self._rd_resolved(self.dut.lcc_dbg_disable_o, "lcc_dbg_disable_o")
+        smc_j2a_disabled = bool(
+            self._rd_resolved(
+                self.dut.lcc_dbg_disable_smc_jtag2axi_o, "lcc_dbg_disable_smc_jtag2axi_o"
+            )
+        )
         demote1 = self._rd(self.dut.lcc_demote_state_1_o, "lcc_demote_state_1_o")
         smc_scratch = self._rd(self.dut.smc_scratch_0_o, "smc_scratch_0_o")
         self.log.info(
-            "after the SEP demote: lc_state=0x%02x demote1=%s dbg_disable=0x%04x; "
-            "SMC scratch0 currently holds 0x%08x",
+            "after the SEP demote: %s lc_state=0x%02x demote1=%s dbg_disable=0x%04x "
+            "smc_jtag2axi_disabled=%s (spec: lc_state=0x%02x all_open=%s "
+            "smc_jtag2axi_disabled=%s); SMC scratch0 currently holds 0x%08x",
+            state,
             lc_state,
             format(demote1, "#04b"),
             dbg_disable,
+            smc_j2a_disabled,
+            want.lc_state,
+            want.all_open,
+            want.smc_jtag2axi_disabled,
             smc_scratch,
         )
 
@@ -145,6 +179,20 @@ class SmuDtpSepSmcChainSeq:
             errors.append(
                 f"SEP did not assert DEMOTE_1 at the SMU boundary ({demote1:#04b}); "
                 "the rest of the chain would not be attributable to the SEP"
+            )
+        if lc_state != want.lc_state:
+            errors.append(
+                f"lc_state reads 0x{lc_state:02x}, {state} encodes as 0x{want.lc_state:02x}"
+            )
+        if want.all_open and dbg_disable != 0:
+            errors.append(
+                f"the demote should leave every debug path open in {state}, but "
+                f"dbg_disable is 0x{dbg_disable:04x}"
+            )
+        if smc_j2a_disabled != want.smc_jtag2axi_disabled:
+            errors.append(
+                f"dbg_disable.smc_jtag2axi is {int(smc_j2a_disabled)} after the demote, "
+                f"{state} requires {int(want.smc_jtag2axi_disabled)}"
             )
         assert not errors, "DTP-SEP-SMC chain (setup): " + "; ".join(errors)
 
@@ -205,20 +253,22 @@ class SmuDtpSepSmcChainSeq:
 
         if expect_served:
             self.log.info(
-                "CHK-DTP-SEP-SMC-CHAIN: PASS (SEP demote -> dbg_disable 0x%04x -> DTP "
-                "launched the read -> SMC answered OKAY with 0x%08x, matching the "
-                "value the SMC firmware wrote)",
+                "CHK-DTP-SEP-SMC-CHAIN: PASS (%s: SEP demote -> dbg_disable 0x%04x, every "
+                "path open -> DTP launched the read -> SMC answered OKAY with 0x%08x, "
+                "matching the value the SMC firmware wrote)",
+                state,
                 dbg_disable,
                 rdata & 0xFFFF_FFFF,
             )
         else:
             self.log.info(
-                "CHK-DTP-SEP-SMC-CHAIN-BLOCKED: PASS (same firmware and same JTAG "
-                "operation, but this state ignores the demote: dbg_disable=0x%04x "
-                "and the bridge launched nothing)",
+                "CHK-DTP-SEP-SMC-CHAIN-BLOCKED: PASS (%s: same firmware and same JTAG "
+                "operation, but this state ignores the demote: dbg_disable=0x%04x with "
+                "smc_jtag2axi disabled, and the bridge launched nothing)",
+                state,
                 dbg_disable,
             )
-        for token in ("SMU_DTP_SEP_SMC_CHAIN_OK", "SEP_POSTURE_GOVERNS_DTP_TO_SMC_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

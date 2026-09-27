@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM LSU data-read + write-ignored test (PyUVM).
 
-Memory-subsystem Phase-2 rep boot-ROM LSU read. reference provenance: uvm_tests/rom
+Memory-subsystem rep boot-ROM LSU read. reference provenance: uvm_tests/rom
 sep_rom_uvm_basic_read / sequential_read / content_verify / addr_boundary /
 write_ignore. Boots the VeeR EL2 core and runs the rom_lsu_read firmware, which
 does CPU LSU data loads from the boot ROM (0x1004_0000, on the dedicated
@@ -10,7 +10,7 @@ lsu_rom_axi CPU port -- unreachable by the no_cpu splice, so cpu-mode REQUIRED)
 and value-checks them against a known preloaded image, then proves a store to a
 ROM word is silently ignored (normal response, content unchanged -- NOT DECERR).
 
-Distinct from Phase-1 sep_rom_sanity_test (which proves the IFU *executes* from
+Distinct from sep_rom_sanity_test (which proves the IFU *executes* from
 ROM): boot-ROM LSU read covers the LSU *data* read-port + the write-reject negative contract.
 
 The boot ROM responder is preloaded with the known image via

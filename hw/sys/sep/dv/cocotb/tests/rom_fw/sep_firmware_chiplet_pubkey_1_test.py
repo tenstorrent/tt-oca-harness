@@ -2,13 +2,23 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Manifest authenticates against CHIPLET fused key 1, unrevoked -> boots.
 
-Both slots select ``PUBK_SEL_FUSE_KEY_1``; ``CHIPLET_PUBK_HASH1`` holds the dev0 modulus digest.
+The positive member of the chiplet fused-key pair for key 1. Both manifest slots
+select ``PUBK_SEL_FUSE_KEY_1`` and are re-signed with dev0, and
+``CHIPLET_PUBK_HASH1`` holds SHA-256 of that modulus, so the primary verifies and
+the ROM boots without ever reading the backup.
+
+Matched pair. This testcase and ``sep_firmware_chiplet_pubkey_1_revoke_test`` build
+their flash image from the SAME call, ``select_chiplet_fuse_key(buf, 1)``, so the two
+run byte-identical images and differ ONLY in ``CHIPLET_PUBK_REVOKE`` bit 17. Fuse bit
+clear boots from the primary; bit set refuses BOTH manifests with the revocation error
+code and never reaches ``RSA_EXEC``.
+
+Read it before changing anything here.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_chiplet_pubkey_base import sep_chiplet_pubkey_valid_base
 
 

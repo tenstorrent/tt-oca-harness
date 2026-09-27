@@ -18,8 +18,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
@@ -30,7 +33,6 @@ _VERSION_LENGTH_OFF = mm.OFF_VERSION_MAJOR
 
 
 class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
-
     # --- subclass contract -------------------------------------------------
     # manifest_version_minor to declare: 0 selects the exact-match arm, non-zero the range arm.
     primary_minor: int = 0
@@ -45,16 +47,28 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
     efuse_preload = EFUSE_PRELOAD
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
     # Forbid other structural codes and the token-printing length arms; only the silent arms remain.
-    extra_forbidden = (f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}",
-                       f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_VERSION:08x}",
-                       "MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-                       "PLD_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
-                       "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
-                       "PAYLOAD_OFF_ALIGN", "PAYLOAD_OFF_RANGE",
-                       "PAYLOAD_HASHED_LEN_BAD=", "PAYLOAD_LEN_RANGE",
-                       "PAYLOAD_OVERLAPS_MANIFEST", "TOC_PLEN_MISMATCH=",
-                       "PAYLOAD_LOC_OVERFLOW", "ENC_HASHED_LEN_PARTIAL",
-                       fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}",
+        f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_VERSION:08x}",
+        "MANIFEST_HASH_MISMATCH",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        "MANIFEST_ALL_FAILED",
+        "IMAGE_HASH_MISMATCH",
+        "NO_BL1_IMAGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_HASHED_LEN_BAD=",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "PAYLOAD_LOC_OVERFLOW",
+        "ENC_HASHED_LEN_PARTIAL",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
 
     @classmethod
     def _refusal_arm(cls) -> str:
@@ -89,9 +103,11 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
         return {
             "exact": "the minor-0 exact-match rule",
             "align": "the 4-byte alignment rule",
-            "range": ("the range rule's LOWER bound (sizeof(manifest_t))"
-                      if cls.primary_length < mm.MANIFEST_SIZE
-                      else "the range rule's UPPER bound (MANIFEST_MAX_SIZE)"),
+            "range": (
+                "the range rule's LOWER bound (sizeof(manifest_t))"
+                if cls.primary_length < mm.MANIFEST_SIZE
+                else "the range rule's UPPER bound (MANIFEST_MAX_SIZE)"
+            ),
         }[cls._refusal_arm()]
 
     def corrupt_primary(self, buf: bytearray) -> None:
@@ -109,9 +125,11 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
         assert before_len == mm.MANIFEST_SIZE, (
             f"primary manifest_length is {before_len}, expected {mm.MANIFEST_SIZE}"
         )
-        assert bytes(buf[mm.PRIMARY_MANIFEST_OFFSET:
-                         mm.PRIMARY_MANIFEST_OFFSET + 4]) == mm.MANIFEST_MAGIC, (
-            "primary manifest_identifier is not TBL1, so BAD_MAGIC would pre-empt "
+        assert (
+            bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
+            == mm.MANIFEST_MAGIC
+        ), (
+            "primary manifest_identifier is not OCAC, so BAD_MAGIC would pre-empt "
             "the length check and the asserted code would be wrong"
         )
         # The major version stays valid so BAD_VERSION cannot pre-empt a length arm.
@@ -143,10 +161,9 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
                 f"the alignment check rather than the range rule could produce the "
                 f"verdict, and no console forbid can tell the two apart"
             )
-            assert (self.primary_length < mm.MANIFEST_SIZE
-                    or self.primary_length > mm.MANIFEST_MAX_SIZE), (
-                "derivation error: range implies a length outside the bounds"
-            )
+            assert (
+                self.primary_length < mm.MANIFEST_SIZE or self.primary_length > mm.MANIFEST_MAX_SIZE
+            ), "derivation error: range implies a length outside the bounds"
         if self.primary_minor != 0:
             mm.set_manifest_version(buf, "primary", minor=self.primary_minor)
         mm.set_manifest_length(buf, "primary", self.primary_length)
@@ -162,14 +179,23 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
             f"primary manifest_length is {after_len} after the write, expected "
             f"{self.primary_length}; the mutation did not land"
         )
-        alignment = ("4-byte aligned" if after_len % 4 == 0
-                     else f"misaligned ({after_len} % 4 = {after_len % 4})")
+        alignment = (
+            "4-byte aligned"
+            if after_len % 4 == 0
+            else f"misaligned ({after_len} % 4 = {after_len % 4})"
+        )
         self.logger.info(
             "CHK-STIMULUS-LENGTH: primary %d.%d/%d -> %d.%d/%d. The major version is "
             "held VALID and the length is %s, so %s is the only rule that can refuse "
             "this slot",
-            before_ver[0], before_ver[1], before_len,
-            after_ver[0], after_ver[1], after_len, alignment, self._refused_by(),
+            before_ver[0],
+            before_ver[1],
+            before_len,
+            after_ver[0],
+            after_ver[1],
+            after_len,
+            alignment,
+            self._refused_by(),
         )
 
     def check_efuse(self, image) -> None:
@@ -183,8 +209,7 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
         # BAD_LENGTH must belong to the primary attempt only.
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
         # Length is checked before integrity, so the only MANIFEST_HASH_OK is the backup's.
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
@@ -202,16 +227,19 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
 
         # Every length arm returns the same silent code; only served bytes separate sibling rows.
         fd.assert_served_field(
-            self.logger, flash, "primary", _VERSION_LENGTH_OFF,
-            struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, self.primary_minor,
-                        self.primary_length),
+            self.logger,
+            flash,
+            "primary",
+            _VERSION_LENGTH_OFF,
+            struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, self.primary_minor, self.primary_length),
             "primary manifest_version_major/minor + manifest_length",
         )
 
         # load_manifest_extra reads past the header only when the declared length exceeds it.
         if self.primary_length > mm.MANIFEST_SIZE:
             fd.assert_no_read_starting_at(
-                self.logger, flash,
+                self.logger,
+                flash,
                 mm.PRIMARY_MANIFEST_OFFSET + mm.MANIFEST_SIZE,
                 f"manifest_length {self.primary_length} exceeds sizeof(manifest_t), "
                 f"so a fetch beginning there would mean load_manifest_extra() ran "
@@ -225,7 +253,14 @@ class sep_primary_manifest_length_fail_base(sep_primary_fail_backup_boot_base):
             "the backup declared v%d.0 with manifest_length %d, was accepted with "
             "the only MANIFEST_HASH_OK@%d, and booted. %s is the only rule that can "
             "have produced this verdict",
-            i_psrc, mm.MANIFEST_MAJOR_VERSION, self.primary_minor,
-            self.primary_length, slot_err, i_err, mm.MANIFEST_MAJOR_VERSION,
-            mm.MANIFEST_SIZE, i_hash, self._refused_by(),
+            i_psrc,
+            mm.MANIFEST_MAJOR_VERSION,
+            self.primary_minor,
+            self.primary_length,
+            slot_err,
+            i_err,
+            mm.MANIFEST_MAJOR_VERSION,
+            mm.MANIFEST_SIZE,
+            i_hash,
+            self._refused_by(),
         )

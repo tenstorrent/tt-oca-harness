@@ -7,16 +7,17 @@
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_reset_ctrl</h2>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#SW_RESET_N">SW_RESET_N</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="SW_RESET_N">SW_RESET_N</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>6</td><td>abr_sw_rst_n</td><td>RW</td><td>0x1</td><td>Adams Bridge reset (0=assert, 1=release)</td></tr>
 <tr><td>5</td><td>trng_sw_rst_n</td><td>RW</td><td>0x1</td><td>Internal TRNG reset request (0=assert, 1=release). Hardware drains and isolates the entropy-source, CSRNG, and EDN AXI ports before asserting the shared TRNG reset.</td></tr>
 <tr><td>4</td><td>kmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>KMAC reset (0=assert, 1=release)</td></tr>
 <tr><td>3</td><td>hmac_sw_rst_n</td><td>RW</td><td>0x1</td><td>HMAC reset (0=assert, 1=release)</td></tr>

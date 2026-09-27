@@ -12,7 +12,6 @@ import struct
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -21,20 +20,24 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
-_MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-_MANIFEST_ERR_BAD_VERSION = 0x0003_0003
-_MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
+_MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+_MANIFEST_ERR_BAD_VERSION = mm.boot_err("OCA_FAIL_FORMAT_VERSION_MISMATCH")
+_MANIFEST_ERR_BAD_LENGTH = mm.boot_err("OCA_FAIL_MANIFEST_LENGTH")
 
 _BAD_HASHED_LEN = 0
 
 
 @pyuvm.test()
 class sep_firmware_primary_payload_invalid_payload_hash_length_test(
-        sep_primary_fail_backup_boot_base):
+    sep_primary_fail_backup_boot_base
+):
     """Primary payload_hashed_length is 0 -> refused -> the backup boots."""
 
     # Left empty: a declared marker also makes the base require CRYPTO_FAIL=.
@@ -44,16 +47,27 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    extra_forbidden = (f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_MAGIC:08x}",
-                       f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_VERSION:08x}",
-                       "MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-                       "PLD_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
-                       "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
-                       "PAYLOAD_OFF_ALIGN", "PAYLOAD_OFF_RANGE",
-                       "PAYLOAD_LEN_RANGE", "PAYLOAD_OVERLAPS_MANIFEST",
-                       "TOC_PLEN_MISMATCH=", "PAYLOAD_LOC_OVERFLOW",
-                       "ENC_HASHED_LEN_PARTIAL",
-                       fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_MAGIC:08x}",
+        f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_VERSION:08x}",
+        "MANIFEST_HASH_MISMATCH",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        "MANIFEST_ALL_FAILED",
+        "IMAGE_HASH_MISMATCH",
+        "NO_BL1_IMAGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "PAYLOAD_LOC_OVERFLOW",
+        "ENC_HASHED_LEN_PARTIAL",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         assert not pm.is_encrypted(buf, "primary"), (
@@ -72,9 +86,11 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
             f"slot would be refused with BAD_LENGTH by the version-and-length rule "
             f"instead of by the payload_hashed_length bound"
         )
-        assert bytes(buf[mm.PRIMARY_MANIFEST_OFFSET:
-                         mm.PRIMARY_MANIFEST_OFFSET + 4]) == mm.MANIFEST_MAGIC, (
-            "primary manifest_identifier is not TBL1, so BAD_MAGIC would pre-empt "
+        assert (
+            bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
+            == mm.MANIFEST_MAGIC
+        ), (
+            "primary manifest_identifier is not OCAC, so BAD_MAGIC would pre-empt "
             "the payload_hashed_length bound"
         )
 
@@ -96,11 +112,16 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
         self.logger.info(
             "CHK-STIMULUS-HASHED-LEN: primary payload_hashed_length %d -> %d against "
             "payload_length %d -- zero, so the ROM would compute no payload digest "
-            "at all. manifest_identifier TBL1, version %d.%d and manifest_length "
+            "at all. manifest_identifier OCAC, version %d.%d and manifest_length "
             "%d are all left VALID, so the payload_hashed_length bound is the only "
             "rule validate_manifest_header can refuse this slot on. The payload is "
             "not encrypted, so ENC_HASHED_LEN_PARTIAL is unreachable",
-            was, now, p_len, major, minor, length,
+            was,
+            now,
+            p_len,
+            major,
+            minor,
+            length,
         )
 
     def check_efuse(self, image) -> None:
@@ -114,11 +135,9 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
-        i_tok = fd.assert_slot_attributed(console, token, after=i_psrc,
-                                          before=i_bsrc)
+        i_tok = fd.assert_slot_attributed(console, token, after=i_psrc, before=i_bsrc)
 
         echoed = fd.hex_value(console, token)
         assert echoed is not None, (
@@ -146,7 +165,10 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
         )
 
         fd.assert_served_field(
-            self.logger, flash, "primary", pm.OFF_PAYLOAD_HASHED_LEN,
+            self.logger,
+            flash,
+            "primary",
+            pm.OFF_PAYLOAD_HASHED_LEN,
             struct.pack("<Q", self._bad_hashed_len),
             "primary payload_hashed_length",
         )
@@ -155,6 +177,13 @@ class sep_firmware_primary_payload_invalid_payload_hash_length_test(
             "against payload_length %d and was refused %s0x%08x@%d then %s@%d, both "
             "inside its own attempt and before its hash was computed; the untouched "
             "backup was accepted with the only MANIFEST_HASH_OK@%d and booted",
-            i_psrc, self._bad_hashed_len, self._payload_len,
-            token, echoed, i_tok, slot_err, i_err, i_hash,
+            i_psrc,
+            self._bad_hashed_len,
+            self._payload_len,
+            token,
+            echoed,
+            i_tok,
+            slot_err,
+            i_err,
+            i_hash,
         )

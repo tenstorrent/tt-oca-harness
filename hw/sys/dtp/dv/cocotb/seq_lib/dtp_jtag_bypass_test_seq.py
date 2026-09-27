@@ -11,19 +11,11 @@ from __future__ import annotations
 
 import cocotb
 from env.dtp_jtag_bypass_model import DtpBypassRefModel, DtpBypassSuiteCfg
+from env.dtp_tb_if import JTAG_SIGNAL_MAP
 from env.dtp_types import DTP_IR_WIDTH
 from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
-
-_DTP_JTAG_SIGNAL_MAP = {
-    "tck": "jtag_tck",
-    "tms": "jtag_tms",
-    "tdi": "jtag_tdi",
-    "tdo": "jtag_tdo",
-    "trst": "jtag_trst",
-    "tdo_oen": "jtag_tdo_oen",
-}
 
 
 class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
@@ -50,9 +42,9 @@ class dtp_jtag_bypass_test_seq(dtp_jtag_base_test_seq):
         )
         self.attach_tap_checker(checker)
         monitor = OcahJtagMasterMonitor(
-            cocotb.top,
+            self.cfg.tb_if.jtag,
             name=f"{self.get_name()}.monitor",
-            signal_map=_DTP_JTAG_SIGNAL_MAP,
+            signal_map=JTAG_SIGNAL_MAP,
         )
         await monitor.start()
 

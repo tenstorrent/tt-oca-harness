@@ -61,8 +61,44 @@ extern "C" {
 #define I2C_DEFAULT_ACQ_THRESH 29
 
 // Timeout values (in system clock cycles)
-#define I2C_TIMEOUT_DEFAULT \
-    I2C_TIMEOUT_INFINITE // Use infinite timeout - polling loops will handle duration
+/* Default poll bound for driver waits, in loop iterations.
+ *
+ * Finite by design: a bound that cannot expire inside a simulation lets every
+ * driver wait -- controller read, controller write completion, wait_idle --
+ * end only when the harness kills the run, which makes the NACK /
+ * arbitration-lost / bus-timeout diagnostics behind those waits, and the
+ * callers' failure branches, unreachable.
+ *
+ * Derived, not guessed: a poll iteration costs ~1.15 us of simulation (measured
+ * over the instruction trace), and the longest legitimate single I2C operation
+ * observed in this testbench is the 62-byte standard-mode fill in
+ * i2c_acq_fifo_stretch_reset at 5.58 ms. 20000 iterations is ~23 ms, roughly
+ * 4x that worst case, and finite.
+ */
+/* SMC I2C FIFO depths, transcribed from the specification: the I2C IP's
+ * parameter table (hw/ip/i2c/doc/interface.adoc, CTRL_TX/CTRL_RX/TGT_TX depth
+ * 64, TGT_RX default 268) and the SMC integration override table
+ * (hw/sys/smc/doc/periphs.adoc, I2C_TARGET_RX_FIFO_DEPTH 268 -> 64). No
+ * generated C export carries them, so keep this table in step with those two
+ * documents; the IP default of 268 must not be assumed at the SMC level. */
+#define I2C_CONTROLLER_TX_FIFO_DEPTH 64u
+#define I2C_CONTROLLER_RX_FIFO_DEPTH 64u
+#define I2C_TARGET_TX_FIFO_DEPTH 64u
+#define I2C_TARGET_RX_FIFO_DEPTH 64u
+
+/* Sized against the worst legitimate wait, which is not a plain transfer.
+ * Several tests here deliberately provoke clock stretching, where the target
+ * holds SCL for as long as software leaves its ACQ FIFO full, so the bound must
+ * clear a stretched transaction rather than just a 62-byte standard-mode fill
+ * (5.58 ms in i2c_acq_fifo_stretch_reset). A first attempt at 20000 iterations
+ * (~23 ms) measured too tight: it failed i2c_p0_stretch, i2c_rw, i2c_p1_dma and
+ * i2c_acq_fifo_stretch_reset, each mid-fill.
+ *
+ * 200000 is ~90-230 ms of simulation at the 0.44-1.15 us/iteration measured
+ * across these tests -- ~20x the longest legitimate operation seen, and ~200x
+ * smaller than the 0xFFFFFFFF it replaces (~38.6 s, which no run reaches).
+ * Finite and reachable is the property that matters; the multiple is margin. */
+#define I2C_TIMEOUT_DEFAULT 200000u
 #define I2C_TIMEOUT_INFINITE 0xFFFFFFFF
 
 // Minimum cycles for clock stretching detection
@@ -198,6 +234,16 @@ typedef struct {
     bool is_write;  // true = write, false = read
     bool is_start;  // START condition
     bool is_stop;   // STOP condition
+    /* NACKed entry: signal is NACK, NACK_START or NACK_STOP.
+     *
+     * is_start/is_stop alone do not describe an ACQ entry. The classifier maps
+     * NACK (4) and NACK_START (5) onto its default leg, which leaves BOTH of
+     * them false -- so the common filter `if (e.is_start || e.is_stop) continue;`
+     * accepts a byte the target NACKed as ordinary payload and feeds it into a
+     * comparison buffer. Found while fixing i2c_p1_dma, where exactly that
+     * happened. Check this flag, or switch on `signal`, before treating an entry
+     * as data. NACK_STOP additionally sets is_stop, as it always did. */
+    bool is_nack;
 } i2c_acq_entry_t;
 
 /**
@@ -294,6 +340,34 @@ void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config);
  */
 void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx, bool reset_acq);
 
+/* Non-zero if the most recent i2c_reset_fifos() call had to drain the ACQ FIFO
+ * by hand because the ACQRST hardware reset left entries behind. Reset at the
+ * top of every call, so read it immediately after the reset under test to tell a
+ * working ACQRST from one the helper papered over. */
+extern uint32_t g_i2c_acq_reset_needed_drain;
+/* Both drain loops are bounded. These carry the last level the loop actually
+ * read, so an expired bound is reported as a failure naming the level it gave
+ * up at, rather than as an unbounded spin that can only end in a simulator
+ * timeout with no cause attached. */
+extern uint32_t g_i2c_acq_reset_residual; /* ACQLVL left when the drain gave up */
+/* Entries the drain removed: near the pre-reset level means ACQRST did nothing,
+ * a small count means it worked and a live controller refilled the FIFO. */
+extern uint32_t g_i2c_acq_reset_drained;
+extern uint32_t g_i2c_rx_reset_needed_drain;  /* RXRST needed a software drain */
+extern uint32_t g_i2c_rx_reset_residual;      /* RXLVL left when the drain gave up */
+extern uint32_t g_i2c_fmt_reset_needed_retry; /* FMTRST needed a second attempt */
+extern uint32_t g_i2c_fmt_reset_residual;     /* FMTLVL after that second attempt */
+extern uint32_t g_i2c_tx_reset_needed_retry;  /* TXRST needed a second attempt */
+extern uint32_t g_i2c_tx_reset_residual;      /* TXLVL after that second attempt */
+
+/* i2c_reset_fifos() fails the test outright when a reset does not take and it
+ * has to repair the FIFO in software, because the "level is 0 after reset"
+ * post-condition every caller depends on would otherwise be the repair's doing
+ * rather than the hardware's. Set this to 1 only around a reset a test expects
+ * to need repair, and only when that test inspects the flags above itself;
+ * restore it to 0 immediately afterwards. */
+extern uint32_t g_i2c_reset_repair_allowed;
+
 // ============================================================================
 // Controller Mode Functions
 // ============================================================================
@@ -388,8 +462,6 @@ int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr, const ui
  * It does NOT wait for the I2C bus transaction to complete.
  * The hardware FSM will execute the transaction in the background.
  *
- * Similar to legacy test's ctrlr_send_write() function.
- *
  * @param idx I2C instance index
  * @param target_addr 7-bit target address
  * @param data Pointer to data buffer
@@ -449,8 +521,6 @@ int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries, uint3
  * clears the target's ACQ FIFO and TARGET_EVENTS. This is useful for preventing
  * stretch_tx issues in repeated START scenarios.
  *
- * Reference: i2c_read_sanity/src/main.c:434-459
- *
  * @param controller_idx Controller I2C instance index
  * @param target_idx Target I2C instance index (for ACQ FIFO cleanup)
  * @param target_addr 7-bit target address
@@ -468,8 +538,6 @@ int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx, uint8_t t
  * This function performs a controller read operation and then automatically
  * drains the target's ACQ FIFO. This is useful for preventing stretch_tx
  * issues in repeated START scenarios.
- *
- * Reference: i2c_read_sanity/src/main.c:518-558
  *
  * @param controller_idx Controller I2C instance index
  * @param target_idx Target I2C instance index (for ACQ FIFO cleanup)
@@ -551,6 +619,25 @@ int i2c_target_receive_entry(uint32_t idx, i2c_acq_entry_t *entry);
  */
 int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
                                    uint32_t *received_len, uint32_t timeout_cycles);
+
+/**
+ * @brief Receive one Target transaction, stating the wire framing explicitly.
+ *
+ * i2c_target_receive_transaction() above is this function with
+ * expect_length_header = true, which is correct only for controllers that send
+ * a leading length byte. A caller that writes raw payload must pass false, or
+ * its first payload byte is consumed as a count and the transfer is reported
+ * complete after one byte.
+ *
+ * @param expect_length_header true  = first data byte is a length header and the
+ *                                     receive ends once that many bytes arrive;
+ *                             false = no header; drain until STOP and report the
+ *                                     full byte count.
+ * @return I2C_OK on success, negative error code otherwise
+ */
+int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
+                                          uint32_t *received_len, uint32_t timeout_cycles,
+                                          bool expect_length_header);
 
 /**
  * @brief Get Target FIFO status
@@ -1129,9 +1216,7 @@ int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout);
 int i2c_controller_wait_rx_fifo_data_easy(uint32_t idx, uint32_t level, uint32_t timeout);
 
 // ============================================================================
-// OpenTitan Compliance Enhancement Functions
-// ============================================================================
-// Added for full OpenTitan I2C DIF API compliance
+// OpenTitan I2C DIF API equivalents
 // ============================================================================
 
 /**

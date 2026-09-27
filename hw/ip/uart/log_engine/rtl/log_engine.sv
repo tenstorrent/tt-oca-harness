@@ -47,7 +47,7 @@ module log_engine
   log_fetch_addr_t  log_region_addr;
   log_write_addr_t  log_write_addr;
   log_len_t         log_lens       [NUM_LOG_ENTRIES]; // Used unpacked array to fit structure of
-                                                      // arbiter_tree.data_i
+                                                      // u_arbiter_tree.data_i
 
   // Current log entry
   log_len_t         log_len;
@@ -55,6 +55,7 @@ module log_engine
   logic             log_pending;
   logic             log_write_done;
   logic log_fetch_err, log_write_err;
+  logic log_fetch_mem_resp_error, log_write_mem_resp_error;
 
   // RDATA FIFO
   logic rdata_fifo_wr_ready, rdata_fifo_wr_valid;
@@ -80,7 +81,7 @@ module log_engine
     .N          (NUM_LOG_ENTRIES),
     .DW         (LOG_LEN_WIDTH),
     .EnDataPort (1'b1)
-  ) arbiter_tree (
+  ) u_arbiter_tree (
     .clk_i,
     .rst_ni,
     .req_chk_i  (1'b1),
@@ -135,7 +136,7 @@ module log_engine
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_fetch_axil_req_t),
     .axi_rsp_t       (log_fetch_axil_resp_t)
-  ) axil_lite_from_log_fetch_fsm (
+  ) u_axil_lite_from_log_fetch_fsm (
     .clk_i,
     .rst_ni,
 
@@ -148,7 +149,7 @@ module log_engine
 
     .mem_rsp_valid_o (log_fetch_mem_resp_valid),
     .mem_rsp_rdata_o (log_fetch_mem_rd_data),
-    .mem_rsp_error_o (log_fetch_err),
+    .mem_rsp_error_o (log_fetch_mem_resp_error),
 
     .axi_req_o       (log_fetch_axil_req),
     .axi_rsp_i       (log_fetch_axil_resp)
@@ -280,7 +281,7 @@ module log_engine
     .OutputZeroIfEmpty (1'b1),
     .NeverClears       (1'b0),
     .Secure            (1'b0)
-  ) rdata_fifo (
+  ) u_rdata_fifo (
     .clk_i,
     .rst_ni,
     .clr_i             (!log_engine_en),
@@ -323,7 +324,7 @@ module log_engine
     .AxiProt         (3'h2), // {data access, non-secure, unprivileged}
     .axi_req_t       (log_write_axil_req_t),
     .axi_rsp_t       (log_write_axil_resp_t)
-  ) axi_lite_from_log_write_fsm (
+  ) u_axi_lite_from_log_write_fsm (
     .clk_i,
     .rst_ni,
 
@@ -336,7 +337,7 @@ module log_engine
 
     .mem_rsp_valid_o (log_write_mem_resp_valid),
     .mem_rsp_rdata_o (log_write_mem_rd_data),
-    .mem_rsp_error_o (log_write_err),
+    .mem_rsp_error_o (log_write_mem_resp_error),
 
     .axi_req_o       (log_write_axil_req),
     .axi_rsp_i       (log_write_axil_resp)
@@ -441,7 +442,7 @@ module log_engine
   log_engine_reg_pkg::log_engine__in_t  reg_in;
   log_engine_reg_pkg::log_engine__out_t reg_out;
 
-  log_engine_reg log_engine_reg (
+  log_engine_reg u_log_engine_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 
@@ -486,14 +487,19 @@ module log_engine
   assign log_write_addr = reg_out.LOG_WRITE_ADDR.LOG_WRITE_ADDR.value;
 
   // Interrupt Registers
-  assign reg_in.INTR_STATUS.LOG_FETCH_ERR.next =
-        (log_fetch_err || reg_out.INTR_TEST.LOG_FETCH_ERR.value) &&
-        reg_out.INTR_ENABLE.LOG_FETCH_ERR.value;
-  assign reg_in.INTR_STATUS.LOG_WRITE_ERR.next =
-        (log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value) &&
-        reg_out.INTR_ENABLE.LOG_WRITE_ERR.value;
+  assign log_fetch_err = log_fetch_mem_resp_valid && log_fetch_mem_resp_error;
+  assign log_write_err = log_write_mem_resp_valid && log_write_mem_resp_error;
 
-  assign irq_o = reg_out.INTR_STATUS.intr;
+  // The status bits latch whether or not the interrupt is enabled
+  // Clear only on W1C; INTR_ENABLE masks the output
+  assign reg_in.INTR_STATUS.LOG_FETCH_ERR.next =
+        log_fetch_err || reg_out.INTR_TEST.LOG_FETCH_ERR.value;
+  assign reg_in.INTR_STATUS.LOG_WRITE_ERR.next =
+        log_write_err || reg_out.INTR_TEST.LOG_WRITE_ERR.value;
+
+  assign irq_o =
+        (reg_out.INTR_STATUS.LOG_FETCH_ERR.value && reg_out.INTR_ENABLE.LOG_FETCH_ERR.value) ||
+        (reg_out.INTR_STATUS.LOG_WRITE_ERR.value && reg_out.INTR_ENABLE.LOG_WRITE_ERR.value);
 
   // LOG_CTRL Registers
   always_comb begin

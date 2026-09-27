@@ -9,7 +9,6 @@ the bytes the flash device served. The primary is refused on its magic word; the
 from __future__ import annotations
 
 import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -18,7 +17,6 @@ from rom_fw.sep_backup_payload_fail_base import sep_backup_payload_fail_base
 
 
 class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
-
     toc_field: str = ""
     encrypted: bool = False
 
@@ -37,12 +35,14 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
         cls.efuse_preload = td.ENCRYPTED_EFUSE if cls.encrypted else td.PLAINTEXT_EFUSE
         cls.expected_error = td.EXPECTED_ERROR[cls.toc_field]
 
-        forbidden = [f"MANIFEST_ERR=0x{td.sibling_error(cls.toc_field):08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_VERSION:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_LENGTH:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_TOC_ID:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_PAYLOAD_TOO_LARGE:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_NO_BL1_IMAGE:08x}"]
+        forbidden = [
+            f"MANIFEST_ERR=0x{td.sibling_error(cls.toc_field):08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_VERSION:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_LENGTH:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_TOC_ID:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_PAYLOAD_TOO_LARGE:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_NO_BL1_IMAGE:08x}",
+        ]
         forbidden += list(td.OTHER_PAYLOAD_TOKENS) + list(td.DECRYPT_FAILURE_TOKENS)
         if not cls.encrypted:
             forbidden.append(td.DECRYPT_START)
@@ -98,17 +98,27 @@ class sep_backup_toc_fail_base(sep_backup_payload_fail_base):
             )
             self.logger.info(
                 "CHK-DECRYPT-ARM: backup@%d -> %s@%d -> %s@%d -> %s@%d, each "
-                "decryption marker exactly once", i_bsrc, td.DECRYPT_START, i_ds,
-                td.DECRYPT_OK, i_do, backup_err, i_err,
+                "decryption marker exactly once",
+                i_bsrc,
+                td.DECRYPT_START,
+                i_ds,
+                td.DECRYPT_OK,
+                i_do,
+                backup_err,
+                i_err,
             )
 
-        td.assert_served_toc_field(self.logger, self._flash, "backup",
-                                   self.toc_field, self._served,
-                                   self._payload_offset)
+        td.assert_served_toc_field(
+            self.logger, self._flash, "backup", self.toc_field, self._served, self._payload_offset
+        )
 
         self.logger.info(
             "CHK-TOC-RULE: backup@%d declared TOC %s = %d and was refused %s@%d "
             "after its crypto chain passed; the run ended terminal with no slot "
-            "accepted", i_bsrc, self.toc_field, td.PLANTED[self.toc_field],
-            backup_err, i_err,
+            "accepted",
+            i_bsrc,
+            self.toc_field,
+            td.PLANTED[self.toc_field],
+            backup_err,
+            i_err,
         )

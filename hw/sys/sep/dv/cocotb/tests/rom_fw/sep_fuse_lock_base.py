@@ -12,14 +12,12 @@ import os
 from pathlib import Path
 
 import cocotb
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
-EFUSE_DIR = (Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-             / "efuse_configurations")
+EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
 LC_RAW_TEST_DEV = 0x0
 LC_RAW_PROD = 0x1
@@ -28,8 +26,7 @@ LC_MARKERS = {
     LC_RAW_PROD: "LC=PROD",
 }
 # Forbidding every other decode catches a preload that failed to stage.
-ALL_LC_MARKERS = ("LC=TEST_DEV", "LC=PROD", "LC=PROD_END", "LC=RMA_SIP",
-                  "LC=RMA_CHIPLET")
+ALL_LC_MARKERS = ("LC=TEST_DEV", "LC=PROD", "LC=PROD_END", "LC=RMA_SIP", "LC=RMA_CHIPLET")
 
 
 def lc_raw_echo(raw: int) -> str:
@@ -58,14 +55,28 @@ BL1_MARKER = "FUSE_CHK"
 # BL1's own lock check covers only 0x0000A800, so the whole printed LOCKS word is required.
 BL1_FUSE_OK = "FUSE_OK"
 BL1_LOCK_RD_OK = "LOCK_RD_OK"
-BL1_LOCK_FAILURES = ("FAIL:LOCKS", "FUSE_LOCK_VERIFY_FAIL", "LOCK_RD_FAIL",
-                     "FAIL:CLASS_KEY=", "BL0S_VERIFY_FAIL")
+BL1_LOCK_FAILURES = (
+    "FAIL:LOCKS",
+    "FUSE_LOCK_VERIFY_FAIL",
+    "LOCK_RD_FAIL",
+    "FAIL:CLASS_KEY=",
+    "BL0S_VERIFY_FAIL",
+)
 
 BOOT_FAILURE_TOKENS = (
-    "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "MANIFEST_BOOT_FAIL=", "CRYPTO_FAIL=",
-    "LC_USAGE_CONSTRAINT_FAIL", "LC_ALLOWED=", "LC_BIT=", "CHIPLET_ID_MISMATCH",
-    "PACKAGE_ID_MISMATCH", "MANIFEST_HASH_MISMATCH", "PLD_HASH_FAIL=",
-    LC_STATE_INVALID, "VERSION_ROLLBACK",
+    "MANIFEST_ERR=",
+    "MANIFEST_ALL_FAILED",
+    "MANIFEST_BOOT_FAIL=",
+    "CRYPTO_FAIL=",
+    "LC_USAGE_CONSTRAINT_FAIL",
+    "LC_ALLOWED=",
+    "LC_BIT=",
+    "CHIPLET_ID_MISMATCH",
+    "PACKAGE_ID_MISMATCH",
+    "MANIFEST_HASH_MISMATCH",
+    "PLD_HASH_FAIL=",
+    LC_STATE_INVALID,
+    "VERSION_ROLLBACK",
 )
 
 KEY_AND_UID_LOCK_BITS = {
@@ -92,7 +103,6 @@ def bl1_locks_echo() -> str:
 
 
 class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
-
     flash_image = SECURE_FLASH_IMAGE
 
     # Required even for TEST_DEV: without it the DUT senses the RTL array default.
@@ -115,8 +125,16 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
             sep_rom_ot_dma_boot_test.required_markers
             + (raw, lc, sboot, MANIFEST_HASH_OK, PLD_HASH_OK)
             + outcome
-            + (MANIFEST_OK, FUSE_SECRETS_LOCKED, BL1_COPIED, BL1_JUMP, BL1_MARKER,
-               bl1_locks_echo(), BL1_FUSE_OK, BL1_LOCK_RD_OK)
+            + (
+                MANIFEST_OK,
+                FUSE_SECRETS_LOCKED,
+                BL1_COPIED,
+                BL1_JUMP,
+                BL1_MARKER,
+                bl1_locks_echo(),
+                BL1_FUSE_OK,
+                BL1_LOCK_RD_OK,
+            )
         )
 
     @property
@@ -124,15 +142,18 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         lc = LC_MARKERS[self.expected_lc_raw]
         other_lc = tuple(m for m in ALL_LC_MARKERS if m != lc)
         other_raw = tuple(
-            lc_raw_echo(r) for r in (LC_RAW_TEST_DEV, LC_RAW_PROD)
-            if r != self.expected_lc_raw
+            lc_raw_echo(r) for r in (LC_RAW_TEST_DEV, LC_RAW_PROD) if r != self.expected_lc_raw
         )
         other_sboot = (SBOOT_DIS_MARKERS[1 - self.expected_sboot_dis],)
         outcome = (SBOOT_OFF,) if self._secure_expected() else CRYPTO_MARKERS
         return (
             sep_rom_ot_dma_boot_test.forbidden_markers
-            + other_lc + other_raw + other_sboot + outcome
-            + (FUSE_SECRETS_NOT_LOCKED, SHA_DISABLED) + BL1_LOCK_FAILURES
+            + other_lc
+            + other_raw
+            + other_sboot
+            + outcome
+            + (FUSE_SECRETS_NOT_LOCKED, SHA_DISABLED)
+            + BL1_LOCK_FAILURES
             + BOOT_FAILURE_TOKENS
         )
 
@@ -171,7 +192,9 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-FUSE-LOCK-STIMULUS: LC raw=0x%x (%s), SBOOT_DIS=%d, LOCKS=0 and "
             "LOCKS_SPARE=0, so secure_boot_enabled() must return %s",
-            lc, LC_MARKERS[self.expected_lc_raw], sboot_dis,
+            lc,
+            LC_MARKERS[self.expected_lc_raw],
+            sboot_dis,
             self._secure_expected(),
         )
 
@@ -190,34 +213,34 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
                 f"lifecycle usage constraint entirely and forbidding "
                 f"LC_USAGE_CONSTRAINT_FAIL says nothing"
             )
-            allowed = mm.life_cycle_states(buf, slot)
+            allowed = mm.lifecycle_states(buf, slot)
             live_bit = 0 if self.expected_lc_raw == LC_RAW_TEST_DEV else 1
             assert allowed & (1 << live_bit), (
                 f"{slot} life_cycle_states is 0x{allowed:x} and does not permit "
                 f"bit {live_bit} (the lifecycle this cell senses), so the slot "
                 f"would be refused by the usage constraint instead of booting"
             )
-            flags = mm.get_flag_args(buf, slot)
-            assert (flags >> mm.FLAG_ARGS_BIT_SECURE_BOOT) & 1, (
-                f"{slot} flag_args is 0x{flags:08x} and asks for NON-secure boot; "
+            secure_boot = mm.secure_boot_control(buf, slot)
+            assert (secure_boot >> mm.SECURE_BOOT_ENFORCED_BIT) & 1, (
+                f"{slot} secure_boot_control is 0x{secure_boot:08x} and asks for "
+                f"non-secure boot; "
                 f"the two secure cells would then be indistinguishable from the "
                 f"non-secure ones in TEST_DEV"
             )
-            assert not (flags >> mm.FLAG_ARGS_BIT_SKIP_SHA256) & 1, (
-                f"{slot} flag_args is 0x{flags:08x} and sets SKIP_SHA256; "
-                f"MANIFEST_HASH_OK would be absent in TEST_DEV and "
-                f"{SHA_DISABLED} is forbidden"
-            )
             assert not pm.is_encrypted(buf, slot), (
-                f"{slot} payload carries encrypted_payload = 1; manifest_load.c "
+                f"{slot} payload carries encrypted_payload = 1; oca_boot.c "
                 f"refuses an encrypted payload outright when secure boot is off, "
                 f"so the two non-secure cells could not boot"
             )
             self.logger.info(
                 "CHK-MANIFEST-PRECONDITION: %s selector_bits=0x%x "
-                "life_cycle_states=0x%x flag_args=0x%08x, plaintext payload, "
+                "life_cycle_states=0x%x secure_boot_control=0x%08x, plaintext payload, "
                 "unmutated -- %s",
-                slot, sel, allowed, flags, mm.describe(buf, slot),
+                slot,
+                sel,
+                allowed,
+                secure_boot,
+                mm.describe(buf, slot),
             )
 
     def check_transport(self, console: list[str], flash) -> None:
@@ -266,16 +289,28 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-DECISION-ORDER: %s@%d -> %s@%d, and %s@%d -> %s@%d; %s@%d -> "
             "%s@%d -> %s@%d -> %s@%d",
-            raw, i_raw, lc, i_lc, sboot, i_sboot, decision, i_decision,
-            MANIFEST_OK, i_ok, FUSE_SECRETS_LOCKED, i_lock, BL1_JUMP, i_jump,
-            BL1_MARKER, i_bl1,
+            raw,
+            i_raw,
+            lc,
+            i_lc,
+            sboot,
+            i_sboot,
+            decision,
+            i_decision,
+            MANIFEST_OK,
+            i_ok,
+            FUSE_SECRETS_LOCKED,
+            i_lock,
+            BL1_JUMP,
+            i_jump,
+            BL1_MARKER,
+            i_bl1,
         )
 
     def _check_locks_register(self) -> None:
         probe = self.rd(cocotb.top.efuse_shadow_probe_o)
         locks_lo = (probe >> (32 * _LOCKS_WORD)) & 0xFFFF_FFFF
-        missing = sorted(name for name, bit in ALL_LOCK_BITS.items()
-                         if not (locks_lo & (1 << bit)))
+        missing = sorted(name for name, bit in ALL_LOCK_BITS.items() if not (locks_lo & (1 << bit)))
         assert not missing, (
             f"LOCKS[31:0] read back 0x{locks_lo:08x} from the shadow register "
             f"file; the read-lock bits for {', '.join(missing)} are CLEAR, so "
@@ -289,6 +324,7 @@ class sep_fuse_lock_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-FUSE-LOCK-REGISTER: LOCKS[31:0]=0x%08x, read locks set for %s "
             "(the reference's four plus %s)",
-            locks_lo, ", ".join(sorted(ALL_LOCK_BITS)),
+            locks_lo,
+            ", ".join(sorted(ALL_LOCK_BITS)),
             ", ".join(sorted(EXTRA_LOCK_BITS)),
         )

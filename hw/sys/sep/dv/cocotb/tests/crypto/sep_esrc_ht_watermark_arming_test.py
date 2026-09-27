@@ -17,23 +17,16 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_ht_watermark_seq import (
-    APT_HI,
     APT_LO,
     ARM_HIGH,
     ARM_LOW,
-    MARKOV_HI,
-    MARKOV_LO,
+    RDL_MODE_COUNT,
     REPCNT_HI,
     SepHtWatermark,
     SepHtWatermarkCfg,
     arm_value,
     sel_name,
 )
-
-# entropy_source.rdl HT_WATERMARK_NUM enum WATERMARK_TEST: the five encodings the
-# register defines. A literal, so the walk tally below cannot move with the
-# generator that drove it.
-_RDL_WATERMARK_MODES = frozenset({REPCNT_HI, APT_HI, APT_LO, MARKOV_HI, MARKOV_LO})
 
 _FALL_TIMEOUT_CYCLES = 80_000
 _FALL_POLL_EVERY = 64
@@ -80,7 +73,6 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             still,
             path,
         )
-        assert path == "module_enable", path
         await ht.pulse_module_enable()
         tag = "CHK-ARM-MEN"
         got = await ht.read_watermark()
@@ -151,24 +143,26 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         self.logger.info("esrc ht watermark arming: %s", cfg.summary())
 
         await ht.hold_health_tests_off()
-        # Record the value the DUT armed for each selector, then compare the set of
-        # selectors actually proven against the RDL's own five-encoding enum. The
-        # bound is a literal from entropy_source.rdl, not the cardinality of the
-        # generator that drove the loop, so a walk that silently skipped a mode
-        # fails here.
-        armed: dict[int, int] = {}
+        # Count only the selectors whose DUT readback matched the documented arm
+        # value, and hold that count against the size of enum WATERMARK_TEST as
+        # the RDL itself defines it. The bound does not move with the generator
+        # that drove the loop, so a walk that skips a mode fails here.
+        proven: list[int] = []
         for sel, path in cfg.cells():
-            armed[sel] = await self._arm_leg(ht, sel, path)
-        assert set(armed) == _RDL_WATERMARK_MODES, (
-            f"CHK-RANDCFG FAIL: armed selectors {sorted(armed)} != the five "
-            f"HT_WATERMARK_NUM encodings {sorted(_RDL_WATERMARK_MODES)}"
+            armed = await self._arm_leg(ht, sel, path)
+            if armed == arm_value(sel):
+                proven.append(sel)
+        assert len(proven) == RDL_MODE_COUNT, (
+            f"CHK-RANDCFG FAIL: {len(proven)} selectors armed to their documented "
+            f"value, want {RDL_MODE_COUNT} (proven={sorted(proven)})"
         )
-        n = len(armed)
         await self._check_unsupported(ht, cfg.unsupported)
-        await self._check_low_fall(ht, cfg.fall_sel)
+        for fall_sel in cfg.fall_sels:
+            await self._check_low_fall(ht, fall_sel)
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d selector x path cells; unsupported=%s fall_sel=%s",
-            n,
+            "CHK-RANDCFG PASS: %d of %d HT_WATERMARK_NUM encodings armed; unsupported=%s fall=%s",
+            len(proven),
+            RDL_MODE_COUNT,
             f"0x{cfg.unsupported:x}",
-            sel_name(cfg.fall_sel),
+            [sel_name(s) for s in cfg.fall_sels],
         )

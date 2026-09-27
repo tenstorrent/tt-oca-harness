@@ -13,8 +13,7 @@ Inbound-filter START/END stay in the write sweep under the full export
 mask. ``axi_filter_wrap`` rewrites a same-beat window only
 (``START[2:0]->0``, ``END[2:0]->1``; END reset ``0x7``). Solo bash keeps
 the peer at reset, so the checker compares readback to that wrap model
-rather than stripping ``[2:0]`` from the mask. Skipping those 32
-registers is a coverage hole, not a fix.
+rather than stripping ``[2:0]`` from the mask.
 
 Full complement bash stays on no-side-effect blocks. The masked storage
 touch is wider: every register the safety gate admits gets a seed-derived
@@ -35,7 +34,11 @@ from collections import defaultdict
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import AXI_BUS_BYTES
 from sep_reg_meta import (
+    INBOUND_FILTER_CTRL_0,
+    KM_MAILBOX_SEP,
+    RegAccess,
     RegInfo,
     iter_register_walk,
     reg_hw_updating,
@@ -101,6 +104,9 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
+    # spi_host COMMAND: write-only segment trigger (swaccess wo, hwext); reads
+    # return 0, so it is neither reset-checkable nor a storage touch.
+    "COMMAND": "trigger",
     "CMD_REQ": "trigger",
 }
 
@@ -222,7 +228,7 @@ _TOUCH_DENY_PREFIX_HW: dict[str, str] = {
 # export-rw but do not behave as plain storage under a random ``x``.
 _TOUCH_DENY_NAME: dict[str, str] = {
     "FIPS_LOCK": "sticky lock; setting it freezes the block for the rest of the run",
-    # Both refuse a random mask-legal value by design, and both are documented.
+    # Both refuse a random mask-legal value:
     # HT_WATERMARK_NUM.WATERMARK_NUM carries `encode = WATERMARK_TEST`:
     # "Unsupported values are sanitized to REPCNT_HI", so a legal encoding lands
     # and any other reads back 0. NOISE_OBS_CTRL holds FLUSH[1:1], `sw = w` and
@@ -267,23 +273,41 @@ WRITE_EXCLUDE_PREFIXES: dict[str, str] = {
     "AXIL_MAILBOX_": "FIFO",
 }
 
-# Beat granule (DataBusWidthLog2=3). END_ADDR reset is 0x7.
-_GRANULE = 0x7
+# Beat granule. hw/ip/axi_filter/doc/index.adoc (Address Range Granule): with
+# allow_burst = 0 the granule is the data bus width and address bits [2:0] are
+# ignored, so the mask is one less than the bus width in bytes.
+_GRANULE = AXI_BUS_BYTES - 1
 _INBOUND_ADDR = frozenset({"START_ADDR", "END_ADDR"})
-# Peer at reset during solo bash (each bash restores before the next reg).
-_INBOUND_PEER_RESET = {"START_ADDR": 0x7, "END_ADDR": 0x0}
+# Peer at reset during solo bash (each bash restores before the next reg), taken
+# from the generated export rather than transcribed: the value for START_ADDR is
+# the peer END_ADDR's reset, and vice versa.
+_INBOUND_PEER_RESET = {
+    "START_ADDR": INBOUND_FILTER_CTRL_0.reset("END_ADDR"),
+    "END_ADDR": INBOUND_FILTER_CTRL_0.reset("START_ADDR"),
+}
 
 
 def write_mask(info: RegInfo) -> int:
-    """Software-usable bits a complement write must move."""
-    return info.mask
+    """Software-usable bits a complement write must move.
+
+    ``KM_MAILBOX_SEP.SEP_CTRL`` carries FLUSH inside the software-usable mask:
+    the field is write-1 and hardware clears it when the flush completes, so it
+    never reads back what a random ``x`` wrote. The two response bits beside it
+    are plain storage, so the register stays on the touch with the pulse masked
+    out rather than being denied whole -- the same treatment NOISE_OBS_CTRL's
+    write-only field would need if its peers were storage.
+    """
+    mask = info.mask
+    if info.block == "KM_MAILBOX_SEP" and info.name == "SEP_CTRL":
+        mask &= ~KM_MAILBOX_SEP.field_mask("SEP_CTRL", "flush")
+    return mask & 0xFFFF_FFFF
 
 
 def inbound_addr_expected(name: str, written: int) -> int:
     """Readback after a solo START/END write with the peer at reset.
 
     ``allow_burst`` reset is 0, so the granule is 8 bytes
-    (``hw/common/axi/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
+    (``hw/ip/axi_filter/doc/index.adoc``, ``filter_ctrl.rdl``):
     when START and END share a beat, START[2:0] clears and END[2:0] sets;
     otherwise the write lands. The 4 KB granule is CHK-PAGE-WIDEN.
     """
@@ -316,6 +340,13 @@ def touch_reason(info: RegInfo) -> str | None:
     why = reset_reason(info)
     if why is not None:
         return why
+    # Software cannot write a read-only register, so the touch would write
+    # nothing and then compare the readback against the value it meant to
+    # write. The reset arms above do not cover this one: a read-only register
+    # that DOES declare a reset (abr_reg.rdl MLDSA_VERIFY_RES, `sw = r` with
+    # `resetsignal`) is a real reset-compare row and a bogus touch row.
+    if info.access.access == frozenset({"read-only"}):
+        return "sw=r; a write does not reach storage"
     if info.mask == 0:
         return "no software-usable field"
     why = _suffix_reason(info.name)
@@ -359,6 +390,21 @@ def _suffix_reason(name: str) -> str | None:
 
 
 def reset_reason(info: RegInfo) -> str | None:
+    """Why a reset read-compare on this register proves nothing, or None.
+
+    The two access-shaped arms come first because they are derived from the
+    RDL, not from a name: a register the RDL declares write-only returns no
+    storage on a read, and a read-only register with no declared reset is
+    driven by hardware, so the generated ``_REG_DEFAULT`` is a field default
+    and not a POR value. Comparing a read against either one measures the
+    generator. Both shapes read back 0 against a default of 0 far more often
+    than not, so leaving them in makes the compare pass without the DUT having
+    demonstrated anything.
+    """
+    if info.access.write_only:
+        return "sw=w; a read does not return storage"
+    if info.access.hw_driven:
+        return "sw=r with no declared reset; the export DEFAULT is not a POR value"
     hit = _lookup(RESET_EXCLUDE, info.block, info.name) or _suffix_reason(info.name)
     if hit is not None:
         return hit
@@ -798,6 +844,32 @@ def _selftest() -> None:
     assert side_effect_reason(start) is None
     assert write_reason(scratch) is None
     assert write_reason(outbound) == "side-effect: outbound filter drop"
+
+    # The three access-shaped arms. Every RegInfo above carries the default
+    # read-write storage shape, so without these the arms are never taken here
+    # and a change to them shows up only in a simulation.
+    def shaped(access: str, declared_reset: bool) -> RegInfo:
+        return RegInfo(
+            block="ABR",
+            name="SHAPE_PROBE",
+            addr=0,
+            reset=0xF,
+            mask=0xFFFF_FFFF,
+            mask_all=0xFFFF_FFFF,
+            access=RegAccess(frozenset({access}), declared_reset),
+        )
+
+    write_only = shaped("write-only", True)
+    hw_driven = shaped("read-only", False)
+    read_only = shaped("read-only", True)
+    assert reset_reason(write_only) == "sw=w; a read does not return storage"
+    assert reset_reason(hw_driven) == (
+        "sw=r with no declared reset; the export DEFAULT is not a POR value"
+    )
+    # Read-only WITH a reset stays a reset row, and only the touch refuses it.
+    assert reset_reason(read_only) is None
+    assert touch_reason(read_only) == "sw=r; a write does not reach storage"
+    assert touch_reason(scratch) is None
 
     rng = SepSeededRng(1)
     v = touch_write_value(0x11, 0xF, rng)

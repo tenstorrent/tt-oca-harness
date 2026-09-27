@@ -9,7 +9,6 @@ the ROM must decode the live lifecycle as PROD (LC_BIT=0x00000001) and refuse th
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_usage_constraint_base import (
@@ -20,18 +19,16 @@ from rom_fw.sep_usage_constraint_base import (
 
 
 @pyuvm.test()
-class sep_firmware_manifest_primary_lc_state_failure_test(
-        sep_primary_usage_constraint_base):
+class sep_firmware_manifest_primary_lc_state_failure_test(sep_primary_usage_constraint_base):
     """Primary permits TEST_DEV|PROD_END on a PROD part -> refused -> backup boots."""
 
     defect_marker = fd.LC_MARKER
-    defect_evidence = fd.lc_state_required_markers(LC_ALLOWED_WITHOUT_LIVE,
-                                                   LIVE_LC_MANIFEST_BIT)
+    defect_evidence = fd.lc_state_required_markers(LC_ALLOWED_WITHOUT_LIVE, LIVE_LC_MANIFEST_BIT)
 
     def plant(self, buf: bytearray, slot: str) -> None:
-        before = mm.life_cycle_states(buf, slot)
+        before = mm.lifecycle_states(buf, slot)
         fd.plant_lc_state_defect(buf, slot, LC_ALLOWED_WITHOUT_LIVE)
-        after = mm.life_cycle_states(buf, slot)
+        after = mm.lifecycle_states(buf, slot)
         assert not after & (1 << LIVE_LC_MANIFEST_BIT), (
             f"life_cycle_states is 0x{after:08x} and still permits bit "
             f"{LIVE_LC_MANIFEST_BIT} (the live lifecycle): the constraint would be "
@@ -45,7 +42,10 @@ class sep_firmware_manifest_primary_lc_state_failure_test(
             "CHK-STIMULUS-LC-STATE: %s life_cycle_states 0x%08x -> 0x%08x, which "
             "clears bit %d (PROD, the live lifecycle) and keeps TEST_DEV and "
             "PROD_END; selector_bits[16] was already set so the check runs",
-            slot, before, after, LIVE_LC_MANIFEST_BIT,
+            slot,
+            before,
+            after,
+            LIVE_LC_MANIFEST_BIT,
         )
 
     def check_constraint_evidence(self, console: list[str]) -> None:
@@ -67,5 +67,7 @@ class sep_firmware_manifest_primary_lc_state_failure_test(
         )
         self.logger.info(
             "CHK-LC-STATE: ROM decoded the live lifecycle as bit %d and found it "
-            "absent from the manifest's 0x%08x", bit, allowed,
+            "absent from the manifest's 0x%08x",
+            bit,
+            allowed,
         )

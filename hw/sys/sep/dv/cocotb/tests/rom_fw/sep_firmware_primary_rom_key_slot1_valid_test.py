@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_rom_key_slots as ks
 from env import sep_spi_slot_evidence as ev
@@ -23,8 +22,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import (
 _DV_ROOT = Path(__file__).resolve().parents[3]
 
 _EFUSE_PRELOAD = (
-    _DV_ROOT / "tb" / "efuse_preloads" / "efuse_configurations"
-    / "sep_efuse_lc_prod.toml"
+    _DV_ROOT / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
 _VALID_SLOT = 1
@@ -52,14 +50,32 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
 
     flash_image = SECURE_FLASH_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _PRIMARY_SRC, _PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START,
-        _SIG_VALID, _CRYPTO_OK, _BL1_COPIED, _BL1_JUMP,
+        _LC_PROD,
+        _PRIMARY_SRC,
+        _PUBK_SEL_ECHO,
+        _REVOKE_ECHO,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
+        _BL1_COPIED,
+        _BL1_JUMP,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _SBOOT_OFF, _SBOOT_DIS_FUSE, _BACKUP_SRC, _ANY_MANIFEST_ERR, _ALL_FAILED,
-        "BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL", "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH", "KEY_REVOKED", "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL", "CRYPTO_FAIL=",
+        _SBOOT_OFF,
+        _SBOOT_DIS_FUSE,
+        _BACKUP_SRC,
+        _ANY_MANIFEST_ERR,
+        _ALL_FAILED,
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+        "RSA_VERIFY_FAIL",
+        "CRYPTO_FAIL=",
     )
 
     def build_efuse_image(self):
@@ -88,26 +104,32 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, BL1_VERSION=0x%x, "
-            "PUBK_REVOKE=0x%x", lc, sboot_dis, bl1_ver, revoke,
+            "PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            bl1_ver,
+            revoke,
         )
         return image
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         info = ks.bind_manifest_to_rom_slot(buf, "primary", _VALID_SLOT)
         assert info["tbs_changed"], (
-            f"selecting slot {_VALID_SLOT} left the TBS unchanged; the shipped "
-            f"primary already selects it (configs/secure_boot_test.yaml)"
+            f"selecting slot {_VALID_SLOT} left the signed region unchanged; the shipped "
+            "primary already selects it"
         )
         self.logger.info(
-            "CHK-STIMULUS-SLOT1: public_key_sel=0x%04x, modulus digest=%s, "
-            "re-signed with %s", info["selector"], info["digest"].hex()[:16],
+            "CHK-STIMULUS-SLOT1: public_key_sel=0x%04x, modulus digest=%s, re-signed with %s",
+            info["selector"],
+            info["digest"].hex()[:16],
             Path(info["key_path"]).name,
         )
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         def index_of(marker: str) -> int:
@@ -138,8 +160,18 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-KEYSEL-RAN: primary@%d -> %s@%d -> %s@%d -> %s@%d -> %s@%d -> "
             "%s@%d, each exactly once; the ROM-key path permitted slot %d",
-            i_psrc, _PUBK_SEL_ECHO, i_sel, _REVOKE_ECHO, i_revoke, _RSA_START,
-            i_rsa, _SIG_VALID, i_sig, _CRYPTO_OK, i_ok, _VALID_SLOT,
+            i_psrc,
+            _PUBK_SEL_ECHO,
+            i_sel,
+            _REVOKE_ECHO,
+            i_revoke,
+            _RSA_START,
+            i_rsa,
+            _SIG_VALID,
+            i_sig,
+            _CRYPTO_OK,
+            i_ok,
+            _VALID_SLOT,
         )
 
         txns = flash.get_transactions()
@@ -171,5 +203,9 @@ class sep_firmware_primary_rom_key_slot1_valid_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-NO-FAILOVER: read[%d] at 0x%06x returned magic %r, and no read "
             "touched the backup span across %d reads -- the PRIMARY served this "
-            "boot", idx, mm.PRIMARY_MANIFEST_OFFSET, magic, len(rds),
+            "boot",
+            idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            magic,
+            len(rds),
         )

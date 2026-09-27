@@ -24,18 +24,43 @@ from ruamel.yaml import YAML
 
 
 def _apply(config, dotted: str, value) -> None:
-    """Set one dotted path, requiring every parent mapping to already exist."""
+    """Set one dotted path, allowing numeric indices into existing sequences."""
     path = dotted.split(".")
     node = config
-    for i, key in enumerate(path[:-1]):
-        if not hasattr(node, "get") or key not in node:
+    for i, component in enumerate(path[:-1]):
+        if isinstance(node, list):
+            try:
+                node = node[int(component)]
+            except (ValueError, IndexError):
+                raise SystemExit(
+                    f"derive_pack_config: '{dotted}' has no sequence item "
+                    f"'{'.'.join(path[: i + 1])}'"
+                ) from None
+        elif hasattr(node, "get") and component in node:
+            node = node[component]
+        else:
             raise SystemExit(
-                f"derive_pack_config: '{dotted}' has no '{'.'.join(path[:i + 1])}' "
+                f"derive_pack_config: '{dotted}' has no '{'.'.join(path[: i + 1])}' "
                 f"in the base config; a derived config may override fields, not "
                 f"invent sections"
             )
-        node = node[key]
     leaf = path[-1]
+    if isinstance(node, list):
+        try:
+            index = int(leaf)
+            old_value = node[index]
+        except (ValueError, IndexError):
+            raise SystemExit(
+                f"derive_pack_config: '{dotted}' has no sequence item '{leaf}'"
+            ) from None
+        if old_value == value:
+            raise SystemExit(
+                f"derive_pack_config: '{dotted}' is already {value!r} in the base "
+                f"config, so this override changes nothing and the derived image would "
+                f"be the base image"
+            )
+        node[index] = value
+        return
     if leaf in node and node[leaf] == value:
         raise SystemExit(
             f"derive_pack_config: '{dotted}' is already {value!r} in the base "
@@ -49,10 +74,20 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--base", required=True, help="config to derive from")
     ap.add_argument("--out", required=True, help="derived config to write")
-    ap.add_argument("--set-str", action="append", default=[], metavar="PATH=VALUE",
-                    help="set a dotted path to a string value")
-    ap.add_argument("--set-int", action="append", default=[], metavar="PATH=VALUE",
-                    help="set a dotted path to an integer value (0x accepted)")
+    ap.add_argument(
+        "--set-str",
+        action="append",
+        default=[],
+        metavar="PATH=VALUE",
+        help="set a dotted path to a string value",
+    )
+    ap.add_argument(
+        "--set-int",
+        action="append",
+        default=[],
+        metavar="PATH=VALUE",
+        help="set a dotted path to an integer value (0x accepted)",
+    )
     args = ap.parse_args(argv)
 
     if not args.set_str and not args.set_int:

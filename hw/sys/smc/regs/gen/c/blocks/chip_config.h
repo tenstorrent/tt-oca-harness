@@ -62,35 +62,16 @@ typedef union {
     uint32_t w;
 } chip_config__LC_STATE_t;
 
-// reg - chip_config::RAS_BANK_INFO
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_CHIP_bm 0xf
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_CHIP_bp 0
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_CHIP_bw 4
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_CHIP_reset 0x0
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_INSTANCE_bm 0xf0
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_INSTANCE_bp 4
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_INSTANCE_bw 4
-#define CHIP_CONFIG__RAS_BANK_INFO__BANK_INSTANCE_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t bank_chip :4;
-        uint32_t bank_instance :4;
-        uint32_t :24;
-    } f;
-    uint32_t w;
-} chip_config__RAS_BANK_INFO_t;
-
 // addrmap - chip_config
 typedef struct __attribute__ ((__packed__)) {
     chip_config__VERSION_LO_t VERSION_LO;
     chip_config__VERSION_HI_t VERSION_HI;
     chip_config__CHIP_ID_t CHIP_ID;
     chip_config__LC_STATE_t LC_STATE;
-    chip_config__RAS_BANK_INFO_t RAS_BANK_INFO;
 } chip_config_t;
 
 
-static_assert(sizeof(chip_config_t) == 0x14, "Packing error");
+static_assert(sizeof(chip_config_t) == 0x10, "Packing error");
 
 #ifdef __cplusplus
 }

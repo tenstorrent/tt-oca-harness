@@ -5,8 +5,9 @@
  *
  * Code executes from Boot ROM (0x10040000) via the IFU AXI demux.
  * Data (.rodata/.data/.bss/stack) resides in DCCM (0xC0040000).
- * The ROM reports entirely through cold_scratch: verdict in [0], status in [1],
- * console in [2]. It stores nothing outside SEP and opens no egress window.
+ * The C runtime signals PASS/FAIL via the STDOUT mailbox (0x80000000); this
+ * file opens the outbound filter and PMP window for it but never writes it
+ * itself -- see the note above the constants below.
  *
  * Build assumes RV32IM (no compressed — .option norvc).
  */
@@ -18,11 +19,13 @@
 
 #include "sep_addr.h"
 
-/* Reset entry and the halts report through cold_scratch and nothing else: it is
- * a SEP register, always present and writable from the first instruction. These
- * paths must survive anything, and a store into the external SMU aperture can
- * take a bus error on a part where nothing is mapped there, which raises NMI and
- * turns a clean stop into a loop. */
+/* No mailbox constants here on purpose. The DV status mailbox is at 0x80000000,
+ * inside the external SMU aperture, so whether a store to it lands or takes a
+ * bus error is an SoC integration property. Assembly runs on the paths that must
+ * survive anything -- reset entry and the halts -- and a bus error there raises
+ * NMI, turning a clean stop into a loop. These paths report through
+ * cold_scratch, a SEP register that is always present. The C runtime may use the
+ * mailbox; it runs later, after the outbound filter is open. */
 .equ SEP_COLD_SCRATCH_1, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
 
 /* DCCM base from EL2 snapshot: sadr=0xC0040000, size=128KiB → top=0xC0060000.
@@ -55,10 +58,14 @@
 
 /* ICCM address range for warm handler jump validation.
  *
- * ICCM, not SRAM: the boot flow requires a valid ICCM address, so the range
- * check has to be the ICCM window. */
-.equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
-.equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
+ * ICCM, not SRAM: the spec requires a "valid ICCM address"
+ * (sep-boot-flow.puml). A range of [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE) is a
+ * different memory entirely -- and a comment claiming "must be within ICCM" while
+ * the constants said SRAM, so the code and its own documentation disagreed. */
+.equ WARM_HANDLER_ICCM_BASE,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
+.equ WARM_HANDLER_ICCM_END,    OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
+.equ WARM_HANDLER_SRAM_BASE,   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+.equ WARM_HANDLER_SRAM_END,    OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE
 
 /* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
  * these numbers, so they must be changed in both places together. Kept as .equ
@@ -82,11 +89,11 @@
  * sep_smc_interface.h and the captured-GPIO straps map. */
 .equ SMC_STRAPS_LO,            SEP_SMC_GLOBAL_BASE + 0x405800
 .equ SMC_STRAPS_HI,            SEP_SMC_GLOBAL_BASE + 0x405804
-/* BYPASS_SRAM_REPAIR -> STRAPS_LO[13]. It drives skip_mem_repair_o, so repair
- * NEVER RAN.
+/* BYPASS_SRAM_REPAIR, GPIO pin 13 -> STRAPS_LO[13]. It drives
+ * skip_mem_repair_o, so repair NEVER RAN.
  *
  * The status bits then do not report on any repair that happened -- but do NOT
- * assume they read back 0. The specification says that when skip_mem_repair_o is
+ * assume they read back 0. OCAH-MAS 16.1.7 says that when skip_mem_repair_o is
  * asserted the external repair logic "should skip operations and immediately
  * assert completion status", without saying which of done/success it asserts. A
  * bypassed part may therefore present done=1,success=0 (completion asserted,
@@ -96,10 +103,10 @@
  * the correct response under either reading, which is why this arm skips
  * outright rather than treating some particular value as a failure to excuse. */
 .equ STRAP_BYPASS_SRAM_REPAIR,  (1 << 13)
-/* MBIST_BYPASS -> STRAPS_HI[22]: "Ignore results of Power-On MBIST for boot".
- * Do not merge the two bypass arms: MBIST still RUNS under this strap, so
- * mbist_done sets normally and only the verdict is discarded, whereas
- * BYPASS_SRAM_REPAIR stops repair happening at all. */
+/* MBIST_BYPASS, GPIO pin 54 -> STRAPS_HI[22] (54 - 32): "Ignore results of
+ * Power-On MBIST for boot". Do not merge the two bypass arms: MBIST still RUNS
+ * under this strap, so mbist_done sets normally and only the verdict is
+ * discarded, whereas BYPASS_SRAM_REPAIR stops repair happening at all. */
 .equ STRAP_MBIST_BYPASS_HI,     (1 << 22)
 
 /* SKIP_MEM_CHECK fuse: STATUS_RPT bit 2. Applies to a check that RAN and FAILED
@@ -115,31 +122,39 @@
  * check from being evaluated without touching any fuse. That is the straps'
  * documented purpose and a different threat surface.
  *
- * LIMITATION: bit 2 falls inside `reserved[31:2]` in this design's
- * sep_efuse_map RDL, so this is an undeclared use of a reserved bit. The
- * specification declares STATUS_RPT as 32 bits with 2 used, both for status
- * reporting, and allocates nothing for a MEM_REPAIR bypass. The register's
- * `sw = r` / `hw = rw` access is nevertheless correct for this use: software
- * cannot assert the bit, only the fuse can.
+ * NOTE: bit 2 currently falls inside `reserved[31:2]` in
+ * regs/blocks/sep_efuse_map/sep_efuse_map.rdl:806, so this is an undeclared use
+ * of a reserved bit. The gate itself is implemented; the fuse allocation is not
+ * yet declared in the register map.
+ * The name describes the intent: continue booting when MBIST reports a
+ * failure. Neither this design's RDL nor the
+ * OCAH-MAS fuse table allocates it -- MAS declares STATUS_RPT as 32 bits with 2
+ * used, both for status reporting. So this is an unallocated bit borrowed from
+ * another chip's map, not an allocated one awaiting a declaration (F23/F25). The register's existing `sw = r` / `hw = rw`
+ * access is already correct for this: software cannot assert it, only the fuse can.
  */
 .equ SEP_EFUSE_STATUS_RPT,     OCH_SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
 .equ STATUS_RPT_SKIP_MEM_CHECK, (1 << 2)
 
-/* Bound on the wait for mbist_done. LIMITATION: not derived from a measured
- * MBIST duration.
+/* Bound on the wait for mbist_done. PLACEHOLDER, NOT CALIBRATED -- no expected
+ * MBIST duration was available when this was written.
  *
  * COUNT AXI TRANSACTIONS, NOT INSTRUCTIONS. Each iteration performs one read of
  * a register on the far side of the SMC fabric, so the cost per iteration is a
  * bus round trip -- tens of cycles -- not the handful of instructions the loop
- * body looks like. 10000 bounds the worst case to roughly 300K cycles, about
- * 3 ms at 100 MHz and a fraction of a boot in simulation; a value in the
- * millions would be several HOURS of simulation for a single timeout. It runs on
- * REFCLK, the PLL not being up yet, so it has no fixed wall-clock meaning.
+ * body looks like. An earlier draft used 1000000 on the assumption that this was
+ * a cheap counting loop; at roughly 30 cycles per round trip that is ~30M cycles,
+ * which is about 0.3 s of silicon boot latency and, worse, several HOURS of
+ * simulation for a single timeout (a whole passing boot is ~1.6M clocks).
  *
- * A timeout is treated as a failure, so too small a value could stop a healthy
- * part -- but the hardware releases the SEP CPU only after repair, and MBIST is
- * expected to be complete or nearly so by then, which is why a large margin is
- * not needed.
+ * 10000 bounds the worst case to roughly 300K cycles, about 3 ms at 100 MHz and a
+ * fraction of a boot in simulation. It runs on REFCLK, the PLL not being up yet,
+ * so it has no fixed wall-clock meaning either way.
+ *
+ * Replace with a measured MBIST duration plus margin when one exists. A timeout
+ * is treated as a failure, so too small a value could stop a healthy part -- but
+ * note the hardware releases the SEP CPU only after repair, and MBIST is expected
+ * to be complete or nearly so by then, which is why a large margin is not needed.
  */
 .equ MBIST_DONE_WAIT_ITERS,    10000
 
@@ -164,7 +179,7 @@ _start:
     li      t0, 0xAAAAAAA8
     csrw    0x7C0, t0
 
-    /* ── Warm reset detection ─────────────────────────────────────
+    /* ── [S01]: Warm reset detection ──────────────────────────────────
      *
      * On warm reset (WDT bark → wdt_rst_ni low):
      *   - CPU is reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni)
@@ -173,7 +188,7 @@ _start:
      *     the handler slot lives in
      *   - sep_scratch_warm_scratch[] is NOT preserved: its
      *     arst_n = sep_reset_n & wdt_rst_ni, so a watchdog reset clears it.
-     *     The handler slot therefore lives in the COLD bank; see the block
+     *     The handler slot therefore lives in the cold bank; see the block
      *     above SEP_COLD_SCRATCH_7.
      *   - All CPU CSRs reset to defaults
      *
@@ -184,7 +199,7 @@ _start:
      *   1. Read cold_scratch[7]
      *   2. If zero → cold boot
      *   3. If non-zero: range check against
-     *      [WARM_HANDLER_RANGE_BASE, WARM_HANDLER_RANGE_END) = SEP ICCM
+     *      SEP SRAM or ICCM (either is a legal BL1 region)
      *   4. If valid: jump to handler, leaving the slot INTACT
      *   5. If invalid: hang
      *   The cold path poisons with -1, deliberately out of range, so an
@@ -197,11 +212,31 @@ _start:
     lw      t1, 0(t0)              /* t1 = warm handler address */
     beqz    t1, cold_boot          /* zero → cold boot */
 
-    /* Range check: WARM_HANDLER_RANGE_BASE <= handler < WARM_HANDLER_RANGE_END */
-    li      t2, WARM_HANDLER_RANGE_BASE
-    bltu    t1, t2, warm_reset_hang /* handler < range base → invalid → hang */
-    li      t2, WARM_HANDLER_RANGE_END
-    bgeu    t1, t2, warm_reset_hang /* handler >= range end → invalid → hang */
+    /* Range check: the handler must sit where BL1 may execute from, and per
+     * SEP-ROM-MAN-060 that is EITHER SEP SRAM or ICCM -- placement follows the
+     * manifest's TOC entry, so accepting only one region would reject a
+     * legitimate handler for the other. SRAM base is below ICCM base, so the
+     * ICCM window is tested first and anything below it falls through to SRAM. */
+    li      t2, WARM_HANDLER_ICCM_BASE
+    bltu    t1, t2, .Lwarm_try_sram /* below ICCM → maybe SRAM */
+    li      t2, WARM_HANDLER_ICCM_END
+    bltu    t1, t2, .Lwarm_range_ok /* inside ICCM → valid */
+    j       warm_reset_hang         /* at/above ICCM end → invalid → hang */
+.Lwarm_try_sram:
+#if BL1_SRAM_EXEC_ENABLE
+    /* SRAM execution is permitted in this build, so a handler there is valid.
+     * This must track rom_handoff.c's cold-path policy exactly: accepting a
+     * warm handler in a region the cold path would refuse to boot would let a
+     * warm reset re-enter code the ROM would never have launched. */
+    li      t2, WARM_HANDLER_SRAM_BASE
+    bltu    t1, t2, warm_reset_hang /* below SRAM → invalid → hang */
+    li      t2, WARM_HANDLER_SRAM_END
+    bgeu    t1, t2, warm_reset_hang /* at/above SRAM end → invalid → hang */
+#else
+    /* ICCM-only build: anything outside ICCM is invalid, SRAM included. */
+    j       warm_reset_hang
+#endif
+.Lwarm_range_ok:
 
     /* Valid warm handler found.  Announce the decision BEFORE transferring
      * control: once we jr, the ROM never runs again, so this store is the only
@@ -213,13 +248,16 @@ _start:
     li      t4, 0x01010068
     sw      t4, 0(t3)
 
-    /* NO POISON HERE, DELIBERATELY. The handler address is left in place; only
-     * the cold path writes the slot, and it writes -1.
+    /* No poison here, deliberately. The handler address is left in place, as
+     * the boot flow specification requires; only the cold path writes the slot,
+     * and it writes -1.
      *
-     * Persistence is what a watchdog handler needs: BL1 arms the watchdog after
-     * parking its re-entry address here, so the SECOND watchdog reset must reach
-     * the handler too. Poisoning on dispatch would let only the first one
-     * through and silently disarm watchdog recovery. */
+     * Leaving it is the behaviour a watchdog handler needs. BL1 arms the
+     * watchdog after parking its re-entry address here, so persistence is the
+     * point: the SECOND watchdog reset must reach the handler too. Poisoning
+     * made the first one dispatch and every one after that cold boot, silently
+     * disarming watchdog recovery unless the handler rewrites the slot on every
+     * entry -- and if it does, poisoning achieves nothing. */
 
     /* Jump to warm reset handler. BL1 sets up its own sp/mtvec/PMP as needed. */
     jr      t1
@@ -249,8 +287,8 @@ cold_boot:
      * philosophy already stated on the invalid-handler path below: an
      * unexpected handler value may indicate corruption or attack.
      *
-     * The warm path writes NOTHING -- see the accept arm above, where
-     * persistence is what a watchdog handler slot is for.
+     * The warm path writes NOTHING -- see the accept arm above. The slot is
+     * left alone because persistence is what a watchdog handler slot is for.
      *
      * -1 is what the specification asks for on the cold path. Writing 0 instead
      * would take the beqz early-out and cold boot silently. */
@@ -269,10 +307,36 @@ cold_boot:
     la      t0, trap_vector
     csrw    mtvec, t0
 
-    /* The SEP outbound filter blocks all AXI egress by default and the ROM opens
-     * nothing: its verdict, status and console are cold_scratch, a SEP register.
-     * A stage that needs egress opens its own window -- the DV BL1 image does
-     * exactly that in bl1_outbound_filter_init(). */
+    /* Configure outbound filter to allow mailbox writes at 0x8000_0000.
+     *
+     * The SEP outbound filter blocks ALL AXI egress transactions by default.
+     * Without this, mailbox writes (PASS/FAIL signal, status, printf) are
+     * silently dropped and the UVM testbench never sees fw_done.
+     *
+     * Filter 0 registers (OUTBOUND_FILTER_CTRL_0 from sep_addr.h):
+     *   START_ADDR (64-bit) = 0x0000_0000_8000_0000
+     *   END_ADDR   (64-bit) = 0x0000_0000_8000_0003
+     *   CONFIG     (64-bit) = 0x0000_0001_0100_0013
+     *          (read_en | write_en | addr_mode | allow_burst)
+     * CONFIG must be written LAST so address range is set before enable.
+     */
+    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
+    li      t1, 0x80000000
+    sw      t1, 0(t0)           /* start_addr[31:0] */
+    sw      zero, 4(t0)         /* start_addr[63:32] = 0 */
+
+    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
+    li      t1, 0x80000003
+    sw      t1, 0(t0)           /* end_addr[31:0] */
+    sw      zero, 4(t0)         /* end_addr[63:32] = 0 */
+
+    fence   w, w                /* ensure START/END committed before CONFIG */
+
+    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
+    li      t1, 0x01000013
+    sw      t1, 0(t0)           /* config[31:0] */
+    li      t1, 0x00000001
+    sw      t1, 4(t0)           /* config[63:32] */
 
     /* Status: entered _start (hart0) → scratch[1]
      * STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_START)
@@ -285,7 +349,8 @@ cold_boot:
     csrw    mie, zero
     csrci   mstatus, 0x8        /* clear MIE */
 
-    /* PMP init: a region-based policy (NAPOT).
+    /* PMP init (Phase 1 / M3):
+     * Program a simple region-based policy (NAPOT).
      *
      * Optional knobs:
      * - PMP_ENABLE=0: skip PMP programming
@@ -294,9 +359,9 @@ cold_boot:
      * Regions:
      * - entry0: Boot ROM  0x1004_0000 .. 0x1004_FFFF (64KiB)  : R-X
      * - entry1: DCCM      0xC004_0000 .. 0xC005_FFFF (128KiB) : RW-
-     * - entry2: unused (A=OFF, left free for a later stage)
+     * - entry2: MBX       0x8000_0000 .. 0x8000_0FFF (4KiB)   : RW-
      * - entry3: SRAM      0x1000_0000 .. 0x1003_FFFF (256KiB) : RWX (BL1 code+data)
-     * - entry4: Periph    0x1080_0000 .. 0x10BF_FFFF (4MiB)   : RW-
+     * - entry4: Periph    0x1090_0000 .. 0x10BF_FFFF (3MiB)   : RW-
      * - entry5: ICCM      0xC000_0000 .. 0xC003_FFFF (256KiB) : RWX (BL1)
      * - entry6: SMC MMIO  0xC000_0000 .. 0xCFFF_FFFF (256MiB) : RW-
      */
@@ -307,6 +372,9 @@ cold_boot:
     /* DCCM 128KiB @ 0xC004_0000: pmpaddr1 = (0xC0040000>>2) | ((128KiB>>3)-1) = 0x3001_3FFF */
     li      t0, 0x30013fff
     csrw    pmpaddr1, t0
+    /* MBX 4KiB @ 0x8000_0000: pmpaddr2 = (0x80000000>>2) | ((4KiB/2)-1) = 0x2000_07FF */
+    li      t0, 0x200007ff
+    csrw    pmpaddr2, t0
     /* SRAM 256KiB @ 0x1000_0000: pmpaddr3 = (0x10000000>>2) | ((256KiB/2)-1) = 0x0401_FFFF */
     li      t0, 0x0401ffff
     csrw    pmpaddr3, t0
@@ -324,13 +392,13 @@ cold_boot:
      * - NAPOT=0x18; R=0x1; W=0x2; X=0x4; L=0x80
      * - entry0 ROM  R-X: 0x18|0x05 = 0x1D
      * - entry1 DCCM RW-: 0x18|0x03 = 0x1B
-     * - entry2 unused:   0x00 (A=OFF; a later stage may claim it)
+     * - entry2 MBX  RW-: 0x18|0x03 = 0x1B
      * - entry3 SRAM RWX: 0x18|0x07 = 0x1F
      */
 #if PMP_LOCK
-    li      t0, 0x9f009b9d      /* L on entries 0,1,3; entry2 off */
+    li      t0, 0x9f9b9b9d      /* set L bit on entries 0..3 */
 #else
-    li      t0, 0x1f001b1d
+    li      t0, 0x1f1b1b1d
 #endif
     csrw    pmpcfg0, t0
 
@@ -365,16 +433,16 @@ cold_boot:
      * key, with nothing reporting an error. So a repair failure is fatal unless a
      * fuse says otherwise.
      *
-     * WHY IT SITS HERE, IN ASSEMBLY. It must run before the DCCM scrub below, so
-     * before anything writes DCCM and before the C runtime exists. In C it would
-     * run after straps, PLL, lifecycle and chip-ID, which would let a repair
-     * failure have the ROM compute and store the lifecycle -- the input that
-     * decides whether secure boot is enforced -- in memory whose integrity is not
-     * established. LC_STATE_TEST_DEV is 0x0, so a corrupted lc_state biases
-     * toward the permissive answer.
+     * WHY IT SITS HERE, IN ASSEMBLY. This runs before the DCCM scrub below, so
+     * before anything writes DCCM and before the C runtime exists. The check used
+     * to live in C (rom_main.c, after straps, PLL, lifecycle and chip-ID), which
+     * meant a repair failure let the ROM compute and store the lifecycle -- the
+     * input that decides whether secure boot is enforced -- in memory whose
+     * integrity had not been established. Worse, LC_STATE_TEST_DEV is 0x0, so a
+     * corrupted lc_state biases toward the permissive answer.
      *
-     * The SMC base is a compile-time constant here, so the check costs three
-     * instructions of setup.
+     * Three instructions of setup are all it takes: the SMC base is a
+     * compile-time constant here, so no preparation is needed.
      */
     li      t0, SMC_DFX_CTRL_STATUS_SMU
     lw      t1, 0(t0)                       /* t1 = raw DFT status, kept live */
@@ -383,7 +451,7 @@ cold_boot:
      * Skipped entirely when BYPASS_SRAM_REPAIR is strapped: repair never ran, so
      * the status bits are not a report on it and must not be read as one. See
      * STRAP_BYPASS_SRAM_REPAIR above for why the bits cannot simply be assumed
-     * to be 0 either. */
+     * to be 0 either (OCAH-MAS 16.1.7). */
     li      t0, SMC_STRAPS_LO
     lw      t5, 0(t0)
     li      t4, STRAP_BYPASS_SRAM_REPAIR    /* (1<<13) exceeds andi's 12-bit imm */
@@ -394,9 +462,10 @@ cold_boot:
     beqz    t2, dft_gate_failed             /* ran and failed */
 
 1:  /* ---- Arm 2: MBIST ----------------------------------------------------
-     * Required by the boot flow ("Check SMU MBIST results?").
+     * Required by sep-boot-flow.puml ("Check SMU MBIST results?"), which
+     * the previous version of this gate did not implement at all.
      *
-     * The wait is not defensive, it is required. The specification releases the SEP CPU
+     * The wait is not defensive, it is required. OCAH-MAS releases the SEP CPU
      * "once memory repair is done or bypassed" -- repair only, MBIST is not
      * named -- while the SMC cluster waits for both. So MBIST may still be
      * running here, and reading mbist_pass without waiting would read a 0 that
@@ -460,11 +529,13 @@ dft_gate_failed:
      * simputs() console text -- there is no C runtime here -- and the bl0_state
      * error_code, which is not initialised this early.
      *
-     * Scratch ONLY, deliberately: nothing outside SEP is touched here. Whether
-     * anything is mapped in the external SMU aperture is an SoC integration
-     * property; on a part where it is not, the store takes a bus error, the bus
-     * error raises NMI, and a failure path that was supposed to stop cleanly
-     * turns into an NMI loop. cold_scratch is a SEP register and is always there.
+     * Scratch ONLY, deliberately: no mailbox write. The mailbox lives at
+     * 0x80000000, inside the external SMU aperture, and whether anything is
+     * mapped there is an SoC integration property. On a part where it is not,
+     * the store takes a bus error, the bus error raises NMI, and a failure path
+     * that was supposed to stop cleanly turns into an NMI loop. A halt path must
+     * not depend on anything outside SEP. cold_scratch is a SEP register and is
+     * always there.
      *
      * DV therefore cannot learn of this halt from fw_done; a test covering it
      * polls cold_scratch[1] instead. */
@@ -479,7 +550,7 @@ mem_repair_fail_hang:
     /* Memory scrub (DCCM):
      * Clear DCCM before initializing runtime sections.
      *
-     * The default is a full 128KiB scrub. Because a
+     * The default is a full 128KiB scrub, matching TT-S behaviour. Because a
      * store writes its ECC, this scrub is what establishes DCCM's ECC state:
      * on silicon DCCM powers up with random contents and random ECC, and a
      * sub-word store read-modify-writes the word it lands in.
@@ -493,8 +564,9 @@ mem_repair_fail_hang:
      * ROM jumps to BL1's handler before touching DCCM at all, so this code
      * never runs. Holding the stack off bl0_state is the reserve's only job.
      *
-     * If RTL sim runtime becomes an issue, override DCCM_SCRUB_BYTES at build
-     * time with a smaller scrub length.
+     * If RTL sim runtime becomes an issue, override at build time with a
+     * smaller scrub length:
+     *   make -C fw/sep/bootcode clean all DCCM_SCRUB_BYTES=0x2000
      * DCCM_SCRUB_BYTES=0 disables the scrub entirely and leaves DCCM's ECC to
      * whatever wrote it last. Firmware owns that step; do not disable it to let
      * a testbench preload stand in.
@@ -552,31 +624,31 @@ trap_vector_early:
      * memory except cold_scratch[1], and calls nothing.
      *
      * Diagnostics go to cold_scratch[1] in sequence -- status, mcause, mtval,
-     * mepc, then the status again -- each store overwriting the last. The order
-     * is fixed so one decoder can reconstruct the sequence, and the closing
-     * status write is the point: a bus observer (the tb
+     * mepc, then the status again -- each store overwriting the last. That last
+     * store is the point: a bus observer (the tb
      * samples this register every cycle) reconstructs the whole sequence, while
      * a post-mortem register read on silicon finds a decodable status rather
      * than a bare CSR value it cannot identify.
      *
      * cold_scratch is a SEP register, so these stores cannot leave the
-     * subsystem and cannot themselves fault. Nothing here may address anything
-     * outside SEP -- see the note by the constants at the top of this file. */
+     * subsystem and cannot themselves fault. Nothing here may reach the mailbox
+     * at 0x80000000 -- see the note by the constants at the top of this file. */
     li      t0, SEP_COLD_SCRATCH_1
     li      t1, 0x0f010028              /* STATUS_ENCODE(ERROR, SEP_MSG_GENERAL_EXCEPTION) */
     sw      t1, 0(t0)
-    csrr    t2, mcause
+    csrr    t2, mcause                  /* reference: ECR  */
     sw      t2, 0(t0)
-    csrr    t2, mtval
+    csrr    t2, mtval                   /* reference: EFA  */
     sw      t2, 0(t0)
-    csrr    t2, mepc
+    csrr    t2, mepc                    /* reference: ERET */
     sw      t2, 0(t0)
     sw      t1, 0(t0)                   /* leave a decodable status resting here */
 
     /* Terminal verdict. cold_scratch[0] is a SEP register, writable this early,
-     * carrying none of the addressing risk of an external-aperture store. The
-     * whole ROM reports here -- the C paths via errors.h TEST_FAIL_CODE, which is
-     * this same 0xDEADBEEF, so one constant covers both.
+     * carrying none of the addressing risk of the DV outbound mailbox the rest
+     * of the ROM used to use. The whole ROM now reports here -- the C paths via
+     * errors.h TEST_FAIL_CODE, which is this same 0xDEADBEEF and the value the
+     * reference uses, so one constant covers all three.
      *
      * Only the exception handler does this, not mem_repair_fail_hang: a repair
      * failure is a gated outcome with a bypass fuse, not an unexpected fault. */

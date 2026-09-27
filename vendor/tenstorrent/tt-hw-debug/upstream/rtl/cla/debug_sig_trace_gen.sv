@@ -266,8 +266,8 @@ import dst_mmr_pkg::*;
     .reset_n (i_reset_n),
     .debug_source (Trdstinstfeatures.Trdstsrcid[DEBUG_SIGNALS_SOURCE_ID_WIDTH-1:0]),
 
-    // Timestamp value and DST-CSR control
-    .timestamp(timestamp),
+    // Timestamp value and DST-CSR control.
+    .timestamp(vlt_timestamp),
     .Trdstcontrol(Trdstcontrol),
 
     //Incoming Data from XOR compression

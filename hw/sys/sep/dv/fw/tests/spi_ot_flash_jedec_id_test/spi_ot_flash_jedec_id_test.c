@@ -23,11 +23,6 @@
  *
  * Note: Requires SPI flash model (+spi_device_sel=winbond) for PASS.
  * Without flash model the test fails closed on empty/all-0xFF JEDEC response.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_jedec_id_test STACK=sim \
- *     EXTRA_SIM_ARGS=+spi_device_sel=winbond
- *
  */
 
 #include <stdint.h>
@@ -44,9 +39,8 @@
 /* Flash commands */
 #define FLASH_CMD_JEDEC_ID 0x9F
 
-/* Expected JEDEC IDs for enrolled +spi_device_sel=4 (Winbond W25Q512JV).
- * Documented by sibling flash tests (spi_ot_flash_write_read_test) and matches
- * kept-log decode 0x002040ef. */
+/* Expected JEDEC ID for +spi_device_sel=4 (Winbond W25Q512JV): EF 40 20, the
+ * same device the other flash tests enrol. */
 #define JEDEC_MFR_WINBOND 0xEF
 #define JEDEC_TYPE_W25Q512JV 0x40
 #define JEDEC_CAP_W25Q512JV 0x20
@@ -54,13 +48,13 @@
 #define JEDEC_MFR_MACRONIX 0xC2
 
 static void init_spi_controller(void) {
-    spi_controller__CTRL_t ctrl;
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    spi_controller__CONTROL_t ctrl;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    spi_controller__CFG_t cfg;
+    spi_controller__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = SPI_CLKDIV;
     cfg.f.CPOL = 0;
@@ -68,7 +62,7 @@ static void init_spi_controller(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
@@ -103,11 +97,10 @@ int main(void) {
 
     int pass = 1;
 
-
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d, CPOL=0, CPHA=0\n\n", SPI_CLKDIV);
 
-    spi_controller__CMD_t cmd;
+    spi_controller__COMMAND_t cmd;
 
     /* ----------------------------------------------------------------
      * Segment 1: TX JEDEC ID command (0x9F), keep CS low
@@ -119,14 +112,14 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, (uint32_t)FLASH_CMD_JEDEC_ID);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), (uint32_t)FLASH_CMD_JEDEC_ID);
 
     cmd.w = 0;
     cmd.f.LEN = 0;       /* 1 byte */
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 2; /* TX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=TX, SPEED=Std, LEN=0(1B), CSAAT=1\n");
 
     /* ----------------------------------------------------------------
@@ -143,7 +136,7 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 1; /* RX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=RX, SPEED=Std, LEN=2(3B), CSAAT=0\n");
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
@@ -168,7 +161,7 @@ int main(void) {
         goto done;
     }
     {
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         mfr_id = (uint8_t)(rxdata & 0xFF);
         mem_type = (uint8_t)((rxdata >> 8) & 0xFF);
         capacity = (uint8_t)((rxdata >> 16) & 0xFF);

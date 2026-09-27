@@ -13,4 +13,5 @@ Authoritative description: `hw/ip/scrambler/doc/` (published in the TRM where re
 
 ## Verification
 
-No dedicated block TB in this tree.
+Block-level bench on the unified DV flow: `dv/README.md`
+(`python3 tools/dv/run_dv.py --dut scrambler`).

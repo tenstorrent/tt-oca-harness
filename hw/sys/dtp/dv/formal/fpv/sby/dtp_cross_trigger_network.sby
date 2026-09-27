@@ -1,0 +1,59 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Open-path formal run with cross_trigger_network as the top. The shared Bender filelist of the
+# dtp top supplies the sources (hw/common/dv/docs/formal-property-style.adoc); sby copies every
+# [files] entry into the task's src/ directory, so the paths inside the filelist must be absolute.
+# The network has one clock, so the default clock abstraction applies: every step is one clk_i
+# cycle and the asynchronous reset is step-synchronous; dtp_cross_trigger_network_sby_env.sv supplies
+# the reset model, the manager's outstanding bound, the peer model and the stretch bound. The
+# ctn_csr tasks, the CSR access contract, also bind the shared AXI checker on the AXI-Lite port
+# (dtp_ctn_axi_fv_bind.sv) with the manager's rules assumed and the network's asserted; the other
+# two blocks read the port's handshakes through their covers only.
+# One task triple per described block, selected by the block's tag. The cover depth of a block
+# must exceed the step at which its deepest cov_ label is reached; the bmc depth matches it.
+
+[tasks]
+ctn_clkstop_bmc    ctn_clkstop bmc
+ctn_clkstop_cover  ctn_clkstop cover
+ctn_clkstop_prove  ctn_clkstop prove
+ctn_xtrig_bmc      ctn_xtrig bmc
+ctn_xtrig_cover    ctn_xtrig cover
+ctn_xtrig_prove    ctn_xtrig prove
+ctn_csr_bmc        ctn_csr bmc
+ctn_csr_cover      ctn_csr cover
+ctn_csr_prove      ctn_csr prove
+
+[options]
+bmc:   mode bmc
+cover: mode cover
+prove: mode prove
+ctn_clkstop_bmc:   depth 10
+ctn_clkstop_cover: depth 10
+ctn_xtrig_bmc:     depth 20
+ctn_xtrig_cover:   depth 20
+ctn_csr_bmc:       depth 12
+ctn_csr_cover:     depth 12
+
+[engines]
+bmc:   smtbmc yices
+cover: smtbmc yices
+prove: abc pdr
+
+[script]
+plugin -i slang
+ctn_clkstop: read_slang -D FORMAL --top cross_trigger_network --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_ctn_clkstop_props.sv dtp_ctn_clkstop_bind.sv dtp_cross_trigger_network_sby_env.sv
+ctn_xtrig:   read_slang -D FORMAL --top cross_trigger_network --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_ctn_xtrig_props.sv dtp_ctn_xtrig_bind.sv dtp_cross_trigger_network_sby_env.sv
+ctn_csr:     read_slang -D FORMAL --top cross_trigger_network --single-unit --allow-use-before-declare --timescale=1ns/1ps -f dtp.f dtp_ctn_csr_props.sv dtp_ctn_csr_bind.sv dtp_ctn_axi_fv_bind.sv dtp_cross_trigger_network_sby_env.sv
+prep -top cross_trigger_network
+
+[files]
+../../build/dtp.f
+dtp_cross_trigger_network_sby_env.sv
+ctn_clkstop: ../../props/dtp_ctn_clkstop_props.sv
+ctn_clkstop: ../../props/dtp_ctn_clkstop_bind.sv
+ctn_xtrig:   ../../props/dtp_ctn_xtrig_props.sv
+ctn_xtrig:   ../../props/dtp_ctn_xtrig_bind.sv
+ctn_csr:     ../../props/dtp_ctn_csr_props.sv
+ctn_csr:     ../../props/dtp_ctn_csr_bind.sv
+ctn_csr:     ../../props/dtp_ctn_axi_fv_bind.sv

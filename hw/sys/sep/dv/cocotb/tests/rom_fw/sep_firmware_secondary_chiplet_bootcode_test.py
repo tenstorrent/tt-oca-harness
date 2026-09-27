@@ -9,7 +9,6 @@ manifest the SMC publishes at 0x1000 in one attempt, and hand off to BL1.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_secondary_chiplet_base import (
     ALL_FAILED,
     DEFAULT_MANIFEST_OFFSET,
@@ -57,5 +56,9 @@ class sep_firmware_secondary_chiplet_bootcode_test(sep_secondary_chiplet_base):
         self.logger.info(
             "CHK-SECONDARY-BOOT: %s@%d, handoff at BL1_JUMP=@%d, BL1 spoke at "
             "%s@%d, cold_scratch[0] verdict PASS",
-            MANIFEST_OK, i_ok, i_jump, _BL1_MARKER, i_bl1,
+            MANIFEST_OK,
+            i_ok,
+            i_jump,
+            _BL1_MARKER,
+            i_bl1,
         )

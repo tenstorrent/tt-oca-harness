@@ -75,9 +75,8 @@ module sep_ip_integration
   output ext_trng_axis_req_t ext_trng_axis_req_o [EXT_TRNG_NUM_AXIS-1:0],
   input  ext_trng_axis_rsp_t ext_trng_axis_rsp_i [EXT_TRNG_NUM_AXIS-1:0],
 
-  // External TRNG interrupt and alarm (to sep.sv)
+  // External TRNG interrupt (to sep.sv)
   output logic ext_trng_irq_o,
-  output logic ext_trng_alarm_o,
 
   // AXI4 extension interface (from sep.sv)
   input  sep_pkg::sep_32_64_6_12_axi_req_t  axi_extension_axi_req_i,
@@ -773,7 +772,6 @@ module sep_ip_integration
 
   assign ext_trng_axis_req_o = '{default: '0};
   assign ext_trng_irq_o      = 1'b0;
-  assign ext_trng_alarm_o    = 1'b0;
 
   //=========================================================================
   // AXI Extension -- terminated with a DECERR slave, keeping the bus from

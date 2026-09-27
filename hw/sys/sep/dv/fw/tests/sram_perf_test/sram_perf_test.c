@@ -30,8 +30,8 @@
 #define NUM_WORDS 256     // Number of SRAM words to test (1KB)
 #define NUM_ITERATIONS 50 // Number of test iterations
 
-// Use only 90% of SRAM to leave safety margin at the end
-// SRAM is at 0x10100000 (separate from DTCM/stack at 0x00080000-0x0009FFFF)
+// Keep the test clear of the top of SRAM; SRAM lies outside the DTCM/stack
+// region in link/modes/tcm.ld.
 #define SRAM_SAFETY_MARGIN 0x4000 // 16KB safety buffer at end
 #define SRAM_USABLE_SIZE (OCH_SEP_TOP_SEP_SRAM_SIZE - SRAM_SAFETY_MARGIN)
 #define SRAM_WORD_MAX (SRAM_USABLE_SIZE / 4) // Max word offset in usable SRAM
@@ -99,17 +99,15 @@ static uint16_t lfsr_next(void) {
 }
 
 //-----------------------------------------------------------------------------
-// Generate unique random word offsets within SRAM
-// Uses spacing + jitter to ensure no duplicate offsets (which would cause
-// the sequential test to fail due to overwrites)
+// Generate NUM_WORDS distinct word offsets spread across SRAM. A duplicate
+// offset would make the sequential test fail on the overwrite.
 //-----------------------------------------------------------------------------
 
 static uint32_t random_offsets[NUM_WORDS];
 
 static void generate_random_offsets(void) {
-    // Use deterministic sequential offsets with fixed stride
-    // This GUARANTEES no duplicates - each offset is exactly 'stride' apart
-    // Stride is chosen to spread accesses across SRAM while staying within bounds
+    // Fixed-stride offsets: each is exactly 'stride' words from the next, so none
+    // collide, and the last stays within SRAM_WORD_MAX.
     uint32_t stride = SRAM_WORD_MAX / NUM_WORDS; // ~60 words apart
     uint32_t start_offset = 0;                   // Start from beginning of SRAM
 

@@ -6,19 +6,19 @@
 //
 //--------------------------------------------------
 module prim_flop_4sync (
-  input i_CK,
-  input i_D,
-  output wire o_Q
+  input clk_i,
+  input d_i,
+  output wire q_o
 );
 
   logic q_d, q_dd, q_ddd, q_dddd;
 
-  always_ff @(posedge i_CK) begin
-    q_d    <= i_D;
+  always_ff @(posedge clk_i) begin
+    q_d    <= d_i;
     q_dd   <= q_d;
     q_ddd  <= q_dd;
     q_dddd <= q_ddd;
   end
 
-  assign o_Q = q_dddd;
+  assign q_o = q_dddd;
 endmodule

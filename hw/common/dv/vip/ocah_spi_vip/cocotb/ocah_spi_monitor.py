@@ -15,15 +15,18 @@ Each completed transaction is reported as a plain dict::
         "opcode":    int,          # 8-bit command byte
         "addr":      int,          # decoded address (0 if no address)
         "has_addr":  bool,         # True if command carries an address
-        "data_mosi": bytes,        # bytes seen on MOSI/DQ0 (host → flash)
-        "data_miso": bytes,        # bytes seen on MISO/DQ0 (flash → host)
+        "data_mosi": bytes,        # payload bytes on MOSI/DQ0 after the address (PAGE PROGRAM)
+        "data_miso": bytes,        # response bytes on MISO/DQ0 after the command, address, and dummy phases
         "bit_count": int,          # total bits observed in this transaction
         "start_ns":  float or None,
         "end_ns":    float or None,
     }
 
-Known command codes are decoded to symbolic names for logging; unknown codes
-are logged as ``UNKNOWN(0xNN)``.
+``data_miso`` is empty for a command that carries no response phase, and
+``data_mosi`` is empty for a command that carries no payload phase, so a byte
+the line held during the command phase is never reported as data.  Known
+command codes are decoded to symbolic names for logging; unknown codes are
+logged as ``UNKNOWN(0xNN)`` and carry neither data field.
 
 Usage
 -----
@@ -48,33 +51,47 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 import cocotb
-from cocotb.triggers import FallingEdge, RisingEdge, Timer
+from cocotb.triggers import FallingEdge, First, RisingEdge
+
+from .ocah_spi_types import OcahSpiOpcode, opcode_name
 
 __all__ = ["OcahSpiMonitor"]
 
-# ---------------------------------------------------------------------------
-# Command name table (for logging only)
-# ---------------------------------------------------------------------------
-_CMD_NAMES: Dict[int, str] = {
-    0x9F: "READ_JEDEC_ID",
-    0x03: "READ",
-    0x0B: "FAST_READ",
-    0x05: "READ_SR1",
-    0x35: "READ_SR2",
-    0x06: "WRITE_ENABLE",
-    0x04: "WRITE_DISABLE",
-    0x02: "PAGE_PROGRAM",
-    0x20: "SECTOR_ERASE",
-}
+
+def _cancel_task(task: Any) -> None:
+    """Stop a background task on cocotb 1.x (``kill``) and 2.x (``cancel``) alike."""
+    cancel = getattr(task, "cancel", None)
+    if cancel is not None:
+        cancel()
+    else:
+        task.kill()
+
 
 # Commands that carry an address phase
-_ADDR_COMMANDS = frozenset([0x03, 0x0B, 0x02, 0x20])
+_ADDR_COMMANDS = frozenset(
+    int(op)
+    for op in (
+        OcahSpiOpcode.READ,
+        OcahSpiOpcode.FAST_READ,
+        OcahSpiOpcode.PAGE_PROGRAM,
+        OcahSpiOpcode.SECTOR_ERASE,
+    )
+)
 
 # Commands that have a MISO data phase after the address/dummy
-_MISO_COMMANDS = frozenset([0x9F, 0x03, 0x0B, 0x05, 0x35])
+_MISO_COMMANDS = frozenset(
+    int(op)
+    for op in (
+        OcahSpiOpcode.JEDEC_ID,
+        OcahSpiOpcode.READ,
+        OcahSpiOpcode.FAST_READ,
+        OcahSpiOpcode.READ_SR1,
+        OcahSpiOpcode.READ_SR2,
+    )
+)
 
 # Commands that have a MOSI data phase after the address
-_MOSI_COMMANDS = frozenset([0x02])
+_MOSI_COMMANDS = frozenset([int(OcahSpiOpcode.PAGE_PROGRAM)])
 
 
 class OcahSpiMonitor:
@@ -143,6 +160,7 @@ class OcahSpiMonitor:
             "transactions_seen": 0,
             "bytes_mosi": 0,
             "bytes_miso": 0,
+            "callback_errors": 0,
         }
 
     # ------------------------------------------------------------------
@@ -177,7 +195,7 @@ class OcahSpiMonitor:
             return
         self._running = False
         if self._task is not None:
-            self._task.kill()
+            _cancel_task(self._task)
             self._task = None
         self.log.info("%s: stopped (transactions=%d)", self.name, self._stats["transactions_seen"])
 
@@ -214,18 +232,14 @@ class OcahSpiMonitor:
 
     async def _observe_transaction(self) -> None:
         """Observe one SPI transaction from CS_N low to CS_N high."""
-        try:
-            start_ns = cocotb.utils.get_sim_time(units="ns")
-        except Exception:  # noqa: BLE001
-            start_ns = None
+        start_ns = _sim_time_ns()
 
         mosi_bits: List[int] = []
         miso_bits: List[int] = []
 
         # Sample bits on rising SCLK edges until CS_N goes high.
         while True:
-            # Wait for rising SCLK or CS_N going high.
-            await _first_of(RisingEdge(self._sclk), RisingEdge(self._cs_n))
+            await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
                 break  # CS deasserted
 
@@ -234,10 +248,7 @@ class OcahSpiMonitor:
             if self._miso is not None:
                 miso_bits.append(int(self._miso.value) & 0x1)
 
-        try:
-            end_ns = cocotb.utils.get_sim_time(units="ns")
-        except Exception:  # noqa: BLE001
-            end_ns = None
+        end_ns = _sim_time_ns()
 
         txn = self._decode(mosi_bits, miso_bits, start_ns, end_ns)
         self._history.append(txn)
@@ -248,12 +259,12 @@ class OcahSpiMonitor:
         self._stats["bytes_mosi"] += len(txn["data_mosi"])
         self._stats["bytes_miso"] += len(txn["data_miso"])
 
-        _fire_callbacks(self._callbacks, txn)
+        self._stats["callback_errors"] += _fire_callbacks(self.log, self._callbacks, txn)
 
         self.log.info(
             "%s: %s addr=0x%06X mosi=%dB miso=%dB",
             self.name,
-            _CMD_NAMES.get(txn["opcode"], f"UNKNOWN(0x{txn['opcode']:02X})"),
+            opcode_name(txn["opcode"]),
             txn["addr"],
             len(txn["data_mosi"]),
             len(txn["data_miso"]),
@@ -281,20 +292,19 @@ class OcahSpiMonitor:
         if has_addr and len(mosi_bytes) > 1:
             for i in range(1, min(1 + self._addr_bytes, len(mosi_bytes))):
                 addr = (addr << 8) | mosi_bytes[i]
-            # Data starts after opcode + address bytes
-            data_mosi_start = 1 + self._addr_bytes
-            # For fast read, skip dummy bytes too
-            if opcode == 0x0B:
-                data_mosi_start += self._fast_read_dummies
-        else:
-            data_mosi_start = 1  # skip opcode only
+
+        # The response phase starts after the opcode, the address bytes of an
+        # addressed command, and the dummy bytes of a FAST READ.
+        data_start = 1 + (self._addr_bytes if has_addr else 0)
+        if opcode == OcahSpiOpcode.FAST_READ:
+            data_start += self._fast_read_dummies
 
         return {
             "opcode": opcode,
             "addr": addr,
             "has_addr": has_addr,
-            "data_mosi": mosi_bytes[data_mosi_start:] if opcode in _MOSI_COMMANDS else b"",
-            "data_miso": miso_bytes,
+            "data_mosi": mosi_bytes[data_start:] if opcode in _MOSI_COMMANDS else b"",
+            "data_miso": miso_bytes[data_start:] if opcode in _MISO_COMMANDS else b"",
             "bit_count": len(mosi_bits),
             "start_ns": start_ns,
             "end_ns": end_ns,
@@ -304,6 +314,14 @@ class OcahSpiMonitor:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _sim_time_ns() -> Optional[float]:
+    """Simulation time in ns, ``None`` when the simulator exposes none."""
+    try:
+        return cocotb.utils.get_sim_time("ns")
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _bits_to_bytes(bits: List[int]) -> bytes:
@@ -322,42 +340,15 @@ def _bits_to_bytes(bits: List[int]) -> bytes:
     return bytes(out)
 
 
-def _fire_callbacks(callbacks: list, *args) -> None:
-    """Call each callback; log but do not re-raise exceptions."""
+def _fire_callbacks(log: logging.Logger, callbacks: list, *args) -> int:
+    """Call each callback; a checker verdict propagates, any other exception is logged and counted."""
+    errors = 0
     for fn in callbacks:
         try:
             fn(*args)
+        except AssertionError:
+            raise
         except Exception as exc:  # noqa: BLE001
-            logging.getLogger(__name__).error("Exception in SpiMonitor callback %s: %s", fn, exc)
-
-
-async def _first_of(*triggers):
-    """Await the first of multiple triggers and return the trigger that fired.
-
-    This is a minimal alternative to cocotb.triggers.First which is not
-    available in all cocotb versions supported by this project.
-    """
-    # Use cocotb.triggers.First if available, otherwise fall back to a
-    # simple sequential poll pattern.
-    try:
-        from cocotb.triggers import First  # type: ignore[attr-defined]  # noqa: PLC0415
-
-        return await First(*triggers)
-    except ImportError:
-        pass
-
-    # Fallback: create tasks and race them.
-
-    tasks = [cocotb.start_soon(t) for t in triggers]
-
-    async def _wait_first():
-        while True:
-            await Timer(1, units="step")
-            for task in tasks:
-                if task.done():
-                    for other in tasks:
-                        if not other.done():
-                            other.kill()
-                    return
-
-    await _wait_first()
+            errors += 1
+            log.error("Exception in SpiMonitor callback %s: %s", fn, exc)
+    return errors

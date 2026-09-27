@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Daily regression policy: run the no_cpu and cpu groups separately,
-# `python3 tools/dv/run_dv.py --dut sep --items <no_cpu|cpu> --regress`. Tests with run_modes=["no_cpu"]
+# Daily regression policy: run the cpu_stub and cpu groups separately,
+# `python3 tools/dv/run_dv.py --dut sep --items <cpu_stub|cpu> --regress`. Tests with run_modes=["no_cpu"]
 # select target="lsu_stub_all_live"; CPU firmware tests omit target and use the
 # full-CPU default model.
 
@@ -81,7 +81,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # CMD_KEY_TRANSFERs it to the OpenTitan HMAC engine, then runs keyed HMAC-SHA256
 # over a fixed message and proves HMAC consumed the exact key: the digest equals
 # an independent HMAC-SHA256 golden (env/sep_hmac_golden.py, stdlib hmac/hashlib,
-# RFC 4231 self-tested) of the known key under the RTL-pinned convention.
+# RFC 4231 self-tested) of the known key (key_word_rev=1, key_be=1, msg_be=0).
 # Frontdoor (no backdoor); HMAC has no CFG sideload bit, so the digest-vs-golden
 # compare is the consume-proof. no_cpu;
 # +esrc_noise_force for the ring oscillators under Verilator. REAL fuse-sense
@@ -119,14 +119,162 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# KM key/policy vault: slot extent and SRAM write-lock. RANDCFG: slot and
-# lock region from the run seed. Dedicated KM ROM (not rom_main); seal
-# stays on the parked command-set vehicle. no_cpu; +skip_fuse_sense.
+# KM key/policy vault: slot extent, SRAM write-lock and the KPV seal.
+# RANDCFG: slot, lock region and the seal/free slot pair from the run seed.
+# Dedicated KM ROM (not rom_main): the vault is on the KM CPU bus, and no
+# mailbox command seals a slot, so the sealed-erase-retires contract has no
+# vehicle on the command set. no_cpu; +skip_fuse_sense.
 name = "sep_km_key_policy_vault_test"
 module = "km.sep_km_key_policy_vault_test"
 seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
 timeout_sec = 1800
 tags = ["km", "kpv", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
+
+[[tests]]
+name = "sep_km_isolate_termination_test"
+module = "km.sep_km_isolate_termination_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "isolate", "reset", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_iso.parhex"]
+
+[[tests]]
+# KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error,
+# version queries, OTP cold lock, recoverable-fault ACK, and a directed ABR
+# ML-DSA seed transfer every seed. RANDCFG: generated key size, the extra
+# transfer dest (HMAC / KMAC / AES / OTBN), the out-of-policy destination and
+# the undefined command IDs come from the run seed. AES stays the consume
+# witness. ABR dest is directed (not seed-selected) so every kept run hits it.
+# Consume of HMAC / KMAC / OTBN stays on the sideload KATs; ABR consume is
+# sep_km_abr_seed_sideload_test. Frontdoor throughout. REAL fuse-sense
+# (rom_main reads OTP at boot); +esrc_noise_force makes the ring oscillators
+# alive under Verilator.
+name = "sep_km_command_set_rand_test"
+module = "km.sep_km_command_set_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+# Wall budget covers VCS with coverage: rom_main + entropy + the shredded-engine
+# refuse window. CLI --timeout overrides this value.
+timeout_sec = 7200
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM warm-reset recovery then SEP emergency wipe. Wipe last: the KM posts
+# RESP_UNRECOVERABLE_FAULT. REAL fuse-sense; +esrc_noise_force.
+name = "sep_km_wipe_reset_test"
+module = "km.sep_km_wipe_reset_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 7200
+tags = ["km", "wipe", "reset", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM mailbox handover: inhibit after CMD_EXEC_ROM, then a 14-word SRAM load
+# and a warm-reset CMD_SRAM_EXEC. REAL fuse-sense; +esrc_noise_force.
+name = "sep_km_handover_test"
+module = "km.sep_km_handover_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 7200
+tags = ["km", "handover", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM -> ABR ML-DSA seed sideload consume: palindromic seed over the mailbox,
+# KV pull, KEYGEN PK equals the direct-seed KEYGEN. RANDCFG: masking entropy.
+# REAL fuse-sense; +esrc_noise_force. Three ML-DSA-87 KEYGENs set the wall budget.
+name = "sep_km_abr_seed_sideload_test"
+module = "km.sep_km_abr_seed_sideload_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 10800
+tags = ["km", "abr", "sideload", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM -> ABR ML-KEM sideload: the seed (D||Z on one 16-dword KV lane), the
+# message, and the shared-key writeback the KM consumes back out. Each lane is
+# compared against a direct-register run of the same words, after a run on
+# different words, so a stale register cannot pass. REAL fuse-sense;
+# +esrc_noise_force. Three ML-KEM-1024 keygens and four encaps set the wall
+# budget.
+name = "sep_km_abr_mlkem_sideload_test"
+module = "km.sep_km_abr_mlkem_sideload_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 10800
+tags = ["km", "abr", "sideload", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM mailbox as a SEP-side register surface. RANDCFG: the 16 inbound fill
+# words come from the run seed. KM stays in software reset so firmware
+# cannot drain or fault the FIFOs; the SEP-facing mailbox lives on cold
+# reset and stays reachable. no_cpu; +skip_fuse_sense. No +km_rom_hex:
+# this leaf grades the registers, not a command stream.
+name = "sep_km_mailbox_protocol_rand_test"
+module = "km.sep_km_mailbox_protocol_rand_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "mailbox", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# KM CRC co-processor KAT, all three modes (CRC-32C word, CRC-32C byte,
+# CRC-8/ROHC). RANDCFG: the operand set comes from the run seed. The engine has
+# no register interface -- it is a PicoRV32 PCPI co-processor reached by a
+# custom-0 instruction -- so a dedicated service ROM issues the instructions and
+# every golden and cross-check lives in the host test. no_cpu; +skip_fuse_sense.
+name = "sep_km_crc_pcpi_kat_test"
+module = "km.sep_km_crc_pcpi_kat_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "crc", "pcpi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_crc.parhex"]
+
+[[tests]]
+# KPV scrambler: the stored word and the address mapping are both transformed
+# while enabled, and the vault passes through while disabled. RANDCFG: two
+# scrambler keys and three logical key-entry indices from the run seed.
+# Dedicated KM ROM (not rom_main, which locks the scrambler during boot); the
+# ROM reports raw observations and the host holds every verdict. no_cpu;
+# +skip_fuse_sense.
+name = "sep_km_kpv_scrambler_test"
+module = "km.sep_km_kpv_scrambler_test"
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "kpv", "scrambler", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_kpv_scrambler.parhex"]

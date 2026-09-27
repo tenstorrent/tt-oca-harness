@@ -7,7 +7,7 @@ as ``tb_cpu_jtag_*``:
 
 * ``OcahJtagMasterDriver`` / ``OcahJtagDevice`` provide bus bind + register map.
 * Active-high ``tb_cpu_jtag_reset`` is driven only by this wrapper — it is
-  intentionally NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
+  NOT exposed as bus ``trst`` because ``cocotbext-jtag`` assumes
   IEEE active-low TRST polarity.
 * Runtime IR/DR scans use ``OcahJtagMasterDriver`` bit-bang only (no ``JTAGDriver``).
   cocotbext-jtag's GatedClock + RX FSM desyncs after long DMI idle sequences
@@ -33,7 +33,6 @@ _DMI_DR_WIDTH = 41
 # `tb_top.sv` JEP106 + part-number + version composition.
 EXPECTED_CPU_TAP_IDCODE = 0x10CA0555
 
-# Keep historical SMC error name.
 SmcJtagTapError = OcahJtagMasterDriverError
 
 
@@ -144,7 +143,7 @@ class SmcJtagTap:
             for _ in range(4):
                 await tap.step_tms(1)
         else:
-            await Timer(self._tck_period_ns * 2, units="ns")
+            await Timer(self._tck_period_ns * 2, unit="ns")
         await tap.reset_tap(10)
         self._dmi_selected = False
 
@@ -319,13 +318,11 @@ class SmcJtagTap:
                 int(cocotb.top.tb_cpu_debug_dmactive.value),
                 int(cocotb.top.tb_cpu_debug_dmactive_ack.value),
             )
-        except Exception:  # noqa: BLE001 - probe optional on older elaborations
+        except Exception:  # noqa: BLE001 - tb_cpu_debug_dmactive* probes are optional
             pass
-        # Both polls below raise on expiry. Falling through after 16 attempts
-        # and sending the result only to `cocotb.log.info` would report a debug
-        # module that never came out of reset -- or is absent altogether -- as a
-        # successful smoke test, while this helper and its caller state dmactive
-        # as established fact ([TIMEOUT-MUST-FAIL]).
+        # Both polls below raise on expiry: a debug module that never leaves
+        # reset, or is absent, must fail the smoke test rather than be logged
+        # as a pass ([TIMEOUT-MUST-FAIL]).
         _DM_POLLS = 16
         dmcontrol = 0
         for _ in range(_DM_POLLS):

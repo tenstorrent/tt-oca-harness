@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Entropy stack brought up by SEP firmware, with entropy proven to flow.
 
-This is the anchor that unblocks the entropy consumers. It runs
+This anchor proves the entropy path that the AES anchors consume. It runs
 hw/sys/sep/dv/fw/tests/sep_smu_entropy_bringup, which programs ESRC -> CSRNG ->
 EDN through the driver the SEP DV tree already ships, in the order that driver
 documents, and it drives the raw noise the ring oscillators cannot generate
@@ -22,8 +22,8 @@ entropy moved, and it is checked at three points down the chain:
 
 Bit-exact prediction of those genbits is not attempted; that needs the golden
 chain in hw/sys/sep/dv and belongs there. Here the question is whether the
-chain runs at all in this wrapper, which is what the AES and OTBN anchors are
-waiting on.
+chain runs at all in this wrapper, which the AES anchors' masking reseed
+depends on.
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ import os
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.esrc_noise import SmuEsrcNoiseDriver
 from seq_lib.sep_fw_common import addr_of, load_syms
 
@@ -56,10 +57,14 @@ PHASES = {
 class SmuSepEntropySeq:
     """Require the firmware bring-up to make real entropy reach the DRBG."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_ENTROPY_FW_BRINGUP_OK", "SEP_ENTROPY_CHAIN_FLOWS_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -175,7 +180,7 @@ class SmuSepEntropySeq:
             "produced an accepted seed, CSRNG consumed it, and the CTR_DRBG "
             "produced genbits -- the chain runs, not just its registers)"
         )
-        for token in ("SEP_ENTROPY_FW_BRINGUP_OK", "SEP_ENTROPY_CHAIN_FLOWS_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

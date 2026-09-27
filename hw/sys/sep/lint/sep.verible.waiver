@@ -4,4 +4,3 @@
 # Stub swaps retain the real module names so they replace the production
 # implementation without changing instantiations.
 waive --rule=module-filename --regex="module sep_cpu" --location=".*hw/sys/sep/dv/shims/cpu/sep_cpu_stub\.sv$"
-waive --rule=module-filename --regex="module abr_wrapper_key_reg " --location=".*hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub\.sv$"

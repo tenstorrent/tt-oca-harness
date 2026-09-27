@@ -9,7 +9,6 @@ decryption, so the primary reaches SIG_VALID before it is refused.
 from __future__ import annotations
 
 import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -18,7 +17,6 @@ from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boo
 
 
 class sep_primary_toc_fail_base(sep_primary_fail_backup_boot_base):
-
     # --- member contract ---------------------------------------------------
     # "version_major" or "image_count".
     toc_field: str = ""
@@ -44,14 +42,17 @@ class sep_primary_toc_fail_base(sep_primary_fail_backup_boot_base):
 
         required = ["MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP="]
         # Forbid every other structural code; the accepted backup prints no MANIFEST_ERR=.
-        forbidden = [f"MANIFEST_ERR=0x{td.sibling_error(cls.toc_field):08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_MAGIC:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_VERSION:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_LENGTH:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_BAD_TOC_ID:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_PAYLOAD_TOO_LARGE:08x}",
-                     f"MANIFEST_ERR=0x{td.ERR_NO_BL1_IMAGE:08x}",
-                     "CRYPTO_FAIL=", "MANIFEST_ALL_FAILED"]
+        forbidden = [
+            f"MANIFEST_ERR=0x{td.sibling_error(cls.toc_field):08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_MAGIC:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_VERSION:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_LENGTH:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_BAD_TOC_ID:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_PAYLOAD_TOO_LARGE:08x}",
+            f"MANIFEST_ERR=0x{td.ERR_NO_BL1_IMAGE:08x}",
+            "CRYPTO_FAIL=",
+            "MANIFEST_ALL_FAILED",
+        ]
         forbidden += list(td.OTHER_PAYLOAD_TOKENS) + list(td.DECRYPT_FAILURE_TOKENS)
         if cls.encrypted:
             required += [td.DECRYPT_START, td.DECRYPT_OK]
@@ -99,8 +100,7 @@ class sep_primary_toc_fail_base(sep_primary_fail_backup_boot_base):
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
         # The arm is silent, so its error code is the only ROM-side attribution.
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
         # The primary's TOC must be refused after its own payload decrypted, not instead of it.
         if self.encrypted:
@@ -120,17 +120,28 @@ class sep_primary_toc_fail_base(sep_primary_fail_backup_boot_base):
             self.logger.info(
                 "CHK-DECRYPT-ARM: primary@%d -> %s@%d -> %s@%d -> %s@%d, and both "
                 "markers appear twice (primary and recovering backup)",
-                i_psrc, td.DECRYPT_START, i_ds, td.DECRYPT_OK, i_do, slot_err, i_err,
+                i_psrc,
+                td.DECRYPT_START,
+                i_ds,
+                td.DECRYPT_OK,
+                i_do,
+                slot_err,
+                i_err,
             )
 
         # Only the served bytes separate cells that share an error code.
-        td.assert_served_toc_field(self.logger, flash, "primary", self.toc_field,
-                                   self._served, self._payload_offset)
+        td.assert_served_toc_field(
+            self.logger, flash, "primary", self.toc_field, self._served, self._payload_offset
+        )
 
         self.logger.info(
             "CHK-TOC-RULE: primary@%d declared TOC %s = %d and was refused %s@%d "
             "inside its own attempt, after its signature verified; the untouched "
             "backup was read@%d and booted",
-            i_psrc, self.toc_field, td.PLANTED[self.toc_field], slot_err, i_err,
+            i_psrc,
+            self.toc_field,
+            td.PLANTED[self.toc_field],
+            slot_err,
+            i_err,
             i_bsrc,
         )

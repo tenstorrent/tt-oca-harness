@@ -3,29 +3,32 @@
 """IP-interrupt -> sep_internal_interrupts aggregator.
 
 reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivity_
-test_seq). no_cpu: with the CPU held off, the host injects each CSRNG/EDN
+test_seq). no_cpu: with the CPU held off, the host injects each covered IP
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv), not merely that
-the IP raised its own status bit.
+exercising the IP `intr_o` -> aggregator wiring (sep.sv:530-578), not merely that
+the IP raised its own status bit. HMAC error is Event-type (W1C). DMA done /
+chunk / error are Status-type (INTR_TEST=0 deasserts). HMAC/KMAC fifo_empty
+Status bits are idle-true and are not walked.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
-`sep_internal_interrupts_probe_o`, an observation-only XMR mirror. The IP-local
-INTR_STATE RW1C contract is checked frontdoor over AXI.
+`sep_internal_interrupts_probe_o` (observation-only XMR mirror; the OSS analog of
+the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
+local INTR_STATE RW1C contract is checked frontdoor over AXI.
 
-Per source (CSRNG cmd_req_done/entropy_req/hw_inst_exc/fatal_err -> bits 23..26;
-EDN cmd_req_done/fatal_err -> bits 27..28), a 3-phase check:
+Per source (CSRNG bits 23..26, EDN bits 27..28, HMAC error bit 19, DMA done /
+chunk / error bits 8..10), the 3-phase check:
   CHK-BASE  clear INTR_TEST + W1C INTR_STATE -> aggregate bit reads 0
             (non-vacuity: a stuck-high aggregate bit fails here).
   CHK-SET   INTR_ENABLE + INTR_TEST -> aggregate bit reads 1 AND INTR_STATE bit 1
             (proves INTR_TEST -> intr_o -> sep_internal_interrupts[idx]); a stuck-
             low / mis-wired aggregate bit fails here.
   CHK-ISO   while this source is asserted, the OTHER 5 mapped bits stay 0
-            (one-hot aggregation -- catches an OR-network smear, which checking
-            one source at a time cannot).
-  CHK-CLR   W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0
-            (RW1C deassert path).
+            (one-hot aggregation -- catches an OR-network smear; stronger than
+            reference suite, which checks one source at a time).
+  CHK-CLR   Event: W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0.
+            Status: INTR_TEST=0 -> the same two zeros (INTR_STATE is read-only).
 
 Then one through-adapter SLVERR on the Secure DMA register hole and one on
 each HMAC / KMAC / OTBN CSR gap:
@@ -80,10 +83,23 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         await ReadOnly()
         return self.rd(cocotb.top.sep_internal_interrupts_probe_o)
 
+    async def _sample_agg_known(self, mask: int) -> int:
+        """Sample the vector, requiring the bits in ``mask`` to be 0 or 1.
+
+        For a compare whose passing branch is zero. ``rd`` resolves an unknown
+        bit to 0, so ``bit == 0`` would also hold for a bit nothing drives --
+        which is the whole risk on bit [41], a source this leaf never raises.
+        Only the named bits are required to be known; the rest of the vector may
+        legitimately be X.
+        """
+        await RisingEdge(cocotb.top.clk_i)
+        await ReadOnly()
+        return self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask)
+
     async def _poll_agg(self, idx: int, expect: int, *, timeout: int = 200) -> tuple[bool, int]:
         sample = 0
         for _ in range(timeout):
-            sample = await self._sample_agg()
+            sample = await self._sample_agg_known(1 << idx)
             if ((sample >> idx) & 1) == expect:
                 return True, sample
         return False, sample
@@ -129,7 +145,10 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             # CHK-ISO: from a single fresh sample (injection still active), only this
             # source's bit is set among the mapped sources -- one-hot aggregation,
             # catching an OR-network smear.
-            iso = await self._sample_agg()
+            iso_mask = 0
+            for mapped in IRQ_TABLE:
+                iso_mask |= 1 << mapped.agg_idx
+            iso = await self._sample_agg_known(iso_mask)
             assert (iso >> src.agg_idx) & 1, (
                 f"{src.name}: aggregate bit[{src.agg_idx}] dropped before isolation check"
             )
@@ -141,33 +160,36 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                     f"({other.name}) is also set -- aggregator smear (vec=0x{iso:08x})"
                 )
 
-            # CHK-CLR: W1C INTR_STATE -> aggregate bit returns low and INTR_STATE clears.
+            # CHK-CLR: Event sources W1C INTR_STATE; Status sources drop INTR_TEST.
             await self.irq.stop_inject(src)
-            await self.irq.clear_state(src)
+            if src.kind == "event":
+                await self.irq.clear_state(src)
             clr_ok, _ = await self._poll_agg(src.agg_idx, 0)
+            clr_how = "W1C clear" if src.kind == "event" else "INTR_TEST release"
             assert clr_ok, (
-                f"{src.name}: sep_internal_interrupts[{src.agg_idx}] stuck after W1C clear"
+                f"{src.name}: sep_internal_interrupts[{src.agg_idx}] stuck after {clr_how}"
             )
             assert await self.irq.read_state_bit(src) == 0, (
-                f"{src.name}: INTR_STATE bit not cleared by W1C"
+                f"{src.name}: INTR_STATE bit not cleared by {clr_how}"
             )
             self.logger.info(
                 "%s PASS: INTR_TEST -> sep_internal_interrupts[%d] 0->1->0 + "
-                "INTR_STATE RW1C + isolation (vec=0x%08x)",
+                "%s + isolation (vec=0x%08x)",
                 src.name,
                 src.agg_idx,
+                "INTR_STATE RW1C" if src.kind == "event" else "Status-type INTR_TEST release",
                 iso,
             )
 
         self.logger.info(
-            "CHK-AGG PASS: all %d CSRNG/EDN IRQs propagate to the aggregator, "
-            "one-hot, with RW1C clear",
+            "CHK-AGG PASS: all %d HMAC/DMA/CSRNG/EDN IRQs propagate to the aggregator, "
+            "one-hot, with Event W1C / Status INTR_TEST release",
             len(IRQ_TABLE),
         )
         await self._check_bus_err_paths()
 
     async def _agg_bit(self, idx: int) -> int:
-        return (await self._sample_agg() >> idx) & 1
+        return (await self._sample_agg_known(1 << idx) >> idx) & 1
 
     async def _check_bus_err_paths(self) -> None:
         dma_hole = dma_reg_unmapped_addr()
@@ -200,10 +222,17 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
             f"sep_internal_interrupts[{IRQ_DMA_REG_PATH}] stayed 0 after "
             f"DMA register-path SLVERR (vec=0x{dma_vec:x})"
         )
-        assert ((dma_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
+        # Exclusivity, not liveness: a register-path fault must not raise the
+        # host-path or peripheral-OR source. Re-sampled with the two bits
+        # required to be known -- this leaf never drives [41] high (see the
+        # module docstring), so an undriven or X bit would otherwise satisfy
+        # "== 0" on any RTL.
+        excl_mask = (1 << IRQ_DMA_HOST_PATH) | (1 << IRQ_PERIPH_OR)
+        excl_vec = await self._sample_agg_known(excl_mask)
+        assert ((excl_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
             "host-path bit [41] set on a register-path fault"
         )
-        assert ((dma_vec >> IRQ_PERIPH_OR) & 1) == 0, (
+        assert ((excl_vec >> IRQ_PERIPH_OR) & 1) == 0, (
             "periph OR [42] set on a DMA register-path fault"
         )
         self.logger.info(
@@ -222,6 +251,47 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
         assert clr_ok, "sep_internal_interrupts[40] stuck after DMA_BUS_ERR_CLEAR"
         self.logger.info("CHK-BUSERR-CLR PASS: DMA_BUS_ERR_CLEAR; STATUS=0; [40]=0")
 
+        # The read leg above walks TL_GET_REQ/GET_ACK. A write to the same hole
+        # walks TL_PUT_REQ/PUT_ACK/AXI_B_RESP (axi_lite_to_tlul.sv:189-220), a
+        # separate FSM arm with its own opcode select, and raises the sticky
+        # error from BRESP rather than RRESP.
+        await self.irq.write_expect_slverr(dma_hole, 0xA5A5_1234)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
+        assert dma_st == DMA_REG_PATH_BIT, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after a write to 0x{dma_hole:08x}, "
+            f"expected exclusive reg_path_err=0x{DMA_REG_PATH_BIT:x}"
+        )
+        assert periph_st == 0, (
+            f"PERIPH_BUS_ERR_STATUS=0x{periph_st:x} after the DMA write hole, expected 0"
+        )
+        wr_ok, wr_vec = await self._poll_agg(IRQ_DMA_REG_PATH, 1)
+        assert wr_ok, (
+            f"sep_internal_interrupts[{IRQ_DMA_REG_PATH}] stayed 0 after a DMA "
+            f"register-path write SLVERR (vec=0x{wr_vec:x})"
+        )
+        excl_vec = await self._sample_agg_known(excl_mask)
+        assert ((excl_vec >> IRQ_DMA_HOST_PATH) & 1) == 0, (
+            "host-path bit [41] set on a register-path write fault"
+        )
+        assert ((excl_vec >> IRQ_PERIPH_OR) & 1) == 0, (
+            "periph OR [42] set on a DMA register-path write fault"
+        )
+        self.logger.info(
+            "CHK-BUSERR-DMA-WR PASS: write 0x%08x BRESP=SLVERR; STATUS=0x%x exclusive; [40]=1",
+            dma_hole,
+            dma_st,
+        )
+
+        await self.irq.write32(DMA_CLEAR_ADDR, DMA_CLR_BIT)
+        dma_st = await self.irq.read32(DMA_STATUS_ADDR)
+        assert dma_st == 0, (
+            f"DMA_BUS_ERR_STATUS=0x{dma_st:x} after CLEAR of the write fault, expected 0"
+        )
+        clr_ok, _ = await self._poll_agg(IRQ_DMA_REG_PATH, 0)
+        assert clr_ok, "sep_internal_interrupts[40] stuck after clearing the write fault"
+        self.logger.info("CHK-BUSERR-DMA-WR-CLR PASS: STATUS=0; [40]=0")
+
         for hole in holes:
             await self.irq.read_expect_slverr(hole.addr)
             periph_st = await self.irq.read32(PERIPH_STATUS_ADDR)
@@ -238,7 +308,8 @@ class sep_irq_ip_to_aggregator_test(sep_base_test):
                 f"sep_internal_interrupts[{IRQ_PERIPH_OR}] stayed 0 after "
                 f"{hole.name} adapter SLVERR (vec=0x{per_vec:x})"
             )
-            assert ((per_vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
+            excl = await self._sample_agg_known(1 << IRQ_DMA_REG_PATH)
+            assert ((excl >> IRQ_DMA_REG_PATH) & 1) == 0, (
                 f"DMA register-path [40] set on a {hole.name} bridge fault"
             )
             self.logger.info(

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// Passive monitor observation event — deliberately distinct from the
-// stimulus sequence item (items carry intent, events carry observed
-// behavior). One flexible event object with a kind enum:
+// Passive monitor observation event, distinct from the stimulus sequence
+// item (items carry intent, events carry observed behavior). One flexible
+// event object with a kind enum:
 //
 //   OCAH_JTAG_EV_STEP — one completed TCK cycle. tms/tdi are the values the
 //     DUT captured on the rising edge; tdo is the value stable just before

@@ -12,7 +12,7 @@ import os
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
+from env import sep_manifest_mutate as mm
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
@@ -21,10 +21,10 @@ from sep_reg_meta import sym
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 SMC_SRAM_BASE = 0x4006_0000
-# The testbench default, and where the packed SMC image carries "TBL1".
+# The testbench default, and where the packed SMC image carries "legacy manifest".
 DEFAULT_MANIFEST_OFFSET = 0x1000
-MANIFEST_MAGIC = b"TBL1"
-ERR_BAD_MAGIC = 0x0003_0002
+MANIFEST_MAGIC = b"OCAC"
+ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 
 SECONDARY_MARKER = "BOOT_SECONDARY"
 SPI_MARKER = "BOOT_SPI"
@@ -52,7 +52,6 @@ _QUIESCE_CYCLES = 20_000
 
 
 class sep_secondary_chiplet_base(sep_base_test):
-
     build_env = False
     # Gate on the cold_scratch[0] verdict word, not the outbound mailbox.
     verdict_source = "scratch0"
@@ -69,17 +68,31 @@ class sep_secondary_chiplet_base(sep_base_test):
     @property
     def _required(self) -> tuple[str, ...]:
         return (
-            STRAPS_LO_ECHO, STRAP_PRIMARY_CLEAR, STRAP_RECOVERY_CLEAR,
-            SECONDARY_MARKER, self.published_off_echo, self.published_addr_echo,
-            WAIT_SMC, MANIFEST_PRIMARY, self.src_echo,
+            STRAPS_LO_ECHO,
+            STRAP_PRIMARY_CLEAR,
+            STRAP_RECOVERY_CLEAR,
+            SECONDARY_MARKER,
+            self.published_off_echo,
+            self.published_addr_echo,
+            WAIT_SMC,
+            MANIFEST_PRIMARY,
+            self.src_echo,
         ) + tuple(self.extra_required)
 
     @property
     def _forbidden(self) -> tuple[str, ...]:
         return (
-            SPI_MARKER, RECOVERY_MARKER, "STRAP primary=1", MANIFEST_BACKUP,
-            SMC_COORD_NOT_READY, SMC_MANIFEST_OFF_INVALID,
-        ) + SPI_INIT_MARKERS + tuple(self.extra_forbidden)
+            (
+                SPI_MARKER,
+                RECOVERY_MARKER,
+                "STRAP primary=1",
+                MANIFEST_BACKUP,
+                SMC_COORD_NOT_READY,
+                SMC_MANIFEST_OFF_INVALID,
+            )
+            + SPI_INIT_MARKERS
+            + tuple(self.extra_forbidden)
+        )
 
     @property
     def published_off_echo(self) -> str:
@@ -130,7 +143,7 @@ class sep_secondary_chiplet_base(sep_base_test):
             assert len(row) == per_line, (
                 f"{path} data line {i} holds {len(row)} bytes, expected {per_line}"
             )
-            return row[k:k + 4]
+            return row[k : k + 4]
 
         default = word_at(DEFAULT_MANIFEST_OFFSET)
         assert default == MANIFEST_MAGIC, (
@@ -154,8 +167,13 @@ class sep_secondary_chiplet_base(sep_base_test):
         self.logger.info(
             "CHK-SMC-IMAGE: %s covers %d bytes from 0x%08x; 0x%x holds %r and the "
             "published offset 0x%x holds %r",
-            path, span, SMC_SRAM_BASE, DEFAULT_MANIFEST_OFFSET, default,
-            self.manifest_offset, published,
+            path,
+            span,
+            SMC_SRAM_BASE,
+            DEFAULT_MANIFEST_OFFSET,
+            default,
+            self.manifest_offset,
+            published,
         )
 
     def check_plusarg_agreement(self) -> None:
@@ -174,7 +192,9 @@ class sep_secondary_chiplet_base(sep_base_test):
         self.logger.info(
             "CHK-STIMULUS-OFFSET: SMC scratch[8] publishes 0x%x "
             "(+sep_smc_scratch8=%s), so the ROM loads from 0x%08x",
-            self.manifest_offset, arg, SMC_SRAM_BASE + self.manifest_offset,
+            self.manifest_offset,
+            arg,
+            SMC_SRAM_BASE + self.manifest_offset,
         )
 
     def build_efuse_image(self):
@@ -225,7 +245,10 @@ class sep_secondary_chiplet_base(sep_base_test):
                     self.logger.error(
                         "secondary poll stalled: no status or console movement for "
                         "%d cycles (cyc=%d, status=0x%08x, lines=%d)",
-                        _STALL_CYCLES, cycle, status, len(console),
+                        _STALL_CYCLES,
+                        cycle,
+                        status,
+                        len(console),
                     )
                     break
                 verdict = decode_verdict(probe)
@@ -234,14 +257,19 @@ class sep_secondary_chiplet_base(sep_base_test):
                     fw_pass = verdict[1]
                     self.logger.info(
                         "CHK-VERDICT: firmware signalled completion at cycle %d via "
-                        "cold_scratch[0], pass=%d", cycle, fw_pass,
+                        "cold_scratch[0], pass=%d",
+                        cycle,
+                        fw_pass,
                     )
                     break
                 if cycle - last_log >= _PROGRESS_EVERY:
                     last_log = cycle
                     self.logger.info(
                         "secondary poll cyc=%d status=0x%08x retired=%d lines=%d",
-                        cycle, status, retired, len(console),
+                        cycle,
+                        status,
+                        retired,
+                        len(console),
                     )
 
             if fw_done and not self.expect_boot:
@@ -274,7 +302,8 @@ class sep_secondary_chiplet_base(sep_base_test):
         self.logger.info(
             "CHK-HANG: cold_scratch[1] held 0x%08x and the console stayed silent "
             "for %d cycles after the terminal verdict",
-            terminal_status, _QUIESCE_CYCLES,
+            terminal_status,
+            _QUIESCE_CYCLES,
         )
 
     @staticmethod
@@ -336,8 +365,16 @@ class sep_secondary_chiplet_base(sep_base_test):
         log.info(
             "CHK-SECONDARY-ORDER: STRAPS_LO@%d -> BOOT_SECONDARY@%d -> %s@%d -> "
             "%s@%d -> WAIT_SMC_MANIFEST@%d -> MANIFEST_PRIMARY@%d -> %s@%d",
-            i_straps, i_branch, self.published_off_echo, i_off,
-            self.published_addr_echo, i_addr, i_wait, i_first, src, i_src,
+            i_straps,
+            i_branch,
+            self.published_off_echo,
+            i_off,
+            self.published_addr_echo,
+            i_addr,
+            i_wait,
+            i_first,
+            src,
+            i_src,
         )
 
         # A repeated read of the same offset prints no MANIFEST_BACKUP, so count the attempts.
@@ -349,8 +386,9 @@ class sep_secondary_chiplet_base(sep_base_test):
             f"num_retries = 0, so there is one attempt and no second slot. "
             f"Console: {console}"
         )
-        log.info("CHK-SINGLE-ATTEMPT: one %s and one %s, no %s",
-                 MANIFEST_PRIMARY, src, MANIFEST_BACKUP)
+        log.info(
+            "CHK-SINGLE-ATTEMPT: one %s and one %s, no %s", MANIFEST_PRIMARY, src, MANIFEST_BACKUP
+        )
 
         self.check_outcome(console, status_seq, fw_done, fw_pass)
 

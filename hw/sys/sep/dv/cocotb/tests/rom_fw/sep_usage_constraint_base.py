@@ -21,8 +21,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 MANIFEST_ERR_LC_USAGE_CONSTRAINT = 0x0003_0013
 
 EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # Manifest lifecycle bitmap bit for the preload's PROD state.
@@ -31,20 +34,23 @@ LIVE_LC_MANIFEST_BIT = 1  # PROD
 LC_ALLOWED_WITHOUT_LIVE = 0x5
 
 # A slot that reaches a crypto failure path was refused somewhere else.
-_CRYPTO_FORBIDDEN = ("CRYPTO_FAIL=", "RSA_VERIFY_FAIL", "PLD_HASH_MISMATCH",
-                     "MANIFEST_HASH_MISMATCH", "VERSION_ROLLBACK")
+_CRYPTO_FORBIDDEN = (
+    "CRYPTO_FAIL=",
+    "RSA_VERIFY_FAIL",
+    "PLD_HASH_MISMATCH",
+    "MANIFEST_HASH_MISMATCH",
+    "VERSION_ROLLBACK",
+)
 
 
 class _usage_constraint_mixin:
-
     defect_marker: str = ""
     defect_evidence: tuple[str, ...] = ()
 
     @classmethod
     def _forbidden(cls) -> tuple[str, ...]:
         assert cls.defect_marker in fd.SIBLING_MARKERS, (
-            f"defect_marker {cls.defect_marker!r} is not one of the three "
-            f"usage-constraint tokens"
+            f"defect_marker {cls.defect_marker!r} is not one of the three usage-constraint tokens"
         )
         return fd.SIBLING_MARKERS[cls.defect_marker] + _CRYPTO_FORBIDDEN
 
@@ -62,9 +68,7 @@ class _usage_constraint_mixin:
         raise NotImplementedError
 
 
-class sep_primary_usage_constraint_base(_usage_constraint_mixin,
-                                        sep_primary_fail_backup_boot_base):
-
+class sep_primary_usage_constraint_base(_usage_constraint_mixin, sep_primary_fail_backup_boot_base):
     # The arm prints no CRYPTO_FAIL=, so check_transport() carries the attribution.
     primary_defect_marker = ""
     primary_expected_error = MANIFEST_ERR_LC_USAGE_CONSTRAINT
@@ -74,9 +78,8 @@ class sep_primary_usage_constraint_base(_usage_constraint_mixin,
 
     def __init__(self, *args, **kwargs) -> None:
         self.extra_forbidden = self._forbidden()
-    # Require the full positive chain so the recovery is a real boot, not an early exit.
-        self.extra_required = self.defect_evidence + ("PLD_HASH_OK", "BL1_COPIED",
-                                                      "BL1_JUMP=")
+        # Require the full positive chain so the recovery is a real boot, not an early exit.
+        self.extra_required = self.defect_evidence + ("PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
         super().__init__(*args, **kwargs)
 
     def corrupt_primary(self, buf: bytearray) -> None:
@@ -88,11 +91,15 @@ class sep_primary_usage_constraint_base(_usage_constraint_mixin,
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
         fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
-        i_defect = fd.assert_slot_attributed(console, self.defect_marker,
-                                             after=i_psrc, before=i_bsrc)
+        i_defect = fd.assert_slot_attributed(
+            console, self.defect_marker, after=i_psrc, before=i_bsrc
+        )
         self.logger.info(
-            "CHK-CONSTRAINT: %s@%d and %s inside the primary attempt (read@%d, "
-            "backup read@%d)", self.defect_marker, i_defect, slot_err, i_psrc,
+            "CHK-CONSTRAINT: %s@%d and %s inside the primary attempt (read@%d, backup read@%d)",
+            self.defect_marker,
+            i_defect,
+            slot_err,
+            i_psrc,
             i_bsrc,
         )
         self.check_constraint_evidence(console)
@@ -101,9 +108,9 @@ class sep_primary_usage_constraint_base(_usage_constraint_mixin,
         pass
 
 
-class sep_backup_usage_constraint_base(_usage_constraint_mixin,
-                                       sep_backup_manifest_structural_fail_base):
-
+class sep_backup_usage_constraint_base(
+    _usage_constraint_mixin, sep_backup_manifest_structural_fail_base
+):
     expected_error = MANIFEST_ERR_LC_USAGE_CONSTRAINT
     # The inherited primary corruption gives BAD_MAGIC, distinct from the backup's code.
     primary_expected_error = 0x0003_0002

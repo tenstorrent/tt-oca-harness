@@ -87,66 +87,68 @@ create_clock -add -name TELEMETRYCLK            -period $clock_periods(TELEMETRY
 create_clock -add -name JTAG_TCK                -period $clock_periods(JTAG_TCK_PERIOD)              [get_ports "smc_cpu_jtag_TCK_i"]
 
 # memories
-create_generated_clock [get_ports rom_intf_req_o*clk] -name SMCCLK_ROM -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_rom_intf_req_o*clk] -name SMCCLK_ROM -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
 # Scratch RAM clocks
-set scratch_ram_clk_ports [lsort -dictionary [get_object_name [get_ports {scratch_ram_intf_req_o*clk}]]]
+set scratch_ram_clk_ports [lsort -dictionary [get_object_name [get_ports {smc_scratch_ram_intf_req_o*clk}]]]
 set scratch_ram_clk_idx 0
 foreach scratch_ram_clk_port $scratch_ram_clk_ports {
     create_generated_clock [get_ports $scratch_ram_clk_port] -name SMCCLK_RAM${scratch_ram_clk_idx} -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
     incr scratch_ram_clk_idx
 }
 
-create_generated_clock [get_ports l1_icache_tag_intf_req_o*0*clk]  -name SMCCLK_ICACHE_TAG0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_tag_intf_req_o*1*clk]  -name SMCCLK_ICACHE_TAG1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_tag_intf_req_o*2*clk]  -name SMCCLK_ICACHE_TAG2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_tag_intf_req_o*3*clk]  -name SMCCLK_ICACHE_TAG3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_tag_intf_req_o*0*clk]  -name SMCCLK_ICACHE_TAG0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_tag_intf_req_o*1*clk]  -name SMCCLK_ICACHE_TAG1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_tag_intf_req_o*2*clk]  -name SMCCLK_ICACHE_TAG2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_tag_intf_req_o*3*clk]  -name SMCCLK_ICACHE_TAG3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
-create_generated_clock [get_ports l1_icache_data_intf_req_o*0*clk]  -name SMCCLK_ICACHE_DATA0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*1*clk]  -name SMCCLK_ICACHE_DATA1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*2*clk]  -name SMCCLK_ICACHE_DATA2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*3*clk]  -name SMCCLK_ICACHE_DATA3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*4*clk]  -name SMCCLK_ICACHE_DATA4  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*5*clk]  -name SMCCLK_ICACHE_DATA5  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*6*clk]  -name SMCCLK_ICACHE_DATA6  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_icache_data_intf_req_o*7*clk]  -name SMCCLK_ICACHE_DATA7  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*0*clk]  -name SMCCLK_ICACHE_DATA0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*1*clk]  -name SMCCLK_ICACHE_DATA1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*2*clk]  -name SMCCLK_ICACHE_DATA2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*3*clk]  -name SMCCLK_ICACHE_DATA3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*4*clk]  -name SMCCLK_ICACHE_DATA4  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*5*clk]  -name SMCCLK_ICACHE_DATA5  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*6*clk]  -name SMCCLK_ICACHE_DATA6  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_icache_data_intf_req_o*7*clk]  -name SMCCLK_ICACHE_DATA7  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
-create_generated_clock [get_ports l1_dcache_tag_intf_req_o*0*clk]  -name SMCCLK_DCACHE_TAG0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_dcache_tag_intf_req_o*1*clk]  -name SMCCLK_DCACHE_TAG1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_dcache_tag_intf_req_o*2*clk]  -name SMCCLK_DCACHE_TAG2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_dcache_tag_intf_req_o*3*clk]  -name SMCCLK_DCACHE_TAG3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_tag_intf_req_o*0*clk]  -name SMCCLK_DCACHE_TAG0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_tag_intf_req_o*1*clk]  -name SMCCLK_DCACHE_TAG1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_tag_intf_req_o*2*clk]  -name SMCCLK_DCACHE_TAG2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_tag_intf_req_o*3*clk]  -name SMCCLK_DCACHE_TAG3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
-create_generated_clock [get_ports l1_dcache_data_intf_req_o*0*clk]  -name SMCCLK_DCACHE_DATA0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_dcache_data_intf_req_o*1*clk]  -name SMCCLK_DCACHE_DATA1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_dcache_data_intf_req_o*2*clk]  -name SMCCLK_DCACHE_DATA2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
-create_generated_clock [get_ports l1_dcache_data_intf_req_o*3*clk]  -name SMCCLK_DCACHE_DATA3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*0*clk]  -name SMCCLK_DCACHE_DATA0  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*1*clk]  -name SMCCLK_DCACHE_DATA1  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*2*clk]  -name SMCCLK_DCACHE_DATA2  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
+create_generated_clock [get_ports smc_l1_dcache_data_intf_req_o*3*clk]  -name SMCCLK_DCACHE_DATA3  -master_clock SMCCLK -divide_by 1 -source [get_ports "clk_smc_i"] -combinational
 
 
 # ----------------------
 # AVS Clock Constraints
 # ----------------------
 # Note: For STA you need to care about the divided value (it is a programmable clock divider), but for CDC setup the fact its a divided value is all that matters
-set avs_hier u_smc_peripherals/avsbus_controller
+set avs_hier u_smc_peripherals/u_avsbus_controller
 
-# Stamp each source's generated clock on its gater output
+# Stamp each source's generated clock on its gater output.
+# `prim_ag_clk_mux` takes the peripheral clock on clk0_i and the reference clock
+# on clk1_i, so clk1_gate is the REFCLK branch and clk0_gate the PERIPHERALCLK one.
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 1 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/o_clk"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/u_clk1_gate/clk_o"]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 1 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/o_clk"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/u_clk0_gate/clk_o"]
 
 # Raw primaries stop at their gater outputs before the OR
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk0_gate/o_clk"] \
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/u_clk1_gate/clk_o"] \
     -clocks {REFCLK}
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk1_gate/o_clk"] \
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/u_clk0_gate/clk_o"] \
     -clocks {PERIPHERALCLK}
 
 # Now the clock mux output is fed into a clock divider.
@@ -160,17 +162,17 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"]
 
 # AVS clock when sourced from PERIPHERALCLK (modes 00/01)
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"]
 
 # Same divided-clock intent on `u_clk_div/clk_o` (`pre_testmux_avs_clk`) so downstream
-# STA does not flag an undeclared setup clock when propagation from div_clk_stdbuf/o_Y
+# STA does not flag an undeclared setup clock when propagation from u_div_clk_stdbuf/y_o
 # alone does not reach the module output pin (prim_prog_clk_div_posedge).
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_REFCLK \
     -master_clock REFCLK \
@@ -184,22 +186,22 @@ create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
-# Internal `div_clk` net (flop -> prim_stdbuf i_A): stamped so downstream STA can
+# Internal `div_clk` net (flop -> prim_stdbuf a_i): stamped so downstream STA can
 # resolve the setup clock looking for a PotentialRoot at `div_clk`, matching the
-# energy already modeled at o_Y.
+# energy already modeled at y_o.
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 4 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/a_i"]
 
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/a_i"]
 
-# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux i_clk1). See the
+# Toggle flop output (feeds u_div_clk_stdbuf and u_postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
@@ -219,31 +221,31 @@ create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
     -master_clock AVS_CLK_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLK_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"] \
     [get_ports {core2pad_o[49]}]
 
 # CDC-only modeling: collapse the AVS-clock domain attribution downstream of
 # the programmable divider. Inside `prim_prog_clk_div_posedge`, the bypass
-# path (`postdiv_mux/i_clk0`) lets `AVS_CLKMUX_OUTPUT_*` propagate through to
-# `clk_o`, while the divided path stamps `AVS_CLK_FROM_*` at `div_clk_stdbuf/o_Y`. The
+# path (`u_postdiv_mux/clk0_i`) lets `AVS_CLKMUX_OUTPUT_*` propagate through to
+# `clk_o`, while the divided path stamps `AVS_CLK_FROM_*` at `u_div_clk_stdbuf/y_o`. The
 # net result is every downstream AVS-domain flop is attributed FOUR clocks
 # (mux-out + divided, each from REFCLK and PERIPHERALCLK roots), which a CDC
 # tool would otherwise report as multi-domain convergence at `interrupt_o`,
@@ -257,7 +259,7 @@ create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
 # already declared `-logically_exclusive` below (only one source-mode is
 # active at a time).
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/o_clk"] \
+    [get_pins "${avs_hier}/u_clk_div/u_postdiv_mux/clk_o"] \
     -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
 
 # These two can never be active simultaneously (muxed sources)
@@ -376,21 +378,19 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5] -clock [get_clock SMCC
 set_input_delay  [expr $clock_periods(TELEMETRYCLK_PERIOD)*0.5] -clock [get_clock TELEMETRYCLK] [get_ports {telemetry_afready_i*}] -add_delay
 
 # WDT
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports wdt_first_timeout_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports wdt_second_timeout_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports smc_wdt_first_timeout_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports smc_wdt_second_timeout_o] -add_delay
 
 # interrupts
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_interrupts_i*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {smc_ext_interrupts_i*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {sep_mailbox_interrupts_i*}] -add_delay
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports sep_wdt_reset_n_i] -add_delay
-# Aligned with REFCLK: feeds REFCLK-domain glue downstream of the temp interrupt synchronizer.
-set_input_delay  [expr $clock_periods(REFCLK_PERIOD)*0.5]       -clock [get_clock REFCLK] [get_ports temp_interrupt_i] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {ext_mailbox_interrupts_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_ext_mailbox_interrupts_o*}] -add_delay
 
 # efuse
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {shadow_regs_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports fuse_sense_done_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports fuse_reset_n_delayed_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports smc_fuse_sense_done_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports smc_fuse_reset_n_delayed_o] -add_delay
 
 # boot stall
 set_input_delay  [expr $clock_periods(JTAG_TCK_PERIOD)*0.5]     -clock [get_clock JTAG_TCK] [get_ports boot_stall_jtag_ovrd_i] -add_delay
@@ -405,13 +405,11 @@ set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_cloc
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {lc_state_i*}] -add_delay
 
 # RAS
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports cluster_ded_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {ras_bank_chip_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {ras_bank_instance_o*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports smc_cluster_ded_o] -add_delay
 
 # NDM
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ndmreset_request_i*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {ndmreset_process_o*}] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {smc_ndmreset_request_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_ndmreset_process_o*}] -add_delay
 
 # reset unit
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports cfg_flr_pf_active_i] -add_delay
@@ -425,23 +423,23 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 # set the outputs to lower delay, they should go direct to the memory macro
 # set the inputs to higher delay to emulate the access time of the memory
 # - ROMs will have a large access time (70%), SRAMs will have a smaller access time (50%)
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {rom_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.7]       -clock [get_clock SMCCLK] [get_ports {rom_intf_rsp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_rom_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.7]       -clock [get_clock SMCCLK] [get_ports {smc_rom_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {scratch_ram_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {scratch_ram_intf_rsp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_scratch_ram_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_scratch_ram_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {l1_icache_tag_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {l1_icache_tag_intf_rsp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_l1_icache_tag_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_l1_icache_tag_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {l1_icache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {l1_icache_data_intf_rsp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_l1_icache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_l1_icache_data_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {l1_dcache_tag_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {l1_dcache_tag_intf_rsp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_l1_dcache_tag_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_l1_dcache_tag_intf_rsp_i*}] -add_delay
 
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {l1_dcache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
-set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {l1_dcache_data_intf_rsp_i*}] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [filter_collection [get_ports {smc_l1_dcache_data_intf_req_o*}] {full_name !~ ".*clk.*"}] -add_delay
+set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_l1_dcache_data_intf_rsp_i*}] -add_delay
 
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.1]       -clock [get_clock SMCCLK] [get_ports {trace_mem_req_o*}] -add_delay
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {trace_mem_resp_i*}] -add_delay
@@ -510,14 +508,14 @@ if {[sizeof_collection $i3c_dct_mem_ports] > 0} {
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_global_base_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {smc_region_size_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports lc_sigint_err_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports init_mem_done_o] -add_delay
+set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports smc_init_mem_done_o] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports {cla_ext_action_custom_o*}] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports tdr_dbg_ctrl_clocks_stopped_by_cla_o] -add_delay
 
 set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMCCLK] [get_ports sep_security_disable_i] -add_delay
 
 # For us its driven by captured straps | shadow reg, but for an adopter its hard to say. Should not assume anything about the source of this signal.
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports disable_sram_auto_init_i] -add_delay
+set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports smc_disable_sram_auto_init_i] -add_delay
 # NOTE: clarify the intended launch/capture domain for `tdr_dbg_ctrl_clock_stop_en_i`.
 # The current block-level model keeps this on `ck_feedthru` until the JTAG / TCK
 # relationship is confirmed.
@@ -646,13 +644,17 @@ set gpio_uart_pad2core [get_ports {pad2core_i[11] pad2core_i[12] pad2core_i[13] 
 # AVS CLOCK + MDATA observe inputs (GPIO 49–50) — dual launch vs divider clocks (same pattern as SDATA [51]).
 set gpio_avs_clk_mdata [get_ports {pad2core_i[49] pad2core_i[50]}]
 
-# Thermal / isolate (52–53); PLL obs / PVT / straps (55–57); reserved / unbonded (61–67).
+# Thermal / isolate (52–53); PLL obs / PVT / straps (55–57); unbonded (61–64).
+# `pad2core_i` is NUM_GPIO_WRAPS wide (61 bonded + 4 unbonded = 65), so 64 is the
+# last bit. Pinout rows 65+ are dedicated JTAG/REFCLK pads, not GPIO bits.
 set gpio_misc_a [get_ports {pad2core_i[52] pad2core_i[53]}]
 set gpio_misc_b [get_ports {pad2core_i[55] pad2core_i[56] pad2core_i[57]}]
-set gpio_misc_c [get_ports {pad2core_i[61] pad2core_i[62] pad2core_i[63] pad2core_i[64] pad2core_i[65] pad2core_i[66] pad2core_i[67]}]
+set gpio_misc_c [get_ports {pad2core_i[61] pad2core_i[62] pad2core_i[63] pad2core_i[64]}]
 
-# Bits excluded from generic ck_feedthru: SPI data/DQS/CS, SPICLK_GPIO [9], I2C [37:48], AVS SDATA [51],
-# system timer [58:59], UART block [11:26], I3C [27:36], I3C [66, 67], AVS clk/mdata [49:50], misc [8] [52:53] [55:57] [61:67].
+# Bits excluded from generic ck_feedthru: SPI data/DQS [0:7] [10] [54], SPI CS [8],
+# SPICLK_GPIO [9], UART [11:26], I2C [37:48], AVS clk/mdata [49:50], AVS SDATA [51],
+# thermal/isolate [52:53], system timer / boot stall [55:57], OCCP [58:59],
+# unbonded [61:64]. The I3C bus bits [27:36] and reserved [60] keep the generic model.
 set pad2core_excluded $spi_pad2core_bits
 set pad2core_excluded [add_to_collection $pad2core_excluded $i2c_pad2core_bits]
 set pad2core_excluded [add_to_collection $pad2core_excluded [get_ports {pad2core_i[9] pad2core_i[51]}]]

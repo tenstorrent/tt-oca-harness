@@ -17,6 +17,8 @@ from typing import Any
 
 from .buildcache import binary_version
 from .compat import UTC
+from .coverage_model import holes_summary_counts
+from .formal import formal_summary
 from .models import Flow, StageResult
 from .paths import repo_rel
 from .waves import WAVE_DEFAULT, same_seed_replay_command
@@ -39,14 +41,6 @@ EXIT_CODE_BY_STATUS = {
 
 NON_PASS_STATUSES = {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
 
-COVERAGE_BACKEND_BY_TOOL = {
-    "verilator": "verilator_coverage",
-    "vcs": "urg",
-    "xcelium": "imc",
-}
-
-SIGNOFF_COVERAGE_TOOLS = {"vcs", "xcelium"}
-
 
 def command_text(argv: list[str], root: Path) -> str:
     try:
@@ -68,8 +62,52 @@ def git_info(root: Path) -> dict[str, str]:
     return {
         "commit": command_text(["git", "rev-parse", "HEAD"], root),
         "branch": command_text(["git", "rev-parse", "--abbrev-ref", "HEAD"], root),
-        "dirty": "true" if command_text(["git", "status", "--porcelain"], root) else "false",
+        "dirty": "true"
+        if command_text(["git", "status", "--porcelain", "--untracked-files=no"], root)
+        else "false",
     }
+
+
+def git_provenance(root: Path, run_dir: Path) -> dict[str, str]:
+    """``git_info`` plus, on a dirty tree, an archived copy of the uncommitted diff.
+
+    A commit hash identifies only the committed sources. When the tree carries
+    uncommitted edits the diff is written under ``<run_dir>/provenance/`` and
+    its path recorded beside the hash, so the sources a run compiled can still
+    be reconstructed after the fact.
+    """
+    info = git_info(root)
+    if info.get("dirty") != "true":
+        return info
+    prov_dir = run_dir / "provenance"
+    try:
+        prov_dir.mkdir(parents=True, exist_ok=True)
+        status = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=60,
+        ).stdout
+        diff = subprocess.run(
+            ["git", "diff", "HEAD"],
+            cwd=root,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=120,
+        ).stdout
+    except (FileNotFoundError, subprocess.SubprocessError):
+        info["diff_archive"] = ""
+        return info
+    (prov_dir / "worktree.status").write_text(status, encoding="utf-8")
+    (prov_dir / "worktree.diff").write_text(diff, encoding="utf-8")
+    info["diff_archive"] = repo_rel(root, prov_dir / "worktree.diff")
+    info["dirty_files"] = str(len([line for line in status.splitlines() if line.strip()]))
+    return info
 
 
 def tool_versions(root: Path) -> dict[str, str]:
@@ -83,6 +121,14 @@ def tool_versions(root: Path) -> dict[str, str]:
 def primary_tool_version(tool: str, versions: dict[str, str]) -> str:
     version_key = "xrun" if tool == "xcelium" else tool
     return versions.get(version_key, "unknown")
+
+
+def _site_layer_label(args: Any | None) -> str | None:
+    """The site file the run applied (recorded on args by run_flow), or None."""
+    if args is None:
+        return None
+    label = getattr(args, "_site_layer", None)
+    return str(label) if label else None
 
 
 def cli_overrides(args: Any | None) -> dict[str, Any]:
@@ -123,8 +169,33 @@ def exit_code_for_status(status: str) -> int:
     return EXIT_CODE_BY_STATUS.get(status, 2)
 
 
+# One executed formal item counts as one test item, beside the simulation leaves.
+ITEM_STAGES = {"sim", "regress", "formal"}
+
+# The metadata a run-level leaf entry repeats from its leaf record: what identifies the
+# attempt and the scheduler job that ran it. The rest stays in the leaf's own result.json.
+LEAF_METADATA_KEYS = ("seed", "attempt", "debug_only", "scheduler", "wave_debug")
+
+
+def _leaf_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
+    recorded = metadata or {}
+    kept = {key: recorded[key] for key in LEAF_METADATA_KEYS if key in recorded}
+    if isinstance(kept.get("wave_debug"), dict):
+        kept["wave_debug"] = _wave_debug_record(kept["wave_debug"])
+    return kept
+
+
+def _wave_debug_record(debug: dict[str, Any]) -> dict[str, Any]:
+    """A wave-debug rerun as the graded attempt lists it, with the two flags that mark it."""
+    record = _regression_job_record(debug)
+    for key in ("debug_only", "status_affects_final_result"):
+        if key in debug:
+            record[key] = debug[key]
+    return record
+
+
 def _stage_dict(stage: StageResult) -> dict[str, Any]:
-    payload = {
+    payload: dict[str, Any] = {
         "name": stage.stage,
         "item": stage.item,
         "status": stage.status,
@@ -133,33 +204,149 @@ def _stage_dict(stage: StageResult) -> dict[str, Any]:
         "started_at": stage.started_at,
         "ended_at": stage.ended_at,
         "log": stage.log,
-        "artifacts": stage.artifacts or {},
         "failure_buckets": stage.failure_buckets or [],
         "reason": stage.reason,
-        "parser": stage.parser,
-        "metadata": stage.metadata or {},
     }
+    if stage.stage in ITEM_STAGES:
+        payload["metadata"] = _leaf_metadata(stage.metadata)
+        payload["result_json"] = stage.result_json
+        executor_log = (stage.artifacts or {}).get("executor_log")
+        if executor_log:
+            payload["artifacts"] = {"executor_log": executor_log}
+    else:
+        payload["artifacts"] = stage.artifacts or {}
+        payload["parser"] = stage.parser
+        payload["metadata"] = stage.metadata or {}
     if stage.target:
         payload["target"] = stage.target
+    if stage.formal is not None:
+        payload["formal"] = stage.formal
     return payload
 
 
-def _tests_summary(stages: list[StageResult]) -> dict[str, Any]:
-    runs = [stage for stage in stages if stage.stage in {"sim", "regress"}]
+def _regression_job_record(job: dict[str, Any]) -> dict[str, Any]:
+    """One attempt as regression.json lists it; the leaf record it points at holds the rest."""
+    record = {
+        key: job.get(key)
+        for key in (
+            "stage",
+            "item",
+            "target",
+            "seed",
+            "attempt",
+            "status",
+            "return_code",
+            "reason",
+            "duration_sec",
+            "started_at",
+            "ended_at",
+            "log",
+            "result_json",
+        )
+    }
+    record["failure_buckets"] = job.get("failure_buckets") or []
+    record["metadata"] = _leaf_metadata(job.get("metadata"))
+    executor_log = (job.get("artifacts") or {}).get("executor_log")
+    if executor_log:
+        record["artifacts"] = {"executor_log": executor_log}
+    if job.get("formal") is not None:
+        record["formal"] = job["formal"]
+    if isinstance(job.get("wave_debug"), dict):
+        record["wave_debug"] = _wave_debug_record(job["wave_debug"])
+    return record
+
+
+def _has_formal(flow: Flow, stages: list[StageResult]) -> bool:
+    return flow.framework == "formal" or any(stage.formal is not None for stage in stages)
+
+
+def _is_expected_failure(metadata: dict[str, Any] | None, status: Any) -> bool:
+    """A leaf graded PASS because it FAILED for its recorded `expect_fail` reason."""
+    record = (metadata or {}).get("expected_fail")
+    return isinstance(record, dict) and record.get("observed_status") == "FAIL" and status == "PASS"
+
+
+def run_completion(
+    leaves_run: int,
+    planned_leaves: int | None,
+    progress: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Whether every planned leaf executed.
+
+    A checkpoint or an interrupted run carries `progress`, and its counts describe what
+    had finished when the snapshot was taken, so it is never complete. Without a plan
+    the executed leaves are the plan.
+    """
+    if progress is not None:
+        planned = int(progress.get("expected_count") or planned_leaves or leaves_run)
+    else:
+        planned = leaves_run if planned_leaves is None else int(planned_leaves)
+    return {
+        "completed": progress is None and leaves_run >= planned,
+        "leaves_planned": planned,
+        "leaves_run": leaves_run,
+    }
+
+
+def executed_leaf_count(stages: list[StageResult]) -> int:
+    """Leaves that ran: a leaf skipped after `--max-failures` never started."""
+    return sum(1 for stage in stages if stage.stage in ITEM_STAGES and stage.status != "SKIP")
+
+
+def run_is_complete(payload: dict[str, Any]) -> bool:
+    """Read a recorded run-level result: did every planned leaf finish?"""
+    if payload.get("interruption"):
+        return False
+    progress = payload.get("progress")
+    if isinstance(progress, dict) and progress.get("state") in {"running", "interrupted"}:
+        return False
+    tests = payload.get("tests")
+    return not (isinstance(tests, dict) and tests.get("completed") is False)
+
+
+def incomplete_run_note(tests: Any) -> str | None:
+    """One line for the console and error messages when a recorded run did not finish."""
+    if not isinstance(tests, dict) or tests.get("completed") is not False:
+        return None
+    return (
+        f"incomplete run: {tests.get('leaves_run', 0)} of {tests.get('leaves_planned', 0)} "
+        "planned leaves ran, no pass rate"
+    )
+
+
+def _pass_rate(passing: int, total: int, completion: dict[str, Any] | None) -> float | None:
+    # A truncated run has no denominator: the leaves that never ran are not failures,
+    # and a rate over the executed subset reads as a grade the run did not earn.
+    if completion is not None and not completion["completed"]:
+        return None
+    return round(passing / total, 4) if total else None
+
+
+def _tests_summary(
+    stages: list[StageResult], completion: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    runs = [stage for stage in stages if stage.stage in ITEM_STAGES]
     total = len(runs)
     passing = sum(1 for stage in runs if stage.status == "PASS")
     failing = sum(1 for stage in runs if stage.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"})
     skipped = sum(1 for stage in runs if stage.status == "SKIP")
-    return {
+    expected_failing = sum(
+        1 for stage in runs if _is_expected_failure(stage.metadata, stage.status)
+    )
+    summary = {
         "total": total,
         "passing": passing,
         "failing": failing,
         "skipped": skipped,
-        "pass_rate": round(passing / total, 4) if total else None,
+        "expected_failing": expected_failing,
+        "pass_rate": _pass_rate(passing, total, completion),
     }
+    if completion is not None:
+        summary.update(completion)
+    return summary
 
 
-def _coverage_summary(
+def coverage_summary(
     stages: list[StageResult], run_dir: Path, root: Path, coverage_requested: bool = False
 ) -> dict[str, Any]:
     cov_stages = [stage for stage in stages if stage.stage in {"cov_merge", "cov_report"}]
@@ -181,7 +368,6 @@ def _coverage_summary(
             "supported_metrics": [],
             "target": None,
             "build_fingerprint": None,
-            "inputs": [],
             "details_available": None,
             "coverage_details": None,
             "coverage_details_raw": None,
@@ -238,6 +424,7 @@ def _coverage_summary(
             details_data = data if isinstance(data, dict) else {}
         except (OSError, json.JSONDecodeError):
             pass
+    holes = summary_data.get("holes_summary")
     raw_metrics = {
         str(metric.get("metric_family")): metric.get("raw_percent")
         for metric in details_data.get("metrics", [])
@@ -265,7 +452,6 @@ def _coverage_summary(
         "supported_metrics": manifest_data.get("supported_metrics", []),
         "target": manifest_data.get("target"),
         "build_fingerprint": manifest_data.get("build_fingerprint"),
-        "inputs": manifest_data.get("inputs", []),
         "details_available": summary_data.get(
             "details_available", details_data.get("details_available")
         ),
@@ -279,7 +465,9 @@ def _coverage_summary(
         "comparison_key": summary_data.get("comparison_key"),
         "scope_fingerprint": summary_data.get("scope_fingerprint"),
         "policy_fingerprint": summary_data.get("policy_fingerprint"),
-        "holes_summary": summary_data.get("holes_summary", {"details_available": False}),
+        "holes_summary": holes_summary_counts(holes)
+        if isinstance(holes, dict)
+        else {"details_available": False},
         "policy_thresholds": summary_data.get("policy_thresholds", []),
         "raw_metrics": raw_metrics,
         "effective_metrics": effective_metrics,
@@ -380,14 +568,11 @@ def _attempt_summary(job: dict[str, Any]) -> dict[str, Any]:
         "return_code": job.get("return_code"),
         "duration_sec": job.get("duration_sec"),
         "log": job.get("log"),
-        "artifacts": job.get("artifacts") or {},
         "failure_buckets": job.get("failure_buckets") or [],
-        "parser": job.get("parser"),
         "result_json": job.get("result_json"),
-        "metadata": job.get("metadata") or {},
     }
-    if job.get("wave_debug"):
-        out["wave_debug"] = job["wave_debug"]
+    if isinstance(job.get("wave_debug"), dict):
+        out["wave_debug"] = _wave_debug_record(job["wave_debug"])
     return {key: value for key, value in out.items() if value is not None}
 
 
@@ -463,16 +648,15 @@ def _failed_test_record(
         "attempt_count": len(attempts),
         "attempts": [_attempt_summary(job) for job in attempts],
         "log": final.get("log"),
-        "artifacts": final.get("artifacts") or {},
         "failure_buckets": _buckets_for_failed_job(final),
-        "parser": final.get("parser"),
         "result_json": final.get("result_json"),
+        "expected_fail": (final.get("metadata") or {}).get("expected_fail"),
         "rerun": _rerun_command(flow, tool, final, args),
     }
     wave_debug = final.get("wave_debug")
     if isinstance(wave_debug, dict):
-        wave_debug_record = dict(wave_debug)
-        wave_meta = (wave_debug_record.get("metadata") or {}).get("waves", {})
+        wave_debug_record = _wave_debug_record(wave_debug)
+        wave_meta = (wave_debug.get("metadata") or {}).get("waves", {})
         if isinstance(wave_meta, dict):
             if wave_meta.get("viewer_commands"):
                 wave_debug_record["viewer_commands"] = wave_meta["viewer_commands"]
@@ -551,6 +735,7 @@ def _aggregate_failure_buckets(failed: list[dict[str, Any]]) -> list[dict[str, A
 
 def _tests_summary_from_jobs(
     leaves: list[tuple[dict[str, Any], list[dict[str, Any]]]],
+    completion: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     final_jobs = [final for final, _ in leaves]
     total = len([job for job in final_jobs if job.get("status") != "SKIP"])
@@ -563,45 +748,21 @@ def _tests_summary_from_jobs(
         if final.get("status") == "PASS"
         and any(job.get("status") in NON_PASS_STATUSES for job in attempts[:-1])
     )
-    return {
+    expected_failing = sum(
+        1 for job in final_jobs if _is_expected_failure(job.get("metadata"), job.get("status"))
+    )
+    summary = {
         "total": total,
         "passing": passing,
         "failing": failing,
         "skipped": skipped,
         "flaky": flaky,
-        "pass_rate": round(passing / total, 4) if total else None,
+        "expected_failing": expected_failing,
+        "pass_rate": _pass_rate(passing, total, completion),
     }
-
-
-def _coverage_provenance(
-    stages: list[StageResult],
-    run_dir: Path,
-    root: Path,
-    tool: str,
-    coverage_requested: bool,
-) -> dict[str, Any]:
-    payload = _coverage_summary(stages, run_dir, root, coverage_requested)
-    backend = payload.get("backend") or COVERAGE_BACKEND_BY_TOOL.get(tool, tool)
-    has_valid_report = bool(
-        payload.get("status") == "PASS"
-        and payload.get("summary")
-        and payload.get("total_percent") is not None
-    )
-    payload.update(
-        {
-            "requested": coverage_requested,
-            "simulator": tool,
-            "coverage_backend": backend,
-            "coverage_class": "commercial_regression"
-            if tool in SIGNOFF_COVERAGE_TOOLS
-            else "contributor_baseline",
-            "signoff_quality": bool(has_valid_report and tool in SIGNOFF_COVERAGE_TOOLS),
-            "overall_percent": payload.get("total_percent"),
-            "report_dir": payload.get("report"),
-            "summary_json": payload.get("summary"),
-        }
-    )
-    return payload
+    if completion is not None:
+        summary.update(completion)
+    return summary
 
 
 def _selection_payload(args: Any | None, items: list[str] | None) -> dict[str, Any]:
@@ -637,11 +798,14 @@ def regression_payload(
     interruption: dict[str, Any] | None = None,
     versions: dict[str, str] | None = None,
     git_metadata: dict[str, str] | None = None,
+    planned_leaves: int | None = None,
 ) -> dict[str, Any]:
     """Aggregate regression leaf attempts into the durable scheduler summary."""
     versions = versions if versions is not None else tool_versions(root)
     leaves = _leaf_attempts(jobs)
     final_jobs = [final for final, _ in leaves]
+    executed = sum(1 for job in final_jobs if job.get("status") != "SKIP")
+    completion = run_completion(executed, planned_leaves, progress)
     failed_jobs = [job for job in final_jobs if job.get("status") in NON_PASS_STATUSES]
     flaky_leaves = [
         (final, attempts)
@@ -676,13 +840,7 @@ def regression_payload(
         )
     )
 
-    coverage = _coverage_provenance(
-        stages,
-        run_dir,
-        root,
-        tool,
-        bool(getattr(args, "cov", False)),
-    )
+    coverage = coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False)))
     artifacts = {
         "result_json": repo_rel(root, run_dir / "result.json"),
         "regression_json": repo_rel(root, run_dir / "stages" / "regress" / "regression.json"),
@@ -728,23 +886,30 @@ def regression_payload(
         "run_dir": repo_rel(root, run_dir),
         "artifact_root": repo_rel(root, run_dir),
         "artifacts": artifacts,
-        "git": git_metadata if git_metadata is not None else git_info(root),
+        "git": git_metadata if git_metadata is not None else git_provenance(root, run_dir),
         "tool_versions": versions,
         "overrides": {"cli": cli_overrides(args)},
         "selection": _selection_payload(args, items),
-        "tests": _tests_summary_from_jobs(leaves),
-        "coverage": coverage,
+        "tests": _tests_summary_from_jobs(leaves, completion),
         "failure_buckets": failure_buckets,
         "failed_tests": failed_tests,
         "flaky_tests": flaky_tests,
         "rerun_commands": [
             record["rerun"] for record in [*failed_tests, *flaky_tests] if record.get("rerun")
         ],
-        "jobs": jobs,
+        "jobs": [_regression_job_record(job) for job in jobs],
     }
+    if _has_formal(flow, stages):
+        payload["formal"] = formal_summary(stages)
     overlay = flow.raw.get("adopter_overlay")
     if overlay:
         payload["overlay"] = overlay
+    overlay_env = flow.raw.get("adopter_overlay_env")
+    if overlay_env:
+        payload["overlay_env"] = dict(overlay_env)
+    site = _site_layer_label(args)
+    if site:
+        payload["site"] = site
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -769,9 +934,11 @@ def result_payload(
     interruption: dict[str, Any] | None = None,
     versions: dict[str, str] | None = None,
     git_metadata: dict[str, str] | None = None,
+    planned_leaves: int | None = None,
 ) -> dict[str, Any]:
     status = status_override or aggregate_status(stages)
     versions = versions if versions is not None else tool_versions(root)
+    completion = run_completion(executed_leaf_count(stages), planned_leaves, progress)
     payload = {
         "schema_version": 1,
         "flow": flow.name,
@@ -792,23 +959,41 @@ def result_payload(
         "run_dir": repo_rel(root, run_dir),
         "items": items or [],
         "overrides": {"cli": cli_overrides(args)},
-        "tests": _tests_summary(stages),
-        "coverage": _coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
-        "git": git_metadata if git_metadata is not None else git_info(root),
+        "tests": _tests_summary(stages, completion),
+        "coverage": coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
+        "git": git_metadata if git_metadata is not None else git_provenance(root, run_dir),
         "tool_versions": versions,
         "stages": [_stage_dict(stage) for stage in stages],
     }
     targets = _targets_summary(stages)
     if targets:
         payload["targets"] = targets
+    if _has_formal(flow, stages):
+        payload["formal"] = formal_summary(stages)
     overlay = flow.raw.get("adopter_overlay")
     if overlay:
         # The adopter overlay applied to this run (--overlay / OCAH_DV_OVERLAY), so the
         # result records the exact config layers that produced it.
         payload["overlay"] = overlay
-    skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
-    if skipped:
-        payload["selection"] = {"skipped_unimplemented": skipped}
+    overlay_env = flow.raw.get("adopter_overlay_env")
+    if overlay_env:
+        payload["overlay_env"] = dict(overlay_env)
+    site = _site_layer_label(args)
+    if site:
+        payload["site"] = site
+    selection: dict[str, Any] = {
+        key: list(getattr(args, f"_{key}", []) or []) if args is not None else []
+        for key in ("skipped_unimplemented", "skipped_excluded")
+    }
+    # Scenarios this tool cannot run (per-test `tools`). Added only when non-empty,
+    # so a run with no tool restriction keeps the two-key payload shape the
+    # framework-bindings tests pin; recorded so a result that graded fewer items
+    # than the group lists says why.
+    wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
+    if wrong_tool:
+        selection["skipped_wrong_tool"] = wrong_tool
+    if any(selection.values()):
+        payload["selection"] = selection
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -849,11 +1034,15 @@ def fragment_payload(
         "parser": result.parser,
     }
     if result.metadata:
-        payload["metadata"] = result.metadata
+        payload["metadata"] = {
+            key: value for key, value in result.metadata.items() if key != "target_build"
+        }
         if result.metadata.get("attempt") is not None:
             payload["attempt"] = result.metadata["attempt"]
     if result.target:
         payload["target"] = result.target
+    if result.formal is not None:
+        payload["formal"] = result.formal
     target_build = (result.metadata or {}).get("target_build")
     if isinstance(target_build, dict):
         payload["target_build"] = target_build
@@ -895,6 +1084,8 @@ def rollup_payload(
     target = next((result.target for _, result in runs if result.target), None)
     if target:
         payload["target"] = target
+    if any(result.formal is not None for result in leaves):
+        payload["formal"] = formal_summary(leaves)
     return payload
 
 

@@ -16,7 +16,6 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
 from env import sep_key_revocation_draw as kr
 from env import sep_manifest_mutate as mm
 from env import sep_rom_key_slots as ks
@@ -31,9 +30,9 @@ from sep_reg_meta import sym
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-MANIFEST_ERR_KEY_REVOKED = 0x0003_0015
+MANIFEST_ERR_KEY_REVOKED = mm.boot_err("OCA_FAIL_ROOT_KEY_REVOKED")
 # Every near-miss arm of validate_signature returns this code, so forbidding it forbids them all.
-MANIFEST_ERR_SIG_FAILED = 0x0003_000C
+MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -52,12 +51,22 @@ _REVOKED_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_REVOKED:08x}"
 
 # Each of these means something other than the revocation check decided the outcome.
 _ALWAYS_FORBIDDEN = (
-    "SBOOT_OFF", "FUSE: SBOOT_DIS: 1", "WAIT_SMC_MANIFEST",
+    "SBOOT_OFF",
+    "FUSE: SBOOT_DIS: 1",
+    "WAIT_SMC_MANIFEST",
     f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_FAILED:08x}",
     f"CRYPTO_FAIL=0x{MANIFEST_ERR_SIG_FAILED:08x}",
-    "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH", "PUBK_HASH_TIMEOUT",
-    "BAD_KEY_IDX", "BAD_KEY_SEL", "BAD_SIG_TYPE=", "RSA_VERIFY_FAIL",
-    "VERSION_ROLLBACK", "PLD_HASH_FAIL=", "FLASH_REINIT_FAIL=",
+    "ROM_KEY_EMPTY",
+    "FUSE_KEY_EMPTY",
+    "PUBK_HASH_MISMATCH",
+    "PUBK_HASH_TIMEOUT",
+    "BAD_KEY_IDX",
+    "BAD_KEY_SEL",
+    "BAD_SIG_TYPE=",
+    "RSA_VERIFY_FAIL",
+    "VERSION_ROLLBACK",
+    "PLD_HASH_FAIL=",
+    "FLASH_REINIT_FAIL=",
 )
 
 _MAX_RUN_CYCLES = 24_000_000
@@ -97,15 +106,18 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         # Archive before write_efuse_image() overwrites the hook's file.
         _archive(staged_path, "sep_efuse.staged.hex")
 
-        image = self.select_efuse_image(
-            lc_raw=kr.LC_RAW_PROD, fixed=kr.efuse_fixed(drawn.bitmap)
-        )
+        image = self.select_efuse_image(lc_raw=kr.LC_RAW_PROD, fixed=kr.efuse_fixed(drawn.bitmap))
         assert image.words == staged.words, (
             "the golden OTP image and the pre-staged one differ, so the prestage "
             "hook and this testcase did not derive the same stimulus from the "
             "seed. First differing word: "
-            + str(next((i, hex(a), hex(b)) for i, (a, b)
-                       in enumerate(zip(image.words, staged.words)) if a != b))
+            + str(
+                next(
+                    (i, hex(a), hex(b))
+                    for i, (a, b) in enumerate(zip(image.words, staged.words))
+                    if a != b
+                )
+            )
         )
 
         bitmap = image.field_int("CHIPLET_PUBK_REVOKE")
@@ -133,7 +145,11 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             "LC raw=0x%x (PROD), SBOOT_DIS=%d, BL1_VERSION=0x%x, "
             "CHIPLET_PUBK_REVOKE=0x%02x, SEP_SPI_CTRL_FIELD_EN=0x%08x (unpinned, "
             "read only at pll_init.c:49 which the bl0_pll_clk strap gates off)",
-            staged_path, lc, sboot_dis, bl1_ver, bitmap,
+            staged_path,
+            lc,
+            sboot_dis,
+            bl1_ver,
+            bitmap,
             image.field_int("SEP_SPI_CTRL_FIELD_EN"),
         )
         self.write_efuse_image(image)
@@ -156,13 +172,16 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         for slot in ("primary", "backup"):
             self.logger.info(
                 "CHK-STIMULUS-%s-BOUND: public_key_sel=0x%04x (ROM key slot %d, "
-                "%s), modulus digest %s, re-signed with %s; TBS changed=%s",
-                slot.upper(), info[slot]["selector"], info[slot]["index"],
-                info[slot]["key_name"], info[slot]["digest"].hex()[:16],
-                Path(info[slot]["key_path"]).name, info[slot]["tbs_changed"],
+                "%s), modulus digest %s, re-signed with %s; signed region changed=%s",
+                slot.upper(),
+                info[slot]["selector"],
+                info[slot]["index"],
+                info[slot]["key_name"],
+                info[slot]["digest"].hex()[:16],
+                Path(info[slot]["key_path"]).name,
+                info[slot]["tbs_changed"],
             )
-            self.logger.info("CHK-STIMULUS-%s: %s", slot.upper(),
-                             mm.describe(loaded, slot))
+            self.logger.info("CHK-STIMULUS-%s: %s", slot.upper(), mm.describe(loaded, slot))
         return loaded
 
     def _measure(self, sensed_image, staged_flash, drawn):
@@ -186,9 +205,14 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         self.logger.info(
             "CHK-DRAW-CLASS: measured bitmap=0x%02x (bit[p=%d]=%d, bit[b=%d]=%d, "
             "bitmap!=0 is %s) -> class %s -> outcome %s",
-            bitmap, slots["primary"], int(kr.bit_set(bitmap, slots["primary"])),
-            slots["backup"], int(kr.bit_set(bitmap, slots["backup"])),
-            bitmap != 0, measured, kr.outcome_of(measured),
+            bitmap,
+            slots["primary"],
+            int(kr.bit_set(bitmap, slots["primary"])),
+            slots["backup"],
+            int(kr.bit_set(bitmap, slots["backup"])),
+            bitmap != 0,
+            measured,
+            kr.outcome_of(measured),
         )
         return bitmap, slots["primary"], slots["backup"], measured
 
@@ -208,7 +232,10 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
 
         flash = OcahSpiFlash(
-            dut.spi_cs_n_o, dut.spi_sck_o, mosi=dut.spi_mosi_o, miso=dut.spi_miso_i,
+            dut.spi_cs_n_o,
+            dut.spi_sck_o,
+            mosi=dut.spi_mosi_o,
+            miso=dut.spi_miso_i,
             name="sep_key_revocation_flash",
         )
         flash.preload(staged_flash)
@@ -239,14 +266,19 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
                     fw_pass = verdict[1]
                     self.logger.info(
                         "CHK-VERDICT: completion signalled at cycle %d via "
-                        "cold_scratch[0], pass=%d", cycle, fw_pass,
+                        "cold_scratch[0], pass=%d",
+                        cycle,
+                        fw_pass,
                     )
                     break
                 if cycle - last_log >= _PROGRESS_EVERY:
                     last_log = cycle
                     self.logger.info(
                         "revocation poll cyc=%d status=0x%08x retired=%d lines=%d",
-                        cycle, status, retired, len(console),
+                        cycle,
+                        status,
+                        retired,
+                        len(console),
                     )
                 if cycle >= _NO_BOOT_CYCLES and retired == 0:
                     self.logger.error(
@@ -265,18 +297,41 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
                 post_console = console[console_len_at_done:]
         finally:
             await flash.stop()
-            self.logger.info("CHK-SPI-TXNS:\n%s",
-                             ev.summarize(flash.get_transactions(), self._image_len))
+            self.logger.info(
+                "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+            )
             log_scratch_cold(self.logger)
 
-        self._check(console, status_seq, fw_done, fw_pass, retired, flash,
-                    bitmap=bitmap, p_slot=p_slot, b_slot=b_slot, cls=cls)
+        self._check(
+            console,
+            status_seq,
+            fw_done,
+            fw_pass,
+            retired,
+            flash,
+            bitmap=bitmap,
+            p_slot=p_slot,
+            b_slot=b_slot,
+            cls=cls,
+        )
         if outcome == kr.OUTCOME_TERMINAL:
             self._check_quiesced(post_status_moved, post_console, last_status)
         self._record_coverage(seed, drawn, bitmap, p_slot, b_slot, cls)
 
-    def _check(self, console, status_seq, fw_done, fw_pass, retired, flash, *,
-               bitmap: int, p_slot: int, b_slot: int, cls: str) -> None:
+    def _check(
+        self,
+        console,
+        status_seq,
+        fw_done,
+        fw_pass,
+        retired,
+        flash,
+        *,
+        bitmap: int,
+        p_slot: int,
+        b_slot: int,
+        cls: str,
+    ) -> None:
         log = self.logger
         log.info("cold_scratch[1] sequence: %s", [hex(v) for v in status_seq])
         log.info("ROM console: %s", console)
@@ -303,9 +358,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
                 f"revocation check this row draws for. Console: {console}"
             )
         for marker in (_LC_PROD, _BOOT_SPI, _PRIMARY_SRC):
-            assert hits(marker), (
-                f"ROM never printed {marker}. Console: {console}"
-            )
+            assert hits(marker), f"ROM never printed {marker}. Console: {console}"
 
         outcome = kr.outcome_of(cls)
         sel_p = f"PUBK_SEL=0x{p_slot:08x}"
@@ -339,29 +392,85 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         )
 
         if outcome == kr.OUTCOME_PROCEED:
-            self._check_proceed(console, idx, hits, fw_done, fw_pass, flash,
-                                sel_p=sel_p, revoke_echo=revoke_echo,
-                                i_psrc=i_psrc,
-                                i_sel_p=i_sel_p, i_revoke=revokes[0],
-                                bitmap=bitmap, p_slot=p_slot, cls=cls)
+            self._check_proceed(
+                console,
+                idx,
+                hits,
+                fw_done,
+                fw_pass,
+                flash,
+                sel_p=sel_p,
+                revoke_echo=revoke_echo,
+                i_psrc=i_psrc,
+                i_sel_p=i_sel_p,
+                i_revoke=revokes[0],
+                bitmap=bitmap,
+                p_slot=p_slot,
+                cls=cls,
+            )
         elif outcome == kr.OUTCOME_FAILOVER:
-            self._check_failover(console, idx, hits, fw_done, fw_pass, flash,
-                                 sel_p=sel_p, sel_b=sel_b, revokes=revokes,
-                                 revoked_p=revoked_p, revoked_b=revoked_b,
-                                 i_sel_p=i_sel_p,
-                                 p_slot=p_slot, b_slot=b_slot)
+            self._check_failover(
+                console,
+                idx,
+                hits,
+                fw_done,
+                fw_pass,
+                flash,
+                sel_p=sel_p,
+                sel_b=sel_b,
+                revokes=revokes,
+                revoked_p=revoked_p,
+                revoked_b=revoked_b,
+                i_sel_p=i_sel_p,
+                p_slot=p_slot,
+                b_slot=b_slot,
+            )
         else:
-            self._check_terminal(console, idx, hits, status_seq, fw_done, fw_pass,
-                                 flash, sel_p=sel_p, sel_b=sel_b, revokes=revokes,
-                                 revoked_p=revoked_p, revoked_b=revoked_b,
-                                 i_psrc=i_psrc, i_sel_p=i_sel_p,
-                                 p_slot=p_slot, b_slot=b_slot)
+            self._check_terminal(
+                console,
+                idx,
+                hits,
+                status_seq,
+                fw_done,
+                fw_pass,
+                flash,
+                sel_p=sel_p,
+                sel_b=sel_b,
+                revokes=revokes,
+                revoked_p=revoked_p,
+                revoked_b=revoked_b,
+                i_psrc=i_psrc,
+                i_sel_p=i_sel_p,
+                p_slot=p_slot,
+                b_slot=b_slot,
+            )
 
-    def _check_proceed(self, console, idx, hits, fw_done, fw_pass, flash, *,
-                       sel_p, revoke_echo, i_psrc, i_sel_p, i_revoke,
-                       bitmap, p_slot, cls) -> None:
-        for marker in ("KEY_REVOKED idx=", _REVOKED_ERR, _REVOKED_CRYPTO_FAIL,
-                       _BACKUP_SRC, _ALL_FAILED, "MANIFEST_ERR="):
+    def _check_proceed(
+        self,
+        console,
+        idx,
+        hits,
+        fw_done,
+        fw_pass,
+        flash,
+        *,
+        sel_p,
+        revoke_echo,
+        i_psrc,
+        i_sel_p,
+        i_revoke,
+        bitmap,
+        p_slot,
+        cls,
+    ) -> None:
+        for marker in (
+            "KEY_REVOKED idx=",
+            _REVOKED_ERR,
+            _REVOKED_CRYPTO_FAIL,
+            _BACKUP_SRC,
+            _ALL_FAILED,
+            "MANIFEST_ERR=",
+        ):
             assert not hits(marker), (
                 f"ROM printed {marker}: the primary's slot {p_slot} is not revoked "
                 f"under bitmap 0x{bitmap:02x}, so nothing may be refused. "
@@ -384,8 +493,7 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
                 f"(the primary's). Console: {console}"
             )
         assert fw_done and fw_pass, (
-            f"a {cls} seed must complete the boot: fw_done={fw_done} "
-            f"fw_pass={fw_pass}"
+            f"a {cls} seed must complete the boot: fw_done={fw_done} fw_pass={fw_pass}"
         )
         # A silent failover also reaches MANIFEST_OK; only the flash transaction log rules it out.
         rds = ev.reads(flash.get_transactions())
@@ -404,14 +512,42 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             "CHK-REVOKE-PROCEED: %s primary@%d -> %s@%d -> %s@%d (bit %d clear) -> "
             "%s@%d -> %s@%d -> %s@%d -> %s@%d, no KEY_REVOKED anywhere, and no read "
             "inside the backup span across %d reads",
-            cls, i_psrc, sel_p, i_sel_p, revoke_echo, i_revoke, p_slot,
-            _RSA_START, idx(_RSA_START), _SIG_VALID, idx(_SIG_VALID),
-            _CRYPTO_OK, idx(_CRYPTO_OK), _BL1_JUMP, idx(_BL1_JUMP), len(rds),
+            cls,
+            i_psrc,
+            sel_p,
+            i_sel_p,
+            revoke_echo,
+            i_revoke,
+            p_slot,
+            _RSA_START,
+            idx(_RSA_START),
+            _SIG_VALID,
+            idx(_SIG_VALID),
+            _CRYPTO_OK,
+            idx(_CRYPTO_OK),
+            _BL1_JUMP,
+            idx(_BL1_JUMP),
+            len(rds),
         )
 
-    def _check_failover(self, console, idx, hits, fw_done, fw_pass, flash, *,
-                        sel_p, sel_b, revokes, revoked_p, revoked_b,
-                        i_sel_p, p_slot, b_slot) -> None:
+    def _check_failover(
+        self,
+        console,
+        idx,
+        hits,
+        fw_done,
+        fw_pass,
+        flash,
+        *,
+        sel_p,
+        sel_b,
+        revokes,
+        revoked_p,
+        revoked_b,
+        i_sel_p,
+        p_slot,
+        b_slot,
+    ) -> None:
         i_revoked_p = idx(revoked_p)
         i_crypto = idx(_REVOKED_CRYPTO_FAIL)
         i_err = idx(_REVOKED_ERR)
@@ -480,22 +616,62 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             "CHK-REVOKE-FAILOVER: primary slot %d %s@%d -> PUBK_REVOKE@%d -> %s@%d "
             "-> %s@%d -> backup@%d -> backup slot %d %s@%d -> PUBK_REVOKE@%d "
             "(permitted) -> %s@%d -> %s@%d; device served read[%d] then read[%d]",
-            p_slot, sel_p, i_sel_p, revokes[0], revoked_p, i_revoked_p,
-            _REVOKED_ERR, i_err, i_bsrc, b_slot, sel_b, i_sel_b, revokes[1],
-            _SIG_VALID, i_sig, _BL1_JUMP, i_jump, p_hit[0], b_hit[0],
+            p_slot,
+            sel_p,
+            i_sel_p,
+            revokes[0],
+            revoked_p,
+            i_revoked_p,
+            _REVOKED_ERR,
+            i_err,
+            i_bsrc,
+            b_slot,
+            sel_b,
+            i_sel_b,
+            revokes[1],
+            _SIG_VALID,
+            i_sig,
+            _BL1_JUMP,
+            i_jump,
+            p_hit[0],
+            b_hit[0],
         )
 
-    def _check_terminal(self, console, idx, hits, status_seq, fw_done, fw_pass,
-                        flash, *, sel_p, sel_b, revokes, revoked_p, revoked_b,
-                        i_psrc, i_sel_p, p_slot, b_slot) -> None:
+    def _check_terminal(
+        self,
+        console,
+        idx,
+        hits,
+        status_seq,
+        fw_done,
+        fw_pass,
+        flash,
+        *,
+        sel_p,
+        sel_b,
+        revokes,
+        revoked_p,
+        revoked_b,
+        i_psrc,
+        i_sel_p,
+        p_slot,
+        b_slot,
+    ) -> None:
         i_bsrc = idx(_BACKUP_SRC)
         assert i_bsrc > i_psrc >= 0, (
             f"the backup slot was not read after the primary: primary@{i_psrc}, "
             f"backup@{i_bsrc}. Console: {console}"
         )
         # Both manifests are otherwise valid, so a no-op revocation check would boot here.
-        for marker in (_RSA_START, _SIG_VALID, _CRYPTO_OK, _MANIFEST_OK,
-                       _PRE_JUMP, _BL1_COPIED, _BL1_JUMP):
+        for marker in (
+            _RSA_START,
+            _SIG_VALID,
+            _CRYPTO_OK,
+            _MANIFEST_OK,
+            _PRE_JUMP,
+            _BL1_COPIED,
+            _BL1_JUMP,
+        ):
             assert not hits(marker), (
                 f"ROM printed {marker}: a slot got past a revocation refusal, so "
                 f"both selected keys were not refused. Console: {console}"
@@ -521,8 +697,9 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"Console: {console}"
         )
         i_sel_b = idx(sel_b, after=i_bsrc)
-        assert i_sel_p < revokes[0] < revoked_hits[0] < i_bsrc < i_sel_b \
-            < revokes[1] < revoked_hits[1], (
+        assert (
+            i_sel_p < revokes[0] < revoked_hits[0] < i_bsrc < i_sel_b < revokes[1] < revoked_hits[1]
+        ), (
             f"the two refusals are not each attributable to their own slot: "
             f"{sel_p}@{i_sel_p} -> PUBK_REVOKE@{revokes[0]} -> "
             f"KEY_REVOKED@{revoked_hits[0]} -> backup@{i_bsrc} -> {sel_b}"
@@ -540,10 +717,11 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             f"ROM never printed {_ALL_FAILED}: the retry loop did not exhaust, so "
             f"this is not the both-slots-refused outcome. Console: {console}"
         )
-        expected_status = 0x0F01_0000 | (MANIFEST_ERR_KEY_REVOKED & 0xFFFF)
+        status_msg = mm.rom_status_for_result(MANIFEST_ERR_KEY_REVOKED)
+        expected_status = 0x0F01_0000 | status_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{MANIFEST_ERR_KEY_REVOKED & 0xFFFF:04x})); "
+            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); "
             f"observed {[hex(v) for v in status_seq]}"
         )
         assert fw_done, (
@@ -565,9 +743,23 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
             "-> backup@%d -> backup slot %d %s@%d -> PUBK_REVOKE@%d -> %s@%d -> "
             "%s, cold_scratch[1]=0x%08x, FAIL verdict; device served read[%d] then "
             "read[%d] and neither slot reached the verifier",
-            p_slot, sel_p, i_sel_p, revokes[0], revoked_p, revoked_hits[0], i_bsrc,
-            b_slot, sel_b, i_sel_b, revokes[1], revoked_b, revoked_hits[1],
-            _ALL_FAILED, expected_status, p_hit[0], b_hit[0],
+            p_slot,
+            sel_p,
+            i_sel_p,
+            revokes[0],
+            revoked_p,
+            revoked_hits[0],
+            i_bsrc,
+            b_slot,
+            sel_b,
+            i_sel_b,
+            revokes[1],
+            revoked_b,
+            revoked_hits[1],
+            _ALL_FAILED,
+            expected_status,
+            p_hit[0],
+            b_hit[0],
         )
 
     def _check_quiesced(self, post_status_moved, post_console, terminal_status) -> None:
@@ -583,7 +775,8 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         self.logger.info(
             "CHK-HANG: cold_scratch[1] held 0x%08x and the console stayed silent "
             "for %d cycles after the terminal verdict",
-            terminal_status, _QUIESCE_CYCLES,
+            terminal_status,
+            _QUIESCE_CYCLES,
         )
 
     def _record_coverage(self, seed, drawn, bitmap, p_slot, b_slot, cls) -> None:
@@ -616,5 +809,9 @@ class sep_key_revocation_bitmap_random_test(sep_base_test):
         self.logger.info(
             "CHK-COVERAGE: seed %d hit %d of the 27 closure bins: %s (recorded in "
             "%s). Closure is accumulated across regression seeds and is NOT "
-            "claimed by this run", seed, len(bins), ", ".join(bins), out,
+            "claimed by this run",
+            seed,
+            len(bins),
+            ", ".join(bins),
+            out,
         )

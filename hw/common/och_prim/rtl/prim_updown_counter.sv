@@ -14,7 +14,7 @@ module prim_updown_counter #(
   localparam type ctr_t = logic [Width-1:0]
 ) (
   input        clk_i,
-  input        reset_n_i,
+  input        rst_ni,
   input        clear_i,
   input        set_i,
   input  ctr_t set_cnt_i,           // Set value for the counter.
@@ -59,7 +59,7 @@ module prim_updown_counter #(
 
   logic [Width-1:0] cnt_unforced_q;
   always_ff @(posedge clk_i) begin
-    if (!reset_n_i) begin
+    if (!rst_ni) begin
       cnt_unforced_q <= ResetValue;
     end else begin
       cnt_unforced_q <= cnt_d_committed;

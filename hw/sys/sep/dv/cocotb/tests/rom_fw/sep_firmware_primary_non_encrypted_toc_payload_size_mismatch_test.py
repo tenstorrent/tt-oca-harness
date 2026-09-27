@@ -9,14 +9,14 @@ For a plaintext payload the TOC length must equal the manifest's. The ROM must r
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw import sep_toc_bound_defect as tbd
 from rom_fw.sep_primary_toc_bound_fail_base import sep_primary_toc_bound_fail_base
 
 
 @pyuvm.test()
 class sep_firmware_primary_non_encrypted_toc_payload_size_mismatch_test(
-        sep_primary_toc_bound_fail_base):
+    sep_primary_toc_bound_fail_base
+):
     """Plaintext primary TOC claims 0x2000 against a 5936-byte payload -> backup boots."""
 
     bound_defect = tbd.PLEN

@@ -12,11 +12,22 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_5agent_observability_test(smc_base_test):
-    # `tb_gpio_irq_any` already has a same-run positive control inside this
-    # test's own sequence. The other three unbacked idle-zero legs it asserts
-    # (`sync_irq`, `uart_irq_any`, I2C `cg_en`) did not: these controls drive
-    # each producer, require the probe observed at 1 inside a bounded window and
-    # back at 0, and credit the liveness ledger the scoreboard consults
+    required_evidence = (
+        "CHK-5AGENT-CLK",
+        "CHK-5AGENT-COMPOSITION",
+        "CHK-5AGENT-GPIO",
+        "CHK-5AGENT-I2C",
+        "CHK-5AGENT-IRQ-IDLE",
+        "CHK-5AGENT-IRQ-POSITIVE",
+        "CHK-5AGENT-RESET",
+    )
+    min_evidence = 7
+
+    # `tb_gpio_irq_any` gets a same-run positive control inside this test's own
+    # sequence; the other three idle-zero legs it asserts (`sync_irq`,
+    # `uart_irq_any`, I2C `cg_en`) get theirs here: each control drives the
+    # producer, requires the probe observed at 1 inside a bounded window and
+    # back at 0, and credits the liveness ledger the scoreboard consults
     # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). They dispatch no agent SAMPLE items,
     # so the sequence's exact EXPECTED_SAMPLES counter gate is unaffected.
     probe_positive_controls = ("sync_irq", "uart_irq_any", "i2c_cg_en")

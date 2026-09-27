@@ -12,8 +12,8 @@ iteration logging use the shared formats. This is the parent of every
 SV-UVM twin is ``ocah_sequence``; it seeds the ``body()`` process once
 (``seed_scenario_rng``) where Python hands each helper its own salted RNG.
 
-Deliberately absent: an evidence handle. Its type is the protocol checker the
-bench needs, so the bench base sequence declares it.
+No evidence handle here: its type is the protocol checker the bench needs, so
+the bench base sequence declares it.
 """
 
 from __future__ import annotations
@@ -44,7 +44,12 @@ class OcahSequence(uvm_sequence):
         loop_index: int = 0,
     ) -> None:
         super().__init__(name)
-        self.log = logging.getLogger(name)
+        # A child of the `cocotb` logger: the cocotb log configuration raises only
+        # that hierarchy to INFO, so a same-named root-child logger keeps the root's
+        # WARNING threshold and its INFO records never reach the simulation log.
+        # Resolved by name: `cocotb.log` exists only once the simulator has
+        # initialised, and this class also runs in the simulator-free selftest.
+        self.log = logging.getLogger("cocotb").getChild(name)
         # Per-pass seed: runner seed plus loop index, set by the base test.
         self.scenario_seed = scenario_seed
         # Random patterns or operations per pass.

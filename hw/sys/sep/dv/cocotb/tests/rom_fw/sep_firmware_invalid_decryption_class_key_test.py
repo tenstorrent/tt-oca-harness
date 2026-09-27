@@ -1,20 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The CLASS_KEY fuse is not the key the payload was encrypted under.
+"""An erased OCA CLASS_KEY is refused before AES-256 key derivation.
 
-The fuse reads zero, so every block decrypts to garbage and the TOC ID check fails.
-The backup slot is unencrypted. Needs +sep_crypto_edn_force (AES is EDN client 0).
+The backup slot is cleartext and boots after the primary reports that no
+provisioned secret exists.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_decrypt_input_defect import sep_decrypt_input_defect_base
 
 
 @pyuvm.test()
 class sep_firmware_invalid_decryption_class_key_test(sep_decrypt_input_defect_base):
-    """Wrong CLASS_KEY fuse -> garbage plaintext -> TOC refused -> the backup boots."""
+    """Erased CLASS_KEY -> no provisioned secret -> the backup boots."""
 
     defect = "class_key"

@@ -4,8 +4,10 @@
 // dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test — the
 // `series_write_read_incr_with_error` SMC fabric JTAG2AXI scenario:
 // *_SERIES_DATA_WITH_ERROR_STATUS mode with a mixed increment pattern on
-// both the write and read legs, ending with the SERIES_CTRL address/status
-// capture.
+// both legs: a clean write leg, then a read leg from one SERIES_CTRL
+// preload with one armed SLVERR/DECERR beat whose lagged status bit is
+// judged on every shift (CHK-J2A-STATUS-BIT), each leg ending with the
+// SERIES_CTRL address capture and a legal single read proving recovery.
 
 class dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test)
@@ -18,7 +20,14 @@ class dtp_jtag2axi_smc_axi_series_write_read_incr_with_error_test extends dtp_ba
   virtual function void configure_test_cfg(dtp_test_cfg cfg);
     super.configure_test_cfg(cfg);
     cfg.require_axi_ids("smc_axi",
-                        '{"CHK-AXI-RESP", "CHK-AXI-RDATA", "CHK-AXI-COMPLETION", "CHK-AXI-NONVAC"});
+                        '{
+                            "CHK-AXI-RESP",
+                            "CHK-AXI-ERR-INJ",
+                            "CHK-AXI-RDATA",
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-STATUS-BIT"
+                        });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();

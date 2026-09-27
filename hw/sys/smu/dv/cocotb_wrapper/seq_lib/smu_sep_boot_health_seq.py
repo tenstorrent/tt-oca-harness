@@ -2,15 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Real SEP DV boot-health firmware under the OSS SMU wrapper.
 
-Runs hw/sys/sep/dv/fw/tests/sep_smu_boot_health -- the same image the internal
-SMU suite boots -- instead of this DV root's minimal freestanding smoke. The
-firmware itself carries the verdict: it parks in one of two named terminal
-loops, so the test classifies the run by which loop PC the SEP settles on
-rather than by any TB-side inference.
+Runs hw/sys/sep/dv/fw/tests/sep_smu_boot_health instead of this DV root's
+minimal freestanding smoke. The firmware itself carries the verdict: it parks
+in one of two named terminal loops, so the test classifies the run by which
+loop PC the SEP settles on rather than by any TB-side inference.
 
 Symbol addresses come from the staged .sym, so the contract survives a firmware
-relink. SEP-local cold scratch7 (0x10802038) marker observation is deliberately
-out of scope here and left to the follow-on anchor.
+relink. SEP-local cold scratch7 (0x10802038) marker observation is out of scope
+here.
 """
 
 from __future__ import annotations
@@ -19,6 +18,7 @@ import os
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, load_syms
 
 SEP_BOOT_ROM_BASE = 0x1004_0000
@@ -34,10 +34,14 @@ START_SYM = "_start"
 class SmuSepBootHealthSeq:
     """Prove the real SEP DV firmware boots and reaches its pass loop."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_REAL_FW_BOOT_OK", "SEP_REAL_FW_PASS_LOOP_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     async def run(self) -> None:
         max_cycles = int(os.environ.get("SMU_SEP_BOOT_MAX_CYCLES", "300000"), 0)
@@ -190,7 +194,7 @@ class SmuSepBootHealthSeq:
             traces,
             len(pcs),
         )
-        for token in ("SEP_REAL_FW_BOOT_OK", "SEP_REAL_FW_PASS_LOOP_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

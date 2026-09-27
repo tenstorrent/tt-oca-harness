@@ -17,14 +17,10 @@ ocah_toml_root := $(if $(TOML_PATH),$(OCAH_ROOT)/$(TOML_PATH),$(OCAH_ROOT))
 
 # .toml files under TOML_PATH, excluding vendor/nonfree, build output, and the
 # local uv venv (which vendors its own third-party Cargo.toml resources).
-# Also excludes slang-tidy's own config file: slang-tidy expects a filename
-# ending in .toml (see --config-file in hw/ip/scrambler/dv/lint/Makefile) but
-# parses it with its own Checks:/CheckConfigs: grammar, not TOML -- a real
-# TOML parser correctly rejects it (see tools/tidy/README.md upstream).
 ocah_toml_files = $(shell find $(ocah_toml_root) -name '*.toml' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
 	-not -path '*/build/*' -not -path '*/build_pio/*' \
-	-not -path '*/.venv/*' -not -path '*/hw/ip/scrambler/dv/lint/scrambler.toml' 2>/dev/null)
+	-not -path '*/.venv/*' 2>/dev/null)
 
 ocah_toml_check_files = @[ -n "$(strip $(ocah_toml_files))" ] || { echo "error: no .toml files under $(if $(TOML_PATH),$(TOML_PATH),repo root)" >&2; exit 1; }
 

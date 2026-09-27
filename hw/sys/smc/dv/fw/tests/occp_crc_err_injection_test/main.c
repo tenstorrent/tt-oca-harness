@@ -132,7 +132,6 @@ static bool run_header_body_combo(test_context_t *ctx, occp_crc_inject_mode_t he
 int main(void) {
     static test_context_t ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP CRC Injection Test ===\n");
@@ -153,12 +152,12 @@ int main(void) {
     execute_random_commands(&ctx, 5);
 
     /* Four combinations: detectable/undetectable for header and body */
-    // 1) Detectable body -> expect header error
+    // 1) Detectable header CRC error -> expect header error
     simputs("-- Case 1: Detectable header CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_DETECTABLE, OCCP_CRC_INJECT_NONE);
     exp_num_cmd_failed_errors += 2;
 
-    // 2) undetectable body -> header should dominate, expect header error
+    // 2) Possibly undetectable header CRC error -> expect header error
     simputs("-- Case 2: Possibly undetectable header CRC error --\n");
     run_header_body_combo(&ctx, OCCP_CRC_INJECT_UNDETECTABLE, OCCP_CRC_INJECT_NONE);
     exp_num_cmd_failed_errors += 2;
@@ -190,9 +189,8 @@ int main(void) {
 
     reset_injection_config(&ctx);
 
-    /* Validate the SMC status buffer before cooldown */
-    // unpredictable and no fixed code for CRC error so let's just skip this
-    // read_and_validate_smc_status_buffer(&ctx);
+    /* CRC-error entries carry no fixed status code, so the SMC status buffer is not
+     * validated here. */
 
     /* Cool-down valid commands to ensure recovery */
     execute_random_commands(&ctx, 5);

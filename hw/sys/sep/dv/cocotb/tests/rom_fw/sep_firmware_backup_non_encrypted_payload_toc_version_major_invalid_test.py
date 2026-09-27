@@ -9,13 +9,13 @@ The backup TOC ``major_version`` is ``TOC_MAJOR_VERSION + 1`` and is refused wit
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_backup_toc_fail_base import sep_backup_toc_fail_base
 
 
 @pyuvm.test()
 class sep_firmware_backup_non_encrypted_payload_toc_version_major_invalid_test(
-        sep_backup_toc_fail_base):
+    sep_backup_toc_fail_base
+):
     """Plaintext backup TOC major_version is 2 -> both slots refused -> halt."""
 
     toc_field = "version_major"

@@ -4,22 +4,156 @@
 // DTP bench constants, DUT geometry, and pure codec functions shared by the
 // environment (reference models, virtual sequencer, cfgs) and the
 // sequence library (reusable operations, scenario helpers). The cocotb twin
-// is env/dtp_types.py plus env/dtp_xtrig_types.py. Register opcodes and
-// geometry come from the generated DUT collateral (jtag_inst_reg_pkg,
-// cross_trigger_*_pkg, dtp_pkg); the few bench-only constants cite their
-// source. No class lives here: everything is a package-scope type, constant,
-// or `function automatic`.
+// is env/dtp_types.py plus env/dtp_xtrig_types.py. Every value the checks
+// expect has a source other than the RTL: the instruction encodings and the
+// TAP-state encoding are transcribed from the JTAG interface-unit and PTAP
+// documents, the cross-trigger register offsets and field masks come from the
+// generated cross_trigger_* collateral and its CSR windows and port counts from
+// the cross-trigger network document, the JTAG2AXI bridge geometries are the
+// values each bridge publishes in its *_JTAG2AXI_CAPS TDR (compared with the
+// DUT every pass by the geometry gate), and the TDR field layouts come from
+// the PTAP document; the few bench-only constants cite their source. No class
+// lives here: everything is a package-scope type, constant, or
+// `function automatic`.
 
 // ---------------------------------------------------------------------------
 // Primary TAP.
 // ---------------------------------------------------------------------------
 
-localparam int unsigned DtpIrWidth = jtag_inst_reg_pkg::IR_WIDTH;
+// "The JTAG interface unit uses 6-bit instruction encodings"
+// (hw/ip/jtag/jtag_intf_unit/doc/interface.adoc, "Instruction Encodings").
+localparam int unsigned DtpIrWidth = 6;
+
+// Primary TAP instruction opcodes, one member per 6-bit encoding: the
+// "Instruction Encodings" table of hw/ip/jtag/jtag_intf_unit/doc/interface.adoc
+// (the PTAP document's own table lists the same encodings for the instructions
+// it defines). Member names are the table's names with an _INSTR suffix; the
+// two BYPASS rows and the encodings without a row carry the encoding. Both
+// tables map every encoding without a row to BYPASS.
+typedef enum logic [DtpIrWidth-1:0] {
+  BYPASS_ALT_INSTR                                = 6'h00,
+  IDCODE_INSTR                                    = 6'h01,
+  RUNBIST_INSTR                                   = 6'h02,
+  SAMPLE_PRELOAD_INSTR                            = 6'h03,
+  EXTEST_INSTR                                    = 6'h04,
+  EXTEST_TRAIN_INSTR                              = 6'h05,
+  EXTEST_PULSE_INSTR                              = 6'h06,
+  CLAMP_INSTR                                     = 6'h07,
+  HIGHZ_INSTR                                     = 6'h08,
+  INTEST_INSTR                                    = 6'h09,
+  CLAMP_HOLD_INSTR                                = 6'h0A,
+  CLAMP_RELEASE_INSTR                             = 6'h0B,
+  TMP_STATUS_INSTR                                = 6'h0C,
+  IC_RESET_INSTR                                  = 6'h0D,
+  TAP_3DCR_INSTR                                  = 6'h0E,
+  UNDEFINED_BYPASS_0F_INSTR                       = 6'h0F,
+  // "Reserved for RISC-V" (0x10-0x17): no instruction, so BYPASS.
+  RISCV_RESERVED_0_INSTR                          = 6'h10,
+  RISCV_RESERVED_1_INSTR                          = 6'h11,
+  RISCV_RESERVED_2_INSTR                          = 6'h12,
+  RISCV_RESERVED_3_INSTR                          = 6'h13,
+  RISCV_RESERVED_4_INSTR                          = 6'h14,
+  RISCV_RESERVED_5_INSTR                          = 6'h15,
+  RISCV_RESERVED_6_INSTR                          = 6'h16,
+  RISCV_RESERVED_7_INSTR                          = 6'h17,
+  DEBUG_CONTROL_INSTR                             = 6'h18,
+  JTAG_CAPS_INSTR                                 = 6'h19,
+  SELECT_IJTAG_INSTR                              = 6'h1A,
+  SMC_OTP_JTAG2AXI_CAPS_INSTR                     = 6'h1B,
+  SMC_OTP_AXI_SINGLE_OP_INSTR                     = 6'h1C,
+  SMC_OTP_AXI_SERIES_CTRL_INSTR                   = 6'h1D,
+  SMC_OTP_AXI_SERIES_DATA_INCR_INSTR              = 6'h1E,
+  SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR           = 6'h1F,
+  SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR = 6'h20,
+  SEP_OTP_JTAG2AXI_CAPS_INSTR                     = 6'h21,
+  SEP_OTP_AXI_SINGLE_OP_INSTR                     = 6'h22,
+  SEP_OTP_AXI_SERIES_CTRL_INSTR                   = 6'h23,
+  SEP_OTP_AXI_SERIES_DATA_INCR_INSTR              = 6'h24,
+  SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR           = 6'h25,
+  SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR = 6'h26,
+  SMC_JTAG2AXI_CAPS_INSTR                         = 6'h27,
+  SMC_AXI_SINGLE_OP_INSTR                         = 6'h28,
+  SMC_AXI_SERIES_CTRL_INSTR                       = 6'h29,
+  SMC_AXI_SERIES_DATA_INCR_INSTR                  = 6'h2A,
+  SMC_AXI_SERIES_DATA_NO_INCR_INSTR               = 6'h2B,
+  SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR     = 6'h2C,
+  // No row for 0x2D-0x3C: BYPASS.
+  UNDEFINED_BYPASS_2D_INSTR                       = 6'h2D,
+  UNDEFINED_BYPASS_2E_INSTR                       = 6'h2E,
+  UNDEFINED_BYPASS_2F_INSTR                       = 6'h2F,
+  UNDEFINED_BYPASS_30_INSTR                       = 6'h30,
+  UNDEFINED_BYPASS_31_INSTR                       = 6'h31,
+  UNDEFINED_BYPASS_32_INSTR                       = 6'h32,
+  UNDEFINED_BYPASS_33_INSTR                       = 6'h33,
+  UNDEFINED_BYPASS_34_INSTR                       = 6'h34,
+  UNDEFINED_BYPASS_35_INSTR                       = 6'h35,
+  UNDEFINED_BYPASS_36_INSTR                       = 6'h36,
+  UNDEFINED_BYPASS_37_INSTR                       = 6'h37,
+  UNDEFINED_BYPASS_38_INSTR                       = 6'h38,
+  UNDEFINED_BYPASS_39_INSTR                       = 6'h39,
+  UNDEFINED_BYPASS_3A_INSTR                       = 6'h3A,
+  UNDEFINED_BYPASS_3B_INSTR                       = 6'h3B,
+  UNDEFINED_BYPASS_3C_INSTR                       = 6'h3C,
+  ZERO_LENGTH_BYPASS_INSTR                        = 6'h3D,
+  INV_BYPASS_INSTR                                = 6'h3E,
+  BYPASS_INSTR                                    = 6'h3F
+} dtp_jtag_instr_e;
+
+// IEEE 1149.1 TAP controller states as the DUT exports them on
+// jtag_ptap_state_o: the 16-bit one-hot encoding of the "TAP Controller State
+// Machine" table in hw/ip/jtag/jtag_ptap/doc/architecture.adoc (bit index =
+// the IEEE state number the shared VIP enumerates).
+typedef enum logic [15:0] {
+  TEST_LOGIC_RESET = 16'h0001,
+  RUN_TEST_IDLE    = 16'h0002,
+  SELECT_DR_SCAN   = 16'h0004,
+  CAPTURE_DR       = 16'h0008,
+  SHIFT_DR         = 16'h0010,
+  EXIT1_DR         = 16'h0020,
+  PAUSE_DR         = 16'h0040,
+  EXIT2_DR         = 16'h0080,
+  UPDATE_DR        = 16'h0100,
+  SELECT_IR_SCAN   = 16'h0200,
+  CAPTURE_IR       = 16'h0400,
+  SHIFT_IR         = 16'h0800,
+  EXIT1_IR         = 16'h1000,
+  PAUSE_IR         = 16'h2000,
+  EXIT2_IR         = 16'h4000,
+  UPDATE_IR        = 16'h8000
+} dtp_tap_state_e;
+
+// A legal exported TAP state is exactly one of the sixteen one-hot codes.
+function automatic bit dtp_tap_state_is_valid(logic [15:0] state);
+  if ($isunknown(state)) return 1'b0;
+  return $countones(state) == 1;
+endfunction
+
+// The DUT is in a Shift state: one data bit moves through the selected register
+// on every TCK cycle the exported state spends here.
+function automatic bit dtp_tap_state_is_shift(logic [15:0] state, bit is_ir);
+  return state === (is_ir ? SHIFT_IR : SHIFT_DR);
+endfunction
 
 // Device identification of the public DTP elaboration: the jtag_ptap IDCODE
 // parameters default to manufacturer 0, part 0, revision 0, leaving only the
 // IEEE 1149.1 marker bit.
-localparam bit [31:0] DtpDefaultIdcode = 32'h0000_0001;
+// The bench configuration tb_top elaborates the DUT from (dtp_dv_cfg_pkg;
+// dtp_dv_cfg.py parity): the identification IDCODE publishes, and the STAP
+// count, IC_RESET slice widths, and version JTAG_CAPS publishes ("JTAG
+// Capabilities" table, PTAP document); the cross-trigger counts are in the
+// cross-trigger section below.
+localparam bit [31:0] DtpDefaultIdcode = dtp_dv_cfg_pkg::Idcode;
+localparam int unsigned DtpNumExtraStaps = dtp_dv_cfg_pkg::NumExtraStaps;
+localparam int unsigned DtpNumSmcIcReset = dtp_dv_cfg_pkg::NumSmcIcReset;
+localparam int unsigned DtpNumSepIcReset = dtp_dv_cfg_pkg::NumSepIcReset;
+localparam int unsigned DtpNumExtIcReset = dtp_dv_cfg_pkg::NumExtIcReset;
+localparam int unsigned DtpOchVer = int'(dtp_dv_cfg_pkg::OchVer);
+
+// Capture-IR loads the instruction shift register with 01 in its two LSBs
+// (IEEE 1149.1 7.1.1) and zeros above (jtag_inst_reg), so an IR scan that
+// reaches Update-IR without a Shift-IR cycle activates this opcode, the
+// IDCODE instruction.
+localparam bit [DtpIrWidth-1:0] DtpIrCapturePattern = DtpIrWidth'(2'b01);
 
 // Scoreboard feature names: one dtp_<feature>_ref_model each (test cfg
 // policy names them in required_features).
@@ -58,11 +192,14 @@ typedef enum int unsigned {
 typedef struct {
   string                                name;
   ocah_axi_protocol_e protocol;
-  jtag_inst_reg_pkg::jtag_instruction_e single_op_instr;
-  jtag_inst_reg_pkg::jtag_instruction_e series_ctrl_instr;
-  jtag_inst_reg_pkg::jtag_instruction_e series_data_incr_instr;
-  jtag_inst_reg_pkg::jtag_instruction_e series_data_no_incr_instr;
-  jtag_inst_reg_pkg::jtag_instruction_e series_data_with_status_instr;
+  // *_JTAG2AXI_CAPS bus_type: 0 AXI4, 1 AXI4-Lite.
+  bit                                   bus_type;
+  dtp_jtag_instr_e                      caps_instr;
+  dtp_jtag_instr_e                      single_op_instr;
+  dtp_jtag_instr_e                      series_ctrl_instr;
+  dtp_jtag_instr_e                      series_data_incr_instr;
+  dtp_jtag_instr_e                      series_data_no_incr_instr;
+  dtp_jtag_instr_e                      series_data_with_status_instr;
   int unsigned                          addr_width;
   int unsigned                          data_width;
   int unsigned                          size_bits;
@@ -80,30 +217,92 @@ localparam int unsigned DtpJ2aTargetMemBytes = 65536;
 // Idle TCK cycles after a series-data shift for the op to launch in the
 // system domain (bridge series pipeline, cocotb parity).
 localparam int unsigned DtpJ2aSeriesLaunchCycles = 5;
-// TCK cycles an AXI completion needs to cross into the bridge's TCK domain
-// before a Capture-DR shows it (jtag2axi status CDC); a status capture
-// inside this window after a completion is not checkable.
-localparam int unsigned DtpJ2aStatusSettleTck = 4;
+// TCK cycles from the AXI-side response handshake to the first scan whose
+// Capture-DR shows it: the B/R beat crosses the bridge's axi_cdc_clearable
+// (three synchronizer stages on the gray pointer, then the FIFO pop), the
+// bridge steps from its response wait through its status update into the
+// status register, and the first crossing edge adds up to one TCK of phase;
+// measured from
+// the scan's start. A status capture whose scan starts inside this window
+// after a completion is not checkable.
+localparam int unsigned DtpJ2aStatusSettleTck = 8;
+// Read and write pipeline depth every bridge publishes in the rd_pl_depth and
+// wr_pl_depth fields of its *_JTAG2AXI_CAPS TDR; the CAPS scenarios compare them.
+localparam int unsigned DtpJ2aPipelineDepth = 3;
 // Series read requests one CTRL programming may enqueue: pipeline_depth + 1,
-// with the depth capped at the bridge FIFO depth (jtag_ptap *_RD_PL_DEPTH).
-localparam int unsigned DtpJ2aMaxPipelineDepth = 3;
+// with the depth capped at the bridge's read pipeline depth.
+localparam int unsigned DtpJ2aMaxPipelineDepth = DtpJ2aPipelineDepth;
+// *_JTAG2AXI_CAPS[13:0] (PTAP document, "*_JTAG2AXI_CAPS" table).
+localparam int unsigned DtpJtag2AxiCapsLen = 14;
+// Evidence ID of the per-pass geometry gate every JTAG2AXI scenario records.
+localparam string DtpJ2aGeometryCheckId = "CHK-J2A-GEOMETRY";
+localparam string DtpJ2aStatusBitCheckId = "CHK-J2A-STATUS-BIT";
+localparam string DtpJ2aErrRdataCheckId = "CHK-J2A-ERR-RDATA";
+localparam string DtpJ2aSeriesAddrCheckId = "CHK-J2A-SERIES-ADDR";
+// A READY stall observed from the DUT side: the bridge FSM dwells on the
+// stalled path and the first status poll reads BUSY_OR_FULL.
+localparam string DtpJ2aStallFsmCheckId = "CHK-J2A-STALL-FSM";
+localparam string DtpJ2aStallBusyCheckId = "CHK-J2A-STALL-BUSY";
+// The op-status or SERIES_CTRL status carries the injected error code, and
+// the WITH_ERROR_STATUS bit follows the faulted beat.
+localparam string DtpJ2aFaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
+// Random-ops end state: every byte lane a stream wrote holds its last word
+// and every untouched lane of a touched word holds its prior value.
+localparam string DtpJ2aMemImageCheckId = "CHK-J2A-MEM-IMAGE";
+// Reset-abort scenario evidence: the bridge observed mid-flight before the
+// reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
+// escaped write, and a recovered status.
+localparam string DtpJ2aAbortMidFlightCheckId = "CHK-J2A-ABORT-MIDFLIGHT";
+localparam string DtpJ2aAbortFsmCheckId = "CHK-J2A-ABORT-FSM";
+localparam string DtpJ2aCdcClearCheckId = "CHK-J2A-CDC-CLEAR";
+localparam string DtpJ2aAbortEscapeCheckId = "CHK-J2A-ABORT-ESCAPE";
+localparam string DtpJ2aAbortRecoveryCheckId = "CHK-J2A-ABORT-RECOVERY";
+localparam int unsigned DtpJ2aSeriesStatusBeats = 4;
+// Increment flag per beat of the WITH_ERROR_STATUS streams (bit i = beat i):
+// the second beat re-writes the held address.
+localparam bit [DtpJ2aSeriesStatusBeats-1:0] DtpJ2aSeriesStatusIncrements = 4'b1101;
 
+// *_JTAG2AXI_CAPS data_size: the beat width in bytes as a power of two.
+function automatic int unsigned dtp_j2a_data_size(dtp_j2a_target_t t);
+  return $clog2(t.data_width / 8);
+endfunction
+
+// Width of the SINGLE_OP and SERIES_CTRL size field: the smallest width that
+// encodes every AxSIZE up to a full beat, and at least one bit; the PTAP
+// document's "*_AXI_SINGLE_OP" table names this width $bits(size).
+function automatic int unsigned dtp_j2a_size_field_bits(int unsigned data_width);
+  int unsigned data_size = $clog2(data_width / 8);
+  return (data_size == 0) ? 1 : $clog2(data_size + 1);
+endfunction
+
+// Every width other than the bus type, address width, and data width follows
+// from the data width (PTAP document, "*_AXI_SINGLE_OP" and
+// "*_AXI_SERIES_CTRL" tables).
+function automatic void dtp_j2a_derive_geometry(ref dtp_j2a_target_t t);
+  t.bus_type     = (t.protocol == OCAH_AXI_PROTO_AXI4_LITE);
+  t.beat_bytes   = t.data_width / 8;
+  t.default_size = dtp_j2a_data_size(t);
+  t.size_bits    = dtp_j2a_size_field_bits(t.data_width);
+  t.wstrb_bits   = 1 << dtp_j2a_data_size(t);
+endfunction
+
+// One function per bridge: bus type, address width, and data width are the
+// values the bridge publishes in its *_JTAG2AXI_CAPS TDR; the geometry gate
+// compares them with the DUT every pass.
 function automatic dtp_j2a_target_t dtp_j2a_target_smc_otp();
   dtp_j2a_target_t t;
   t.name                          = "smc_otp";
   t.protocol = OCAH_AXI_PROTO_AXI4_LITE;
-  t.single_op_instr               = jtag_inst_reg_pkg::SMC_OTP_AXI_SINGLE_OP_INSTR;
-  t.series_ctrl_instr             = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_CTRL_INSTR;
-  t.series_data_incr_instr        = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_INCR_INSTR;
-  t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+  t.caps_instr                    = SMC_OTP_JTAG2AXI_CAPS_INSTR;
+  t.single_op_instr               = SMC_OTP_AXI_SINGLE_OP_INSTR;
+  t.series_ctrl_instr             = SMC_OTP_AXI_SERIES_CTRL_INSTR;
+  t.series_data_incr_instr        = SMC_OTP_AXI_SERIES_DATA_INCR_INSTR;
+  t.series_data_no_incr_instr     = SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
   t.series_data_with_status_instr =
-        jtag_inst_reg_pkg::SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+        SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
   t.addr_width       = 32;
   t.data_width       = 32;
-  t.size_bits        = 2;
-  t.wstrb_bits       = 4;
-  t.default_size     = 2;
-  t.beat_bytes       = 4;
+  dtp_j2a_derive_geometry(t);
   t.dbg_disable_mask = '0;
   t.dbg_disable_mask.smc_otp_jtag2axi = 1'b1;
   return t;
@@ -113,18 +312,16 @@ function automatic dtp_j2a_target_t dtp_j2a_target_sep_otp();
   dtp_j2a_target_t t;
   t.name                          = "sep_otp";
   t.protocol = OCAH_AXI_PROTO_AXI4_LITE;
-  t.single_op_instr               = jtag_inst_reg_pkg::SEP_OTP_AXI_SINGLE_OP_INSTR;
-  t.series_ctrl_instr             = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_CTRL_INSTR;
-  t.series_data_incr_instr        = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
-  t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
+  t.caps_instr                    = SEP_OTP_JTAG2AXI_CAPS_INSTR;
+  t.single_op_instr               = SEP_OTP_AXI_SINGLE_OP_INSTR;
+  t.series_ctrl_instr             = SEP_OTP_AXI_SERIES_CTRL_INSTR;
+  t.series_data_incr_instr        = SEP_OTP_AXI_SERIES_DATA_INCR_INSTR;
+  t.series_data_no_incr_instr     = SEP_OTP_AXI_SERIES_DATA_NO_INCR_INSTR;
   t.series_data_with_status_instr =
-        jtag_inst_reg_pkg::SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+        SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
   t.addr_width       = 32;
   t.data_width       = 32;
-  t.size_bits        = 2;
-  t.wstrb_bits       = 4;
-  t.default_size     = 2;
-  t.beat_bytes       = 4;
+  dtp_j2a_derive_geometry(t);
   t.dbg_disable_mask = '0;
   t.dbg_disable_mask.sep_otp_jtag2axi = 1'b1;
   return t;
@@ -134,18 +331,16 @@ function automatic dtp_j2a_target_t dtp_j2a_target_smc_axi();
   dtp_j2a_target_t t;
   t.name                          = "smc_axi";
   t.protocol = OCAH_AXI_PROTO_AXI4;
-  t.single_op_instr               = jtag_inst_reg_pkg::SMC_AXI_SINGLE_OP_INSTR;
-  t.series_ctrl_instr             = jtag_inst_reg_pkg::SMC_AXI_SERIES_CTRL_INSTR;
-  t.series_data_incr_instr        = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_INCR_INSTR;
-  t.series_data_no_incr_instr     = jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_NO_INCR_INSTR;
+  t.caps_instr                    = SMC_JTAG2AXI_CAPS_INSTR;
+  t.single_op_instr               = SMC_AXI_SINGLE_OP_INSTR;
+  t.series_ctrl_instr             = SMC_AXI_SERIES_CTRL_INSTR;
+  t.series_data_incr_instr        = SMC_AXI_SERIES_DATA_INCR_INSTR;
+  t.series_data_no_incr_instr     = SMC_AXI_SERIES_DATA_NO_INCR_INSTR;
   t.series_data_with_status_instr =
-        jtag_inst_reg_pkg::SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
+        SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS_INSTR;
   t.addr_width       = 56;
   t.data_width       = 64;
-  t.size_bits        = 2;
-  t.wstrb_bits       = 8;
-  t.default_size     = 3;
-  t.beat_bytes       = 8;
+  dtp_j2a_derive_geometry(t);
   t.dbg_disable_mask = '0;
   t.dbg_disable_mask.smc_jtag2axi = 1'b1;
   return t;
@@ -176,6 +371,69 @@ function automatic dtp_j2a_status_e dtp_j2a_axi_resp_to_status(ocah_axi_resp_e r
   endcase
 endfunction
 
+// One WITH_ERROR_STATUS stream: its geometry and the beat that carries the
+// fault (-1 for a clean stream). The status bit a shift returns belongs to
+// the previous beat, so only the shift after the fault beat expects a 1.
+typedef struct {
+  bit [63:0]       base;
+  int unsigned     size;
+  int unsigned     stride;
+  int              fault_idx;
+  dtp_j2a_status_e expected;
+} dtp_j2a_series_status_plan_t;
+
+function automatic bit [63:0] dtp_j2a_series_status_addr(dtp_j2a_series_status_plan_t p,
+                                                         int unsigned idx);
+  bit [63:0] addr = p.base;
+  for (int unsigned i = 0; i < idx && i < DtpJ2aSeriesStatusBeats; i++)
+  if (DtpJ2aSeriesStatusIncrements[i]) addr += p.stride;
+  return addr;
+endfunction
+
+function automatic bit [63:0] dtp_j2a_series_status_final_addr(dtp_j2a_series_status_plan_t p);
+  return dtp_j2a_series_status_addr(p, DtpJ2aSeriesStatusBeats);
+endfunction
+
+// Bytes from base through the slot the trailing shift touches.
+function automatic bit [63:0] dtp_j2a_series_status_span(dtp_j2a_series_status_plan_t p);
+  return dtp_j2a_series_status_final_addr(p) - p.base + p.stride;
+endfunction
+
+function automatic bit dtp_j2a_series_status_is_fault(dtp_j2a_series_status_plan_t p,
+                                                      int unsigned idx);
+  return (p.fault_idx >= 0) && (int'(idx) == p.fault_idx);
+endfunction
+
+function automatic bit dtp_j2a_series_status_expected_bit(dtp_j2a_series_status_plan_t p,
+                                                          int unsigned shift);
+  return (shift > 0) && dtp_j2a_series_status_is_fault(p, shift - 1);
+endfunction
+
+// Beats whose address no earlier beat touched; a one-shot fault fires on
+// the first access.
+function automatic void dtp_j2a_series_status_first_visits(dtp_j2a_series_status_plan_t p,
+                                                           output int unsigned beats[$]);
+  for (int unsigned idx = 0; idx < DtpJ2aSeriesStatusBeats; idx++) begin
+    bit seen = 1'b0;
+    for (int unsigned j = 0; j < idx; j++)
+    if (dtp_j2a_series_status_addr(p, j) == dtp_j2a_series_status_addr(p, idx)) seen = 1'b1;
+    if (!seen) beats.push_back(idx);
+  end
+endfunction
+
+// The word each beat's address holds after the stream: the last one written
+// there.
+function automatic void dtp_j2a_series_status_final_words(
+    dtp_j2a_series_status_plan_t p, bit [63:0] words[], output bit [63:0] expected[]);
+  expected = new[words.size()];
+  foreach (words[idx]) begin
+    expected[idx] = words[idx];
+    for (int unsigned j = idx + 1; j < words.size(); j++)
+    if (dtp_j2a_series_status_addr(p, j) == dtp_j2a_series_status_addr(p, idx))
+      expected[idx] = words[j];
+  end
+endfunction
+
 function automatic int unsigned dtp_j2a_size_bytes(int unsigned size);
   return 1 << size;
 endfunction
@@ -188,7 +446,8 @@ function automatic bit [7:0] dtp_j2a_full_wstrb(int unsigned size);
   return 8'((1 << dtp_j2a_size_bytes(size)) - 1);
 endfunction
 
-// SINGLE_OP DR packing (LSB-first: OP | SIZE | WSTRB | DATA | ADDR).
+// SINGLE_OP DR packing, the *_AXI_SINGLE_OP table order LSB-first:
+// OP | SIZE | WSTRB | DATA | ADDR.
 function automatic void dtp_j2a_pack_single_op(dtp_j2a_target_t t, dtp_j2a_op_e op, bit [63:0] addr,
                                                bit [63:0] data, bit [7:0] wstrb, int unsigned size,
                                                ref bit dr[]);
@@ -213,7 +472,8 @@ function automatic void dtp_j2a_unpack_single_op(
   rdata[i] = rbits[data_off+i];
 endfunction
 
-// SERIES_CTRL packing (LSB-first: OP | SIZE | PL_DEPTH | ADDR | RESET).
+// SERIES_CTRL packing, the *_AXI_SERIES_CTRL table order LSB-first:
+// OP | SIZE | PL_DEPTH | ADDR | RESET.
 function automatic bit [63:0] dtp_j2a_pack_series_ctrl(dtp_j2a_target_t t, dtp_j2a_op_e op,
                                                        bit [63:0] addr, int unsigned pipeline_depth,
                                                        int unsigned size, bit series_reset);
@@ -386,6 +646,15 @@ typedef enum int unsigned {
 } dtp_stap_e;
 
 localparam int unsigned DtpIjtagSibCount = 3;
+// Instrument stub widths behind each SIB (tb_top), dtp_ijtag_sib_e order:
+// every subset of open SIBs sums to a distinct chain length.
+localparam int unsigned DtpIjtagInstrumentWidths[DtpIjtagSibCount] = '{4, 5, 6};
+localparam int unsigned DtpIjtagChainLenMax = DtpIjtagSibCount + 4 + 5 + 6;
+// A latency-measuring scan shifts a marker word ahead of the chain's
+// maintain image; the marker's MSB is set, so the stream's highest set bit
+// lands at chain_len + DtpScanMarkerWidth - 1.
+localparam int unsigned DtpScanMarkerWidth = 16;
+localparam int unsigned DtpIjtagObserveScanWidth = 40;
 localparam int unsigned DtpStapCount = 4;
 localparam int unsigned DtpPtapIrWidth = DtpIrWidth;
 // IEEE 1149.1: a TAP's IR capture presents 01 in its two LSBs.
@@ -397,6 +666,17 @@ typedef enum int unsigned {
   DTP_SCAN_DR = 0,
   DTP_SCAN_IR = 1
 } dtp_scan_kind_e;
+
+// What a window over one host chain's scan controls shows across a DR scan:
+// SELECTED = select high and the TAP's capture/shift/update strobes pulse;
+// UNSELECTED = select low while the strobes pulse (the strobes are the
+// TAP's and only select is qualified by the instruction); GATED = the
+// chain's host holds select and every strobe low.
+typedef enum int unsigned {
+  DTP_SCAN_CTRL_SELECTED   = 0,
+  DTP_SCAN_CTRL_UNSELECTED = 1,
+  DTP_SCAN_CTRL_GATED      = 2
+} dtp_scan_ctrl_expect_e;
 
 // One data register of a downstream TAP.
 typedef struct {
@@ -449,20 +729,33 @@ endfunction
 
 // ---------------------------------------------------------------------------
 // Cross-trigger CSR block (dtp_xtrig_types.py parity). The port counts and
-// the block layout come from the RTL and register packages; the register
-// masks follow the generated cross_trigger_port_reg_pkg field widths.
+// the CSR windows are transcribed from the cross-trigger network document,
+// register offsets come from the generated address-map packages, and field
+// masks from the generated cross_trigger_port_reg.svh and
+// cross_trigger_matrix_reg.svh headers. dtp_env cross-checks the port count
+// against the generated CT_DST_SELECT field width, and the JTAG_CAPS scenario
+// compares both counts with the values the DUT publishes.
 // ---------------------------------------------------------------------------
 
-localparam int unsigned DtpXtrigNumCtp = dtp_pkg::DEFAULT_NUM_CTP;
-localparam int unsigned DtpXtrigNumIntCt = dtp_pkg::DEFAULT_NUM_INT_CT;
+// The external and internal cross-trigger port counts and the CLA clock-stop
+// request lanes of the bench configuration (dtp_dv_cfg_pkg, which takes the
+// port counts from the generated network address map).
+localparam int unsigned DtpXtrigNumCtp = dtp_dv_cfg_pkg::NumCtp;
+localparam int unsigned DtpXtrigNumIntCt = dtp_dv_cfg_pkg::NumIntCt;
 localparam int unsigned DtpXtrigNumCtmPorts = DtpXtrigNumCtp + DtpXtrigNumIntCt;
+localparam int unsigned DtpNumClkStopReq = dtp_dv_cfg_pkg::NumClkStopReq;
 
 localparam bit [63:0] DtpXtrigCtmBase = 64'h0;
 localparam int unsigned DtpXtrigCtmStride =
     int'(cross_trigger_matrix_addrmap_pkg::CROSS_TRIGGER_MATRIX_CT_SRC_STRIDE);
-localparam bit [63:0] DtpXtrigCtpBase = 64'(cross_trigger_network_pkg::CSR_ADDR_CTM_SIZE);
-localparam int unsigned DtpXtrigCtpStride = cross_trigger_network_pkg::CSR_ADDR_CTP_SIZE;
+// "0x0200 - 0x02FF: Cross Trigger Ports (CTP[0-15]) - 16 bytes each"
+// (hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc).
+localparam bit [63:0] DtpXtrigCtpBase = 64'h200;
+localparam int unsigned DtpXtrigCtpStride = 16;
 localparam bit [63:0] DtpXtrigUnmappedBase = DtpXtrigCtpBase + DtpXtrigNumCtp * DtpXtrigCtpStride;
+// Read data the crossbar's error subordinate returns alongside DECERR on an
+// unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
+localparam bit [31:0] DtpXtrigDecerrData = 32'hBADC_AB1E;
 
 localparam int unsigned DtpCtpConfigOffset  =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_CONFIG_BASE_ADDR);
@@ -471,24 +764,25 @@ localparam int unsigned DtpCtpStatusOffset  =
 localparam int unsigned DtpCtpStretchOffset =
     int'(cross_trigger_port_addrmap_pkg::CROSS_TRIGGER_PORT_STRETCH_MULT_BASE_ADDR);
 
-// CONFIG fields MODE[0], INVERT[1], RESET[2]; STRETCH_MULT[15:0]; CT_SRC
-// CONFIG_0 select[NumCtmPorts-1:0]. Every field resets to zero.
-localparam bit [31:0] DtpCtpConfigModeMask = 32'h1;
-localparam bit [31:0] DtpCtpConfigInvertMask = 32'h2;
-localparam bit [31:0] DtpCtpConfigResetMask = 32'h4;
-localparam bit [31:0] DtpCtpConfigMask = 32'h7;
-localparam bit [31:0] DtpCtpStretchMask = 32'hFFFF;
-localparam bit [31:0] DtpCtmSelectMask = (32'd1 << DtpXtrigNumCtmPorts) - 1;
+// CONFIG, STRETCH_MULT, and CT_SRC CONFIG_0 field masks from the generated headers.
+localparam bit [31:0] DtpCtpConfigModeMask = 32'(CROSS_TRIGGER_PORT_CONFIG_MODE_MASK);
+localparam bit [31:0] DtpCtpConfigInvertMask = 32'(CROSS_TRIGGER_PORT_CONFIG_INVERT_MASK);
+localparam bit [31:0] DtpCtpConfigResetMask = 32'(CROSS_TRIGGER_PORT_CONFIG_RESET_MASK);
+localparam bit [31:0] DtpCtpConfigMask =
+    DtpCtpConfigModeMask | DtpCtpConfigInvertMask | DtpCtpConfigResetMask;
+localparam bit [31:0] DtpCtpStretchMask = 32'(CROSS_TRIGGER_PORT_STRETCH_MULT_STRETCH_MULT_MASK);
+localparam bit [31:0] DtpCtmSelectMask = 32'(CT_SRC_CONFIG_0_CT_DST_SELECT_MASK);
 
+// CONFIG.MODE encoding (cross_trigger_port.rdl): 0 wire-OR, 1 point-to-point.
 localparam int unsigned DtpCtpModeWireOr = 0;
 localparam int unsigned DtpCtpModeP2p = 1;
 
 // STATUS fields (read-only, volatile).
-localparam bit [31:0] DtpCtpStatusBusy = 32'h01;
-localparam bit [31:0] DtpCtpStatusReqOut = 32'h10;
-localparam bit [31:0] DtpCtpStatusAckIn = 32'h20;
-localparam bit [31:0] DtpCtpStatusReqIn = 32'h40;
-localparam bit [31:0] DtpCtpStatusAckOut = 32'h80;
+localparam bit [31:0] DtpCtpStatusBusy = 32'(CROSS_TRIGGER_PORT_STATUS_BUSY_MASK);
+localparam bit [31:0] DtpCtpStatusReqOut = 32'(CROSS_TRIGGER_PORT_STATUS_REQ_OUT_MASK);
+localparam bit [31:0] DtpCtpStatusAckIn = 32'(CROSS_TRIGGER_PORT_STATUS_ACK_IN_MASK);
+localparam bit [31:0] DtpCtpStatusReqIn = 32'(CROSS_TRIGGER_PORT_STATUS_REQ_IN_MASK);
+localparam bit [31:0] DtpCtpStatusAckOut = 32'(CROSS_TRIGGER_PORT_STATUS_ACK_OUT_MASK);
 
 typedef enum int unsigned {
   DTP_XTRIG_CSR_UNMAPPED    = 0,

@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Dual-SMC elaboration probe (design doc Phase 1.4).
+"""Dual-SMC elaboration probe.
 
-Answers the one open risk in docs/dual_smc_occp_boot_design.md -- whether
-Verilator can carry two SMC instances -- with a measurement rather than a guess.
+Answers whether Verilator can carry two SMC instances with a measurement
+rather than a guess.
 The build cost is recorded by the runner; this test only has to prove the 2x
-model elaborates and that both instances independently leave reset, so that a
+model elaborates and that both instances leave the shared cold reset, so that a
 later failure in the OCCP flow cannot be blamed on the doubled top.
 
 No bus traffic, no firmware. Checks:
@@ -19,8 +19,18 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles
-from smc_dual_base_test import SmcDualHarness
+from smc_dual_base_test import SmcDualHarness, dual_test
 from smc_occp_dual_defs import SHARED_I3C_CHANNELS
+
+REQUIRED_EVIDENCE = (
+    "CHK-DUAL-BOOT-STALL",
+    "CHK-DUAL-ELAB",
+    "CHK-DUAL-FUSE-SENSE",
+    "CHK-DUAL-I3C-IDLE",
+    "CHK-DUAL-I3C-INDEXING",
+    "CHK-DUAL-MEM-INIT",
+    "CHK-DUAL-RESET",
+)
 
 # Both instances must clear fuse sense within this many clk_smc cycles. The
 # single-instance smc_cpu_firmware_boot_test uses a 200k-cycle bound for the
@@ -44,32 +54,30 @@ def _check_i3c_counter_indexing(dut) -> None:
     """Assert cocotb indexes the per-channel I3C counters the way the TB meant.
 
     The TB exports tb_i3c_channel_id_N = SharedI3cIdx[N], so the mapping can
-    be read rather than assumed. This exists because the OCCP boot test reported
-    "transfer seen on I3C0" while the controller firmware reported, correctly,
-    that it was driving instance 3. The cause was cocotb reading an unpacked-array
-    port as element 0 for every index; the counters are flat scalars now, and this
-    check exists so that class of silent mis-attribution fails loudly instead.
+    be read rather than assumed: cocotb reads an unpacked-array port as element 0
+    for every index, which would attribute every channel's traffic to I3C0. The
+    counters are flat scalars, and this check makes that class of silent
+    mis-attribution fail loudly.
     """
     seen = [
         int(getattr(dut, f"tb_i3c_channel_id_{pos}").value)
         for pos in range(len(SHARED_I3C_CHANNELS))
     ]
+    assert seen == list(SHARED_I3C_CHANNELS), (
+        f"cocotb sees the I3C counter positions as {seen} but the testbench "
+        f"assigned {list(SHARED_I3C_CHANNELS)}. Every per-channel count and "
+        "every 'transfer seen on I3Cn' label is mis-attributed by this amount."
+    )
     cocotb.log.info(
         "CHK-DUAL-I3C-INDEXING: cocotb reads tb_i3c_channel_id as %s; the TB "
         "assigns SharedI3cIdx = %s",
         seen,
         list(SHARED_I3C_CHANNELS),
     )
-    assert seen == list(SHARED_I3C_CHANNELS), (
-        f"cocotb sees the I3C counter positions as {seen} but the testbench "
-        f"assigned {list(SHARED_I3C_CHANNELS)}. Every per-channel count and "
-        "every 'transfer seen on I3Cn' label is mis-attributed by this amount."
-    )
 
 
-@cocotb.test()
-async def smc_dual_elaboration_test(_dut) -> None:
-    harness = SmcDualHarness()
+@dual_test(REQUIRED_EVIDENCE)
+async def smc_dual_elaboration_test(harness: SmcDualHarness) -> None:
     _check_i3c_counter_indexing(cocotb.top)
     dut = harness.dut
 

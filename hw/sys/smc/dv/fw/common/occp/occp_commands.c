@@ -120,14 +120,6 @@ static int send_undersize_header_only(test_context_t *ctx, uint64_t i3c_addr, co
     return (rc == OCCP_ERROR_NONE) ? OCCP_SUCCESS : rc;
 }
 
-/* Send a full header followed by a partial (undersized) body; expect incomplete message handling.
- */
-/* send_undersize_body_after_header removed: undersize injection now sends a
- * single transaction with header and a truncated body (no CRC). */
-
-/* send_oversize_body_after_header removed: oversize injection now appends
- * extra bytes to a single TX buffer and sends in one transaction. */
-
 static int verify_resp_header_crc(const occp_resp_header_t *resp_hdr) {
     const uint8_t *bytes = (const uint8_t *)resp_hdr;
     uint8_t calc = calculate_crc8((uint8_t *)(bytes + 1), sizeof(*resp_hdr) - 1);
@@ -237,7 +229,6 @@ static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool
 int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
                              /*out*/ occp_resp_header_t *resp_hdr) {
     /* Read header */
-    // occp_resp_header_t resp_hdr;
     bool timeout_enabled = ctx->timeout != 0;
     int count = timeout_enabled ? ctx->timeout : 1;
     uint8_t *resp_hdr_ptr = (uint8_t *)resp_hdr;
@@ -245,7 +236,6 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
         int status;
         simputs("OCCP: Reading response header\n");
         do {
-            // simputshex32("bytes: ", sizeof(*resp_hdr));
             status =
                 ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, resp_hdr_ptr, sizeof(*resp_hdr));
             if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
@@ -333,8 +323,6 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
             simputshex32("but got: ", error_code);
             return OCCP_ERR;
         }
-
-        // return OCCP_ERR;
     } else {
         /* Under length injection, a non-error response to an invalid-length request is a test
          * failure */
@@ -826,7 +814,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
     bool inject_len_err = ctx->invalid_len_err_inject_enable;
     if (inject_len_err) {
         if (body_len == 0) {
-            /* Expected 0 for GET_VERSION/GET_VERSION_BOOT; choose 1..0x7FF */
+            /* Expected 0 for GET_VERSION/GET_VERSION_BOOT; choose 1..0x100 */
             injected_len = (uint16_t)(1 + (get_random_int() % 0x100));
         } else {
             uint16_t lower;
@@ -874,7 +862,6 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
     memcpy(tx_buf, &header_word, sizeof(header_word));
 
     // send status ID for non-version commands
-    // values not in spec yet
     if (cmd != OCCP_GET_VERSION && cmd != OCCP_GET_VERSION_BOOT) {
         uint16_t status_id = 0;
         switch (cmd) {
@@ -1058,8 +1045,6 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
     }
 
     if (!resp_hdr.error) {
-        /* Map legacy cmd to header-based */
-        // no direct bus reads; body is read via verified helper
         if (cmd == OCCP_GET_VERSION || cmd == OCCP_GET_VERSION_BOOT) {
             /* Version response is 4 bytes */
             uint8_t body_buf[16] = {0};
@@ -1081,8 +1066,6 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             if (rc != OCCP_SUCCESS) return rc;
             if (body_len != 4) return OCCP_ERR;
             memcpy(statusBuff, body_buf, 4);
-            // TODO: investigate the new status command format given it is truncated to 16 bits now
-            //*statusBuff &= 0xFFFF;
             return OCCP_SUCCESS;
         }
     }
@@ -1102,7 +1085,7 @@ int occp_send_get_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_
         *status = 0;
     }
 
-    // call each occp get status command and concatenate the results for backwards compatibility
+    // GET_STATUS packs the four GET_OCCP_* sub-status results into one word.
     uint32_t boot_status = 0;
     uint32_t interface_status = 0;
     uint32_t command_count = 0;
@@ -1303,7 +1286,6 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
 
     exec_hdr.header = occp_encode_header_word(OCCP_JUMP, body_len, has_body_crc);
     exec_hdr.start_addr = addr;
-    // TODO: what are these?
     exec_hdr.cpu_id = 0;
     exec_hdr.reserved = 0;
     exec_hdr.addr_attr = 0;
@@ -1627,7 +1609,7 @@ uint16_t get_random_occp_read_size(void) {
 
 void send_random_occp_write(test_context_t *ctx, uint64_t addr_range) {
     uint16_t len = get_random_occp_write_size();
-    // for now stick to 4 byte aligned addresses
+    // 4-byte-aligned addresses only
     uint64_t random_addr =
         ctx->test_base_addr + (get_random_int() % (addr_range - len + 1)) & 0xfffffffffffffffc;
     static uint8_t write_data[MAX_OCCP_WRITE_SIZE];
@@ -1640,7 +1622,6 @@ void send_random_occp_write(test_context_t *ctx, uint64_t addr_range) {
     simputshex32("", random_addr);
     simputs("\n");
 
-    // TODO: fix this
     int retval = occp_send_write_command(ctx, ctx->slave_addr, random_addr, write_data, len);
     if (retval == OCCP_SUCCESS) {
         simputs("WRITE command succeeded\n");
@@ -1769,7 +1750,7 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
 void execute_random_commands(test_context_t *ctx, int num_commands) {
 
     uint64_t addr_range = ctx->test_upper_addr_bound - ctx->test_base_addr;
-    // TODO: audit these values OCCP spec
+
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
     int exp_occp_version_major = 1;
@@ -2009,7 +1990,6 @@ void send_max_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
     simputshex32("", random_addr);
     simputs("\n");
 
-    // TODO: fix this
     int retval = occp_send_write_command(ctx, ctx->slave_addr, random_addr, write_data, len);
     if (retval == OCCP_SUCCESS) {
         simputs("WRITE command succeeded\n");
@@ -2037,7 +2017,7 @@ void send_max_size_occp_read(test_context_t *ctx, uint64_t addr_range) {
         scoreboard_entry_t *entry = &ctx->sram_scoreboard[entry_idx];
 
         uint16_t len = MAX_OCCP_READ_SIZE;
-        // we can't read from scoreboard if the entry is smaller than MAX_OCCP_TRANSFER_SIZE
+        // a scoreboard entry shorter than MAX_OCCP_READ_SIZE cannot serve a max-size read
         if (entry->len < len) {
             read_from_scoreboard = false;
         } else {
@@ -2124,7 +2104,6 @@ void send_min_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
     simputshex32("", random_addr);
     simputs("\n");
 
-    // TODO: fix this
     int retval = occp_send_write_command(ctx, ctx->slave_addr, random_addr, write_data, len);
     if (retval == OCCP_SUCCESS) {
         simputs("WRITE command succeeded\n");
@@ -2218,11 +2197,11 @@ void execute_min_size_rw_commands(test_context_t *ctx, int num_commands) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* New API: Validate a GET_*_STATUS 32-bit value against expected fields.      */
+/* Validate a GET_*_STATUS 32-bit value against expected fields.               */
 /* The 32-bit value layout follows the specification's GET_STATUS response     */
 /* body: [31:24]=msg_type, [23:16]=fw_id, [15:0]=status_value.                 */
-/* For SMC error messages (fw_id=SMC_BL0, msg_type=ERROR) and match_mode       */
-/* OCCP_STATUS_MATCH_SMC_ERROR_BASE, compare only the error base (mask 0xFF0). */
+/* For SMC BL0 error messages with match_full_status_data false, compare only  */
+/* the per-code mask (see the switch below).                                   */
 /* Returns true on match, false otherwise.                                     */
 /* -------------------------------------------------------------------------- */
 bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_fw_id,
@@ -2235,10 +2214,11 @@ bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_f
     if (actual_msg_type != (uint8_t)expected_msg_type) return false;
     if (actual_fw_id != (uint8_t)expected_fw_id) return false;
 
-    /* For SMC BL0 error messages, apply spec-defined matching granularity:
-     * - Some errors use upper nibblesk with 0x1FF per spe)
-     * - Some use lower nibble (mask wit 0xFF0)
-     * - Others have no nibble data (match full 12-bit class within 16-bit)
+    /* For SMC BL0 error messages, apply the spec-defined matching granularity:
+     * - ACCESS_DENIED codes carry data in the upper nibble (mask 0x1FF)
+     * - CMD_FAILED carries data in the lower nibble (mask 0xFF0)
+     * - CMD_UNKNOWN carries data in the middle byte (mask 0xF01)
+     * - Others match the full 16-bit value
      */
     if (expected_fw_id == OCCP_FW_ID_SMC_BL0 && expected_msg_type == OCCP_STATUS_MSG_ERROR &&
         !match_full_status_data) {

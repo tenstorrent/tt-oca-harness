@@ -9,116 +9,45 @@ a different verdict from whatever the testcase meant to reach. Any manifest that
 must BOOT therefore needs three writes, not one: the selector, that slot's
 modulus, and a signature by that slot's private key.
 
-``sep_firmware_primary_rom_key_slot1_valid_test`` did this for one slot and one
-manifest with a hardcoded digest. This module is the generalisation both it and
-``sep_key_revocation_bitmap_random_test`` use, so one slot's binding and six
-slots' bindings cannot drift apart.
+``sep_firmware_primary_rom_key_slot1_valid_test`` and
+``sep_key_revocation_bitmap_random_test`` share this binding path so one slot's
+handling cannot drift from the full six-slot case.
 
-THE SLOT TABLE IS READ OUT OF THE ROM SOURCE, NOT COPIED FROM IT. Slot -> key
-name -> digest comes from parsing ``bootrom/prod/src/key_digests.c``, and each
-PEM's modulus is hashed and checked against the digest that file holds for its
-slot. A regenerated table, a swapped PEM or a slot reordering therefore fails
-loudly here, at stimulus construction, instead of turning into a
-``PUBK_HASH_MISMATCH`` in the middle of a simulation.
-
-SLOTS 1-5 ARE TEST-ONLY. Their private halves are committed in the clear under
-``bootrom/prod/tools/test_signing_keys/`` and they are compiled into the ROM only
-under ``TEST_BUILD``; a release build leaves those slots NULL, where the same
-selector is refused with ``ROM_KEY_EMPTY``. Slot 0's ``dev0`` key is the one the
-packer already signs with, and lives in the tt-boot-manifest submodule.
+The debug ROM generates its digest table from
+``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key<N>.pem``. This helper
+uses those same keys and checks each modulus against the generated table under
+``build/`` or ``build_pio/`` before constructing stimulus. Release builds use
+externally provisioned public keys and do not run these test-key scenarios.
 """
 
 from __future__ import annotations
 
 import hashlib
-import re
 from pathlib import Path
 from typing import Dict, Tuple
 
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 
-# .../hw/sys/sep, this file being at .../hw/sys/sep/dv/cocotb/env/.
-_SEP_ROOT = Path(__file__).resolve().parents[3]
-_ROM_TOOLS = _SEP_ROOT / "bootrom" / "prod" / "tools"
-KEY_DIGESTS_C = _SEP_ROOT / "bootrom" / "prod" / "src" / "key_digests.c"
-# Same two sources generate_key_digests.py is invoked with. dev0 lives in the
-# manifest packer's submodule; the five test keys are committed beside the ROM.
-_KEY_DIRS = (
-    _ROM_TOOLS / "test_signing_keys",
-    _ROM_TOOLS / "tt-boot-manifest" / "tests" / "signing_keys",
-)
-
-_DIGEST_DEF_RE = re.compile(
-    r"static\s+const\s+uint8_t\s+digest_(\w+)\s*\[[^\]]*\]\s*=\s*\{(.*?)\};", re.S
-)
-# Only the array initialiser matches: the release arms are `(void *)0`.
-_SLOT_ENTRY_RE = re.compile(r"\.digest\s*=\s*digest_(\w+)")
-_BYTE_RE = re.compile(r"0x([0-9a-fA-F]{2})")
-
-SHA256_LEN = 32
-
-
-def _parse_key_digests() -> Tuple[Tuple[str, ...], Dict[str, bytes]]:
-    text = KEY_DIGESTS_C.read_text(encoding="utf-8")
-    digests: Dict[str, bytes] = {}
-    for name, body in _DIGEST_DEF_RE.findall(text):
-        raw = bytes(int(b, 16) for b in _BYTE_RE.findall(body))
-        if len(raw) != SHA256_LEN:
-            raise AssertionError(
-                f"{KEY_DIGESTS_C}: digest_{name} has {len(raw)} bytes, expected "
-                f"{SHA256_LEN}; the generated table is not the format this parses"
-            )
-        digests[name] = raw
-    # The SOURCE's slot order, which is all a text parse can establish. Both
-    # arms of every `#if TEST_BUILD` are present in the file, so this count is
-    # six whichever way the ROM was compiled: it catches a table whose LAYOUT
-    # changed, never a release build. Which digests the simulated image really
-    # carries is settled by the byte search over boot_rom.elf recorded with the
-    # release-isolation evidence, not here.
-    order = tuple(_SLOT_ENTRY_RE.findall(text))
-    if len(order) != mm.PUBK_SEL_NUM_ROM_KEYS:
-        raise AssertionError(
-            f"{KEY_DIGESTS_C}: the table declares {len(order)} digest-carrying "
-            f"slot entries {order}, expected {mm.PUBK_SEL_NUM_ROM_KEYS}; the "
-            f"generated table's layout is not the one this helper parses, so the "
-            f"slot -> key mapping it derives would be wrong"
-        )
-    missing = [n for n in order if n not in digests]
-    if missing:
-        raise AssertionError(
-            f"{KEY_DIGESTS_C}: slots {missing} name a digest that is not defined "
-            f"in the same file"
-        )
-    return order, digests
-
-
-SLOT_NAMES, _SLOT_DIGESTS = _parse_key_digests()
+SLOT_NAMES = tuple(f"rom_key{index}" for index in range(mm.PUBK_SEL_NUM_ROM_KEYS))
 
 
 def slot_name(index: int) -> str:
-    """The key name ``key_digests.c`` gives ROM slot ``index``."""
+    """The generated-table key name for ROM slot ``index``."""
     _check_index(index)
     return SLOT_NAMES[index]
 
 
 def slot_digest(index: int) -> bytes:
     """The SHA-256 digest the ROM has compiled in for ROM slot ``index``."""
-    return _SLOT_DIGESTS[slot_name(index)]
+    _check_index(index)
+    return mm.rom_key_digest(index)
 
 
 def slot_key_path(index: int) -> Path:
     """The private key PEM whose modulus hashes to ROM slot ``index``'s digest."""
-    name = slot_name(index)
-    for directory in _KEY_DIRS:
-        candidate = directory / f"rsa_private_key.{name}.pem"
-        if candidate.is_file():
-            return candidate
-    tried = ", ".join(str(d) for d in _KEY_DIRS)
-    raise AssertionError(
-        f"no rsa_private_key.{name}.pem for ROM slot {index} (looked in {tried}). "
-        f"Slots 1-5 are populated only under TEST_BUILD; see key_digests.c"
-    )
+    _check_index(index)
+    return pm.rom_signing_key(index)
 
 
 def load_slot_key(index: int) -> Tuple[int, int, int, bytes]:
@@ -130,14 +59,14 @@ def load_slot_key(index: int) -> Tuple[int, int, int, bytes]:
     """
     pem = slot_key_path(index)
     n, e_pub, d = pm.load_rsa_private_key(pem)
-    modulus = n.to_bytes(mm.PUBLIC_KEY_LEN, "big")
+    modulus = n.to_bytes(mm.MODULUS_LEN, "big")
     got = hashlib.sha256(modulus).digest()
     want = slot_digest(index)
     if got != want:
         raise AssertionError(
-            f"SHA-256 of the modulus in {pem} is {got.hex()}, but {KEY_DIGESTS_C} "
-            f"has {want.hex()} for ROM slot {index}; regenerate the digest table "
-            f"or restore the PEM"
+            f"SHA-256 of the modulus in {pem} is {got.hex()}, but the generated "
+            f"key_digests.c has {want.hex()} for ROM slot {index}; regenerate the "
+            f"digest table or restore the PEM"
         )
     return n, e_pub, d, modulus
 
@@ -172,11 +101,11 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
     # would say SIG_FAILED rather than whatever is under test.
     pm.verify_signing_key(buf, slot)
 
-    tbs_before = bytes(buf[base:base + mm.TBS_LEN])
+    tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
     mm.set_public_key_sel(buf, slot, selection=mm.PUBK_SEL_ROM_KEY, index=index)
-    buf[base + mm.OFF_PUBLIC_KEY:base + mm.OFF_PUBLIC_KEY + mm.PUBLIC_KEY_LEN] = modulus
+    buf[base + mm.OFF_PUBLIC_KEY : base + mm.OFF_PUBLIC_KEY + mm.MODULUS_LEN] = modulus
     mm.rehash(buf, slot)
-    tbs_after = bytes(buf[base:base + mm.TBS_LEN])
+    tbs_after = bytes(buf[base : base + mm.SIGNED_REGION_END])
     tbs_changed = tbs_before != tbs_after
 
     if tbs_changed:
@@ -184,8 +113,8 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
         # ROM will read this selector and this modulus. Measured through the
         # shipped dev0 signature going stale rather than assumed: a signature that
         # still verified would mean the bytes moved outside the TBS.
-        dev0_n, dev0_e, _dev0_d = pm.load_rsa_private_key()
-        stale = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
+        dev0_n, dev0_e, _dev0_d = pm.load_rsa_private_key(pm.rom_signing_key(0))
+        stale = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         if pm.verify_pkcs1v15_sha256(tbs_after, stale, dev0_n, dev0_e):
             raise AssertionError(
                 f"{slot}: the shipped signature still verifies after selecting ROM "
@@ -193,19 +122,20 @@ def bind_manifest_to_rom_slot(buf: bytearray, slot: str, index: int) -> Dict[str
                 f"inside the TBS, so the ROM would read the original selector"
             )
 
-    buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES] = \
+    buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES] = (
         pm.sign_pkcs1v15_sha256(tbs_after, n, d)
+    )
 
     # Prove offline what the ROM will prove in hardware. Without it a broken
     # re-sign reaches the simulation as RSA_VERIFY_FAIL and reads like a DUT defect.
     mm.verify_layout(buf, slot)
-    sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
-    if not pm.verify_pkcs1v15_sha256(bytes(buf[base:base + mm.TBS_LEN]), sig, n, e_pub):
+    sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
+    if not pm.verify_pkcs1v15_sha256(bytes(buf[base : base + mm.SIGNED_REGION_END]), sig, n, e_pub):
         raise AssertionError(
             f"{slot}: the ROM slot {index} signature this stimulus wrote does not "
             f"verify against its own modulus; the re-sign is broken, not the ROM"
         )
-    staged = mm.public_key(buf, slot)
+    staged = mm.public_key_modulus(buf, slot)
     if hashlib.sha256(staged).digest() != slot_digest(index):
         raise AssertionError(
             f"{slot}: the modulus read back from the image is not ROM slot "

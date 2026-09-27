@@ -1,8 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Status reporting interface.  Status values (SEP_MSG_*) are defined in
-// status_values.h.
+// Status reporting interface.  Status values (SEP_MSG_*) are generated from
+// meta/status/status_values.tsv.
 
 #ifndef __ERRORS_H_DEFINED__
 #define __ERRORS_H_DEFINED__
@@ -30,6 +30,7 @@
 #define STATUS_ENCODE(type, value) \
     (((type & 0xFF) << 24) | ((SEP_STATUS_ID & 0xFF) << 16) | ((value & 0xFFFF)))
 
+// Generated from meta/status/status_values.tsv
 #include "status_values.h"
 
 #ifdef __ASSEMBLER__
@@ -48,8 +49,8 @@
 
 // ── Final verdict channel: cold_scratch[0] ──
 // Only the terminal outcome goes here, so one read gives one answer. It is
-// SEP-internal and writable from the first instruction, unlike anything behind
-// the outbound AXI filter. The error code is on cold_scratch[1].
+// SEP-internal and writable from the first instruction, unlike the mailbox at
+// 0x80000000 behind the outbound AXI filter. The error code is on cold_scratch[1].
 #define TEST_PASS_CODE 0xACAFACA1u
 #define TEST_FAIL_CODE 0xDEADBEEFu
 

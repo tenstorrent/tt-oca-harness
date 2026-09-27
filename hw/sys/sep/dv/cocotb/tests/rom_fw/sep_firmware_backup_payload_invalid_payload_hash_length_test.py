@@ -11,7 +11,6 @@ from __future__ import annotations
 import struct
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -20,8 +19,8 @@ from rom_fw.sep_backup_manifest_structural_fail_base import (
 )
 from rom_fw.sep_usage_constraint_base import EFUSE_PRELOAD
 
-_MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-_MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
+_MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+_MANIFEST_ERR_BAD_LENGTH = mm.boot_err("OCA_FAIL_MANIFEST_LENGTH")
 
 _TOKEN = "PAYLOAD_HASHED_LEN_BAD="
 
@@ -30,7 +29,8 @@ _BAD_HASHED_LEN = 0
 
 @pyuvm.test()
 class sep_firmware_backup_payload_invalid_payload_hash_length_test(
-        sep_backup_manifest_structural_fail_base):
+    sep_backup_manifest_structural_fail_base
+):
     """Backup payload_hashed_length is 0 -> both slots refused -> the ROM halts."""
 
     # Prefix only: the echoed value is asserted in _check().
@@ -38,12 +38,22 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
     expected_error = _MANIFEST_ERR_BAD_LENGTH
     primary_expected_error = _MANIFEST_ERR_BAD_MAGIC
     efuse_preload = EFUSE_PRELOAD
-    extra_forbidden = (fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER,
-                       "MANIFEST_HASH_MISMATCH", "MANIFEST_HASH_OK", "CRYPTO_FAIL=",
-                       "PAYLOAD_OFF_RANGE", "PAYLOAD_OFF_ALIGN",
-                       "ENC_HASHED_LEN_PARTIAL", "PAYLOAD_LEN_RANGE",
-                       "PAYLOAD_OVERLAPS_MANIFEST", "TOC_PLEN_MISMATCH=",
-                       "PAYLOAD_LOC_OVERFLOW", "NO_BL1_IMAGE")
+    extra_forbidden = (
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+        "MANIFEST_HASH_MISMATCH",
+        "MANIFEST_HASH_OK",
+        "CRYPTO_FAIL=",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_OFF_ALIGN",
+        "ENC_HASHED_LEN_PARTIAL",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "PAYLOAD_LOC_OVERFLOW",
+        "NO_BL1_IMAGE",
+    )
 
     def corrupt_backup(self, buf: bytearray) -> None:
         assert not pm.is_encrypted(buf, "backup"), (
@@ -61,9 +71,11 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
             f"slot would be refused with BAD_LENGTH by the version-and-length rule "
             f"instead of by the payload_hashed_length bound"
         )
-        assert bytes(buf[mm.BACKUP_MANIFEST_OFFSET:
-                         mm.BACKUP_MANIFEST_OFFSET + 4]) == mm.MANIFEST_MAGIC, (
-            "backup manifest_identifier is not TBL1, so BAD_MAGIC would pre-empt "
+        assert (
+            bytes(buf[mm.BACKUP_MANIFEST_OFFSET : mm.BACKUP_MANIFEST_OFFSET + 4])
+            == mm.MANIFEST_MAGIC
+        ), (
+            "backup manifest_identifier is not OCAC, so BAD_MAGIC would pre-empt "
             "the payload_hashed_length bound -- and it is also the primary's "
             "verdict, which must stay distinct from the backup's"
         )
@@ -87,11 +99,16 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
         self.logger.info(
             "CHK-STIMULUS-HASHED-LEN: backup payload_hashed_length %d -> %d against "
             "payload_length %d -- zero, so the ROM would compute no payload digest "
-            "at all. manifest_identifier TBL1, version %d.%d and manifest_length "
+            "at all. manifest_identifier OCAC, version %d.%d and manifest_length "
             "%d are all left VALID, so the payload_hashed_length bound is the only "
             "rule validate_manifest_header can refuse this slot on. The payload is "
             "not encrypted, so ENC_HASHED_LEN_PARTIAL is unreachable",
-            was, now, p_len, major, minor, length,
+            was,
+            now,
+            p_len,
+            major,
+            minor,
+            length,
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
@@ -110,7 +127,10 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
         )
 
         fd.assert_served_field(
-            self.logger, self._flash, "backup", pm.OFF_PAYLOAD_HASHED_LEN,
+            self.logger,
+            self._flash,
+            "backup",
+            pm.OFF_PAYLOAD_HASHED_LEN,
             struct.pack("<Q", self._bad_hashed_len),
             "backup payload_hashed_length",
         )
@@ -120,6 +140,9 @@ class sep_firmware_backup_payload_invalid_payload_hash_length_test(
             "MANIFEST_ERR=0x%08x inside its own attempt; the bound names itself on "
             "the console, so this row needs no stimulus-side discriminator to be "
             "separable from the other BAD_LENGTH arms",
-            self._bad_hashed_len, self._payload_len, _TOKEN, echoed,
+            self._bad_hashed_len,
+            self._payload_len,
+            _TOKEN,
+            echoed,
             _MANIFEST_ERR_BAD_LENGTH,
         )

@@ -10,20 +10,27 @@
 #
 # Register only DUTs whose sim config exists: every registered entry is loaded and validated
 # before any run or diagnostic, so a stale entry blocks all flows. Conventional DUTs
-# (e.g. SMC/SEP) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
-# Non-conventional aliases — such as `smu_wrapper` sharing hw/sys/smu/dv with a separate sim
-# config for the production-wrapper baseline flow — must be registered here when their
-# configs are added.
+# (e.g. SMC/SEP) are discovered automatically from their `<name>_sim_cfg.toml`.
+# Non-conventional entries — a second sim config in a DV root the convention already
+# claims, or a second selectable name for one DUT — must be registered here.
+#
+# `alias_of = "<canonical>"` is the second of those: the name resolves to the canonical
+# DUT's config and identity, so both names share one build cache and one build manifest
+# instead of compiling the same model twice. Aliases are one hop deep.
 
 schema_version = 1
 
-# SMU production-wrapper baseline (shares hw/sys/smu/dv with bare `smu`,
-# but uses smu_wrapper_sim_cfg.toml). Frameworks are NOT registered here: a DUT
-# implementing both cocotb and SV-UVM (e.g. dtp) declares them as [frameworks.<name>]
-# tables in its one sim config and is selected with `--framework`.
+# `smu` is the SMU regression, discovered by convention from
+# hw/sys/smu/dv/smu_sim_cfg.toml: smu_wrapper.sv, the same smu with the
+# open-source IP integration attached. `smu_wrapper` is a second selectable
+# name for it.
+#
+# Frameworks are NOT registered here: a DUT implementing both cocotb and SV-UVM
+# (e.g. dtp) declares them as [frameworks.<name>] tables in its one
+# sim config and is selected with `--framework`.
 [duts.smu_wrapper]
 root = "hw/sys/smu/dv"
-sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
+alias_of = "smu"
 
 [duts.dtp]
 root = "hw/sys/dtp/dv"
@@ -33,6 +40,22 @@ root = "hw/sys/dtp/dv"
 # under the shared VIP tree, so it is registered here.
 [duts.ocah_axi_vip]
 root = "hw/common/dv/vip/ocah_axi_vip/dv"
+
+# Shared JTAG VIP wire-harness selftests: the shared master and the shared
+# reactive TAP device exercise each other on passive tb nets (no DUT RTL).
+[duts.ocah_jtag_vip]
+root = "hw/common/dv/vip/ocah_jtag_vip/dv"
+
+# Shared SPI VIP wire-harness selftests: the shared controller engine and the
+# shared flash device exercise each other on passive tb nets (no DUT RTL).
+[duts.ocah_spi_vip]
+root = "hw/common/dv/vip/ocah_spi_vip/dv"
+
+# Shared UART VIP wire-harness selftests: the console host and a device-side
+# line driver and sampler exercise each other on two passive tb nets (no DUT
+# RTL).
+[duts.ocah_uart_vip]
+root = "hw/common/dv/vip/ocah_uart_vip/dv"
 
 # Cross-trigger IP-level benches: the family nests one level below the
 # hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
@@ -45,3 +68,18 @@ root = "hw/ip/cross_trigger/cross_trigger_matrix/dv"
 
 [duts.cross_trigger_network]
 root = "hw/ip/cross_trigger/cross_trigger_network/dv"
+
+# UART-family IP-level benches: the family nests one level below the
+# hw/ip/<name>/dv convention (hw/ip/uart/<name>/dv), so each IP is registered
+# here.
+[duts.uart_16550]
+root = "hw/ip/uart/uart_16550/dv"
+
+[duts.log_engine]
+root = "hw/ip/uart/log_engine/dv"
+
+[duts.uart_log_engine_wrap]
+root = "hw/ip/uart/uart_log_engine_wrap/dv"
+
+[duts.uart_wrap]
+root = "hw/ip/uart/uart_wrap/dv"

@@ -8,8 +8,9 @@ backup's own error code, which must differ from the primary's. The ROM must then
 
 from __future__ import annotations
 
-from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
+from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
+from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _MANIFEST_OK = "MANIFEST_OK"
@@ -19,7 +20,6 @@ _BOOT_PROGRESS_MARKERS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
 
 class sep_backup_manifest_structural_fail_base(sep_backup_manifest_fail_base):
-
     backup_defect_marker: str = ""
     expected_error: int = 0
     primary_expected_error: int = 0
@@ -65,18 +65,26 @@ class sep_backup_manifest_structural_fail_base(sep_backup_manifest_fail_base):
             f"ROM gave up before evaluating the backup. Console: {console}"
         )
 
-        fd.assert_slot_attributed(console, primary_err, after=i_psrc,
-                                  before=i_bsrc)
-        log.info("CHK-FAILOVER-PRIMARY: primary@%d rejected with %s before the "
-                 "backup read@%d", i_psrc, primary_err, i_bsrc)
+        fd.assert_slot_attributed(console, primary_err, after=i_psrc, before=i_bsrc)
+        log.info(
+            "CHK-FAILOVER-PRIMARY: primary@%d rejected with %s before the backup read@%d",
+            i_psrc,
+            primary_err,
+            i_bsrc,
+        )
 
         fd.assert_slot_attributed(console, backup_err, after=i_bsrc, before=i_all)
         if self.backup_defect_marker and self.backup_defect_marker != backup_err:
-            fd.assert_slot_attributed(console, self.backup_defect_marker,
-                                      after=i_bsrc, before=i_all)
-        log.info("CHK-BACKUP-DEFECT: %s and %s both inside the backup attempt "
-                 "(lines %d..%d)", backup_err, self.backup_defect_marker or backup_err,
-                 i_bsrc, i_all)
+            fd.assert_slot_attributed(
+                console, self.backup_defect_marker, after=i_bsrc, before=i_all
+            )
+        log.info(
+            "CHK-BACKUP-DEFECT: %s and %s both inside the backup attempt (lines %d..%d)",
+            backup_err,
+            self.backup_defect_marker or backup_err,
+            i_bsrc,
+            i_all,
+        )
 
         for marker in (_MANIFEST_OK, _CRYPTO_ENTERED):
             assert not any(marker in line for line in console), (
@@ -88,24 +96,31 @@ class sep_backup_manifest_structural_fail_base(sep_backup_manifest_fail_base):
             f"ROM printed {_SBOOT_OFF}: a slot took the secure-boot-disabled path. "
             f"Console: {console}"
         )
-        log.info("CHK-NO-CRYPTO: neither slot printed %s, %s or %s",
-                 _MANIFEST_OK, _CRYPTO_ENTERED, _SBOOT_OFF)
+        log.info(
+            "CHK-NO-CRYPTO: neither slot printed %s, %s or %s",
+            _MANIFEST_OK,
+            _CRYPTO_ENTERED,
+            _SBOOT_OFF,
+        )
 
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        status_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | status_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
+            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); "
             f"observed {status_hex}"
         )
         assert fw_done, (
             f"ROM never signalled completion; two rejected slots must converge on "
             f"a FAIL verdict. cold_scratch[1]: {status_hex}"
         )
-        assert not fw_pass, (
-            "ROM signalled PASS: it booted an image it was supposed to reject"
+        assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
+        log.info(
+            "CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
+            backup_err,
+            _ALL_FAILED,
+            expected_status,
         )
-        log.info("CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
-                 backup_err, _ALL_FAILED, expected_status)
 
         for marker in _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden):
             assert not any(marker in line for line in console), (
@@ -113,5 +128,7 @@ class sep_backup_manifest_structural_fail_base(sep_backup_manifest_fail_base):
                 f"continued booting a manifest it had already failed. "
                 f"Console: {console}"
             )
-        log.info("CHK-NO-BOOT: none of %s reached",
-                 ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)))
+        log.info(
+            "CHK-NO-BOOT: none of %s reached",
+            ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)),
+        )

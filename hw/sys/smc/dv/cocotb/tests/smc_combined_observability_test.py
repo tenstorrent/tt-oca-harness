@@ -24,6 +24,14 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_combined_observability_test(smc_base_test):
+    required_evidence = (
+        "CHK-COMBINED-COMPOSITION",
+        "CHK-COMBINED-I2C",
+        "CHK-COMBINED-RESET",
+        "CHK-PROBE-I2C-CG-EN-ALIVE",
+    )
+    min_evidence = 3
+
     # The I2C leg's only value compare is the idle `tb_i2c_cg_en == 0`; this
     # control proves the same probe able to read 1 in the same run and credits
     # the liveness ledger the scoreboard consults

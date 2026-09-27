@@ -4,26 +4,6 @@
 schema_version = 1
 
 # SMC fabric JTAG2AXI scenarios.
-# The legacy aggregate tests are compatibility aliases for the scenario-specific
-# single_write/single_write_read tests: selectable by explicit --items name or
-# --tag legacy only, and members of no group, so regressions run each scenario
-# once.
-
-[[tests]]
-name = "dtp_jtag2axi_smc_axi_wr_test"
-module = "dtp_jtag2axi_smc_axi_wr_test"
-seed = 1
-timeout_sec = 1800
-tags = ["legacy"]
-run_modes = ["functional", "jtag2axi"]
-
-[[tests]]
-name = "dtp_jtag2axi_smc_axi_rd_test"
-module = "dtp_jtag2axi_smc_axi_rd_test"
-seed = 1
-timeout_sec = 1800
-tags = ["legacy"]
-run_modes = ["functional", "jtag2axi"]
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_single_write_test"

@@ -29,7 +29,7 @@
  * Use with PeakRDL unions: cfg.f.mode = SEP_KMAC_MODE_CSHAKE.
  */
 #define SEP_KMAC_MODE_SHA3 ((uint32_t)0x0u)     /* 2'b00 */
-#define SEP_KMAC_MODE_RESERVED ((uint32_t)0x1u) /* 2'b01 unused / intentional mismatch */
+#define SEP_KMAC_MODE_RESERVED ((uint32_t)0x1u) /* 2'b01 reserved; used as a mismatch value */
 #define SEP_KMAC_MODE_SHAKE ((uint32_t)0x2u)    /* 2'b10 */
 #define SEP_KMAC_MODE_CSHAKE ((uint32_t)0x3u)   /* 2'b11 */
 
@@ -43,7 +43,7 @@
 #define SEP_KMAC_ENTROPY_MODE_EDN ((uint32_t)0x1u)
 #define SEP_KMAC_ENTROPY_MODE_SW ((uint32_t)0x2u)
 
-/* CMD encodings (OT kmac_pkg::kmac_cmd_e). */
+/* Sparse CMD.CMD encodings (OT KMAC Programmer's Guide / generated kmac.adoc). */
 #define SEP_KMAC_CMD_START 29u
 #define SEP_KMAC_CMD_PROCESS 46u
 #define SEP_KMAC_CMD_MANUAL_RUN 49u

@@ -20,6 +20,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.esrc_noise import SmuEsrcNoiseDriver
 from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
 
@@ -50,23 +51,27 @@ FAIL_SYMS = {
 class SmuSepModulesSeq:
     """Classify the run by which terminal loop the SEP parks in."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_REAL_FW_MODULES_OK", "SEP_MODULE_MATRIX_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     async def run(self) -> None:
         # The HMAC and KMAC stages finish in a few thousand cycles, but the AES
         # stage first waits out the ESRC boot health-test window (2048 samples at
         # div64, ~131k core cycles) before its masking PRNG can reseed, so the
         # budget has to clear that with margin. A stage that polls forever is
-        # still caught here by the PC profile rather than waited out: the AES
-        # stage's own timeout is 1e6 poll iterations, roughly 22M cycles, which
-        # costs ~20 minutes to reach and still ends in a failure.
+        # caught here by the PC profile rather than waited out: the AES stage's
+        # own timeout is 1e6 poll iterations, roughly 22M cycles, and ends in a
+        # failure either way.
         max_cycles = int(os.environ.get("SMU_SEP_MODULES_MAX_CYCLES", "600000"), 0)
         heartbeat = max(1, max_cycles // 20)
 
-        # AES masking reseeds from crypto-EDN, so this image now runs the entropy
+        # AES masking reseeds from crypto-EDN, so this image runs the entropy
         # bring-up before its AES stage. The ring oscillators do not self-oscillate
         # under Verilator, so the raw noise has to come from the testbench -- the
         # same exception hw/sys/sep/dv takes, and the only forced signal involved.
@@ -224,7 +229,7 @@ class SmuSepModulesSeq:
             pass_pc,
             traces,
         )
-        for token in ("SEP_REAL_FW_MODULES_OK", "SEP_MODULE_MATRIX_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

@@ -9,7 +9,6 @@ life_cycle_states excludes PROD, so both slots fail.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_usage_constraint_base import (
@@ -20,18 +19,16 @@ from rom_fw.sep_usage_constraint_base import (
 
 
 @pyuvm.test()
-class sep_firmware_manifest_backup_lc_state_failure_test(
-        sep_backup_usage_constraint_base):
+class sep_firmware_manifest_backup_lc_state_failure_test(sep_backup_usage_constraint_base):
     """Backup permits TEST_DEV|PROD_END on a PROD part -> both refused -> halt."""
 
     defect_marker = fd.LC_MARKER
-    defect_evidence = fd.lc_state_required_markers(LC_ALLOWED_WITHOUT_LIVE,
-                                                   LIVE_LC_MANIFEST_BIT)
+    defect_evidence = fd.lc_state_required_markers(LC_ALLOWED_WITHOUT_LIVE, LIVE_LC_MANIFEST_BIT)
 
     def plant(self, buf: bytearray, slot: str) -> None:
-        before = mm.life_cycle_states(buf, slot)
+        before = mm.lifecycle_states(buf, slot)
         fd.plant_lc_state_defect(buf, slot, LC_ALLOWED_WITHOUT_LIVE)
-        after = mm.life_cycle_states(buf, slot)
+        after = mm.lifecycle_states(buf, slot)
         assert not after & (1 << LIVE_LC_MANIFEST_BIT), (
             f"life_cycle_states is 0x{after:08x} and still permits bit "
             f"{LIVE_LC_MANIFEST_BIT} (the live lifecycle): the constraint would be "
@@ -44,7 +41,11 @@ class sep_firmware_manifest_backup_lc_state_failure_test(
         self.logger.info(
             "CHK-STIMULUS-LC-STATE: %s life_cycle_states 0x%08x -> 0x%08x, which "
             "clears bit %d (PROD, the live lifecycle) and keeps TEST_DEV and "
-            "PROD_END", slot, before, after, LIVE_LC_MANIFEST_BIT,
+            "PROD_END",
+            slot,
+            before,
+            after,
+            LIVE_LC_MANIFEST_BIT,
         )
 
     def check_constraint_evidence(self, console: list[str]) -> None:
@@ -66,5 +67,7 @@ class sep_firmware_manifest_backup_lc_state_failure_test(
         )
         self.logger.info(
             "CHK-LC-STATE: ROM decoded the live lifecycle as bit %d and found it "
-            "absent from the backup's 0x%08x", bit, allowed,
+            "absent from the backup's 0x%08x",
+            bit,
+            allowed,
         )

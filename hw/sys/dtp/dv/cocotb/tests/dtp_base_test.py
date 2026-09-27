@@ -24,6 +24,7 @@ from env.dtp_dbg_disable import DBG_DISABLE_FIELDS, format_dbg_disable
 from env.dtp_env import DtpEnv
 from env.dtp_env_cfg import DtpEnvCfg
 from env.dtp_scan_ref_model import STAP_ORDER
+from env.dtp_tb_if import DtpTbIf
 
 
 class dtp_base_test(OcahTest):
@@ -72,6 +73,9 @@ class dtp_base_test(OcahTest):
         if unknown:
             raise ValueError(f"unknown STAP name(s) in stap_ds_attach: {sorted(unknown)}")
         self.cfg.stap_ds_attach = set(self.stap_ds_attach)
+        self.tb_if = DtpTbIf(cocotb.top)
+        self.cfg.tb_if = self.tb_if
+        ConfigDB().set(None, "*", "tb_if", self.tb_if)
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.env = DtpEnv("env", self)
 
@@ -81,57 +85,39 @@ class dtp_base_test(OcahTest):
 
     def plumb_scenario_seq(self, seq: OcahSequence) -> None:
         seq.cfg = self.env.cfg
+        # Sequence evidence reaches the simulation log only from a logger under
+        # the `cocotb` hierarchy; a root-child logger drops INFO records silently.
+        if not seq.log.name.startswith("cocotb."):
+            raise RuntimeError(
+                f"{seq.get_name()} logger {seq.log.name!r} is outside the cocotb hierarchy"
+            )
 
     async def bring_up(self) -> None:
-        """Walk the DTP reset ladder: idle the pins, start the system clock, release POR, then reset."""
-        dut = cocotb.top
+        """Walk the DTP reset ladder: start the system clock, release POR, then reset."""
+        tb = self.tb_if
         self.logger.info("Bringing up system clock and resets")
-        dut.pwr_on_rst_ni.value = 0
-        dut.rst_n_i.value = 0
-        if hasattr(dut, "xtrig_clk_stop_req"):
-            dut.xtrig_clk_stop_req.value = 0
-        for name in (
-            "xtrig_axil_awaddr",
-            "xtrig_axil_awprot",
-            "xtrig_axil_awvalid",
-            "xtrig_axil_wdata",
-            "xtrig_axil_wstrb",
-            "xtrig_axil_wvalid",
-            "xtrig_axil_bready",
-            "xtrig_axil_araddr",
-            "xtrig_axil_arprot",
-            "xtrig_axil_arvalid",
-            "xtrig_axil_rready",
-            "xtrig_ctm_src_ack",
-            "xtrig_ctm_dst_req",
-            "xtrig_ctp_req_out_din",
-            "xtrig_ctp_req_in_din",
-            "xtrig_ctp_ack_in_din",
-            "xtrig_ctp_ack_out_din",
-        ):
-            if hasattr(dut, name):
-                getattr(dut, name).value = 0
-        # Downstream STAP TAP ports: the device TDO inputs idle low and each
-        # port's attach mux follows the test's stap_ds_attach selection
-        # (0 = wire loopback) for the whole run.
+        tb.por_rst_n.value = 0
+        tb.sys_rst_n.value = 0
+        tb.ctrl.xtrig_clk_stop_req.value = 0
+        # Downstream STAP TAP ports: each port's attach mux follows the test's
+        # stap_ds_attach selection (0 = wire loopback) for the whole run.
         for stap in STAP_ORDER:
-            getattr(dut, f"jtag_stap_{stap}_tdi").value = 0
-            getattr(dut, f"jtag_stap_{stap}_ds_en").value = int(stap in self.cfg.stap_ds_attach)
+            getattr(tb.scan, f"stap_{stap}_ds_en").value = int(stap in self.cfg.stap_ds_attach)
         # Startup vector, driven while POR is still asserted: all eleven
         # active-high disables cleared so tests begin with full debug access
         # and assert the disables they gate explicitly. The DUT itself is
         # fail-closed until its TCK-domain synchronizers pass the cleared
         # values through.
         startup = {name: 0 for name in DBG_DISABLE_FIELDS}
-        for name, value in startup.items():
-            getattr(dut, f"dbg_disable_{name}").value = value
+        tb.set_dbg_disable_vector(startup)
         self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
-        cocotb.start_soon(Clock(dut.clk_i, self.cfg.sys_clk_period_ns, units="ns").start())
-        await ClockCycles(dut.clk_i, 5)
-        dut.pwr_on_rst_ni.value = 1
-        await ClockCycles(dut.clk_i, 5)
-        dut.rst_n_i.value = 1
-        await ClockCycles(dut.clk_i, 10)
+        cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, units="ns").start())
+        await ClockCycles(tb.clk, 5)
+        tb.check_dv_cfg()
+        tb.por_rst_n.value = 1
+        await ClockCycles(tb.clk, 5)
+        tb.sys_rst_n.value = 1
+        await ClockCycles(tb.clk, 10)
         # Release the JTAG/AXI agents now that the DUT is out of reset.
         self.cfg.reset_done.set()
 

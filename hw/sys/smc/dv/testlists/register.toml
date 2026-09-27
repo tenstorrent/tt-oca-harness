@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_register_sanity_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "axil"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_default_reg_rd_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_default_reg_rd_test", uvm = "smc_default_reg_rd_test" }
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil", "canonical"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_register_boundary_depth_test"
+module = "smc_register_boundary_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_rdl_field_sweep_test"
+module = "smc_rdl_field_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "axil"]
+run_modes = ["smoke"]

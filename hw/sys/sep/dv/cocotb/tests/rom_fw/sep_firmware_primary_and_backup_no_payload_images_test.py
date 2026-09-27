@@ -9,14 +9,14 @@ refusal by count and position. Needs ``+sep_crypto_edn_force`` for both RSA runs
 from __future__ import annotations
 
 import pyuvm
-
-from rom_fw import sep_toc_defect as td
 from rom_fw import sep_no_payload_images_base as npi
+from rom_fw import sep_toc_defect as td
 
 
 @pyuvm.test()
 class sep_firmware_primary_and_backup_no_payload_images_test(
-        npi.sep_no_payload_images_terminal_base):
+    npi.sep_no_payload_images_terminal_base
+):
     """Both slots' TOC image_count is 0 -> both refused -> halt."""
 
     primary_expected_error = npi.ERR_TOC_COUNT
@@ -29,5 +29,4 @@ class sep_firmware_primary_and_backup_no_payload_images_test(
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        self._primary_served = npi.plant_empty_image_list(
-            self.logger, buf, "primary")
+        self._primary_served = npi.plant_empty_image_list(self.logger, buf, "primary")

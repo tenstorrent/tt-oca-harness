@@ -9,7 +9,6 @@ Needs ``+sep_crypto_edn_force``: both slots run a full RSA-3072 modexp on OTBN.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_no_payload_images_base import sep_no_payload_images_primary_base
 
 

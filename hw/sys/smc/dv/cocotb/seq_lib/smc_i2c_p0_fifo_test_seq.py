@@ -120,14 +120,14 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_HOSTIDLE):
                 left = True
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         if not left:
             raise AssertionError(f"{label}: never left hostidle STATUS=0x{status:08x}")
         for _ in range(400):
             status = await self.csr_read(f"{label}_STATUS", status_addr)
             if status & I2C_STATUS_HOSTIDLE:
                 return
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(f"{label}: stuck busy STATUS=0x{status:08x}")
 
     async def _acq_threshold_leg(self) -> None:
@@ -256,7 +256,7 @@ class smc_i2c_p0_fifo_test_seq(SmcCsrSeq):
             lvl = _tx_lvl(fifo_st)
             if lvl < _TX_THRESH and (intr & I2C_INTR_STATE_TX_THRESHOLD):
                 break
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         else:
             raise AssertionError(
                 f"TX_THRESHOLD not seen with empty TX "

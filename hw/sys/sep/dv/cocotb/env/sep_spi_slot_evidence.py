@@ -9,12 +9,12 @@ manifest-integrity tests wearing SPI names.
 
 ``OcahSpiFlash.get_transactions()`` records are
 ``{opcode, addr, data_out, data_in, ok}``, ``data_out`` holding the bytes the flash
-streamed back (``ocah_spi_flash.py``). ``stop()`` only kills the protocol task and
-logs a count, so the history survives it.
+streamed back (``ocah_spi_flash.py:623-635``). ``stop()`` only kills the protocol
+task and logs a count (``:326-339``), so the history survives it.
 
 Everything here matches on "the read whose span COVERS this address" rather than
 "addr EQUALS it": the driver may split one ROM request into several CS-framed
-bursts, and equality would work today but silently stop checking the first time the
+bursts, and equality would silently stop checking the first time the
 chunk size changed.
 """
 
@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from env import sep_manifest_mutate as mm
 
-# ocah_spi_flash.py. The ROM's manifest and payload fetches are plain and
+# ocah_spi_flash.py:55-56. The ROM's manifest and payload fetches are plain and
 # fast reads; the other opcodes the model decodes (JEDEC ID, status, program,
 # erase) are not part of a boot fetch and are excluded so a status poll cannot be
 # mistaken for a data read.
@@ -63,11 +63,10 @@ def bytes_at(txn: Txn, addr: int, count: int) -> bytes:
     start, end = read_span(txn)
     if not (start <= addr and addr + count <= end):
         raise AssertionError(
-            f"read at 0x{start:x}..0x{end:x} does not cover "
-            f"0x{addr:x}..0x{addr + count:x}"
+            f"read at 0x{start:x}..0x{end:x} does not cover 0x{addr:x}..0x{addr + count:x}"
         )
     off = addr - start
-    return bytes(txn["data_out"][off:off + count])
+    return bytes(txn["data_out"][off : off + count])
 
 
 def slot_read_indices(rds: Sequence[Txn], slot: str, image_len: int) -> List[int]:
@@ -75,7 +74,8 @@ def slot_read_indices(rds: Sequence[Txn], slot: str, image_len: int) -> List[int
 
     Uses the whole slot span, not just the manifest header, because a slot's
     payload is fetched at a manifest-relative offset inside the same span
-    (``manifest_load.c``) -- so payload traffic is still evidence that this
+    (``oca_locate_payload()`` in ``oca_boot.c``) -- so payload traffic is still
+    evidence that this
     address was the one being booted from.
     """
     lo, hi = mm.slot_span(image_len, slot)
@@ -95,10 +95,8 @@ def all_erased(data: bytes) -> bool:
 def summarize(transactions: Sequence[Txn], image_len: int, *, limit: int = 12) -> str:
     """Compact one-line-per-read digest for the run log.
 
-    Logged by every one of these testcases whether it passes or fails: when one
-    of the ordering assertions trips, the reason is almost always visible in the
-    address sequence, and reconstructing it from a waveform afterwards is far more
-    expensive than printing it now.
+    Logged by every one of these testcases whether it passes or fails, so an
+    ordering-assertion failure can be read from the address sequence.
     """
     rds = reads(transactions)
     lines = [

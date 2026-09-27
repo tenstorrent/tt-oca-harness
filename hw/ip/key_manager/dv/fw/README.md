@@ -116,7 +116,7 @@ This means the main C stack and the IRQ stack are distinct:
 | `rom_msgbuf.h` | Linear message buffer (single frame at a time, each frame at index 0) |
 | `rom_mailbox.h` | Mailbox FIFO accessors |
 | `rom_keyreg.h` | Key registry (handle ↔ KPV slot mapping) |
-| `rom_msg_rx.h` | Incoming message handler (8-step validation) |
+| `rom_msg_rx.h` | Incoming message handler (ordered validation) |
 | `rom_msg_tx.h` | Outgoing message handler (buffer + direct FIFO) |
 | `rom_cmd.h` | Command dispatch |
 | `rom_boot.h` | Boot sequence (`rom_boot_init`) |
@@ -137,7 +137,7 @@ This means the main C stack and the IRQ stack are distinct:
 | `rom_boot.c` | Boot sequence (`rom_boot_init`) |
 | `rom_main_step.c` | One iteration of the main event loop |
 | `rom_boot_sram_restart.S` | Enable + lock the SRAM scrambler, then restart at address 0 |
-| `rom_cmd.c` | Command dispatch + all 15 command handlers |
+| `rom_cmd.c` | Command dispatch and the command handlers |
 | `rom_keymgmt.c` | Key management: generate, check, transfer, revoke |
 | `rom_isr.c` | ISR entry point, KMCSR dispatch, mailbox ISR, ABR shared-key ISR, fault triggers |
 | `rom_msg_rx.c` | Inbound frame processing with strict validation ordering |
@@ -172,7 +172,7 @@ This means the main C stack and the IRQ stack are distinct:
 
 | File | Description |
 |------|-------------|
-| `startup/crt0.s` | Reset vector, IRQ vector, BSS clear, calls `main()` (existing) |
+| `startup/crt0.s` | Reset vector, IRQ vector, BSS clear, calls `main()` |
 | `production/rom_main/rom_main.c` | Production entry: `rom_boot_init()`, then loop on `rom_main_step()` |
 
 ### Tests
@@ -184,7 +184,7 @@ tests. See `hw/ip/key_manager/dv/tb/README.md` for how to build and run a test.
 
 `sep_images/` holds KM ROM images for the SEP UVM testbench rather than the KM
 cocotb one, and `production/` holds `rom_main`, the production ROM entry. Both are
-built alongside the tests but deliberately live outside `tests/`, since the KM
+built alongside the tests but live outside `tests/`, since the KM
 regression runs everything it finds there and none of these images terminate on
 their own. They link in the `rom` mode (all-in-ROM) instead of the default `vrom`
 mode; see the SEP UVM section of `dv/tb/README.md`.
@@ -208,9 +208,12 @@ make build_all_fw
 riscv64-unknown-elf-size build/tests/test_rom_crc/test_rom_crc.vrom.elf
 ```
 
-Firmware is compiled inside the toolchain container so the images do not depend
-on whichever RISC-V toolchain the simulation host carries. Set
-`FW_LOCAL_TOOLCHAIN=1` to compile with the toolchain on `PATH` instead.
+Firmware compiles in the OCAH toolchain container (`scripts/docker-run.sh
+run-here`) unless `RISCV_TOOLCHAIN` points at a directory of
+`riscv64-unknown-elf-*` tools whose compiler has `picolibc.specs` (compile.mk
+always builds with `--specs=picolibc.specs`). That variable is the only host
+override, the same contract as the SMC/SEP cgen stages (see
+`hw/common/dv/fw/compile.mk`). A toolchain on `PATH` is not used.
 
 ## Code size optimization
 

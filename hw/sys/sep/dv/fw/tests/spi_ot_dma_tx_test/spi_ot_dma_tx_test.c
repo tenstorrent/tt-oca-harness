@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP OpenTitan-SPI DMA-TX firmware test (OSS rep SPI DMA-TX breadth). The complement of the
-// Phase-1 sep_spi_ot_dma_rx (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
+// SEP OpenTitan-SPI DMA-TX firmware test. The complement of sep_spi_ot_dma_rx
+// (SPI RX FIFO -> DMA -> SRAM): here SRAM -> Secure DMA
 // (hardware handshake) -> OT SPI host TX FIFO -> flash. The OT SPI TX watermark
 // drives lsio_trigger, which refills the TX FIFO from SRAM a chunk at a time:
 //
@@ -24,7 +24,7 @@
 // until software clears it, so the checker also proves the CTRL.SW_RST + W1C
 // recovery with a real flash RDSR afterwards.
 //
-// main returns the error count; start.S emits PASS/FAIL magic. Each checker logs
+// main returns the error count; crt0.s emits PASS/FAIL magic. Each checker logs
 // a positive PASS line.
 
 #include <stdint.h>
@@ -121,19 +121,25 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
            (((addr >> 0) & 0xFF) << 24);
 }
 
+// LEN encodes byte count - 1. Every field goes through the generated position
+// and mask: the register layout is owned by the OpenTitan spi_host block, and
+// hand-packed bit positions silently break when it changes.
 static uint32_t cmd_word(uint32_t direction, uint32_t len_bytes, int csaat) {
-    uint32_t v = (direction << SPI_CONTROLLER__CMD__DIRECTION_bp) | ((len_bytes - 1) & 0x1FF);
-    if (csaat) v |= SPI_CONTROLLER__CMD__CSAAT_bm;
+    uint32_t v =
+        ((direction << SPI_CONTROLLER__COMMAND__DIRECTION_bp) &
+         SPI_CONTROLLER__COMMAND__DIRECTION_bm) |
+        (((len_bytes - 1) << SPI_CONTROLLER__COMMAND__LEN_bp) & SPI_CONTROLLER__COMMAND__LEN_bm);
+    if (csaat) v |= SPI_CONTROLLER__COMMAND__CSAAT_bm;
     return v;
 }
 
 static void spi_init(void) {
     // RX_WM=1 (RX kept quiescent), TX_WM drives the refill trigger.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
-           (TX_WATERMARK << SPI_CONTROLLER__CTRL__TX_WATERMARK_bp) |
-               (1u << SPI_CONTROLLER__CTRL__RX_WATERMARK_bp) | SPI_CONTROLLER__CTRL__SPIEN_bm |
-               SPI_CONTROLLER__CTRL__OUTPUT_EN_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           (TX_WATERMARK << SPI_CONTROLLER__CONTROL__TX_WATERMARK_bp) |
+               (1u << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
+               SPI_CONTROLLER__CONTROL__SPIEN_bm | SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
            SPI_CONTROLLER__EVENT_ENABLE__TXWM_bm); // TX watermark -> lsio_trigger
@@ -142,23 +148,23 @@ static void spi_init(void) {
 
 static int flash_wren(void) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_WREN);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WREN);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
 /* RDSR (0x05). Returns status byte, or 0xFF on timeout / empty RX. */
 static uint8_t flash_read_status(void) {
     if (spi_wait_ready(TIMEOUT)) return 0xFFu;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_RDSR);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT
     if (spi_wait_ready(TIMEOUT)) return 0xFFu;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
     if (spi_wait_idle(TIMEOUT)) return 0xFFu;
     if (((spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) >> SPI_CONTROLLER__STATUS__RXQD_bp) &
          0xFFu) < 1u)
         return 0xFFu;
-    return (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR) & 0xFFu);
+    return (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFFu);
 }
 
 /* Poll flash WIP=0 after PAGE PROGRAM (fail-closed on 0xFF / timeout). */
@@ -206,17 +212,18 @@ static int chk_trigger(void) {
     int txwm_empty = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
 
     for (uint32_t i = 0; i < TX_WATERMARK + 4u; i++) {
-        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xD0000000u + i);
+        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xD0000000u + i);
     }
     st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     uint32_t txqd_full = st & SPI_CONTROLLER__STATUS__TXQD_bm;
     int txwm_full = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
 
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
-           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR) |
-               SPI_CONTROLLER__CTRL__SW_RST_bm); // drain FIFO
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR,
-           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR) & ~SPI_CONTROLLER__CTRL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) |
+               SPI_CONTROLLER__CONTROL__SW_RST_bm); // drain FIFO
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR) &
+               ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     uint32_t txqd_drain = st & SPI_CONTROLLER__STATUS__TXQD_bm;
     int txwm_drain = !!(st & SPI_CONTROLLER__STATUS__TXWM_bm);
@@ -251,15 +258,15 @@ static int chk_trigger(void) {
 // check that the DMA-fed PAGE PROGRAM actually reached the flash.
 static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, pack_hdr(FLASH_CMD_READ, addr));
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_READ, addr));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX, release CS
     if (spi_wait_idle(TIMEOUT)) return -1;
     for (uint32_t i = 0; i < nwords; i++)
-        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     return 0;
 }
 
@@ -272,7 +279,7 @@ static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
-               OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR);
+               OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0));
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
                SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset |
@@ -335,7 +342,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 
     // Issue the TX command BEFORE starting the DMA (reference suite order): the SPI stalls
     // for TX data, the DMA feeds it on each TX-watermark trigger. LEN == TOTAL-1.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, total_bytes, 0));
     dma_arm_tx(SRC_BASE, total_bytes);
 
     // --- CHK-DMA-DONE: run the handshake transfer to completion ---
@@ -388,8 +395,8 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 
     // --- Precondition, not a checker: settle the device before the readback ---
     // The flash BFM is instant-ready, so the first defined RDSR already reads
-    // WIP=0 and a "WIP clear" assertion could not fail. The poll stays because
-    // it is fail-closed on 0xFF/timeout. CHK-DMA-TX below is the data proof.
+    // WIP=0 and a "WIP clear" assertion could not fail; the poll is fail-closed
+    // on 0xFF/timeout. CHK-DMA-TX below is the data proof.
     if (flash_wait_wip_clear()) {
         errors++;
         return errors;
@@ -437,7 +444,7 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 }
 
 // CHK-ERR-OVERFLOW: firmware pushing TXDATA past the TX FIFO capacity.
-// spi_controller.sv: error_overflow = tx_valid & ~tx_ready, i.e. a TXDATA write
+// spi_host.sv: error_overflow = tx_valid & ~tx_ready, i.e. a TXDATA write
 // the FIFO cannot accept. Nothing else in this test can reach that edge -- the
 // DMA is paced by the TX watermark precisely so it never does -- so the flow
 // control the whole DMA-TX path depends on is otherwise never proven to exist.
@@ -453,10 +460,9 @@ static int chk_err_overflow(void) {
     // No command is outstanding, so nothing drains the FIFO: keep writing until
     // the HOST reports TXFULL. The bound is a guard, not the contract.
     uint32_t writes = 0;
-    while (writes < TXFULL_WRITE_LIM &&
-           !(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
-             SPI_CONTROLLER__STATUS__TXFULL_bm)) {
-        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xE0000000u + writes);
+    while (writes < TXFULL_WRITE_LIM && !(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+                                          SPI_CONTROLLER__STATUS__TXFULL_bm)) {
+        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xE0000000u + writes);
         writes++;
     }
     if (writes >= TXFULL_WRITE_LIM) {
@@ -471,7 +477,7 @@ static int chk_err_overflow(void) {
 
     // ERROR_STATUS is clean up to here (CHK-SPI-IDLE asserted it per case), so
     // the one write past full is the only thing that can set a bit.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xE0FFFFFFu);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xE0FFFFFFu);
     uint32_t es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (es != SPI_CONTROLLER__ERROR_STATUS__OVERFLOW_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW ERROR_STATUS=");
@@ -483,9 +489,10 @@ static int chk_err_overflow(void) {
     }
 
     // Recovery: SW_RST drains the FIFOs and the command queue, then W1C the latch.
-    uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl | SPI_CONTROLLER__CTRL__SW_RST_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CTRL__SW_RST_bm);
+    uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+           ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     uint32_t residual = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (residual != 0) {

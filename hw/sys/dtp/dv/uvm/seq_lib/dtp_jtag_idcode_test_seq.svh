@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag_idcode_test scenario sequence: looped IDCODE reads under seeded
-// random TAP preconditioning. Every read must return the exact default
-// device-identification value (CHK-IDCODE-RAW) regardless of the TAP
-// context established before it — TAP reset, TLR walk plus random TMS
-// stress, a safe IR load, or a BYPASS scan — and the reads must be stable
+// dtp_jtag_idcode_test scenario sequence: one IDCODE read through the
+// reset-loaded instruction (a DR scan with no IR load after TAP reset), then
+// looped IDCODE reads under seeded random TAP preconditioning. Every read
+// must return the exact default device-identification value
+// (CHK-IDCODE-RAW) regardless of the TAP context established before it —
+// TAP reset, TLR walk plus random TMS stress, a safe IR load, or a BYPASS
+// scan — and the reads must be stable
 // (CHK-IDCODE-STABLE) with the IEEE 1149.1 fields decoding to the expected
 // marker/version/part/manufacturer values. Read count per pass comes from
 // test_cfg.idcode_reads_per_loop (+DTP_IDCODE_READS_PER_LOOP, default 4,
@@ -75,7 +77,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     read_loops = test_cfg.idcode_reads_per_loop;
     // No scan-count cross-check: the random-TMS-walk preconditions cross
     // Shift-x, publishing scan-builder items the sequence cannot count
-    // (the cocotb twin likewise ran without the pin-level monitor).
+    // (cocotb use_monitor=False parity).
     attach_family_checker({
                           "CHK-IDCODE-RAW",
                           "CHK-IDCODE-STABLE",
@@ -88,13 +90,23 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
                           "CHK-NONVAC"
                           }, 1'b0);
 
+    // Test-Logic-Reset loads IDCODE into the instruction register, so a DR
+    // scan with no IR load reads the device identification through the
+    // reset-selected path.
+    reset_to_tlr();
+    shift_dr(64'h0, 32, observed);
+    reads.push_back(observed[31:0]);
+    seen_values[observed[31:0]] = 1'b1;
+    values_s = $sformatf("0x%08h", observed[31:0]);
+    family_check("CHK-IDCODE-RAW", "IDCODE read without IR load", observed[31:0], ExpectedIdcode,
+                 "precondition=tap_reset no_ir_load");
+
     for (int unsigned loop_idx = 0; loop_idx < read_loops; loop_idx++) begin
       random_precondition(loop_idx);
       read_idcode(observed);
       reads.push_back(observed[31:0]);
       seen_values[observed[31:0]] = 1'b1;
-      values_s = {values_s, $sformatf("%s0x%08h", loop_idx ? "," : "",
-                                            observed[31:0])};
+      values_s = {values_s, $sformatf(",0x%08h", observed[31:0])};
       family_check("CHK-IDCODE-RAW", "IDCODE read", observed[31:0], ExpectedIdcode, $sformatf(
                    "loop=%0d precondition=randomized", loop_idx));
     end

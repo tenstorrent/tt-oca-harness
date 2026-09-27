@@ -33,7 +33,7 @@ ocah-doc-programmer-setup: ocah-doc-programmer-meta ocah-doc-reg-setup
 
 .PHONY: ocah-doc-programmer-html
 ocah-doc-programmer-html: ocah-doc-programmer-setup
-	@command -v npx >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html programmer"; exit 1; }
+	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html programmer"; exit 1; }
 	@echo "Building Programmer's Guide HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
 		$(if $(OCAH_DOC_SITE_URL),--url "$(OCAH_DOC_SITE_URL)") \
@@ -47,7 +47,7 @@ ocah-doc-programmer-pdf: ocah-doc-programmer-setup
 	@mkdir -p "$(OCAH_PROGRAMMER_BUILD)/latex" "$(OCAH_PROGRAMMER_DIST)"
 	@rm -rf "$(OCAH_PROGRAMMER_SRC)/assets" && ln -s ../assets "$(OCAH_PROGRAMMER_SRC)/assets"
 	@cd "$(OCAH_PROGRAMMER_DIR)" && "$(OCAH_ASCIIDOCTOR_PDF)" \
-		-r asciidoctor-diagram \
+		$(OCAH_ASCIIDOCTOR_PDF_DIAGRAM_ARGS) \
 		-a pdf-theme="$(OCAH_DOC_PDF_THEME)" -a pdf-themesdir="$(OCAH_DOC_PDF_THEMESDIR)" \
 		-a toc -a toclevels=3 \
 		-o "$(OCAH_PROGRAMMER_BUILD)/latex/$(OCAH_PROGRAMMER_PDF)" src/index.adoc

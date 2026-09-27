@@ -4,15 +4,12 @@
 /*
  * HMAC P2 Sensitive Register Access Test.
  *
- * Verifies security-sensitive register access behavior exposed by the current
- * HMAC register map:
+ * Verifies security-sensitive register access behavior exposed by the HMAC
+ * register map:
  *   0) Positive control: CFG MMIO write/readback proves the HMAC window is live.
  *   1) KEY registers are write-only: reads must not reveal written key values.
  *   2) DIGEST registers are SW-writable while IDLE (context restore).
- *   3) CFG_REGWEN is not present in the current HMAC map; record this as N/A.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_hmac_p2_sensreg_access_test STACK=cgen,sim
+ *   3) CFG_REGWEN is not in the HMAC register map; this step reports N/A.
  */
 
 #include <stdint.h>

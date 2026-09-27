@@ -9,11 +9,11 @@ be a fixed constant:
   * the RMA_SIP / RMA_CHIPLET tokens and their OTP digests (delegated to
     ``SepRmaTokenCfg``, so this walk and the token RANDCFG cannot drift), and
   * the ``nuisance`` pattern written into LC_STATE bytes 1..3 alongside the
-    lifecycle nibble. Byte 0 is the differentially encoded lifecycle state and
-    bytes 1..3 are ordinary set-only shadow bytes
-    (``hw/ip/efuse/rtl/efuse_shadow_regs.sv``); driving them with seed data
-    proves the byte-0 special case does not leak into its neighbours and that
-    the neighbours do not disturb the lifecycle nibble.
+    lifecycle nibble. Byte 0 is the differentially encoded lifecycle state.
+    Bytes 1..3 are ``sep_efuse_map.rdl``'s ``rsvd`` field and take a plain
+    shadow write; seed data in those bytes proves the byte-0 special case
+    does not leak into its neighbours and that the neighbours do not disturb
+    the lifecycle nibble.
 
 ``dv_sim_prestage.py`` loads this module to stage the t=0 hex; the test builds
 the same ``SepLcTransitionCfg(seed)`` as its golden. Do not switch the stream to
@@ -44,10 +44,14 @@ class SepLcTransitionCfg:
         # are exactly the ones SepRmaTokenMatchSeq will present.
         self.tokens = SepRmaTokenCfg(seed)
         rng = SepSeededRng(seed)
-        # Bytes 1..3 of the LC_STATE shadow word. Non-zero so the OR-merge check
-        # is falsifiable; byte 0 left clear so it never collides with the
-        # lifecycle nibble under test.
-        self.nuisance = (rng.getrandbits(24) | 0x01) << 8
+        # Bytes 1..3 of the LC_STATE shadow word. Two patterns, each with a
+        # unique bit, so overwrite of the second differs from a stale first
+        # and from an OR of the two. Byte 0 stays clear so it never collides
+        # with the lifecycle nibble.
+        raw1 = rng.getrandbits(24)
+        raw2 = rng.getrandbits(24)
+        self.nuisance = ((raw1 | 0x01) & ~0x02) << 8
+        self.nuisance2 = ((raw2 | 0x02) & ~0x01) << 8
 
     def image_fixed(self) -> dict[str, int]:
         """``select_efuse_image(fixed=...)`` pins that match this config.
@@ -64,4 +68,7 @@ class SepLcTransitionCfg:
         }
 
     def summary(self) -> str:
-        return f"seed={self.seed} nuisance=0x{self.nuisance:08x} {self.tokens.summary()}"
+        return (
+            f"seed={self.seed} nuisance=0x{self.nuisance:08x} "
+            f"nuisance2=0x{self.nuisance2:08x} {self.tokens.summary()}"
+        )

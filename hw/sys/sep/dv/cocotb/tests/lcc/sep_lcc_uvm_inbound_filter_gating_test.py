@@ -29,7 +29,7 @@ Checkers (each logs positive evidence):
   * CHK-DEMOTE     DEMOTE_1.demote write -> read-back == 1.
   * CHK-DBG-FEAT   FEAT_CTRL == golden(PROD_DBG_1), sep_debug==1 (scoreboard).
   * CHK-DBG-ALLOW  external probe reads BOTH FEAT_CTRL halves OKAY and returns
-    the distinctive golden value 0xf0000000_f000f003 (proves the external path
+    the distinctive golden value 0xf000f000_f000f003 (proves the external path
     actually reached the LCC, not merely returned OKAY/all-ones).
   * CHK-IDENTITY   external access follows sep_debug: blocked@0, allowed@1 -- the
     frontdoor (FEAT_CTRL[0]) identity with the filter skip.
@@ -46,7 +46,13 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
+from env.sep_lcc_golden import (
+    DBG1_MASK,
+    DBG2_MASK,
+    LC_PROD,
+    feat_ctrl_expected,
+    lc_state_name,
+)
 from sep_base_test import sep_base_test
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
     LCC_FEAT_CTRL,
@@ -60,7 +66,7 @@ _MAX_SENSE_CYCLES = 20_000
 
 # Distinct non-zero disable vectors so the decoded FEAT_CTRL is a non-trivial
 # value in BOTH states (guards the golden checks against a vacuous all-zero pass).
-# DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are deliberately LEFT ENABLED in both
+# DBG_1 bits 0 (sep_debug) and 1 (chiplet_dbg) are LEFT ENABLED in both
 # vectors. Under the per-group decode a PROD demotion only relaxes its debug group to
 # honour SIP_DIS|SYS_DIS; it does not force the group open. A vector that
 # disables sep_debug would make this test's own property unreachable: DEMOTE_1 would
@@ -111,8 +117,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # allow_timeout=False: a blocked access must return the SPECIFIC DECERR
         # the inbound filter's axi_err_slv emits (axi_filter_wrap.sv RESP_DECERR),
-        # NOT a timeout (which would be a wedge) and NOT SLVERR. A timeout now
-        # raises in the driver and fails the test.
+        # NOT a timeout (which would be a wedge) and NOT SLVERR. A timeout raises
+        # in the driver and fails the test.
         probe_prod = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
         await self.start_ext_seq(probe_prod)
         assert not probe_prod.resp_ok, (
@@ -131,7 +137,7 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # ---- CHK-DEMOTE-INDEP: DEMOTE_2 alone must open DBG_2 and NOT DBG_1 ----
         #
         # DEMOTE_1 and DEMOTE_2 are independent and act only on their own debug
-        # group: DEMOTE_1 on DBG_1 [15:0], DEMOTE_2 on DBG_2 [31:16].
+        # group: DEMOTE_1 on DBG_1 [23:0], DEMOTE_2 on DBG_2 [47:24].
         # DEMOTE_2 is driven FIRST: the demote field is `onwrite=woset`
         # (sep_lifecycle_ctrl.rdl), so it cannot be cleared once set. Driving
         # DEMOTE_2 while DEMOTE_1 is still 0 is the only order in which this DUT
@@ -153,13 +159,13 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             f"{ctl_d2.sep_debug} (FEAT_CTRL=0x{ctl_d2.feat_ctrl:016x}) -- the two demote "
             f"registers are not independent"
         )
-        assert (ctl_d2.feat_ctrl & 0xFFFF) == 0, (
-            f"DEMOTE_2 alone opened DBG_1 bits [15:0]=0x{ctl_d2.feat_ctrl & 0xFFFF:04x}, "
+        assert (ctl_d2.feat_ctrl & DBG1_MASK) == 0, (
+            f"DEMOTE_2 alone opened DBG_1 bits [23:0]=0x{ctl_d2.feat_ctrl & DBG1_MASK:06x}, "
             f"expected 0 -- demotion is not per-group"
         )
-        assert (ctl_d2.feat_ctrl >> 16) & 0xFFFF, (
-            f"DEMOTE_2 did not open any DBG_2 bit [31:16]=0x"
-            f"{(ctl_d2.feat_ctrl >> 16) & 0xFFFF:04x} -- the write had no effect"
+        assert ctl_d2.feat_ctrl & DBG2_MASK, (
+            f"DEMOTE_2 did not open any DBG_2 bit [47:24]=0x"
+            f"{(ctl_d2.feat_ctrl & DBG2_MASK) >> 24:06x} -- the write had no effect"
         )
         self.logger.info(
             "CHK-DEMOTE-INDEP PASS: DEMOTE_2 alone opened DBG_2 and left DBG_1 closed "
@@ -200,12 +206,12 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         )
 
         # Read BOTH FEAT_CTRL halves over the external master. The DISTINCTIVE half is
-        # now the LO word: demotion acts only on DBG_1, so the hi (Function) word is
+        # the LO word: demotion acts only on DBG_1, so the hi (Function) word is
         # identical in PROD and PROD_DBG_1 and cannot distinguish them. The lo word
         # is ~(SIP_DIS|SYS_DIS) over both debug groups = 0xf000f003 -- neither all-ones
-        # nor zero, so a
-        # dummy responder or any unrelated OKAY slave fails it, and matching it proves
-        # the external read actually reached the LCC FEAT_CTRL register.
+        # nor zero, so a dummy responder or any unrelated OKAY slave fails it, and
+        # matching it proves the external read actually reached the LCC FEAT_CTRL
+        # register. The hi word carries DBG_2 [47:24] as well as Function.
         exp_lo = feat_dbg & 0xFFFF_FFFF
         exp_hi = (feat_dbg >> 32) & 0xFFFF_FFFF
         probe_lo = SepExtAxiProbeSeq(LCC_FEAT_CTRL)

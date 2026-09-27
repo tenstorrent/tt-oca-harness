@@ -3,7 +3,7 @@
 # The TEST_DEV twin of sep_efuse_lc_prod_sboot_dis. Both cells of the fuse-lock
 # 2x2 that blow SBOOT_DIS need one, and the lifecycle is the only thing that
 # separates them: secure_boot_enabled() short-circuits on the fuse before it
-# reads either the lifecycle or the manifest flag (manifest_load.c), so the two
+# reads either the lifecycle or the manifest flag (oca_boot.c), so the two
 # rows reach the same non-secure boot and the LC= console echo is what attributes
 # each run to its own cell.
 #

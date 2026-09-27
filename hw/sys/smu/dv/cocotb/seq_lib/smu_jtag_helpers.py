@@ -1,129 +1,69 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMU JTAG / JTAG2AXI helpers (local constants; avoid DTP ``env`` package clash)."""
+"""SMU JTAG / JTAG2AXI helpers.
+
+Every opcode, field position and geometry constant in this module is a
+DV-owned table. The instruction opcodes come from the DTP bench's
+``dtp_types`` module; everything else is transcribed from the PTAP
+architecture document, the SMU design specification and the Integrator
+Guide, cited next to the value.
+"""
 
 from __future__ import annotations
 
-import re
-from functools import lru_cache
-from pathlib import Path
 from typing import Optional
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from dtp_types import DTP_IR_WIDTH, DtpJtagInstr
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
+from seq_lib.smu_tb_pins import smu_scope
+
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
-# SEP=0 gen_no_sep ties sep_feat_ctrl='1' (enable); J2A opens after TCK sync.
-# Force-based helpers were removed.
-
-_REPO_ROOT = Path(__file__).resolve().parents[6]
-_JTAG_INST_PKG = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"
-_JTAG_PTAP_ARCH = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "doc" / "architecture.adoc"
-_IR_ENUM_RE = re.compile(r"^\s+(\w+_INSTR)\s+=\s+6'h([0-9A-Fa-f]+)")
-_JTAG_CAPS_SEP_DBG_RE = re.compile(r"^\|(\d+) \|sep_dbg_en \|")
-_JTAG2AXI_CAPS_FIELD_RE = re.compile(r"^\|(\d+)(?::(\d+))? \|(\w+) \|")
-_SMU_PKG = _REPO_ROOT / "hw" / "sys" / "smu" / "rtl" / "smu_pkg.sv"
-_SMU_OTP_PL_RE = re.compile(r"SMC_OTP_(RD|WR)_PL_DEPTH:\s+2'h([0-9A-Fa-f]+)")
 
 
-@lru_cache(maxsize=1)
-def _jtag_ir_opcodes() -> dict[str, int]:
-    text = _JTAG_INST_PKG.read_text(encoding="utf-8")
-    out: dict[str, int] = {}
-    for line in text.splitlines():
-        m = _IR_ENUM_RE.match(line)
-        if m:
-            out[m.group(1)] = int(m.group(2), 16)
-    if "IDCODE_INSTR" not in out or "TAP_3DCR_INSTR" not in out:
-        raise RuntimeError(f"IR opcodes missing from {_JTAG_INST_PKG}")
-    return out
+def dtp_ir_opcode(name: str) -> int:
+    """PTAP IR opcode for instruction ``name``.
+
+    ``DtpJtagInstr`` (hw/sys/dtp/dv/cocotb/env/dtp_types.py) transcribes the
+    "Instruction Encodings" table of hw/ip/jtag/jtag_intf_unit/doc/interface.adoc.
+    """
+    try:
+        return int(DtpJtagInstr[name])
+    except KeyError as exc:
+        raise KeyError(f"{name} is not a DtpJtagInstr instruction name") from exc
 
 
-def dtp_ir_opcode(rtl_symbol: str) -> int:
-    """PTAP opcode from jtag_inst_reg_pkg.sv (authoritative IR map)."""
-    table = _jtag_ir_opcodes()
-    if rtl_symbol not in table:
-        raise KeyError(f"{rtl_symbol} not in {_JTAG_INST_PKG}")
-    return table[rtl_symbol]
+# hw/ip/jtag/jtag_ptap/doc/architecture.adoc, "JTAG Capabilities" table.
+DTP_JTAG_CAPS_SEP_DBG_EN_BIT = 42
 
+# Same document, "JTAG2AXI Support" / "*_JTAG2AXI_CAPS" table:
+#   [13:12] rd_pl_depth, [11:10] wr_pl_depth, [9:7] data_size (log2 of the
+#   AxDATA width in bytes), [6:1] addr_size (AxADDR width in bits),
+#   [0] bus_type (0: AXI4, 1: AXI4-Lite).
+JTAG2AXI_CAPS_RD_PL_DEPTH_LSB = 12
+JTAG2AXI_CAPS_WR_PL_DEPTH_LSB = 10
+JTAG2AXI_CAPS_DATA_SIZE_LSB = 7
+JTAG2AXI_CAPS_ADDR_SIZE_LSB = 1
+JTAG2AXI_CAPS_BUS_TYPE_LSB = 0
+JTAG2AXI_CAPS_DATA_SIZE_4B = 2
+JTAG2AXI_CAPS_DATA_SIZE_8B = 3
+JTAG2AXI_CAPS_BUS_AXI4 = 0
+JTAG2AXI_CAPS_BUS_AXI4_LITE = 1
 
-@lru_cache(maxsize=1)
-def dtp_jtag_caps_sep_dbg_en_bit() -> int:
-    """JTAG_CAPS sep_dbg_en bit index from the PTAP architecture table."""
-    text = _JTAG_PTAP_ARCH.read_text(encoding="utf-8")
-    for line in text.splitlines():
-        m = _JTAG_CAPS_SEP_DBG_RE.match(line)
-        if m:
-            return int(m.group(1))
-    raise RuntimeError(f"sep_dbg_en bit missing from {_JTAG_PTAP_ARCH}")
-
-
-@lru_cache(maxsize=1)
-def _jtag2axi_caps_field_lsb() -> dict[str, int]:
-    """LSB of each *_JTAG2AXI_CAPS field from the PTAP architecture table."""
-    text = _JTAG_PTAP_ARCH.read_text(encoding="utf-8")
-    out: dict[str, int] = {}
-    in_table = False
-    for line in text.splitlines():
-        if line.startswith("====== *_JTAG2AXI_CAPS"):
-            in_table = True
-            continue
-        if in_table and line.startswith("====== "):
-            break
-        if not in_table:
-            continue
-        m = _JTAG2AXI_CAPS_FIELD_RE.match(line)
-        if not m:
-            continue
-        msb = int(m.group(1))
-        lsb = int(m.group(2)) if m.group(2) is not None else msb
-        out[m.group(3)] = min(msb, lsb)
-    need = ("rd_pl_depth", "wr_pl_depth", "data_size", "addr_size", "bus_type")
-    missing = [n for n in need if n not in out]
-    if missing:
-        raise RuntimeError(f"JTAG2AXI_CAPS fields {missing} missing from {_JTAG_PTAP_ARCH}")
-    return out
-
-
-@lru_cache(maxsize=1)
-def _smu_otp_pl_depths() -> tuple[int, int]:
-    """SMC OTP rd/wr pipeline depths from smu_pkg.sv Cfg defaults."""
-    text = _SMU_PKG.read_text(encoding="utf-8")
-    found: dict[str, int] = {}
-    for m in _SMU_OTP_PL_RE.finditer(text):
-        found[m.group(1)] = int(m.group(2), 16)
-    if "RD" not in found or "WR" not in found:
-        raise RuntimeError(f"SMC_OTP_*_PL_DEPTH missing from {_SMU_PKG}")
-    return found["RD"], found["WR"]
-
-
-@lru_cache(maxsize=1)
-def _jtag2axi_caps_encodings() -> dict[str, int]:
-    """Named encodings from the architecture.adoc *_JTAG2AXI_CAPS table."""
-    text = _JTAG_PTAP_ARCH.read_text(encoding="utf-8")
-    data_size_4b = None
-    bus_lite = None
-    in_table = False
-    for line in text.splitlines():
-        if line.startswith("====== *_JTAG2AXI_CAPS"):
-            in_table = True
-            continue
-        if in_table and line.startswith("====== "):
-            break
-        if not in_table:
-            continue
-        if "|data_size |" in line:
-            m = re.search(r"(\d+):\s*4 bytes", line)
-            if m:
-                data_size_4b = int(m.group(1))
-        if "|bus_type |" in line:
-            m = re.search(r"(\d+):\s*AXI4-Lite", line)
-            if m:
-                bus_lite = int(m.group(1))
-    if data_size_4b is None or bus_lite is None:
-        raise RuntimeError(f"JTAG2AXI_CAPS encodings missing from {_JTAG_PTAP_ARCH}")
-    return {"data_size_4b": data_size_4b, "bus_axi4_lite": bus_lite}
+# doc/integrator/src/smu.adoc, "SMU Default Parameters": SMC_OTP_RD/WR_PL_DEPTH
+# and SMC_RD/WR_PL_DEPTH default to 2'h3; the SEP OTP depths are fixed at 3.
+SMU_JTAG2AXI_RD_PL_DEPTH = 3
+SMU_JTAG2AXI_WR_PL_DEPTH = 3
+# doc/integrator/src/smu.adoc, "AXI Interface Configuration": "a 56-bit address
+# space with 64-bit data width".
+# The fabric bridge is the AXI4 instance and the OTP bridges the AXI-Lite
+# instances of the PTAP "Module Hierarchy" table; the OTP word is 32 bits
+# (hw/ip/efuse/doc/interface.adoc) and the eFuse AXI-Lite interface is
+# 32-bit (doc/integrator/src/smu.adoc, "eFuse Interface").
+SMU_FABRIC_J2A_ADDR_BITS = 56
+SMU_OTP_J2A_ADDR_BITS = 32
 
 
 def pack_jtag2axi_caps(
@@ -134,31 +74,31 @@ def pack_jtag2axi_caps(
     addr_size: int,
     bus_type: int,
 ) -> int:
-    """Pack 14-bit *_JTAG2AXI_CAPS using architecture.adoc field LSBs."""
-    lsb = _jtag2axi_caps_field_lsb()
+    """Pack a 14-bit *_JTAG2AXI_CAPS word."""
     return (
-        (int(rd_pl) << lsb["rd_pl_depth"])
-        | (int(wr_pl) << lsb["wr_pl_depth"])
-        | (int(data_size) << lsb["data_size"])
-        | (int(addr_size) << lsb["addr_size"])
-        | (int(bus_type) << lsb["bus_type"])
+        (int(rd_pl) << JTAG2AXI_CAPS_RD_PL_DEPTH_LSB)
+        | (int(wr_pl) << JTAG2AXI_CAPS_WR_PL_DEPTH_LSB)
+        | (int(data_size) << JTAG2AXI_CAPS_DATA_SIZE_LSB)
+        | (int(addr_size) << JTAG2AXI_CAPS_ADDR_SIZE_LSB)
+        | (int(bus_type) << JTAG2AXI_CAPS_BUS_TYPE_LSB)
     )
 
 
-# Mirrors hw/sys/dtp/dv/cocotb/env/{dtp_types,dtp_tap_device}.py
-DTP_IR_WIDTH = 6
+# IDCODE with every JTAG_IDCODE_* parameter at the default given in
+# doc/integrator/src/smu.adoc, "SMU Default Parameters" (MFR_ID 11'h000,
+# PART_NUM 16'h0000, SI_REV 4'h0): only the architecture.adoc "ID Code"
+# marker bit (bit 0, always 1) is set.
 DTP_DEFAULT_IDCODE = 0x0000_0001
-DTP_IR_IDCODE = dtp_ir_opcode("IDCODE_INSTR")
-DTP_IR_DEBUG_CONTROL = dtp_ir_opcode("DEBUG_CONTROL_INSTR")
-DTP_IR_IC_RESET = dtp_ir_opcode("IC_RESET_INSTR")
-DTP_IR_EXTEST = dtp_ir_opcode("EXTEST_INSTR")
-DTP_IR_SAMPLE_PRELOAD = dtp_ir_opcode("SAMPLE_PRELOAD_INSTR")
-DTP_IR_TAP_3DCR = dtp_ir_opcode("TAP_3DCR_INSTR")
+DTP_IR_IDCODE = dtp_ir_opcode("IDCODE")
+DTP_IR_DEBUG_CONTROL = dtp_ir_opcode("DEBUG_CONTROL")
+DTP_IR_IC_RESET = dtp_ir_opcode("IC_RESET")
+DTP_IR_EXTEST = dtp_ir_opcode("EXTEST")
+DTP_IR_SAMPLE_PRELOAD = dtp_ir_opcode("SAMPLE_PRELOAD")
+DTP_IR_TAP_3DCR = dtp_ir_opcode("TAP_3DCR")
 
-# SEP=0 SMU STAP chain: gen_stap_io + gen_stap_smc_dbg + extra[0] (no SEP STAP).
-# DTP TB STAP_ORDER includes "sep"; SMU cannot import env.dtp_scan_ref_model
-# (python_root env/ is SMU). Packing matches dtp_scan_base_test_seq.select_stap.
-SMU_STAP_ORDER = ("io", "smc", "extra0")
+# TAP_3DCR field widths (hw/sys/dtp/doc/jtag.adoc "STAP Secondary Scan Path";
+# jtag_ptap architecture "3DCR"). The wrapper's STAP chain order and the
+# scan-word packers over it live in smu_boundary_regs.
 PTAP_3DCR_WIDTH = 2
 STAP_3DCR_WIDTH = 3
 
@@ -168,78 +108,115 @@ def ptap_3dcr_value(*, config_hold: int, select: int) -> int:
     return (config_hold & 0x1) | ((select & 0x1) << 1)
 
 
-def stap_sib_pattern(name: str, enabled: int = 1) -> int:
-    idx = SMU_STAP_ORDER.index(name)
-    return (enabled & 0x1) << (len(SMU_STAP_ORDER) - 1 - idx)
-
-
 def stap_3dcr_payload(*, config_hold: int, stap_sel: int, tms_hold: int) -> int:
     """LSB-first STAP 3DCR: config_hold, stap_sel, tms_hold."""
     return (config_hold & 0x1) | ((stap_sel & 0x1) << 1) | ((tms_hold & 0x1) << 2)
 
 
-def stap_3dcr_scan_word(
-    name: str,
-    *,
-    config_hold: int,
-    stap_sel: int,
-    tms_hold: int,
-    close_sib: int = 0,
-) -> tuple[int, int]:
-    """SIB bits then 3-bit 3DCR; width = len(SMU_STAP_ORDER) + STAP_3DCR_WIDTH."""
-    payload = stap_3dcr_payload(config_hold=config_hold, stap_sel=stap_sel, tms_hold=tms_hold)
-    value = (close_sib & 0x1) << (len(SMU_STAP_ORDER) - 1 - SMU_STAP_ORDER.index(name))
-    value |= payload << len(SMU_STAP_ORDER)
-    return value, len(SMU_STAP_ORDER) + STAP_3DCR_WIDTH
-
-
-def ptap_prefixed(
-    stap_word: int, stap_width: int, *, config_hold: int = 1, select: int = 1
-) -> tuple[int, int]:
-    """Prefix PTAP 3DCR bits so TAP_3DCR DR shifts do not clear stap_select.
-
-    Scan order is TDI -> 2-bit PTAP 3DCR -> STAP SIB chain. LSB-first, so
-    the PTAP field lives in the MSBs of the combined word.
-    """
-    ptap = ptap_3dcr_value(config_hold=config_hold, select=select)
-    return (ptap << stap_width) | (stap_word & ((1 << stap_width) - 1)), (
-        PTAP_3DCR_WIDTH + stap_width
-    )
-
-
-DTP_IR_SMC_AXI_SINGLE_OP = dtp_ir_opcode("SMC_AXI_SINGLE_OP_INSTR")
-DTP_IR_SMC_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_JTAG2AXI_CAPS_INSTR")
-DTP_IR_SMC_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_AXI_SERIES_CTRL_INSTR")
-DTP_IR_SMC_AXI_SERIES_DATA_INCR = dtp_ir_opcode("SMC_AXI_SERIES_DATA_INCR_INSTR")
-DTP_IR_SMC_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_OTP_JTAG2AXI_CAPS_INSTR")
-DTP_IR_SMC_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SMC_OTP_AXI_SINGLE_OP_INSTR")
-DTP_IR_SMC_OTP_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_OTP_AXI_SERIES_CTRL_INSTR")
-DTP_IR_SMC_OTP_AXI_SERIES_DATA_NO_INCR = dtp_ir_opcode("SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR")
-DTP_IR_SEP_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SEP_OTP_JTAG2AXI_CAPS_INSTR")
-DTP_IR_SEP_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SEP_OTP_AXI_SINGLE_OP_INSTR")
-DTP_IR_JTAG_CAPS = dtp_ir_opcode("JTAG_CAPS_INSTR")
-DTP_IR_BYPASS = dtp_ir_opcode("BYPASS_INSTR")
+DTP_IR_SMC_AXI_SINGLE_OP = dtp_ir_opcode("SMC_AXI_SINGLE_OP")
+DTP_IR_SMC_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_JTAG2AXI_CAPS")
+DTP_IR_SMC_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_AXI_SERIES_CTRL")
+DTP_IR_SMC_AXI_SERIES_DATA_INCR = dtp_ir_opcode("SMC_AXI_SERIES_DATA_INCR")
+DTP_IR_SMC_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_OTP_JTAG2AXI_CAPS")
+DTP_IR_SMC_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SMC_OTP_AXI_SINGLE_OP")
+DTP_IR_SMC_OTP_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_OTP_AXI_SERIES_CTRL")
+DTP_IR_SMC_OTP_AXI_SERIES_DATA_NO_INCR = dtp_ir_opcode("SMC_OTP_AXI_SERIES_DATA_NO_INCR")
+DTP_IR_SEP_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SEP_OTP_JTAG2AXI_CAPS")
+DTP_IR_SEP_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SEP_OTP_AXI_SINGLE_OP")
+DTP_IR_JTAG_CAPS = dtp_ir_opcode("JTAG_CAPS")
+# IEEE 1149.1 all-ones BYPASS encoding; the instruction table also decodes
+# 0x00 as BYPASS.
+DTP_IR_BYPASS = dtp_ir_opcode("BYPASS_3F")
 DTP_DEBUG_CONTROL_LEN = 5
 DTP_JTAG2AXI_CAPS_LEN = 14
 DTP_JTAG_CAPS_LEN = 60
-DTP_JTAG_CAPS_SEP_DBG_EN_BIT = dtp_jtag_caps_sep_dbg_en_bit()
 # Compact OSS BSR loopback model (scan_in <- scan_out); matches DTP OSS.
 DTP_BSR_MODEL_LEN = 8
-# One-hot EXTEST decode bit in jtag_instruction_decoded_e.
+# The 6-bit IR decodes to a 64-wide one-hot bus indexed by opcode
+# (architecture.adoc "Module Hierarchy", jtag_inst_reg).
 DTP_EXTEST_DECODED_BIT = DTP_IR_EXTEST
-# SMU SEP=0 IC_RESET geometry (smu.sv / jtag_ptap):
-#   NUM_SMC = $bits(jtag_smc_reset_ctrl_t)/2 = 68, NUM_SEP = 0, NUM_EXT = 1
-#   TDR width = 2*NUM_IC_RESET + 1 (hold) = 139
-SMU_IC_RESET_NUM_PORTS = 69
+
+# IC_RESET TDR. architecture.adoc "IC_RESET Support" gives the per-port
+# layout: bit 0 reset_hold, port n at {reset_enable: 2n+1, reset_control:
+# 2n+2}, every bit resetting to 1 (reset_enable=1 is "override disabled"),
+# length 2 * ports + 1. doc/integrator/src/smu.adoc "IC_RESET TDR
+# Structure" gives the SMU composition: TDI -> SMC slice (68 ports) -> SEP
+# slice (0 ports at SEP=0, SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 at SEP=1) ->
+# external slice -> reset_hold -> TDO, so with LSB-first shifting port 0 is
+# the external port and the SMC slice follows.
+# The slice widths have to match the DUT exactly: a DR shorter than the TDR by
+# 2k bits lands every packed field k ports away from the one it names.
+# "SMC slice (TDI to TDO)" lists ss_warm_reset_n[31:0], ss_cold_reset_n[31:0],
+# cold, cool, warm, fuse (nearest the SEP slice), [31] nearer TDI than [0]:
+# counted from the TDO end that is fuse, warm, cool, cold, ss_cold[0..31],
+# ss_warm[0..31]. The external slice type is adopter-defined; the SMU bench
+# elaborates one port.
+SMU_IC_RESET_NUM_SMC_PORTS = 68
+# doc/integrator/src/smu.adoc "IC_RESET TDR Structure": the SEP slice is
+# 8 ports at SEP=1 and 0 otherwise. The named tuple is the stimulus list
+# (scan order from TDI), not the source of that width: a port added only
+# to the tuple must fail this check rather than silently move every SMC
+# index and the golden length together.
+SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1 = 8
+SMU_IC_RESET_SEP_PORTS = (
+    "abr_jtag_rst_n",
+    "trng_jtag_rst_n",
+    "sep_reset_n",
+    "kmac_jtag_rst_n",
+    "hmac_jtag_rst_n",
+    "aes_jtag_rst_n",
+    "otbn_jtag_rst_n",
+    "km_jtag_rst_n",
+)
+if len(SMU_IC_RESET_SEP_PORTS) != SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1:
+    raise RuntimeError(
+        "SMU_IC_RESET_SEP_PORTS must list the Integrator Guide SEP slice "
+        f"({SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1} ports at SEP=1)"
+    )
+SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 = SMU_IC_RESET_SEP_SLICE_PORTS_AT_SEP1
+
+
+def _smu_ic_reset_sep_ports() -> int:
+    """SEP IC_RESET slice width for the DUT this run elaborated.
+
+    doc/integrator/src/smu.adoc "IC_RESET TDR Structure" enables the SEP
+    slice only at SEP=1. The wrapper (tb_wrapper_top.sv, top module
+    smu_wrapper_uvm_top) elaborates SEP=1 and carries the full SEP slice.
+    Resolved from the cocotb top handle; outside a simulation, or under any
+    other top, it falls back to the SEP=0 shape.
+    """
+    try:
+        name = str(getattr(cocotb.top, "_name", "") or "")
+    except Exception:  # noqa: BLE001 - no simulator, e.g. tooling imports
+        return 0
+    return SMU_IC_RESET_NUM_SEP_PORTS_AT_SEP1 if name == "smu_wrapper_uvm_top" else 0
+
+
+SMU_IC_RESET_NUM_SEP_PORTS = _smu_ic_reset_sep_ports()
+SMU_IC_RESET_NUM_EXT_PORTS = 1
+SMU_IC_RESET_NUM_PORTS = (
+    SMU_IC_RESET_NUM_SMC_PORTS + SMU_IC_RESET_NUM_SEP_PORTS + SMU_IC_RESET_NUM_EXT_PORTS
+)
 SMU_IC_RESET_LEN = 2 * SMU_IC_RESET_NUM_PORTS + 1
 SMU_IC_RESET_DEFAULT = (1 << SMU_IC_RESET_LEN) - 1
 SMU_IC_RESET_EXT_PORT = 0
-SMU_IC_RESET_SMC_FUSE_PORT = 1
-SMU_IC_RESET_SMC_WARM_PORT = 2
-SMU_IC_RESET_SMC_COOL_PORT = 3
-SMU_IC_RESET_SMC_COLD_PORT = 4  # EXT@0 + SMC fuse/warm/cool/cold
-SMU_IC_RESET_SMC_SS_COLD0_PORT = 5
-SMU_IC_RESET_SMC_SS_WARM0_PORT = 37
+SMU_IC_RESET_SMC_FUSE_PORT = SMU_IC_RESET_NUM_EXT_PORTS + SMU_IC_RESET_NUM_SEP_PORTS
+SMU_IC_RESET_SMC_WARM_PORT = SMU_IC_RESET_SMC_FUSE_PORT + 1
+SMU_IC_RESET_SMC_COOL_PORT = SMU_IC_RESET_SMC_FUSE_PORT + 2
+SMU_IC_RESET_SMC_COLD_PORT = SMU_IC_RESET_SMC_FUSE_PORT + 3
+SMU_IC_RESET_SMC_SS_COLD0_PORT = SMU_IC_RESET_SMC_FUSE_PORT + 4
+SMU_IC_RESET_SMC_SS_WARM0_PORT = SMU_IC_RESET_SMC_SS_COLD0_PORT + 32
+
+
+def ic_reset_enable_bit(port: int) -> int:
+    """TDR bit of a port's reset_enable field."""
+    return 1 + 2 * int(port)
+
+
+def ic_reset_control_bit(port: int) -> int:
+    """TDR bit of a port's reset_control field."""
+    return 2 + 2 * int(port)
+
 
 SMC_DBG_SINGLE_OP_LEN = 132  # OP2|SIZE2|WSTRB8|DATA64|ADDR56
 SMC_DBG_AXSIZE_8B = 3
@@ -252,19 +229,14 @@ SMC_DBG_SERIES_DATA_LEN = 64
 SMC_OTP_SINGLE_OP_LEN = 72
 # OTP SERIES_CTRL: OP2|SIZE2|PL_DEPTH2|ADDR32|RESET1 = 39
 SMC_OTP_SERIES_CTRL_LEN = 39
-# OTP SERIES_DATA_NO_INCR payload for AxSIZE=4B (commercial / default OTP size).
+# OTP SERIES_DATA_NO_INCR payload for AxSIZE=4B (default OTP size).
 SMC_OTP_SERIES_DATA_NO_INCR_LEN = 32
 SMC_OTP_AXSIZE_4B = 2
-# APB ERR_DECODE poison (efuse_interface_controller ERR_DECODE prdata).
+# hw/ip/efuse/doc/architecture.adoc, "Access Permissions and Security": the
+# eFuse controller's error slave answers with data 0xbadcab1e.
 SMC_OTP_ERR_DECODE_DATA = 0xBADC_AB1E
-# axi_err_slv / prim_axi_lite_err_slv default RESP_DATA[31:0].
-SMC_AXI_ERR_SLV_POISON = 0xBADC_AB1E
-# Relative probe used by P1 CAPS/BUSY (routes to SHIM when MAP base is abs).
+# Relative OTP probe (routes to the SHIM when the MAP base is absolute).
 SMC_OTP_DEFAULT_PROBE_ADDR = 0x80
-# Absolute SMC eFuse map window (smc_reg.svh / INTERFACE_SEL decode).
-SMC_EFUSE_MAP_BASE = 0xC000_B000
-# BIRA word @ +0x80 — WRITE_UNLOCK in smc_efuse_pkg::EfuseFieldMap.
-SMC_EFUSE_MAP_BIRA_WORD = SMC_EFUSE_MAP_BASE + 0x80
 
 # hw/ip/jtag/jtag_ptap/doc/architecture.adoc Debug Control TDR table:
 # bit 0 boot_stall, bit 1 boot_stall_ovrd (no PeakRDL #define).
@@ -282,25 +254,20 @@ J2A_STATUS_SLVERR = 1
 J2A_STATUS_DECERR = 2
 J2A_STATUS_BUSY = 3
 
-# OTP CAPS: field LSBs + AXI4-Lite/4-byte encodings from architecture.adoc;
-# pipeline depths from smu_pkg.sv Cfg; ADDR32 matches pack_otp_single_op.
-_OTP_RD_PL, _OTP_WR_PL = _smu_otp_pl_depths()
-_OTP_CAPS_ENC = _jtag2axi_caps_encodings()
 DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS = pack_jtag2axi_caps(
-    rd_pl=_OTP_RD_PL,
-    wr_pl=_OTP_WR_PL,
-    data_size=_OTP_CAPS_ENC["data_size_4b"],
-    addr_size=32,
-    bus_type=_OTP_CAPS_ENC["bus_axi4_lite"],
+    rd_pl=SMU_JTAG2AXI_RD_PL_DEPTH,
+    wr_pl=SMU_JTAG2AXI_WR_PL_DEPTH,
+    data_size=JTAG2AXI_CAPS_DATA_SIZE_4B,
+    addr_size=SMU_OTP_J2A_ADDR_BITS,
+    bus_type=JTAG2AXI_CAPS_BUS_AXI4_LITE,
 )
 DTP_EXPECTED_SEP_OTP_JTAG2AXI_CAPS = DTP_EXPECTED_SMC_OTP_JTAG2AXI_CAPS
-# Fabric AXI4 64b/56b packing (same table LSBs; instance defaults).
 DTP_EXPECTED_SMC_JTAG2AXI_CAPS = pack_jtag2axi_caps(
-    rd_pl=_OTP_RD_PL,
-    wr_pl=_OTP_WR_PL,
-    data_size=3,
-    addr_size=56,
-    bus_type=0,
+    rd_pl=SMU_JTAG2AXI_RD_PL_DEPTH,
+    wr_pl=SMU_JTAG2AXI_WR_PL_DEPTH,
+    data_size=JTAG2AXI_CAPS_DATA_SIZE_8B,
+    addr_size=SMU_FABRIC_J2A_ADDR_BITS,
+    bus_type=JTAG2AXI_CAPS_BUS_AXI4,
 )
 
 
@@ -310,14 +277,14 @@ def pack_ic_reset_ports(
     port_enable: dict[int, int] | None = None,
     port_control: dict[int, int] | None = None,
 ) -> int:
-    """Pack SMU IC_RESET TDR by port index (0=EXT, 4=SMC cold_reset_n)."""
+    """Pack the SMU IC_RESET TDR by port index (SMU_IC_RESET_*_PORT)."""
     value = SMU_IC_RESET_DEFAULT & ~0x1
     value |= reset_hold & 0x1
     for idx, en in (port_enable or {}).items():
-        bit = 1 + 2 * int(idx)
+        bit = ic_reset_enable_bit(idx)
         value = (value & ~(1 << bit)) | ((en & 0x1) << bit)
     for idx, ctrl in (port_control or {}).items():
-        bit = 2 + 2 * int(idx)
+        bit = ic_reset_control_bit(idx)
         value = (value & ~(1 << bit)) | ((ctrl & 0x1) << bit)
     return value & SMU_IC_RESET_DEFAULT
 
@@ -490,33 +457,66 @@ def make_smu_jtag_tap(dut, period_ns: float) -> OcahJtagMasterDriver:
     return jtag
 
 
-# jtag_smc_reset_ctrl_t packed [135:0]: ovrd[135:68] | val[67:0]
-# Within ovrd/val LSB: fuse, warm, cool, cold, then ss_cold[31:0], ss_warm[31:0].
-_SMC_RESET_CTRL_BITS = {
-    "fuse_reset_n_ovrd": 68,
-    "warm_reset_n_ovrd": 69,
-    "cool_reset_n_ovrd": 70,
-    "cold_reset_n_ovrd": 71,
-    "fuse_reset_n_val": 0,
-    "warm_reset_n_val": 1,
-    "cool_reset_n_val": 2,
-    "cold_reset_n_val": 3,
+# smc_pkg::jtag_smc_reset_ctrl_t as doc/integrator/src/smu.adoc describes it
+# ("IC_RESET TDR Structure", "SMC slice (TDI to TDO)"): a packed struct of an
+# `.ovrd` half above a `.val` half, each one bit per SMC port, whose fields
+# are declared in TDI-to-TDO order -- ss_warm_reset_n[31:0],
+# ss_cold_reset_n[31:0], cold, cool, warm, fuse. A packed struct places its
+# first-declared field at the MSB, so within each half fuse_reset_n is bit 0
+# and ss_warm_reset_n[31] the top bit.
+_SMC_RESET_CTRL_HALF_BITS = SMU_IC_RESET_NUM_SMC_PORTS
+_SMC_RESET_CTRL_VAL_LSB = 0
+_SMC_RESET_CTRL_OVRD_LSB = _SMC_RESET_CTRL_HALF_BITS
+_SMC_RESET_CTRL_FIELD_LSB = {
+    "fuse_reset_n": 0,
+    "warm_reset_n": 1,
+    "cool_reset_n": 2,
+    "cold_reset_n": 3,
+    "ss_cold_reset_n": 4,
+    "ss_warm_reset_n": 36,
 }
+_SMC_RESET_CTRL_SS_WIDTH = 32
+_SMC_RESET_CTRL_SCALAR_LEAVES = (
+    "fuse_reset_n_ovrd",
+    "warm_reset_n_ovrd",
+    "cool_reset_n_ovrd",
+    "cold_reset_n_ovrd",
+    "fuse_reset_n_val",
+    "warm_reset_n_val",
+    "cool_reset_n_val",
+    "cold_reset_n_val",
+)
+
+
+def _smc_reset_ctrl_split(leaf: str) -> tuple[str, str]:
+    """Split ``<field>_ovrd`` / ``<field>_val`` into (field, half)."""
+    for half in ("ovrd", "val"):
+        suffix = f"_{half}"
+        if leaf.endswith(suffix):
+            return leaf[: -len(suffix)], half
+    raise AssertionError(f"Unknown jtag_smc_reset_ctrl leaf: {leaf}")
+
+
+def smc_reset_ctrl_packed_bit(leaf: str, idx: int | None = None) -> int:
+    """Bit index of a leaf in the packed jtag_smc_reset_ctrl_t word."""
+    field, half = _smc_reset_ctrl_split(leaf)
+    if field not in _SMC_RESET_CTRL_FIELD_LSB:
+        raise AssertionError(f"Unknown jtag_smc_reset_ctrl leaf: {leaf}")
+    base = _SMC_RESET_CTRL_OVRD_LSB if half == "ovrd" else _SMC_RESET_CTRL_VAL_LSB
+    if field.startswith("ss_"):
+        if idx is None or idx < 0 or idx >= _SMC_RESET_CTRL_SS_WIDTH:
+            raise AssertionError(f"ss reset index out of range: {idx}")
+        return base + _SMC_RESET_CTRL_FIELD_LSB[field] + idx
+    if idx is not None:
+        raise AssertionError(f"{leaf} is scalar; idx={idx} not allowed")
+    return base + _SMC_RESET_CTRL_FIELD_LSB[field]
 
 
 def _ss_reset_ctrl_bit_index(leaf: str, idx: int) -> int:
     """Packed bit index for ss_cold/ss_warm ovrd/val[idx]."""
-    if idx < 0 or idx > 31:
-        raise AssertionError(f"ss reset index out of range: {idx}")
-    if leaf == "ss_cold_reset_n_ovrd":
-        return 72 + idx
-    if leaf == "ss_warm_reset_n_ovrd":
-        return 104 + idx
-    if leaf == "ss_cold_reset_n_val":
-        return 4 + idx
-    if leaf == "ss_warm_reset_n_val":
-        return 36 + idx
-    raise AssertionError(f"Unknown ss reset leaf: {leaf}")
+    if not leaf.startswith("ss_"):
+        raise AssertionError(f"Unknown ss reset leaf: {leaf}")
+    return smc_reset_ctrl_packed_bit(leaf, idx)
 
 
 def _sample_bit(signal, name: str) -> int:
@@ -527,51 +527,76 @@ def _sample_bit(signal, name: str) -> int:
     return int(val) & 1
 
 
+_RESET_CTRL_BRANCH_LOGGED: set[tuple[str, str]] = set()
+
+
+def _log_reset_ctrl_branch(leaf: str, idx: int | None, branch: str) -> None:
+    """Log which access path served a jtag_smc_reset_ctrl read.
+
+    The first read of each (leaf, branch) pair goes to INFO so the kept log
+    shows whether a verdict rested on the hierarchical leaf or on the
+    DV-owned packed layout; repeats go to DEBUG.
+    """
+    where = leaf if idx is None else f"{leaf}[{idx}]"
+    msg = f"jtag_smc_reset_ctrl read {where} via {branch}"
+    key = (leaf, branch)
+    if key in _RESET_CTRL_BRANCH_LOGGED:
+        cocotb.log.debug(msg)
+        return
+    _RESET_CTRL_BRANCH_LOGGED.add(key)
+    cocotb.log.info(msg)
+
+
 def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
-    """Read one jtag_smc_reset_ctrl ovrd/val leaf (hierarchical or packed).
+    """Read one jtag_smc_reset_ctrl ovrd/val leaf.
 
     For scalar fuse/warm/cool/cold leaves, pass ``leaf`` only.
     For ss_* vectors, pass ``leaf`` + ``idx`` (0..31).
-    """
-    ctrl = dut.u_dut.jtag_smc_reset_ctrl
-    if idx is not None:
-        bit = _ss_reset_ctrl_bit_index(leaf, idx)
-        # Prefer packed whole-struct (VCS may expose ss_* as non-indexable GPI).
-        try:
-            packed = ctrl.value
-            if not packed.is_resolvable:
-                raise AssertionError(
-                    f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}[{idx}]: {packed}"
-                )
-            return (int(packed) >> bit) & 1
-        except AssertionError:
-            raise
-        except Exception:  # noqa: BLE001
-            pass
-        if hasattr(ctrl, "ovrd") and hasattr(ctrl, "val"):
-            group = "ovrd" if leaf.endswith("_ovrd") else "val"
-            vec = getattr(getattr(ctrl, group), leaf)
-            try:
-                return _sample_bit(vec[idx], f"jtag_smc_reset_ctrl.{leaf}[{idx}]")
-            except Exception:  # noqa: BLE001
-                v = vec.value
-                if not v.is_resolvable:
-                    raise AssertionError(f"X/Z sample on jtag_smc_reset_ctrl.{leaf}: {v}")
-                return (int(v) >> idx) & 1
-        raise AssertionError(f"Cannot read jtag_smc_reset_ctrl.{leaf}[{idx}]")
 
-    if leaf not in _SMC_RESET_CTRL_BITS:
+    The hierarchical leaf is read first (``ctrl.<half>.<field>[idx]``, then
+    the vector's own bit ``idx``); only when the simulator exposes neither is
+    the whole struct read and the bit taken from the DV-owned packed layout.
+    Every read logs the branch it took.
+    """
+    ctrl = smu_scope(dut).jtag_smc_reset_ctrl
+    if idx is None and leaf not in _SMC_RESET_CTRL_SCALAR_LEAVES:
         raise AssertionError(f"Unknown jtag_smc_reset_ctrl leaf: {leaf}")
-    if hasattr(ctrl, "ovrd") and hasattr(ctrl, "val"):
-        group = "ovrd" if leaf.endswith("_ovrd") else "val"
-        return _sample_bit(
-            getattr(getattr(ctrl, group), leaf),
-            f"jtag_smc_reset_ctrl.{leaf}",
-        )
+    field, half = _smc_reset_ctrl_split(leaf)
+    bit = smc_reset_ctrl_packed_bit(leaf, idx)
+    name = f"jtag_smc_reset_ctrl.{half}.{field}" + ("" if idx is None else f"[{idx}]")
+
+    if hasattr(ctrl, half):
+        group = getattr(ctrl, half)
+        if hasattr(group, field):
+            handle = getattr(group, field)
+            if idx is None:
+                _log_reset_ctrl_branch(leaf, idx, "hierarchical leaf")
+                return _sample_bit(handle, name)
+            try:
+                elem = handle[idx]
+            except Exception:  # noqa: BLE001
+                elem = None
+            if elem is not None:
+                try:
+                    value = _sample_bit(elem, name)
+                except AssertionError:
+                    raise
+                except Exception:  # noqa: BLE001
+                    value = None
+                if value is not None:
+                    _log_reset_ctrl_branch(leaf, idx, "hierarchical leaf element")
+                    return value
+            vec = handle.value
+            if not vec.is_resolvable:
+                raise AssertionError(f"X/Z sample on {name}: {vec}")
+            _log_reset_ctrl_branch(leaf, idx, "hierarchical leaf vector bit")
+            return (int(vec) >> idx) & 1
+
     packed = ctrl.value
     if not packed.is_resolvable:
-        raise AssertionError(f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}: {packed}")
-    return (int(packed) >> _SMC_RESET_CTRL_BITS[leaf]) & 1
+        raise AssertionError(f"X/Z sample on jtag_smc_reset_ctrl (packed) for {name}: {packed}")
+    _log_reset_ctrl_branch(leaf, idx, f"packed struct bit {bit} (DV table)")
+    return (int(packed) >> bit) & 1
 
 
 def pack_otp_single_op(
@@ -741,11 +766,13 @@ async def jtag2axi_single_write(
 ) -> tuple[int, int]:
     raw = pack_single_op(J2A_OP_WRITE, addr, data, wstrb=wstrb, size=size)
     await jtag.write("SMC_AXI_SINGLE_OP", raw)
+    require_jtag_tdo_resolved(f"J2A WR issue @0x{addr:08x}")
     # Allow AXI fabric latency before first status sample.
     await ClockCycles(cocotb.top.clk_smu_i, 32)
     status, rdata = J2A_STATUS_BUSY, 0
     for _ in range(poll_limit):
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
+        require_jtag_tdo_resolved(f"J2A WR poll @0x{addr:08x}")
         status, rdata = unpack_single_op(capt)
         if status != J2A_STATUS_BUSY:
             break
@@ -765,10 +792,12 @@ async def jtag2axi_single_read(
 ) -> tuple[int, int]:
     raw = pack_single_op(J2A_OP_READ, addr, 0, wstrb=0, size=size)
     await jtag.write("SMC_AXI_SINGLE_OP", raw)
+    require_jtag_tdo_resolved(f"J2A RD issue @0x{addr:08x}")
     await ClockCycles(cocotb.top.clk_smu_i, 32)
     status, rdata = J2A_STATUS_BUSY, 0
     for _ in range(poll_limit):
         capt = await jtag.read("SMC_AXI_SINGLE_OP", shift_value=0)
+        require_jtag_tdo_resolved(f"J2A RD poll @0x{addr:08x}")
         status, rdata = unpack_single_op(capt)
         if status != J2A_STATUS_BUSY:
             break

@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS OCCP/secure-error public-path test (P2-2 / U7-6).
 
-Replaces the CPU-scratch substitute with OTP program-fail + signature gates
-through the behavioral eFuse responder (no proprietary OCCP ROM required).
+Uses OTP program-fail + signature gates through the behavioral eFuse responder
+(no proprietary OCCP ROM required).
 """
 
 from __future__ import annotations
@@ -19,6 +19,9 @@ from smc_base_test import smc_base_test
 @pyuvm.test()
 class smc_occp_sanity_secure_error_test(smc_base_test):
     """Secure program-fail negative + recovery burn / signature positive."""
+
+    required_evidence = ("CHK-OCCP-SECURE-ERROR-RECOVERY",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 

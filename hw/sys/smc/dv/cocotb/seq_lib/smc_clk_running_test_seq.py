@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_001 ANCHOR: smc_clk_running_test
-# Also preserves P1 evidence tokens CHK-ACTIVE-RUNNING / legacy fence for closed P1 grade.
 """
 
 from __future__ import annotations
@@ -70,7 +69,7 @@ DMA_REPS = 32
 class smc_clk_running_test_seq(SmcCsrSeq):
     """P0 bring-up LIVE: CG enable readback, idle gated baseline, DMA activity ungate.
 
-    Also emits legacy P1 CHK-ACTIVE-RUNNING for the closed P1 grade on this anchor.
+    Also emits the P1 CHK-ACTIVE-RUNNING token on this anchor.
     """
 
     def __init__(self, name: str = "smc_clk_running_test_seq") -> None:
@@ -346,10 +345,10 @@ class smc_clk_running_test_seq(SmcCsrSeq):
             f"toggles_every_cycle={toggles_every} dma_edges={dma_edges} "
             f"window={ACTIVE_WINDOW} zeroer_axi_edges={zaxi_edges}",
         )
-        # Legacy P1 token: an ALIAS of CHK-DMA-ACTIVITY-UNGATE, re-reporting the
-        # same dma_edges / zaxi_edges measurement under the name the closed P1
-        # grade greps. It carries no additional compare and must not be counted
-        # as an independent proof ([NO-DUMMY-DEAD-CODE]).
+        # P1 token: an ALIAS of CHK-DMA-ACTIVITY-UNGATE, re-reporting the same
+        # dma_edges / zaxi_edges measurement under the name SMC_VPLAN.adoc lists.
+        # It carries no additional compare and must not be counted as an
+        # independent proof ([NO-DUMMY-DEAD-CODE]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-ACTIVE-RUNNING",

@@ -24,8 +24,7 @@ PACKAGE_MARKER = "PACKAGE_ID_MISMATCH"
 _USAGE_MARKERS = (LC_MARKER, CHIPLET_MARKER, PACKAGE_MARKER)
 
 SIBLING_MARKERS = {
-    marker: tuple(m for m in _USAGE_MARKERS if m != marker)
-    for marker in _USAGE_MARKERS
+    marker: tuple(m for m in _USAGE_MARKERS if m != marker) for marker in _USAGE_MARKERS
 }
 
 # Per-arm echoes, in the ROM's emission order.
@@ -60,8 +59,9 @@ def hex_value(console: list[str], token: str) -> int | None:
     return None
 
 
-def assert_slot_attributed(console: list[str], marker: str, *, after: int,
-                           before: int, expected_count: int = 1) -> int:
+def assert_slot_attributed(
+    console: list[str], marker: str, *, after: int, before: int, expected_count: int = 1
+) -> int:
     i = first_index(console, marker)
     assert after < i < before, (
         f"{marker}@{i} does not sit between line {after} and line {before}: it "
@@ -69,15 +69,13 @@ def assert_slot_attributed(console: list[str], marker: str, *, after: int,
     )
     n = count(console, marker)
     assert n == expected_count, (
-        f"{marker} appeared {n} times, expected exactly {expected_count}. "
-        f"Console: {console}"
+        f"{marker} appeared {n} times, expected exactly {expected_count}. Console: {console}"
     )
     return i
 
 
 _MANIFEST_H = (
-    pathlib.Path(__file__).resolve().parents[4] / "bootrom" / "prod" / "include"
-    / "manifest.h"
+    pathlib.Path(__file__).resolve().parents[4] / "bootrom" / "prod" / "include" / "manifest.h"
 )
 
 
@@ -108,20 +106,22 @@ def reads_starting_at(flash, addr: int) -> list[int]:
 
 def assert_no_read_starting_at(logger, flash, addr: int, why: str) -> None:
     hits = reads_starting_at(flash, addr)
-    spans = [f"0x{s:x}..0x{e:x}"
-             for s, e in (ev.read_span(t) for t in ev.reads(flash.get_transactions()))]
+    spans = [
+        f"0x{s:x}..0x{e:x}"
+        for s, e in (ev.read_span(t) for t in ev.reads(flash.get_transactions()))
+    ]
     assert not hits, (
-        f"read(s) {hits} began at 0x{addr:x}, which must not happen: {why}. "
-        f"Read spans: {spans}"
+        f"read(s) {hits} began at 0x{addr:x}, which must not happen: {why}. Read spans: {spans}"
     )
     logger.info(
         "CHK-NO-READ: no SPI read began at 0x%06x -- %s. Read spans: %s",
-        addr, why, spans,
+        addr,
+        why,
+        spans,
     )
 
 
-def assert_served_field(logger, flash, slot: str, offset: int, expected: bytes,
-                        what: str) -> None:
+def assert_served_field(logger, flash, slot: str, offset: int, expected: bytes, what: str) -> None:
     # One read must cover the whole field; the ROM fetches the manifest in one transaction.
     addr = mm.slot_base(slot) + offset
     hit = ev.covering_read(ev.reads(flash.get_transactions()), addr)
@@ -139,7 +139,11 @@ def assert_served_field(logger, flash, slot: str, offset: int, expected: bytes,
     )
     logger.info(
         "CHK-STIMULUS-SERVED: read[%d] returned %s for %s at flash 0x%06x, exactly "
-        "the planted bytes", idx, got.hex(), what, addr,
+        "the planted bytes",
+        idx,
+        got.hex(),
+        what,
+        addr,
     )
 
 
@@ -156,8 +160,7 @@ def assert_clean_key_fuses(image) -> None:
     )
 
 
-def plant_device_id_defect(buf: bytearray, slot: str, kind: str,
-                           selector_mask: int) -> int:
+def plant_device_id_defect(buf: bytearray, slot: str, kind: str, selector_mask: int) -> int:
     # Returns the lowest enabled word: the ROM rejects on the first mismatch.
     if kind not in _DEVICE_ID_TOKENS:
         raise ValueError(f"kind must be chiplet_id or package_id, got {kind!r}")
@@ -187,8 +190,7 @@ def device_id_required_markers(kind: str, reject_index: int) -> tuple[str, ...]:
     )
 
 
-def assert_device_id_mismatch(logger, console: list[str], kind: str,
-                              reject_index: int) -> None:
+def assert_device_id_mismatch(logger, console: list[str], kind: str, reject_index: int) -> None:
     idx_token, fuse_token, mfst_token = _DEVICE_ID_TOKENS[kind]
     fuse = hex_value(console, fuse_token)
     mfst = hex_value(console, mfst_token)
@@ -219,7 +221,10 @@ def assert_device_id_mismatch(logger, console: list[str], kind: str,
     )
     logger.info(
         "CHK-DEVICE-ID: %s word %d -- manifest 0x%08x vs fuse 0x%08x, refused",
-        kind, idx, mfst, fuse,
+        kind,
+        idx,
+        mfst,
+        fuse,
     )
 
 
@@ -229,7 +234,7 @@ def plant_lc_state_defect(buf: bytearray, slot: str, allowed: int) -> None:
         "selector_bits bit 16 is clear, so the ROM would skip the lifecycle "
         "usage-constraint check entirely and this stimulus would be inert"
     )
-    mm.set_life_cycle_states(buf, slot, allowed)
+    mm.set_lifecycle_states(buf, slot, allowed)
 
 
 def lc_state_required_markers(allowed: int, live_bit: int) -> tuple[str, ...]:

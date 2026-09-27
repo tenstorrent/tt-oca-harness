@@ -3,9 +3,11 @@
 //
 // dtp_jtag2axi_decode_error_decerr_read_test — cross-bridge robustness scenario
 // iterating all three JTAG2AXI bridges (smc_axi, smc_otp, sep_otp).
-// One-shot DECERR read injection on every bridge: the JTAG status
-// reports DECERR, the injected response is classified EXPECTED, and
-// an OKAY recovery read of a preloaded value follows.
+// One-shot DECERR read injection by every bridge's responder (the DTP
+// boundary has no address decoder): the JTAG status reports DECERR, the
+// injected response is classified EXPECTED, the SINGLE_OP capture returns
+// the errored beat's RDATA and not the preloaded word (CHK-J2A-ERR-RDATA),
+// and an OKAY recovery read of a preloaded value follows.
 
 class dtp_jtag2axi_decode_error_decerr_read_test extends dtp_jtag2axi_robustness_base_test;
   `uvm_component_utils(dtp_jtag2axi_decode_error_decerr_read_test)
@@ -28,6 +30,7 @@ class dtp_jtag2axi_decode_error_decerr_read_test extends dtp_jtag2axi_robustness
     ids.push_back("CHK-AXI-ERR-INJ");
     ids.push_back("CHK-AXI-RADDR");
     ids.push_back("CHK-AXI-RDATA");
+    ids.push_back("CHK-J2A-ERR-RDATA");
   endfunction
 
 endclass : dtp_jtag2axi_decode_error_decerr_read_test

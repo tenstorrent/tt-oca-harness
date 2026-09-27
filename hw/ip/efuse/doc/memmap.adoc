@@ -2,29 +2,35 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
-The eFuse IP provides multiple register maps organized into four main
-address spaces:
+eFuse is not one universally placed address space. SEP, SMC, and the Key
+Manager pass-through expose different subsets and placements. The generated
+tables below compose those integration-specific views from their canonical
+SystemRDL roots.
 
-.Address Space Overview
-[width="100%",cols="30%,30%,40%",options="header",]
-|=================================================================================
-|Address Range |Register Block |Description
-|`0x0000-0x0FFF` |Shadow Registers |Cached eFuse contents (read-only)
-|`0x1000-0x1FFF` |MMR Registers |Security tokens for authentication
-|`0x2000-0x2FFF` |eFuse Control CSR |Command and status registers
-|`0x3000-0x3FFF` |SHIM Control CSR |Foundry-specific configuration
-|=================================================================================
+ifdef::backend-html5[]
+include::partial$efuse/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
 
-====== Shadow Registers
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
 
-The shadow registers provide cached access to eFuse contents, including
-chiplet identification, package information, I2C/I3C address configuration
-(9 instances for I2C_I3C_ID[0:8]), and other system configuration data.
-These registers are automatically loaded from the physical eFuse array during boot.
+At the IP boundary, each region's base address and aperture size are
+integration parameters; the generated tables show the selected integration
+values. The MMR region exists only when the eFuse instance includes lifecycle
+state (`HAS_LC_STATE=1`).
+
+=== Shadow Registers
+
+The shadow registers provide cached read access to eFuse contents, loaded
+automatically from the physical eFuse array during boot. The field layout is
+defined by the SystemRDL sources of the instantiating subsystem; the generated
+table below is authoritative for addresses, widths, and access rights of the
+instance documented in this section.
 
 ifdef::backend-html5[]
 ++++
@@ -33,10 +39,10 @@ include::smc:partial$smc/regs/gen/html/blocks/smc_efuse_map.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[]
+include::../../../sys/smc/regs/gen/adoc/blocks/smc_efuse_map.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-====== MMR Registers
+=== MMR Registers
 
 The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.
@@ -48,13 +54,16 @@ include::partial$efuse/regs/gen/html/efuse_mmr.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/efuse_mmr.adoc[]
+include::../regs/gen/adoc/efuse_mmr.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-====== eFuse Control Registers
+=== eFuse Control Registers
 
 The eFuse Control CSR provides command and status registers for read, write,
-and verification operations on the eFuse array.
+and verification operations on the eFuse array. `program_enable` and
+`read_enable` are mutually exclusive; software deasserts `program_enable`
+after `PROGRAM_DONE` before issuing a read. See
+<<smc-dv-efuse-programming>>.
 
 ifdef::backend-html5[]
 ++++
@@ -63,13 +72,15 @@ include::partial$efuse/regs/gen/html/efuse_interface_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/efuse_interface_ctrl.adoc[]
+include::../regs/gen/adoc/efuse_interface_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-====== SHIM Control Registers
+=== SHIM Control Registers
 
 The SHIM Control CSR provides foundry-specific configuration registers for
-timing adaptation and eFuse bank initialization.
+timing adaptation and eFuse bank initialization. Its placement is
+adopter-defined within the adopter-owned SMC external aperture; it therefore
+does not appear at a fixed address in the generated OCAH map.
 
 ifdef::backend-html5[]
 ++++
@@ -78,5 +89,5 @@ include::partial$efuse/dv/models/regs/gen/html/efuse_shim_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../dv/models/regs/gen/adoc/efuse_shim_ctrl.adoc[]
+include::../dv/models/regs/gen/adoc/efuse_shim_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]

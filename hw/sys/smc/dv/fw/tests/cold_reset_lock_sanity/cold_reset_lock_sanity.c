@@ -18,26 +18,24 @@ int main(void) {
     int hartid = metal_cpu_get_current_hartid();
 
     // write to cold reset to ensure it is writable
-    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x1); // replace
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x1);
 
     // write cold reset lock, lock second cold reset
-    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x2); // replace
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x2);
 
     // write to cold reset to index 1
-    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x3); // replace
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, 0x3);
 
-    uint32_t cold_reset_read =
-        read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR); // replace
+    uint32_t cold_reset_read = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR);
 
     if (cold_reset_read != 0x1) {
         test_fail(hartid);
     }
 
     // write cold reset lock, try to unlock
-    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x0); // replace
+    write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, 0x0);
 
-    uint32_t cold_reset_lock =
-        read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR); // replace
+    uint32_t cold_reset_lock = read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR);
 
     if (cold_reset_lock != 0x2) {
         test_fail(hartid);

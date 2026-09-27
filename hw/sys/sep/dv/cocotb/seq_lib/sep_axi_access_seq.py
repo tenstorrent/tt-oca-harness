@@ -30,6 +30,7 @@ class SepAxiAccessSeq(uvm_sequence):
         expect_error: bool = False,
         user: int = 0,
         burst: int | None = None,
+        axi_id: int = 0,
     ) -> None:
         super().__init__(name)
         self._op = op
@@ -48,8 +49,10 @@ class SepAxiAccessSeq(uvm_sequence):
         self._expect_error = expect_error
         # Packed AWUSER/ARUSER (inbound FILTER_CONFIG.src_id matches user[3:0]).
         self._user = user
-        # AXI AxBURST. None = VIP default (single-beat callers stay unchanged).
+        # AXI AxBURST. None = VIP default (single beat).
         self._burst = burst
+        # AXI AxID. Default 0 matches every pre-existing caller.
+        self._axi_id = axi_id
         self.rdata: int = 0
         self.resp_ok: bool = False
         self.resp_code: int = -1
@@ -67,6 +70,7 @@ class SepAxiAccessSeq(uvm_sequence):
         item.expect_error = self._expect_error
         item.user = self._user
         item.burst = self._burst
+        item.axi_id = self._axi_id
         await self.start_item(item)
         await self.finish_item(item)
         self.rdata = item.rdata

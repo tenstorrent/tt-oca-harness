@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smn-integration]]
+= System Management Network (SMN) Integration
+
+== Status
+
+[WARNING]
+====
+This section is currently under development. Content will be added to describe
+SMN integration procedures, network topology, and management interfaces.
+====

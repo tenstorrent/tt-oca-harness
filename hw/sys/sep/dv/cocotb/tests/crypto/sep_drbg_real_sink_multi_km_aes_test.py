@@ -12,21 +12,21 @@ is BIT-EXACT and genbits-anchored:
     AXIS1 pre-adapter golden tap (sep_crypto.entropy_muxed_req[1], tb_top axis1_*).
     The drbg_axis_edn_adapter is round-robin, so this in-order equality holds because
     AES is the ONLY active crypto sink (OTBN/KMAC parked -> never request -> AES is
-    granted every word in order). That is the AXIS1 routing proof.
-  * Genbits chain: every AXIS1 word AND every KM AXIS word must be a member of the
-    CHK4 CTR_DRBG genbits-golden word multiset (report() tally, with removal) --
-    proving the one verified DRBG stream PARTITIONS into the two sinks. The AXIS1
-    tap is anchored back to the bit-exact CTR_DRBG genbits rather than trusted as a
-    golden of its own.
+    granted every word in order). This is exactly the reference suite's AXIS1 routing proof.
+  * Genbits chain: every AXIS1 word AND every KM AXIS word must be
+    a member of the CHK4 CTR_DRBG genbits-golden word multiset (report() tally, with
+    removal) -- proving the one verified DRBG stream PARTITIONS into the two sinks.
+    the reference suite treats the AXIS1 tap as its own golden; here it is anchored back to the
+    bit-exact CTR_DRBG genbits.
   * KM (membership): rom_main's pull ORDER is firmware-driven (not order-predictable),
     so KM is scored bit-exact MEMBERSHIP (each KM word is a genbits-golden word) rather
-    than order -- still far stronger than observe.
+    than order.
 
 Consumption is bounded to a single CSRNG Generate (<= cfg.glen=32 genbits blocks) so
 the CHK4 genbits golden (one Generate per seed) stays bit-exact -- the genbits-word
 pool the membership tally draws from must cover all consumed words. 1 keygen + 2 AES
-blocks + KM boot ~ 24 blocks (< 32). The budget is measured (per-keygen ~6-7
-blocks) and noted at the constants.
+blocks + KM boot ~ 24 blocks (< 32); the per-consumer block costs are at the
+constants.
 
 Checkers:
   CHK1..CHK4  bit-exact golden (decorrelator / compressor / seed / CTR_DRBG genbits)
@@ -45,12 +45,11 @@ Checkers:
               contention.
   CSRNG/EDN error/recoverable-alert regs stay zero; AES STATUS no alert.
 
-SCOPE LIMITS: per-sink bit-exact scoring for more than one CONCURRENT crypto sink
-(e.g. AES+KMAC at once) would need a full per-endpoint arbiter-assignment trace to
-undo the round-robin reorder, so the scoreboard rejects >1 golden crypto sink.
-Bit-exact KM ORDER would need controlled KM firmware; rom_main is firmware-driven,
-so KM is scored bit-exact membership instead. Neither is required by this test's
-KM+AES scope.
+Delta vs the reference suite: per-sink bit-exact for >1 CONCURRENT crypto sink
+(e.g. AES+KMAC at once) would need the reference suite's full per-endpoint arbiter-assignment trace
+(the round-robin reorder); the scoreboard rejects >1 golden crypto sink. KM bit-exact
+ORDER needs controlled KM firmware (rom_main is firmware-driven); KM here is bit-exact
+membership. Neither is required by this test's KM+AES scope.
 
 Boot recipe matches the KAT family (real fuse-sense, valid PROD OTP image;
 rom_main built PROD_BOOT_WIPE=0). AES is left released through entropy bring-up so
@@ -121,10 +120,16 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         # order is firmware-driven so not order-scored) and AES = "golden" (bit-exact
         # per-sink ROUTING: each AES post-adapter beat == the next AXIS1 pre-adapter
         # word -- the single-active-crypto-sink in-order case). Both are chained to the
-        # CHK4 genbits golden in report(). Stronger than observe, because AXIS1 is
-        # anchored to genbits rather than trusted as a golden of its own.
+        # CHK4 genbits golden in report() (the reference suite treats the AXIS1 tap as
+        # its own golden; here AXIS1 is anchored to genbits).
         await self.bring_up_entropy(
             strict=True, score_km="membership", score_sinks={"aes": "golden"}
+        )
+        # Floors from the issued stimulus, not the shared default of 1.
+        self.drbg_sb.set_min_matches(
+            CHK4_genbits=KM_CMDS + AES_BLOCKS,
+            CHK5_km=KM_CMDS,
+            CHK5_aes=AES_BLOCKS,
         )
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
@@ -173,7 +178,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
         aes_task = cocotb.start_soon(aes_arm())
         await km_task  # join (aes runs concurrently meanwhile)
         await aes_task  # join + re-raise any AES-arm assertion
-        self.logger.info("CHK-AESKAT block-0 ciphertext == AES-256-ECB golden")
+        self.logger.info("CHK-AESKAT PASS: block-0 ciphertext == AES-256-ECB golden")
 
         # Both sinks consumed entropy DURING the concurrent fork (not just one) --
         # evidences overlap: both advanced in-window, which is weaker than strict
@@ -189,7 +194,7 @@ class sep_drbg_real_sink_multi_km_aes_test(sep_base_test):
             f"(beats {aes_before}->{aes_after})"
         )
         self.logger.info(
-            "CHK-CONCUR KM+AES both advanced during the concurrent fork: KM %d->%d, AES %d->%d",
+            "CHK-CONCUR PASS: KM+AES both advanced during the concurrent fork: KM %d->%d, AES %d->%d",
             km_before,
             km_after,
             aes_before,

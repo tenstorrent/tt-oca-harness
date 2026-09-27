@@ -104,7 +104,7 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
         for _ in range(timeout_us):
             if int(dut.tb_i2c0_smbalert.value) == want:
                 return True
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         return False
 
     async def _await_smbsus_status(self, *, want_set: bool) -> None:
@@ -114,7 +114,7 @@ class smc_i2c_target_smbus_test_seq(SmcCsrSeq):
             bit = bool(st & I2C_SMBUS_STATUS_SMBSUS)
             if bit == want_set:
                 return
-            await Timer(_POLL_STEP_US, units="us")
+            await Timer(_POLL_STEP_US, unit="us")
         raise AssertionError(f"SMBSUS STATUS timeout want_set={want_set} SMBUS_STATUS=0x{st:08x}")
 
     def _drive_smbsus(self, assert_low: bool) -> None:

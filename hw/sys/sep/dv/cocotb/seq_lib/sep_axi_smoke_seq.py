@@ -18,6 +18,7 @@ Offsets and reset values follow the generated map
 
 from __future__ import annotations
 
+import cocotb
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
 from sep_reg_meta import SEP_CPU_CTRL, sym
@@ -45,16 +46,16 @@ WRITE_READBACK = [
         SEP_CPU_CTRL.mask32("SEP_NMI_VEC"),
     ),
     (
-        "RAS_BANK_INFO",
-        SEP_CPU_CTRL.addr("RAS_BANK_INFO"),
-        0x0000_00A5,
-        SEP_CPU_CTRL.mask32("RAS_BANK_INFO"),
-    ),
-    (
         "PKA_CTRL",
         SEP_CPU_CTRL.addr("PKA_CTRL"),
         0x0000_0007,
         SEP_CPU_CTRL.mask32("PKA_CTRL"),
+    ),
+    (
+        "SEP_REGION_SIZE",
+        SEP_CPU_CTRL.addr("SEP_REGION_SIZE"),
+        0x0200_0000,
+        SEP_CPU_CTRL.mask32("SEP_REGION_SIZE"),
     ),
 ]
 
@@ -68,6 +69,11 @@ class sep_axi_smoke_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
+        if expected is not None:
+            assert item.resp_ok and item.rdata == expected, (
+                f"CHK-AXI-SMOKE FAIL: read 0x{addr:08x} resp_ok={item.resp_ok} "
+                f"got 0x{item.rdata:x} want 0x{expected:x}"
+            )
 
     async def _write(self, addr: int, data: int) -> None:
         item = SepAxiItem(f"wr_0x{addr:08x}")
@@ -86,3 +92,7 @@ class sep_axi_smoke_seq(uvm_sequence):
         for _name, addr, pattern, mask in WRITE_READBACK:
             await self._write(addr, pattern)
             await self._read(addr, expected=pattern & mask)
+        cocotb.log.info(
+            "CHK-AXI-SMOKE PASS: SEP_LOCAL_BASE_ADDR reset plus %d write/readback CSRs",
+            len(WRITE_READBACK),
+        )

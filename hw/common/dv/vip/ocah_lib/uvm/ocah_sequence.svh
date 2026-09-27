@@ -11,9 +11,8 @@
 // <dut>_base_test_seq virtual sequence; typed by a VIP item it is the parent
 // a VIP master sequence adopts. The cocotb twin is ocah_lib.OcahSequence.
 //
-// Deliberately absent: an evidence handle. Its type is the protocol
-// checker the bench needs (ocah_jtag_checker, ocah_checker), so the bench
-// base sequence declares it.
+// No evidence handle here: its type is the protocol checker the bench needs
+// (ocah_jtag_checker, ocah_checker), so the bench base sequence declares it.
 
 class ocah_sequence #(
   type REQ = uvm_sequence_item,

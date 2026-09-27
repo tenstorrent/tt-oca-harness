@@ -26,7 +26,9 @@ from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_alert_seq import (
     ALERT_MASK,
+    ANY_FAIL_SLACK,
     ERR_MASK,
+    HEALTH_RSVD_MASK,
     INTR_SOURCES,
     IRQ_AGG_IDX,
     PF_MASK,
@@ -43,10 +45,15 @@ class sep_esrc_alert_delivery_test(sep_base_test):
     """Trip persistent failure, claim PIC source 16, W1C-clear."""
 
     def _irq_bit(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_AGG_IDX) & 1
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
+        # Routing only: this leaf holds the raw noise at a constant below to
+        # trip the persistent health-test failure, so a toggling generator is
+        # the opposite of what it needs.
+        await self.assert_noise_force_routed()
         esrc = SepEsrcAlert(self)
 
         sm = await esrc.read_main_sm()
@@ -138,37 +145,85 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
 
         # ANY_FAIL_COUNT's event input is the once-per-window ht_fail_pulse, so the
-        # counter is denominated in failing WINDOWS rather than failure events. This
-        # is a lower bound: it fails a counter that never advanced, and does not by
-        # itself reject a build that over-counts individual per-test fail pulses.
+        # counter is denominated in failing WINDOWS. The per-lane alert counters
+        # take the individual per-test fail pulses instead, so their sum bounds
+        # ANY_FAIL_COUNT from above. Both halves are needed: the lower bound alone
+        # is implied by the alert comparator that already fired, and the upper
+        # bound is what rejects a build that counts events where the register is
+        # documented to count windows.
         any_fail = await esrc.read_any_fail_count()
-        assert any_fail >= TRIP_THRESHOLD, (
-            f"CHK-ANY-FAIL-WINDOWS FAIL: ANY_FAIL_COUNT={any_fail} below the "
-            f"ALERT_THRESHOLD={TRIP_THRESHOLD} that tripped the alert"
+        alert_counts = await esrc.read_alert_fail_counts()
+        lane_pulses = sum(alert_counts.values())
+        assert TRIP_THRESHOLD <= any_fail <= TRIP_THRESHOLD + ANY_FAIL_SLACK, (
+            f"CHK-ANY-FAIL-WINDOWS FAIL: ANY_FAIL_COUNT={any_fail} outside "
+            f"[{TRIP_THRESHOLD}, {TRIP_THRESHOLD + ANY_FAIL_SLACK}] at the trip; "
+            f"per-lane pulses {alert_counts}"
+        )
+        assert lane_pulses >= any_fail, (
+            f"CHK-ANY-FAIL-WINDOWS FAIL: per-lane fail pulses {lane_pulses} below "
+            f"ANY_FAIL_COUNT={any_fail}; a failing window must carry at least one "
+            f"failing lane ({alert_counts})"
         )
         self.logger.info(
-            "CHK-ANY-FAIL-WINDOWS PASS: ANY_FAIL_COUNT=%d failing window(s) >= ALERT_THRESHOLD=%d",
+            "CHK-ANY-FAIL-WINDOWS PASS: ANY_FAIL_COUNT=%d window(s) in "
+            "[%d, %d], under %d per-lane fail pulses %s",
             any_fail,
             TRIP_THRESHOLD,
+            TRIP_THRESHOLD + ANY_FAIL_SLACK,
+            lane_pulses,
+            alert_counts,
         )
 
-        # Stuck noise with REPETITION_LIMIT=5 fails the repetition lane, so the
-        # per-test attribution counter for that lane must be non-zero.
-        repcnt_fails = await esrc.read_repcnt_fail_count()
-        assert repcnt_fails > 0, (
-            f"CHK-FAIL-ATTRIB FAIL: REPCNT_FAIL_COUNT={repcnt_fails} with stuck noise "
-            f"and REPETITION_LIMIT=5; the trip was not attributed to the repetition test"
+        # Stuck noise with REPETITION_LIMIT=5 fails the repetition lane. Two
+        # separate counters see that one pulse -- a 32-bit total cleared by
+        # health_test_clr and a 4-bit alert counter cleared by alert_cntrs_clr --
+        # so the total must cover the alert counter. The reverse does not hold:
+        # alert_cntrs_clr also fires on a passing window, so a lane's alert
+        # counter can return to zero while its total keeps the history.
+        totals = await esrc.read_total_fails()
+        assert totals["REPCNT"] > 0, (
+            f"CHK-FAIL-ATTRIB FAIL: REPCNT_TOTAL_FAILS={totals['REPCNT']} with stuck "
+            f"noise and REPETITION_LIMIT=5; the trip was not attributed to the "
+            f"repetition test (totals={totals})"
         )
+        for lane, alert_count in alert_counts.items():
+            assert totals[lane] >= alert_count, (
+                f"CHK-FAIL-ATTRIB FAIL: {lane}_TOTAL_FAILS={totals[lane]} below "
+                f"ALERT_FAIL_COUNTS.{lane}_FAIL_COUNT={alert_count}; the two counters "
+                f"take the same fail pulse"
+            )
         self.logger.info(
-            "CHK-FAIL-ATTRIB PASS: REPCNT_FAIL_COUNT=%d attributes the trip to the repetition test",
-            repcnt_fails,
+            "CHK-FAIL-ATTRIB PASS: totals %s cover alert counters %s", totals, alert_counts
         )
 
-        # HEALTH_TEST_STATUS latches which tests failed and is W1C.
+        # HEALTH_TEST_STATUS latches which tests failed and is W1C. The RDL
+        # allocates repetition [0], APT [3], Markov high [4] and Markov low [5];
+        # bits 1:2 and 6:7 are reserved and must never latch. The twelve
+        # per-generator status registers carry the same allocation.
         ht_status = await esrc.read_health_status()
         assert ht_status != 0, (
             "CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS.HEALTH_STATUS latched no failing test "
             "while the alert was asserted"
+        )
+        assert (ht_status & HEALTH_RSVD_MASK) == 0, (
+            f"CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS=0x{ht_status:02x} latched a "
+            f"reserved bit (mask 0x{HEALTH_RSVD_MASK:02x})"
+        )
+        gen_health = await esrc.read_generator_health()
+        for n, status in enumerate(gen_health):
+            assert (status & HEALTH_RSVD_MASK) == 0, (
+                f"CHK-GEN-HEALTH FAIL: GENERATOR_{n}_HEALTH_STATUS=0x{status:02x} "
+                f"latched a reserved bit (mask 0x{HEALTH_RSVD_MASK:02x})"
+            )
+        assert any(gen_health), (
+            "CHK-GEN-HEALTH FAIL: no per-generator health-status register latched a "
+            "failing lane while the aggregate HEALTH_TEST_STATUS reads "
+            f"0x{ht_status:02x} and the alert is asserted"
+        )
+        self.logger.info(
+            "CHK-GEN-HEALTH PASS: twelve per-generator health-status bytes %s latch "
+            "the failing lanes and no reserved bit",
+            [f"0x{v:02x}" for v in gen_health],
         )
         self.logger.info(
             "CHK-HT-STATUS latched 0x%02x during the alert; W1C is proven after "
@@ -177,6 +232,13 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
 
         await esrc.leave_alert_hang()
+        sm_before_w1c = await esrc.read_main_sm()
+        st_before_w1c = await esrc.read_intr()
+        assert (sm_before_w1c & ALERT_MASK) and (st_before_w1c & PF_MASK), (
+            f"CHK-W1C FAIL: MODULE_ENABLE=0 already cleared ALERT/PF "
+            f"(sm=0x{sm_before_w1c:08x} st=0x{st_before_w1c:08x}); "
+            "the W1C write would have been a no-op"
+        )
         await esrc.w1c_alert()
         sm = await esrc.read_main_sm()
         st = await esrc.read_intr()

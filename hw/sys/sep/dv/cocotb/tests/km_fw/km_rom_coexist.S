@@ -54,7 +54,7 @@ _start:
     lw    t0, 0x8(a0)         # READ_DATA = GO (value not inspected)
 
     # --- free-run eFuse MMR writes ---
-    li    a2, 0x00011500      # MMR0 KM-local base (MMR1 = +0x4)
+    li    a2, 0x00011500      # KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR (MMR1 = +0x4)
     li    a3, 0xA5000000      # MMR0 owner tag
     li    a4, 0x5A000000      # MMR1 owner tag
     li    a5, 0x00FFFFFF      # 24-bit payload mask

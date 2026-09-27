@@ -27,7 +27,13 @@ cocotb/tests/rom_main.rom.parhex
 # it wipes, so it lands beside the sources it guards.
 cocotb/tests/.km_rom_wipe_defines
 
-# Local DV audit reports. The dv_audit skill writes one report per snapshot;
-# they are evidence about a working tree, not a shipped artifact.
+# Local DV audit reports: evidence about a working tree, not a shipped artifact.
 /docs/dv_audit/
 /docs/dv_audit_*.md
+
+# Assembler-safe field-mask extract, lifted out of the generated km_csr.h by
+# cocotb/tests/km_fw/Makefile at build time.
+cocotb/tests/km_fw/km_fields.inc
+cocotb/tests/km_fw/km_csr_fields.inc
+cocotb/tests/km_fw/*.elf
+cocotb/tests/km_fw/*.bin

@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# OCA-classic RSA-3072 signed boot image for the SEP boot ROM.
+#
+# Same path rules as oca_non_secure_boot_test.yaml: relative to
+# hw/sys/sep/bootrom/prod, no $VAR expansion on the OCA path.
+#
+# Encodings are RAW (0x02) for both the public key and the signature. Those are
+# already the producer defaults, but they are spelled out because the ROM's
+# verify_signature callback accepts only RAW: DER would need an ASN.1 parser in
+# a 64 KiB ROM for no benefit. Note signature_encoding 0x01 (DER) is an ECDSA-only
+# encoding and is a hard config error alongside signature_type 0x01 anyway.
+#
+# key_digests.c slot 0 pins the accepted key to the SHA-256 of this modulus, so
+# swapping keys means regenerating it with tools/generate_key_digests.py.
+manifest_format: oca-classic
+manifest_identifier: "OCAHECC"
+description: "OCAH SEP boot ROM ECDSA-signed image (ROM has no ECDSA verifier)"
+secure_boot: 1
+
+signature_type: 0x05                 # ECDSA P-256 / SHA-256
+signing_authority: local
+signing_key_name: "test_rom_key_0"
+signing_key_file: "tests/signing_keys/ec_private_key.pem"
+public_key_select_classic: 0x01      # must be non-zero when secure_boot is 1
+public_key_encoding: 0x02            # RAW (388 B: 384-byte modulus + 4-byte exponent)
+signature_encoding: 0x02             # RAW (384 B, big-endian)
+
+timestamp: 1764633600
+manifest_content_version:
+  major: 1
+  minor: 0
+  patch: 0
+payload_images:
+  - type: "OCAHSEP BLSTAGE1"
+    path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
+    # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
+    # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
+    # so it only runs correctly when loaded there. The ROM honours whichever region
+    # this names (SEP-ROM-MAN-060 permits SRAM or ICCM) and copies via the DMA,
+    # which is mandatory for an ICCM destination: the LSU cannot store to ICCM.
+    load_addr: 0xC0000000
+
+# A well-formed manifest the ROM must refuse rather than mis-verify. ECDSA P-256
+# is a legal OCA primitive, but this ROM implements only RSA-3072, so
+# plat_verify_signature() rejects the primitive outright. The point is that an
+# unsupported algorithm is a clean refusal, never a pass.

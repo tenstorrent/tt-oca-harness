@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AoU Appendix A. Records of Changes
+:description: Revision history of the AoU microarchitecture specification.
+
+:sectnums!:
+
+include::aou:partial$records-of-changes.adoc[]

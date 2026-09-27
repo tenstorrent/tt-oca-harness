@@ -1,8 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle with ROM public-key slot 5 revoked.
 #
 # CHIPLET_PUBK_REVOKE.select[7:0] is the ROM chiplet-creator classical key
 # bitmap (sep_efuse_map.rdl:721-729); SEP ROM tests bit N for a manifest that
-# selects ROM key slot N (manifest_crypto.c). 0x20 revokes slot 5 and
+# selects ROM key slot N (oca_platform.c). 0x20 revokes slot 5 and
 # nothing else, so slot 0 -- the one the signed test image actually binds to --
 # stays usable and a rejection can only be attributed to the selected slot.
 #

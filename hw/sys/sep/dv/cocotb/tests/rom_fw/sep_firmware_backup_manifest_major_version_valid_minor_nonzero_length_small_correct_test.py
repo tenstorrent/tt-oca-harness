@@ -11,7 +11,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -21,11 +20,14 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
-_MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
+_MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 
 _BACKUP_LENGTH = mm.MANIFEST_SIZE + 4
 _BACKUP_MINOR = 1
@@ -36,7 +38,8 @@ _EXTRA_LEN = _BACKUP_LENGTH - mm.MANIFEST_SIZE
 
 @pyuvm.test()
 class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test(
-        sep_primary_fail_backup_boot_base):
+    sep_primary_fail_backup_boot_base
+):
     """Primary refused as BAD_MAGIC; a v1.1/1188 backup is accepted and boots."""
 
     # BAD_MAGIC prints no console token, so check_transport() carries the attribution.
@@ -46,31 +49,44 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    extra_forbidden = ("MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-                       "PLD_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
-                       "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
-                       "PAYLOAD_OFF_ALIGN", "PAYLOAD_OFF_RANGE",
-                       "PAYLOAD_HASHED_LEN_BAD=", "PAYLOAD_LEN_RANGE",
-                       "PAYLOAD_OVERLAPS_MANIFEST", "TOC_PLEN_MISMATCH=",
-                       "PAYLOAD_LOC_OVERFLOW", "ENC_HASHED_LEN_PARTIAL",
-                       fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        "MANIFEST_HASH_MISMATCH",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        "MANIFEST_ALL_FAILED",
+        "IMAGE_HASH_MISMATCH",
+        "NO_BL1_IMAGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_HASHED_LEN_BAD=",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "PAYLOAD_LOC_OVERFLOW",
+        "ENC_HASHED_LEN_PARTIAL",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
-        mm.set_identifier(buf, "primary")
-        got = bytes(buf[mm.PRIMARY_MANIFEST_OFFSET:mm.PRIMARY_MANIFEST_OFFSET + 4])
+        mm.break_magic(buf, "primary")
+        got = bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
         assert got != mm.MANIFEST_MAGIC, (
-            "primary manifest_identifier is still TBL1; the failover trigger did not "
+            "primary manifest_identifier is still OCAC; the failover trigger did not "
             "land and the backup would never be reached"
         )
         self.logger.info(
             "CHK-STIMULUS-PRIMARY-MAGIC: primary manifest_identifier -> %r, refused "
             "as MANIFEST_ERR=0x%08x by the check immediately ahead of the version "
             "and length rules -- the reference's own failover trigger",
-            got, _MANIFEST_ERR_BAD_MAGIC,
+            got,
+            _MANIFEST_ERR_BAD_MAGIC,
         )
 
     def prepare_backup(self, buf: bytearray) -> None:
-        # minor and length sit inside the signed TBS, so the slot must be re-sealed to boot.
+        # minor and length sit inside the signed signed region, so the slot must be re-sealed to boot.
         # Check the signer first, or a bad re-seal looks like a genuine SIG_FAILED rejection.
         pm.verify_signing_key(buf, "backup")
         pm.verify_sealed(buf, "backup")
@@ -119,8 +135,7 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
             f"write, expected {mm.MANIFEST_MAJOR_VERSION}.{_BACKUP_MINOR}"
         )
         assert after_len == _BACKUP_LENGTH, (
-            f"backup manifest_length is {after_len} after the write, expected "
-            f"{_BACKUP_LENGTH}"
+            f"backup manifest_length is {after_len} after the write, expected {_BACKUP_LENGTH}"
         )
         self.logger.info(
             "CHK-STIMULUS-BACKUP-VERSION: backup %d.%d/%d -> %d.%d/%d and re-sealed. "
@@ -128,9 +143,17 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
             "and inside [%d, %d]; payload_offset %d clears the declared length, so "
             "the slot must be ACCEPTED. It also exceeds sizeof(manifest_t) by %d, "
             "which forces load_manifest_extra() to fetch that many extra bytes",
-            before_ver[0], before_ver[1], before_len,
-            after_ver[0], after_ver[1], after_len, _BACKUP_LENGTH,
-            mm.MANIFEST_SIZE, mm.MANIFEST_MAX_SIZE, p_off, _EXTRA_LEN,
+            before_ver[0],
+            before_ver[1],
+            before_len,
+            after_ver[0],
+            after_ver[1],
+            after_len,
+            _BACKUP_LENGTH,
+            mm.MANIFEST_SIZE,
+            mm.MANIFEST_MAX_SIZE,
+            p_off,
+            _EXTRA_LEN,
         )
 
     def check_efuse(self, image) -> None:
@@ -143,8 +166,7 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
         assert n_ok == 1, (
@@ -162,15 +184,14 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
         rds = ev.reads(flash.get_transactions())
         b_starts = fd.reads_starting_at(flash, mm.BACKUP_MANIFEST_OFFSET)
         assert b_starts, (
-            f"no SPI read began at the backup manifest address "
-            f"0x{mm.BACKUP_MANIFEST_OFFSET:x}"
+            f"no SPI read began at the backup manifest address 0x{mm.BACKUP_MANIFEST_OFFSET:x}"
         )
         b_idx = b_starts[0]
         x_starts = fd.reads_starting_at(flash, _EXTRA_ADDR)
         assert x_starts, (
             f"no SPI read began at 0x{_EXTRA_ADDR:x}. The backup declares "
             f"manifest_length {_BACKUP_LENGTH}, which is {_EXTRA_LEN} bytes past "
-            f"sizeof(manifest_t), so load_manifest_extra() (manifest_load.c) must "
+            f"sizeof(manifest_t), so load_manifest_extra() (oca_boot.c) must "
             f"have fetched them: the ROM accepted the v1.1 length without acting on "
             f"it. Transactions: {ev.summarize(flash.get_transactions(), self._image_len)}"
         )
@@ -197,7 +218,7 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
         assert x_idx < p_hit[0], (
             f"the extension read[{x_idx}] did not precede the payload read"
             f"[{p_hit[0]}]: load_manifest_extra() is called before load_payload() "
-            f"(manifest_load.c), so this ordering is not the ROM's"
+            f"(oca_boot.c), so this ordering is not the ROM's"
         )
         self.logger.info(
             "CHK-LENGTH-RULE: primary@%d refused %s@%d before its hash was computed; "
@@ -205,6 +226,15 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_smal
             "only MANIFEST_HASH_OK@%d, and the device then served read[%d] "
             "0x%06x..0x%06x -- the load_manifest_extra() fetch the declared length "
             "forces. The range rule is demonstrated as taken, not merely satisfied",
-            i_psrc, slot_err, i_err, i_bsrc, mm.MANIFEST_MAJOR_VERSION,
-            _BACKUP_MINOR, _BACKUP_LENGTH, i_hash, x_idx, x_start, x_end,
+            i_psrc,
+            slot_err,
+            i_err,
+            i_bsrc,
+            mm.MANIFEST_MAJOR_VERSION,
+            _BACKUP_MINOR,
+            _BACKUP_LENGTH,
+            i_hash,
+            x_idx,
+            x_start,
+            x_end,
         )

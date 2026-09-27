@@ -13,7 +13,6 @@ import struct
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -21,8 +20,11 @@ from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -38,22 +40,40 @@ _EXTRA_LEN = _PRIMARY_LENGTH - mm.MANIFEST_SIZE
 
 @pyuvm.test()
 class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_small_correct_test(
-        sep_rom_ot_secure_boot_test):
+    sep_rom_ot_secure_boot_test
+):
     """A v1.1/1188 primary is accepted, fetches its extension, and boots."""
 
     efuse_preload = _EFUSE_PRELOAD
     required_markers = sep_rom_ot_secure_boot_test.required_markers + (
-        "LC=PROD", "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=",
+        "LC=PROD",
+        "MANIFEST_HASH_OK",
+        "PLD_HASH_OK",
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     # A bare "MANIFEST_ERR=" forbids every structural and cryptographic verdict.
     forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
-        _BACKUP_SRC, "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=",
-        "MANIFEST_HASH_MISMATCH", "RSA_VERIFY_FAIL", "PLD_HASH_MISMATCH",
-        "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
-        "PAYLOAD_OFF_ALIGN", "PAYLOAD_OFF_RANGE", "PAYLOAD_HASHED_LEN_BAD=",
-        "PAYLOAD_LEN_RANGE", "PAYLOAD_OVERLAPS_MANIFEST", "TOC_PLEN_MISMATCH=",
-        "PAYLOAD_LOC_OVERFLOW", "ENC_HASHED_LEN_PARTIAL",
-        fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER,
+        _BACKUP_SRC,
+        "MANIFEST_ERR=",
+        "MANIFEST_ALL_FAILED",
+        "CRYPTO_FAIL=",
+        "MANIFEST_HASH_MISMATCH",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        "IMAGE_HASH_MISMATCH",
+        "NO_BL1_IMAGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_HASHED_LEN_BAD=",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "PAYLOAD_LOC_OVERFLOW",
+        "ENC_HASHED_LEN_PARTIAL",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
     )
 
     def build_efuse_image(self):
@@ -74,8 +94,11 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
         fd.assert_clean_key_fuses(image)
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, "
-            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x", lc, sboot_dis,
-            image.field_int("BL1_VERSION"), image.field_int("CHIPLET_PUBK_REVOKE"),
+            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            image.field_int("BL1_VERSION"),
+            image.field_int("CHIPLET_PUBK_REVOKE"),
         )
         return image
 
@@ -133,8 +156,7 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             f"write, expected {mm.MANIFEST_MAJOR_VERSION}.{_PRIMARY_MINOR}"
         )
         assert after_len == _PRIMARY_LENGTH, (
-            f"primary manifest_length is {after_len} after the write, expected "
-            f"{_PRIMARY_LENGTH}"
+            f"primary manifest_length is {after_len} after the write, expected {_PRIMARY_LENGTH}"
         )
         # A stale hash or signature would refuse the slot for a reason unrelated to its length.
         pm.verify_sealed(buf, "primary")
@@ -146,22 +168,33 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             "length, so the slot must be ACCEPTED. It also exceeds "
             "sizeof(manifest_t) by %d, which forces load_manifest_extra() to fetch "
             "that many extra bytes",
-            before_ver[0], before_ver[1], before_len,
-            after_ver[0], after_ver[1], after_len, _PRIMARY_LENGTH,
-            mm.MANIFEST_SIZE, mm.MANIFEST_MAX_SIZE, p_off, _EXTRA_LEN,
+            before_ver[0],
+            before_ver[1],
+            before_len,
+            after_ver[0],
+            after_ver[1],
+            after_len,
+            _PRIMARY_LENGTH,
+            mm.MANIFEST_SIZE,
+            mm.MANIFEST_MAX_SIZE,
+            p_off,
+            _EXTRA_LEN,
         )
         self.logger.info("CHK-STIMULUS-PRIMARY: %s", mm.describe(buf, "primary"))
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         fd.assert_served_field(
-            self.logger, flash, "primary", _VERSION_LENGTH_OFF,
-            struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, _PRIMARY_MINOR,
-                        _PRIMARY_LENGTH),
+            self.logger,
+            flash,
+            "primary",
+            _VERSION_LENGTH_OFF,
+            struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, _PRIMARY_MINOR, _PRIMARY_LENGTH),
             "primary manifest_version_major/minor + manifest_length",
         )
 
@@ -180,15 +213,14 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
         rds = ev.reads(flash.get_transactions())
         p_starts = fd.reads_starting_at(flash, mm.PRIMARY_MANIFEST_OFFSET)
         assert p_starts, (
-            f"no SPI read began at the primary manifest address "
-            f"0x{mm.PRIMARY_MANIFEST_OFFSET:x}"
+            f"no SPI read began at the primary manifest address 0x{mm.PRIMARY_MANIFEST_OFFSET:x}"
         )
         p_idx = p_starts[0]
         x_starts = fd.reads_starting_at(flash, _EXTRA_ADDR)
         assert x_starts, (
             f"no SPI read began at 0x{_EXTRA_ADDR:x}. The primary declares "
             f"manifest_length {_PRIMARY_LENGTH}, which is {_EXTRA_LEN} bytes past "
-            f"sizeof(manifest_t), so load_manifest_extra() (manifest_load.c) must "
+            f"sizeof(manifest_t), so load_manifest_extra() (oca_boot.c) must "
             f"have fetched them: the ROM accepted the v1.1 length without acting on "
             f"it. Transactions: "
             f"{ev.summarize(flash.get_transactions(), self._image_len)}"
@@ -217,7 +249,7 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
         assert x_idx < pl_hit[0], (
             f"the extension read[{x_idx}] did not precede the payload read"
             f"[{pl_hit[0]}]: load_manifest_extra() is called before load_payload() "
-            f"(manifest_load.c), so this ordering is not the ROM's"
+            f"(oca_boot.c), so this ordering is not the ROM's"
         )
 
         b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
@@ -233,6 +265,13 @@ class sep_firmware_primary_manifest_major_version_valid_minor_nonzero_length_sma
             "read[%d] 0x%06x..0x%06x -- the load_manifest_extra() fetch the declared "
             "length forces -- before the payload read[%d]. No read covered the backup "
             "slot. The range rule is demonstrated as taken, not merely satisfied",
-            i_psrc, mm.MANIFEST_MAJOR_VERSION, _PRIMARY_MINOR, _PRIMARY_LENGTH,
-            i_hash, x_idx, x_start, x_end, pl_hit[0],
+            i_psrc,
+            mm.MANIFEST_MAJOR_VERSION,
+            _PRIMARY_MINOR,
+            _PRIMARY_LENGTH,
+            i_hash,
+            x_idx,
+            x_start,
+            x_end,
+            pl_hit[0],
         )

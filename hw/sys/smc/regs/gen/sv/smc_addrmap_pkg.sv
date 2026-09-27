@@ -33,7 +33,7 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_BASE_ADDR = 
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_WARM_SIZE = 64'h20;
 
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR = 64'hC0002900;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h14;
+localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE = 64'h10;
 
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_SIZE = 64'hC;
@@ -93,7 +93,7 @@ localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGIN
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_SIZE = 64'h80;
 
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SIZE = 64'hC00;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SIZE = 64'h400;
 
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR = 64'hC0008000;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_SIZE = 64'h1C;
@@ -463,6 +463,28 @@ localparam longint unsigned SMC_TOP_SPM_MEMORY_SIZE = 64'h100000;
 localparam longint unsigned SMC_TOP_SMC_CLA_BASE_ADDR = 64'hC0160000;
 localparam longint unsigned SMC_TOP_SMC_CLA_SIZE = 64'h4000;
 
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_BASE_ADDR = 64'hC0160000;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_SIZE = 64'h1000;
+
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_BASE_ADDR = 64'hC0161000;
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_SIZE = 64'h1000;
+
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162000 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_NUM = 64'h1;
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_SIZE = 64'h1000;
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_STRIDE = 64'h1000;
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_TOTAL_SIZE = 64'h1000;
+
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC0163000 + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_NUM = 64'h1;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SIZE = 64'h1000;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_STRIDE = 64'h1000;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_TOTAL_SIZE = 64'h1000;
+
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_BASE_ADDR = 64'hC0400000;
 localparam longint unsigned SMC_TOP_SMC_EXTERNAL_SIZE = 64'h400000;
 
@@ -551,7 +573,6 @@ localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_AD
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR = 64'hC0002904;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR = 64'hC0002908;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR = 64'hC000290C;
-localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR = 64'hC0002910;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR = 64'hC0002A00;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR = 64'hC0002A04;
 localparam longint unsigned SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR = 64'hC0002A08;
@@ -793,23 +814,17 @@ function automatic longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_L
 endfunction
 localparam longint unsigned SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_NUM = 64'h10;
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR = 64'hC0007000;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR = 64'hC0007008;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR = 64'hC0007028;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR = 64'hC0007048;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR = 64'hC0007848;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR = 64'hC0007888;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SOP_TOPOLOGY_BASE_ADDR = 64'hC00078A8;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR = 64'hC0007008;
 function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_BASE_ADDR(input int unsigned I2C_I3C_ID_idx);
-    return 64'hC00078AC + (I2C_I3C_ID_idx * 64'h8);
+    return 64'hC0007028 + (I2C_I3C_ID_idx * 64'h8);
 endfunction
 localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_I3C_ID_NUM = 64'h9;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I2C_CLOCK_GATING_BASE_ADDR = 64'hC00078F4;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_I3C_DISABLE_BASE_ADDR = 64'hC00078F8;
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_PLL_AND_SENSOR_BASE_ADDR = 64'hC00078FC;
-function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(input int unsigned RESERVED_idx);
-    return 64'hC0007AFC + (RESERVED_idx * 64'h4);
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR = 64'hC0007070;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR = 64'hC0007078;
+function automatic longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(input int unsigned SPARE_idx);
+    return 64'hC0007080 + (SPARE_idx * 64'h20);
 endfunction
-localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_RESERVED_NUM = 64'h41;
+localparam longint unsigned SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM = 64'h1C;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR = 64'hC0008000;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR = 64'hC0008004;
 localparam longint unsigned SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR = 64'hC0008008;
@@ -2291,143 +2306,500 @@ function automatic longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TERMINAT
     return 64'hC003A3A0 + (i3c_csr_idx * 64'h1000);
 endfunction
 localparam longint unsigned SMC_TOP_OCA_I3C_WRAP_I3C_CSR_I3C_EC_TERMINATION_EXTCAP_HEADER_NUM = 64'h6;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMCONTROL_BASE_ADDR = 64'hC0160000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMIMPL_BASE_ADDR = 64'hC0160004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMSTARTLOW_BASE_ADDR = 64'hC0160010;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMSTARTHIGH_BASE_ADDR = 64'hC0160014;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMLIMITLOW_BASE_ADDR = 64'hC0160018;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMLIMITHIGH_BASE_ADDR = 64'hC016001C;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMWPLOW_BASE_ADDR = 64'hC0160020;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMWPHIGH_BASE_ADDR = 64'hC0160024;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMRPLOW_BASE_ADDR = 64'hC0160028;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMRPHIGH_BASE_ADDR = 64'hC016002C;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTRAMDATA_BASE_ADDR = 64'hC0160040;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSINKSCRATCHLO_BASE_ADDR = 64'hC0160FF8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSINKSCRATCHHI_BASE_ADDR = 64'hC0160FFC;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELCONTROL_BASE_ADDR = 64'hC0161000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELIMPL_BASE_ADDR = 64'hC0161004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELDISINPUT_BASE_ADDR = 64'hC0161008;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELSCRATCHLO_BASE_ADDR = 64'hC0161FF8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRFUNNELSCRATCHHI_BASE_ADDR = 64'hC0161FFC;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER0CFG_BASE_ADDR = 64'hC0162100;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER1CFG_BASE_ADDR = 64'hC0162108;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER2CFG_BASE_ADDR = 64'hC0162110;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACOUNTER3CFG_BASE_ADDR = 64'hC0162118;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP0_BASE_ADDR = 64'hC0162120;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP1_BASE_ADDR = 64'hC0162128;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP0_BASE_ADDR = 64'hC0162130;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP1_BASE_ADDR = 64'hC0162138;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP0_BASE_ADDR = 64'hC0162140;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP1_BASE_ADDR = 64'hC0162148;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP0_BASE_ADDR = 64'hC0162150;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP1_BASE_ADDR = 64'hC0162158;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK0LO_BASE_ADDR = 64'hC0162160;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH0LO_BASE_ADDR = 64'hC0162168;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK1LO_BASE_ADDR = 64'hC0162170;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH1LO_BASE_ADDR = 64'hC0162178;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALEDGEDETECTCFG_BASE_ADDR = 64'hC0162180;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGEAPSTATUS_BASE_ADDR = 64'hC0162188;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLACTRLSTATUS_BASE_ADDR = 64'hC0162190;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGMUXSELLO_BASE_ADDR = 64'hC0162198;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD1_BASE_ADDR = 64'hC01621A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGRSVD2_BASE_ADDR = 64'hC01621A8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONMASKLO_BASE_ADDR = 64'hC01621B0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONFROMVALUELO_BASE_ADDR = 64'hC01621B8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONTOVALUELO_BASE_ADDR = 64'hC01621C0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTMASKLO_BASE_ADDR = 64'hC01621C8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTVALUE_BASE_ADDR = 64'hC01621D0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGANYCHANGELO_BASE_ADDR = 64'hC01621D8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0LO_BASE_ADDR = 64'hC01621E0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1LO_BASE_ADDR = 64'hC01621E8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0LO_BASE_ADDR = 64'hC01621F0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1LO_BASE_ADDR = 64'hC01621F8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0LO_BASE_ADDR = 64'hC0162200;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1LO_BASE_ADDR = 64'hC0162208;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0LO_BASE_ADDR = 64'hC0162210;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1LO_BASE_ADDR = 64'hC0162218;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMEMATCH_BASE_ADDR = 64'hC0162220;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK2LO_BASE_ADDR = 64'hC0162228;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH2LO_BASE_ADDR = 64'hC0162230;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK3LO_BASE_ADDR = 64'hC0162238;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH3LO_BASE_ADDR = 64'hC0162240;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP2_BASE_ADDR = 64'hC0162248;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE0EAP3_BASE_ADDR = 64'hC0162250;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP2_BASE_ADDR = 64'hC0162258;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE1EAP3_BASE_ADDR = 64'hC0162260;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP2_BASE_ADDR = 64'hC0162268;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE2EAP3_BASE_ADDR = 64'hC0162270;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP2_BASE_ADDR = 64'hC0162278;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGNODE3EAP3_BASE_ADDR = 64'hC0162280;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2LO_BASE_ADDR = 64'hC0162288;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3LO_BASE_ADDR = 64'hC0162290;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2LO_BASE_ADDR = 64'hC0162298;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3LO_BASE_ADDR = 64'hC01622A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2LO_BASE_ADDR = 64'hC01622A8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3LO_BASE_ADDR = 64'hC01622B0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2LO_BASE_ADDR = 64'hC01622B8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3LO_BASE_ADDR = 64'hC01622C0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALDELAYMUXSEL_BASE_ADDR = 64'hC01622C8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLAXTRIGGERTIMESTRETCH_BASE_ADDR = 64'hC01622D8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMP_BASE_ADDR = 64'hC01622F0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMPSYNC_BASE_ADDR = 64'hC01622F8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCLATIMESTAMPCONFIG_BASE_ADDR = 64'hC0162300;
-localparam longint unsigned SMC_TOP_SMC_CLA_CRSCRATCHPAD_BASE_ADDR = 64'hC01623F0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK0HI_BASE_ADDR = 64'hC0162400;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH0HI_BASE_ADDR = 64'hC0162408;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK1HI_BASE_ADDR = 64'hC0162410;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH1HI_BASE_ADDR = 64'hC0162418;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK2HI_BASE_ADDR = 64'hC0162420;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH2HI_BASE_ADDR = 64'hC0162428;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMASK3HI_BASE_ADDR = 64'hC0162430;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALMATCH3HI_BASE_ADDR = 64'hC0162438;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGMUXSELHI_BASE_ADDR = 64'hC0162440;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONMASKHI_BASE_ADDR = 64'hC0162448;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONFROMVALUEHI_BASE_ADDR = 64'hC0162450;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTRANSITIONTOVALUEHI_BASE_ADDR = 64'hC0162458;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGONESCOUNTMASKHI_BASE_ADDR = 64'hC0162460;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGANYCHANGEHI_BASE_ADDR = 64'hC0162468;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0HI_BASE_ADDR = 64'hC0162470;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1HI_BASE_ADDR = 64'hC0162478;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0HI_BASE_ADDR = 64'hC0162480;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1HI_BASE_ADDR = 64'hC0162488;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0HI_BASE_ADDR = 64'hC0162490;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1HI_BASE_ADDR = 64'hC0162498;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0HI_BASE_ADDR = 64'hC01624A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1HI_BASE_ADDR = 64'hC01624A8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2HI_BASE_ADDR = 64'hC01624B0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3HI_BASE_ADDR = 64'hC01624B8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2HI_BASE_ADDR = 64'hC01624C0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3HI_BASE_ADDR = 64'hC01624C8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2HI_BASE_ADDR = 64'hC01624D0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3HI_BASE_ADDR = 64'hC01624D8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2HI_BASE_ADDR = 64'hC01624E0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3HI_BASE_ADDR = 64'hC01624E8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGLFSR_BASE_ADDR = 64'hC01624F0;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGLFSRMASK_BASE_ADDR = 64'hC01624F8;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGTIMESTAMPCAPTURE_BASE_ADDR = 64'hC0162500;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0LO_BASE_ADDR = 64'hC0162508;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0MASKLO_BASE_ADDR = 64'hC0162510;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1LO_BASE_ADDR = 64'hC0162518;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1MASKLO_BASE_ADDR = 64'hC0162520;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2LO_BASE_ADDR = 64'hC0162528;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2MASKLO_BASE_ADDR = 64'hC0162530;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3LO_BASE_ADDR = 64'hC0162538;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3MASKLO_BASE_ADDR = 64'hC0162540;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0HI_BASE_ADDR = 64'hC0162548;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE0MASKHI_BASE_ADDR = 64'hC0162550;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1HI_BASE_ADDR = 64'hC0162558;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE1MASKHI_BASE_ADDR = 64'hC0162560;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2HI_BASE_ADDR = 64'hC0162568;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE2MASKHI_BASE_ADDR = 64'hC0162570;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3HI_BASE_ADDR = 64'hC0162578;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGCOMPARE3MASKHI_BASE_ADDR = 64'hC0162580;
-localparam longint unsigned SMC_TOP_SMC_CLA_SCRATCH_BASE_ADDR = 64'hC0162FF8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTCONTROL_BASE_ADDR = 64'hC0163000;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTIMPL_BASE_ADDR = 64'hC0163004;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTINSTFEATURES_BASE_ADDR = 64'hC0163008;
-localparam longint unsigned SMC_TOP_SMC_CLA_CDBGDEBUGTRACECFG_BASE_ADDR = 64'hC01631A0;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSCRATCHLO_BASE_ADDR = 64'hC0163FF8;
-localparam longint unsigned SMC_TOP_SMC_CLA_TRDSTSCRATCHHI_BASE_ADDR = 64'hC0163FFC;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMCONTROL_BASE_ADDR = 64'hC0160000;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMIMPL_BASE_ADDR = 64'hC0160004;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMSTARTLOW_BASE_ADDR = 64'hC0160010;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMSTARTHIGH_BASE_ADDR = 64'hC0160014;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMLIMITLOW_BASE_ADDR = 64'hC0160018;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMLIMITHIGH_BASE_ADDR = 64'hC016001C;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMWPLOW_BASE_ADDR = 64'hC0160020;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMWPHIGH_BASE_ADDR = 64'hC0160024;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMRPLOW_BASE_ADDR = 64'hC0160028;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMRPHIGH_BASE_ADDR = 64'hC016002C;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_TRDSTRAMDATA_BASE_ADDR = 64'hC0160040;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_SCRATCHLO_BASE_ADDR = 64'hC0160FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SINK_SCRATCHHI_BASE_ADDR = 64'hC0160FFC;
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_TRFUNNELCONTROL_BASE_ADDR = 64'hC0161000;
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_TRFUNNELIMPL_BASE_ADDR = 64'hC0161004;
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_TRFUNNELDISINPUT_BASE_ADDR = 64'hC0161008;
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_SCRATCHLO_BASE_ADDR = 64'hC0161FF8;
+localparam longint unsigned SMC_TOP_SMC_CLA_FUNNEL_SCRATCHHI_BASE_ADDR = 64'hC0161FFC;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER0CFG_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162100 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER0CFG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER1CFG_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162108 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER1CFG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER2CFG_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162110 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER2CFG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER3CFG_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162118 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACOUNTER3CFG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP0_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162120 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP0_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP1_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162128 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP1_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP0_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162130 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP0_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP1_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162138 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP1_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP0_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162140 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP0_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP1_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162148 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP1_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP0_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162150 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP0_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP1_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162158 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP1_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162160 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162168 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162170 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162178 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALEDGEDETECTCFG_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162180 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALEDGEDETECTCFG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGEAPSTATUS_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162188 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGEAPSTATUS_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACTRLSTATUS_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162190 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLACTRLSTATUS_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGMUXSELLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162198 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGMUXSELLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGRSVD1_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621A0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGRSVD1_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGRSVD2_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621A8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGRSVD2_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONMASKLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621B0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONMASKLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONFROMVALUELO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621B8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONFROMVALUELO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONTOVALUELO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621C0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONTOVALUELO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGONESCOUNTMASKLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621C8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGONESCOUNTMASKLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGONESCOUNTVALUE_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621D0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGONESCOUNTVALUE_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGANYCHANGELO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621D8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGANYCHANGELO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621E0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621E8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621F0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01621F8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162200 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162208 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162210 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162218 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMEMATCH_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162220 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMEMATCH_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162228 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162230 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162238 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162240 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP2_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162248 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP2_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP3_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162250 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE0EAP3_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP2_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162258 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP2_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP3_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162260 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE1EAP3_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP2_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162268 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP2_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP3_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162270 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE2EAP3_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP2_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162278 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP2_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP3_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162280 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGNODE3EAP3_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162288 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162290 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162298 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622A0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622A8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622B0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622B8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622C0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALDELAYMUXSEL_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622C8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALDELAYMUXSEL_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLAXTRIGGERTIMESTRETCH_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622D8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLAXTRIGGERTIMESTRETCH_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMP_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622F0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMP_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMPSYNC_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01622F8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMPSYNC_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMPCONFIG_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162300 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMPCONFIG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMPOFFSET_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162308 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCLATIMESTAMPOFFSET_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162400 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162408 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162410 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162418 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162420 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162428 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162430 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMASK3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162438 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALMATCH3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGMUXSELHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162440 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGMUXSELHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONMASKHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162448 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONMASKHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONFROMVALUEHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162450 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONFROMVALUEHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONTOVALUEHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162458 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTRANSITIONTOVALUEHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGONESCOUNTMASKHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162460 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGONESCOUNTMASKHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGANYCHANGEHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162468 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGANYCHANGEHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162470 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162478 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162480 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162488 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162490 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162498 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624A0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624A8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624B0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624B8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE0EAP3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624C0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624C8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE1EAP3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624D0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624D8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE2EAP3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624E0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624E8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGSIGNALSNAPSHOTNODE3EAP3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGLFSR_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624F0 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGLFSR_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGLFSRMASK_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC01624F8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGLFSRMASK_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTIMESTAMPCAPTURE_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162500 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGTIMESTAMPCAPTURE_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162508 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0MASKLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162510 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0MASKLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162518 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1MASKLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162520 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1MASKLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162528 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2MASKLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162530 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2MASKLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3LO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162538 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3LO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3MASKLO_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162540 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3MASKLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162548 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0MASKHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162550 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE0MASKHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162558 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1MASKHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162560 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE1MASKHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162568 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2MASKHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162570 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE2MASKHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3HI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162578 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3HI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3MASKHI_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162580 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_CDBGCOMPARE3MASKHI_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_CLA_SCRATCH_BASE_ADDR(input int unsigned cla_idx);
+    return 64'hC0162FF8 + (cla_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_CLA_SCRATCH_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_TRDSTCONTROL_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC0163000 + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_TRDSTCONTROL_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_TRDSTIMPL_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC0163004 + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_TRDSTIMPL_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_TRDSTINSTFEATURES_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC0163008 + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_TRDSTINSTFEATURES_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_CDBGDEBUGTRACECFG_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC01631A0 + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_CDBGDEBUGTRACECFG_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_SCRATCHLO_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC0163FF8 + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SCRATCHLO_NUM = 64'h1;
+function automatic longint unsigned SMC_TOP_SMC_CLA_DST_SCRATCHHI_BASE_ADDR(input int unsigned dst_idx);
+    return 64'hC0163FFC + (dst_idx * 64'h1000);
+endfunction
+localparam longint unsigned SMC_TOP_SMC_CLA_DST_SCRATCHHI_NUM = 64'h1;
 function automatic longint unsigned SMC_TOP_SMC_CLUSTER_PLIC_PRIORITY_BASE_ADDR(input int unsigned PRIORITY_idx);
     return 64'hC4000000 + (PRIORITY_idx * 64'h4);
 endfunction

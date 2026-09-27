@@ -2,7 +2,7 @@
 // Copyright 2026 Tenstorrent Inc.
 //
 // Commercial-simulator AXI/AXI-Lite functional coverage hook.
-// Do not add this file to Verilator filelists; it intentionally uses covergroups.
+// Do not add this file to Verilator filelists: it uses covergroups.
 
 interface ocah_axi_cov_if #(
   parameter int unsigned ADDR_WIDTH = 64,
@@ -61,13 +61,12 @@ interface ocah_axi_cov_if #(
   axi_read_cg read_cg = new();
 
   // Functions (no timing controls) so both procedural blocks and UVM
-  // subscriber write() functions can sample coverage.
+  // subscriber write() functions can sample coverage. `addr` and `id` are
+  // part of the sampling contract and feed no bin of the covergroups.
   function automatic void sample_write(input bit is_lite, input logic [ADDR_WIDTH-1:0] addr,
                                        input logic [ID_WIDTH-1:0] id, input int unsigned size,
                                        input int unsigned burst_len, input logic [1:0] resp);
     bit errored;
-    void'(addr);
-    void'(id);
     if (!rst_ni) begin
       return;
     end
@@ -79,8 +78,6 @@ interface ocah_axi_cov_if #(
                                       input logic [ID_WIDTH-1:0] id, input int unsigned size,
                                       input int unsigned burst_len, input logic [1:0] resp);
     bit errored;
-    void'(addr);
-    void'(id);
     if (!rst_ni) begin
       return;
     end

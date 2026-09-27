@@ -12,7 +12,6 @@ import struct
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -22,13 +21,16 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
-MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-MANIFEST_ERR_BAD_VERSION = 0x0003_0003
-MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
+MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+MANIFEST_ERR_BAD_VERSION = mm.boot_err("OCA_FAIL_FORMAT_VERSION_MISMATCH")
+MANIFEST_ERR_BAD_LENGTH = mm.boot_err("OCA_FAIL_MANIFEST_LENGTH")
 
 _MINOR = 1
 _ACCEPTED_LENGTH = mm.MANIFEST_MAX_SIZE
@@ -51,17 +53,30 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    extra_forbidden = (f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}",
-                       f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_VERSION:08x}",
-                       "MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-                       "PLD_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
-                       "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
-                       "PAYLOAD_OFF_ALIGN", "PAYLOAD_OFF_RANGE",
-                       "PAYLOAD_HASHED_LEN_BAD=", "PAYLOAD_LEN_RANGE",
-                       "PAYLOAD_OVERLAPS_MANIFEST", "TOC_PLEN_MISMATCH=",
-                       "PAYLOAD_LOC_OVERFLOW", "PAYLOAD_LOC_OT_OOB",
-                       "ENC_HASHED_LEN_PARTIAL", "ENC_WITHOUT_SBOOT",
-                       fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_MAGIC:08x}",
+        f"MANIFEST_ERR=0x{MANIFEST_ERR_BAD_VERSION:08x}",
+        "MANIFEST_HASH_MISMATCH",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        "MANIFEST_ALL_FAILED",
+        "IMAGE_HASH_MISMATCH",
+        "NO_BL1_IMAGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_HASHED_LEN_BAD=",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "PAYLOAD_LOC_OVERFLOW",
+        "PAYLOAD_LOC_OT_OOB",
+        "ENC_HASHED_LEN_PARTIAL",
+        "ENC_WITHOUT_SBOOT",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
 
     def check_efuse(self, image) -> None:
         fd.assert_clean_key_fuses(image)
@@ -78,8 +93,8 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"{slot} manifest_length is {length}, expected {mm.MANIFEST_SIZE}"
         )
         base = mm.slot_base(slot)
-        assert bytes(buf[base:base + 4]) == mm.MANIFEST_MAGIC, (
-            f"{slot} manifest_identifier is not TBL1, so BAD_MAGIC would pre-empt "
+        assert bytes(buf[base : base + 4]) == mm.MANIFEST_MAGIC, (
+            f"{slot} manifest_identifier is not OCAC, so BAD_MAGIC would pre-empt "
             f"the length check and the asserted code would be wrong"
         )
 
@@ -100,8 +115,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"it does not bracket the bound the accepted slot sits on"
         )
         assert _REFUSED_LENGTH > mm.MANIFEST_MAX_SIZE, (
-            "derivation error: the refused length must exceed the range rule's "
-            "upper bound"
+            "derivation error: the refused length must exceed the range rule's upper bound"
         )
         assert _REFUSED_LENGTH % 4 != 0, (
             "derivation error: MANIFEST_MAX_SIZE + 1 cannot be 4-byte aligned"
@@ -133,8 +147,13 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             "rule BOTH refuse it and both return MANIFEST_ERR_BAD_LENGTH. Which of "
             "the two produced the verdict is not separable on this ROM and is not "
             "claimed",
-            mm.MANIFEST_MAJOR_VERSION, 0, mm.MANIFEST_SIZE,
-            after_ver[0], after_ver[1], after_len, _REFUSED_LENGTH,
+            mm.MANIFEST_MAJOR_VERSION,
+            0,
+            mm.MANIFEST_SIZE,
+            after_ver[0],
+            after_ver[1],
+            after_len,
+            _REFUSED_LENGTH,
         )
 
     def prepare_backup(self, buf: bytearray) -> None:
@@ -149,8 +168,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             "alignment rule would refuse the slot this row requires to boot"
         )
         assert mm.MANIFEST_SIZE <= _ACCEPTED_LENGTH, (
-            "derivation error: the accepted length must satisfy the range rule's "
-            "lower bound"
+            "derivation error: the accepted length must satisfy the range rule's lower bound"
         )
         assert _ACCEPTED_LENGTH > mm.MANIFEST_SIZE, (
             f"the accepted length {_ACCEPTED_LENGTH} does not exceed "
@@ -173,8 +191,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             f"0x{_BACKUP_EXTRA_ADDR + _BACKUP_EXTRA_LEN:x}"
         )
         self._backup_payload_addr = p_abs
-        extension = bytes(buf[_BACKUP_EXTRA_ADDR:
-                              _BACKUP_EXTRA_ADDR + _BACKUP_EXTRA_LEN])
+        extension = bytes(buf[_BACKUP_EXTRA_ADDR : _BACKUP_EXTRA_ADDR + _BACKUP_EXTRA_LEN])
 
         mm.set_manifest_version(buf, "backup", minor=_MINOR)
         mm.set_manifest_length(buf, "backup", _ACCEPTED_LENGTH)
@@ -197,16 +214,28 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             "the slot must be ACCEPTED. It exceeds sizeof(manifest_t) by %d, which "
             "forces load_manifest_extra() to fetch that many bytes at 0x%06x (the "
             "image holds %d bytes of 0x%02x there, clear of the payload at 0x%06x)",
-            mm.MANIFEST_MAJOR_VERSION, 0, mm.MANIFEST_SIZE,
-            after_ver[0], after_ver[1], after_len, _ACCEPTED_LENGTH, p_off,
-            _BACKUP_EXTRA_LEN, _BACKUP_EXTRA_ADDR, len(extension),
-            extension[0] if extension else 0, p_abs,
+            mm.MANIFEST_MAJOR_VERSION,
+            0,
+            mm.MANIFEST_SIZE,
+            after_ver[0],
+            after_ver[1],
+            after_len,
+            _ACCEPTED_LENGTH,
+            p_off,
+            _BACKUP_EXTRA_LEN,
+            _BACKUP_EXTRA_ADDR,
+            len(extension),
+            extension[0] if extension else 0,
+            p_abs,
         )
         self.logger.info(
             "CHK-STIMULUS-BOUNDARY: both slots declare v%d.%d and differ by 1 in "
             "manifest_length -- primary %d, backup %d -- so the run brackets "
             "MANIFEST_MAX_SIZE from both sides under one supported minor version",
-            mm.MANIFEST_MAJOR_VERSION, _MINOR, _REFUSED_LENGTH, _ACCEPTED_LENGTH,
+            mm.MANIFEST_MAJOR_VERSION,
+            _MINOR,
+            _REFUSED_LENGTH,
+            _ACCEPTED_LENGTH,
         )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
@@ -235,16 +264,20 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
         )
 
         # No length arm prints a token, so check the bytes each slot was served.
-        for slot, length in (("primary", _REFUSED_LENGTH),
-                             ("backup", _ACCEPTED_LENGTH)):
+        for slot, length in (("primary", _REFUSED_LENGTH), ("backup", _ACCEPTED_LENGTH)):
             fd.assert_served_field(
-                self.logger, flash, slot, _VERSION_LENGTH_OFF,
+                self.logger,
+                flash,
+                slot,
+                _VERSION_LENGTH_OFF,
                 struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, _MINOR, length),
                 f"{slot} manifest_version_major/minor + manifest_length",
             )
 
         fd.assert_no_read_starting_at(
-            self.logger, flash, _PRIMARY_EXTRA_ADDR,
+            self.logger,
+            flash,
+            _PRIMARY_EXTRA_ADDR,
             f"the primary declares manifest_length {_REFUSED_LENGTH}, which exceeds "
             f"sizeof(manifest_t), so a fetch beginning there would mean "
             f"load_manifest_extra() ran and 2049 was accepted instead of refused as "
@@ -255,15 +288,14 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
         rds = ev.reads(flash.get_transactions())
         b_starts = fd.reads_starting_at(flash, mm.BACKUP_MANIFEST_OFFSET)
         assert b_starts, (
-            f"no SPI read began at the backup manifest address "
-            f"0x{mm.BACKUP_MANIFEST_OFFSET:x}"
+            f"no SPI read began at the backup manifest address 0x{mm.BACKUP_MANIFEST_OFFSET:x}"
         )
         b_idx = b_starts[0]
         x_starts = fd.reads_starting_at(flash, _BACKUP_EXTRA_ADDR)
         assert x_starts, (
             f"no SPI read began at 0x{_BACKUP_EXTRA_ADDR:x}. The backup declares "
             f"manifest_length {_ACCEPTED_LENGTH}, which is {_BACKUP_EXTRA_LEN} bytes "
-            f"past sizeof(manifest_t), so load_manifest_extra() (manifest_load.c) "
+            f"past sizeof(manifest_t), so load_manifest_extra() (oca_boot.c) "
             f"must have fetched them: the ROM accepted a length of exactly "
             f"MANIFEST_MAX_SIZE without acting on it. Transactions: "
             f"{ev.summarize(flash.get_transactions(), self._image_len)}"
@@ -292,7 +324,7 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
         assert x_idx < pl_hit[0], (
             f"the extension read[{x_idx}] did not precede the payload read"
             f"[{pl_hit[0]}]: load_manifest_extra() is called before load_payload() "
-            f"(manifest_load.c), so this ordering is not the ROM's"
+            f"(oca_boot.c), so this ordering is not the ROM's"
         )
         self.logger.info(
             "CHK-V1X-LENGTH-BOUNDARY: the primary declared v%d.%d/%d and was refused "
@@ -302,8 +334,17 @@ class sep_manifest_v1x_length_test(sep_primary_fail_backup_boot_base):
             "read[%d] 0x%06x..0x%06x, the load_manifest_extra() fetch that length "
             "forces, before the payload read[%d] and the boot completed. "
             "MANIFEST_MAX_SIZE is bracketed from both sides",
-            mm.MANIFEST_MAJOR_VERSION, _MINOR, _REFUSED_LENGTH,
-            self.primary_expected_error, _PRIMARY_EXTRA_ADDR,
-            mm.MANIFEST_MAJOR_VERSION, _MINOR, _ACCEPTED_LENGTH, i_hash,
-            x_idx, x_start, x_end, pl_hit[0],
+            mm.MANIFEST_MAJOR_VERSION,
+            _MINOR,
+            _REFUSED_LENGTH,
+            self.primary_expected_error,
+            _PRIMARY_EXTRA_ADDR,
+            mm.MANIFEST_MAJOR_VERSION,
+            _MINOR,
+            _ACCEPTED_LENGTH,
+            i_hash,
+            x_idx,
+            x_start,
+            x_end,
+            pl_hit[0],
         )

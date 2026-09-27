@@ -36,7 +36,7 @@ A DTP simulation compile merges these layers, in this order:
 `python3 tools/dv/run_dv.py --define NAME` appends a further `+define+` for
 that run. The supported DTP configuration is the merged set above.
 
-Lint and synthesis (`make lint-slang` / `make synth-all` with `BLOCK=dtp`)
+Lint and synthesis (`make lint-slang` / `make synth-yosys-all` with `BLOCK=dtp`)
 do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 `OCAH_FLOW_COMMON_DEFINES` in `flows/common.mk`.
 
@@ -49,35 +49,45 @@ do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 |`SIMULATION`
 |Native profile (every DTP DV tool)
 |Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
-simulation-only paths on this name.
-|Those prim paths compile in.
-|Those prim paths are omitted.
+simulation-only paths on this name, and the two-state protocol checker macros
+(`hw/common/assert/ocah_sva_macros.svh`) expand to live assertions only under
+it.
+|Those prim paths compile in; the protocol checkers carry their two-state
+rules.
+|Those prim paths are omitted; the two-state checker macros expand to nothing
+(the lint and synthesis view).
 
 |`UVM`
 |Native profile SV-UVM overlay (`[frameworks.uvm]` in `native.toml`; every
 `--framework uvm` DUT)
 |The first-party SV-UVM framework gate (the same bare-name wording rule as
-`SIMULATION`): it selects the SV-UVM shape of the shared testbench top
+`SIMULATION`): it adds the SV-UVM harness block to the shared testbench top
 `dtp_uvm_top` in `hw/sys/dtp/dv/tb/tb_top.sv`, and the shared assertion
 headers report through `uvm_report_error` instead of `$error`.
-|The module has no pin-level port list. An in-module harness owns the clock,
-`ocah_jtag_if` / `dtp_tb_if` instances, quiescent tie-offs, and `run_test()`.
-Required for `--framework uvm` (VCS). The testbench architecture document
-(`hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc`) describes that shape.
-|The module exposes the cocotb pin-level port list. Required for the default
-cocotb/PyUVM flow (cocotb is the default framework, so no define means the
-cocotb shape). Defining it on a cocotb compile removes those ports and the
-Python tests cannot bind.
+|The harness block compiles: the clock generator on `dtp_tb_if.clk`, the test
+classes, the `uvm_config_db` publication of every interface instance, and
+`run_test()`. Required for `--framework uvm` (VCS).
+The testbench architecture document (`hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc`)
+describes the core the block extends.
+|Only the framework-neutral core compiles (interface instances, DUT,
+adapters, counters, coverage, protocol SVA); cocotb drives the interface
+members through hierarchical handles. Required for the default cocotb/PyUVM flow (cocotb is
+the default framework, so no define means the core alone). Defining it on a
+cocotb compile adds a second clock generator and `run_test()` against the
+Python test.
 
 |`VERILATOR`
-|DTP Verilator overlay
-|Tells assertion headers that the compiler is Verilator, which does not
-support concurrent SVA.
+|DTP Verilator overlay (Verilator also predefines it)
+|Tells the assertion headers that the compiler is Verilator, a two-state
+simulator.
 |`hw/common/assert/ocah_assert.svh` and the OpenTitan `prim_assert.sv` that
 `dtp_pkg` includes leave `OCAH_INC_ASSERT` / `OCAH_OT_INC_ASSERT` undefined, so
-concurrent assertion macros expand to nothing.
-|On Verilator, concurrent SVA in those headers is parsed and the compile fails
-or the tool rejects the constructs. On VCS/Xcelium this define is not set, so
+the four-state assertion macros (`OCAH_ASSERT`, `OCAH_COVER`, `OCAH_OT_ASSERT`)
+expand to nothing. The two-state checker macros in
+`hw/common/assert/ocah_sva_macros.svh` do not test this define; Verilator
+evaluates them under the target's `--assert` flag (below).
+|On Verilator, the four-state macro bodies compile in; their `$isunknown` rules
+pass vacuously on a two-state model. On VCS/Xcelium this define is not set, so
 those headers keep SVA enabled unless another gate (`SYNTHESIS`) applies.
 
 |`ASSERTS_OFF`
@@ -92,16 +102,17 @@ VCS/Xcelium this define is not set; `common_cells` macros stay enabled unless
 `SYNTHESIS` is also set.
 
 |`COMMON_CELLS_ASSERTS_OFF`
-|Native profile (every DTP DV tool)
+|Native profile, Verilator tool flags only
+(`[target_defaults.default.tools.verilator].flags`)
 |Turns off the inline assertion blocks inside `common_cells` modules
-(`fifo_v3`, `cdc_fifo_gray`, `rr_arb_tree`, and others that DTP's AXI/CDC path
-instantiates) that are compiled only when `COMMON_CELLS_ASSERTS_OFF` is unset.
-|Those inline asserts are omitted. DTP tests do not rely on them; scoreboards
-and Python/UVM checkers are the pass/fail evidence.
-|The inline asserts compile. On Verilator they usually fail the compile even
-if `ASSERTS_OFF` is set, because they are independent of `OCAH_PULP_INC_ASSERT`.
-On commercial simulators they can fire during JTAG2AXI and cross-trigger
-traffic that the DTP tests already check in software.
+(`fifo_v3`, `cdc_fifo_gray`, `rr_arb_tree`, `stream_xbar`, `addr_decode_dync`,
+and others that DTP's AXI/CDC path instantiates) that are compiled only when
+`COMMON_CELLS_ASSERTS_OFF` is unset.
+|Those inline asserts are omitted (Verilator). The scoreboards and checkers
+carry the pass/fail evidence there.
+|The inline asserts compile and are live for every DTP test (VCS, Xcelium).
+On Verilator they fail the compile even if `ASSERTS_OFF` is set, because they
+are independent of `OCAH_PULP_INC_ASSERT`.
 
 |`SYNTHESIS`
 |Lint and synthesis (`OCAH_FLOW_COMMON_DEFINES`); not the DTP DV profile
@@ -115,6 +126,14 @@ are live; on Verilator `VERILATOR` still compiles them out. Defining
 `SYNTHESIS` on a DTP DV compile would drop that SVA and is not the supported
 test configuration.
 |===
+
+The DTP Verilator overlay also passes the tool flags `--assert --no-assert-case`
+(`[targets.default.tools.verilator].flags`). They are simulator options, not
+preprocessor defines: `--assert` makes Verilator evaluate the concurrent and
+immediate assertions it compiles, which is the two-state protocol SVA set, and
+`--no-assert-case` leaves the `unique`/`priority` case checks of the DUT and
+vendored RTL out of that set. A failing assertion prints an `%Error` line and
+stops the simulation.
 
 The profile overlay's explicit define is the only source of `UVM`: the simulator's
 `-ntb_opts` option selects which UVM library is compiled but does not set

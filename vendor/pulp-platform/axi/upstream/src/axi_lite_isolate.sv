@@ -18,9 +18,9 @@
 ///
 /// ## Response
 ///
-/// If the `TerminateTransaction` parameter is set to `1'b1`, the module will return response
-/// errors in case there is an incoming transaction while the module isolates.  The data returned
-/// on the bus is `1501A7ED` (hexspeak for isolated).
+/// If the `TerminateTransaction` parameter is set to `1'b1`, the module will return `SLVERR`
+/// responses for incoming transactions while the module isolates.  The data returned on the bus is
+/// `1501A7ED` (hexspeak for isolated).
 ///
 /// If `TerminateTransaction` is set to `1'b0`, the transaction will block indefinitely until the
 /// module is de-isolated again.
@@ -150,29 +150,29 @@ module axi_lite_isolate #(
     );
 
     // Error slave for the isolated demux port: accepts one transaction per direction at a time
-    // and responds with DECERR.
-    localparam data_t DecErrData = data_t'('h1501A7ED);
+    // and responds with SLVERR.
+    localparam data_t IsolateErrorData = data_t'('h1501A7ED);
 
-    axi_lite_resp_t decerr_rsp;
+    axi_lite_resp_t isolate_err_rsp;
     logic aw_wait_d, aw_wait_q, w_wait_d, w_wait_q, ar_wait_d, ar_wait_q;
-    logic decerr_b_valid, decerr_r_valid;
+    logic isolate_err_b_valid, isolate_err_r_valid;
 
-    assign decerr_b_valid = aw_wait_q & w_wait_q;
-    assign decerr_r_valid = ar_wait_q;
+    assign isolate_err_b_valid = aw_wait_q & w_wait_q;
+    assign isolate_err_r_valid = ar_wait_q;
 
     always_comb begin
-      decerr_rsp          = '0;
-      decerr_rsp.aw_ready = ~aw_wait_q;
-      decerr_rsp.w_ready  = ~w_wait_q;
-      decerr_rsp.b_valid  = decerr_b_valid;
-      decerr_rsp.b.resp   = axi_pkg::RESP_DECERR;
-      decerr_rsp.ar_ready = ~ar_wait_q;
-      decerr_rsp.r_valid  = decerr_r_valid;
-      decerr_rsp.r.resp   = axi_pkg::RESP_DECERR;
-      decerr_rsp.r.data   = DecErrData;
+      isolate_err_rsp          = '0;
+      isolate_err_rsp.aw_ready = ~aw_wait_q;
+      isolate_err_rsp.w_ready  = ~w_wait_q;
+      isolate_err_rsp.b_valid  = isolate_err_b_valid;
+      isolate_err_rsp.b.resp   = axi_pkg::RESP_SLVERR;
+      isolate_err_rsp.ar_ready = ~ar_wait_q;
+      isolate_err_rsp.r_valid  = isolate_err_r_valid;
+      isolate_err_rsp.r.resp   = axi_pkg::RESP_SLVERR;
+      isolate_err_rsp.r.data   = IsolateErrorData;
     end
 
-    assign demux_rsp[1] = decerr_rsp;
+    assign demux_rsp[1] = isolate_err_rsp;
 
     always_comb begin
       aw_wait_d = aw_wait_q;
@@ -184,14 +184,14 @@ module axi_lite_isolate #(
       if (demux_req[1].w_valid && !w_wait_q) begin
         w_wait_d = 1'b1;
       end
-      if (decerr_b_valid && demux_req[1].b_ready) begin
+      if (isolate_err_b_valid && demux_req[1].b_ready) begin
         aw_wait_d = 1'b0;
         w_wait_d  = 1'b0;
       end
       if (demux_req[1].ar_valid && !ar_wait_q) begin
         ar_wait_d = 1'b1;
       end
-      if (decerr_r_valid && demux_req[1].r_ready) begin
+      if (isolate_err_r_valid && demux_req[1].r_ready) begin
         ar_wait_d = 1'b0;
       end
     end

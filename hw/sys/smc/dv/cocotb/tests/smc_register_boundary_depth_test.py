@@ -16,6 +16,9 @@ from smc_base_test import smc_base_test
 class smc_register_boundary_depth_test(smc_base_test):
     """Run a compact safe register-boundary sweep."""
 
+    required_evidence = ("CHK-CSR-BOUNDARY-SWEEP",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

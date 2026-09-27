@@ -9,7 +9,6 @@ decryption, so the primary reaches SIG_VALID before it is refused.
 from __future__ import annotations
 
 import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -18,7 +17,6 @@ from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boo
 
 
 class sep_primary_toc_bound_fail_base(sep_primary_fail_backup_boot_base):
-
     # --- member contract ---------------------------------------------------
     # tbd.BOUND or tbd.PLEN.
     bound_defect: str = ""
@@ -42,8 +40,13 @@ class sep_primary_toc_bound_fail_base(sep_primary_fail_backup_boot_base):
         cls.primary_expected_error = tbd.EXPECTED_ERROR[cls.bound_defect]
         cls.backup_sealed_check_toc = not cls.encrypted
 
-        required = [tbd.DEFECT_TOKEN[cls.bound_defect],
-                    "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP="]
+        required = [
+            tbd.DEFECT_TOKEN[cls.bound_defect],
+            "MANIFEST_HASH_OK",
+            "PLD_HASH_OK",
+            "BL1_COPIED",
+            "BL1_JUMP=",
+        ]
         # Forbid every code but this row's; the accepted backup prints no MANIFEST_ERR=.
         forbidden = tbd.neighbouring_errors(cls.bound_defect)
         forbidden += ["CRYPTO_FAIL=", "MANIFEST_ALL_FAILED"]
@@ -99,13 +102,10 @@ class sep_primary_toc_bound_fail_base(sep_primary_fail_backup_boot_base):
         # The token and the error code must both be the primary's, in order, once each.
         n = fd.count(console, token)
         assert n == 1, (
-            f"{token} appeared {n} times, expected exactly 1 (the primary's). "
-            f"Console: {console}"
+            f"{token} appeared {n} times, expected exactly 1 (the primary's). Console: {console}"
         )
-        i_token = fd.assert_slot_attributed(console, token, after=i_psrc,
-                                            before=i_bsrc)
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_token,
-                                          before=i_bsrc)
+        i_token = fd.assert_slot_attributed(console, token, after=i_psrc, before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_token, before=i_bsrc)
 
         # The primary's TOC must be refused after its own payload decrypted, not instead of it.
         if self.encrypted:
@@ -126,17 +126,29 @@ class sep_primary_toc_bound_fail_base(sep_primary_fail_backup_boot_base):
             self.logger.info(
                 "CHK-DECRYPT-ARM: primary@%d -> %s@%d -> %s@%d -> %s@%d, and both "
                 "markers appear twice (primary and recovering backup)",
-                i_psrc, tbd.DECRYPT_START, i_ds, tbd.DECRYPT_OK, i_do, token, i_token,
+                i_psrc,
+                tbd.DECRYPT_START,
+                i_ds,
+                tbd.DECRYPT_OK,
+                i_do,
+                token,
+                i_token,
             )
 
         # Check planted bytes by address: both slots' ciphertexts agree this early in the CBC chain.
-        tbd.assert_served_bound_field(self.logger, flash, "primary",
-                                      self.bound_defect, self._served,
-                                      self._payload_offset)
+        tbd.assert_served_bound_field(
+            self.logger, flash, "primary", self.bound_defect, self._served, self._payload_offset
+        )
 
         self.logger.info(
             "CHK-TOC-BOUND-RULE: primary@%d violated %s, was announced %s@%d and "
             "refused %s@%d inside its own attempt, after its signature verified; the "
             "untouched backup was read@%d and booted",
-            i_psrc, self.bound_defect, token, i_token, slot_err, i_err, i_bsrc,
+            i_psrc,
+            self.bound_defect,
+            token,
+            i_token,
+            slot_err,
+            i_err,
+            i_bsrc,
         )

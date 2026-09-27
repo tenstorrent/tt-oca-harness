@@ -9,7 +9,6 @@ silent ``MANIFEST_ERR_TOC_COUNT`` arm after that slot's crypto chain has passed.
 from __future__ import annotations
 
 import pyuvm  # noqa: F401  (members register themselves with @pyuvm.test)
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
@@ -28,8 +27,7 @@ IMAGE_COUNT_FIELD = (pm.TOC_OFF_IMAGE_COUNT, 8)
 TOC_VERSION_FIELD = (pm.TOC_OFF_MAJOR_VERSION, 2)
 
 # ROM emission order; each slot's four must sit inside its own attempt.
-CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK",
-                "CRYPTO_VALIDATE_OK")
+CRYPTO_CHAIN = ("RSA_VERIFY_START", "SIG_VALID", "PLD_HASH_OK", "CRYPTO_VALIDATE_OK")
 MANIFEST_HASH_OK = "MANIFEST_HASH_OK"
 ALL_FAILED = "MANIFEST_ALL_FAILED"
 MANIFEST_OK = "MANIFEST_OK"
@@ -38,15 +36,19 @@ SBOOT_OFF = "SBOOT_OFF"
 BOOT_PROGRESS = ("PRE_JUMP", "BL1_COPIED", "BL1_JUMP=")
 
 _ALL_STRUCTURAL_ERRORS = (
-    td.ERR_BAD_MAGIC, td.ERR_BAD_VERSION, td.ERR_BAD_LENGTH, td.ERR_BAD_TOC_ID,
-    td.ERR_BAD_TOC_VERSION, td.ERR_PAYLOAD_TOO_LARGE, td.ERR_NO_BL1_IMAGE,
+    td.ERR_BAD_MAGIC,
+    td.ERR_BAD_VERSION,
+    td.ERR_BAD_LENGTH,
+    td.ERR_BAD_TOC_ID,
+    td.ERR_BAD_TOC_VERSION,
+    td.ERR_PAYLOAD_TOO_LARGE,
+    td.ERR_NO_BL1_IMAGE,
     td.ERR_TOC_COUNT,
 )
 
 
 def forbidden_errors(*produced: int) -> list[str]:
-    return [f"MANIFEST_ERR=0x{c:08x}" for c in _ALL_STRUCTURAL_ERRORS
-            if c not in produced]
+    return [f"MANIFEST_ERR=0x{c:08x}" for c in _ALL_STRUCTURAL_ERRORS if c not in produced]
 
 
 def plant_empty_image_list(logger, buf: bytearray, slot: str) -> bytes:
@@ -66,7 +68,7 @@ def plant_empty_image_list(logger, buf: bytearray, slot: str) -> bytes:
         f"would not have changed the count the ROM reads"
     )
     p = pm.payload_base(buf, slot)
-    stored = bytes(buf[p + off:p + off + size])
+    stored = bytes(buf[p + off : p + off + size])
     # Pin literal zero: n > 256 returns the same code and would pass every other check.
     assert EMPTY_IMAGE_COUNT == 0 and stored == bytes(size), (
         f"{slot} TOC image_count was planted as {EMPTY_IMAGE_COUNT} and stored as "
@@ -75,7 +77,7 @@ def plant_empty_image_list(logger, buf: bytearray, slot: str) -> bytes:
         f"(sep_toc_defect.BAD_IMAGE_COUNT). Anything but zero here makes this row a "
         f"duplicate of those while still passing every other check"
     )
-    now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off:off + size]), "little")
+    now = int.from_bytes(bytes(pm.toc_plaintext(buf, slot)[off : off + size]), "little")
     assert now == EMPTY_IMAGE_COUNT, (
         f"{slot} TOC image_count reads {now} after the write, expected "
         f"{EMPTY_IMAGE_COUNT}; the mutation did not land"
@@ -88,17 +90,25 @@ def plant_empty_image_list(logger, buf: bytearray, slot: str) -> bytes:
         "recomputed over the edit -- so the empty image list is the only rule "
         "validate_manifest_payload can refuse this slot on, and it is refused "
         "BEFORE the TOC_REGION_OOB bound that follows it",
-        slot, was, now, p + off, stored.hex(), pm.TOC_MAJOR_VERSION,
+        slot,
+        was,
+        now,
+        p + off,
+        stored.hex(),
+        pm.TOC_MAJOR_VERSION,
     )
     return stored
 
 
-def assert_crypto_chain_twice(logger, console: list[str], i_psrc: int,
-                              i_bsrc: int, i_end: int) -> tuple[list[int], list[int]]:
+def assert_crypto_chain_twice(
+    logger, console: list[str], i_psrc: int, i_bsrc: int, i_end: int
+) -> tuple[list[int], list[int]]:
     primary: list[int] = []
     backup: list[int] = []
-    for markers, lo, hi, who in ((primary, i_psrc, i_bsrc, "primary"),
-                                 (backup, i_bsrc, i_end, "backup")):
+    for markers, lo, hi, who in (
+        (primary, i_psrc, i_bsrc, "primary"),
+        (backup, i_bsrc, i_end, "backup"),
+    ):
         previous = lo
         for marker in CRYPTO_CHAIN:
             n = fd.count(console, marker)
@@ -125,7 +135,6 @@ def assert_crypto_chain_twice(logger, console: list[str], i_psrc: int,
 
 
 class sep_no_payload_images_primary_base(sep_primary_fail_backup_boot_base):
-
     flash_image = td.PLAINTEXT_IMAGE
     efuse_preload = td.PLAINTEXT_EFUSE
     primary_expected_error = ERR_TOC_COUNT
@@ -165,24 +174,30 @@ class sep_no_payload_images_primary_base(sep_primary_fail_backup_boot_base):
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
         off, _size = IMAGE_COUNT_FIELD
-        fd.assert_served_field(self.logger, flash, "primary",
-                               self._payload_offset + off, self._served,
-                               "primary TOC image_count")
+        fd.assert_served_field(
+            self.logger,
+            flash,
+            "primary",
+            self._payload_offset + off,
+            self._served,
+            "primary TOC image_count",
+        )
 
         self.logger.info(
             "CHK-NO-PAYLOAD-IMAGES: primary@%d declared an empty image list and was "
             "refused %s@%d inside its own attempt, after its signature verified; the "
             "untouched backup was read@%d and booted",
-            i_psrc, slot_err, i_err, i_bsrc,
+            i_psrc,
+            slot_err,
+            i_err,
+            i_bsrc,
         )
 
 
 class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
-
     flash_image = td.PLAINTEXT_IMAGE
     efuse_preload = td.PLAINTEXT_EFUSE
     expected_error = ERR_TOC_COUNT
@@ -198,10 +213,8 @@ class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
                 f"PLAINTEXT stimulus and the loaded image ({self.flash_image}) is "
                 f"not the one they are about"
             )
-        self._primary_payload_offset = (pm.payload_base(buf, "primary")
-                                        - mm.slot_base("primary"))
-        self._backup_payload_offset = (pm.payload_base(buf, "backup")
-                                       - mm.slot_base("backup"))
+        self._primary_payload_offset = pm.payload_base(buf, "primary") - mm.slot_base("primary")
+        self._backup_payload_offset = pm.payload_base(buf, "backup") - mm.slot_base("backup")
         return super().mutate_flash_image(buf)
 
     def corrupt_backup(self, buf: bytearray) -> None:
@@ -241,8 +254,7 @@ class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
             f"gave up before evaluating the backup. Console: {console}"
         )
 
-        primary_chain, backup_chain = assert_crypto_chain_twice(
-            log, console, i_psrc, i_bsrc, i_all)
+        primary_chain, backup_chain = assert_crypto_chain_twice(log, console, i_psrc, i_bsrc, i_all)
         n_hash = fd.count(console, MANIFEST_HASH_OK)
         assert n_hash == 2, (
             f"{MANIFEST_HASH_OK} appeared {n_hash} times, expected exactly 2 (one "
@@ -250,8 +262,10 @@ class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
             f"manifest_check_integrity, so both slots must pass it and neither is "
             f"refused for a stale hash. Console: {console}"
         )
-        for lo, hi, who in ((i_psrc, primary_chain[0], "primary"),
-                            (i_bsrc, backup_chain[0], "backup")):
+        for lo, hi, who in (
+            (i_psrc, primary_chain[0], "primary"),
+            (i_bsrc, backup_chain[0], "backup"),
+        ):
             i = fd.first_index(console, MANIFEST_HASH_OK, after=lo)
             assert lo < i < hi, (
                 f"the {who}'s {MANIFEST_HASH_OK}@{i} does not sit between its "
@@ -278,10 +292,8 @@ class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
                 f"{ALL_FAILED}@{i_all}. Console: {console}"
             )
         else:
-            i_perr = fd.assert_slot_attributed(console, primary_err, after=i_psrc,
-                                               before=i_bsrc)
-            i_berr = fd.assert_slot_attributed(console, backup_err, after=i_bsrc,
-                                               before=i_all)
+            i_perr = fd.assert_slot_attributed(console, primary_err, after=i_psrc, before=i_bsrc)
+            i_berr = fd.assert_slot_attributed(console, backup_err, after=i_bsrc, before=i_all)
         assert primary_chain[-1] < i_perr, (
             f"{primary_err}@{i_perr} precedes the primary's "
             f"{CRYPTO_CHAIN[-1]}@{primary_chain[-1]}: its rejection is not "
@@ -295,7 +307,13 @@ class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
         log.info(
             "CHK-SLOT-ERRORS: primary@%d -> %s@%d -> backup@%d -> %s@%d -> %s@%d, "
             "and MANIFEST_ERR= appeared exactly twice",
-            i_psrc, primary_err, i_perr, i_bsrc, backup_err, i_berr, ALL_FAILED,
+            i_psrc,
+            primary_err,
+            i_perr,
+            i_bsrc,
+            backup_err,
+            i_berr,
+            ALL_FAILED,
             i_all,
         )
 
@@ -304,39 +322,57 @@ class sep_no_payload_images_terminal_base(sep_backup_manifest_fail_base):
                 f"ROM printed {marker}, so the payload rejection under test is not "
                 f"what ended this run. Console: {console}"
             )
-        log.info("CHK-NOT-A-CRYPTO-FAILURE: neither %s, %s nor %s appeared",
-                 CRYPTO_FAIL, MANIFEST_OK, SBOOT_OFF)
+        log.info(
+            "CHK-NOT-A-CRYPTO-FAILURE: neither %s, %s nor %s appeared",
+            CRYPTO_FAIL,
+            MANIFEST_OK,
+            SBOOT_OFF,
+        )
 
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        status_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | status_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
+            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); "
             f"observed {status_hex}"
         )
         assert fw_done, (
             f"ROM never signalled completion; two rejected slots must converge on a "
             f"FAIL verdict. cold_scratch[1]: {status_hex}"
         )
-        assert not fw_pass, (
-            "ROM signalled PASS: it booted an image it was supposed to reject"
+        assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
+        log.info(
+            "CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
+            backup_err,
+            ALL_FAILED,
+            expected_status,
         )
-        log.info("CHK-TERMINAL: %s, %s, cold_scratch[1]=0x%08x, verdict FAIL",
-                 backup_err, ALL_FAILED, expected_status)
 
         for marker in BOOT_PROGRESS + tuple(self.extra_forbidden):
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which sits past the rejection: it continued "
                 f"booting a manifest it had already failed. Console: {console}"
             )
-        log.info("CHK-NO-BOOT: none of %s reached",
-                 ", ".join(BOOT_PROGRESS + tuple(self.extra_forbidden)))
+        log.info(
+            "CHK-NO-BOOT: none of %s reached",
+            ", ".join(BOOT_PROGRESS + tuple(self.extra_forbidden)),
+        )
 
         off, _size = IMAGE_COUNT_FIELD
-        fd.assert_served_field(log, self._flash, "backup",
-                               self._backup_payload_offset + off,
-                               self._backup_served, "backup TOC image_count")
+        fd.assert_served_field(
+            log,
+            self._flash,
+            "backup",
+            self._backup_payload_offset + off,
+            self._backup_served,
+            "backup TOC image_count",
+        )
         p_off, _p_size = self.primary_field
-        fd.assert_served_field(log, self._flash, "primary",
-                               self._primary_payload_offset + p_off,
-                               self._primary_served,
-                               "primary's failover-trigger field")
+        fd.assert_served_field(
+            log,
+            self._flash,
+            "primary",
+            self._primary_payload_offset + p_off,
+            self._primary_served,
+            "primary's failover-trigger field",
+        )

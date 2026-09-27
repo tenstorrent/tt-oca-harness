@@ -17,10 +17,6 @@
  * 3. Quad Dummy: SPEED=2, DIRECTION=0, LEN=7 (8 dummy cycles), CSAAT=1
  * 4. Quad RX: SPEED=2, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
  * 5. CMDINVAL test: SPEED=2 + DIRECTION=3 (bidirectional) must fail
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_quad_spi_test STACK=sim
- *
  */
 
 #include <stdint.h>
@@ -69,17 +65,17 @@ int main(void) {
     printf("========================================\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
-    spi_controller__CFG_t cfg;
-    spi_controller__CMD_t cmd;
+    spi_controller__CONTROL_t ctrl;
+    spi_controller__CONFIGOPTS_t cfg;
+    spi_controller__COMMAND_t cmd;
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
     /* Enable controller */
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure: freq-robust 25 MHz SCLK (spi_clkdiv), SPI Mode 0, standard CS timing */
     cfg.w = 0;
@@ -89,7 +85,7 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
@@ -103,14 +99,14 @@ int main(void) {
     }
 
     /* Load TX FIFO: 4 bytes = 1 word (Quad fast-read command pattern) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xEB000000);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xEB000000);
 
     cmd.w = 0;
     cmd.f.LEN = 3;       /* 4 bytes (LEN+1 bytes total) */
     cmd.f.CSAAT = 1;     /* keep CS# low for next segment */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -142,7 +138,7 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 0; /* Dummy */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
@@ -173,7 +169,7 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 1; /* RX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         printf("  FAIL: transaction did not complete (ACTIVE stuck)\n");
@@ -196,17 +192,21 @@ int main(void) {
                status.f.RXEMPTY);
         pass = 0;
     } else {
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         printf("  RXDATA[0]: 0x%08x (4-byte Quad RX packed)\n", rxdata);
         printf("  PASS: Quad RX accepted (RXQD>=1, no CMDINVAL/CSIDINVAL)\n");
     }
     WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
-    /* SW_RST to drain RX FIFO; wait for READY (not a blind spin) */
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+    /* SW_RST to drain the RX FIFO. The field is a level: confirm the drain while
+     * it is held, then release, or the core stays in reset. */
+    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
-    if (wait_for_ready(TIMEOUT_LIMIT)) {
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    int drained = wait_for_ready(TIMEOUT_LIMIT);
+    ctrl.f.SW_RST = 0;
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    if (drained) {
         printf("  FAIL: READY not restored after SW_RST drain\n");
         pass = 0;
         goto done;
@@ -230,13 +230,13 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x12345678);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 3; /* Bidirectional — invalid at Quad speed */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     /* Poll until CMDINVAL sticks (or timeout) — not a blind spin */
     {

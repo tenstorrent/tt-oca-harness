@@ -17,7 +17,7 @@
 // resets the bridge model, a system reset aborts its in-flight
 // transactions. `negative` (+DTP_J2A_REF_MODEL_NEGATIVE) corrupts every
 // predicted address so the pairing must fail. No comparison, no reporting.
-// The cocotb realization has no twin yet (DTP_TB_ARCH).
+// The cocotb realization has no twin (DTP_TB_ARCH).
 
 `uvm_analysis_imp_decl(_dtp_j2a_req_event)
 `uvm_analysis_imp_decl(_dtp_j2a_req_axi)

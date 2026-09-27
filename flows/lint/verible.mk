@@ -32,7 +32,7 @@ endif
 # the two conventions per-declaration depending on packed vs. unpacked would
 # be a net readability loss for no functional benefit. plusarg-assignment
 # flags every $test$plusargs call in the tree; each one checks
-# only whether a boolean flag was passed (waves, smc_skip_pll_init,
+# only whether a boolean flag was passed (waves, smc_hold_cpu_boot,
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
@@ -72,12 +72,9 @@ OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 # authoritative for their syntax.
 OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
-	hw/sys/smu/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 
@@ -85,8 +82,6 @@ OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
 # formatter's output reparse does not. Keep their lint findings visible.
 OCAH_VERIBLE_LINT_PARSER_EXCLUDES := \
 	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv
 
@@ -114,9 +109,10 @@ OCAH_VERIBLE_FORMAT_EXCLUDES := \
 #
 # Exclusions cover build output, materialized third-party sources, nested
 # copied vendor trees, PeakRDL output, generated fabrics and CPU internals,
-# OpenTitan-origin package stubs, the individually generated overlay files
-# that ship pre-generated rather than built by this tree, and the eFuse DV
-# model's register block, which PeakRDL generated once into dv/models/
+# OCAH-owned OpenTitan chip config packages, the individually
+# generated overlay files that ship pre-generated rather than built by
+# this tree, and the eFuse DV model's register block, which PeakRDL
+# generated once into dv/models/
 # (outside any regs/gen/ tree) and which stays hand-maintained rather than
 # regenerated (see hw/ip/efuse/dv/models/README.md), so its struct/union
 # style still reflects that origin rather than this repo's conventions.
@@ -128,10 +124,8 @@ ocah_verible_find = find $(addprefix $(OCAH_ROOT)/,$(1)) -type f \( -name '*.sv'
 	-not -path '*/rdl/gen/*' \
 	-not -path '*/crossbars/*' \
 	-not -path '*/chipyard_generated_files/*' \
-	-not -path '*/hw/common/ot_pkg/*' \
+	-not -path '*/hw/common/ot_chip_cfg/*' \
 	-not -path '$(OCAH_ROOT)/vendor/pulp-platform/idma/overlay/target/rtl/*' \
-	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg.sv' \
-	-not -path '$(OCAH_ROOT)/vendor/lowRISC/opentitan/overlay/spi_controller/rtl/spi_controller_reg_pkg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg.sv' \
 	-not -path '$(OCAH_ROOT)/hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv' \
 	$(foreach file,$(2),-not -path '$(OCAH_ROOT)/$(file)')
@@ -145,14 +139,14 @@ ocah_verible_check_files = @$(call ocah_verible_find,$(1),$(2)) -print -quit 2>/
 
 ## Lint SystemVerilog style with verible-verilog-lint (no autofix; hand-fix
 ## reported violations). Requires `verible-verilog-lint` on PATH; otherwise
-## install it or run via `./scripts/docker-run.sh eda-run make lint-sv-verible`.
+## install it or run via `./scripts/docker-run.sh run-here make lint-sv-verible`.
 ## parameter-name-style is deferred to issue #1051; line-length is disabled
 ## outright (see OCAH_LINT_VERIBLE_RULES above).
 ## @param LINT_PATH=hw/sys/smu Optional path(s) to scope the lint; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (LINT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-lint-sv-verible
 ocah-lint-sv-verible:
-	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh eda-run make lint-sv-verible)
+	$(call ocah_require_host_tool,verible-verilog-lint,./scripts/docker-run.sh run-here make lint-sv-verible)
 	$(call ocah_verible_check_files,$(LINT_PATH),$(OCAH_VERIBLE_LINT_EXCLUDES))
 	@$(call ocah_verible_find,$(LINT_PATH),$(OCAH_VERIBLE_LINT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 verible-verilog-lint \
@@ -176,12 +170,12 @@ ocah-check-sv-declaration-spacing:
 
 ## Format SystemVerilog sources in place with verible-verilog-format.
 ## Requires `verible-verilog-format` on PATH; otherwise install it or run via
-## `./scripts/docker-run.sh eda-run make format-sv`.
+## `./scripts/docker-run.sh run-here make format-sv`.
 ## @param FORMAT_PATH=hw/sys/smu Optional path(s) to scope formatting; default hw vendor
 ## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv
 ocah-format-sv:
-	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv)
+	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh run-here make format-sv)
 	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
 	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 verible-verilog-format \
@@ -194,7 +188,7 @@ ocah-format-sv:
 ## @param BLOCK=smu Shorthand for the above (FORMAT_PATH?=hw/sys/BLOCK if set)
 .PHONY: ocah-format-sv-check
 ocah-format-sv-check: ocah-check-sv-declaration-spacing
-	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh eda-run make format-sv-check)
+	$(call ocah_require_host_tool,verible-verilog-format,./scripts/docker-run.sh run-here make format-sv-check)
 	$(call ocah_verible_check_files,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES))
 	@$(call ocah_verible_find,$(FORMAT_PATH),$(OCAH_VERIBLE_FORMAT_EXCLUDES)) -print0 2>/dev/null | \
 		xargs -0 -n 1 sh -c '\

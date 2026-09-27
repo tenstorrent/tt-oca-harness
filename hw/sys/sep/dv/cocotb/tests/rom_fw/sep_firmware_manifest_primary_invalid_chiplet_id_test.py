@@ -9,7 +9,6 @@ non-zero index. The fuse-map value is a testbench-model property and is not asse
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_usage_constraint_base import sep_primary_usage_constraint_base
 
@@ -18,8 +17,7 @@ _REJECT_INDEX = 3
 
 
 @pyuvm.test()
-class sep_firmware_manifest_primary_invalid_chiplet_id_test(
-        sep_primary_usage_constraint_base):
+class sep_firmware_manifest_primary_invalid_chiplet_id_test(sep_primary_usage_constraint_base):
     """Primary enables chiplet_id words 3 and 5 -> refused -> the backup boots."""
 
     defect_marker = fd.CHIPLET_MARKER
@@ -35,11 +33,12 @@ class sep_firmware_manifest_primary_invalid_chiplet_id_test(
             "CHK-STIMULUS-CHIPLET-ID: %s selector_bits[0..7] = 0x%02x, so the ROM "
             "must read chiplet_id words %s and refuse on word %d; every enabled "
             "word carries the shipped 0x%08x",
-            slot, _SELECTOR_MASK,
-            [i for i in range(8) if _SELECTOR_MASK & (1 << i)], index,
+            slot,
+            _SELECTOR_MASK,
+            [i for i in range(8) if _SELECTOR_MASK & (1 << i)],
+            index,
             0xA5A5A5A5,
         )
 
     def check_constraint_evidence(self, console: list[str]) -> None:
-        fd.assert_device_id_mismatch(self.logger, console, "chiplet_id",
-                                     _REJECT_INDEX)
+        fd.assert_device_id_mismatch(self.logger, console, "chiplet_id", _REJECT_INDEX)

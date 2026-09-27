@@ -12,14 +12,12 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
-from sep_base_test import sep_base_test
 from env.sep_rom_console import log_scratch_cold, rom_console_task
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # The LC check runs before transport selection, so the default ROM build suffices.
@@ -27,8 +25,11 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_invalid.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_invalid.toml"
 )
 
 # lc_state_is_valid() accepts raw 0x0..0x8; 0x9 is the first code outside it.
@@ -59,9 +60,7 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
 
-        assert os.path.isfile(_EFUSE_PRELOAD), (
-            f"eFuse preload missing: {_EFUSE_PRELOAD}"
-        )
+        assert os.path.isfile(_EFUSE_PRELOAD), f"eFuse preload missing: {_EFUSE_PRELOAD}"
         image = self.select_efuse_image(default_preload=_EFUSE_PRELOAD)
         lc = image.lc_raw()
         assert lc == _LC_INVALID_RAW, (
@@ -72,7 +71,8 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
         self.write_efuse_image(image)
         self.logger.info(
             "CHK-STIMULUS-LC: preloaded LC_STATE raw=0x%x, which lifecycle.c "
-            "rejects (valid set is 0x0..0x8)", lc,
+            "rejects (valid set is 0x0..0x8)",
+            lc,
         )
 
         for src_name, dst in (("boot_rom.vmem", "boot_rom.vmem"),):
@@ -107,7 +107,9 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             if cycle - last_log >= _PROGRESS_EVERY:
                 last_log = cycle
                 self.logger.info(
-                    "lc invalid poll cyc=%d status=0x%08x", cycle, status,
+                    "lc invalid poll cyc=%d status=0x%08x",
+                    cycle,
+                    status,
                 )
 
         # The spin keeps retiring instructions, so PC locality, not volume, shows the halt.
@@ -121,7 +123,8 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
 
         log_scratch_cold(self.logger)
         self.logger.info(
-            "cold_scratch[1] sequence: %s", [hex(v) for v in status_seq],
+            "cold_scratch[1] sequence: %s",
+            [hex(v) for v in status_seq],
         )
 
         assert saw_invalid_report, (
@@ -131,7 +134,8 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
             f"Status sequence: {[hex(v) for v in status_seq]}"
         )
         self.logger.info(
-            "CHK-LC-INVALID: ROM reported ERROR+LIFECYCLE_INVALID for raw 0x%x", lc,
+            "CHK-LC-INVALID: ROM reported ERROR+LIFECYCLE_INVALID for raw 0x%x",
+            lc,
         )
 
         violations = self.rd(dut.smc_addr_violations_o)
@@ -158,7 +162,8 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SMC-RST-POL: ROM wrote 0x%08x, core reset_n bits [3:0] clear "
-            "-- active-low reset asserted", rst,
+            "-- active-low reset asserted",
+            rst,
         )
 
         assert halted, (
@@ -180,8 +185,10 @@ class sep_lifecycle_invalid_smc_reset_test(sep_base_test):
         self.logger.info(
             "CHK-LC-TERMINAL: terminal verdict reached and the PC stayed within "
             "0x%x bytes over %d addresses -- the boot stopped",
-            post_span, len(post_pcs),
+            post_span,
+            len(post_pcs),
         )
+
 
 def _read_logged_reset_value(console: list[str]) -> int:
     # The SMC memory model cannot tell the right register from the wrong one, so read the echo.
@@ -189,7 +196,7 @@ def _read_logged_reset_value(console: list[str]) -> int:
     for line in console:
         idx = line.find(token)
         if idx >= 0:
-            return int(line[idx + len(token):].split()[0], 16)
+            return int(line[idx + len(token) :].split()[0], 16)
     raise AssertionError(
         f"ROM never printed {token}. It is emitted immediately after the SMC "
         f"reset-control write, so its absence means the mitigation did not run. "

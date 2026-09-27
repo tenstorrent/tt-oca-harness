@@ -12,7 +12,6 @@ import struct
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_primary_fail_backup_boot_base import (
@@ -20,14 +19,17 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # Must match MANIFEST_ERR_* in manifest.h.
-_MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-_MANIFEST_ERR_BAD_VERSION = 0x0003_0003
-_MANIFEST_ERR_BAD_LENGTH = 0x0003_0004
+_MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+_MANIFEST_ERR_BAD_VERSION = mm.boot_err("OCA_FAIL_FORMAT_VERSION_MISMATCH")
+_MANIFEST_ERR_BAD_LENGTH = mm.boot_err("OCA_FAIL_MANIFEST_LENGTH")
 
 _BAD_MAJOR_VERSION = 2
 
@@ -35,8 +37,7 @@ _VERSION_LENGTH_OFF = mm.OFF_VERSION_MAJOR
 
 
 @pyuvm.test()
-class sep_firmware_primary_manifest_major_version_invalid_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_primary_manifest_major_version_invalid_test(sep_primary_fail_backup_boot_base):
     """Primary major version is not 1 -> refused -> the backup boots."""
 
     # BAD_VERSION prints no per-reason token; check_transport() attributes it instead.
@@ -46,16 +47,27 @@ class sep_firmware_primary_manifest_major_version_invalid_test(
     primary_expected_sig_valids = 0
     efuse_preload = _EFUSE_PRELOAD
     extra_required = ("MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1_COPIED", "BL1_JUMP=")
-    extra_forbidden = (f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_MAGIC:08x}",
-                       f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_LENGTH:08x}",
-                       "MANIFEST_HASH_MISMATCH", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-                       "PLD_HASH_MISMATCH", "MANIFEST_ALL_FAILED",
-                       "IMAGE_HASH_MISMATCH", "NO_BL1_IMAGE",
-                       "PAYLOAD_OFF_ALIGN", "PAYLOAD_OFF_RANGE",
-                       "PAYLOAD_HASHED_LEN_BAD=", "PAYLOAD_LEN_RANGE",
-                       "PAYLOAD_OVERLAPS_MANIFEST", "TOC_PLEN_MISMATCH=",
-                       "ENC_HASHED_LEN_PARTIAL",
-                       fd.LC_MARKER, fd.CHIPLET_MARKER, fd.PACKAGE_MARKER)
+    extra_forbidden = (
+        f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_MAGIC:08x}",
+        f"MANIFEST_ERR=0x{_MANIFEST_ERR_BAD_LENGTH:08x}",
+        "MANIFEST_HASH_MISMATCH",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "PLD_HASH_MISMATCH",
+        "MANIFEST_ALL_FAILED",
+        "IMAGE_HASH_MISMATCH",
+        "NO_BL1_IMAGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_HASHED_LEN_BAD=",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OVERLAPS_MANIFEST",
+        "TOC_PLEN_MISMATCH=",
+        "ENC_HASHED_LEN_PARTIAL",
+        fd.LC_MARKER,
+        fd.CHIPLET_MARKER,
+        fd.PACKAGE_MARKER,
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         before = mm.manifest_version(buf, "primary")
@@ -64,9 +76,11 @@ class sep_firmware_primary_manifest_major_version_invalid_test(
             f"{mm.MANIFEST_MAJOR_VERSION}.0: the shipped image is not the valid "
             f"baseline this testcase mutates away from"
         )
-        assert bytes(buf[mm.PRIMARY_MANIFEST_OFFSET:
-                         mm.PRIMARY_MANIFEST_OFFSET + 4]) == mm.MANIFEST_MAGIC, (
-            "primary manifest_identifier is not TBL1, so BAD_MAGIC would pre-empt "
+        assert (
+            bytes(buf[mm.PRIMARY_MANIFEST_OFFSET : mm.PRIMARY_MANIFEST_OFFSET + 4])
+            == mm.MANIFEST_MAGIC
+        ), (
+            "primary manifest_identifier is not OCAC, so BAD_MAGIC would pre-empt "
             "the version check and the asserted code would be wrong"
         )
         mm.set_manifest_version(buf, "primary", major=_BAD_MAJOR_VERSION)
@@ -82,10 +96,12 @@ class sep_firmware_primary_manifest_major_version_invalid_test(
         )
         self.logger.info(
             "CHK-STIMULUS-VERSION: primary manifest_version_major %d -> %d, with "
-            "minor 0, length %d (== sizeof(manifest_t)) and identifier TBL1 all "
+            "minor 0, length %d (== sizeof(manifest_t)) and identifier OCAC all "
             "left VALID, so the major version is the only field "
             "validate_manifest_header can refuse this slot on",
-            before[0], after[0], length,
+            before[0],
+            after[0],
+            length,
         )
 
     def check_efuse(self, image) -> None:
@@ -98,8 +114,7 @@ class sep_firmware_primary_manifest_major_version_invalid_test(
         i_psrc = fd.first_index(console, fd.PRIMARY_SRC)
         i_bsrc = fd.first_index(console, fd.BACKUP_SRC)
 
-        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc,
-                                          before=i_bsrc)
+        i_err = fd.assert_slot_attributed(console, slot_err, after=i_psrc, before=i_bsrc)
 
         n_ok = fd.count(console, "MANIFEST_HASH_OK")
         assert n_ok == 1, (
@@ -115,7 +130,10 @@ class sep_firmware_primary_manifest_major_version_invalid_test(
         )
 
         fd.assert_served_field(
-            self.logger, flash, "primary", _VERSION_LENGTH_OFF,
+            self.logger,
+            flash,
+            "primary",
+            _VERSION_LENGTH_OFF,
             struct.pack("<HHI", _BAD_MAJOR_VERSION, 0, mm.MANIFEST_SIZE),
             "primary manifest_version_major/minor + manifest_length",
         )
@@ -125,6 +143,11 @@ class sep_firmware_primary_manifest_major_version_invalid_test(
             "v%d.0 with the same length, was accepted with the only "
             "MANIFEST_HASH_OK@%d, and booted. One field differs between the two "
             "slots, so the major-version rule is demonstrated in both directions",
-            i_psrc, _BAD_MAJOR_VERSION, mm.MANIFEST_SIZE, slot_err, i_err,
-            mm.MANIFEST_MAJOR_VERSION, i_hash,
+            i_psrc,
+            _BAD_MAJOR_VERSION,
+            mm.MANIFEST_SIZE,
+            slot_err,
+            i_err,
+            mm.MANIFEST_MAJOR_VERSION,
+            i_hash,
         )

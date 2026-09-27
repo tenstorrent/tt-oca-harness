@@ -2,13 +2,51 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[efuse-peripheral-module]]
-==== eFuse
+= eFuse
 
-TODO
+NOTE: In this chapter, *eFuse* and *OTP* are used interchangeably.
 
-===== Description and Features
+== Overview
 
+The eFuse IP provides secure One-Time Programmable (OTP) memory access
+for the OCAH system. A foundry-agnostic controller caches the array into
+shadow registers at boot, then exposes program and read operations over
+AXI4-Lite with layered hardware and software locks. Foundry-specific
+timing and macro signaling sit behind a replaceable SHIM so the software
+interface stays the same across OTP technologies.
+
+== Description and Features
+
+* *Boot-time fuse sense*: An automatic bulk read loads the full OTP
+array into shadow registers so later CSR access is not bound to OTP
+timing.
+* *Dual AXI4-Lite paths*: SMC is the functional access path; JTAG is
+the debug path, with lifecycle-dependent restrictions.
+* *Lifecycle and token gating*: SEP instances further restrict access
+by lifecycle state, secure test mode, and RMA or security-disable
+tokens.
+
+ifdef::backend-html5[]
+include::partial$efuse/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$efuse/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$efuse/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$efuse/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]

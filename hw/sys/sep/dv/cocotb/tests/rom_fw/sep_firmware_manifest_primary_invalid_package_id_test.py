@@ -9,7 +9,6 @@ ROM's PID_IDX= echo is checked. The fuse-map value is a model property, not asse
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_usage_constraint_base import sep_primary_usage_constraint_base
 
@@ -18,8 +17,7 @@ _REJECT_INDEX = 2
 
 
 @pyuvm.test()
-class sep_firmware_manifest_primary_invalid_package_id_test(
-        sep_primary_usage_constraint_base):
+class sep_firmware_manifest_primary_invalid_package_id_test(sep_primary_usage_constraint_base):
     """Primary enables package_id words 2 and 4 -> refused -> the backup boots."""
 
     defect_marker = fd.PACKAGE_MARKER
@@ -35,11 +33,12 @@ class sep_firmware_manifest_primary_invalid_package_id_test(
             "CHK-STIMULUS-PACKAGE-ID: %s selector_bits[8..15] = 0x%02x, so the ROM "
             "must read package_id words %s and refuse on word %d; every enabled "
             "word carries the shipped 0x%08x",
-            slot, _SELECTOR_MASK,
-            [i for i in range(8) if _SELECTOR_MASK & (1 << i)], index,
+            slot,
+            _SELECTOR_MASK,
+            [i for i in range(8) if _SELECTOR_MASK & (1 << i)],
+            index,
             0xA5A5A5A5,
         )
 
     def check_constraint_evidence(self, console: list[str]) -> None:
-        fd.assert_device_id_mismatch(self.logger, console, "package_id",
-                                     _REJECT_INDEX)
+        fd.assert_device_id_mismatch(self.logger, console, "package_id", _REJECT_INDEX)

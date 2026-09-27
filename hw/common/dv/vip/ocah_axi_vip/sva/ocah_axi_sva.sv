@@ -17,6 +17,17 @@
 // knob (tie to 1'b1, or drive from a TB interface bit for legitimate
 // suppression windows); every concurrent rule is qualified by it.
 //
+// Each concurrent rule belongs to the side that drives its signals: the
+// master drives the AW, W and AR channels and the B and R readies, the slave
+// drives the B and R channels and the AW, W and AR readies.
+// ASSUME_MASTER_RULES and ASSUME_SLAVE_RULES emit that side's concurrent
+// rules as assumptions, so a formal backend that binds one instance asserts
+// the design's side and assumes the environment's; both default to
+// assertions, which is the simulation shape. Each such rule sits in a
+// generate block named gen_<rule> (`OCAH_SVA_RULE, `OCAH_RULE). The
+// immediate checks of the SIMULATION-only tracking blocks stay assertions: no
+// formal model elaborates them, and a simulator treats both kinds alike.
+//
 // Rules (OCAH_AXI_* assert, OCAH_AXI_C_* cover):
 //   Reset      : <CH>_VALID_RESET_LOW (VALID low while aresetn is low)
 //   Handshake  : <CH>_PAYLOAD_STABLE, <CH>_VALID_HELD (IHI 0022 A3.2.1/A3.2.2)
@@ -30,18 +41,29 @@
 //                RESP_EXOKAY_EXCL (A7.2 exclusive access responses),
 //                AXIL_{B,R}_RESP_LEGAL (B1.1.1: no EXOKAY on AXI4-Lite)
 //
-// Simulation-only: auxiliary tracking state is guarded by OCAH_INC_ASSERT and
-// uses queues/associative arrays. Not synthesizable; never add to Verilator
-// filelists (ocah_assert.svh compiles it out there anyway).
+// Two simulation trees. The two-state rules and the tracking state use
+// `OCAH_SVA_RULE / `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every
+// SIMULATION compile, evaluated by Verilator under --assert, and on every
+// FORMAL elaboration of a licensed backend. The X-hygiene rules and the
+// covers use `OCAH_RULE (ocah_sva_macros.svh) / `OCAH_COVER
+// (ocah_assert.svh): live only where OCAH_INC_ASSERT is defined, i.e. on a
+// four-state simulator or a licensed
+// backend. Not synthesizable: the tracking state uses queues and associative
+// arrays, so it stays under SIMULATION. The open-source formal frontend
+// reads none of the concurrent operators here; ocah_axi_fv.sv beside this
+// file carries the boolean-subset rules for that path.
 
 `include "ocah_assert.svh"
+`include "ocah_sva_macros.svh"
 
 module ocah_axi_sva #(
-  parameter bit          IS_LITE         = 1'b0,
-  parameter int unsigned ADDR_WIDTH      = 32,
-  parameter int unsigned DATA_WIDTH      = 32,
-  parameter int unsigned ID_WIDTH        = 4,
-  parameter int unsigned MAX_OUTSTANDING = 8
+  parameter bit          IS_LITE             = 1'b0,
+  parameter int unsigned ADDR_WIDTH          = 32,
+  parameter int unsigned DATA_WIDTH          = 32,
+  parameter int unsigned ID_WIDTH            = 4,
+  parameter int unsigned MAX_OUTSTANDING     = 8,
+  parameter bit          ASSUME_MASTER_RULES = 1'b0,
+  parameter bit          ASSUME_SLAVE_RULES  = 1'b0
 ) (
   input wire logic                    aclk,
   input wire logic                    aresetn,
@@ -100,63 +122,84 @@ module ocah_axi_sva #(
 
   // ------------------------------------------------------------------
   // Reset behavior: VALID must be low while reset is asserted (A3.1.2).
-  // Deliberately NOT reset-disabled; qualified on a resolved-low aresetn
-  // so an X reset at time zero cannot fire it.
+  // Not reset-disabled (the rule checks reset itself); qualified on a
+  // resolved-low aresetn so an X reset at time zero cannot fire it.
   // ------------------------------------------------------------------
-  `OCAH_ASSERT(OCAH_AXI_AW_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !awvalid, aclk, 1'b0)
-  `OCAH_ASSERT(OCAH_AXI_W_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !wvalid, aclk, 1'b0)
-  `OCAH_ASSERT(OCAH_AXI_B_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !bvalid, aclk, 1'b0)
-  `OCAH_ASSERT(OCAH_AXI_AR_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !arvalid, aclk, 1'b0)
-  `OCAH_ASSERT(OCAH_AXI_R_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !rvalid, aclk, 1'b0)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_VALID_RESET_LOW,
+                 (en_i && (aresetn === 1'b0)) |-> !awvalid, aclk, 1'b0)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_VALID_RESET_LOW,
+                 (en_i && (aresetn === 1'b0)) |-> !wvalid, aclk, 1'b0)
+  `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_VALID_RESET_LOW,
+                 (en_i && (aresetn === 1'b0)) |-> !bvalid, aclk, 1'b0)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_VALID_RESET_LOW,
+                 (en_i && (aresetn === 1'b0)) |-> !arvalid, aclk, 1'b0)
+  `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_VALID_RESET_LOW,
+                 (en_i && (aresetn === 1'b0)) |-> !rvalid, aclk, 1'b0)
 
   // ------------------------------------------------------------------
   // Handshake stability and hold (A3.2.1): once VALID is asserted the
   // payload must remain stable and VALID must stay high until READY.
   // ------------------------------------------------------------------
-  `OCAH_ASSERT(OCAH_AXI_AW_VALID_HELD, (en_i && awvalid && !awready) |=> awvalid, aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AW_PAYLOAD_STABLE,
-               (en_i && awvalid && !awready) |=> $stable({awid, awaddr, awlen, awsize, awburst,
-                                                          awlock, awprot}), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_W_VALID_HELD, (en_i && wvalid && !wready) |=> wvalid, aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_W_PAYLOAD_STABLE,
-               (en_i && wvalid && !wready) |=> $stable({wdata, wstrb, wlast}), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_B_VALID_HELD, (en_i && bvalid && !bready) |=> bvalid, aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_B_PAYLOAD_STABLE, (en_i && bvalid && !bready) |=> $stable({bid, bresp}),
-               aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AR_VALID_HELD, (en_i && arvalid && !arready) |=> arvalid, aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AR_PAYLOAD_STABLE,
-               (en_i && arvalid && !arready) |=> $stable({arid, araddr, arlen, arsize, arburst,
-                                                          arlock, arprot}), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_R_VALID_HELD, (en_i && rvalid && !rready) |=> rvalid, aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_R_PAYLOAD_STABLE,
-               (en_i && rvalid && !rready) |=> $stable({rid, rdata, rresp, rlast}), aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_VALID_HELD,
+                 (en_i && awvalid && !awready) |=> awvalid, aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_PAYLOAD_STABLE,
+                 (en_i && awvalid && !awready) |=> $stable({awid, awaddr, awlen, awsize, awburst,
+                                                            awlock, awprot}), aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_VALID_HELD,
+                 (en_i && wvalid && !wready) |=> wvalid, aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_PAYLOAD_STABLE,
+                 (en_i && wvalid && !wready) |=> $stable({wdata, wstrb, wlast}), aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_VALID_HELD, (en_i && bvalid && !bready) |=> bvalid,
+                 aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_PAYLOAD_STABLE,
+                 (en_i && bvalid && !bready) |=> $stable({bid, bresp}), aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_VALID_HELD,
+                 (en_i && arvalid && !arready) |=> arvalid, aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_PAYLOAD_STABLE,
+                 (en_i && arvalid && !arready) |=> $stable({arid, araddr, arlen, arsize, arburst,
+                                                            arlock, arprot}), aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_VALID_HELD, (en_i && rvalid && !rready) |=> rvalid,
+                 aclk, !aresetn)
+  `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_PAYLOAD_STABLE,
+                 (en_i && rvalid && !rready) |=> $stable({rid, rdata, rresp, rlast}), aclk,
+                 !aresetn)
 
   // ------------------------------------------------------------------
-  // X-hygiene: control strobes always resolved; payload resolved when
-  // its VALID is high.
+  // X-hygiene (four-state simulators only): control strobes always
+  // resolved; payload resolved when its VALID is high.
   // ------------------------------------------------------------------
-  `OCAH_ASSERT(OCAH_AXI_AW_VALID_KNOWN, en_i |-> !$isunknown(awvalid), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AW_READY_KNOWN, en_i |-> !$isunknown(awready), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AW_PAYLOAD_KNOWN, (en_i && awvalid) |-> !$isunknown
-                                          ({awid, awaddr, awlen, awsize, awburst, awlock, awprot}),
-               aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_W_VALID_KNOWN, en_i |-> !$isunknown(wvalid), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_W_READY_KNOWN, en_i |-> !$isunknown(wready), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_W_PAYLOAD_KNOWN, (en_i && wvalid) |-> !$isunknown({wstrb, wlast}), aclk,
-               !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_B_VALID_KNOWN, en_i |-> !$isunknown(bvalid), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_B_READY_KNOWN, en_i |-> !$isunknown(bready), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_B_PAYLOAD_KNOWN, (en_i && bvalid) |-> !$isunknown({bid, bresp}), aclk,
-               !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AR_VALID_KNOWN, en_i |-> !$isunknown(arvalid), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AR_READY_KNOWN, en_i |-> !$isunknown(arready), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_AR_PAYLOAD_KNOWN, (en_i && arvalid) |-> !$isunknown
-                                          ({arid, araddr, arlen, arsize, arburst, arlock, arprot}),
-               aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_R_VALID_KNOWN, en_i |-> !$isunknown(rvalid), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_R_READY_KNOWN, en_i |-> !$isunknown(rready), aclk, !aresetn)
-  `OCAH_ASSERT(OCAH_AXI_R_PAYLOAD_KNOWN, (en_i && rvalid) |-> !$isunknown({rid, rresp, rlast}),
-               aclk, !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_VALID_KNOWN, en_i |-> !$isunknown(awvalid), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_AW_READY_KNOWN, en_i |-> !$isunknown(awready), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_PAYLOAD_KNOWN,
+             (en_i && awvalid) |-> !$isunknown
+             ({awid, awaddr, awlen, awsize, awburst, awlock, awprot}), aclk, !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_VALID_KNOWN, en_i |-> !$isunknown(wvalid), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_W_READY_KNOWN, en_i |-> !$isunknown(wready), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_W_PAYLOAD_KNOWN, (en_i && wvalid) |-> !$isunknown
+                                                            ({wstrb, wlast}), aclk, !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_VALID_KNOWN, en_i |-> !$isunknown(bvalid), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_B_READY_KNOWN, en_i |-> !$isunknown(bready), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_B_PAYLOAD_KNOWN, (en_i && bvalid) |-> !$isunknown
+                                                           ({bid, bresp}), aclk, !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_VALID_KNOWN, en_i |-> !$isunknown(arvalid), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_AR_READY_KNOWN, en_i |-> !$isunknown(arready), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_PAYLOAD_KNOWN,
+             (en_i && arvalid) |-> !$isunknown
+             ({arid, araddr, arlen, arsize, arburst, arlock, arprot}), aclk, !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_VALID_KNOWN, en_i |-> !$isunknown(rvalid), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_MASTER_RULES, OCAH_AXI_R_READY_KNOWN, en_i |-> !$isunknown(rready), aclk,
+             !aresetn)
+  `OCAH_RULE(ASSUME_SLAVE_RULES, OCAH_AXI_R_PAYLOAD_KNOWN, (en_i && rvalid) |-> !$isunknown
+                                                           ({rid, rresp, rlast}), aclk, !aresetn)
 
   // ------------------------------------------------------------------
   // Handshake / backpressure / error-response covers (rule non-vacuity).
@@ -180,56 +223,56 @@ module ocah_axi_sva #(
       // --------------------------------------------------------------
       // Address-channel burst legality, checked at the AW/AR handshake.
       // --------------------------------------------------------------
-      `OCAH_ASSERT(OCAH_AXI_AW_BURST_LEGAL, (en_i && awvalid && awready) |-> (awburst != 2'b11),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AW_SIZE_LEGAL,
-                   (en_i && awvalid && awready) |-> ((32'd8 << awsize) <= DATA_WIDTH), aclk,
-                   !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AW_LEN_FIXED_MAX16,
-                   (en_i && awvalid && awready && (awburst == BurstFixed)) |-> (awlen <= 8'd15),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AW_LEN_WRAP_LEGAL,
-                   (en_i && awvalid && awready && (awburst == BurstWrap)) |->
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_BURST_LEGAL,
+                     (en_i && awvalid && awready) |-> (awburst != 2'b11), aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_SIZE_LEGAL,
+                     (en_i && awvalid && awready) |-> ((32'd8 << awsize) <= DATA_WIDTH), aclk,
+                     !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_LEN_FIXED_MAX16,
+                     (en_i && awvalid && awready && (awburst == BurstFixed)) |-> (awlen <= 8'd15),
+                     aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_LEN_WRAP_LEGAL,
+                     (en_i && awvalid && awready && (awburst == BurstWrap)) |->
                 (awlen inside {8'd1, 8'd3, 8'd7, 8'd15}),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AW_WRAP_ALIGNED,
-                   (en_i && awvalid && awready && (awburst == BurstWrap)) |->
+                     aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_WRAP_ALIGNED,
+                     (en_i && awvalid && awready && (awburst == BurstWrap)) |->
                 ((awaddr & ((ADDR_WIDTH'(1) << awsize) - 1)) == '0),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AW_4KB_BOUNDARY,
-                   (en_i && awvalid && awready && (awburst == BurstIncr)) |->
+                     aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AW_4KB_BOUNDARY,
+                     (en_i && awvalid && awready && (awburst == BurstIncr)) |->
                 ((((13'(awaddr[11:0]) >> awsize) << awsize)
                   + ((13'(awlen) + 13'd1) << awsize)) <= 13'h1000),
-                   aclk, !aresetn)
+                     aclk, !aresetn)
 
-      `OCAH_ASSERT(OCAH_AXI_AR_BURST_LEGAL, (en_i && arvalid && arready) |-> (arburst != 2'b11),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AR_SIZE_LEGAL,
-                   (en_i && arvalid && arready) |-> ((32'd8 << arsize) <= DATA_WIDTH), aclk,
-                   !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AR_LEN_FIXED_MAX16,
-                   (en_i && arvalid && arready && (arburst == BurstFixed)) |-> (arlen <= 8'd15),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AR_LEN_WRAP_LEGAL,
-                   (en_i && arvalid && arready && (arburst == BurstWrap)) |->
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_BURST_LEGAL,
+                     (en_i && arvalid && arready) |-> (arburst != 2'b11), aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_SIZE_LEGAL,
+                     (en_i && arvalid && arready) |-> ((32'd8 << arsize) <= DATA_WIDTH), aclk,
+                     !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_LEN_FIXED_MAX16,
+                     (en_i && arvalid && arready && (arburst == BurstFixed)) |-> (arlen <= 8'd15),
+                     aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_LEN_WRAP_LEGAL,
+                     (en_i && arvalid && arready && (arburst == BurstWrap)) |->
                 (arlen inside {8'd1, 8'd3, 8'd7, 8'd15}),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AR_WRAP_ALIGNED,
-                   (en_i && arvalid && arready && (arburst == BurstWrap)) |->
+                     aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_WRAP_ALIGNED,
+                     (en_i && arvalid && arready && (arburst == BurstWrap)) |->
                 ((araddr & ((ADDR_WIDTH'(1) << arsize) - 1)) == '0),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXI_AR_4KB_BOUNDARY,
-                   (en_i && arvalid && arready && (arburst == BurstIncr)) |->
+                     aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_MASTER_RULES, OCAH_AXI_AR_4KB_BOUNDARY,
+                     (en_i && arvalid && arready && (arburst == BurstIncr)) |->
                 ((((13'(araddr[11:0]) >> arsize) << arsize)
                   + ((13'(arlen) + 13'd1) << arsize)) <= 13'h1000),
-                   aclk, !aresetn)
+                     aclk, !aresetn)
 
       `OCAH_COVER(OCAH_AXI_C_AW_MULTI_BEAT, en_i && awvalid && awready && (awlen > 0), aclk,
                   !aresetn)
       `OCAH_COVER(OCAH_AXI_C_AR_MULTI_BEAT, en_i && arvalid && arready && (arlen > 0), aclk,
                   !aresetn)
 
-`ifdef OCAH_INC_ASSERT
+`ifdef SIMULATION
       // --------------------------------------------------------------
       // Stateful burst/ID tracking (simulation-only). Ordering within the
       // procedural block is load-bearing: W is processed before B and AR
@@ -312,7 +355,7 @@ module ocah_axi_sva #(
               // Check its length retroactively and move it straight
               // to the response-pending queue with the AW's id/lock.
               early_wlen = early_wburst_len_q.pop_front();
-              `OCAH_ASSERT_I(OCAH_AXI_W_LAST_POSITION_EARLY, (early_wlen == int'(awlen) + 1))
+              `OCAH_SVA_ASSERT_I(OCAH_AXI_W_LAST_POSITION_EARLY, (early_wlen == int'(awlen) + 1))
               wr_done_q.push_back('{id: awid, lock: awlock});
             end else begin
               aw_q.push_back('{id: awid, addr: awaddr, len: awlen, size: awsize,
@@ -324,10 +367,10 @@ module ocah_axi_sva #(
           if (wvalid === 1'b1 && wready === 1'b1) begin
             if (w_beat_idx == 0) w_burst_checkable = (aw_q.size() > 0);
             if (w_burst_checkable) begin
-              `OCAH_ASSERT_I(OCAH_AXI_W_LAST_POSITION,
-                             (wlast === (w_beat_idx == int'(aw_q[0].len))))
-              `OCAH_ASSERT_I(OCAH_AXI_W_STRB_IN_LANES, ((wstrb & ~active_lanes(
-                             aw_q[0].addr, aw_q[0].size, aw_q[0].burst, w_beat_idx)) == '0))
+              `OCAH_SVA_ASSERT_I(OCAH_AXI_W_LAST_POSITION,
+                                 (wlast === (w_beat_idx == int'(aw_q[0].len))))
+              `OCAH_SVA_ASSERT_I(OCAH_AXI_W_STRB_IN_LANES, ((wstrb & ~active_lanes(
+                                 aw_q[0].addr, aw_q[0].size, aw_q[0].burst, w_beat_idx)) == '0))
             end
             if (wlast === 1'b1) begin
               if (w_burst_checkable) begin
@@ -347,14 +390,15 @@ module ocah_axi_sva #(
           // -- Write response ----------------------------------------
           if (bvalid === 1'b1 && bready === 1'b1) begin
             wr_match_idx = -1;
-            `OCAH_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (wr_done_q.size() > 0))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (wr_done_q.size() > 0))
             foreach (wr_done_q[i]) begin
               if (wr_match_idx == -1 && wr_done_q[i].id === bid) wr_match_idx = i;
             end
-            `OCAH_ASSERT_I(OCAH_AXI_B_ID_OUTSTANDING, (wr_match_idx != -1))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_ID_OUTSTANDING, (wr_match_idx != -1))
             if (wr_match_idx != -1) begin
-              `OCAH_ASSERT_I(OCAH_AXI_B_RESP_EXOKAY_EXCL,
-                             ((bresp !== RespExokay) || (wr_done_q[wr_match_idx].lock === 1'b1)))
+              `OCAH_SVA_ASSERT_I(
+                  OCAH_AXI_B_RESP_EXOKAY_EXCL,
+                  ((bresp !== RespExokay) || (wr_done_q[wr_match_idx].lock === 1'b1)))
               wr_done_q.delete(wr_match_idx);
             end
           end
@@ -368,13 +412,13 @@ module ocah_axi_sva #(
           // -- Read data beats ---------------------------------------
           if (rvalid === 1'b1 && rready === 1'b1) begin
             rd_id_known = rd_q.exists(rid) && (rd_q[rid].size() > 0);
-            `OCAH_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
-            `OCAH_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_ID_OUTSTANDING, rd_id_known)
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, rd_id_known)
             if (rd_id_known) begin
-              `OCAH_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
-                             (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
-              `OCAH_ASSERT_I(OCAH_AXI_R_RESP_EXOKAY_EXCL,
-                             ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
+              `OCAH_SVA_ASSERT_I(OCAH_AXI_R_LAST_POSITION,
+                                 (rlast === (r_beat_idx[rid] == int'(rd_q[rid][0].len))))
+              `OCAH_SVA_ASSERT_I(OCAH_AXI_R_RESP_EXOKAY_EXCL,
+                                 ((rresp !== RespExokay) || (rd_q[rid][0].lock === 1'b1)))
               if (rlast === 1'b1) begin
                 void'(rd_q[rid].pop_front());
                 r_beat_idx[rid] = 0;
@@ -385,23 +429,23 @@ module ocah_axi_sva #(
           end
 
           // -- Outstanding-depth sanity (checker capacity, not AXI) --
-          `OCAH_ASSERT_I(OCAH_AXI_AW_OUTSTANDING_DEPTH,
-                         (aw_q.size() + wr_done_q.size() <= 2 * MAX_OUTSTANDING))
+          `OCAH_SVA_ASSERT_I(OCAH_AXI_AW_OUTSTANDING_DEPTH,
+                             (aw_q.size() + wr_done_q.size() <= 2 * MAX_OUTSTANDING))
         end
       end
-`endif  // OCAH_INC_ASSERT
+`endif  // SIMULATION
 
     end else begin : gen_lite_rules
 
       // --------------------------------------------------------------
       // AXI4-Lite response legality (IHI 0022 B1.1.1: EXOKAY undefined).
       // --------------------------------------------------------------
-      `OCAH_ASSERT(OCAH_AXIL_B_RESP_LEGAL, (en_i && bvalid && bready) |-> (bresp != RespExokay),
-                   aclk, !aresetn)
-      `OCAH_ASSERT(OCAH_AXIL_R_RESP_LEGAL, (en_i && rvalid && rready) |-> (rresp != RespExokay),
-                   aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXIL_B_RESP_LEGAL,
+                     (en_i && bvalid && bready) |-> (bresp != RespExokay), aclk, !aresetn)
+      `OCAH_SVA_RULE(ASSUME_SLAVE_RULES, OCAH_AXIL_R_RESP_LEGAL,
+                     (en_i && rvalid && rready) |-> (rresp != RespExokay), aclk, !aresetn)
 
-`ifdef OCAH_INC_ASSERT
+`ifdef SIMULATION
       // Response-ordering counters (same same-cycle ordering note as AXI4).
       int unsigned lite_wr_addr_cnt = 0;
       int unsigned lite_wr_data_cnt = 0;
@@ -417,17 +461,18 @@ module ocah_axi_sva #(
           if (wvalid === 1'b1 && wready === 1'b1) lite_wr_data_cnt++;
           if (arvalid === 1'b1 && arready === 1'b1) lite_rd_cnt++;
           if (bvalid === 1'b1 && bready === 1'b1) begin
-            `OCAH_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW, (lite_wr_addr_cnt > 0 && lite_wr_data_cnt > 0))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_B_NOT_BEFORE_AW,
+                               (lite_wr_addr_cnt > 0 && lite_wr_data_cnt > 0))
             if (lite_wr_addr_cnt > 0) lite_wr_addr_cnt--;
             if (lite_wr_data_cnt > 0) lite_wr_data_cnt--;
           end
           if (rvalid === 1'b1 && rready === 1'b1) begin
-            `OCAH_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (lite_rd_cnt > 0))
+            `OCAH_SVA_ASSERT_I(OCAH_AXI_R_NOT_BEFORE_AR, (lite_rd_cnt > 0))
             if (lite_rd_cnt > 0) lite_rd_cnt--;
           end
         end
       end
-`endif  // OCAH_INC_ASSERT
+`endif  // SIMULATION
 
     end
   endgenerate

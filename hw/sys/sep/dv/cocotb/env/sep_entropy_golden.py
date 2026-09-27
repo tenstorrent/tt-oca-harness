@@ -3,8 +3,8 @@
 #
 # sep_entropy_golden.py
 #
-# End-to-end SEP entropy-datapath golden FACADE. Chains the five already-
-# validated, self-tested stage models into one stream-oriented model that a
+# End-to-end SEP entropy-datapath golden FACADE. Chains the five self-tested
+# stage models into one stream-oriented model that a
 # cocotb scoreboard can compare against DUT probes:
 #
 #   noise (12b/cyc)  ->  decorrelator (96b/decor-valid)
@@ -15,10 +15,10 @@
 #                     ->  EDN->KM slice (each 128b block -> 4x32b beats)
 #
 # This module REUSES the stage models verbatim; it does not reimplement them:
-#   sep_noise_golden.SepNoiseGolden      (standalone self-test noise source)
-#   sep_decor_golden.SepDecorGolden      (12-lane 29b SR decorrelator)
-#   sep_compress_golden.SepBiwCompress   (12 bytes -> 32b BIW word)
-#   sep_compress_golden.SepSha256Conditioner (16x32b -> 8x32b digest)
+#   EntropyNoiseModel      (standalone self-test noise source)
+#   EntropyDecorrelatorModel (12-lane 29b SR decorrelator)
+#   EntropyBiwModel        (12 bytes -> 32b BIW word)
+#   EntropySha256Model     (16x32b -> 8x32b digest)
 #   sep_ctr_drbg_golden.SepCtrDrbgGolden (AES-256 no-df CTR_DRBG)
 #
 # In simulation, SepDrbgScoreboard does not use these internal sources for the
@@ -26,7 +26,7 @@
 # feed_noise() / feed_decor_sample() from DUT-observed strobes, so the DUT and
 # golden consume the same externally-driven raw-noise sequence.
 #
-# Inter-stage framing, honored exactly:
+# Inter-stage framing (matches the reference scoreboard):
 #   - sample_clk_div=7 (/8): each lane emits a byte every 8 cycles; the 12 lane
 #     bytes pack into a 96b decor word (lane0 -> [7:0]) on a decor-valid event.
 #   - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
@@ -43,10 +43,16 @@
 
 from collections import deque
 
-from sep_compress_golden import SepBiwCompress, SepSha256Conditioner
+from models.entropy_conditioning_model import (
+    EntropyBiwModel,
+    EntropySha256Model,
+)
+from models.entropy_decorrelator_model import (
+    MAX_LANES,
+    EntropyDecorrelatorModel,
+)
+from models.entropy_noise_model import EntropyNoiseModel
 from sep_ctr_drbg_golden import BLOCK_LEN, SEED_LEN, SepCtrDrbgGolden
-from sep_decor_golden import MAX_LANES, SepDecorGolden
-from sep_noise_golden import SepNoiseGolden
 
 SEED_WORDS = SEED_LEN // 32  # 12 compressor words make one 384b seed
 KM_BEATS_PER_BLOCK = BLOCK_LEN // 32  # 4 x 32b beats per 128b genbits block
@@ -68,7 +74,7 @@ class SepEntropyGolden:
     The decor/compress/seed stages are pure stream models: step_cycle() fills
     them ahead of the DUT. Genbits are different -- they are DEMAND-driven, so
     the scoreboard pulls them one at a time with genbits_block() and closes each
-    Generate command with genbits_gen_last() off the RTL's gen_last.
+    Generate command with genbits_gen_last() on the observed gen_last strobe.
     """
 
     def __init__(
@@ -95,15 +101,15 @@ class SepEntropyGolden:
         self.km_word_order = km_word_order
 
         # --- standalone self-test noise source ----------------------------
-        self._noise = SepNoiseGolden()
+        self._noise = EntropyNoiseModel()
         self._noise.configure(noise_model_mode, seed_base=noise_seed_base)
 
         # --- stage models -------------------------------------------------
-        self._decor = SepDecorGolden()
+        self._decor = EntropyDecorrelatorModel()
         self._decor.init_all(
             sample_clk_div=sample_clk_div, bypass=self.bypass, byte_mask=self.byte_mask
         )
-        self._sha = SepSha256Conditioner(16) if self.sha_whitening else None
+        self._sha = EntropySha256Model(16) if self.sha_whitening else None
         self._drbg = SepCtrDrbgGolden()
 
         # --- accumulators -------------------------------------------------
@@ -130,19 +136,14 @@ class SepEntropyGolden:
         self.n_generates = 0  # Generate commands finalized (gen_last)
 
     def seed_decor_sr(self, sr_packed, clk_divider=None):
-        """Seed all 12 decorrelator shift registers from a live RTL ff_stage
-        snapshot (12x29 bits, lane i at [29*i +: 29]).
+        """Seed the independent golden SR from a live ff_stage snapshot.
 
-        The decorrelator ff_stage resets only on the hardware rst_ni, and its
-        reset edge is unobservable from the sampled decor output (which lags it
-        by a full divider period). Because the SR has MSB->LSB feedback, its
-        state NEVER flushes -- a wrong reset phase leaves a difference that just
-        rotates through the 29 taps forever (matching the sample only when it
-        rotates out of bits[28:21]). So the scoreboard snapshots the real
-        ff_stage and seeds it here, putting the golden feedback SR in exact
-        lockstep from a known cycle. ``clk_divider`` phase-aligns the downsampler
-        so the golden's next sampled byte lands on the RTL's next decor sample
-        (keeps the sampled CHK2..CHK5 chain in value-sync)."""
+        The architecture names a 29-stage feedback SR that is not
+        software-visible, so the reset phase has no frontdoor. A wrong
+        phase never flushes -- it rotates. The snapshot is chain-of-custody
+        for the starting state, not a transcribed golden. The transform
+        itself comes from entropy_source architecture.adoc.
+        """
         for lane in range(MAX_LANES):
             self._decor.set_sr(lane, (sr_packed >> (29 * lane)) & 0x1FFFFFFF)
             if clk_divider is not None:
@@ -197,7 +198,7 @@ class SepEntropyGolden:
         self.n_decor_valid += 1
 
         # BIW compress: 12 lane-bytes -> one 32b word.
-        biw_word = SepBiwCompress.compress_from_packed(decor_word)
+        biw_word = EntropyBiwModel.compress_from_packed(decor_word)
 
         # Conditioning: whitening ON feeds BIW into SHA; the compressor-output
         # words the scoreboard sees are the post-SHA digest words (8 per block).
@@ -242,7 +243,7 @@ class SepEntropyGolden:
         demand: with all three DRBG EDN endpoints live (KM, crypto adapter,
         entropy pool) a single seed routinely serves more than one Generate
         command. Blocks are therefore produced lazily by genbits_block(), and
-        the command boundary is taken from the RTL's own gen_last via
+        the command boundary is taken from the observed gen_last strobe via
         genbits_gen_last(). See SepCtrDrbgGolden.generate_one().
         """
         if not self._seed_done:
@@ -352,7 +353,7 @@ if __name__ == "__main__":
     assert g.n_compress_words >= INGRESS + SEED_WORDS, "too few compressor words"
 
     # ----- (c) genbits are demand-driven; (d) 4 KM beats/block -----
-    # Seeds alone produce no blocks now: the scoreboard pulls them. Pull one
+    # Seeds alone produce no blocks: the scoreboard pulls them. Pull one
     # full Generate's worth and close the command, as the RTL gen_last would.
     assert g.n_genbits == 0, f"seeds must not self-generate: {g.n_genbits} blocks appeared unpulled"
     for _ in range(GLEN):
@@ -366,7 +367,7 @@ if __name__ == "__main__":
 
     # (c2) The per-block path must reproduce the monolithic generate() bit for
     # bit -- same block values, same trailing Update, same resulting state.
-    # This is the property the whole demand-driven refactor rests on.
+    # This is the property the demand-driven model rests on.
     ref = SepCtrDrbgGolden()
     ref.instantiate(g.expected_seed[0])
     lazy = SepCtrDrbgGolden()
@@ -387,7 +388,7 @@ if __name__ == "__main__":
         recon |= (w & 0xFFFFFFFF) << (32 * i)
     assert recon == blk0, f"KM beats don't reconstruct genbits block: {recon:032x} != {blk0:032x}"
 
-    # ----- reference hexes (fixed seed = SepNoiseGolden default config) -----
+    # ----- reference hexes (fixed seed = EntropyNoiseModel default config) -----
     seed0 = g.expected_seed[0]
     print("ENTROPY GOLDEN FACADE SELFTEST PASS")
     print(

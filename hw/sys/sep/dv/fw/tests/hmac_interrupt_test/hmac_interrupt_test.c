@@ -6,9 +6,6 @@
  *
  * Verifies INTR_TEST forcing, INTR_STATE reflection, W1C clearing,
  * INTR_ENABLE masking behavior, and real hmac_done interrupt generation.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_interrupt_test STACK=sim
  */
 
 #include <stdint.h>
@@ -101,9 +98,9 @@ int main(void) {
 
     /*
      * Step 3: fifo_empty IntrT path via INTR_TEST (FAIL-ON).
-     * Idle STATUS.fifo_empty=1 is a precondition. This DUT/integration does not
-     * mirror STATUS→INTR_STATE for fifo_empty at idle (observed INTR=0); do not
-     * claim that reflection here — tracked separately if RTL-owned.
+     * Idle STATUS.fifo_empty=1 is a precondition. INTR_STATE.fifo_empty does not
+     * mirror STATUS.fifo_empty at idle, so this step forces the bit through
+     * INTR_TEST and asserts nothing about that reflection.
      */
     printf("\nStep 3: fifo_empty INTR_TEST (idle STATUS precondition)\n");
     clear_all_interrupts();

@@ -1,69 +1,83 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Architecture and Access Paths
+:description: DTP internal structure and how debug access reaches the JIU and CTN.
+
 [[dtp-overview]]
-=== Overview
 
-The Debug and Test Ports (DTP) module provides the debug and test infrastructure
-for Tenstorrent chiplets. It implements IEEE 1149.1 (JTAG) and IEEE 1687 (iJTAG)
-compliant interfaces along with cross-trigger capabilities for multi-chiplet
-debugging.
+The DTP contains two major functional blocks — the JTAG Interface Unit (JIU) and
+the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
+them to each other, to the SMU AXI crossbar, and to the external JTAG and
+cross-trigger pads.
 
-The DTP has two major blocks, the JTAG Interface Unit and Cross Trigger Network,
-shown in the figure below.
+.DTP internal structure
+image::dtp_arch_overview.svg[alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",scaledwidth=90%]
 
-image::dtp_arch_diagram.drawio.svg[DTP Architecture Diagram,scaledwidth=90.0%]
+The figure uses blue borders and connectors for JTAG/JIU paths (including
+instruction decode and selection signals), red for CTN paths, grey for pad I/O,
+and gold-dashed for the `jtag_clock_stop` control signal from PTAP to the
+clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary
+paths and dashed arrows show return, selection, or control paths. JTAG scan-in
+and scan-out, AXI-Lite requests and responses, and CTP pad outputs and inputs
+each use separate arrows.
 
-==== Purpose
+== JTAG Interface Unit
 
-The DTP serves as the central hub for:
+The JTAG Interface Unit (JIU) is the top-level JTAG control module. It contains:
 
-* *Debug Access*: JTAG-based access to on-chip registers and memory
-* *Boundary Scan*: IEEE 1149.1 boundary scan for board-level testing
-* *Cross Triggering*: Die-to-die and internal trigger coordination
-* *Clock Control*: Debug clock-stop controls and CLA clock-stop request
-  aggregation
+* A Primary TAP (PTAP) — the main chiplet JTAG entry point, connected to the
+  five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).
+* A configurable set of Secondary TAPs (STAPs) — for I/O chiplet-to-chiplet
+  JTAG, SMC CPU debug, SEP CPU debug, and optional extra TAPs.
+* An iJTAG network with SIB-based chains for DFT secure, DFT non-secure, DFD,
+  SMC fabric debug (JTAG2AXI), SMC OTP (JTAG2AXIL), and SEP OTP (JTAG2AXIL).
 
-==== Key Features
+== Cross Trigger Network
 
-*JTAG Interface*
+The Cross Trigger Network (CTN) routes cross-trigger pulses between on-chip
+sources and sinks and the external CTP pads. It consists of:
 
-* IEEE 1149.1-2013 compliant TAP controller
-* Configurable instruction register
-* Support for standard instructions (BYPASS, IDCODE, EXTEST, etc.)
-* Optional JTAG-to-AXI bridges for register access
+* *Cross Trigger Ports (CTPs)* — pad-facing modules, each connecting to four
+  I/O pads (CT_Req_out, CT_Ack_in, CT_Req_in, CT_Ack_out) and supporting both
+  wire-OR and point-to-point signalling.
+* *Cross Trigger Matrix (CTM)* — a 26×26 AND-OR crossbar that statically routes
+  trigger pulses under AXI-Lite CSR control.
+* *Clock stop aggregation* — the CTN OR-reduces all `xtrig_clk_stop_req_i`
+  inputs (CLA sources) and OR-combines the result with the JTAG `jtag_clock_stop`
+  bit to produce the registered `stop_clks_o` output.
 
-*Cross Trigger Network*
+Per-path debug-disable inputs gate STAPs, iJTAG SIBs, and JTAG2AXI bridges.
 
-* Configurable number of external Cross Trigger Ports (1-32)
-* Configurable number of internal cross triggers (0-32)
-* Cross Trigger Matrix for flexible routing
-* Wire-OR and Point-to-Point signaling modes
-* OR aggregation of incoming CLA clock-stop request sources, OR-combined with
-  JTAG clock stop for clock control gating
+== Debug Access Paths
 
-*iJTAG Support*
+External debug access reaches the DTP subsystem through two routes:
 
-* IEEE 1687 compliant scan chain management
-* Separate chains for BSR, DFD, and DFT
-* SIB-based hierarchical access
+*JTAG path*: An external debugger drives the five JTAG pins directly. The PTAP
+decodes the JTAG instruction, selects the appropriate TDR, and routes data
+through the scan chain. JTAG2AXI instructions allow the debugger to generate
+AXI transactions on the SMC fabric via the PTAP's built-in bridges, without
+involving the SMC CPU.
 
-*Secondary TAPs*
-
-* I/O STAP for chiplet-to-chiplet JTAG connectivity
-* SEP debug STAP for Security Processor access
-* Configurable number of extra STAPs
-
-==== Specifications
-
-[cols="<,<",options="header"]
-|===
-|Feature |Specification
-|JTAG Standard |IEEE 1149.1-2013
-|iJTAG Standard |IEEE 1687-2014
-|Cross Trigger Protocol |OCAH Cross Trigger v1.0
-|CSR Interface |AXI4-Lite (32-bit)
-|Debug AXI Interface |AXI4 (configurable width)
-|Maximum CTPs |32
-|Maximum Internal CTs |32
-|===
+*AXI path*: The DTP cross-trigger configuration registers (CTM and CTP CSRs)
+are memory-mapped inside the SMC address space. The SMC exposes them on its
+`axil_dtp_csr_req_o` / `axil_dtp_csr_resp_i` interface, which the SMU wires
+directly to the DTP `axil_xtrig_req_i` / `axil_xtrig_resp_o` ports. Software
+running on the SMC reaches the CTN CSRs through its own register map
+(`dtp_ctrl_reg` in `smc.rdl`). An external debugger using the PTAP JTAG2AXI
+bridge reaches the same window through the SMC fabric AXI port.
+ifdef::ocah-trm+backend-html5[]
+See xref:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map] for the SMU
+address envelope, and the
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Memory Map]
+section for the CTN-internal address layout.
+endif::ocah-trm+backend-html5[]
+ifdef::ocah-trm[]
+ifdef::backend-pdf[]
+See the OCAH Memory Map for the SMU address envelope, and the
+<<ctn-memory-map,CTN Memory Map>> section for the CTN-internal address layout.
+endif::backend-pdf[]
+endif::ocah-trm[]
+ifndef::ocah-trm[]
+See the CTN Memory Map section for the CTN-internal address layout.
+endif::ocah-trm[]

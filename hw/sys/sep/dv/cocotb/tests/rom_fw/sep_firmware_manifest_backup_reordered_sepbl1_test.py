@@ -9,7 +9,6 @@ backup's two-image TOC, so IMAGES=0x00000002 and the relocated COPY_SRC= must ap
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_payload_mutate as pm
 from rom_fw import sep_manifest_field_defect as fd
 from rom_fw.sep_usage_constraint_base import sep_primary_usage_constraint_base
@@ -21,8 +20,7 @@ _TWO_IMAGES = "IMAGES=0x00000002"
 
 
 @pyuvm.test()
-class sep_firmware_manifest_backup_reordered_sepbl1_test(
-        sep_primary_usage_constraint_base):
+class sep_firmware_manifest_backup_reordered_sepbl1_test(sep_primary_usage_constraint_base):
     """Primary refused on package_id; the backup's BL1 sits at TOC index 1 and boots."""
 
     defect_marker = fd.PACKAGE_MARKER
@@ -32,9 +30,16 @@ class sep_firmware_manifest_backup_reordered_sepbl1_test(
         super().__init__(*args, **kwargs)
         self.required_markers += (_TWO_IMAGES,)
         self.forbidden_markers += (
-            "NO_BL1_IMAGE", "IMAGE_ORDER_BAD", "IMAGE_LEN_ZERO", "IMAGE_LEN_ALIGN",
-            "IMAGE_HASH_MISMATCH", "TOC_REGION_OOB=", "TOC_PLEN_MISMATCH=",
-            "BAD_IMAGE_TYPE", "BL1_ADDR_RANGE", "BL1_ENTRY_RANGE",
+            "NO_BL1_IMAGE",
+            "IMAGE_ORDER_BAD",
+            "IMAGE_LEN_ZERO",
+            "IMAGE_LEN_ALIGN",
+            "IMAGE_HASH_MISMATCH",
+            "TOC_REGION_OOB=",
+            "TOC_PLEN_MISMATCH=",
+            "BAD_IMAGE_TYPE",
+            "BL1_ADDR_RANGE",
+            "BL1_ENTRY_RANGE",
         )
 
     def plant(self, buf: bytearray, slot: str) -> None:
@@ -46,8 +51,10 @@ class sep_firmware_manifest_backup_reordered_sepbl1_test(
         self.logger.info(
             "CHK-STIMULUS-TRIGGER: %s selector_bits[8..15] = 0x%02x, so the ROM "
             "must read package_id words %s and refuse on word %d",
-            slot, _SELECTOR_MASK,
-            [i for i in range(8) if _SELECTOR_MASK & (1 << i)], index,
+            slot,
+            _SELECTOR_MASK,
+            [i for i in range(8) if _SELECTOR_MASK & (1 << i)],
+            index,
         )
 
     def prepare_backup(self, buf: bytearray) -> None:
@@ -62,7 +69,7 @@ class sep_firmware_manifest_backup_reordered_sepbl1_test(
         )
         entries = pm.toc_entries(buf, "backup")
         assert len(entries) == 2, f"backup TOC has {len(entries)} images, expected 2"
-        assert pm._u64(buf, entries[1] + pm.E_TYPE) == pm.IMAGE_TYPE_SEP_BL1, (
+        assert pm.entry_type(buf, entries[1]) == pm.IMAGE_TYPE_SEP_BL1, (
             "SEP_BL1 is not backup TOC entry 1, so the payload does not exercise "
             "position independence"
         )
@@ -71,16 +78,22 @@ class sep_firmware_manifest_backup_reordered_sepbl1_test(
             "len %d]; TOC region %d bytes, payload_hashed_length %d, "
             "payload_length unchanged. BL1 body moved %d -> %d, so COPY_SRC must "
             "read 0x%08x instead of 0x%08x",
-            geo["lead_type"], geo["lead_offset"], geo["lead_length"],
-            geo["bl1_offset_after"], geo["bl1_length"], geo["toc_region"],
-            geo["payload_hashed_length"], geo["bl1_offset_before"],
-            geo["bl1_offset_after"], self._copy_src, before,
+            geo["lead_type"],
+            geo["lead_offset"],
+            geo["lead_length"],
+            geo["bl1_offset_after"],
+            geo["bl1_length"],
+            geo["toc_region"],
+            geo["payload_hashed_length"],
+            geo["bl1_offset_before"],
+            geo["bl1_offset_after"],
+            self._copy_src,
+            before,
         )
         self.logger.info("CHK-STIMULUS-BL1-AFTER:  %s", pm.describe_bl1(buf, "backup"))
 
     def check_constraint_evidence(self, console: list[str]) -> None:
-        fd.assert_device_id_mismatch(self.logger, console, "package_id",
-                                     _REJECT_INDEX)
+        fd.assert_device_id_mismatch(self.logger, console, "package_id", _REJECT_INDEX)
 
     def check_transport(self, console: list[str], flash) -> None:
         super().check_transport(console, flash)
@@ -96,8 +109,7 @@ class sep_firmware_manifest_backup_reordered_sepbl1_test(
             f"{console}"
         )
         assert fd.count(console, want) == 1, (
-            f"{want} appeared more than once; only one slot is handed off. "
-            f"Console: {console}"
+            f"{want} appeared more than once; only one slot is handed off. Console: {console}"
         )
         assert i_bsrc < i_images < i_copy, (
             f"backup read@{i_bsrc} -> {_TWO_IMAGES}@{i_images} -> {want}@{i_copy} "
@@ -108,5 +120,9 @@ class sep_firmware_manifest_backup_reordered_sepbl1_test(
             "CHK-BL1-BY-TYPE: backup read@%d -> %s@%d -> %s@%d -- the recovered "
             "slot declared two images and the ROM copied BL1 from TOC entry 1's "
             "offset, so it located BL1 by type on the failover path too",
-            i_bsrc, _TWO_IMAGES, i_images, want, i_copy,
+            i_bsrc,
+            _TWO_IMAGES,
+            i_images,
+            want,
+            i_copy,
         )
