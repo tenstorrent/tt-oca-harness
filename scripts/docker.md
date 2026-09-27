@@ -4,6 +4,23 @@ Helper for running repo commands inside the OCAH container. The container
 image is built by Nix and identified by a hash derived from the flake output,
 so every host runs the same image as CI.
 
+## Pull the prebuilt image instead of building it
+
+CI builds and publishes the container to the GitHub Container Registry, so you
+normally do **not** need to build it yourself. Point `docker-run.sh` at the
+registry and it pulls the exact image CI verified:
+
+```bash
+docker login ghcr.io -u <github-user>    # while the package is private
+export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
+export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
+./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it
+```
+
+Published images are listed at
+<https://github.com/orgs/tenstorrent/packages/container/package/ocah-container>.
+Build locally (below) only when you are changing the container's definition.
+
 ## Commands
 
 ```bash
@@ -81,6 +98,7 @@ For example, once an image has been published:
 ```bash
 docker login ghcr.io -u <github-user>
 OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container \
+  OCAH_IMAGE_WITH_UV=true \
   ./scripts/docker-run.sh ensure
 ```
 

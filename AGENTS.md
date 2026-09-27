@@ -234,16 +234,23 @@ All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
+**Prefer pulling the prebuilt image over building it.** CI publishes the unified `ocah-container`
+to the GitHub Container Registry
+(`ghcr.io/tenstorrent/ocah-container`, listed at
+<https://github.com/orgs/tenstorrent/packages/container/package/ocah-container>), so most
+contributors never run `build`. Set `OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container`
+and `OCAH_IMAGE_WITH_UV=true` (the variant CI publishes) and `docker-run.sh` pulls the matching
+Nix content tag on the next `verify`/`run`/`shell`:
+
 ```bash
-./scripts/docker-run.sh build     # build the image once (via Nix)
-./scripts/docker-run.sh verify    # prints the compiler version and multilib list
+./scripts/docker-run.sh verify    # pulls the published image; prints the compiler version
+./scripts/docker-run.sh build     # only when changing the container definition (builds via Nix)
 ```
 
-With `OCAH_CONTAINER_REGISTRY_IMAGE` set, `docker-run.sh` first tries the matching Nix content
-tag from that registry. With the companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the
-shared tarball cache; otherwise it builds locally from the flake. Registry pulls are opt-in
-until an official image is published. `scripts/docker.md` is authoritative for the source
-selection controls.
+With `OCAH_CONTAINER_REGISTRY_IMAGE` set, `docker-run.sh` first tries that registry tag. With the
+companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache; otherwise it
+builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
+controls.
 
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
