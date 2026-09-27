@@ -10,6 +10,14 @@ writes, and each class below states that fact and what would retire it:
 * MEM-MACRO: the data words of the subsystem RAM, ROM and TCM interfaces. The
   SMU only routes them between the SMC and SEP ports and the macros in
   `hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv`.
+* MEM-MACRO-CONTROL: the remaining fields of those interfaces -- address,
+  request, enable, write-enable and the handshake back -- which the same
+  whole-struct connections carry and which the owning CPU, crypto engine or
+  controller alone drives.
+* AXSIZE-BUS-WIDTH: AxSIZE[2] of every AXI4 channel. Each carries a 64-bit data
+  bus, and a transfer size above the bus width is not a legal AXI4 transfer.
+* SEP-OTP-DBG-TIED: the two OTP bridge terms of the SEP debug-disable vector,
+  which the SEP lifecycle controller ties low.
 * AXI-DATA, AXI-USER: write data, write strobe, read data and the user
   sideband of every AXI and AXI-Lite channel these units carry. The crossbar
   and the ID converters decode addresses and ids and pass these words
@@ -34,7 +42,8 @@ the base and sends a read and a write out through the crossbar, and
 `smu_sep_bidirect_test` drives the dedicated SMC channel, so a hole there is a
 stimulus gap.
 
-Apart from those last five classes, whose facts name them, no class takes an
+Apart from those last five classes and MEM-MACRO-CONTROL and AXSIZE-BUS-WIDTH,
+whose facts name them, no class takes an
 address, id, length, size, burst, cache, protection, QoS, region, lock or
 atomic field, nor a valid, ready or enable: those are decode and handshake,
 and a hole in one is a stimulus gap.
@@ -76,7 +85,7 @@ MODULES = ("smu", "smu_wrapper", "smu_axi_xbar")
 
 MEM_IF = (
     r"(smc_scratch_ram_intf|smc_l1_[id]cache_(tag|data)_intf|smc_rom_intf|trace_mem|"
-    r"i3c_(dat|dct|rlt)_mem|sep_(sram|km_sram_mem|km_rom_mem|crypto_pka_[id]mem_sram|"
+    r"i3c_(dat|dct|rlt)_mem|(sep_)?km_(sram|rom)_mem|sep_(sram|crypto_pka_[id]mem_sram|"
     r"boot_rom|cpu_tcm)|abr_mem)_(req|rsp|resp|sink|src)(_[io])?(\[\d+\])?"
 )
 MEM_DATA = (
@@ -96,10 +105,45 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "interfaces. smu.sv connects each such port of u_smc and u_sep straight to its "
         "own port, smu_wrapper.sv connects that to hw/top/smc_ip_integration.sv or "
         "hw/top/sep_ip_integration.sv, where the macros are, and no SMU logic reads or "
-        "writes the words; the SMC and SEP benches grade the memories. Address, enable "
-        "and write-enable fields stay graded.",
+        "writes the words; the SMC and SEP benches grade the memories.",
         "an SMU process that reads or drives these words, or the macros moving under u_smu",
         None,
+        None,
+    ),
+    (
+        "MEM-MACRO-CONTROL",
+        re.compile(rf"^{MEM_IF}\."),
+        "address, request, enable, write-enable, mode and handshake fields of the SMC "
+        "and SEP RAM, ROM and TCM interfaces. smu.sv connects each interface whole "
+        "between u_smc or u_sep and its own port (smu.sv 867-920, 1000-1041), "
+        "smu_wrapper.sv carries it whole to the macros in hw/top/smc_ip_integration.sv "
+        "and hw/top/sep_ip_integration.sv, and no SMU logic reads or drives a field: the "
+        "fields that toggle already prove every connection, and the rest record which "
+        "rows the owning CPU, Adams Bridge, PKA, Key Manager, I3C or trace controller "
+        "chose to touch, which the SMC and SEP benches grade.",
+        "an SMU process on one of these interfaces, or a macro moving under u_smu",
+        None,
+        None,
+    ),
+    (
+        "AXSIZE-BUS-WIDTH",
+        re.compile(r"\.(aw|ar)\.size$"),
+        "AxSIZE[2] of the AXI4 channels. Every AXI4 channel in scope carries a 64-bit "
+        "data bus (smu_axi_xbar_pkg.sv 31, the smc_pkg and sep_pkg 56_64 and 32_64 "
+        "channel types), and the AXI4 specification does not allow a transfer size "
+        "wider than the data bus, so AxSIZE stays at or below 3 and bit 2 cannot rise.",
+        "an AXI4 channel wider than 64 bits",
+        None,
+        ((2, 2),),
+    ),
+    (
+        "SEP-OTP-DBG-TIED",
+        re.compile(r"^sep_dbg_disable\.(smc|sep)_otp_jtag2axi$"),
+        "the SMC and SEP OTP bridge terms of the SEP debug-disable vector. "
+        "sep_lifecycle_ctrl.sv (264-265) assigns both 1'b0, so the lifecycle state never "
+        "closes either OTP bridge.",
+        "sep_lifecycle_ctrl driving either term from the lifecycle state",
+        ("smu",),
         None,
     ),
     (
