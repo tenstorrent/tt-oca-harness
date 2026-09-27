@@ -199,7 +199,7 @@ the AXI master, completion counting, and the two clock gates.
 [cols="3,4",options="header"]
 |===
 |Points |Records
-|`c_next_id_0_nonzero_on_valid_setup`, `c_next_id_0_zero_on_invalid_setup`, `c_next_id_0_launches_transfer`, `c_shared_registers_consumed` |`NEXT_ID_0` launch and the value it returns
+|`c_next_id_0_nonzero_on_valid_setup`, `c_next_id_0_launches_transfer`, `c_shared_registers_consumed` |`NEXT_ID_0` launch and the value it returns
 |`c_status0_busy_during`, `c_done0_set_on_completion`, `c_done0_holds_after_read` |Busy during a transfer; `DONE_0` advancing on completion and holding the cumulative count across a read (`dma_ctrl.rdl` `DONE`)
 |`c_len_one_byte`, `c_len_single_beat`, `c_len_multi_burst`, `c_dest_contents_match`, `c_dma_wlast_accepted` |Length shapes on the master
 |`c_all_three_blocks_gated_together`, `c_enable_from_frontend_wakeup`, `c_enable_from_backend_busy`, `c_gated_when_neither` |Frontend and backend clock-gate terms
@@ -309,6 +309,12 @@ smc_wrapper) |Collection on a bench that connects the SMC DTP CSR port to a
 DTP, as `smu.sv` does
 |`c_axil_dtp_csr_active` |`smc_fabric_fcov` |As above: an access the port
 carries never completes, so no leaf drives one |As above
+|`c_next_id_0_zero_on_invalid_setup` |`smc_dma_fcov` |Waits on a ruling
+between `dma_ctrl.rdl` / `dma.adoc`, which have `NEXT_ID` return 0 for a
+command that was not set up correctly, and the stream-0 frontend, which
+returns the transfer-id generator whatever the setup |A ruling: either the
+frontend returns 0 for a rejected command, and a leaf issues one, or the
+specification drops the sentence and the point with it
 |`c_sep_in_wstrb_none` |`smc_fabric_fcov` |A zero-strobe beat is legal AXI,
 but the bench AXI manager derives WSTRB from the bytes a payload covers and
 cannot present one |A SEP_IN driver that presents raw AW and W beats

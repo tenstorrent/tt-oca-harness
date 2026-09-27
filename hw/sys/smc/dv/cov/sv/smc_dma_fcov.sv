@@ -64,7 +64,13 @@ module smc_dma_fcov (
   wire next_id_nonzero_e = next_id_read_e && (next_id_i !== 32'd0) && (^next_id_i !== 1'bx);
   wire next_id_zero_e = next_id_read_e && (next_id_i === 32'd0);
   `OCAH_FCOV_COVER(c_next_id_0_nonzero_on_valid_setup, next_id_nonzero_e, clk_smc_i, in_reset)
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): dma_ctrl.rdl and dma.adoc have NEXT_ID return 0
+  // for a command that was not set up correctly, and the stream-0 frontend
+  // returns the transfer-id generator unconditionally; the point waits on a
+  // ruling between the two.
   `OCAH_FCOV_COVER(c_next_id_0_zero_on_invalid_setup, next_id_zero_e, clk_smc_i, in_reset)
+`endif
 
   // The read reaches the frontend as an accepted request. The read strobe
   // alone would be covered by a read of an unconfigured DMA.
