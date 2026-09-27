@@ -174,15 +174,37 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 self.logger.error("CHK-PORT-PROGRESS FAIL: %s", fails[-1])
                 continue
 
+            hs = obs["hs"]
+            if any(hs[ch] is None for ch in ("aw", "w", "ar")):
+                fails.append(
+                    f"[{order}] response retired without all three recorded handshakes; {summary}"
+                )
+                self.logger.error("CHK-PORT-ARBITRATION FAIL: %s", fails[-1])
+                continue
+            # The rule in every ordering: AR is never accepted while one write
+            # half has handshaken and the other is still pending, i.e. in the
+            # cycles after the first write handshake up to the second.
+            first_w, last_w = min(hs["aw"], hs["w"]), max(hs["aw"], hs["w"])
+            if first_w < hs["ar"] <= last_w:
+                fails.append(
+                    f"[{order}] AR handshook at cycle {hs['ar']} while a write half "
+                    f"was pending (AW={hs['aw']} W={hs['w']}); {summary}"
+                )
+                self.logger.error("CHK-PORT-ARBITRATION FAIL: %s", fails[-1])
+                continue
+            if order not in ("aw-then-ar", "w-then-ar"):
+                arbitration_covered.append(order)
+                self.logger.info(
+                    "CHK-PORT-ARBITRATION OK: %s accepted no AR while a write half was "
+                    "pending (AW=%d W=%d AR=%d)",
+                    order,
+                    hs["aw"],
+                    hs["w"],
+                    hs["ar"],
+                )
             if order in ("aw-then-ar", "w-then-ar"):
-                hs = obs["hs"]
-                if any(hs[ch] is None for ch in ("aw", "w", "ar")):
-                    fails.append(
-                        f"[{order}] response retired without all three recorded "
-                        f"handshakes; {summary}"
-                    )
-                    self.logger.error("CHK-PORT-ARBITRATION FAIL: %s", fails[-1])
-                    continue
+                # AR is presented after the leading write half, so it arrives
+                # while that half is pending and must wait for both.
                 if hs["ar"] <= max(hs["aw"], hs["w"]):
                     fails.append(
                         f"[{order}] AR handshook at cycle {hs['ar']} before both "
@@ -232,13 +254,14 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
             f"CHK-PORT-PROGRESS FAIL: covered {len(covered)} of "
             f"{len(ORDER_NAMES)} ordering(s): {covered}"
         )
-        assert set(arbitration_covered) == {"aw-then-ar", "w-then-ar"}, (
+        assert set(arbitration_covered) == set(ORDER_NAMES), (
             "CHK-PORT-ARBITRATION FAIL: read-acceptance ordering covered "
-            f"{arbitration_covered}, expected both gapped write orderings"
+            f"{arbitration_covered}, expected every ordering {list(ORDER_NAMES)}"
         )
         self.logger.info(
-            "CHK-PORT-ARBITRATION PASS: AR acceptance followed both write-half "
-            "handshakes in aw-then-ar and w-then-ar"
+            "CHK-PORT-ARBITRATION PASS: no AR accepted while a write half was pending in "
+            "%s; in aw-then-ar and w-then-ar AR followed both write-half handshakes",
+            ", ".join(ORDER_NAMES),
         )
         self.logger.info(
             "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses with OKAY (%s)",

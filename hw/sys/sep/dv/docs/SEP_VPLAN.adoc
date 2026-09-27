@@ -4188,7 +4188,7 @@ single run covers every combination.
 |CHK-ONEHOT
 |Triggering one source does not fire another *selected* source. Every selected PIC source stays interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy rather than masking IRQEN). Sources outside the per-seed selection are not observed, so this is not a claim about the full aggregator.
 |CHK-IP-RW1C
-|Event-type sources and the mailbox clear by write-one-to-clear of `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and the ISR writes INTR_TEST=0 (and W1C `STATUS`). The witness is the IP state bit re-read as 0 inside the handler.
+|Event-type sources and the mailbox clear by write-one-to-clear of `INTR_STATE` / IRQS. DMA is Status-type: `INTR_STATE` is read-only, and the ISR writes INTR_TEST=0 (and W1C `STATUS`). The clear is bracketed: the ISR reads the IP state bit (or IRQS) set immediately before its clear, and the bit reads 0 afterwards, so a clear that did nothing fails.
 |CHK-PIC-COMPLETE
 |No source re-fires after its handler cleared it — the claim completed, no storm. An unexpected PIC claim during that window also fails. The quiet window runs with every selected source still interrupt-enabled.
 |CHK-RANDCFG
@@ -5671,7 +5671,7 @@ reported as such rather than counted as a pass.
 [arabic]
 . Read the live CSRNG lane and require OKAY before the vehicle is touched (`CHK-PORT-ANCHOR`).
 . On the vehicle, retire a lone write, a lone read, and an AW-then-W gap with no AR, each answering OKAY (`CHK-PORT-CONTROL`).
-. Present each of the three legal AW/W/AR orderings at the vehicle port. Confirm the port presented the named ordering (`CHK-PORT-STIM`) and that both accesses retire in bound (`CHK-PORT-PROGRESS`). In the two gapped-write cells, require AR to handshake only after both write halves (`CHK-PORT-ARBITRATION`). Reset the vehicle between cells.
+. Present each of the three legal AW/W/AR orderings at the vehicle port. Confirm the port presented the named ordering (`CHK-PORT-STIM`) and that both accesses retire in bound (`CHK-PORT-PROGRESS`). In every cell, require that no AR handshakes while a write half is pending, and in the two gapped-write cells that AR handshakes only after both write halves (`CHK-PORT-ARBITRATION`). Reset the vehicle between cells.
 
 *Checkers*:
 
@@ -5691,7 +5691,7 @@ reported as such rather than counted as a pass.
 |CHK-PORT-PROGRESS
 |Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count, and both responses are OKAY. The bound also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss (a stable `1'b0` is not X) still fails the leaf.
 |CHK-PORT-ARBITRATION
-|In `aw-then-ar` and `w-then-ar`, the AR handshake occurs strictly after both AW and W handshakes. This directly grades the rule that a read is accepted only while neither write half is pending; logging the cycles without comparing them is not evidence.
+|In every ordering, no AR handshake falls after one write-half handshake and at or before the other, so no read is accepted while a write half is pending. In `aw-then-ar` and `w-then-ar`, where AR arrives while the leading half is pending, the AR handshake occurs strictly after both AW and W handshakes. In `all-same-cycle` all three may handshake together from idle. Logging the cycles without comparing them is not evidence.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -6577,7 +6577,7 @@ slot, so over this surface an erase always frees.
 |===
 |Checker |Contract
 |CHK0
-|`rom_main` boots on real entropy and announces `RESP_KM_READY`.
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
 |CHK-HW-VER
 |`CMD_HW_VER` returns success and `RETURN_ARG` equals the KMCSR VERSION word 1.0.0.
 |CHK-ROM-VER
@@ -6685,7 +6685,7 @@ frontdoor.
 |===
 |Checker |Contract
 |CHK0
-|`rom_main` boots on real entropy and announces `RESP_KM_READY`.
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
 |CHK-PRE
 |`CMD_KEY_LOAD` succeeds before the warm pulse.
 |CHK-RESET
@@ -6744,7 +6744,7 @@ success, then stream the 14-word blob plus CRC-32C.
 |===
 |Checker |Contract
 |CHK0
-|`rom_main` boots on real entropy and announces `RESP_KM_READY`.
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
 |CHK-EMPTY
 |`CMD_SRAM_EXEC` with no image returns the invalid-argument code.
 |CHK-ARG
@@ -6814,7 +6814,7 @@ consume are claimed by `sep_km_abr_mlkem_sideload_test`.
 |===
 |Checker |Contract
 |CHK0
-|`rom_main` boots on real entropy and announces `RESP_KM_READY`.
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
 |CHK-RANDCFG
 |A KEYGEN that writes `cfg.entropy` and a KEYGEN that writes the inverted vector produce the same public key. Both compare KEYGENs write `cfg.entropy`.
 |CHK-DIRECT
@@ -6897,7 +6897,7 @@ its `KEY_VALID` is clear is not claimed here.
 |===
 |Checker |Contract
 |CHK0
-|`rom_main` boots on real entropy and announces `RESP_KM_READY`.
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
 |CHK-KEM-NAME
 |The ML-KEM aperture returns the KEM-1024 identity words, so every window compare below reads a live decode.
 |CHK-KEM-SEED-REF
@@ -7255,6 +7255,9 @@ constraint is not an open defect.
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives reserved addresses whose refuse flavour the map names. Named reserved spans whose refuse flavour is unnamed are excluded and are not asserted.
+
+|KM application ROM wipe paths
+|Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.
 
 |KM mailbox outbound flush
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
