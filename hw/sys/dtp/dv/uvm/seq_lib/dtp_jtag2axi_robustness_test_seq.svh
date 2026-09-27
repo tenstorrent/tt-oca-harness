@@ -517,12 +517,14 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       bit [63:0]   good_data = rand_data(t);
       write_target_single_and_check(t, good_addr, good_data, op_status, size, full_wstrb(size),
                                     $sformatf("mixed.good_write.%s", t.name));
-      // Read-only DECERR arming at the unmapped slot: injection and
-      // expectation stay direction-exact so no armed credit dangles
-      // (the write side of that slot is never accessed).
+      // One DECERR arming per direction at the faulted slot, each consumed
+      // by the access that follows it, so no armed credit dangles.
       arm_target_error(t, bad_addr, OCAH_AXI_RESP_DECERR, 1'b1, 1'b0);
       read_target_single_expect_status(t, bad_addr, DTP_J2A_DECERR, op_status, rdata, size,
                                        $sformatf("mixed.bad_read.%s", t.name));
+      arm_target_error(t, bad_addr, OCAH_AXI_RESP_DECERR, 1'b0, 1'b1);
+      write_target_single_expect_status(t, bad_addr, rand_data(t), DTP_J2A_DECERR, op_status, size,
+                                        full_wstrb(size), $sformatf("mixed.bad_write.%s", t.name));
       read_target_single_and_check(t, good_addr, good_data, op_status, size, $sformatf(
                                    "mixed.good_read.%s", t.name));
       operation_count++;

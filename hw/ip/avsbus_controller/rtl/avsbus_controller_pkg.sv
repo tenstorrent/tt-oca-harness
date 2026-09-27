@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AVSBus Package
+// Hold shared types and constants for the AVSBus controller.
 //
-//-----------------------------------------------------------------------------
+// Defines the 32-bit address and data AXI-Lite typedefs for the controller CSR port, the
+// matching APB typedefs, and the address-rule type for its axi_lite_to_apb bridge.
 
 package avsbus_controller_pkg;
 

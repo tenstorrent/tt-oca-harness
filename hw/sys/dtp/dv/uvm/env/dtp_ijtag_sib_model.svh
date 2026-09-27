@@ -40,9 +40,8 @@ class dtp_ijtag_sib_model;
   // Per-SIB gate state from the direct disables (1 = SIB gated).
   static function void gates(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
                              output bit g[DtpIjtagSibCount]);
-    g[IJ_DFT_SECURE] = d.dft_secure;
-    g[IJ_DFT]        = d.dft_nonsecure;
-    g[IJ_DFD]        = d.dfd;
+    for (int unsigned s = 0; s < DtpIjtagSibCount; s++)
+    g[s] = dtp_dbg_path_disabled(d, dtp_ijtag_sib_dbg_path(s));
   endfunction
 
   // Bits shift LSB-first through the serial chain: after a full update

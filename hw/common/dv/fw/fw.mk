@@ -17,20 +17,20 @@ ocah_dv_fw = $(call ocah_dv_fw_run,$(1),,$(OCAH_DV_FW_MKS),$(OCAH_DV_FW_SUBSYSTE
 ## @section DV Firmware
 
 ## Build DV firmware libraries for one or all subsystems.
-## @param TARGET=key_manager Optional subsystem to build (key_manager, sep, smc); omit to build all
+## @param TARGET=smc Optional subsystem to build (sep, smc); omit to build all
 .PHONY: ocah-dv-fw-libs
 ocah-dv-fw-libs:
 	$(call ocah_dv_fw,all)
 
 ## Build DV firmware C tests for one or all subsystems.
-## @param TARGET=key_manager Optional subsystem to build (key_manager, sep, smc); omit to build all
+## @param TARGET=smc Optional subsystem to build (sep, smc); omit to build all
 ## @param TEST=<test> Optional FW C testcase name to build within the subsystem
 .PHONY: ocah-dv-fw-tests
 ocah-dv-fw-tests:
 	$(call ocah_dv_fw,dv-fw-tests)
 
 ## Remove built DV firmware for one or all subsystems.
-## @param TARGET=key_manager Optional subsystem to clean; omit to clean all
+## @param TARGET=smc Optional subsystem to clean; omit to clean all
 .PHONY: ocah-dv-fw-clean
 ocah-dv-fw-clean:
 	$(call ocah_dv_fw,clean)
@@ -41,7 +41,7 @@ ocah-dv-fw-list:
 	@echo "DV firmware subsystems: $(OCAH_DV_FW_SUBSYSTEMS)"
 
 ## List DV firmware C tests for one or all subsystems.
-## @param TARGET=key_manager Optional subsystem to list (key_manager, sep, smc); omit to list all
+## @param TARGET=smc Optional subsystem to list (sep, smc); omit to list all
 .PHONY: ocah-dv-fw-test-list
 ocah-dv-fw-test-list:
 	$(call ocah_dv_fw,dv-fw-test-list)

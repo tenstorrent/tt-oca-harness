@@ -14,7 +14,8 @@ scope_epoch = "smc-vcs-cov-v1"
 # PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
 # the retain row of a field the RDL declares singlepulse, A7 SINGLEPULSE-LOADS,
-# the load-skipping path of such a field's flop, and C1 CONTRADICTORY-PATH, a
+# the load-skipping path of such a field's flop, A10 HW-WRITE-EVERY-CYCLE, the
+# same path of a hw = rw field without a write enable, and C1 CONTRADICTORY-PATH, a
 # branch path whose own decisions contradict. B1 PARTIAL-LANE-WRITE
 # joins them and is the bench's own: the AXI agent writes whole 32-bit words, so
 # on a block whose cpuif is no wider no write-branch row that needs a lane off
@@ -61,13 +62,26 @@ args = ["-elfile", "{path}"]
 # Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF, P3
 # WREN-TIED, P4 SINGLE-SOURCE, P5 INSTR-TYPE-CONST, P6 LC-STATE-OFF, P7
 # NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64, P10
-# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING, P13
-# CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
-# ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19 NTR-RAM-READ-TIED, P20
-# TCOUNT-SELECT-PAIRED, and F3
-# TIEOFF's branch paths; B6
-# SIM-ONLY-FUSE-BYPASS is the bench's and its policy's: no leaf passes the
-# simulation-only +skip_fuse_sense plusarg the DV policy forbids): the
+# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING,
+# P13 CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16
+# SINK-ENABLE-CONST, P17 ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19
+# NTR-RAM-READ-TIED, P20 TCOUNT-SELECT-PAIRED, P22 DFD-CONTROL-TIED, P24
+# DIVIDER-INIT-NEVER-SET, P25 SINK-WRITEBACK-TIED, P26 OUTPUT-FLOP-PARAM, P27
+# PAGE-WIDTH-BOUND, P28 LOG-WRITE-OKAY, P29 FIELD-MAP-LOCKS, P30 CCG-HYST-OFF,
+# P31 OCTS-CREDIT-SPEC, C5 SIGNAL-IDENTITY, C6 EARLIER-ARM-TAKES, C7
+# ENUM-MEMBERS-ONLY, C8 APB-PHASE-ORDER, C9 W2C-PULSE, C10 VALID-WITH-COMMAND,
+# C11 AVS-IRQ-DETECT-REARM, C12 POP-ONLY-NONEMPTY, C13 COUNTER-VALID-PAIRED,
+# C14 STROBE-MASK-NONZERO, C15 UNSIGNED-WRAP-DECODE, A11
+# APB-ACK-FIRST-ACTIVE-CYCLE, D1 SINGLE-OUTSTANDING-DEMUX, D2 W-FOLLOWS-AW, A2
+# and C4 where a consumer reads a register block, and F3
+# TIEOFF's branch paths; B6 SIM-ONLY-FUSE-BYPASS is the bench's and its
+# policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
+# DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the
+# CLA crosstrigger and TDR clock-stop inputs, as B9 SECURITY-DISABLE-TIED
+# is for the eFuse security-disable input, and B12 BANK-MODEL-NO-SLVERR for
+# the eFuse bank model that never returns SLVERR, and B13 LANE-ZERO-FILL for
+# the masters that never leave data on an unstrobed lane, and B14
+# STROBE-FOLLOWS-ADDRESS for masters that always strobe their start lane): the
 # DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
 # are tied off, the sink enables and trace
 # core count are fixed by parameters, and the

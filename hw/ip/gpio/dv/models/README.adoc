@@ -32,7 +32,7 @@ This module implements a general-purpose I/O (GPIO) pad model for bidirectional 
 
 | Port | Width | Description |
 |------|-------|-------------|
-| `GPIO_PAD` | 1 | Bidirectional external pad connection |
+| `gpio_pad_io` | 1 | Bidirectional external pad connection |
 
 ## Functionality
 

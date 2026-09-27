@@ -2,19 +2,34 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-/**
- * Tile-Link UL adapter for SRAM-like devices
- *
- * - Intentionally omitted BaseAddr in case of multiple memory maps are used in a SoC,
- *   it means that aliasing can happen if target device size in TL-UL crossbar is bigger
- *   than SRAM size
- * - At most one of EnableDataIntgGen / EnableDataIntgPt can be enabled. However it
- *   possible for both to be disabled.
- *   A module can neither generate an integrity response nor pass through any pre-existing
- *   integrity.  This might be the case for non-security critical memories where there is
- *   no stored integrity AND another entity upstream is already generating returning integrity.
- *   There is however no case where EnableDataIntgGen and EnableDataIntgPt are both true.
- */
+// Adapt TL-UL device traffic onto an SRAM-like memory port.
+//
+// Translate Get/Put into req/we/addr/wdata/wmask transactions and track Outstanding
+// responses. Responses return in request order: a write responds once accepted, a read
+// once rvalid_i returns its data, and a rejected request without an SRAM access.
+//
+// BaseAddr is intentionally omitted so multiple memory maps may be used in an SoC.
+// Aliasing can happen if the TL-UL crossbar target size is bigger than the SRAM.
+//
+// At most one of EnableDataIntgGen and EnableDataIntgPt may be enabled; there is no legal
+// case where both are true. Both may be disabled when a non-security-critical memory has
+// no stored integrity and an upstream entity already returns integrity. SramDw must be a
+// multiple of the TL width.
+//
+// The remaining parameters select optional features:
+//
+// - ByteAccess enables sub-word writes and results in read-modify-write for integrity
+//   regeneration when EnableDataIntgPt is set and ErrOnWrite is clear.
+// - ErrOnWrite and ErrOnRead automatically error disallowed accesses.
+// - CmdIntgCheck enables command and A-channel data integrity checking.
+// - EnableRspIntgGen and EnableDataIntgGen generate response and data integrity.
+// - EnableDataIntgPt passes write data integrity to the SRAM and returns the stored
+//   integrity with read data.
+// - SecFifoPtr uses redundant FIFO pointers.
+// - EnableReadback reads back and checks written or read data.
+// - DataXorAddr removes an address XOR that the memory applied to read data, so a faulted
+//   read address shows up as an integrity error; it takes effect only with EnableDataIntgPt.
+// - SramBusBankAW is the SRAM bank address width, used only when DataXorAddr is set.
 
 module tlul_adapter_sram
   import tlul_pkg::*;
@@ -22,57 +37,52 @@ module tlul_adapter_sram
   `include "prim_assert.sv"
   import prim_mubi_pkg::mubi4_t;
 #(
-  parameter int SramAw            = 12,
-  parameter int SramDw            = 32, // Must be multiple of the TL width
-  parameter int Outstanding       = 1,  // Only one request is accepted
-  parameter int SramBusBankAW     = 12, // SRAM bus address width of the SRAM bank. Only used
-                                        // when DataXorAddr=1.
-  parameter bit ByteAccess        = 1,  // 1: Enables sub-word write transactions. Note that this
-                                        //    results in read-modify-write operations for integrity
-                                        //    re-generation if EnableDataIntgPt is set to 1.
-  parameter bit ErrOnWrite        = 0,  // 1: Writes not allowed, automatically error
-  parameter bit ErrOnRead         = 0,  // 1: Reads not allowed, automatically error
-  parameter bit CmdIntgCheck      = 0,  // 1: Enable command integrity check
-  parameter bit EnableRspIntgGen  = 0,  // 1: Generate response integrity
-  parameter bit EnableDataIntgGen = 0,  // 1: Generate response data integrity
-  parameter bit EnableDataIntgPt  = 0,  // 1: Passthrough command/response data integrity
-  parameter bit SecFifoPtr        = 0,  // 1: Duplicated fifo pointers
-  parameter bit EnableReadback    = 0,  // 1: Readback and check written/read data.
-  parameter bit DataXorAddr       = 0,  // 1: XOR data and address for address protection
-  localparam int WidthMult        = SramDw / top_pkg::TL_DW,
-  localparam int IntgWidth        = tlul_pkg::DataIntgWidth * WidthMult,
-  localparam int DataOutW         = EnableDataIntgPt ? SramDw + IntgWidth : SramDw
+  parameter int SramAw            = 12,  // SRAM word-address width.
+  parameter int SramDw            = 32,  // SRAM data width; must be a multiple of TL_DW.
+  parameter int Outstanding       = 1,   // Maximum outstanding SRAM transactions.
+  parameter int SramBusBankAW     = 12,  // SRAM bank address width; used when DataXorAddr=1.
+  parameter bit ByteAccess        = 1,   // Allow sub-word writes; may RMW if EnableDataIntgPt.
+  parameter bit ErrOnWrite        = 0,   // Reject writes with a bus error.
+  parameter bit ErrOnRead         = 0,   // Reject reads with a bus error.
+  parameter bit CmdIntgCheck      = 0,   // Check A-channel command and data integrity.
+  parameter bit EnableRspIntgGen  = 0,   // Generate D-channel response integrity.
+  parameter bit EnableDataIntgGen = 0,   // Generate D-channel data integrity.
+  parameter bit EnableDataIntgPt  = 0,   // Pass data integrity through to the SRAM port.
+  parameter bit SecFifoPtr        = 0,   // Use redundant pointers in all three FIFOs.
+  parameter bit EnableReadback    = 0,   // Read back and check written or read data.
+  parameter bit DataXorAddr       = 0,   // XOR read data with the SRAM bank address.
+  localparam int WidthMult        = SramDw / top_pkg::TL_DW,  // TL beats packed per SRAM word.
+  localparam int IntgWidth        = tlul_pkg::DataIntgWidth * WidthMult,  // Integrity bits per SRAM word with PT.
+  localparam int DataOutW         = EnableDataIntgPt ? SramDw + IntgWidth : SramDw  // Width of wdata_o, wmask_o and rdata_i.
 ) (
-  input   clk_i,
-  input   rst_ni,
+  input   clk_i,                            // System clock.
+  input   rst_ni,                           // Active-low reset.
 
-  // TL-UL interface
-  input   tl_h2d_t          tl_i,
-  output  tl_d2h_t          tl_o,
+  input   tl_h2d_t          tl_i,           // TL-UL host-to-device request.
+  output  tl_d2h_t          tl_o,           // TL-UL device-to-host response.
 
-  // control interface
-  input   mubi4_t en_ifetch_i,
+  input   mubi4_t en_ifetch_i,              // MuBi4True allows instruction-fetch Gets.
 
-  // SRAM interface
-  output logic                 req_o,
-  output mubi4_t               req_type_o,
-  input                        gnt_i,
-  output logic                 we_o,
-  output logic [SramAw-1:0]    addr_o,
-  output logic [DataOutW-1:0]  wdata_o,
-  output logic [DataOutW-1:0]  wmask_o,
-  output logic                 intg_error_o,
-  output logic [RsvdWidth-1:0] user_rsvd_o,
-  input        [DataOutW-1:0]  rdata_i,
-  input                        rvalid_i,
-  input        [1:0]           rerror_i, // 2 bit error [1]: Uncorrectable, [0]: Correctable
-  output logic                 compound_txn_in_progress_o,
-  input  mubi4_t               readback_en_i,
-  output logic                 readback_error_o,
-  input  logic                 wr_collision_i,
-  input  logic                 write_pending_i
+  output logic                 req_o,       // SRAM request valid.
+  output mubi4_t               req_type_o,  // A_USER.INSTR_TYPE of the request.
+  input                        gnt_i,       // SRAM grant.
+  output logic                 we_o,        // SRAM write enable.
+  output logic [SramAw-1:0]    addr_o,      // SRAM word address.
+  output logic [DataOutW-1:0]  wdata_o,     // SRAM write data (and optional integrity).
+  output logic [DataOutW-1:0]  wmask_o,     // SRAM write mask (and optional integrity).
+  output logic                 intg_error_o,// Integrity or FIFO pointer error; sticky.
+  output logic [RsvdWidth-1:0] user_rsvd_o, // Reserved user bits toward the SRAM side.
+  input        [DataOutW-1:0]  rdata_i,     // SRAM read data (and optional integrity).
+  input                        rvalid_i,    // SRAM read-data valid.
+  input        [1:0]           rerror_i,    // [1] uncorrectable, sets D_ERROR; [0] unused.
+  output logic                 compound_txn_in_progress_o,  // RMW write or readback request driven.
+  input  mubi4_t               readback_en_i,               // MuBi4 readback enable; needs
+                                                            // EnableReadback.
+  output logic                 readback_error_o,            // Readback failure; sticky until reset.
+  input  logic                 wr_collision_i,              // SRAM write collision; assertions
+                                                            // only.
+  input  logic                 write_pending_i              // SRAM write pending; assertions only.
 );
-
   localparam int SramByte = SramDw/8;
   localparam int DataBitWidth = prim_util_pkg::vbits(SramByte);
   localparam int WoffsetWidth = (SramByte == top_pkg::TL_DBW) ? 1 :

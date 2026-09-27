@@ -1,47 +1,35 @@
-
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//------------------------------------------------------------------------------
 // Copyright 2025 Tenstorrent Inc.
-// Cross Trigger Matrix Top Module
-//
-// Description:
-// Top-level module for the Cross Trigger Matrix IP. Provides a configurable
-// crossbar to route cross trigger pulses between M source ports (CT_Dst) and
-// N sink ports (CT_Src). Each CT_Src can be configured to select and OR together
-// multiple CT_Dst sources.
-//
-// NUM_CT_SRC and NUM_CT_DST are localparams in cross_trigger_matrix_pkg, taken
-// from regs/cross_trigger_matrix.rdl's generated collateral rather than module
-// parameters: a matrix the map cannot address has nothing to program it.
-//
-// Past 32 destinations the RDL widens the select field across both words of each
-// register; the decode below is unaffected, since the field arrives as one value
-// either way.
-//------------------------------------------------------------------------------
 
+// Route cross-trigger pulses from CT_Dst inputs onto CT_Src outputs through programmable OR masks.
+//
+// NUM_CT_SRC and NUM_CT_DST are localparams from the RDL package so the map addresses
+// every select bit; they are not module parameters.
+// Past 32 destinations the RDL widens the select field across both register words; decode
+// still sees one value.
+// AXI-Lite CSRs program per-source selects; each CT_Src path registers its OR result.
 
 module cross_trigger_matrix
   import cross_trigger_matrix_pkg::*;
 #(
-  // Parameterized AXI-Lite bus interface types (default logic to force explicit definition)
-  parameter type axil_req_t = cross_trigger_matrix_pkg::ctm_axil_req_t,
-  parameter type axil_resp_t = cross_trigger_matrix_pkg::ctm_axil_resp_t
+  parameter type axil_req_t = cross_trigger_matrix_pkg::ctm_axil_req_t,  // CTM AXI-Lite request type.
+  parameter type axil_resp_t = cross_trigger_matrix_pkg::ctm_axil_resp_t  // CTM AXI-Lite response type.
 ) (
-  // Global Interface
-  input  logic                    clk_i,
-  input  logic                    rst_ni,
+  input  logic                    clk_i,  // System clock for the AXI-Lite CSRs and the routing
+                                          // logic.
+  input  logic                    rst_ni,  // Active-low asynchronous system reset.
 
-  // AXI4-Lite Register Interface
-  input  axil_req_t               axil_req_i,
-  output axil_resp_t              axil_resp_o,
+  input  axil_req_t               axil_req_i,  // AXI-Lite CSR request that programs the per-source
+                                               // routing masks; only address bits [7:0] are
+                                               // decoded.
+  output axil_resp_t              axil_resp_o,  // AXI-Lite CSR response.
 
-  // Cross trigger destination inputs (sources for the matrix)
-  input  logic [NUM_CT_DST-1:0]   ct_dst_i,
+  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger pulses into the routing matrix, one
+                                             // bit per CT_Dst port.
 
-  // Cross trigger source outputs (sinks for the matrix)
-  output logic [NUM_CT_SRC-1:0]   ct_src_o
+  output logic [NUM_CT_SRC-1:0]   ct_src_o  // Routed cross-trigger pulses, one registered bit per
+                                            // CT_Src port.
 );
 
   `include "prim_assert.sv"

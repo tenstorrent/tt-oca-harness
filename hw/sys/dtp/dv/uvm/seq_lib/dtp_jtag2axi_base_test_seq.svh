@@ -113,6 +113,12 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       void'(geometry.expect_equal(
           DtpJ2aGeometryCheckId, 64'(value[9:7]), 64'(dtp_j2a_data_size(t)), {t.name, " data_size"}
       ));
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[11:10]), 64'(t.wr_pl_depth), {t.name, " wr_pl_depth"}
+      ));
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[13:12]), 64'(t.rd_pl_depth), {t.name, " rd_pl_depth"}
+      ));
     end
     geometry.finalize();
   endtask
@@ -649,11 +655,11 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----
   // Assert exactly the disable that gates this target (all others clear).
   task gate_target(dtp_j2a_target_t t);
-    set_dbg_disable(t.dbg_disable_mask);
+    set_dbg_disable(dtp_dbg_disable_only(t.dbg_path));
   endtask
 
   function bit target_enabled(dtp_j2a_target_t t);
-    return (tb_vif.dbg_disable & t.dbg_disable_mask) == '0;
+    return !dtp_dbg_path_disabled(tb_vif.dbg_disable, t.dbg_path);
   endfunction
 
   // --- error arming (responder injection + shared checker, one place) ----

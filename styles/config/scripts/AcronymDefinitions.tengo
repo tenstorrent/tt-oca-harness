@@ -89,7 +89,7 @@ canonical := {
   CTPs:   ["cross trigger ports"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
   CLAs:   ["core logic analyzers"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
   DFT:    ["design for test"], // hw/ip/gpio/doc/interface.adoc
-  VROM:   ["virtual rom"], // hw/ip/key_manager/dv/tb/README.md
+  VROM:   ["virtual rom"], // hw/ip/key_manager/doc/architecture.adoc
   PCPI:   ["pico co-processor interface"], // hw/ip/key_manager/doc/architecture.adoc
   EK:     ["endorsement key"], // hw/ip/key_manager/doc/architecture.adoc
   AK:     ["attestation key"], // hw/ip/key_manager/doc/architecture.adoc

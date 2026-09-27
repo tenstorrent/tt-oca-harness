@@ -2,72 +2,93 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-// SEP Reset Controller
+// Sequence software resets for Key Manager and crypto accelerators through isolation.
 //
-// Provides software-controllable reset for KM and crypto accelerators.
-// Each bit in the SW_RESET register drives a sep_isolate_rst_seq FSM which
-// requests isolation of that domain's AXI paths, waits for them to drain,
-// and then asserts the domain's sequenced reset. Reset primitives combine the
-// sequenced resets with the SEP reset and apply the JTAG IC_RESET overrides
-// for KM, OTBN, AES, HMAC, KMAC, ABR, and the internal TRNG complex.
-//
-// Register map defined in hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl
-//   Bit 0: km_sw_rst       - write 1 to release KM from reset (0=hold)
-//   Bit 1: otbn_sw_rst     - write 1 to release OTBN from reset (0=hold)
-//   Bit 2: aes_sw_rst      - write 1 to release AES from reset (0=hold)
-//   Bit 3: hmac_sw_rst     - write 1 to release HMAC from reset (0=hold)
-//   Bit 4: kmac_sw_rst     - write 1 to release KMAC from reset (0=hold)
-//   Bit 5: trng_sw_rst      - write 1 to release internal TRNG (0=hold)
-//   Bit 6: abr_sw_rst       - write 1 to release ABR from reset (0=hold)
+// Each bit in the SW_RESET_N register drives a sep_isolate_rst_seq FSM that requests
+// isolation of that domain's AXI paths, waits for them to drain, and then asserts the
+// domain's sequenced reset. An engine domain isolates its host path and its KM path; the KM
+// domain isolates the KM paths to every engine and to eFuse; the TRNG domain isolates the
+// entropy-source, CSRNG and EDN paths.
+// Each sequenced reset is ANDed with the SEP reset, then the synchronized JTAG IC_RESET
+// override for KM, OTBN, AES, HMAC, KMAC, ABR, or the internal TRNG complex selects its
+// value, and in test mode scan_rst_ni replaces the result.
+// SW_RESET_N bits: 0 km_sw_rst_n, 1 otbn_sw_rst_n, 2 aes_sw_rst_n, 3 hmac_sw_rst_n,
+// 4 kmac_sw_rst_n, 5 trng_sw_rst_n, 6 abr_sw_rst_n; write 1 to release from reset, 0 to hold.
+// KM resets to 0 (held in reset) and the others to 1. The register block and the AXI
+// converter are reset by the SEP reset; the FSMs and synchronizers by rst_ni. Register map:
+// hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl.
 
 `include "prim_assert.sv"
 
 module sep_reset_ctrl (
-  input  logic   clk_i,
-  // Cold reset for the isolation sequencing FSMs
-  input logic    rst_ni,
+  input  logic   clk_i,                       // System clock.
+  input logic    rst_ni,                      // Active-low reset of the isolation FSMs and the JTAG
+                                              // override synchronizers.
 
-  // Aggregated WDT Resets from SMC and SEP
-  input  logic   wdt_rst_ni,
+  input  logic   wdt_rst_ni,                  // Aggregated WDT resets from SMC and SEP, active-low;
+                                              // resets only the CPU.
 
-  // JTAG SEP Reset Control
-  input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,
+  input sep_pkg::jtag_sep_reset_ctrl_t jtag_sep_reset_ctrl_i,  // JTAG IC_RESET override and value
+                                                               // bits in the TCK domain. The per-IP
+                                                               // bits pass through 2-flop
+                                                               // synchronizers into clk_i; the SEP
+                                                               // reset override acts asynchronously
+                                                               // ahead of the SEP reset
+                                                               // synchronizer.
 
-  // Intermediate reset signal (before JTAG override) for efuse sensing being done
-  input  logic   sep_intermediate_reset_ni,
-  // Reset signal (after JTAG override) for efuse sensing being done
-  output logic        sep_reset_no,
+  input  logic   sep_intermediate_reset_ni,   // Active-low SEP reset before the JTAG override,
+                                              // released by sep_efuse_wrapper once fuse sensing is
+                                              // done.
+  output logic        sep_reset_no,           // Active-low SEP reset after the JTAG override,
+                                              // asserted asynchronously and released synchronously
+                                              // to clk_i through a 2-flop synchronizer; scan_rst_ni
+                                              // in test mode.
 
-  // AXI4 slave (full AXI from top-level SEP local xbar). An internal
-  // axi_to_axi_lite converter feeds the AXI-Lite reg block
-  input  sep_pkg::sep_32_64_6_12_axi_req_t sep_reset_ctrl_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_reset_ctrl_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t sep_reset_ctrl_axi_req_i,  // AXI4 slave (full AXI from top-level SEP local xbar). An internal
+                                                                      // axi_to_axi_lite converter feeds the AXI-Lite reg block.
+  output sep_pkg::sep_32_64_6_12_axi_resp_t  sep_reset_ctrl_axi_resp_o,  // Full AXI response to the SEP local xbar.
 
-  // DFT
-  input  logic   test_en_i,
-  input  logic   scan_rst_ni,
+  input  logic   test_en_i,                   // DFT test-enable (scan-enable).
+  input  logic   scan_rst_ni,                 // DFT scan reset, active-low; replaces the SEP reset
+                                              // synchronizer output and every reset output while
+                                              // test_en_i is high.
 
-  // sep_reset_n AND wdt_rst_ni
-  output logic   sep_cpu_reset_no,
+  output logic   sep_cpu_reset_no,            // Active-low CPU reset: the SEP reset ANDed with
+                                              // wdt_rst_ni, or scan_rst_ni in test mode.
 
-  // Isolation handshake with sep_crypto's AXI interconnect (one per IP)
-  output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,
-  input  sep_pkg::sep_crypto_isolate_t sep_crypto_isolated_i,
+  output sep_pkg::sep_crypto_isolate_t sep_crypto_isolate_req_o,  // Per-path isolation request to
+                                                                  // sep_crypto's AXI interconnect,
+                                                                  // active-high. A KM path is
+                                                                  // requested when either its
+                                                                  // engine or the KM domain is
+                                                                  // being reset.
+  input  sep_pkg::sep_crypto_isolate_t sep_crypto_isolated_i,  // Per-path isolation acknowledge
+                                                               // from sep_crypto's AXI
+                                                               // interconnect, same layout as
+                                                               // sep_crypto_isolate_req_o.
 
-  // Isolation-sequenced resets to sep_crypto (active-low, one per IP)
-  // Potentially overridden by JTAG overrides
-  output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no
-
+  output sep_pkg::sep_sw_rst_t sep_crypto_gated_rst_no  // Isolation-sequenced resets to sep_crypto,
+                                                        // active-low, one per SW_RESET_N domain;
+                                                        // also asserted by the SEP reset and forced
+                                                        // by the JTAG overrides.
 );
   // Internal reset signal (after JTAG override) for efuse sensing being done
   logic sep_reset_n;
+  logic sep_cpu_func_reset_n;
   // CPU reset = sep_reset_n gated with the Aggregated WDT Resets from SMC and SEP
   prim_and2 #(
     .Width(1)
   ) u_sep_cpu_rst_and (
     .in0_i (sep_reset_n),
     .in1_i (wdt_rst_ni),
-    .out_o (sep_cpu_reset_no)
+    .out_o (sep_cpu_func_reset_n)
+  );
+
+  prim_rst_mux2_hf_n u_sep_cpu_rst_scan_bypass (
+    .rst0_ni(sep_cpu_func_reset_n),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_cpu_reset_no)
   );
 
   // =========================================================================
@@ -276,8 +297,8 @@ module sep_reset_ctrl (
     jtag_sep_reset_ctrl_i.val.km_jtag_rst_n_val
   };
 
-  prim_sync2r #(
-    .WIDTH(NUM_JTAG_IP_RST)
+  prim_flop_2sync #(
+    .Width(NUM_JTAG_IP_RST)
   ) u_jtag_ip_ovrd_sync (
     .clk_i (clk_i),
     .d_i   (jtag_ip_ovrd_tck),
@@ -285,8 +306,8 @@ module sep_reset_ctrl (
     .q_o   (jtag_ip_ovrd_sync)
   );
 
-  prim_sync2r #(
-    .WIDTH(NUM_JTAG_IP_RST)
+  prim_flop_2sync #(
+    .Width(NUM_JTAG_IP_RST)
   ) u_jtag_ip_val_sync (
     .clk_i (clk_i),
     .d_i   (jtag_ip_val_tck),
@@ -429,53 +450,53 @@ module sep_reset_ctrl (
 
   // Test mode substitutes scan_rst_ni after each override mux, so scan reset
   // reaches the flops these outputs reset.
-  prim_rstbypass_stdmux2 u_abr_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.abr),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.abr)
+  prim_rst_mux2_hf_n u_abr_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.abr),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.abr)
   );
 
-  prim_rstbypass_stdmux2 u_kmac_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.kmac),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.kmac)
+  prim_rst_mux2_hf_n u_kmac_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.kmac),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.kmac)
   );
 
-  prim_rstbypass_stdmux2 u_hmac_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.hmac),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.hmac)
+  prim_rst_mux2_hf_n u_hmac_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.hmac),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.hmac)
   );
 
-  prim_rstbypass_stdmux2 u_aes_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.aes),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.aes)
+  prim_rst_mux2_hf_n u_aes_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.aes),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.aes)
   );
 
-  prim_rstbypass_stdmux2 u_otbn_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.otbn),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.otbn)
+  prim_rst_mux2_hf_n u_otbn_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.otbn),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.otbn)
   );
 
-  prim_rstbypass_stdmux2 u_km_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.km),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.km)
+  prim_rst_mux2_hf_n u_km_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.km),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.km)
   );
 
-  prim_rstbypass_stdmux2 u_trng_rst_scan_bypass (
-    .rst_ni     (jtag_ovrd_rst_n.trng),
-    .test_rst_ni(scan_rst_ni),
-    .test_mode_i(test_en_i),
-    .rst_no     (sep_crypto_gated_rst_no.trng)
+  prim_rst_mux2_hf_n u_trng_rst_scan_bypass (
+    .rst0_ni(jtag_ovrd_rst_n.trng),
+    .rst1_ni(scan_rst_ni),
+    .sel_i  (test_en_i),
+    .rst_no (sep_crypto_gated_rst_no.trng)
   );
 
   assign sep_reset_no = sep_reset_n;

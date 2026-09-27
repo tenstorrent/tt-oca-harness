@@ -1114,6 +1114,7 @@ module smc_uvm_top
     assign tb_cpu_fw_mailbox          = `CPU_MEM_DV.fw_mailbox_q;
     assign tb_cpu_fw_mailbox_valid    = `CPU_MEM_DV.fw_mailbox_valid_q;
     assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
+    `undef CPU_MEM_DV
 
     // Probe pin on the cocotb init surface; do not OR into the score.
     logic unused_ecc_probe;

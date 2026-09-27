@@ -2,55 +2,52 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_rom_interface.sv
- * @brief ROM interface adapter with parity checking and look-ahead prefetch.
- *
- * @details Bridges the PicoRV32 native memory interface to the standard ROM
- *          memory interface (km_rom_mem_req_t / km_rom_mem_rsp_t).  Read-only;
- *          write attempts are immediately acknowledged and reported as errors.
- *
- *          Supports the PicoRV32 look-ahead interface for efficient prefetching:
- *          mem_la_read_i / mem_la_addr_i arrive one cycle before mem_valid_i,
- *          allowing the ROM to begin the fetch early.
- *
- *          Odd parity is checked per byte on every read response; mismatches
- *          generate a single-cycle parity_error_o pulse to KMCSR.
- *
- * @param ROM_ADDR_WIDTH    Word-address width for the ROM (default KM_ROM_MEM_ADDR_WIDTH).
- */
+// Adapt the PicoRV32 native memory interface to the ROM with parity checking and
+// look-ahead prefetch.
+//
+// Bridges the PicoRV32 native memory interface to the standard ROM memory interface
+// (km_rom_mem_req_t / km_rom_mem_rsp_t). Read-only: write attempts are immediately
+// acknowledged and reported as errors on rom_write_err_o.
+//
+// Supports the PicoRV32 look-ahead interface for efficient prefetching: mem_la_read_i /
+// mem_la_addr_i arrive one cycle before mem_valid_i, allowing the ROM to begin the fetch
+// early.
+//
+// Odd parity is checked per byte on the read-strobe lanes of every read response; a
+// mismatch raises parity_error_o for the cycle the response is valid. Requests are held
+// off for two cycles after reset release.
 
 module km_rom_interface
   import km_intf_pkg::*;
 #(
-  parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH
+  parameter int unsigned ROM_ADDR_WIDTH = KM_ROM_MEM_ADDR_WIDTH  // Word-address width for the ROM.
 ) (
-  // Clock and Reset
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,   // System clock.
+  input  logic rst_ni,  // Active-low asynchronous reset.
 
-  // PicoRV32 native memory interface (input from CPU)
-  input  logic        mem_valid_i,  // Memory request valid
-  output logic        mem_ready_o,  // Memory ready (data available)
-  input  logic [31:0] mem_addr_i,  // Byte address
-  input  logic [31:0] mem_wdata_i,  // Write data (unused, ROM is read-only)
-  input  logic [3:0]  mem_wstrb_i,  // Write strobe (unused, ROM is read-only)
-  input  logic [3:0]  mem_rstrb_i,  // Read strobe (byte lanes consumed by CPU)
-  output logic [31:0] mem_rdata_o,  // Read data
+  input  logic        mem_valid_i,  // PicoRV32 native memory request valid (from CPU).
+  output logic        mem_ready_o,  // Memory ready: read data valid, or immediately for a write.
+  input  logic [31:0] mem_addr_i,   // Byte address.
+  input  logic [31:0] mem_wdata_i,  // Write data (unused, ROM is read-only).
+  input  logic [3:0]  mem_wstrb_i,  // Write strobe; any set bit marks a write, which is
+                                    // acknowledged without effect and flagged on rom_write_err_o.
+  input  logic [3:0]  mem_rstrb_i,  // Read strobe: byte lanes consumed by the CPU, which select the
+                                    // parity-checked lanes.
+  output logic [31:0] mem_rdata_o,  // Read data.
 
-  // PicoRV32 look-ahead interface (for prefetching)
-  input  logic        mem_la_read_i,  // Look-ahead read signal (1 cycle before mem_valid)
-  input  logic [31:0] mem_la_addr_i,  // Look-ahead address
-  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe
+  input  logic        mem_la_read_i,   // Look-ahead read signal (1 cycle before mem_valid).
+  input  logic [31:0] mem_la_addr_i,   // Look-ahead address.
+  input  logic [3:0]  mem_la_rstrb_i,  // Look-ahead read strobe; selects the parity-checked lanes
+                                       // of a look-ahead fetch.
 
-  // ROM memory interface (exposed at subsystem boundary)
-  output km_rom_mem_req_t rom_mem_req_o,
-  input  km_rom_mem_rsp_t rom_mem_rsp_i,
+  output km_rom_mem_req_t rom_mem_req_o,  // ROM memory request, exposed at the subsystem
+                                          // boundary.
+  input  km_rom_mem_rsp_t rom_mem_rsp_i,  // ROM memory response.
 
-  // Parity error output (to KMCSR)
-  output logic parity_error_o,  // Parity error detected (pulse)
-  // ROM write error output (to KMCSR)
-  output logic rom_write_err_o  // ROM write attempt detected (pulse)
+  output logic parity_error_o,  // Combinational; high while a valid read response fails parity on
+                                // a strobed lane.
+  output logic rom_write_err_o  // Combinational; high while mem_valid_i is high with a nonzero
+                                // write strobe.
 );
 
   `include "prim_assert.sv"
@@ -70,13 +67,9 @@ module km_rom_interface
   // Parity Check Function
   ////////////////////////////////////////////////////////////////////////////
 
-  /**
-     * @brief Check odd parity per byte of a 32-bit word.
-     *
-     * @param[in] data    32-bit data word to verify.
-     * @param[in] parity  4-bit stored parity (one bit per byte, odd parity).
-     * @return            1 if a parity mismatch is detected, 0 otherwise.
-     */
+  // Check odd parity per byte of a 32-bit word. data is the word to verify and parity the
+  // 4-bit stored parity (one bit per byte, odd parity). Returns 1 if a parity mismatch is
+  // detected, 0 otherwise.
   function automatic logic check_parity(logic [31:0] data, logic [3:0] parity,
                                         logic [3:0] byte_mask);
     logic [3:0] computed_parity;
