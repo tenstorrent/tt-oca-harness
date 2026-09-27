@@ -8,31 +8,31 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/dashboard-data/history.json",
-    "history_points": 21,
+    "history_points": 22,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/dashboard-data/summary.json",
     "tests": {
-      "failing": 4,
+      "failing": 3,
       "incomplete_runs": 0,
-      "pass_rate": 97.37,
-      "passing": 148,
+      "pass_rate": 98.03,
+      "passing": 149,
       "skipped": 0,
       "total": 152,
       "unknown": 0
     }
   },
   "errors": [
-    "dtp: runner rc=2",
-    "dtp: native status=ERROR",
+    "dtp: runner rc=1",
+    "dtp: native status=FAIL",
     "dtp: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-27T15:26:05.626575+00:00",
+  "generated_at": "2026-09-27T21:42:46.158341+00:00",
   "git": {
-    "commit": "6adc255b88ae19e92d9728ac141bdea5b75172dd",
-    "requested_ref": "6adc255b88ae19e92d9728ac141bdea5b75172dd"
+    "commit": "c62571bf0df80fac534fc5d34be93e1f5b455dda",
+    "requested_ref": "c62571bf0df80fac534fc5d34be93e1f5b455dda"
   },
   "jenkins": {
-    "build_number": "72",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/cocotb/72/",
+    "build_number": "73",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/cocotb/73/",
     "job_name": "tt-oca-harness/dtp/cocotb",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/cocotb/"
   },
@@ -43,12 +43,12 @@
       "group": "all",
       "mode": "regression",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/runs/result.json",
-      "native_status": "ERROR",
+      "native_status": "FAIL",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/dashboard-data/result.json",
       "normalized_status": "FAIL",
       "profile": "dtp",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/cocotb/vcs/dtp_cocotb/runs",
-      "runner_rc": 2,
+      "runner_rc": 1,
       "tool": "vcs"
     }
   ],
