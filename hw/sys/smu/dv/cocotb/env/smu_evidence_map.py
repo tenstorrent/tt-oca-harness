@@ -352,6 +352,30 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
         ),
     ],
+    "smu_axi_in_sep_aperture_test": [
+        (
+            "CHK-AXIIN-SEP-ROUND-TRIP",
+            "CHK-AXIIN-SEP-ROUND-TRIP",
+            "ext_in writes and reads SEP SRAM OKAY under every id, qualifier, AxPROT, AxSIZE "
+            "and byte offset swept",
+        ),
+        (
+            "CHK-AXIIN-SEP-BURST",
+            "CHK-AXIIN-SEP-BURST",
+            "INCR bursts of AxLEN 0x00/0x55/0xAA/0xFF round-trip SEP SRAM; WRAP and FIXED "
+            "reads are OKAY",
+        ),
+        (
+            "CHK-AXIIN-SEP-ERRORS",
+            "CHK-AXIIN-SEP-ERRORS",
+            "an entropy pool write is SLVERR and SEP-local 0x0 is not OKAY",
+        ),
+        (
+            "CHK-AXIIN-SEP-ADDRESS-BITS",
+            "CHK-AXIIN-SEP-ADDRESS-BITS",
+            "a read at each SEP aperture address bit completes",
+        ),
+    ],
     "smu_dtp_sep_dm_sba_test": [
         (
             "CHK-SEP-DMI-DMSTATUS",
@@ -475,6 +499,24 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "EXT control staged high reaches ctrl_n while the override stays on",
         ),
         ("CHK-IC-DOMAIN", "IC_RESET_DOMAIN_EXCL", "single domain override exclusive"),
+        (
+            "CHK-IC-SS-SEP-WALK",
+            "IC_RESET_SS_SEP_WALK",
+            "every SS and SEP port staged, applied, released and cleared, with the SMC "
+            "slice overrides and the SEP override flag following",
+        ),
+    ],
+    "smu_dtp_ptap_ir_walk_test": [
+        (
+            "CHK-PTAP-STATE-WALK",
+            "CHK-PTAP-STATE-WALK",
+            "Pause-DR, Exit2-DR, Pause-IR and Exit2-IR reach jtag_ptap_state_o",
+        ),
+        (
+            "CHK-PTAP-IR-DECODE-WALK",
+            "CHK-PTAP-IR-DECODE-WALK",
+            "each of the 64 IR encodings decodes to its own one-hot bit; TLR loads IDCODE",
+        ),
     ],
     "smu_otp_bridges_under_dbg_disable_test": [
         (

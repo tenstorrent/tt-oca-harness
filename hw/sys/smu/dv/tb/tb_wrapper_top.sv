@@ -208,6 +208,9 @@ module smu_wrapper_uvm_top (
   // Observables the shared seq_lib reads by name, matching tb/tb_top.sv.
   output jtag_tap_pkg::tap_state_e                      jtag_ptap_state,
   output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded,
+  // The decoded instruction as a plain vector: VCS hands an enum-typed port
+  // to cocotb as a 32-bit integer.
+  output logic [jtag_inst_reg_pkg::DECODED_IR_WIDTH-1:0] tb_ptap_inst_decoded,
   output logic [55:0]                                   sep_global_base_o,
   output logic [55:0]                                   sep_region_size_o,
   output logic [55:0]                                   smc_global_base_o,
@@ -1724,6 +1727,7 @@ module smu_wrapper_uvm_top (
   // reads a window smu_wrapper keeps inside itself.
   // ------------------------------------------------------------------
   assign jtag_ptap_state_w = 32'(jtag_ptap_state);
+  assign tb_ptap_inst_decoded = jtag_ptap_inst_decoded;
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin

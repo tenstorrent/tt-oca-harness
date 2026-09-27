@@ -22,6 +22,11 @@ Real checkers:
   - EXT control=1 staged with enable=0 drives ctrl_n=1 while ovrd stays 1
   - SMC cold_reset port override updates hierarchical SMC slice
   - Clearing TDR restores ovrd=0
+  - Every managed-subsystem cold and warm port and every SEP port but the Key
+    Manager's, in the same two-update order: control staged, override applied
+    (ic_reset_smc_ovrd_o carries exactly those SMC-slice ovrd bits and the SEP
+    slice reports an override), control released under the override, then
+    cleared; the Key Manager port's control is staged and released unapplied
 """
 
 from __future__ import annotations
@@ -32,12 +37,18 @@ from cocotb.triggers import ClockCycles
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_EXT_PORT,
+    SMU_IC_RESET_NUM_SEP_PORTS,
     SMU_IC_RESET_SMC_COLD_PORT,
+    SMU_IC_RESET_SMC_FUSE_PORT,
+    SMU_IC_RESET_SMC_SS_COLD0_PORT,
+    SMU_IC_RESET_SMC_SS_WARM0_PORT,
     make_smu_jtag_tap,
     pack_ic_reset_ports,
     require_jtag_tdo_resolved,
 )
 from smu_base_test import smu_base_test
+
+SS_PORTS = 32
 
 
 def _sample(signal, name: str) -> int:
@@ -183,4 +194,69 @@ class smu_jtag_reset_override_test(smu_base_test):
             0,
         )
 
+        await self._walk_ss_and_sep_ports(dut, sb, jtag)
+
         self.logger.info("smu_jtag_reset_override_test: IC_RESET EXT/SMC override checked")
+
+    async def _walk_ss_and_sep_ports(self, dut, sb, jtag) -> None:
+        """Stage, apply, release and clear every SS and SEP port together.
+
+        The Key Manager reset (km_jtag_rst_n, the SEP port nearest the
+        external slice) is staged and released without being applied: after
+        an applied override is lifted, the Key Manager's ROM request reads X on
+        a four-state simulator (see the VPLAN card).
+        """
+        ss_ports = [SMU_IC_RESET_SMC_SS_COLD0_PORT + i for i in range(SS_PORTS)] + [
+            SMU_IC_RESET_SMC_SS_WARM0_PORT + i for i in range(SS_PORTS)
+        ]
+        sep_ports = [SMU_IC_RESET_EXT_PORT + 1 + i for i in range(SMU_IC_RESET_NUM_SEP_PORTS)]
+        km_port = SMU_IC_RESET_EXT_PORT + 1
+        ports = ss_ports + sep_ports
+        want_smc_ovrd = 0
+        for port in ss_ports:
+            want_smc_ovrd |= 1 << (port - SMU_IC_RESET_SMC_FUSE_PORT)
+        observed = []
+        for enable, control in ((1, 0), (0, 0), (0, 1)):
+            port_enable = dict.fromkeys(ports, enable)
+            port_enable[km_port] = 1
+            word = pack_ic_reset_ports(
+                reset_hold=1,
+                port_enable=port_enable,
+                port_control=dict.fromkeys(ports, control),
+            )
+            await jtag.write("IC_RESET", word)
+            await ClockCycles(dut.clk_smu_i, 16)
+            readback = await jtag.read("IC_RESET", shift_value=word)
+            require_jtag_tdo_resolved("IC_RESET SS/SEP walk readback")
+            observed.append(
+                (
+                    int(readback) == word,
+                    _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
+                    _sample(dut.ic_reset_sep_ovrd_any_o, "ic_reset_sep_ovrd_any_o"),
+                )
+            )
+        await jtag.write("IC_RESET", SMU_IC_RESET_DEFAULT)
+        await ClockCycles(dut.clk_smu_i, 16)
+        observed.append(
+            (
+                True,
+                _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
+                _sample(dut.ic_reset_sep_ovrd_any_o, "ic_reset_sep_ovrd_any_o"),
+            )
+        )
+        want = [
+            (True, 0, 0),
+            (True, want_smc_ovrd, 1),
+            (True, want_smc_ovrd, 1),
+            (True, 0, 0),
+        ]
+        self.logger.info(
+            "IC_RESET SS/SEP walk (readback ok, smc ovrd, sep ovrd any): "
+            + " ".join(f"({a},0x{b:x},{c})" for a, b, c in observed)
+        )
+        sb.expect_eq(
+            "SS and SEP ports staged, applied, released and cleared",
+            observed,
+            want,
+            evidence="IC_RESET_SS_SEP_WALK",
+        )
