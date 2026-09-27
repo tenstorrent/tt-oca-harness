@@ -112,7 +112,26 @@ class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
         )
         self.chk_seen.add("CHK-CPU-CTRL-MAP-LIVE")
 
-        self.assert_all_reachable(len(CPU_MAP_READS) + 4, "CPU_CTRL_MAP")
+        # LOCAL_BASE is a read-only field: the write completes and the readback
+        # still carries the generated reset.
+        local_base_addr = dict((n, a) for n, a, _e in CPU_MAP_READS)["LOCAL_BASE"]
+        local_base_reset = dict((n, e) for n, _a, e in CPU_MAP_READS)["LOCAL_BASE"]
+        await self.csr_write(
+            "CPU_MAP_LOCAL_BASE_WRITE", local_base_addr, local_base_reset ^ 0x1000_0000
+        )
+        await self.csr_read(
+            "CPU_MAP_LOCAL_BASE_READBACK", local_base_addr, expected=local_base_reset
+        )
+        cocotb.log.info(
+            "CHK-CPU-CTRL-MAP-LOCAL-BASE-RO: LOCAL_BASE@0x%08x accepted a write of 0x%x and "
+            "still reads its reset 0x%x",
+            local_base_addr,
+            local_base_reset ^ 0x1000_0000,
+            local_base_reset,
+        )
+        self.chk_seen.add("CHK-CPU-CTRL-MAP-LOCAL-BASE-RO")
+
+        self.assert_all_reachable(len(CPU_MAP_READS) + 6, "CPU_CTRL_MAP")
         # Conditional evidence for the map rows themselves: emitted only after
         # every row's exact reset compare has been enforced by the scoreboard
         # and the reachability cross-check above has passed.

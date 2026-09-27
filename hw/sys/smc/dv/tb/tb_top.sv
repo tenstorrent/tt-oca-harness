@@ -541,6 +541,8 @@ module smc_uvm_top
     // fuse_reset_n stays low after sense (efuse_interface_controller
     // reset_n = sense && rst_ni && ext_boot_seq_done).
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
+    // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
+    bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
     // +smc_uart_cross_3to0: short commercial UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
@@ -1233,8 +1235,9 @@ module smc_uvm_top
         .smc_wdt_second_timeout_o   (cpu_wdt_second_timeout),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
-        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-2){1'b0}},
-                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
+        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-17){1'b0}},
+                                       tb_ext_interrupts_hi_i, tb_temp_interrupt_i,
+                                       tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .smc_fuse_sense_done_o,
