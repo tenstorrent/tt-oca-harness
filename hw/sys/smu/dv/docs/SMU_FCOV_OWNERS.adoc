@@ -7,7 +7,7 @@
 [[smu-fcov-owners]]
 ==== Owning tests, measured
 
-Measured on `--items all` at commit `ad454db6a00c` with Verilator 5.050: 102 leaves, 107 points, 99 hit, 8 unhit, 22 hit by exactly one leaf.
+Measured on `--items all` at commit `0980417f3a23` with Verilator 5.050: 108 leaves, 101 points, 101 hit, 0 unhit, 22 hit by exactly one leaf.
 
 A point one leaf alone reaches depends on that leaf: retire or narrow it and
 the point goes dark. A point no leaf reaches carries its policy disposition,
@@ -18,12 +18,10 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`g_sep.c_alias_base_address_remapped` |0 |none |waive: missing_stimulus
 |`g_sep.c_alias_hit_observed_at_smc_and_absent_at_xbar` |1 |`smu_sep_bidirect_test` (10) |single
 |`g_sep.c_alias_path_bypasses_xbar` |1 |`smu_sep_bidirect_test` (10) |single
-|`g_sep.c_alias_top_address_remapped` |0 |none |waive: coverage_model_gap
 |`g_sep.c_no_xbar_target_activity_during_alias` |1 |`smu_sep_bidirect_test` (2) |single
-|`g_sep.c_sep_access_outside_window_observed_at_xbar` |6 |`smu_sep_dbg_gating_prod_end_test` (159) |
+|`g_sep.c_sep_access_outside_window_observed_at_xbar` |7 |`smu_sep_dbg_gating_test_dev_test` (158) |
 |===
 
 ===== `u_smu_boot_fcov`
@@ -31,27 +29,26 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_boot_stall_both_sources` |1 |`smu_boot_stall_jtag_cold_reset_matrix_test` (162) |single
-|`c_boot_stall_gpio_drive` |2 |`smu_boot_stall_jtag_cold_reset_matrix_test` (1369) |
+|`c_boot_stall_both_sources` |1 |`smu_boot_stall_jtag_cold_reset_matrix_test` (151) |single
+|`c_boot_stall_gpio_drive` |2 |`smu_boot_stall_jtag_cold_reset_matrix_test` (1199) |
 |`c_boot_stall_gpio_released` |2 |`smu_boot_stall_jtag_cold_reset_matrix_test` (100) |
-|`c_boot_stall_jtag_applied` |5 |`smu_dtp_jtag_smc_cpu_register_test` (5109) |
-|`c_boot_stall_jtag_forced_low` |2 |`smu_boot_stall_jtag_cold_reset_matrix_test` (153) |
-|`c_boot_stall_jtag_released` |4 |`smu_clock_stop_coordination_test` (2039) |
-|`c_cold_reset_asserted` |102 |`smu_sep_secure_tm_test` (500) |
-|`c_ext_boot_seq_done` |102 |`smu_smc_boundary_lane_sweep_test` (253620) |
-|`c_fuse_reset_released` |96 |`smu_sep_secure_tm_test` (4) |
-|`c_fuse_sense_done` |97 |`smu_sep_secure_tm_test` (4) |
-|`c_init_mem_done` |56 |`smu_sram_auto_init_done_test` (2) |
-|`c_lc_state_changed` |102 |`smu_smc_boundary_lane_sweep_test` (506658) |
+|`c_boot_stall_jtag_applied` |5 |`smu_boot_stall_vs_ic_reset_priority_test` (4431) |
+|`c_boot_stall_jtag_forced_low` |2 |`smu_dft_dtp_boot_stall_test` (161) |
+|`c_boot_stall_jtag_released` |4 |`smu_clock_stop_coordination_test` (3552) |
+|`c_cold_reset_asserted` |108 |`smu_sep_secure_tm_test` (500) |
+|`c_ext_boot_seq_done` |108 |`smu_smc_boundary_lane_sweep_test` (404231) |
+|`c_fuse_reset_released` |103 |`smu_sep_secure_tm_test` (4) |
+|`c_fuse_sense_done` |103 |`smu_sep_secure_tm_test` (4) |
+|`c_init_mem_done` |60 |`smu_sram_auto_init_done_test` (2) |
+|`c_lc_state_changed` |108 |`smu_smc_boundary_lane_sweep_test` (484726) |
 |`c_reassert_cold_after_release` |16 |`smu_sep_secure_tm_test` (3) |
-|`c_release_cold_stable_ref` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_release_primary_periph` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_release_primary_ref` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_release_primary_smc` |102 |`smu_sep_secure_tm_test` (4) |
-|`g_sep.c_lc_sigint_err` |0 |none |waive: unreachable
-|`g_sep.c_lcc_demote_both` |102 |`smu_smc_boundary_lane_sweep_test` (507241) |
-|`g_sep.c_lcc_demote_state_1` |102 |`smu_smc_boundary_lane_sweep_test` (507241) |
-|`g_sep.c_lcc_demote_state_2` |102 |`smu_smc_boundary_lane_sweep_test` (507241) |
+|`c_release_cold_stable_ref` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_release_primary_periph` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_release_primary_ref` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_release_primary_smc` |108 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_lcc_demote_both` |10 |`smu_dtp_sep_smc_chain_prod_test` (12465) |
+|`g_sep.c_lcc_demote_state_1` |10 |`smu_dtp_sep_smc_chain_prod_test` (12542) |
+|`g_sep.c_lcc_demote_state_2` |11 |`smu_dtp_sep_dm_sba_test` (16608) |
 |===
 
 ===== `u_smu_clk_fcov`
@@ -59,9 +56,9 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_telemetry_domain_independent` |102 |`smu_smc_boundary_lane_sweep_test` (31665) |
-|`g_sep.c_primary_domain_hosts_all_four_blocks` |102 |`smu_smc_boundary_lane_sweep_test` (31665) |
-|`g_sep.c_sep_wdt_domain_active` |101 |`smu_smc_boundary_lane_sweep_test` (31665) |
+|`c_telemetry_domain_independent` |107 |`smu_smc_boundary_lane_sweep_test` (30294) |
+|`g_sep.c_primary_domain_hosts_all_four_blocks` |107 |`smu_smc_boundary_lane_sweep_test` (30294) |
+|`g_sep.c_sep_wdt_domain_active` |106 |`smu_smc_boundary_lane_sweep_test` (30294) |
 |===
 
 ===== `u_smu_clkstop_fcov`
@@ -79,19 +76,19 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_jtag2axi_read_returns_csr_value` |39 |`smu_smc_boundary_lane_sweep_test` (145) |
-|`c_jtag2axi_write_reaches_smc_csr` |32 |`smu_smc_boundary_lane_sweep_test` (177) |
+|`c_jtag2axi_read_returns_csr_value` |41 |`smu_smc_boundary_lane_sweep_test` (145) |
+|`c_jtag2axi_write_reaches_smc_csr` |34 |`smu_smc_boundary_lane_sweep_test` (177) |
 |`c_smc_otp_read_response_returned` |5 |`smu_dtp_otp_smc_complete_rw_test` (6) |
 |`c_smc_otp_write_response_returned` |5 |`smu_dtp_otp_smc_complete_rw_test` (4) |
-|`g_sep.c_dbg_disable_blocks_smc_fabric_bridge` |102 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_dbg_disable_blocks_smc_fabric_bridge` |108 |`smu_sep_secure_tm_test` (4) |
 |`g_sep.c_fabric_bridge_blocked_and_otp_bridges_enabled` |17 |`smu_clock_stop_coordination_test` (3) |
 |`g_sep.c_no_axi_traffic_observed` |17 |`smu_clock_stop_coordination_test` (3) |
 |`g_sep.c_sep_otp_access_succeeds_while_fabric_blocked` |1 |`smu_otp_bridges_under_dbg_disable_test` (7) |single
-|`g_sep.c_sep_otp_bridge_enabled_under_dbg_disable` |102 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_sep_otp_bridge_enabled_under_dbg_disable` |108 |`smu_sep_secure_tm_test` (4) |
 |`g_sep.c_sep_otp_read_response_returned` |1 |`smu_otp_bridges_under_dbg_disable_test` (4) |single
 |`g_sep.c_sep_otp_write_response_returned` |1 |`smu_otp_bridges_under_dbg_disable_test` (3) |single
 |`g_sep.c_smc_otp_access_succeeds_while_fabric_blocked` |1 |`smu_otp_bridges_under_dbg_disable_test` (2) |single
-|`g_sep.c_smc_otp_bridge_enabled_under_dbg_disable` |102 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_smc_otp_bridge_enabled_under_dbg_disable` |108 |`smu_sep_secure_tm_test` (4) |
 |===
 
 ===== `u_smu_dtp_fcov`
@@ -99,13 +96,13 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_ctp_ack_in_width_16` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_ctp_ack_out_width_16` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_ctp_req_in_width_16` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_ctp_req_out_width_16` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_ctp_unused_input_tied_zero_inert` |91 |`smu_xtrig_ctp_pad_test` (4) |
-|`c_ovrd_field_present` |102 |`smu_jtag_reset_override_test` (2) |
-|`c_val_field_active_low` |102 |`smu_jtag_reset_override_test` (968) |
+|`c_ctp_ack_in_width_16` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_ctp_ack_out_width_16` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_ctp_req_in_width_16` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_ctp_req_out_width_16` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_ctp_unused_input_tied_zero_inert` |97 |`smu_xtrig_ctp_pad_test` (4) |
+|`c_ovrd_field_present` |108 |`smu_jtag_reset_override_test` (2) |
+|`c_val_field_active_low` |108 |`smu_jtag_reset_override_test` (1790) |
 |===
 
 ===== `u_smu_ext_fcov`
@@ -113,13 +110,13 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_inbound_id_width_8` |6 |`smu_axi_in_burst_outstanding_test` (65) |
+|`c_inbound_id_width_8` |7 |`smu_axi_in_burst_outstanding_test` (65) |
 |`c_mailbox_irq_out_width_32` |2 |`smu_smc_mailbox_int_test` (1) |
 |`c_smc_efuse_bank_ctrl_request_observed` |1 |`smu_periph_ext_window_test` (6) |single
 |`c_smc_efuse_bank_ctrl_response_returned` |1 |`smu_periph_ext_window_test` (6) |single
-|`c_smc_shadow_regs_present` |97 |`smu_sep_secure_tm_test` (4) |
-|`c_ss_config_present` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_ss_reset_ctrl_array_32` |102 |`smu_sep_secure_tm_test` (4) |
+|`c_smc_shadow_regs_present` |103 |`smu_sep_secure_tm_test` (4) |
+|`c_ss_config_present` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_ss_reset_ctrl_array_32` |108 |`smu_sep_secure_tm_test` (4) |
 |`g_sep.c_sep_efuse_bank_ctrl_request_observed` |2 |`smu_otp_bridges_under_dbg_disable_test` (4) |
 |`g_sep.c_sep_efuse_bank_ctrl_response_returned` |2 |`smu_otp_bridges_under_dbg_disable_test` (4) |
 |===
@@ -129,9 +126,9 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_demote_1_width_2` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_demote_2_width_2` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_lc_state_width_8` |102 |`smu_sep_secure_tm_test` (4) |
+|`c_demote_1_width_2` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_demote_2_width_2` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_lc_state_width_8` |108 |`smu_sep_secure_tm_test` (4) |
 |===
 
 ===== `u_smu_rst_fcov`
@@ -139,23 +136,23 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_auto_init_runs` |55 |`smu_sram_auto_init_done_test` (2) |
-|`c_cold_reset_async_assert_without_clock` |0 |none |waive: missing_stimulus
-|`c_cold_reset_sync_deassert` |102 |`smu_sep_secure_tm_test` (4) |
+|`c_auto_init_runs` |59 |`smu_sram_auto_init_done_test` (2) |
+|`c_cold_reset_deglitched_assert` |12 |`smu_sep_secure_tm_test` (3) |
+|`c_cold_reset_sync_deassert` |108 |`smu_sep_secure_tm_test` (4) |
 |`c_cold_stable_ref_clk_active_low` |12 |`smu_sep_secure_tm_test` (3) |
-|`c_cold_stable_ref_clk_synchronized` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_dtp_released` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_dtp_responsive_after_powergood_stable` |63 |`smu_smc_boundary_lane_sweep_test` (506587) |
-|`c_fuse_reset_n_delayed_released_after_sense` |96 |`smu_sep_secure_tm_test` (4) |
-|`c_periph_domain_active` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_primary_ref_reset_synchronized_to_clk_ref` |102 |`smu_sep_secure_tm_test` (4) |
-|`c_primary_smc_reset_synchronized_to_clk_smu` |102 |`smu_sep_secure_tm_test` (4) |
+|`c_cold_stable_ref_clk_synchronized` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_dtp_released` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_dtp_responsive_after_powergood_stable` |66 |`smu_smc_boundary_lane_sweep_test` (484658) |
+|`c_fuse_reset_n_delayed_released_after_sense` |103 |`smu_sep_secure_tm_test` (4) |
+|`c_periph_domain_active` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_primary_ref_reset_synchronized_to_clk_ref` |108 |`smu_sep_secure_tm_test` (4) |
+|`c_primary_smc_reset_synchronized_to_clk_smu` |108 |`smu_sep_secure_tm_test` (4) |
 |`c_reset_release_after_boot_seq_done` |1 |`smu_ext_boot_seq_gate_test` (1) |single
-|`c_skip_mem_repair_present` |97 |`smu_sep_secure_tm_test` (4) |
-|`c_smc_released` |102 |`smu_sep_secure_tm_test` (4) |
-|`g_sep.c_sep_fuse_sense_done_asserted` |97 |`smu_sep_secure_tm_test` (4) |
-|`g_sep.c_sep_released` |102 |`smu_sep_secure_tm_test` (4) |
-|`g_sep.c_xbar_released` |102 |`smu_sep_secure_tm_test` (4) |
+|`c_skip_mem_repair_present` |103 |`smu_sep_secure_tm_test` (4) |
+|`c_smc_released` |108 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_sep_fuse_sense_done_asserted` |103 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_sep_released` |108 |`smu_sep_secure_tm_test` (4) |
+|`g_sep.c_xbar_released` |108 |`smu_sep_secure_tm_test` (4) |
 |===
 
 ===== `u_smu_xbar_fcov`
@@ -163,29 +160,26 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_axi_in_ar_accept` |12 |`smu_axi_in_burst_outstanding_test` (67) |
+|`c_axi_in_ar_accept` |13 |`smu_aperture_map_walk_test` (74) |
 |`c_axi_in_ar_stall` |1 |`smu_axi_in_burst_outstanding_test` (680) |single
-|`c_axi_in_aw_accept` |6 |`smu_axi_in_burst_outstanding_test` (65) |
+|`c_axi_in_aw_accept` |7 |`smu_axi_in_burst_outstanding_test` (65) |
 |`c_axi_in_aw_stall` |1 |`smu_axi_in_burst_outstanding_test` (837) |single
 |`c_axi_in_bresp_decerr` |4 |`smu_axi_in_attribute_sweep_test` (6) |
-|`c_axi_in_bresp_exokay` |0 |none |waive: missing_stimulus
-|`c_axi_in_bresp_okay` |5 |`smu_axi_in_burst_outstanding_test` (64) |
+|`c_axi_in_bresp_okay` |6 |`smu_axi_in_burst_outstanding_test` (64) |
 |`c_axi_in_bresp_slverr` |1 |`smu_axi_in_burst_outstanding_test` (1) |single
-|`c_axi_in_r_last` |12 |`smu_axi_in_burst_outstanding_test` (67) |
-|`c_axi_in_rresp_decerr` |9 |`smu_axi_in_attribute_sweep_test` (525) |
-|`c_axi_in_rresp_exokay` |0 |none |waive: missing_stimulus
-|`c_axi_in_rresp_okay` |10 |`smu_axi_in_burst_outstanding_test` (66) |
+|`c_axi_in_r_last` |13 |`smu_aperture_map_walk_test` (74) |
+|`c_axi_in_rresp_decerr` |10 |`smu_axi_in_attribute_sweep_test` (525) |
+|`c_axi_in_rresp_okay` |11 |`smu_axi_in_burst_outstanding_test` (66) |
 |`c_axi_in_rresp_slverr` |1 |`smu_axi_in_burst_outstanding_test` (16) |single
-|`c_axi_in_w_last` |6 |`smu_axi_in_burst_outstanding_test` (65) |
+|`c_axi_in_w_last` |7 |`smu_axi_in_burst_outstanding_test` (65) |
 |`c_axil_external_active` |1 |`smu_periph_ext_window_test` (3) |single
-|`c_map_smc_base_programmed` |102 |`smu_axi_filter_in_instance_matrix_test` (78685) |
-|`c_map_smc_size_programmed` |102 |`smu_axi_in_attribute_sweep_test` (5648) |
-|`c_map_smc_size_reprogrammed` |1 |`smu_axi_in_attribute_sweep_test` (2419) |single
-|`c_map_smc_size_zero` |0 |none |waive: needs_review
-|`c_no_route_ext_in_to_ext_out` |6 |`smu_axi_in_burst_outstanding_test` (65) |
-|`c_route_inbound_not_forwarded` |6 |`smu_axi_in_burst_outstanding_test` (65) |
-|`g_sep.c_map_sep_base_programmed` |0 |none |waive: missing_stimulus
-|`g_sep.c_map_sep_size_programmed` |102 |`smu_sep_bidirect_test` (3473) |
-|`g_sep.c_map_sep_size_reprogrammed` |1 |`smu_sep_rom_tcm_load_test` (2071) |single
+|`c_map_smc_base_programmed` |108 |`smu_axi_filter_in_instance_matrix_test` (144048) |
+|`c_map_smc_size_programmed` |108 |`smu_aperture_map_walk_test` (136041) |
+|`c_map_smc_size_reprogrammed` |2 |`smu_aperture_map_walk_test` (127009) |
+|`c_no_route_ext_in_to_ext_out` |7 |`smu_axi_in_burst_outstanding_test` (65) |
+|`c_route_inbound_not_forwarded` |7 |`smu_axi_in_burst_outstanding_test` (65) |
+|`g_sep.c_map_sep_base_programmed` |1 |`smu_dtp_sep_dm_sba_test` (27822) |single
+|`g_sep.c_map_sep_size_programmed` |108 |`smu_sep_bidirect_test` (3475) |
+|`g_sep.c_map_sep_size_reprogrammed` |1 |`smu_sep_rom_tcm_load_test` (2073) |single
 |`g_sep.c_map_sep_size_zero` |1 |`smu_sep_rom_tcm_load_test` (546) |single
 |===
