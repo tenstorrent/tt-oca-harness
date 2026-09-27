@@ -8,7 +8,7 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/history.json",
-    "history_points": 21,
+    "history_points": 22,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/summary.json",
     "tests": {
       "failing": 3,
@@ -25,14 +25,14 @@
     "dtp_uvm: native status=FAIL",
     "dtp_uvm: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-27T16:55:15.951332+00:00",
+  "generated_at": "2026-09-27T23:53:27.662071+00:00",
   "git": {
-    "commit": "ac509661271246244bb94c118d41dbeda5b882bb",
-    "requested_ref": "ac509661271246244bb94c118d41dbeda5b882bb"
+    "commit": "6c90ede8079554e1c962c77f89d41b0a13e95e66",
+    "requested_ref": "6c90ede8079554e1c962c77f89d41b0a13e95e66"
   },
   "jenkins": {
-    "build_number": "103",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/103/",
+    "build_number": "104",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/104/",
     "job_name": "tt-oca-harness/dtp/uvm",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/"
   },
