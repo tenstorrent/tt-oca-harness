@@ -253,11 +253,14 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self._wr_fault(0)
         still = await self._rd_fault()
         assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write-0 left 0x{still:x}"
+        irq_after = self._irq39()
+        assert irq_after == 1, "irq39 dropped after the write-0 to TOKEN_MATCH_FAULT"
         self.logger.info(
-            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, "
-            "write-0 left the fault and irq set",
+            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=%d after "
+            "the write-0, so the fault and the interrupt stayed set",
             code,
             still,
+            irq_after,
         )
 
         await self._set_inject(TOKEN_CMP_INJECT_DISAGREE)
