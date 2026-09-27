@@ -157,6 +157,7 @@ class SepAxiMonitor(uvm_component):
         # index, and whether the read is exempt from the unknown-lane check.
         self._ar_pending: dict[int | None, list[dict]] = {}
         self._unknown_rdata_window = 0
+        self._error_rdata_window = 0
         self.ar_tracked = 0
         self.r_beats_joined = 0
         self.r_beats_lane_checked = 0
@@ -237,6 +238,18 @@ class SepAxiMonitor(uvm_component):
     def close_unknown_rdata_window(self) -> None:
         self._unknown_rdata_window = max(0, self._unknown_rdata_window - 1)
 
+    def open_error_rdata_window(self) -> None:
+        """Also check error-response beats of reads whose AR handshakes before the close.
+
+        By default only OKAY/EXOKAY beats are lane-checked for X/Z. A caller that
+        grades the data of an error response (a specified error payload, or 0)
+        opens this window so an X/Z in that payload fails instead of reading as 0.
+        """
+        self._error_rdata_window += 1
+
+    def close_error_rdata_window(self) -> None:
+        self._error_rdata_window = max(0, self._error_rdata_window - 1)
+
     def forget_pending_reads(self, axi_id: int) -> None:
         """Drop the recorded ARs of ``axi_id`` that are still waiting for R beats.
 
@@ -254,6 +267,7 @@ class SepAxiMonitor(uvm_component):
             "burst": _to_int(sig["arburst"]) if sig["arburst"] is not None else 1,
             "beat": 0,
             "exempt": self._unknown_rdata_window > 0,
+            "check_error_beats": self._error_rdata_window > 0,
         }
         if entry["size"] is None and sig["arsize"] is None:
             entry["size"] = self._bus_bytes.bit_length() - 1
@@ -273,7 +287,7 @@ class SepAxiMonitor(uvm_component):
         if ar["len"] is None or ar["beat"] > ar["len"]:
             queue.pop(0)
         self.r_beats_joined += 1
-        if code not in (0, 1):
+        if code not in (0, 1) and not ar["check_error_beats"]:
             return True
         if ar["exempt"]:
             self.r_beats_exempt += 1
@@ -290,7 +304,7 @@ class SepAxiMonitor(uvm_component):
         if unknown:
             where = f"0x{ar['addr']:08x}" if ar["addr"] is not None else "unresolved address"
             self._fail(
-                f"OKAY R beat {beat} of the read at {where} (RID {rid}) carries X/Z "
+                f"R beat {beat} (resp={code}) of the read at {where} (RID {rid}) carries X/Z "
                 f"in accessed bit(s) {unknown[:16]}{' ...' if len(unknown) > 16 else ''}: "
                 f"rdata={bits!r}. The driver packs these bits as 0, so a "
                 "zero-expecting compare on this read would pass on an unknown value"

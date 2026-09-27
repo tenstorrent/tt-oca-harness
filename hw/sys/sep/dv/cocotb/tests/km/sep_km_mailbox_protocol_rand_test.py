@@ -208,7 +208,14 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
 
     async def _chk_underflow(self) -> None:
-        resp, data = await self.mb.read_data_raw(expect_error=True)
+        # The data half of this check expects 0 on an error beat; the driver
+        # packs X/Z as 0, so the bus monitor checks this beat's lanes too.
+        mon = self.env.axi_monitor
+        mon.open_error_rdata_window()
+        try:
+            resp, data = await self.mb.read_data_raw(expect_error=True)
+        finally:
+            mon.close_error_rdata_window()
         assert resp == RESP_SLVERR and not data, (
             f"CHK-UFL FAIL: empty READ_DATA resp={resp} data=0x{data:08x}, expected SLVERR and 0"
         )
