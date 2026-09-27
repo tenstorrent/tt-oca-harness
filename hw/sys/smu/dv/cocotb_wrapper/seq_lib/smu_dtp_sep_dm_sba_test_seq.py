@@ -1,0 +1,208 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""DTP TAP → SEP debug-module system-bus access on the SEP=1 wrapper.
+
+S0..S3 are ``smu_dtp_sep_dm_dmi_test``: the TEST_DEV posture leaves SEP debug
+open, the PTAP answers IDCODE, TAP_3DCR selects the SEP STAP, and the debug
+module comes out of reset with ``dmcontrol.dmactive``.
+
+S4: the debug module's system-bus access (RISC-V Debug Specification 0.13,
+    "System Bus Access") writes ``sep_cpu_ctrl`` SEP_GLOBAL_BASE_ADDR. The
+    SEP aperture base the SMU forwards to its crossbar leaves the wrapper on
+    ``sep_global_base_o`` (``hw/sys/smu/doc/port_table.adoc``), so the port
+    carries the written base, and a system-bus read returns it. Writing the
+    RDL reset value back returns the port to it.
+S5: DEMOTE_2 alone. The two demotion controls are independent and either may
+    be asserted without the other (``hw/sys/sep/doc/lifecycle_controller.adoc``,
+    "Demotion 1 and Demotion 2"), and each leaves the SMU through a
+    differential encoder (``otp_fuse_controller.adoc``). With both demote
+    registers at their RDL reset value, a system-bus write of DEMOTE_2.demote
+    moves ``lcc_demote_state_2_o`` to the complement of its code while
+    ``lcc_demote_state_1_o`` holds; the registers read back that way.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from cocotb.triggers import ClockCycles
+
+from seq_lib.smu_addr_map import c_header_u32
+from seq_lib.smu_compose_helpers import sample
+from seq_lib.smu_dtp_sep_dm_dmi_test_seq import (
+    DMI_OP_NOP,
+    DMI_OP_READ,
+    DMI_OP_WRITE,
+    DMI_STATUS_OK,
+    pack_dmi,
+    smu_dtp_sep_dm_dmi_test_seq,
+    unpack_dmi,
+)
+
+_REPO_ROOT = Path(__file__).resolve().parents[6]
+_SEP_C = _REPO_ROOT / "hw" / "sys" / "sep" / "regs" / "gen" / "c"
+_SEP_ADDR_H = _SEP_C / "sep_addr.h"
+_SEP_CPU_CTRL_H = _SEP_C / "blocks" / "sep_cpu_ctrl.h"
+_SEP_LIFECYCLE_CTRL_H = _SEP_C / "blocks" / "sep_lifecycle_ctrl.h"
+
+SEP_GLOBAL_BASE_ADDR = c_header_u32(
+    _SEP_ADDR_H, "OCH_SEP_TOP_SEP_CPU_CTRL_SEP_GLOBAL_BASE_ADDR_BASE_ADDR"
+)
+SEP_GLOBAL_BASE_RESET = c_header_u32(
+    _SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SEP_GLOBAL_BASE_ADDR__ADDR_reset"
+)
+SEP_REGION_SIZE_RESET = c_header_u32(_SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SEP_REGION_SIZE__SIZE_reset")
+DEMOTE_1_ADDR = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR")
+DEMOTE_2_ADDR = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR")
+DEMOTE_BM = c_header_u32(_SEP_LIFECYCLE_CTRL_H, "SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm")
+DEMOTE_RESET = c_header_u32(_SEP_LIFECYCLE_CTRL_H, "SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_reset")
+
+# A base aligned to the SEP_REGION_SIZE reset value whose window ends below the
+# smc_base_config GLOBAL_BASE reset value (0x4000_0000), so the two apertures
+# the crossbar decodes stay disjoint.
+SEP_BASE_PROGRAMMED = 4 * SEP_REGION_SIZE_RESET
+
+# RISC-V Debug Specification 0.13, debug module registers.
+SBCS_ADDR = 0x38
+SBADDRESS0_ADDR = 0x39
+SBDATA0_ADDR = 0x3C
+SBCS_SBBUSYERROR = 1 << 22
+SBCS_SBBUSY = 1 << 21
+SBCS_SBREADONADDR = 1 << 20
+SBCS_SBACCESS_32 = 2 << 17
+SBCS_SBERROR_SHIFT = 12
+SBCS_SBERROR_MASK = 0x7
+SBCS_SBERROR_W1C = SBCS_SBERROR_MASK << SBCS_SBERROR_SHIFT
+DMI_STATUS_BUSY = 3
+DMI_RETRIES = 8
+SBA_POLLS = 32
+PORT_POLL_CYCLES = 200
+
+
+def _is_differential_code(lane: int) -> bool:
+    return lane in (0b01, 0b10)
+
+
+class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
+    """Program the SEP aperture base and DEMOTE_2 over the debug module's system bus."""
+
+    def __init__(self, test) -> None:
+        super().__init__(test)
+        self.s4_ok = False
+        self.s5_ok = False
+
+    async def _dmi(self, jtag, addr: int, data: int, op: int) -> int:
+        """Issue one DMI op, then collect its result with NOPs; returns the data."""
+        await self._dmi_scan(jtag, pack_dmi(addr, data, op=op))
+        for _ in range(DMI_RETRIES):
+            captured = await self._dmi_scan(jtag, pack_dmi(addr, 0, op=DMI_OP_NOP))
+            _, value, status = unpack_dmi(captured)
+            if status == DMI_STATUS_OK:
+                return value
+            if status != DMI_STATUS_BUSY:
+                raise AssertionError(f"DMI op={op} addr=0x{addr:02x} status={status}")
+        raise AssertionError(f"DMI op={op} addr=0x{addr:02x} still busy")
+
+    async def _sba_wait(self, jtag, what: str) -> None:
+        for _ in range(SBA_POLLS):
+            sbcs = await self._dmi(jtag, SBCS_ADDR, 0, DMI_OP_READ)
+            if sbcs & SBCS_SBBUSY:
+                continue
+            sberror = (sbcs >> SBCS_SBERROR_SHIFT) & SBCS_SBERROR_MASK
+            if sberror or (sbcs & SBCS_SBBUSYERROR):
+                raise AssertionError(f"system-bus {what}: sbcs=0x{sbcs:08x} sberror={sberror}")
+            return
+        raise AssertionError(f"system-bus {what}: sbbusy never cleared")
+
+    async def _sba_write(self, jtag, addr: int, data: int) -> None:
+        await self._dmi(jtag, SBCS_ADDR, SBCS_SBACCESS_32 | SBCS_SBERROR_W1C, DMI_OP_WRITE)
+        await self._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
+        await self._dmi(jtag, SBDATA0_ADDR, data, DMI_OP_WRITE)
+        await self._sba_wait(jtag, f"write 0x{addr:08x}")
+
+    async def _sba_read(self, jtag, addr: int) -> int:
+        await self._dmi(
+            jtag,
+            SBCS_ADDR,
+            SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_W1C,
+            DMI_OP_WRITE,
+        )
+        await self._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
+        await self._sba_wait(jtag, f"read 0x{addr:08x}")
+        return await self._dmi(jtag, SBDATA0_ADDR, 0, DMI_OP_READ)
+
+    async def _port_settles(self, name: str, want: int) -> int:
+        observed = sample(getattr(self.dut, name), name)
+        for _ in range(PORT_POLL_CYCLES):
+            if observed == want:
+                break
+            await ClockCycles(self.dut.clk_smu_i, 1)
+            observed = sample(getattr(self.dut, name), name)
+        return observed
+
+    async def _aperture_base(self, jtag, sb) -> None:
+        before = sample(self.dut.sep_global_base_o, "sep_global_base_o")
+        sb.expect_eq("sep_global_base_o at its RDL reset value", before, SEP_GLOBAL_BASE_RESET)
+        await self._sba_write(jtag, SEP_GLOBAL_BASE_ADDR, SEP_BASE_PROGRAMMED)
+        port = await self._port_settles("sep_global_base_o", SEP_BASE_PROGRAMMED)
+        readback = await self._sba_read(jtag, SEP_GLOBAL_BASE_ADDR)
+        self._log(
+            f"CHK-SEP-SBA-GLOBAL-BASE wrote=0x{SEP_BASE_PROGRAMMED:x} "
+            f"port=0x{port:x} readback=0x{readback:x}"
+        )
+        sb.expect_eq(
+            "CHK-SEP-SBA-GLOBAL-BASE",
+            (port, readback),
+            (SEP_BASE_PROGRAMMED, SEP_BASE_PROGRAMMED),
+            evidence="CHK-SEP-SBA-GLOBAL-BASE",
+        )
+        await self._sba_write(jtag, SEP_GLOBAL_BASE_ADDR, SEP_GLOBAL_BASE_RESET)
+        port = await self._port_settles("sep_global_base_o", SEP_GLOBAL_BASE_RESET)
+        self._log(f"CHK-SEP-SBA-GLOBAL-BASE-RESTORE port=0x{port:x}")
+        sb.expect_eq(
+            "CHK-SEP-SBA-GLOBAL-BASE-RESTORE",
+            port,
+            SEP_GLOBAL_BASE_RESET,
+            evidence="CHK-SEP-SBA-GLOBAL-BASE-RESTORE",
+        )
+        self.s4_ok = True
+
+    async def _demote_2_alone(self, jtag, sb) -> None:
+        lane1 = sample(self.dut.lcc_demote_state_1_o, "lcc_demote_state_1_o")
+        lane2 = sample(self.dut.lcc_demote_state_2_o, "lcc_demote_state_2_o")
+        demote1 = await self._sba_read(jtag, DEMOTE_1_ADDR)
+        demote2 = await self._sba_read(jtag, DEMOTE_2_ADDR)
+        sb.expect_eq(
+            "both demote registers at their RDL reset value",
+            (demote1 & DEMOTE_BM, demote2 & DEMOTE_BM),
+            (DEMOTE_RESET, DEMOTE_RESET),
+        )
+        sb.expect_true(
+            "both demote lanes present one differential code, the same on each lane",
+            _is_differential_code(lane1) and lane1 == lane2,
+        )
+        demoted = lane2 ^ 0b11
+        await self._sba_write(jtag, DEMOTE_2_ADDR, DEMOTE_BM)
+        lane2_after = await self._port_settles("lcc_demote_state_2_o", demoted)
+        lane1_after = sample(self.dut.lcc_demote_state_1_o, "lcc_demote_state_1_o")
+        demote1 = await self._sba_read(jtag, DEMOTE_1_ADDR)
+        demote2 = await self._sba_read(jtag, DEMOTE_2_ADDR)
+        self._log(
+            f"CHK-SEP-SBA-DEMOTE2-ALONE lanes before=({lane1:02b},{lane2:02b}) "
+            f"after=({lane1_after:02b},{lane2_after:02b}) "
+            f"DEMOTE_1=0x{demote1:x} DEMOTE_2=0x{demote2:x}"
+        )
+        sb.expect_eq(
+            "CHK-SEP-SBA-DEMOTE2-ALONE",
+            (lane1_after, lane2_after, demote1 & DEMOTE_BM, demote2 & DEMOTE_BM),
+            (lane1, demoted, DEMOTE_RESET, DEMOTE_BM),
+            evidence="CHK-SEP-SBA-DEMOTE2-ALONE",
+        )
+        self.s5_ok = True
+
+    async def run(self) -> None:
+        await super().run()
+        sb = self.test.env.scoreboard
+        jtag = self.jtag
+        await self._aperture_base(jtag, sb)
+        await self._demote_2_alone(jtag, sb)

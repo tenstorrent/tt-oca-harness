@@ -249,6 +249,7 @@ one-line intent.
 |`smu_dtp_otp_smc_series_error_test` |dtp |OTP series NO_INCR + decode-hole SLVERR
 |`smu_dtp_smc_stap_smoke_test` |dtp |DTP-SMC-STAP TRST + TAP_3DCR select
 |`smu_dtp_sep_dm_dmi_test` |dtp |DTP TAP → SEP debug-module `dmstatus` over the SEP TAP's `dmi` register
+|`smu_dtp_sep_dm_sba_test` |dtp |DTP TAP → SEP debug-module system-bus writes of the SEP aperture base and DEMOTE_2, observed at the SMU boundary
 |`smu_jtag_chain_enhanced_test` |dtp |IDCODE/BYPASS at 1/5/10/20 MHz TCK
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=1, no Force)
 |`smu_dtp_scan_chain_boundary_test` |dtp |The iJTAG SIB hosts and the secondary TAPs leave and re-enter `smu_wrapper` at the pads, and the shift path runs through those boundary pins.
@@ -4508,6 +4509,45 @@ Two things are worth reading before the entries:
 
 '''''
 
+[[sec-114-smu_dtp_sep_dm_sba_test]]
+===== 114 `smu_dtp_sep_dm_sba_test`
+
+*Source Module*: `smu_dtp_sep_dm_sba_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_dtp_sep_dm_dmi_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip`; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: program two SEP registers that only the SEP side can write -- the SEP aperture base and one demotion control -- from the product JTAG pins through the SEP debug module's system bus, and observe each at the SMU boundary.
+
+*Test Coverage*:
+
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`: the TEST_DEV posture leaves every SEP debug path open, the SEP STAP is selected over TAP_3DCR, and `dmcontrol.dmactive` brings the debug module out of reset.
+* S4: the RISC-V Debug Specification 0.13 system-bus access (`sbcs` with a 32-bit `sbaccess`, `sbaddress0`, `sbdata0`) writes `sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR at the address `sep_addr.h` gives it. The SEP aperture base leaves the SMU on `sep_global_base_o` (`hw/sys/smu/doc/port_table.adoc`), so the port carries the written base and a system-bus read returns it. The base is four times the SEP_REGION_SIZE reset value: aligned to the region and ending below the `smc_base_config` GLOBAL_BASE reset value, so the SEP and SMC apertures the crossbar decodes stay disjoint. Writing the RDL reset value back returns the port to it.
+* S5: DEMOTE_1 and DEMOTE_2 are independent, and either may be asserted without the other (`hw/sys/sep/doc/lifecycle_controller.adoc`, "Demotion 1 and Demotion 2"); each leaves the SMU through a differential encoder (`otp_fuse_controller.adoc`). With both registers at their RDL reset value and both lanes presenting the same differential code, a system-bus write of DEMOTE_2.demote complements `lcc_demote_state_2_o` while `lcc_demote_state_1_o` holds, and the registers read back DEMOTE_1 clear and DEMOTE_2 set. `smu_sep_lcc_flow_test` writes DEMOTE_1 before DEMOTE_2 and so never presents lane 2 demoted alone.
+* Not claimed: abstract commands, SEP_REGION_SIZE, the lock bits, and any traffic through the moved aperture.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
+. Write SEP_GLOBAL_BASE_ADDR over the system bus, wait for `sep_global_base_o`, read the register back; write the reset value and wait for the port again.
+. Read both lanes and both demote registers, write DEMOTE_2.demote over the system bus, wait for lane 2, and read the lanes and registers again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SEP-SBA-GLOBAL-BASE` |the system-bus write of SEP_GLOBAL_BASE_ADDR reaches `sep_global_base_o` within 200 `clk_smu` cycles and the system-bus read returns it
+|`CHK-SEP-SBA-GLOBAL-BASE-RESTORE` |writing the RDL reset value returns `sep_global_base_o` to it
+|`CHK-SEP-SBA-DEMOTE2-ALONE` |DEMOTE_2 alone complements `lcc_demote_state_2_o`, `lcc_demote_state_1_o` holds, and DEMOTE_1 reads clear while DEMOTE_2 reads set
+|assertion |sep_sba incomplete s1=<value> .. s5=<value>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -4529,15 +4569,15 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |`elaboration` |1 |The elaboration leaf alone
 |`fabric` |16 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
-|`dtp_under_smu` |30 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
+|`dtp_under_smu` |31 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |72 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |104 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |73 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |108 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
 |`sep_chain` |2 |Lifecycle-gated JTAG-to-SMC chain leaves
-|`sep_lifecycle` |6 |Wrapper leaves that run one lifecycle state's eFuse image each
+|`sep_lifecycle` |9 |Wrapper leaves that run one lifecycle state's eFuse image each
 |===
 
 `smoke` ⊂ `hosted` ⊂ `all` and `elaboration` ⊂ `fw_boot` ⊂ `all`; `hosted`
@@ -4643,6 +4683,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_io_stap_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-IO-STAP-SCAN`
 |`smu_dtp_smc_stap_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-SMC-STAP-IDCODE`
 |`smu_dtp_sep_dm_dmi_test` |F3 |dtp_under_smu, hosted |`CHK-SEP-DMI-DMSTATUS`
+|`smu_dtp_sep_dm_sba_test` |F3 |dtp_under_smu, hosted |`CHK-SEP-SBA-GLOBAL-BASE`
 |`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-BSR-EXTEST-SELECT`
 |`smu_dtp_otp_smc_map_rw_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-MAP-RW`
 |`smu_dtp_otp_smc_series_error_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-DECODE-SLVERR`

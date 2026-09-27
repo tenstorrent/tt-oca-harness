@@ -1881,6 +1881,30 @@ args = [
 ]
 
 [[tests]]
+name = "smu_dtp_sep_dm_sba_test"
+module = "smu_dtp_sep_dm_sba_test"
+target = "compile_smu_chiplet"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "sep", "dmi", "sba", "stap", "lifecycle"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: every SEP debug path open, so the DTP forwards TMS to the SEP
+  # STAP and the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+]
+
+[[tests]]
 name = "smu_dtp_smc_stap_smoke_test"
 module = "smu_dtp_smc_stap_smoke_test"
 target = "compile_smu_chiplet"
@@ -2348,6 +2372,7 @@ tests = [
   "smu_dtp_otp_smc_map_rw_test",
   "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_sep_dm_dmi_test",
+  "smu_dtp_sep_dm_sba_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ic_reset_dual_domain_illegal_test",
   "smu_ic_reset_smc_multi_domain_test",
@@ -2409,6 +2434,7 @@ tests = [
   "smu_dtp_otp_smc_map_rw_test",
   "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_sep_dm_dmi_test",
+  "smu_dtp_sep_dm_sba_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ext_boot_seq_gate_test",
   "smu_fabric_reg_bar_wr_test",
@@ -2456,7 +2482,7 @@ tests = [
   "smu_aperture_map_walk_test",
   "smu_axi_out_addr_len_size_test",
 ]
-expected_count = 72
+expected_count = 73
 
 # `--items all`: every test in this file, so this group is the whole SMU
 # regression. Anything added to this file belongs here too, so that
@@ -2522,6 +2548,7 @@ tests = [
   "smu_dtp_otp_smc_map_rw_test",
   "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_sep_dm_dmi_test",
+  "smu_dtp_sep_dm_sba_test",
   "smu_dtp_smc_stap_smoke_test",
   "smu_ext_boot_seq_gate_test",
   "smu_fabric_reg_bar_wr_test",
@@ -2574,7 +2601,7 @@ tests = [
   "smu_aperture_map_walk_test",
   "smu_axi_out_addr_len_size_test",
 ]
-expected_count = 107
+expected_count = 108
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

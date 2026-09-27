@@ -144,6 +144,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         self.s2_ok = False
         self.s3_ok = False
         self.dmstatus = 0
+        self.jtag: OcahJtagMasterSequence | None = None
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -240,6 +241,7 @@ class smu_dtp_sep_dm_dmi_test_seq:
         await self._require_debug_open(sb)
         raw = make_smu_jtag_tap(self.dut, self.cfg.jtag_period_ns)
         jtag = OcahJtagMasterSequence(raw)
+        self.jtag = jtag
         await jtag.reset_to_tlr()
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         for _ in range(8):

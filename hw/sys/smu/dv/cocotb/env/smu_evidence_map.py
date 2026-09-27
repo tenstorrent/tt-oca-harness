@@ -352,6 +352,28 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
         ),
     ],
+    "smu_dtp_sep_dm_sba_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-SBA-GLOBAL-BASE",
+            "CHK-SEP-SBA-GLOBAL-BASE",
+            "system-bus write of SEP_GLOBAL_BASE_ADDR reaches sep_global_base_o and reads back",
+        ),
+        (
+            "CHK-SEP-SBA-GLOBAL-BASE-RESTORE",
+            "CHK-SEP-SBA-GLOBAL-BASE-RESTORE",
+            "writing the RDL reset value returns sep_global_base_o to it",
+        ),
+        (
+            "CHK-SEP-SBA-DEMOTE2-ALONE",
+            "CHK-SEP-SBA-DEMOTE2-ALONE",
+            "DEMOTE_2 alone complements lcc_demote_state_2_o while lane 1 and DEMOTE_1 hold",
+        ),
+    ],
     "smu_ext_boot_seq_gate_test": [
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
