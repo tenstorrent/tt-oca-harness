@@ -9,7 +9,7 @@ SMN master (m_axi, the only path through u_inbound_filter) probes them:
     match) -> the access traverses the filter + identity global->local remap
     (smc_global_base=0) and reaches the SEP-local CSR -> OKAY + exact value;
   * any other address (block-by-default) -> the filter's err-slave ->
-    DECERR + ERR_SLV_RDATA;
+    DECERR, and the read data is not the value staged at that address;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
 
 This stays sep_debug=0 and proves PER-ENTRY rule enforcement (vs the global
@@ -42,7 +42,6 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import DENY_READ_SENTINEL, deny_read_rdata
 from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -89,14 +88,6 @@ RESP_OKAY = 0
 RESP_SLVERR = 2
 # AMBA AXI4-Lite encodings (IHI 0022): OKAY=0, SLVERR=2, DECERR=3.
 RESP_DECERR = 3
-# DV-owned deny-path marker (env.sep_spec_tables.DENY_READ_SENTINEL).
-ERR_SLV_RDATA = deny_read_rdata(0)
-ERR_SLV_WORD = DENY_READ_SENTINEL
-
-
-def err_slv_rdata(addr: int) -> int:
-    """The deny-path half a 32-bit beat at ``addr`` must return."""
-    return deny_read_rdata(addr)
 
 
 # Entry count from the generated export, not a literal: the bank is an RDL

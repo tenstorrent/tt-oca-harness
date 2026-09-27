@@ -598,16 +598,13 @@ def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
 # means.
 AXI_BUS_BYTES = 8
 
-# Deny-path read payload this package grades. AMBA IHI 0022 names DECERR
-# (RRESP=2'b11) but not the data. The marker is a DV-owned convention so an
-# allow (staged CSR value) and a deny cannot collide on the data conjunct.
-# A 32-bit beat returns the half that addr[2] selects.
-DENY_READ_SENTINEL = 0xCA11_AB1E_BADC_AB1E
-
-
-def deny_read_rdata(addr: int) -> int:
-    """The deny-path half-word a 32-bit beat at ``addr`` must return."""
-    return ((DENY_READ_SENTINEL >> 32) if addr & 0x4 else DENY_READ_SENTINEL) & 0xFFFF_FFFF
+# Read data of a JTAG access the eFuse lifecycle demux blocks:
+# hw/ip/efuse/doc/architecture.adoc "the error slave returns an error response
+# with data value 0xbadcab1e". Only the eFuse error slave has a specified read
+# payload. The axi_filter spec (hw/ip/axi_filter/doc/index.adoc, Blocked
+# Transactions) names DECERR and no data, so an inbound-filter deny is graded
+# on the response and on not returning the protected value.
+EFUSE_ERR_SLV_RDATA = 0xBADC_AB1E
 
 
 def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_BYTES) -> int:
@@ -665,8 +662,6 @@ def _selftest() -> None:
     assert abr_id_golden("MLKEM_CORE_NAME") == mldsa_name_words("KEM-1024")
     assert abr_id_golden("MLDSA_CORE_VERSION") == (0x302E322E, 0x00003100)
     assert abr_id_golden("MLKEM_CORE_VERSION") == (0x302E322E, 0x00003100)
-    assert deny_read_rdata(0x0) == 0xBADC_AB1E
-    assert deny_read_rdata(0x4) == 0xCA11_AB1E
     locked = esrc_fips_locked_fields()
     # A parse that silently matched nothing would empty the post-lock walk.
     assert len(locked) >= 10, locked

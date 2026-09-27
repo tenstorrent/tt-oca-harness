@@ -2436,11 +2436,11 @@ remapped routes to the error slave and never executes.
 . Real-sense a production image; wait for sense-done; publish CPU-ready.
 . CPU: seed resetless `RMA_SIP_TOKEN_I[0]` with a distinct nonzero value and read it back before publishing CPU-ready. Then run a free-running loop scoring two reads per pass -- that token word must retain the CPU seed, and the eFuse interface STATUS must keep `efuse_sense_done` set -- while publishing a counter and an error count to cold scratch. The CPU issues no eFuse writes during the concurrent window, so only the read channel is contended.
 . Host, concurrently: 16 debug-port register rounds (52 AXI-Lite operations), all expected to succeed.
-. Host: attempt a debug-port read of the protected shadow window; expect a decode error.
+. Host: attempt a debug-port read of the protected shadow window; expect an error response with data `0xbadcab1e`.
 . Host: repeat a register read after the denial; expect success.
 . Read the CPU's counter to confirm it advanced during the burst.
 . Host: read `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH`; expect OKAY. A sample of the token-block allow class in PROD.
-. Host: read `EFUSE_PROGRAM_CTRL`; expect DECERR and `0xbadcab1e`.
+. Host: read `EFUSE_PROGRAM_CTRL`; expect an error response with data `0xbadcab1e`.
 
 *Checkers*:
 
@@ -2450,7 +2450,7 @@ remapped routes to the error slave and never executes.
 |CHK-JTAG-MMR
 |All 16 debug-port register rounds complete successfully through the multiplexer.
 |CHK-JTAG-DENY
-|The protected shadow window is denied with a specific decode error and marker value, not a timeout.
+|The protected shadow window is denied with an error response (SLVERR or DECERR) and read data `0xbadcab1e`, not OKAY and not a timeout. `hw/ip/efuse/doc/architecture.adoc` (eFuse lifecycle-based JTAG permissions) specifies the error-slave data and does not name the response code.
 |CHK-JTAG-ALLOW
 |The MMR window still works after the denial. The shadow map and `EFUSE_PROGRAM_CTRL` answer OKAY under TEST_DEV in `sep_efuse_jtag_window_allow_test`, so those two windows are gated per lifecycle state rather than denied on every image.
 |CHK-CPU-MMR
@@ -2460,7 +2460,7 @@ remapped routes to the error slave and never executes.
 |CHK-JTAG-TOKEN-BLOCK
 |In PROD, JTAG reads of `SEC_DISABLE_TOKEN_I[0]`, `TOKEN_EOP`, and `SEC_DISABLE_TOKEN_MATCH` return OKAY. A sample of the `hw/sys/sep/doc/otp_fuse_controller.adoc` token-block allow class, not every `TOKEN_I` word and MATCH register. `CHK-JTAG-MMR` already walks RMA `TOKEN_I`.
 |CHK-JTAG-IFACE-DENY
-|In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes DECERR with the DV-owned deny-path sentinel `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
+|In PROD, a JTAG read of `EFUSE_PROGRAM_CTRL` completes with an error response (SLVERR or DECERR) and the `hw/ip/efuse/doc/architecture.adoc` error-slave data `0xbadcab1e`. Shadow deny is CHK-JTAG-DENY; this is the program/read interface.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -3892,7 +3892,7 @@ recovery attempt.
 |===
 |Checker |Contract
 |CHK-ALLOW-RULE
-|An allowed external read returns OKAY *and* the exact staged value. A denied read returns DECERR *and* the DV-owned deny-path sentinel `0xBADCAB1E` (`env/sep_spec_tables.py` `DENY_READ_SENTINEL` low half), so allow and deny are distinguished by data as well as by response code.
+|An allowed external read returns OKAY *and* the exact staged value. A denied read of the same address returns DECERR *and* read data that is not the staged value, so the blocked access did not reach the target. `hw/ip/axi_filter/doc/index.adoc` (Blocked Transactions) names DECERR and no read data, so no exact deny payload is graded.
 |CHK-BLOCK-DEFAULT
 |A non-allowed external read in the *same CSR page* returns DECERR — so region reachability is proven by the allow case and cannot explain the deny.
 |CHK-READ-ALLOWED
