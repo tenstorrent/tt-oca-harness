@@ -5,6 +5,8 @@
 `define SCRATCH_REG_RDL
 
 addrmap scratch {
+    name = "Scratch Address Map";
+    desc = "General-purpose scratch register bank.";
 
     reg SCRATCH {
         field  {

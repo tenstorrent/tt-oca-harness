@@ -12,6 +12,8 @@
       <ipxact:name>efuse_mmr_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>efuse_mmr</ipxact:name>
+        <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
+        <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h74</ipxact:range>
         <ipxact:width>32</ipxact:width>

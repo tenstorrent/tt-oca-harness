@@ -8,70 +8,70 @@
 [cols="<,<,<,<,<,<",options="header"]
 |===
 |Address Range |Size |Decoded Extent |Unit |Instances |Stride
-|BASE + 0x0 – BASE + 0x7FF |2 KiB |80 B |outbound_mailbox_0 |1 instance |-
-|BASE + 0x800 – BASE + 0xFFF |2 KiB |80 B |inbound_mailbox_0 |1 instance |-
-|BASE + 0x1000 – BASE + 0x17FF |2 KiB |80 B |outbound_mailbox_1 |1 instance |-
-|BASE + 0x1800 – BASE + 0x1FFF |2 KiB |80 B |inbound_mailbox_1 |1 instance |-
-|BASE + 0x2000 – BASE + 0x27FF |2 KiB |80 B |outbound_mailbox_2 |1 instance |-
-|BASE + 0x2800 – BASE + 0x2FFF |2 KiB |80 B |inbound_mailbox_2 |1 instance |-
-|BASE + 0x3000 – BASE + 0x37FF |2 KiB |80 B |outbound_mailbox_3 |1 instance |-
-|BASE + 0x3800 – BASE + 0x3FFF |2 KiB |80 B |inbound_mailbox_3 |1 instance |-
-|BASE + 0x4000 – BASE + 0x47FF |2 KiB |80 B |outbound_mailbox_4 |1 instance |-
-|BASE + 0x4800 – BASE + 0x4FFF |2 KiB |80 B |inbound_mailbox_4 |1 instance |-
-|BASE + 0x5000 – BASE + 0x57FF |2 KiB |80 B |outbound_mailbox_5 |1 instance |-
-|BASE + 0x5800 – BASE + 0x5FFF |2 KiB |80 B |inbound_mailbox_5 |1 instance |-
-|BASE + 0x6000 – BASE + 0x67FF |2 KiB |80 B |outbound_mailbox_6 |1 instance |-
-|BASE + 0x6800 – BASE + 0x6FFF |2 KiB |80 B |inbound_mailbox_6 |1 instance |-
-|BASE + 0x7000 – BASE + 0x77FF |2 KiB |80 B |outbound_mailbox_7 |1 instance |-
-|BASE + 0x7800 – BASE + 0x7FFF |2 KiB |80 B |inbound_mailbox_7 |1 instance |-
-|BASE + 0x8000 – BASE + 0x87FF |2 KiB |80 B |outbound_mailbox_8 |1 instance |-
-|BASE + 0x8800 – BASE + 0x8FFF |2 KiB |80 B |inbound_mailbox_8 |1 instance |-
-|BASE + 0x9000 – BASE + 0x97FF |2 KiB |80 B |outbound_mailbox_9 |1 instance |-
-|BASE + 0x9800 – BASE + 0x9FFF |2 KiB |80 B |inbound_mailbox_9 |1 instance |-
-|BASE + 0xA000 – BASE + 0xA7FF |2 KiB |80 B |outbound_mailbox_10 |1 instance |-
-|BASE + 0xA800 – BASE + 0xAFFF |2 KiB |80 B |inbound_mailbox_10 |1 instance |-
-|BASE + 0xB000 – BASE + 0xB7FF |2 KiB |80 B |outbound_mailbox_11 |1 instance |-
-|BASE + 0xB800 – BASE + 0xBFFF |2 KiB |80 B |inbound_mailbox_11 |1 instance |-
-|BASE + 0xC000 – BASE + 0xC7FF |2 KiB |80 B |outbound_mailbox_12 |1 instance |-
-|BASE + 0xC800 – BASE + 0xCFFF |2 KiB |80 B |inbound_mailbox_12 |1 instance |-
-|BASE + 0xD000 – BASE + 0xD7FF |2 KiB |80 B |outbound_mailbox_13 |1 instance |-
-|BASE + 0xD800 – BASE + 0xDFFF |2 KiB |80 B |inbound_mailbox_13 |1 instance |-
-|BASE + 0xE000 – BASE + 0xE7FF |2 KiB |80 B |outbound_mailbox_14 |1 instance |-
-|BASE + 0xE800 – BASE + 0xEFFF |2 KiB |80 B |inbound_mailbox_14 |1 instance |-
-|BASE + 0xF000 – BASE + 0xF7FF |2 KiB |80 B |outbound_mailbox_15 |1 instance |-
-|BASE + 0xF800 – BASE + 0xFFFF |2 KiB |80 B |inbound_mailbox_15 |1 instance |-
-|BASE + 0x10000 – BASE + 0x107FF |2 KiB |80 B |outbound_mailbox_16 |1 instance |-
-|BASE + 0x10800 – BASE + 0x10FFF |2 KiB |80 B |inbound_mailbox_16 |1 instance |-
-|BASE + 0x11000 – BASE + 0x117FF |2 KiB |80 B |outbound_mailbox_17 |1 instance |-
-|BASE + 0x11800 – BASE + 0x11FFF |2 KiB |80 B |inbound_mailbox_17 |1 instance |-
-|BASE + 0x12000 – BASE + 0x127FF |2 KiB |80 B |outbound_mailbox_18 |1 instance |-
-|BASE + 0x12800 – BASE + 0x12FFF |2 KiB |80 B |inbound_mailbox_18 |1 instance |-
-|BASE + 0x13000 – BASE + 0x137FF |2 KiB |80 B |outbound_mailbox_19 |1 instance |-
-|BASE + 0x13800 – BASE + 0x13FFF |2 KiB |80 B |inbound_mailbox_19 |1 instance |-
-|BASE + 0x14000 – BASE + 0x147FF |2 KiB |80 B |outbound_mailbox_20 |1 instance |-
-|BASE + 0x14800 – BASE + 0x14FFF |2 KiB |80 B |inbound_mailbox_20 |1 instance |-
-|BASE + 0x15000 – BASE + 0x157FF |2 KiB |80 B |outbound_mailbox_21 |1 instance |-
-|BASE + 0x15800 – BASE + 0x15FFF |2 KiB |80 B |inbound_mailbox_21 |1 instance |-
-|BASE + 0x16000 – BASE + 0x167FF |2 KiB |80 B |outbound_mailbox_22 |1 instance |-
-|BASE + 0x16800 – BASE + 0x16FFF |2 KiB |80 B |inbound_mailbox_22 |1 instance |-
-|BASE + 0x17000 – BASE + 0x177FF |2 KiB |80 B |outbound_mailbox_23 |1 instance |-
-|BASE + 0x17800 – BASE + 0x17FFF |2 KiB |80 B |inbound_mailbox_23 |1 instance |-
-|BASE + 0x18000 – BASE + 0x187FF |2 KiB |80 B |outbound_mailbox_24 |1 instance |-
-|BASE + 0x18800 – BASE + 0x18FFF |2 KiB |80 B |inbound_mailbox_24 |1 instance |-
-|BASE + 0x19000 – BASE + 0x197FF |2 KiB |80 B |outbound_mailbox_25 |1 instance |-
-|BASE + 0x19800 – BASE + 0x19FFF |2 KiB |80 B |inbound_mailbox_25 |1 instance |-
-|BASE + 0x1A000 – BASE + 0x1A7FF |2 KiB |80 B |outbound_mailbox_26 |1 instance |-
-|BASE + 0x1A800 – BASE + 0x1AFFF |2 KiB |80 B |inbound_mailbox_26 |1 instance |-
-|BASE + 0x1B000 – BASE + 0x1B7FF |2 KiB |80 B |outbound_mailbox_27 |1 instance |-
-|BASE + 0x1B800 – BASE + 0x1BFFF |2 KiB |80 B |inbound_mailbox_27 |1 instance |-
-|BASE + 0x1C000 – BASE + 0x1C7FF |2 KiB |80 B |outbound_mailbox_28 |1 instance |-
-|BASE + 0x1C800 – BASE + 0x1CFFF |2 KiB |80 B |inbound_mailbox_28 |1 instance |-
-|BASE + 0x1D000 – BASE + 0x1D7FF |2 KiB |80 B |outbound_mailbox_29 |1 instance |-
-|BASE + 0x1D800 – BASE + 0x1DFFF |2 KiB |80 B |inbound_mailbox_29 |1 instance |-
-|BASE + 0x1E000 – BASE + 0x1E7FF |2 KiB |80 B |outbound_mailbox_30 |1 instance |-
-|BASE + 0x1E800 – BASE + 0x1EFFF |2 KiB |80 B |inbound_mailbox_30 |1 instance |-
-|BASE + 0x1F000 – BASE + 0x1F7FF |2 KiB |80 B |outbound_mailbox_31 |1 instance |-
-|BASE + 0x1F800 – BASE + 0x1FFFF |2 KiB |80 B |inbound_mailbox_31 |1 instance |-
+|BASE + 0x0 – BASE + 0x7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x800 – BASE + 0xFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1000 – BASE + 0x17FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1800 – BASE + 0x1FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x2000 – BASE + 0x27FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x2800 – BASE + 0x2FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x3000 – BASE + 0x37FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x3800 – BASE + 0x3FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x4000 – BASE + 0x47FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x4800 – BASE + 0x4FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x5000 – BASE + 0x57FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x5800 – BASE + 0x5FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x6000 – BASE + 0x67FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x6800 – BASE + 0x6FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x7000 – BASE + 0x77FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x7800 – BASE + 0x7FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x8000 – BASE + 0x87FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x8800 – BASE + 0x8FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x9000 – BASE + 0x97FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x9800 – BASE + 0x9FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xA000 – BASE + 0xA7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xA800 – BASE + 0xAFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xB000 – BASE + 0xB7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xB800 – BASE + 0xBFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xC000 – BASE + 0xC7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xC800 – BASE + 0xCFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xD000 – BASE + 0xD7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xD800 – BASE + 0xDFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xE000 – BASE + 0xE7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xE800 – BASE + 0xEFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xF000 – BASE + 0xF7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0xF800 – BASE + 0xFFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x10000 – BASE + 0x107FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x10800 – BASE + 0x10FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x11000 – BASE + 0x117FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x11800 – BASE + 0x11FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x12000 – BASE + 0x127FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x12800 – BASE + 0x12FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x13000 – BASE + 0x137FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x13800 – BASE + 0x13FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x14000 – BASE + 0x147FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x14800 – BASE + 0x14FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x15000 – BASE + 0x157FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x15800 – BASE + 0x15FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x16000 – BASE + 0x167FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x16800 – BASE + 0x16FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x17000 – BASE + 0x177FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x17800 – BASE + 0x17FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x18000 – BASE + 0x187FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x18800 – BASE + 0x18FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x19000 – BASE + 0x197FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x19800 – BASE + 0x19FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1A000 – BASE + 0x1A7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1A800 – BASE + 0x1AFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1B000 – BASE + 0x1B7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1B800 – BASE + 0x1BFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1C000 – BASE + 0x1C7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1C800 – BASE + 0x1CFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1D000 – BASE + 0x1D7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1D800 – BASE + 0x1DFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1E000 – BASE + 0x1E7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1E800 – BASE + 0x1EFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1F000 – BASE + 0x1F7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1F800 – BASE + 0x1FFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
 |===
 // end::smc-mailboxes[]
 
@@ -80,21 +80,21 @@
 [cols="<,<,<,<,<,<",options="header"]
 |===
 |Address Range |Size |Decoded Extent |Unit |Instances |Stride
-|BASE + 0x0 – BASE + 0x7FF |2 KiB |80 B |outbound_mailbox_0 |1 instance |-
-|BASE + 0x800 – BASE + 0xFFF |2 KiB |80 B |inbound_mailbox_0 |1 instance |-
-|BASE + 0x1000 – BASE + 0x17FF |2 KiB |80 B |outbound_mailbox_1 |1 instance |-
-|BASE + 0x1800 – BASE + 0x1FFF |2 KiB |80 B |inbound_mailbox_1 |1 instance |-
-|BASE + 0x2000 – BASE + 0x27FF |2 KiB |80 B |outbound_mailbox_2 |1 instance |-
-|BASE + 0x2800 – BASE + 0x2FFF |2 KiB |80 B |inbound_mailbox_2 |1 instance |-
-|BASE + 0x3000 – BASE + 0x37FF |2 KiB |80 B |outbound_mailbox_3 |1 instance |-
-|BASE + 0x3800 – BASE + 0x3FFF |2 KiB |80 B |inbound_mailbox_3 |1 instance |-
-|BASE + 0x4000 – BASE + 0x47FF |2 KiB |80 B |outbound_mailbox_4 |1 instance |-
-|BASE + 0x4800 – BASE + 0x4FFF |2 KiB |80 B |inbound_mailbox_4 |1 instance |-
-|BASE + 0x5000 – BASE + 0x57FF |2 KiB |80 B |outbound_mailbox_5 |1 instance |-
-|BASE + 0x5800 – BASE + 0x5FFF |2 KiB |80 B |inbound_mailbox_5 |1 instance |-
-|BASE + 0x6000 – BASE + 0x67FF |2 KiB |80 B |outbound_mailbox_6 |1 instance |-
-|BASE + 0x6800 – BASE + 0x6FFF |2 KiB |80 B |inbound_mailbox_6 |1 instance |-
-|BASE + 0x7000 – BASE + 0x77FF |2 KiB |80 B |outbound_mailbox_7 |1 instance |-
-|BASE + 0x7800 – BASE + 0x7FFF |2 KiB |80 B |inbound_mailbox_7 |1 instance |-
+|BASE + 0x0 – BASE + 0x7FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x800 – BASE + 0xFFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1000 – BASE + 0x17FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x1800 – BASE + 0x1FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x2000 – BASE + 0x27FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x2800 – BASE + 0x2FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x3000 – BASE + 0x37FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x3800 – BASE + 0x3FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x4000 – BASE + 0x47FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x4800 – BASE + 0x4FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x5000 – BASE + 0x57FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x5800 – BASE + 0x5FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x6000 – BASE + 0x67FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x6800 – BASE + 0x6FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x7000 – BASE + 0x77FF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
+|BASE + 0x7800 – BASE + 0x7FFF |2 KiB |80 B |AXI-Lite Mailbox Address Map |1 instance |-
 |===
 // end::sep-mailboxes[]
