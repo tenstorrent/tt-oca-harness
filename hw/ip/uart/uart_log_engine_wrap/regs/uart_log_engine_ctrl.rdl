@@ -5,6 +5,8 @@
 `define UART_LOG_ENGINE_CTRL_RDL
 
 addrmap uart_log_engine_ctrl {
+    name = "UART Log Engine Control Address Map";
+    desc = "Top-level enable register for the UART log-engine block.";
 
     //////////////////////////
     // Register Definitions //

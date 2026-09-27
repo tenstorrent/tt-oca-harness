@@ -5,9 +5,10 @@
 `define GPIO_POC_PBIAS_CTRL_RDL_DEFINED
 
 addrmap gpio_poc_pbias_ctrl {
-
+    name = "GPIO POC and PBIAS Control Address Map";
     desc = "GPIO POC and PBIAS Control Register Interface";
 
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

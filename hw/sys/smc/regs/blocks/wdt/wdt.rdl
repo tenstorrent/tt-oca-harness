@@ -5,8 +5,9 @@
 `define WDT_REG_RDL
 
 addrmap wdt {
-    desc = "";
-
+    name = "Watchdog Timer Address Map";
+    desc = "Watchdog timer configuration, counter, compare, and feed and key registers.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

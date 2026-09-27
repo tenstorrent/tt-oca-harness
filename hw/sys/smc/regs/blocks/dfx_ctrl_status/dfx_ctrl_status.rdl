@@ -5,6 +5,8 @@
 `define DFX_CTRL_STATUS_RDL_DEFINED
 
 addrmap dfx_ctrl_status {
+    name = "DFX Control and Status Address Map";
+    desc = "Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.";
 
     reg STATUS {
         regwidth = 64;

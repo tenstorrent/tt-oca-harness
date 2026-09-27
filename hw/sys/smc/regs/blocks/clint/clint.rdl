@@ -5,8 +5,9 @@
 `define CLINT_REG_RDL
 
 addrmap clint {
-    desc = "";
-
+    name = "CLINT Address Map";
+    desc = "Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////
