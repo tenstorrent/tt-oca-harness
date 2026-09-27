@@ -19,5 +19,14 @@ class smu_dtp_sep_dm_sba_test(smu_base_test):
         self.logger.info("DUT_TAG=WRAPPER smu_dtp_sep_dm_sba_test SEP=1 DTP TAP -> SEP DM SBA")
         seq = smu_dtp_sep_dm_sba_test_seq(self)
         await seq.run()
-        steps = (seq.s1_ok, seq.s2_ok, seq.s3_ok, seq.s4_ok, seq.s5_ok, seq.s6_ok)
-        assert all(steps), f"sep_sba incomplete s1..s6={steps}"
+        steps = (
+            seq.s1_ok,
+            seq.s2_ok,
+            seq.s3_ok,
+            seq.s4_ok,
+            seq.s5_ok,
+            seq.s6_ok,
+            seq.s7_ok,
+            seq.s8_ok,
+        )
+        assert all(steps), f"sep_sba incomplete s1..s8={steps}"

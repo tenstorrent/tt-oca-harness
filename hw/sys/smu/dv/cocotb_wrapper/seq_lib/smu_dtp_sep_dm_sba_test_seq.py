@@ -26,6 +26,20 @@ S6: a SEP read outside the SMC window takes the crossbar. SEP traffic that is
     secure reads and writes, a system-bus write and read of that page each
     cross ``smu_axi_out`` once at the address given, and the read returns the
     written word from the bench responder.
+S7: every bit of the SEP aperture moves both ways. SEP_GLOBAL_BASE_ADDR.addr
+    and SEP_REGION_SIZE.size are read-write fields of the widths the
+    generated description gives, with no alignment rule, so the walk sets
+    each to its all-ones value and back, choosing every intermediate window
+    to be non-empty and disjoint from the SMC window read off
+    ``smc_global_base_o`` / ``smc_region_size_o`` (the crossbar decodes both
+    rules at once). Each step is checked on the ports and by a 64-bit
+    system-bus readback, and the walk ends at the RDL reset values.
+S8: a cold reset undoes the demotion. Firmware can only set a demote bit (the
+    field is write-one-to-set, ``sep_lifecycle_ctrl`` DEMOTE_1/DEMOTE_2), and
+    SEP cold reset clears all four demote registers
+    (``lifecycle_controller.adoc``, "Reset Behavior"). After S5 sets DEMOTE_1
+    too, cold reset through ``rst_cold_ni`` returns both lanes from the
+    demoted code to the codes they presented before S5.
 """
 
 from __future__ import annotations
@@ -33,7 +47,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.smu_addr_map import c_header_u32
 from seq_lib.smu_axi_out_addr_len_size_test_seq import _OutboundTap
@@ -75,6 +89,13 @@ SEP_GLOBAL_BASE_RESET = c_header_u32(
     _SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SEP_GLOBAL_BASE_ADDR__ADDR_reset"
 )
 SEP_REGION_SIZE_RESET = c_header_u32(_SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SEP_REGION_SIZE__SIZE_reset")
+SEP_REGION_SIZE_ADDR = c_header_u32(
+    _SEP_ADDR_H, "OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR"
+)
+SEP_BASE_ONES = (
+    1 << c_header_u32(_SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SEP_GLOBAL_BASE_ADDR__ADDR_bw")
+) - 1
+SEP_SIZE_ONES = (1 << c_header_u32(_SEP_CPU_CTRL_H, "SEP_CPU_CTRL__SEP_REGION_SIZE__SIZE_bw")) - 1
 DEMOTE_1_ADDR = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR")
 DEMOTE_2_ADDR = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR")
 DEMOTE_BM = c_header_u32(_SEP_LIFECYCLE_CTRL_H, "SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm")
@@ -116,10 +137,12 @@ EGRESS_POLL_CYCLES = 4000
 SBCS_ADDR = 0x38
 SBADDRESS0_ADDR = 0x39
 SBDATA0_ADDR = 0x3C
+SBDATA1_ADDR = 0x3D
 SBCS_SBBUSYERROR = 1 << 22
 SBCS_SBBUSY = 1 << 21
 SBCS_SBREADONADDR = 1 << 20
 SBCS_SBACCESS_32 = 2 << 17
+SBCS_SBACCESS_64 = 3 << 17
 SBCS_SBERROR_SHIFT = 12
 SBCS_SBERROR_MASK = 0x7
 SBCS_SBERROR_W1C = SBCS_SBERROR_MASK << SBCS_SBERROR_SHIFT
@@ -127,6 +150,8 @@ DMI_STATUS_BUSY = 3
 DMI_RETRIES = 8
 SBA_POLLS = 32
 PORT_POLL_CYCLES = 200
+COLD_RESET_BOUND = 20000
+COLD_RESET_HOLD = 64
 
 
 def _is_differential_code(lane: int) -> bool:
@@ -141,6 +166,9 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         self.s4_ok = False
         self.s5_ok = False
         self.s6_ok = False
+        self.s7_ok = False
+        self.s8_ok = False
+        self.lanes_before = (0, 0)
 
     async def _dmi(self, jtag, addr: int, data: int, op: int) -> int:
         """Issue one DMI op, then collect its result with NOPs; returns the data."""
@@ -181,6 +209,26 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         await self._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
         await self._sba_wait(jtag, f"read 0x{addr:08x}")
         return await self._dmi(jtag, SBDATA0_ADDR, 0, DMI_OP_READ)
+
+    async def _sba_write64(self, jtag, addr: int, data: int) -> None:
+        await self._dmi(jtag, SBCS_ADDR, SBCS_SBACCESS_64 | SBCS_SBERROR_W1C, DMI_OP_WRITE)
+        await self._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
+        await self._dmi(jtag, SBDATA1_ADDR, (data >> 32) & 0xFFFF_FFFF, DMI_OP_WRITE)
+        await self._dmi(jtag, SBDATA0_ADDR, data & 0xFFFF_FFFF, DMI_OP_WRITE)
+        await self._sba_wait(jtag, f"write64 0x{addr:08x}")
+
+    async def _sba_read64(self, jtag, addr: int) -> int:
+        await self._dmi(
+            jtag,
+            SBCS_ADDR,
+            SBCS_SBACCESS_64 | SBCS_SBREADONADDR | SBCS_SBERROR_W1C,
+            DMI_OP_WRITE,
+        )
+        await self._dmi(jtag, SBADDRESS0_ADDR, addr, DMI_OP_WRITE)
+        await self._sba_wait(jtag, f"read64 0x{addr:08x}")
+        high = await self._dmi(jtag, SBDATA1_ADDR, 0, DMI_OP_READ)
+        low = await self._dmi(jtag, SBDATA0_ADDR, 0, DMI_OP_READ)
+        return (high << 32) | low
 
     async def _port_settles(self, name: str, want: int) -> int:
         observed = sample(getattr(self.dut, name), name)
@@ -249,6 +297,7 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
             (lane1, demoted, DEMOTE_RESET, DEMOTE_BM),
             evidence="CHK-SEP-SBA-DEMOTE2-ALONE",
         )
+        self.lanes_before = (lane1, lane2)
         self.s5_ok = True
 
     async def _egress_round_trip(self, jtag, sb) -> None:
@@ -282,6 +331,104 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         )
         self.s6_ok = True
 
+    def _disjoint_from_smc(self, base: int, size: int) -> bool:
+        smc_base = sample(self.dut.smc_global_base_o, "smc_global_base_o")
+        smc_size = sample(self.dut.smc_region_size_o, "smc_region_size_o")
+        return size != 0 and (base + size <= smc_base or smc_base + smc_size <= base)
+
+    async def _aperture_walk(self, jtag, sb) -> None:
+        # (base, size) windows in order. The base moves only while the size is
+        # 1 and the size is all-ones only while the base sits at 4 GiB, so no
+        # window, intermediate ones included, reaches below 4 GiB with more
+        # than a byte; every write is checked against the live SMC window.
+        above_4g = SEP_SIZE_ONES + 1
+        steps = [
+            (SEP_GLOBAL_BASE_RESET, 1),
+            (SEP_BASE_ONES, 1),
+            (above_4g, 1),
+            (above_4g, SEP_SIZE_ONES),
+            (above_4g, SEP_REGION_SIZE_RESET),
+            (SEP_GLOBAL_BASE_RESET, SEP_REGION_SIZE_RESET),
+        ]
+        observed, want = [], []
+        base, size = SEP_GLOBAL_BASE_RESET, SEP_REGION_SIZE_RESET
+        for new_base, new_size in steps:
+            for addr, value in (
+                (SEP_REGION_SIZE_ADDR, new_size) if new_size != size else (None, None),
+                (SEP_GLOBAL_BASE_ADDR, new_base) if new_base != base else (None, None),
+            ):
+                if addr is None:
+                    continue
+                if addr == SEP_REGION_SIZE_ADDR:
+                    size = value
+                else:
+                    base = value
+                if not self._disjoint_from_smc(base, size):
+                    raise AssertionError(
+                        f"walk window base=0x{base:x} size=0x{size:x} is empty or meets "
+                        "the SMC window"
+                    )
+                await self._sba_write64(jtag, addr, value)
+            port_base = await self._port_settles("sep_global_base_o", base)
+            port_size = await self._port_settles("sep_region_size_o", size)
+            rb_base = await self._sba_read64(jtag, SEP_GLOBAL_BASE_ADDR)
+            rb_size = await self._sba_read64(jtag, SEP_REGION_SIZE_ADDR)
+            observed.append((port_base, port_size, rb_base, rb_size))
+            want.append((base, size, base, size))
+        self._log(
+            "CHK-SEP-SBA-APERTURE-WALK " + " ".join(f"(0x{b:x},0x{z:x})" for b, z, _, _ in observed)
+        )
+        sb.expect_eq(
+            "CHK-SEP-SBA-APERTURE-WALK",
+            observed,
+            want,
+            evidence="CHK-SEP-SBA-APERTURE-WALK",
+        )
+        self.s7_ok = True
+
+    async def _cold_reset_clears_demote(self, jtag, sb) -> None:
+        dut = self.dut
+        lane1, lane2 = self.lanes_before
+        await self._sba_write(jtag, DEMOTE_1_ADDR, DEMOTE_BM)
+        demoted = (
+            await self._port_settles("lcc_demote_state_1_o", lane1 ^ 0b11),
+            sample(dut.lcc_demote_state_2_o, "lcc_demote_state_2_o"),
+        )
+        dut.rst_cold_ni.value = 0
+        dut.jtag_trst.value = 0
+        for _ in range(COLD_RESET_BOUND):
+            await RisingEdge(dut.clk_ref_i)
+            if sample(dut.obs_sep_rst_n_o, "obs_sep_rst_n_o") == 0:
+                break
+        else:
+            raise AssertionError("cold reset never reached the SEP reset")
+        await ClockCycles(dut.clk_ref_i, COLD_RESET_HOLD)
+        dut.rst_cold_ni.value = 1
+        dut.jtag_trst.value = 1
+        await self.test.jtag_tap_reset(16)
+        for _ in range(COLD_RESET_BOUND):
+            await RisingEdge(dut.clk_smu_i)
+            if sample(dut.obs_sep_rst_n_o, "obs_sep_rst_n_o") == 1:
+                break
+        else:
+            raise AssertionError("the SEP reset never released after the cold reset")
+        released = (
+            await self._port_settles("lcc_demote_state_1_o", lane1),
+            await self._port_settles("lcc_demote_state_2_o", lane2),
+        )
+        self._log(
+            f"CHK-SEP-SBA-DEMOTE-COLD-RESET demoted=({demoted[0]:02b},{demoted[1]:02b}) "
+            f"after cold reset=({released[0]:02b},{released[1]:02b}) "
+            f"before S5=({lane1:02b},{lane2:02b})"
+        )
+        sb.expect_eq(
+            "CHK-SEP-SBA-DEMOTE-COLD-RESET",
+            (demoted, released),
+            ((lane1 ^ 0b11, lane2 ^ 0b11), (lane1, lane2)),
+            evidence="CHK-SEP-SBA-DEMOTE-COLD-RESET",
+        )
+        self.s8_ok = True
+
     async def run(self) -> None:
         await super().run()
         sb = self.test.env.scoreboard
@@ -289,3 +436,5 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         await self._aperture_base(jtag, sb)
         await self._demote_2_alone(jtag, sb)
         await self._egress_round_trip(jtag, sb)
+        await self._aperture_walk(jtag, sb)
+        await self._cold_reset_clears_demote(jtag, sb)

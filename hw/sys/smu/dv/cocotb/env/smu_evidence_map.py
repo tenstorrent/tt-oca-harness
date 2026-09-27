@@ -379,6 +379,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "a SEP read and write outside the SMC window each cross smu_axi_out once and "
             "the read returns the written word",
         ),
+        (
+            "CHK-SEP-SBA-APERTURE-WALK",
+            "CHK-SEP-SBA-APERTURE-WALK",
+            "SEP_GLOBAL_BASE_ADDR and SEP_REGION_SIZE walk to all-ones and back through "
+            "windows clear of the SMC window, each step on the ports and by readback",
+        ),
+        (
+            "CHK-SEP-SBA-DEMOTE-COLD-RESET",
+            "CHK-SEP-SBA-DEMOTE-COLD-RESET",
+            "a cold reset returns both demoted lanes to the codes they had before S5",
+        ),
     ],
     "smu_ext_boot_seq_gate_test": [
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
