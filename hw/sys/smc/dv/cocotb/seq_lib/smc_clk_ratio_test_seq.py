@@ -9,9 +9,9 @@ between them is a legal configuration. The base test draws each period from a
 narrow set in which the SMC clock is always the fastest; the leaves that drive
 this sequence pin the periods to a relation that draw never produces.
 
-The sequence first counts the three clocks' rising edges over one window and
-requires the counts to match the configured periods, so the leaf is known to
-run at the relation its name states. It then drives SEP_IN register traffic
+The sequence first measures each clock's period over its own rising edges
+and requires the configured value, so the leaf is known to run at the
+relation its name states. It then drives SEP_IN register traffic
 into blocks on both sides of the peripheral clock-domain crossing: exact
 compares of non-zero generated resets, and distinct patterns written to every
 UART scratch register and every I2C target address before any is read back,
@@ -26,6 +26,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
+from cocotb.utils import get_sim_time
 
 from .smc_addr_map import GLOBAL_BASE_RESET, smc_addr, smc_indexed_addr
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
@@ -43,10 +44,8 @@ from smc_reg import (  # noqa: E402
     WDT_CMP_REG_DEFAULT,
 )
 
-# Rising edges of clk_ref_i over which the three clocks are counted. An edge
-# count can differ from the exact ratio by one at either end of the window.
-RATIO_WINDOW_REF_EDGES = 240
-RATIO_TOLERANCE_EDGES = 1
+# Rising edges of each clock over which its period is measured.
+RATIO_WINDOW_EDGES = 64
 
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 WDT0_CMP = smc_addr("SMC_TOP_SMC_CLUSTER_CORE0_WDT_CMP_BASE_ADDR")
@@ -76,57 +75,47 @@ class smc_clk_ratio_test_seq(SmcDecodeProbeSeq):
 
     def __init__(self, name: str = "smc_clk_ratio_test_seq") -> None:
         super().__init__(name)
-        self.edges: dict[str, int] = {}
+        self.periods_ps: dict[str, float] = {}
 
-    async def _count_edges(self) -> None:
+    async def _measure_periods(self) -> None:
+        """Mean period of each input clock over RATIO_WINDOW_EDGES of its own rising edges."""
         dut = cocotb.top
-        counts = {"ref": 0, "smc": 0, "periph": 0}
-        done = [False]
-
-        async def _count(name: str, clk) -> None:
-            while not done[0]:
+        for name, clk in (
+            ("ref", dut.clk_ref_i),
+            ("smc", dut.clk_smc_i),
+            ("periph", dut.clk_periph_i),
+        ):
+            await RisingEdge(clk)
+            start = get_sim_time("ps")
+            for _ in range(RATIO_WINDOW_EDGES):
                 await RisingEdge(clk)
-                counts[name] += 1
-
-        tasks = [
-            cocotb.start_soon(_count("smc", dut.clk_smc_i)),
-            cocotb.start_soon(_count("periph", dut.clk_periph_i)),
-        ]
-        for _ in range(RATIO_WINDOW_REF_EDGES):
-            await RisingEdge(dut.clk_ref_i)
-            counts["ref"] += 1
-        done[0] = True
-        for task in tasks:
-            task.cancel()
-        self.edges = counts
+            self.periods_ps[name] = (get_sim_time("ps") - start) / RATIO_WINDOW_EDGES
 
     def _check_ratio(self) -> None:
         cfg = self.cfg
-        window_ns = RATIO_WINDOW_REF_EDGES * cfg.ref_clk_period_ns
-        for name, period in (("smc", cfg.smc_clk_period_ns), ("periph", cfg.periph_clk_period_ns)):
-            want = window_ns / period
-            got = self.edges[name]
-            assert abs(got - want) <= RATIO_TOLERANCE_EDGES, (
-                f"clk_{name}_i made {got} rising edges over {RATIO_WINDOW_REF_EDGES} clk_ref_i "
-                f"edges; a {period} ns period against a {cfg.ref_clk_period_ns} ns reference "
-                f"gives {want:.1f}"
+        want = {
+            "ref": cfg.ref_clk_period_ns,
+            "smc": cfg.smc_clk_period_ns,
+            "periph": cfg.periph_clk_period_ns,
+        }
+        for name, period_ns in want.items():
+            got = self.periods_ps[name]
+            assert got == period_ns * 1000, (
+                f"clk_{name}_i measured {got:.1f} ps per cycle over {RATIO_WINDOW_EDGES} "
+                f"rising edges; the leaf pinned {period_ns} ns"
             )
         cocotb.log.info(
-            "CHK-CLK-RATIO-PERIODS: over %d clk_ref_i edges (%d ns) clk_smc_i made %d and "
-            "clk_periph_i %d rising edges, the counts the %d / %d / %d ns ref / smc / periph "
-            "periods give",
-            RATIO_WINDOW_REF_EDGES,
-            window_ns,
-            self.edges["smc"],
-            self.edges["periph"],
-            cfg.ref_clk_period_ns,
-            cfg.smc_clk_period_ns,
-            cfg.periph_clk_period_ns,
+            "CHK-CLK-RATIO-PERIODS: over %d rising edges each, clk_ref_i / clk_smc_i / "
+            "clk_periph_i measured %d / %d / %d ps per cycle, the pinned periods",
+            RATIO_WINDOW_EDGES,
+            self.periods_ps["ref"],
+            self.periods_ps["smc"],
+            self.periods_ps["periph"],
         )
 
     async def body(self) -> None:
         await self.wait_fuse_sense_done()
-        await self._count_edges()
+        await self._measure_periods()
         self._check_ratio()
 
         value_checks_before = self.env.scoreboard.sys_axi_value_checks_seen

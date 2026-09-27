@@ -7,7 +7,7 @@ constrains `clk_periph_i` to 100 MHz or faster and states no other relation
 between the three input clocks, so this is a legal configuration the base
 test's period draw never produces. The leaf pins the
 periods to 10 / 10 / 10 ns (ref / smc / periph), confirms the
-relation by counting edges, and drives register traffic into both sides of the
+relation by measuring each period, and drives register traffic into both sides of the
 peripheral clock-domain crossing.
 
 Run:
