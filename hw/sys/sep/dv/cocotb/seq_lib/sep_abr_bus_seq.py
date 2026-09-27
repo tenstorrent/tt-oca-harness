@@ -357,7 +357,7 @@ class SepAbrBus:
 
     @property
     def timeout_ns(self) -> int:
-        return ACCESS_TIMEOUT_CYCLES * int(self.test.cfg.sys_clk_period_ns)
+        return int(ACCESS_TIMEOUT_CYCLES * self.test.cfg.sys_clk_period_ns)
 
     async def open_m_axi_window(self, *, write: bool) -> None:
         """Allow m_axi onto the whole ABR aperture through the inbound filter.

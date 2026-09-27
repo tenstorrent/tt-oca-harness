@@ -61,7 +61,9 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
 
     async def _irq(self, idx: int) -> int:
         await RisingEdge(cocotb.top.clk_i)
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> idx) & 1
+        # Only bit ``idx`` must be known: it is the bit the must-be-0 and
+        # must-be-1 legs compare, and an X there raises instead of reading 0.
+        return self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, 1 << idx) >> idx
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):

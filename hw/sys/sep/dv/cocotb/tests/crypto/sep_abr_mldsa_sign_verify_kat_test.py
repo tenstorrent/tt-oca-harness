@@ -84,11 +84,10 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
     async def _irq_bit(self, idx: int) -> str:
         """One PIC aggregator bit as a character, so X is distinguishable from 0.
 
-        ``sep_base_test.rd`` resolves an unknown bit to 0 per bit, which is the
-        passing value for the checks below -- an X on the probe would read as a
-        clean low. Its docstring says a caller that must tell the two apart
-        cannot use it, so this reads the bit string directly and returns what is
-        really on the wire.
+        Reads the bit string directly and returns what is on the wire, so the
+        low-check failure message names an X/Z bit as such. Only ``"0"`` passes
+        the low check and only ``"1"`` counts as an asserted error bit, so an
+        unknown bit satisfies neither.
         """
         await RisingEdge(cocotb.top.clk_i)
         value = cocotb.top.sep_internal_interrupts_probe_o.value

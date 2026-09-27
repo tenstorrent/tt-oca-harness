@@ -182,7 +182,8 @@ Exceptions (a closed set):
 
 ==== `SepEnv` / `SepEnvCfg`
 
-`SepEnvCfg` holds clock periods (seed-randomized `sys_clk_period_ns`), the AXI
+`SepEnvCfg` holds clock periods (`sys_clk_period_ns` is 1.25 ns, the 800 MHz
+silicon target, and `ref_clk_period_ns` is 10 ns), the AXI
 access timeout, and the `reset_done` event the AXI driver waits on. `SepEnv`
 builds both AXI agents, the value scoreboard, and the two passive monitors.
 
@@ -600,8 +601,8 @@ reference benches are DTP and SMC.
 
 There is exactly ONE testbench top module: `sep_uvm_top` in `tb/tb_top.sv`,
 shared between both realizations (<<sep-hdl-top>>). Under `UVM` the harness
-adds the three clocks (periods from `sep_tb_if`, the system clock
-randomized over the cocotb `SepEnvCfg.randomize_timing` range), the shared
+adds the clocks (periods from `sep_tb_if`: `clk_i` at 1.25 ns and
+`clk_ref_i` at 10 ns), the shared
 AXI VIP master interface driving the `s_axi_*` request side of the CPU-LSU
 splice and a passive mirror interface for the VIP monitor, quiescent
 tie-offs for every other cocotb-driven pin at the idle value

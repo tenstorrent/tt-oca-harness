@@ -84,10 +84,12 @@ RESP_OKAY = 0
 # aligned pair of 32-bit registers whose reset values are NOT both zero.
 #
 # The register choice is the point. A pair that reads zero compares 0 against 0,
-# which a converter that dropped the data entirely would also satisfy, so such a
-# pair proves nothing about re-beating. Each address below is the low word of a
-# pair the generated map gives a non-zero default, so a converter that returned
-# zeros, duplicated a word, or swapped the halves fails the compare.
+# which a converter that dropped the data entirely would also satisfy. Every
+# pair below has a non-zero 64-bit value. KMAC and ESRC additionally have two
+# distinct non-zero halves, so the representative floor can detect zeroing,
+# duplication and swapping. Pairs with one zero or equal halves still grade
+# exact re-beating at their own converter instance, but do not claim every
+# mutation class locally.
 #
 # The TRNG aperture is absent: a plain 32-bit read of TRNG_REG_MAP_BASE_ADDR
 # answers DECERR, so the block is not reachable from this test's quiescent
@@ -101,8 +103,10 @@ APERTURES = (
 )
 
 # At least this many apertures must compare a non-zero golden, or the run is
-# vacuous however green it looks.
+# vacuous however green it looks. A separate floor requires both halves to be
+# non-zero and distinct, which makes zero/duplicate/swap mutations observable.
 MIN_NONZERO_APERTURES = 3
+MIN_FULL_SENSITIVE_APERTURES = 2
 
 # Concurrent-outstanding phase. Serial reads are answered by an otherwise idle
 # converter, so they exercise one path however many are issued; only reads held
@@ -146,6 +150,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         await self.bring_up_no_cpu()
         self.compared: dict[str, int] = {}
         self.nonzero: list[str] = []
+        self.full_sensitive: list[str] = []
         self.unstable: list[str] = []
         self.slots_spread: list[str] = []
 
@@ -178,6 +183,13 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             "even if the converter returned nothing, so this run would be green "
             "without having tested re-beating."
         )
+        assert len(self.full_sensitive) >= MIN_FULL_SENSITIVE_APERTURES, (
+            "CHK-WIDE-NONVAC FAIL: only "
+            f"{len(self.full_sensitive)} aperture(s) had distinct non-zero halves "
+            f"({', '.join(self.full_sensitive) or 'none'}), below the floor of "
+            f"{MIN_FULL_SENSITIVE_APERTURES}; zeroing, duplicating or swapping a "
+            "half would not be observable across the required representative set"
+        )
         assert len(self.slots_spread) == total, (
             f"CHK-WIDE-NONVAC FAIL: the slot spread ran at "
             f"{len(self.slots_spread)} aperture(s), not all {total}, so the "
@@ -188,10 +200,11 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         self.logger.info(
             "CHK-WIDE-NONVAC PASS: %d of %d apertures compared a 64-bit read "
             "against its two 32-bit reads, %d of them against a non-zero value; "
-            "%d held live state and were reported",
+            "%d with distinct non-zero halves; %d held live state and were reported",
             len(self.compared),
             total,
             len(self.nonzero),
+            len(self.full_sensitive),
             len(self.unstable),
         )
 
@@ -331,8 +344,14 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
         self.compared[name] = 2
         if golden:
             self.nonzero.append(name)
+        if lo_b and hi_b and lo_b != hi_b:
+            self.full_sensitive.append(name)
         self.logger.info(
-            "CHK-WIDE-SPLIT PASS [%s]: 64-bit read 0x%016x matches its two 32-bit reads",
+            "CHK-WIDE-SPLIT PASS [%s]: 64-bit read 0x%016x matches its two "
+            "32-bit reads (low=0x%08x high=0x%08x full-sensitive=%d)",
             name,
             wide,
+            lo_b,
+            hi_b,
+            int(bool(lo_b and hi_b and lo_b != hi_b)),
         )

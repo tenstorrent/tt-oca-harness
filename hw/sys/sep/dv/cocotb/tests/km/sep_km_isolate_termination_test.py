@@ -123,9 +123,11 @@ class sep_km_isolate_termination_test(sep_base_test):
         word = 0
         for polled in range(1, _MAX_KM_CYCLES + 1):
             await RisingEdge(dut.clk_i)
-            word = self.rd(dut.km_sram_word0_o)
+            # The word can be unknown before the ROM's first store; the poll
+            # tolerates that, and the returned word is re-read as fully known.
+            word = self.rd(dut.km_sram_word0_o, allow_unknown=True)
             if (word >> 24) == RESULT_MAGIC and (word & 0xF) == phase:
-                return word
+                return self.rd(dut.km_sram_word0_o)
         raise AssertionError(
             f"KM image liveness FAIL: KM SRAM word0=0x{word:08x} after {polled} cycles "
             f"(phase {phase} never published; the KM image did not reach that leg)"

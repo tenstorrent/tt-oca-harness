@@ -26,6 +26,7 @@ from env.sep_spec_tables import (
     abr_field_mask,
     abr_id_golden,
     abr_off,
+    kv_field_mask,
     mldsa_name_words,
     window,
 )
@@ -50,20 +51,17 @@ MLKEM_CIPHERTEXT = ABR_BASE + abr_off("MLKEM_CIPHERTEXT")
 
 # Caliptra Key-Vault controls for the ML-KEM lanes. SEP has no Caliptra KV; the
 # facade is sep_abr_kv_shim, which serves the KM-written sideload CSR on the KV
-# ports. read_en / write_en are bit 0 and are hwclr, so each one arms a single
-# transfer and the engine clears it.
-# abr_reg.rdl names all six registers of this block (:438-443), but only the
-# first carries an explicit address; the rest are typedef instantiations that
-# abr_offsets() does not resolve. The other two are therefore derived from the
-# anchored one, in RDL declaration order (seed rd, msg rd, sharedkey wr), and
-# the selftest pins all three against the generated decoder in abr_reg.sv so a
-# layout change fails at import rather than writing a wrong address
-# mid-simulation.
+# ports. read_en / write_en (kv_def.rdl) are hwclr, so each one arms a single
+# transfer and the engine clears it. abr_reg.rdl anchors this block at
+# kv_mlkem_seed_rd_ctrl and packs the other instances after it; abr_offsets()
+# resolves each by name. The selftest pins all three against the generated
+# decoder in abr_reg.sv, so a layout change fails at import rather than writing
+# a wrong address mid-simulation.
 MLKEM_KV_SEED_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_seed_rd_ctrl")
-MLKEM_KV_MSG_RD_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x8
-MLKEM_KV_SK_WR_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x10
-KV_READ_EN = 1 << 0
-KV_WRITE_EN = 1 << 0
+MLKEM_KV_MSG_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_msg_rd_ctrl")
+MLKEM_KV_SK_WR_CTRL = ABR_BASE + abr_off("kv_mlkem_sharedkey_wr_ctrl")
+KV_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
+KV_WRITE_EN = kv_field_mask("kv_write_ctrl_reg", "write_en")
 
 KEM_CMD_NONE = abr_ctrl_cmd("MLKEM_CTRL", "NONE")
 KEM_CMD_KEYGEN = abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN")

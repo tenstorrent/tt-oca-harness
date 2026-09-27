@@ -133,10 +133,18 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_RC_PAYLOAD_CRC,
     KM_RC_SUCCESS,
     KM_RESP_RECOVERABLE_FAULT,
-    KM_ROM_VER_1_1_0,
     KM_VALID_CMD_IDS,
     SepKmMailbox,
 )
+
+# CHK-ROM-VER expected word. The packing is the CMD_ROM_VER return argument in
+# hw/ip/key_manager/doc/firmware.adoc (km-cmd-rom-ver): patch[7:0], minor[15:8],
+# major[23:16], [31:24] reserved zero. The spec does not state a release
+# number, so 1.1.0 is the DV-owned value from the VPLAN CHK-ROM-VER contract.
+# It is packed here and not read from the KM firmware headers: the ROM builds
+# its reply from those headers, so a wrong version there must fail this check.
+_ROM_VER_MAJOR, _ROM_VER_MINOR, _ROM_VER_PATCH = 1, 1, 0
+KM_ROM_VER_1_1_0 = (_ROM_VER_MAJOR << 16) | (_ROM_VER_MINOR << 8) | _ROM_VER_PATCH
 
 # Identity lock bit 8 (rom_defs.h OTP lock bits [8:0]; secrets are 0-5).
 _OTP_LOCK_IDENTITY = 1 << 8
@@ -647,7 +655,10 @@ class sep_km_command_set_rand_test(sep_base_test):
         # the shred reached the key rather than just returning success.
         rc, _ = await self.km.engine_shred(dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-GONE FAIL: final CMD_ENGINE_SHRED rc={rc}"
+        # Same configure + PRNG reseed as the CHK-XFER / CHK-SHRED legs, so the
+        # missing sideload key is the only difference from a start that runs.
         await self.aes.configure_ecb_enc_256(sideload=True)
+        await self.aes.trigger_prng_reseed()
         await self.aes.start_block_no_wait(list(AES_ECB_PT))
         assert not await self.aes.output_valid_within(_SHRED_REFUSE_POLLS), (
             "CHK-GONE FAIL: the AES produced a result with sideload selected after its "

@@ -139,6 +139,7 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
         fails: list[str] = []
         stim_fails: list[str] = []
         covered: list[str] = []
+        arbitration_covered: list[str] = []
 
         for order, aw_off, w_off, ar_off in PORT_ORDERS:
             obs = await veh.run_order(order, aw_off, w_off, ar_off)
@@ -173,6 +174,33 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 self.logger.error("CHK-PORT-PROGRESS FAIL: %s", fails[-1])
                 continue
 
+            if order in ("aw-then-ar", "w-then-ar"):
+                hs = obs["hs"]
+                if any(hs[ch] is None for ch in ("aw", "w", "ar")):
+                    fails.append(
+                        f"[{order}] response retired without all three recorded "
+                        f"handshakes; {summary}"
+                    )
+                    self.logger.error("CHK-PORT-ARBITRATION FAIL: %s", fails[-1])
+                    continue
+                if hs["ar"] <= max(hs["aw"], hs["w"]):
+                    fails.append(
+                        f"[{order}] AR handshook at cycle {hs['ar']} before both "
+                        f"write halves were accepted (AW={hs['aw']} W={hs['w']}); "
+                        f"{summary}"
+                    )
+                    self.logger.error("CHK-PORT-ARBITRATION FAIL: %s", fails[-1])
+                    continue
+                arbitration_covered.append(order)
+                self.logger.info(
+                    "CHK-PORT-ARBITRATION OK: %s held AR until both write halves "
+                    "handshook (AW=%d W=%d AR=%d)",
+                    order,
+                    hs["aw"],
+                    hs["w"],
+                    hs["ar"],
+                )
+
             covered.append(order)
             self.logger.info(
                 "CHK-PORT-PROGRESS OK: %s retired both accesses with OKAY; %s",
@@ -203,6 +231,14 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
         assert len(covered) == len(ORDER_NAMES), (
             f"CHK-PORT-PROGRESS FAIL: covered {len(covered)} of "
             f"{len(ORDER_NAMES)} ordering(s): {covered}"
+        )
+        assert set(arbitration_covered) == {"aw-then-ar", "w-then-ar"}, (
+            "CHK-PORT-ARBITRATION FAIL: read-acceptance ordering covered "
+            f"{arbitration_covered}, expected both gapped write orderings"
+        )
+        self.logger.info(
+            "CHK-PORT-ARBITRATION PASS: AR acceptance followed both write-half "
+            "handshakes in aw-then-ar and w-then-ar"
         )
         self.logger.info(
             "CHK-PORT-PROGRESS PASS: %d/%d ordering(s) retired both accesses with OKAY (%s)",

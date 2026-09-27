@@ -279,8 +279,8 @@ class sep_address_map_seq(uvm_sequence):
         self.ref_counter_high = await self._read(
             BASE + ref_off + 4, expected=None, name="REFERENCE_COUNTER_hi"
         )
-        # Two AXI beats can finish inside one clk_ref_i period (40 ns vs a 4 ns
-        # core). Wait two reference edges so a live counter must advance.
+        # Two AXI beats can finish inside one clk_ref_i period (10 ns vs a
+        # 1.25 ns core). Wait two reference edges so a live counter must advance.
         await ClockCycles(cocotb.top.clk_ref_i, 2)
         self.ref_counter_low = await self._read(
             BASE + ref_off, expected=None, name="REFERENCE_COUNTER_lo_again"

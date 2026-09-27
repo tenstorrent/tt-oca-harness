@@ -19,6 +19,7 @@ from env.sep_spec_tables import (
     abr_id_golden,
     abr_off,
     agg_from_pic,
+    kv_field_mask,
     mldsa_name_words,
     window,
 )
@@ -36,7 +37,7 @@ ABR_ENTROPY = ABR_BASE + abr_off("ABR_ENTROPY")
 ABR_SEED = ABR_BASE + abr_off("MLDSA_SEED")
 ABR_PUBKEY = ABR_BASE + abr_off("MLDSA_PUBKEY")
 ABR_MLDSA_KV_RD_SEED_CTRL = ABR_BASE + abr_off("kv_mldsa_seed_rd_ctrl")
-ABR_KV_RD_SEED_READ_EN = 1 << 0
+ABR_KV_RD_SEED_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
 ABR_INTR = ABR_BASE + abr_off("intr_block_rf")
 ABR_GLOBAL_INTR_EN = ABR_INTR + abr_off("global_intr_en_r")
 ABR_ERROR_INTR_EN = ABR_INTR + abr_off("error_intr_en_r")

@@ -19,7 +19,8 @@ allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force
 
 Checkers (each logged):
   * CHK-SENSE / firmware self-checks: real fuse-sense completed, the CPU eFuse-MMR
-    read loop ran, and the CPU-published MMR read error count stayed zero.
+    seeded its resetless token word, the read loop ran, and the CPU-published MMR
+    read error count stayed zero.
   * CHK-JTAG-MMR: all JTAG MMR ops (a token1 seed write then per-round reads that
     must return the seeded word, token3 writes + readbacks, token-last reads)
     return OKAY -- the JTAG path reaches the eFuse through the mux. token1 is
@@ -41,6 +42,8 @@ Checkers (each logged):
   * CHK-COEXIST: the CPU loop counter (scratch-cold[2], read via the read-only
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
+    The CPU loop requires its distinct nonzero token0 seed on every iteration,
+    while JTAG operates on token1 and token3, so cross-port corruption fails.
 
 Deltas vs the reference suite: real PROD-sense replaces its backdoor
 ``force_jtag_lc_state``; a live CPU loop window replaces its backdoor
@@ -102,8 +105,8 @@ class sep_efuse_jtag_axil_el2_cpu_mux_test(sep_base_test):
     build_env = False
 
     def _scratch(self, idx: int) -> int:
-        probe = self.rd(cocotb.top.scratch_cold_probe_o)
-        return (probe >> (32 * idx)) & 0xFFFF_FFFF
+        lane = 0xFFFF_FFFF << (32 * idx)
+        return self.rd(cocotb.top.scratch_cold_probe_o, mask=lane) >> (32 * idx)
 
     async def _wait_ready(self) -> bool:
         dut = cocotb.top

@@ -26,6 +26,9 @@ _ABR_RDL = (
     / "abr_reg.rdl"
 )
 
+# Key-Vault control register types instantiated by abr_reg.rdl.
+_KV_RDL = _ABR_RDL.with_name("kv_def.rdl")
+
 _ABR_CLOSE = re.compile(
     r"^    \} ([A-Za-z0-9_]+)(?:\[(\d+)\])?(?:\s*@(0x[0-9A-Fa-f]+))?;",
     re.M,
@@ -233,10 +236,25 @@ def abr_offsets() -> dict[str, int]:
             off = addr + entries * (width // 8)
         else:
             off = addr + n * 4
+    # `type name @addr;` instances. An instance without @addr is packed 4 bytes
+    # after the previous one only when nothing but blank or comment lines lies
+    # between them (a run such as the KV control block at @0xC000).
+    prev_addr: int | None = None
+    prev_end = 0
     for m in _ABR_NAMED.finditer(text):
         _kind, name, at = m.group(1), m.group(2), m.group(3)
+        gap = re.sub(r"//[^\n]*", "", text[prev_end : m.start()]).strip()
         if at:
-            out[name] = int(at, 16)
+            prev_addr = int(at, 16)
+        elif prev_addr is not None and not gap:
+            prev_addr += 4
+        else:
+            prev_addr = None
+        prev_end = m.end()
+        if at:
+            out[name] = prev_addr
+        elif prev_addr is not None:
+            out.setdefault(name, prev_addr)
     if "intr_block_rf" not in out:
         raise RuntimeError("intr_block_rf missing from abr_reg.rdl")
     # First nine packed 32-bit instances in `regfile intr_block_t`, relative
@@ -343,6 +361,45 @@ def abr_field_lsb(reg: str, field: str) -> int:
         return abr_reg_fields()[reg][field][0]
     except KeyError as exc:
         raise KeyError(f"{reg}.{field} missing from abr_reg.rdl") from exc
+
+
+_KV_REG = re.compile(r"reg (\w+)\s*(?:#\([^)]*\))?\s*\{\n(?P<body>.*?)\n    \};", re.S)
+
+
+@lru_cache(maxsize=1)
+def kv_reg_fields() -> dict[str, dict[str, tuple[int, int]]]:
+    """``reg type -> field -> (lsb, width)`` for the flat types in ``kv_def.rdl``.
+
+    Fields pack from bit 0 in declaration order; ``name[N]`` is N bits wide.
+    A width given by a parameter takes the parameter default from the type
+    header. A type whose fields carry nested braces (an enum) is skipped.
+    """
+    text = _KV_RDL.read_text(encoding="utf-8")
+    out: dict[str, dict[str, tuple[int, int]]] = {}
+    for m in _KV_REG.finditer(text):
+        header = text[m.start() : m.start("body")]
+        params = dict(re.findall(r"(\w+)\s*=\s*(\d+)", header))
+        body = m.group("body")
+        lsb = 0
+        fields: dict[str, tuple[int, int]] = {}
+        for f in re.finditer(
+            r"field\s*\{[^{}]*\}\s*(?P<name>\w+)(?:\[(?P<w>\w+)\])?\s*=", body, re.S
+        ):
+            w = f.group("w")
+            width = 1 if w is None else int(params[w]) if w in params else int(w)
+            fields[f.group("name")] = (lsb, width)
+            lsb += width
+        if fields and lsb == 32:
+            out[m.group(1)] = fields
+    return out
+
+
+def kv_field_mask(reg_type: str, field: str) -> int:
+    try:
+        lsb, width = kv_reg_fields()[reg_type][field]
+    except KeyError as exc:
+        raise KeyError(f"{reg_type}.{field} missing from kv_def.rdl") from exc
+    return ((1 << width) - 1) << lsb
 
 
 def abr_field_mask(reg: str, field: str) -> int:

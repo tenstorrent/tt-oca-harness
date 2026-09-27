@@ -106,12 +106,13 @@ class sep_mailbox_plic_test(sep_base_test):
             _MBOX_N,
         )
 
-        # Direction, observed rather than reported: sep.sv routes
-        # outbound_interrupt_o to smc_mailbox_interrupt_o and inbound_interrupt_o
-        # to the CPU PIC. The firmware left its outbound channel-0 entry pending
-        # and cleared every inbound one, so bit 0 must be set and the rest clear.
-        # Before #2054 reversed the connection this read 0, because the outbound
-        # push went to the PIC instead.
+        # Direction, observed rather than reported. The spec gives PIC sources
+        # 1-8 to the SMC-to-SEP (inbound) mailbox channels
+        # (hw/sys/sep/doc/interrupts.adoc) and gives smc_mailbox_interrupt_o to
+        # the mailbox interrupts toward the SMC (hw/sys/sep/doc/port_table.adoc).
+        # The firmware left its outbound channel-0 entry pending and cleared
+        # every inbound one, so bit 0 must be set and the rest clear. An
+        # outbound push routed to the PIC instead leaves this line at 0.
         assert "CHK-DIRECTION PASS:" in console, (
             "firmware console has no CHK-DIRECTION line, so the outbound push "
             f"never ran or reached the CPU. Console was:\n{console}"

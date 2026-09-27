@@ -33,13 +33,25 @@ class SepLockedFieldIrq(SepAxiRegDriver):
         write: bool = False,
         wdata: int = 0,
         word_idx: int = 0,
+        locked: bool = False,
     ) -> SepAxiAccessSeq:
+        """One 32-bit shadow access.
+
+        ``locked`` marks an access the lock refuses. The specification says only
+        that such a shadow is not writable / not readable, so the scoreboard does
+        not grade a locked access's response code. The caller grades a locked
+        write by readback and the locked-field interrupt, and a locked read by
+        its returned data and the locked-field interrupt. A timed-out locked
+        read still fails the scoreboard.
+        """
         seq = SepAxiAccessSeq(
             f"lockirq_{'wr' if write else 'rd'}_{name}_w{word_idx}",
             op=SepAxiOp.WRITE if write else SepAxiOp.READ,
             addr=self._addr(name, word_idx),
             wdata=wdata,
             size=2,
+            allow_unverified_write_resp=locked and write,
+            allow_ungraded_read_resp=locked and not write,
         )
         await self.test.start_seq(seq)
         return seq

@@ -11,11 +11,15 @@
 class sep_env_cfg extends ocah_env_cfg;
   `uvm_object_utils(sep_env_cfg)
 
-  // clk_period_ns (base) is the system clock; the other two domains follow.
+  // clk_i at 800 MHz and clk_ref_i at 100 MHz. The base clk_period_ns is
+  // an integer and cannot hold 1.25, so the harness reads these fields.
+  real sys_clk_period_ns = 1.25;
+  real ref_clk_period_ns = 10.0;
   int unsigned wdt_clk_period_ns     = 5000;
   int unsigned entropy_clk_period_ns = 3;
   // CPU-LSU master handshake watchdog (system-clock cycles per wait).
-  int unsigned axi_timeout_cycles = 10_000;
+  // 40_000 cycles at 1.25 ns is the cocotb 50 us AXI timeout.
+  int unsigned axi_timeout_cycles = 40_000;
   // Scoreboard negative hook: corrupt the predicted CSR readback.
   bit csr_scoreboard_negative;
 
@@ -25,7 +29,8 @@ class sep_env_cfg extends ocah_env_cfg;
 
   static function sep_env_cfg from_test_cfg(sep_test_cfg t);
     sep_env_cfg c = sep_env_cfg::type_id::create("env_cfg");
-    c.clk_period_ns           = t.sys_clk_period_ns;
+    c.sys_clk_period_ns       = t.sys_clk_period_ns;
+    c.ref_clk_period_ns       = t.ref_clk_period_ns;
     c.wdt_clk_period_ns       = t.wdt_clk_period_ns;
     c.entropy_clk_period_ns   = t.entropy_clk_period_ns;
     c.axi_timeout_cycles      = t.axi_timeout_cycles;
@@ -36,7 +41,9 @@ class sep_env_cfg extends ocah_env_cfg;
 
   virtual function string convert2string();
     return $sformatf(
-        "%s wdt_clk_period_ns=%0d entropy_clk_period_ns=%0d axi_timeout_cycles=%0d",
+        "sys_clk_period_ns=%0.2f ref_clk_period_ns=%0.1f %s wdt_clk_period_ns=%0d entropy_clk_period_ns=%0d axi_timeout_cycles=%0d",
+        sys_clk_period_ns,
+        ref_clk_period_ns,
         super.convert2string(),
         wdt_clk_period_ns,
         entropy_clk_period_ns,

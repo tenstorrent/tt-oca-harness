@@ -162,78 +162,66 @@ class sep_base_test(uvm_test):
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
 
     @staticmethod
-    def rd(sig) -> int:
-        """Read a DUT signal as int, resolving unknown bits to zero per BIT.
+    def rd(sig, mask: int | None = None, *, allow_unknown: bool = False) -> int:
+        """Read a DUT signal as int. Raise if a bit selected by ``mask`` is not 0 or 1.
 
-        A wide probe with one unknown bit still yields every other lane: a
-        256-bit scratch probe resolved as a whole would read as a zeroed
-        counter, which is indistinguishable from a counter that stopped.
+        ``mask`` selects the bits the caller reads; the default is every bit
+        the signal carries. The return carries only the masked bits, so a
+        compare cannot match on a bit that was never required to be known.
+        Pass a mask on a wide probe whose other lanes can legitimately be X,
+        for example one 32-bit word of ``scratch_cold_probe_o``.
 
-        Two cocotb versions are in use here -- the Verilator flow runs 2.x,
-        which offers LogicArray.resolve(), and the VCS flow runs 1.x, which
-        does not and exposes the bit string instead. Both paths are kept so a
-        wide read does not silently collapse on either.
+        An unknown bit raises by default because a zero-expecting compare on an
+        X/Z node would otherwise pass: resolved to 0, an undriven or unknown
+        node is indistinguishable from a node the device drove low.
 
-        Callers that must distinguish "unknown" from "zero" cannot use this.
+        ``allow_unknown=True`` resolves X/Z/U/W/- to 0 and weak H/L to 1/0 per
+        bit instead of raising. Use it only where an unknown value is legal for
+        the read: a diagnostic log line, or a poll that waits for a nonzero
+        value and so fails closed on X (it times out rather than passing).
+
+        Two cocotb versions are in use here: the Verilator flow runs 2.x and
+        the VCS flow runs 1.x. Both expose the per-bit string (``binstr`` on
+        1.x, ``str()`` on 2.x), which is what is inspected. Verilator is built
+        two-state here, so an unknown bit can only occur under VCS.
         """
         value = sig.value
-        try:
-            return int(value)
-        except Exception:
-            pass
-        resolve = getattr(value, "resolve", None)
-        if resolve is not None:
-            try:
-                return int(resolve("zeros"))
-            except Exception:
-                pass
-        bits = getattr(value, "binstr", None) or str(value)
-        resolved = "".join(c if c in "01" else "1" if c in "hH" else "0" for c in bits)
-        try:
-            return int(resolved, 2)
-        except ValueError:
-            return 0
+        if isinstance(value, int):
+            result = int(value)
+        else:
+            bits = getattr(value, "binstr", None)
+            if bits is None:
+                bits = str(value)
+            bits = bits.strip()
+            if not bits or any(c not in "01xXzZuUwWhHlL-" for c in bits):
+                # Not a bit string (for example a real or string handle).
+                result = int(value)
+            else:
+                unknown = [
+                    i
+                    for i, c in enumerate(reversed(bits))
+                    if c not in "01" and (mask is None or (mask >> i) & 1)
+                ]
+                if unknown and not allow_unknown:
+                    raise AssertionError(
+                        f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
+                        f"read selects: bits={bits!r}, unknown bit indices {unknown[:16]}"
+                        f"{' ...' if len(unknown) > 16 else ''}. A compare on an unknown "
+                        "node can pass for free, so the read raises. Pass a mask that "
+                        "selects only the bits the caller uses, or allow_unknown=True "
+                        "where an unknown value is legal for this read."
+                    )
+                result = int("".join("1" if c in "1hH" else "0" for c in bits), 2)
+        return result if mask is None else result & mask
 
     @staticmethod
     def rd_known(sig, mask: int | None = None) -> int:
         """Read a signal, raising if any bit selected by ``mask`` is not 0 or 1.
 
-        ``rd`` resolves unknown bits to zero per bit, which is right for a wide
-        probe but wrong wherever the *passing* branch is zero: ``rd(x) == 0``
-        then holds for an undriven, tied, or X node just as it does for a node
-        the device drove low. Use this instead at those compares.
-
-        ``mask`` selects the bits that must be known; the default is every bit
-        the signal carries. Passing a mask matters on a wide probe whose unused
-        lanes are legitimately X -- checking the whole word there would raise on
-        a healthy run. The return carries only the masked bits: bits outside the
-        mask are dropped, so a compare cannot match on one that was never
-        required to be known.
-
-        Note for the reader: Verilator is built two-state here (no
-        ``--x-assign`` / ``--x-initial`` in sep_sim_cfg.toml), so uninitialised
-        bits read as 0 and this can only fire under VCS.
+        Same contract as ``rd`` with ``allow_unknown=False``. Kept as the
+        explicit name at zero-expecting compares.
         """
-        value = sig.value
-        bits = getattr(value, "binstr", None)
-        if bits is None:
-            result = int(value)
-        else:
-            unknown = [
-                i
-                for i, c in enumerate(reversed(bits))
-                if c not in "01" and (mask is None or (mask >> i) & 1)
-            ]
-            if unknown:
-                raise AssertionError(
-                    f"{getattr(sig, '_path', sig)} is not fully known at the bits this "
-                    f"compare reads: binstr={bits!r}, unknown bit indices {unknown}. "
-                    "A zero-expecting compare on an unknown node passes for free, so "
-                    "it is raised here instead."
-                )
-            cleaned = "".join(c if c in "01" else "0" for c in bits)
-            result = int(cleaned, 2)
-        return result if mask is None else result & mask
+        return sep_base_test.rd(sig, mask)
 
     @staticmethod
     def _set_if_exists(dut, name: str, value: int) -> None:
@@ -248,11 +236,10 @@ class sep_base_test(uvm_test):
         self._install_evidence_filter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
-        self.cfg.randomize_timing(self.random_seed())
         self.logger.info(
-            "SEP timing: sys_clk_period=%dns (seed=%d)",
+            "SEP timing: sys_clk_period=%s ns ref_clk_period=%s ns",
             self.cfg.sys_clk_period_ns,
-            self.random_seed(),
+            self.cfg.ref_clk_period_ns,
         )
         ConfigDB().set(None, "*", "cfg", self.cfg)
         self.bind_smc_responder(cocotb.top)
@@ -601,10 +588,10 @@ class sep_base_test(uvm_test):
             )
         self.logger.info(
             "CPU boot: post-fuse reset state sep_rst_n=%d cpu_rst_n=%d run_ack=%d iccm_act=%d",
-            self.rd(dut.dbg_sep_reset_n_o),
-            self.rd(dut.sep_cpu_reset_n_o),
-            self.rd(dut.o_cpu_run_ack_o),
-            self.rd(dut.dbg_iccm_active_o),
+            self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True),
+            self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True),
+            self.rd(dut.o_cpu_run_ack_o, allow_unknown=True),
+            self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
         )
         await ClockCycles(dut.clk_i, wait_after_reset_cycles)
         if post_reset_run_pulse:
@@ -614,10 +601,10 @@ class sep_base_test(uvm_test):
             dut.i_cpu_run_req_i.value = 0
             self.logger.info(
                 "CPU boot: deasserted run request run_ack=%d trace_valid=%d iccm_act=%d iccm_addr=0x%x",
-                self.rd(dut.o_cpu_run_ack_o),
-                self.rd(dut.cpu_trace_valid_o),
-                self.rd(dut.dbg_iccm_active_o),
-                self.rd(dut.dbg_iccm_addr_o),
+                self.rd(dut.o_cpu_run_ack_o, allow_unknown=True),
+                self.rd(dut.cpu_trace_valid_o, allow_unknown=True),
+                self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
+                self.rd(dut.dbg_iccm_addr_o, allow_unknown=True),
             )
         self.cfg.reset_done.set()
 
@@ -724,11 +711,11 @@ class sep_base_test(uvm_test):
         last_log = 0
         self.logger.info(
             "boot poll start run_ack=%d cpu_rst_n=%d trace_valid=%d iccm_act=%d iccm_addr=0x%x",
-            self.rd(dut.o_cpu_run_ack_o),
-            self.rd(dut.sep_cpu_reset_n_o),
-            self.rd(dut.cpu_trace_valid_o),
-            self.rd(dut.dbg_iccm_active_o),
-            self.rd(dut.dbg_iccm_addr_o),
+            self.rd(dut.o_cpu_run_ack_o, allow_unknown=True),
+            self.rd(dut.sep_cpu_reset_n_o, allow_unknown=True),
+            self.rd(dut.cpu_trace_valid_o, allow_unknown=True),
+            self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
+            self.rd(dut.dbg_iccm_addr_o, allow_unknown=True),
         )
         gate_on_scratch = self.verdict_source == "scratch0"
         for cycle in range(max_run_cycles):
@@ -739,7 +726,8 @@ class sep_base_test(uvm_test):
             if self.rd(dut.fw_char_valid_o):
                 sb.note_char(self.rd(dut.fw_char_o))
             if gate_on_scratch:
-                verdict = decode_verdict(self.rd(dut.scratch_cold_probe_o))
+                # cold_scratch[0] only; the other scratch words are not read.
+                verdict = decode_verdict(self.rd(dut.scratch_cold_probe_o, mask=0xFFFF_FFFF))
                 if verdict is not None:
                     sb.note_fw(True, verdict[1])
                     self.logger.info(
@@ -763,9 +751,9 @@ class sep_base_test(uvm_test):
                     len(mon.pcs),
                     mon.last_pc,
                     len(sb.console),
-                    self.rd(dut.dbg_sep_reset_n_o),
-                    self.rd(dut.dbg_iccm_active_o),
-                    self.rd(dut.dbg_cpu_trace_exc_o),
+                    self.rd(dut.dbg_sep_reset_n_o, allow_unknown=True),
+                    self.rd(dut.dbg_iccm_active_o, allow_unknown=True),
+                    self.rd(dut.dbg_cpu_trace_exc_o, allow_unknown=True),
                 )
             if cycle >= no_boot_cycles and mon.trace_count == 0:
                 self.logger.error(
@@ -910,7 +898,10 @@ class sep_base_test(uvm_test):
         for _ in range(timeout):
             await RisingEdge(cocotb.top.clk_i)
             await ReadOnly()
-            if self.rd(sig):
+            # A poll for a nonzero value fails closed on X: an unknown node
+            # never reads as set, so the wait times out. KM SRAM word0 is
+            # memory content and is legitimately X before its first store.
+            if self.rd(sig, allow_unknown=True):
                 return True
         return False
 
@@ -957,16 +948,16 @@ class sep_base_test(uvm_test):
             await RisingEdge(dut.clk_i)
             await ReadOnly()
             for name, sig in strobes.items():
-                counts[name] += 1 if self.rd(sig) else 0
+                counts[name] += 1 if self.rd(sig, allow_unknown=True) else 0
 
         self.logger.error(
             "entropy stall over %d cycles: %s (noise_active=%d ro_enable=0x%03x "
             "last_compress_data=0x%08x)",
             window,
             " ".join(f"{k}={v}" for k, v in counts.items()),
-            self.rd(dut.esrc_noise_active_o),
-            self.rd(dut.esrc_ro_enable_o),
-            self.rd(dut.esrc_compress_data_o),
+            self.rd(dut.esrc_noise_active_o, allow_unknown=True),
+            self.rd(dut.esrc_ro_enable_o, allow_unknown=True),
+            self.rd(dut.esrc_compress_data_o, allow_unknown=True),
         )
 
         # Frontdoor status: FIFO level and health-test result decide whether the
@@ -1301,9 +1292,16 @@ class sep_base_test(uvm_test):
             those as an empty answer is what lets an unanswered question read
             as a negative answer.
             """
+            # GIT_OPTIONAL_LOCKS=0 stops `git status` from taking the index
+            # lock to refresh it, so concurrent leaves of one regression do
+            # not contend on the lock.
             try:
                 cp = subprocess.run(
-                    ["git", *args], cwd=git_dir, capture_output=True, timeout=timeout
+                    ["git", *args],
+                    cwd=git_dir,
+                    capture_output=True,
+                    timeout=timeout,
+                    env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
                 )
             except (OSError, subprocess.SubprocessError):
                 return False, b""
@@ -1323,16 +1321,42 @@ class sep_base_test(uvm_test):
         elif env_rev and not head_ok:
             rev_note = " (SEP_DV_GIT_REV; live HEAD unavailable, not corroborated)"
 
-        # Tree state. `unknown` is a third value, distinct from clean: a check
-        # that could not run must not print what a clean tree prints.
-        dirty_ok, dirty_out = _git("status", "--porcelain", "-uall")
+        # Tree state comes from two independent git commands. `git diff HEAD`
+        # binds the tracked sources: an empty diff is a clean tracked tree, and
+        # a non-empty diff is hashed. `git status` adds the untracked files,
+        # which the diff does not cover. `--binary` puts the content of a
+        # changed binary file in the digest; `--no-ext-diff` and `--no-color`
+        # keep the bytes independent of the user's git config.
+        #
+        # The leaf fails when neither answer is available: a log that cannot
+        # say which sources ran is not evidence for them.
+        diff_ok, diff_out = _git(
+            "diff", "HEAD", "--binary", "--no-ext-diff", "--no-color", timeout=120
+        )
+        dirty_ok, dirty_out = _git("status", "--porcelain", "-uall", timeout=120)
         dirty = dirty_out.decode("utf-8", "replace") if dirty_ok else ""
-        if not dirty_ok:
-            state = " (tree state UNKNOWN: git status failed -- do not read this as clean)"
-        elif dirty.strip():
-            state = " (tree dirty: uncommitted sources)"
-        else:
+        status_clean = dirty_ok and not dirty.strip()
+        diff_digest = hashlib.sha256(diff_out).hexdigest()[:16] if diff_ok else ""
+        if not diff_ok and not status_clean:
+            raise AssertionError(
+                "RUN-IDENTITY FAIL: `git diff HEAD` failed and `git status` "
+                + ("reports uncommitted files" if dirty_ok else "failed")
+                + f" (cwd {git_dir}), so this run cannot be bound to the sources it ran"
+            )
+        if status_clean:
             state = ""
+        elif diff_ok and not diff_out:
+            state = (
+                " (tracked tree clean"
+                + (
+                    "; untracked files present"
+                    if dirty_ok
+                    else "; untracked files not checked: git status failed"
+                )
+                + ")"
+            )
+        else:
+            state = f" (tree dirty: tracked-diff-sha256={diff_digest or 'unavailable'})"
         self.logger.info(
             "RUN-IDENTITY: commit=%s%s%s work-dir=%s",
             rev or "unknown",
@@ -1345,9 +1369,11 @@ class sep_base_test(uvm_test):
             val = cocotb.plusargs[key]
             plus_parts.append(f"+{key}" if val is True or val == "" else f"+{key}={val}")
         self.logger.info("RUN-IDENTITY-PLUSARGS: %s", " ".join(plus_parts) or "(none)")
-        # KM ROM is loaded by tb_backdoor_mem from +km_rom_hex. Ten leaves use
-        # the untracked rom_main.rom.parhex; a path-only plusarg cannot join
-        # those bytes. Hash the staged file when it is present.
+        # KM ROM is loaded by tb_backdoor_mem from +km_rom_hex. A path-only
+        # plusarg cannot join those bytes, so the staged file is hashed. The
+        # c_compile log line KM-ROM-IDENTITY (sep_sim_cfg.toml
+        # [c_build.km_rom_main] / [c_build.km_rom_blob]) prints the same image
+        # sha256 next to its source, which joins this run to that build.
         km_rom = cocotb.plusargs.get("km_rom_hex")
         if km_rom and km_rom is not True:
             km_path = (
@@ -1434,6 +1460,24 @@ class sep_base_test(uvm_test):
         # and an untracked module on a proof path is as unrecorded as a
         # modified one -- `--untracked-files=no` would hide exactly the new
         # test or generated image most likely to matter.
+        if diff_ok and diff_out and not dirty_ok:
+            # Paths from the diff headers, so a failed `git status` still names
+            # the modified files.
+            tracked = [
+                line[len(b"diff --git a/") :].split(b" b/", 1)[0].decode("utf-8", "replace")
+                for line in diff_out.splitlines()
+                if line.startswith(b"diff --git a/")
+            ]
+            shown = tracked[:_RUN_IDENTITY_MAX_PATHS]
+            self.logger.info(
+                "RUN-IDENTITY-DIRTY: %d tracked file(s) modified, "
+                "tracked-diff-sha256=%s%s paths=%s (untracked files not checked: "
+                "git status failed)",
+                len(tracked),
+                diff_digest,
+                "" if len(tracked) == len(shown) else f" (first {len(shown)} shown)",
+                ",".join(shown) or "none",
+            )
         if dirty_ok and dirty.strip():
             # Tracked modifications and untracked files are reported
             # separately, because they answer the proof-path question
@@ -1454,10 +1498,7 @@ class sep_base_test(uvm_test):
                     continue
                 path = line[3:].strip().strip('"')
                 (untracked if line.startswith("??") else tracked).append(path)
-            digest = "unavailable"
-            diff_ok, diff_out = _git("diff", "HEAD", timeout=30)
-            if diff_ok:
-                digest = hashlib.sha256(diff_out).hexdigest()[:16]
+            digest = diff_digest or "unavailable"
             shown = tracked[:_RUN_IDENTITY_MAX_PATHS]
             self.logger.info(
                 "RUN-IDENTITY-DIRTY: %d tracked file(s) modified, "
