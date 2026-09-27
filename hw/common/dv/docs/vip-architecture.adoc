@@ -183,7 +183,7 @@ Verilator line and branch coverage against the package's
 `dv/cov/config/verilator/coverage_policy.toml`, which holds one threshold per
 metric family (98 % of the points that remain after accepted waivers, failing
 closed on an unclassified point, plus a raw floor) and one hole entry per
-uncovered point with its category, rationale, owner, reviewer, and expiry;
+uncovered point with its category, rationale, owner and reviewer;
 the SV-UVM harness shape samples the `cov/` covergroups and the SVA cover
 properties on a four-state simulator. Python components have no simulator
 metric; their record is the `CHK-*` matrix of the selftests. A hole with

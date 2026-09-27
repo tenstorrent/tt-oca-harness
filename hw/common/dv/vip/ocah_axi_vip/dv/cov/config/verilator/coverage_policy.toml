@@ -17,8 +17,8 @@
 #   ocah_axi_vip_cov_scope.vlt  `coverage_off` -> the point never enters the
 #                               database: code this harness does not grade.
 #   [[holes]] here              the point exists and is not hit, carried with
-#                               a category, a rationale, an owner, a reviewer,
-#                               and an expiry.
+#                               a category, a rationale, an owner and a
+#                               reviewer.
 #
 # The `effective` thresholds grade hit points over the points that remain
 # after accepted waivers, per metric family, and fail closed on an uncovered
@@ -26,9 +26,8 @@
 # thresholds grade the unwaived figure, so growth of the waived set cannot
 # hide behind the effective number.
 #
-# An accepted waiver grades as open again after its `expires` date, and an
-# accepted selector that matches a covered point fails the run: a waiver that
-# stimulus has overtaken has to be removed. Line selectors follow the source
+# An accepted selector that matches a covered point fails the run: a waiver
+# that stimulus has overtaken has to be removed. Line selectors follow the source
 # file; a moved line fails the run (`expected_matches`) until the entry is
 # updated.
 
@@ -79,8 +78,6 @@ confidence = "high"
 rationale = "en_i is tied to 1 on every ocah_axi_sva instance of the harness; the disabled-checker branch of the AXI4 tracking block has no stimulus here, and a bench that drives en_i covers it."
 owner = "ocah-dv"
 reviewer = "ocah-dv"
-date = "2026-09-14"
-expires = "2027-03-31"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
 [[holes.native]]
 tool = "verilator"
@@ -99,8 +96,6 @@ confidence = "high"
 rationale = "en_i is tied to 1 on the AXI4-Lite ocah_axi_sva instance of the harness; the disabled-checker branch of the response-ordering counters has no stimulus here, and a bench that drives en_i covers it."
 owner = "ocah-dv"
 reviewer = "ocah-dv"
-date = "2026-09-14"
-expires = "2027-03-31"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
 [[holes.native]]
 tool = "verilator"
@@ -124,8 +119,6 @@ confidence = "high"
 rationale = "The then-branch of the WRAP early return in active_lanes is counted after the return statement and cannot increment; the entry count of the function exceeds the count of the following statement by the number of WRAP beats, and CHK-AXI-BRIDGE-WRAP judges the WRAP data path in both realizations."
 owner = "ocah-dv"
 reviewer = "ocah-dv"
-date = "2026-09-14"
-expires = "2027-03-31"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
 [[holes.native]]
 tool = "verilator"

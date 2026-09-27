@@ -129,7 +129,7 @@ third that is easy to confuse with them.
   all on a SEP=0 build, so it never reaches the database and no waiver has to
   name it. Structural OUT, by elaboration.
 * A `[[holes]]` entry is the opposite case: the point exists, is not hit, and
-  is carried with a category, a rationale, an owner and an expiry.
+  is carried with a category, a rationale and an owner.
 
 `tb_wrapper_top.sv` passes `SepPresent = 1'b1` unconditionally: the wrapper
 has one compile profile, `compile_smu_chiplet`, and it elaborates SEP, so every
@@ -187,8 +187,9 @@ Three limits decide what `SMU_VPLAN.adoc` is allowed to say about coverage:
 `cov/config/verilator/smu_wrapper_coverage_policy.toml` outright rather than
 relying on the canonical `cov/config/<tool>/coverage_policy.toml` discovery,
 so the file says which DUT it grades. It carries one `[[holes]]` entry per
-unhit point, with `disposition = "waive"`, `status = "accepted"` and an
-`expires` date after which it grades as open again. It sets no threshold.
+unhit point: an accepted waiver (`disposition = "waive"`), or, for a point
+that waits on stimulus, an open `cover` hole that names its tracking issue.
+It sets no threshold.
 
 === Owning Tests
 

@@ -80,7 +80,7 @@ requires:
 * `category` (one of the runner's hole categories; this file uses
 `missing_stimulus`, `needs_review` and `unreachable`)
 * `disposition`, `status`, `confidence`, `rationale`
-* `owner`, `reviewer`, `date`
+* `owner`, `reviewer`
 * `issues` when the disposition is actionable
 
 `max_unclassified_points = 0` on the `user` row is the fail-on-new-hole

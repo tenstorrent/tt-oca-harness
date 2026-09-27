@@ -1,0 +1,218 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: container
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/container.yml'
+      - '.gitmodules'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'ocah_deps.nix'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'hw/common/dv/pyproject.toml'
+      - 'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest'
+      - 'scripts/docker-run.sh'
+      - 'scripts/docker.md'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/container.yml'
+      - '.gitmodules'
+      - 'flake.nix'
+      - 'flake.lock'
+      - 'nix/**'
+      - 'ocah_deps.nix'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - 'hw/common/dv/pyproject.toml'
+      - 'hw/sys/sep/bootrom/prod/tools/tt-oca-manifest'
+      - 'scripts/docker-run.sh'
+      - 'scripts/docker.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY_IMAGE: ghcr.io/tenstorrent/ocah-container
+
+jobs:
+  # Build the image with Nix and publish it to GHCR under its immutable
+  # content-hash tag. skopeo streams the nix-built archive straight to the
+  # registry: no `docker load`, so nothing unpacks the multi-GB image onto the
+  # runner's small root volume. This keeps the heavy build off the daemon and
+  # lets the job fit a stock ubuntu-latest. DV_LARGE_RUNNER promotes it to a
+  # larger runner once that label exists:
+  #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
+  build-and-publish:
+    name: Build and publish Nix image
+    runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 240
+    outputs:
+      image_hash: ${{ steps.build.outputs.image_hash }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout manifest submodule
+        env:
+          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          test -n "$MANIFEST_TOKEN"
+          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
+            submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+
+      # ocah_deps.nix builds gcc, boost and openssl from source; the closure
+      # outgrows a hosted runner's root volume and the failure surfaces deep in a
+      # build as "ld.bfd: final link failed: No space left on device". Reclaim the
+      # preinstalled toolchains this job never uses before building.
+      - name: Free disk space for the nix build
+        run: |
+          echo "before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache \
+                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          sudo install -d -m 0755 /mnt/nix-build
+          echo "after:"; df -h / | tail -1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            build-dir = /mnt/nix-build
+
+      - name: Ensure skopeo
+        run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
+
+      - name: Log in to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | skopeo login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and publish full image
+        id: build
+        env:
+          # Nix clones submodules while copying the flake into its store. Use
+          # the checkout populated above so the token is not needed while Nix
+          # evaluates or builds the image.
+          GIT_CONFIG_COUNT: 3
+          GIT_CONFIG_KEY_0: protocol.file.allow
+          GIT_CONFIG_VALUE_0: always
+          GIT_CONFIG_KEY_1: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
+          GIT_CONFIG_VALUE_1: git@github.com:tenstorrent/tt-oca-manifest.git
+          GIT_CONFIG_KEY_2: url.file://${{ github.workspace }}/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest.insteadOf
+          GIT_CONFIG_VALUE_2: ssh://git@github.com/tenstorrent/tt-oca-manifest.git
+        run: |
+          archive=$(nix build \
+            .#dockerContainers.x86_64-linux.with_uv_deps \
+            --no-link \
+            --print-out-paths)
+          image_hash=$(nix eval --raw .#containerHashes.with_uv_deps)
+          echo "image_hash=${image_hash}" >> "$GITHUB_OUTPUT"
+
+          registry_ref="${REGISTRY_IMAGE}:${image_hash}"
+
+          # The content-hash tag is immutable: an existing one already holds this
+          # exact closure, so skip republishing rather than re-uploading it.
+          if skopeo inspect --insecure-policy "docker://${registry_ref}" >/dev/null 2>&1; then
+            echo "already published: ${registry_ref}"
+          else
+            # docker-archive reads the gzip archive; skopeo relays its compressed
+            # layers to the registry without unpacking them to disk.
+            skopeo copy --insecure-policy \
+              "docker-archive:${archive}" "docker://${registry_ref}"
+          fi
+
+          {
+            echo "### Published OCAH container (pending verification)"
+            echo
+            echo "\`${registry_ref}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Pull the freshly published image on a clean runner and exercise it. Because
+  # this runner never ran the nix build, the ~30 GB the image unpacks into on
+  # `docker pull` has the whole root volume to itself and fits where the combined
+  # build+load did not. Only after this passes is the consumed :main tag moved.
+  verify-and-promote:
+    name: Verify image and promote main
+    needs: build-and-publish
+    runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout manifest submodule
+        env:
+          MANIFEST_TOKEN: ${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+        run: |
+          test -n "$MANIFEST_TOKEN"
+          git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
+            submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+
+      # docker pull unpacks the multi-GB image into the daemon's data-root on the
+      # small root volume; reclaim the preinstalled toolchains first.
+      - name: Free disk space for the image pull
+        run: |
+          echo "before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache \
+                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          echo "after:"; df -h / | tail -1
+
+      # docker-run.sh resolves the image tag from the flake via `nix eval`, then
+      # pulls REGISTRY_IMAGE:<hash>; a native nix keeps that off the container.
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify the published image
+        env:
+          OCAH_IMAGE_WITH_UV: "true"
+          OCAH_CONTAINER_REGISTRY_IMAGE: ${{ env.REGISTRY_IMAGE }}
+        run: |
+          # docker-run.sh pulls REGISTRY_IMAGE:<hash> and tags it locally.
+          ./scripts/docker-run.sh verify
+          ./scripts/docker-run.sh run sh -ec '
+            uv --version
+            python --version
+            verilator --version
+            bender --version
+          '
+
+      # Move the consumed :main tag onto the verified content only on main. The
+      # image is already local from the verify pull, so this is a re-tag + push
+      # of layers the registry already has.
+      - name: Promote verified image to :main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          hash="${{ needs.build-and-publish.outputs.image_hash }}"
+          docker tag "${REGISTRY_IMAGE}:${hash}" "${REGISTRY_IMAGE}:main"
+          docker push "${REGISTRY_IMAGE}:main"
+          {
+            echo "### Promoted to :main"
+            echo
+            echo "\`${REGISTRY_IMAGE}:${hash}\` -> \`${REGISTRY_IMAGE}:main\`"
+          } >> "$GITHUB_STEP_SUMMARY"

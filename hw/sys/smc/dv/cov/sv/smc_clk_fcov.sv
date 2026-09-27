@@ -394,6 +394,10 @@ module smc_clk_fcov #(
       logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
   );
     option.per_instance = 1;
+    // The SMC core clock runs between 1.3 and 3 times the reference and the
+    // peripheral clock between 0.67 and 1.5 times it in every configuration
+    // the bench presents (ref 8/10/12 ns, smc 4/5/6 ns, periph 8/10/12 ns).
+    // A clock that stops within a window is the clock-gate groups' subject.
     cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
       bins slower = {[1 : 3]};
@@ -401,6 +405,7 @@ module smc_clk_fcov #(
       bins faster = {[5 : 8]};
       bins much_faster = {[9 : 32]};
       bins beyond = default;
+      ignore_bins core_not_faster_than_ref = {[0 : 4]};
     }
     cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
       bins stalled = {0};
@@ -409,6 +414,8 @@ module smc_clk_fcov #(
       bins faster = {[5 : 8]};
       bins much_faster = {[9 : 32]};
       bins beyond = default;
+      ignore_bins periph_stalled = {0};
+      ignore_bins periph_beyond_1p5x_ref = {[9 : 32]};
     }
     x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
   endgroup

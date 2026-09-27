@@ -18,6 +18,11 @@ the JTAG port so the three managers are held to the same fabric behaviour:
   "Filter Configuration"), the write with an error response whose code is
   reported, and a privileged readback shows the refused write took no effect.
   The filter is restored to its generated reset before the sequence ends.
+* Three passes of outstanding writes, then of reads, over the eight scratch
+  registers while the manager holds BREADY and RREADY low, so the port's
+  response channels stall and, with that many addresses queued behind the
+  register path, its address channels stall too; every read must still return
+  the word its last write carried.
 """
 
 from __future__ import annotations
@@ -26,11 +31,15 @@ import sys
 from pathlib import Path
 
 import cocotb
-from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
+from cocotb.triggers import RisingEdge
+from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
+from ocah_axi_vip import AxiTimingProfile
 
 from ._one_shot import _OneShot
 from .smc_addr_map import gpio_intf_u32, smc_addr, smc_indexed_addr
+from .smc_axi_port_watch import SmcAxiPortWatch
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, INBOUND_READ_DATA, MAILBOX_CG_EN
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -45,6 +54,14 @@ BURST_BYTES = 8
 # AxLEN 1, 7 and 31.
 BURST_BEATS = (2, 8, 32)
 BURST_STRIDE = 0x400
+# Backpressure groups: three passes over the eight scratch registers, with
+# the manager holding BREADY and RREADY low for this many cycles. The
+# register path serialises the accesses, so this many queued addresses hold
+# AWREADY and ARREADY low as well.
+BACKPRESSURE_COUNT = 8
+BACKPRESSURE_PASSES = 3
+READY_HOLD_CYCLES = 64
+AXI_RESP_SLVERR = 2
 
 # Last page of ecam_region: a generated-map region with no block behind it.
 UNIMPLEMENTED_ADDR = (
@@ -65,11 +82,13 @@ AXI_RESP_DECERR = 3
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
 # SEP_IN accesses: filter arm and readback, readback after the refused write,
-# restore and readback.
-EXPECTED_SEP_ACCESSES = 5
+# restore and readback, mailbox clock read, enable and readback, restore and
+# readback, 8 scratch restores after the backpressure groups.
+EXPECTED_SEP_ACCESSES = 18
 # JTAG accesses the scoreboard must have completed: a write and a read per
-# burst length, the unimplemented-region read, the refused write and read.
-EXPECTED_JTAG_ACCESSES = 2 * len(BURST_BEATS) + 3
+# burst length, the unimplemented-region read and write, the refused write and
+# read, the empty-mailbox read, and the backpressure groups.
+EXPECTED_JTAG_ACCESSES = 2 * len(BURST_BEATS) + 5 + 2 * BACKPRESSURE_PASSES * BACKPRESSURE_COUNT
 
 
 def burst_beat(beats: int, index: int) -> int:
@@ -89,6 +108,14 @@ def burst_base(beats: int) -> int:
     return BURST_BASE + BURST_BEATS.index(beats) * BURST_STRIDE
 
 
+def backpressure_word(index: int, write_pass: int = BACKPRESSURE_PASSES - 1) -> int:
+    return 0xBAC0_0000 | (write_pass << 16) | (index << 8) | (0xFF ^ index)
+
+
+def scratch_cold(index: int) -> int:
+    return smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", index)
+
+
 class smc_jtag_axi_shape_test_seq(SmcCsrSeq):
     """Bursts of three lengths and both error responses on the JTAG AXI port."""
 
@@ -97,6 +124,9 @@ class smc_jtag_axi_shape_test_seq(SmcCsrSeq):
         self.unimplemented_resp: int | None = None
         self.denied_write_resp: int | None = None
         self.denied_read_data: int | None = None
+        self.unimplemented_write_resp: int | None = None
+        self.empty_mailbox_resp: int | None = None
+        self.stalls: dict[str, int] | None = None
 
     async def _jtag(
         self,
@@ -154,6 +184,48 @@ class smc_jtag_axi_shape_test_seq(SmcCsrSeq):
             f"{_RESP_NAME.get(unimpl.resp_code, unimpl.resp_code)}, expected DECERR"
         )
 
+        dead_wr = await self._jtag(
+            "unimplemented_wr",
+            SmcSysAxiOp.WRITE,
+            UNIMPLEMENTED_ADDR,
+            length=4,
+            wdata=0xDEAD_0000,
+            allow_error=True,
+        )
+        self.unimplemented_write_resp = dead_wr.resp_code
+        assert dead_wr.resp_code == AXI_RESP_DECERR, (
+            f"JTAG write to unimplemented 0x{UNIMPLEMENTED_ADDR:08x} answered "
+            f"{_RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code)}, expected DECERR"
+        )
+
+        # A read of an empty mailbox is the register-level SLVERR the mailbox
+        # error test proves over SEP_IN; here it is taken over the JTAG port.
+        clock_gate = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, length=8)
+        await self.csr_write(
+            "CLOCK_GATE_CONTROL_ENABLE_MAILBOX",
+            CLOCK_GATE_CONTROL,
+            clock_gate | MAILBOX_CG_EN,
+            length=8,
+        )
+        await self.csr_read(
+            "CLOCK_GATE_CONTROL_ENABLED",
+            CLOCK_GATE_CONTROL,
+            expected=clock_gate | MAILBOX_CG_EN,
+            length=8,
+        )
+        empty = await self._jtag(
+            "mailbox_empty_rd", SmcSysAxiOp.READ, INBOUND_READ_DATA, allow_error=True
+        )
+        self.empty_mailbox_resp = empty.resp_code
+        assert empty.resp_code == AXI_RESP_SLVERR, (
+            f"JTAG read of the empty inbound mailbox answered "
+            f"{_RESP_NAME.get(empty.resp_code, empty.resp_code)}, expected SLVERR"
+        )
+        await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, clock_gate, length=8)
+        await self.csr_read(
+            "CLOCK_GATE_CONTROL_RESTORED", CLOCK_GATE_CONTROL, expected=clock_gate, length=8
+        )
+
         await self.csr_write("GPIO0_FILTER_LOCK", GPIO0_FILTER, FILTER_LOCK, prot=AWPROT_PRIV)
         await self.csr_read(
             "GPIO0_FILTER_LOCKED", GPIO0_FILTER, expected=FILTER_LOCK, prot=ARPROT_PRIV
@@ -190,6 +262,41 @@ class smc_jtag_axi_shape_test_seq(SmcCsrSeq):
         await self.csr_write("GPIO0_FILTER_RESTORE", GPIO0_FILTER, FILTER_RESET, prot=AWPROT_PRIV)
         await self.csr_read("GPIO0_FILTER_RESTORED", GPIO0_FILTER, expected=FILTER_RESET)
 
+        # Writes first, reads once they have drained: AXI orders nothing
+        # between the two channels, so a read pipelined behind its write may
+        # return the old word.
+        port = SmcAxiPortWatch(cocotb.top, "jtag_axi")
+        port_task = cocotb.start_soon(port.run())
+        hold = AxiTimingProfile(b_ready_delay=READY_HOLD_CYCLES, r_ready_delay=READY_HOLD_CYCLES)
+        writes = []
+        reads = []
+        for write_pass in range(BACKPRESSURE_PASSES):
+            for index in range(BACKPRESSURE_COUNT):
+                item = SmcSysAxiItem(f"jtag_backpressure_wr{index}_p{write_pass}")
+                item.op = SmcSysAxiOp.WRITE
+                item.addr = scratch_cold(index)
+                item.length = 4
+                item.wdata = backpressure_word(index, write_pass)
+                writes.append(item)
+                item = SmcSysAxiItem(f"jtag_backpressure_rd{index}_p{write_pass}")
+                item.op = SmcSysAxiOp.READ
+                item.addr = scratch_cold(index)
+                item.length = 4
+                item.expected = backpressure_word(index)
+                reads.append(item)
+        for name, members in (("jtag_backpressure_wr", writes), ("jtag_backpressure_rd", reads)):
+            group = SmcSysAxiGroupItem(name, members, timing=hold)
+            await _OneShot(group, f"{name}_os").start(self.env.jtag_axi_agent.sequencer)
+        port.stop = True
+        await RisingEdge(cocotb.top.clk_smc_i)
+        await port_task
+        self.stalls = dict(port.stalls)
+        assert self.stalls["b"] > 0 and self.stalls["r"] > 0, (
+            f"the backpressure profile never stalled the response channels: {self.stalls}"
+        )
+        for index in range(BACKPRESSURE_COUNT):
+            await self.csr_write(f"BACKPRESSURE_RESTORE_{index}", scratch_cold(index), 0)
+
         assert self.accesses == EXPECTED_SEP_ACCESSES, (
             f"issued {self.accesses} SEP_IN accesses, expected {EXPECTED_SEP_ACCESSES}"
         )
@@ -207,11 +314,25 @@ class smc_jtag_axi_shape_test_seq(SmcCsrSeq):
             burst_base(BURST_BEATS[2]),
         )
         cocotb.log.info(
-            "CHK-JTAG-AXI-ERRORS: JTAG read of the unimplemented ecam_region page 0x%08x answered "
-            "%s; with GPIO0 ACCESS_FILTER armed, the unprivileged JTAG write was refused with %s "
-            "and took no effect, and the unprivileged JTAG read answered DECERR with 0x%08x",
+            "CHK-JTAG-AXI-BACKPRESSURE: %d outstanding JTAG AXI accesses under a %d-cycle "
+            "BREADY/RREADY hold stalled aw=%d ar=%d b=%d r=%d cycles; every read returned the "
+            "word its last write carried",
+            2 * BACKPRESSURE_PASSES * BACKPRESSURE_COUNT,
+            READY_HOLD_CYCLES,
+            self.stalls["aw"],
+            self.stalls["ar"],
+            self.stalls["b"],
+            self.stalls["r"],
+        )
+        cocotb.log.info(
+            "CHK-JTAG-AXI-ERRORS: JTAG read and write of the unimplemented ecam_region page "
+            "0x%08x answered %s and %s; with GPIO0 ACCESS_FILTER armed, the unprivileged JTAG "
+            "write was refused with %s and took no effect, and the unprivileged JTAG read "
+            "answered DECERR with 0x%08x; the read of the empty inbound mailbox answered %s",
             UNIMPLEMENTED_ADDR,
             _RESP_NAME.get(self.unimplemented_resp, str(self.unimplemented_resp)),
+            _RESP_NAME.get(self.unimplemented_write_resp, str(self.unimplemented_write_resp)),
             _RESP_NAME.get(self.denied_write_resp, str(self.denied_write_resp)),
             self.denied_read_data,
+            _RESP_NAME.get(self.empty_mailbox_resp, str(self.empty_mailbox_resp)),
         )
