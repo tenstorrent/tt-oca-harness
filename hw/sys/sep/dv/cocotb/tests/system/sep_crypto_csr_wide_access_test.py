@@ -1,16 +1,25 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A 64-bit CSR read on each crypto host path returns its two 32-bit words.
+"""A 64-bit CSR read on each crypto host path returns the data its spec defines.
 
 `hw/sys/sep/doc/crypto.adoc:66-72` states that one 64-bit AXI slave port from
 the SEP system fabric is decoded to the accelerators, and that the host paths to
 OTBN, HMAC, AES, KMAC, ESRC, CSRNG and EDN are converted to AXI4-Lite "with
-data-width conversion where required by the endpoint". The spec does not name
-which of those paths convert. This test therefore walks every host path the
-spec names, and on each one requires a single 64-bit read to return exactly the
-data of the two 32-bit reads of the same words. The shared register driver
-issues 32-bit beats (`SepAxiRegDriver._AXI_SIZE = 2`), so this test issues its
-64-bit beats directly.
+data-width conversion where required by the endpoint". This test walks every
+host path the spec names. The shared register driver issues 32-bit beats
+(`SepAxiRegDriver._AXI_SIZE = 2`), so this test issues its 64-bit beats
+directly.
+
+Two contracts apply, one per kind of path:
+
+* CSRNG and EDN. `hw/ip/drbg/doc/architecture.adoc:69` defines their 64-bit
+  AXI4-Lite port: the lane adapter narrows a 64-bit access to one 32-bit lane,
+  selected by address bit [2]. A 64-bit read at an 8-byte aligned address
+  therefore returns the 32-bit register at that address in bits [31:0]. The
+  spec does not define the other lane, so it is not graded (CHK-WIDE-LANE).
+* OTBN, HMAC, AES, KMAC and ESRC. Nothing narrows these paths, so the
+  data-width conversion must return both words: a 64-bit read equals the two
+  32-bit reads of the same words (CHK-WIDE-SPLIT).
 
 `AxSIZE=3` is the whole stimulus. No burst is involved and none is possible:
 `hw/sys/sep/doc/crypto.adoc:135-141` ("Single-Beat Access Only") states that any
@@ -49,15 +58,17 @@ claim is data integrity under concurrency, which holds at any depth. Nothing
 here scores how many reads a host path can hold in flight.
 
 Checkers:
-  CHK-WIDE-SPLIT   the 64-bit read equals the two 32-bit reads, at every
-                   crypto host path the spec names
+  CHK-WIDE-SPLIT   the 64-bit read equals the two 32-bit reads, at OTBN, HMAC,
+                   AES, KMAC and ESRC
+  CHK-WIDE-LANE    the 64-bit read carries the 32-bit register at its address
+                   in bits [31:0], at CSRNG and EDN
   CHK-WIDE-NONVAC  every aperture in the table was presented and compared
   CHK-WIDE-OUTSTANDING  eight concurrent 64-bit reads at the entropy source,
                    distinct ids AND distinct addresses, each returning its own
                    data -- the shape that catches one slot answering with
                    another's
   CHK-WIDE-SLOTS   concurrent 64-bit reads at every aperture, distinct ids,
-                   each returning the golden -- the same integrity claim as
+                   each returning the golden of that aperture's contract -- the same integrity claim as
                    CHK-WIDE-OUTSTANDING, carried to every host path in the
                    table rather than only the entropy source
 
@@ -84,16 +95,15 @@ RESP_OKAY = 0
 # One entry per crypto host path named in hw/sys/sep/doc/crypto.adoc:66-72
 # (OTBN, HMAC, AES, KMAC, ESRC, CSRNG, EDN), in that order. Each names an 8-byte
 # aligned pair of 32-bit registers whose generated reset values are NOT both
-# zero. The spec does not say which of these paths convert data width, so
-# every path it names is walked.
+# zero.
 #
 # The register choice is the point. A pair that reads zero compares 0 against 0,
 # which a path that dropped the data entirely would also satisfy. Every pair
-# below has a non-zero 64-bit value. KMAC, ESRC, CSRNG and EDN additionally have
-# two distinct non-zero halves, so the representative floor can detect zeroing,
-# duplication and swapping. Pairs with one zero or equal halves still grade
-# exact re-beating on their own path, but do not claim every mutation class
-# locally.
+# below has a non-zero 64-bit value, and the lane-select paths have a non-zero
+# low word. KMAC and ESRC additionally have two distinct non-zero halves, so the
+# representative floor can detect zeroing, duplication and swapping. Pairs with
+# one zero or equal halves still grade exact re-beating on their own path, but
+# do not claim every mutation class locally.
 APERTURES = (
     ("otbn", "OTBN_STATUS_REG_ADDR"),
     ("hmac", "HMAC_CFG_REG_ADDR"),
@@ -103,6 +113,12 @@ APERTURES = (
     ("csrng", "CSRNG_INT_STATE_READ_ENABLE_REG_ADDR"),
     ("edn", "EDN_BOOT_INS_CMD_REG_ADDR"),
 )
+
+# The paths whose 64-bit port selects one 32-bit lane by address bit [2]
+# (hw/ip/drbg/doc/architecture.adoc:69). An 8-byte aligned 64-bit read carries
+# the register at that address in bits [31:0]; the other lane is undefined.
+LANE_SELECT = frozenset({"csrng", "edn"})
+LANE_MASK = 0xFFFF_FFFF
 
 # At least this many apertures must compare a non-zero golden, or the run is
 # vacuous however green it looks. A separate floor requires both halves to be
@@ -201,7 +217,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             self.logger.info("CHK-WIDE-NONVAC note: %s", note)
         self.logger.info(
             "CHK-WIDE-NONVAC PASS: %d of %d apertures compared a 64-bit read "
-            "against its two 32-bit reads, %d of them against a non-zero value; "
+            "against its single-beat golden, %d of them against a non-zero value; "
             "%d with distinct non-zero halves; %d held live state and were reported",
             len(self.compared),
             total,
@@ -269,16 +285,19 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
     async def _spread_slots(self, name: str, addr: int) -> None:
         """Hold several 64-bit reads of one address in flight, distinct ids.
 
-        Integrity under concurrency, carried to every host path in the table: each
-        read must return the golden, so an aperture answering a concurrent read
-        with zeros or stale data fails. A cross-wire between concurrent reads
+        Integrity under concurrency, carried to every host path in the table:
+        each read must return the golden of that path's contract (both words,
+        or the low lane at CSRNG and EDN), so an aperture answering a
+        concurrent read with zeros or stale data fails. A cross-wire between concurrent reads
         is NOT visible here, because every id reads the same word -- the
         entropy-source phase owns that case with distinct addresses. Nothing
         here scores how many reads the path can hold in flight.
         """
         lo = await self._rd(addr, SIZE_4B) & 0xFFFF_FFFF
         hi = await self._rd(addr + 4, SIZE_4B) & 0xFFFF_FFFF
-        want = (hi << 32) | lo
+        lane = name in LANE_SELECT
+        mask = LANE_MASK if lane else 0xFFFF_FFFF_FFFF_FFFF
+        want = lo if lane else (hi << 32) | lo
 
         axi = self.env.axi_agent.driver.axi
         events = [
@@ -300,7 +319,7 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
                 int.from_bytes(bytes(raw), "little")
                 if isinstance(raw, (bytes, bytearray))
                 else int(raw)
-            ) & 0xFFFF_FFFF_FFFF_FFFF
+            ) & mask
             assert got == want, (
                 f"CHK-WIDE-SLOTS FAIL [{name}]: outstanding read id={i} "
                 f"@0x{addr:08x} returned 0x{got:016x}, expected 0x{want:016x} "
@@ -336,6 +355,9 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             return
 
         wide = await self._rd(base, SIZE_8B) & 0xFFFF_FFFF_FFFF_FFFF
+        if name in LANE_SELECT:
+            self._check_lane(name, base, wide, lo_b)
+            return
         golden = (hi_b << 32) | lo_b
         assert wide == golden, (
             f"CHK-WIDE-SPLIT FAIL [{name}] @0x{base:08x}: the 64-bit read returned "
@@ -356,4 +378,27 @@ class sep_crypto_csr_wide_access_test(sep_base_test):
             lo_b,
             hi_b,
             int(bool(lo_b and hi_b and lo_b != hi_b)),
+        )
+
+    def _check_lane(self, name: str, base: int, wide: int, lo: int) -> None:
+        """CHK-WIDE-LANE: the lane adapter returns the addressed register in [31:0]."""
+        assert lo, (
+            f"CHK-WIDE-LANE FAIL [{name}] @0x{base:08x}: the 32-bit golden is 0, "
+            "so a path that returned nothing would compare equal"
+        )
+        got = wide & LANE_MASK
+        assert got == lo, (
+            f"CHK-WIDE-LANE FAIL [{name}] @0x{base:08x}: the 64-bit read returned "
+            f"0x{wide:016x}; bits [31:0]=0x{got:08x}, but the 32-bit read of the "
+            f"same address is 0x{lo:08x}. The lane adapter must return the "
+            "register selected by address bit [2] in that lane."
+        )
+        self.compared[name] = 1
+        self.nonzero.append(name)
+        self.logger.info(
+            "CHK-WIDE-LANE PASS [%s]: 64-bit read 0x%016x carries the 32-bit "
+            "register 0x%08x in bits [31:0]; the other lane is not graded",
+            name,
+            wide,
+            lo,
         )

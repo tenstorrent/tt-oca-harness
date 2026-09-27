@@ -475,7 +475,7 @@ never when it was written.
 |`sep_crypto_csr_wide_access_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|`hw/sys/sep/doc/crypto.adoc:66-72` decodes one 64-bit AXI slave port to the crypto host paths (OTBN, HMAC, AES, KMAC, ESRC, CSRNG, EDN), with data-width conversion where the endpoint requires it, and does not name which paths convert. The test walks every host path the spec names and compares a 64-bit read against the two 32-bit reads of the same words. A representative floor requires at least two apertures with distinct non-zero halves, where zeroing, duplication and swapping are all observable; pairs with a zero or equal half claim exact equality only. The same reads are then held concurrently with distinct `ARID`s, at distinct addresses and at every aperture: serial reads are answered by an otherwise idle path, and only concurrency can show one read being answered with another's data. The depth is DV-owned, not a hardware slot count. No burst is involved: the "Single-Beat Access Only" section of `hw/sys/sep/doc/crypto.adoc` answers any `AxLEN != 0` crypto access DECERR.
+|`hw/sys/sep/doc/crypto.adoc:66-72` decodes one 64-bit AXI slave port to the crypto host paths (OTBN, HMAC, AES, KMAC, ESRC, CSRNG, EDN), with data-width conversion where the endpoint requires it. The test walks every host path the spec names. At OTBN, HMAC, AES, KMAC and ESRC a 64-bit read must equal the two 32-bit reads of the same words. At CSRNG and EDN, `hw/ip/drbg/doc/architecture.adoc:69` narrows a 64-bit access to the 32-bit lane selected by address bit [2], so an aligned 64-bit read must carry the addressed register in bits [31:0]. A representative floor requires at least two apertures with distinct non-zero halves, where zeroing, duplication and swapping are all observable; pairs with a zero or equal half claim exact equality only. The same reads are then held concurrently with distinct `ARID`s, at distinct addresses and at every aperture: serial reads are answered by an otherwise idle path, and only concurrency can show one read being answered with another's data. The depth is DV-owned, not a hardware slot count. No burst is involved: the "Single-Beat Access Only" section of `hw/sys/sep/doc/crypto.adoc` answers any `AxLEN != 0` crypto access DECERR.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -5853,9 +5853,9 @@ reported as such rather than counted as a pass.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves that a 64-bit read on each crypto host path returns exactly the data of the two 32-bit reads of the same words, and that concurrent 64-bit reads each return their own data. `hw/sys/sep/doc/crypto.adoc:66-72` decodes one 64-bit AXI slave port to the host paths for OTBN, HMAC, AES, KMAC, ESRC, CSRNG and EDN, "with data-width conversion where required by the endpoint". The spec does not name which of those paths convert, so every path it names is walked. The shared register driver issues 32-bit beats, so this leaf issues its 64-bit beats directly.
+*Objective*: Proves that a 64-bit read on each crypto host path returns the data that path's spec defines, and that concurrent 64-bit reads each return their own data. `hw/sys/sep/doc/crypto.adoc:66-72` decodes one 64-bit AXI slave port to the host paths for OTBN, HMAC, AES, KMAC, ESRC, CSRNG and EDN, "with data-width conversion where required by the endpoint". Every path it names is walked. At CSRNG and EDN, `hw/ip/drbg/doc/architecture.adoc:69` defines a lane adapter that narrows a 64-bit access to the 32-bit lane selected by address bit [2]; the other lane is not defined, so only bits [31:0] are graded there. At the other five paths the 64-bit read must return both words. The shared register driver issues 32-bit beats, so this leaf issues its 64-bit beats directly.
 
-*Test Coverage*: The seven crypto host paths named in `hw/sys/sep/doc/crypto.adoc:66-72` -- OTBN, HMAC, AES, KMAC, entropy source, CSRNG and EDN -- each presented one 64-bit read and its two 32-bit equivalents, then several 64-bit reads held in flight at once.
+*Test Coverage*: The seven crypto host paths named in `hw/sys/sep/doc/crypto.adoc:66-72` -- OTBN, HMAC, AES, KMAC, entropy source, CSRNG and EDN -- each presented one 64-bit read and its 32-bit equivalents, then several 64-bit reads held in flight at once.
 
 *Outstanding reads*: a read issued after the previous one retired is answered by an otherwise idle host path, so serial traffic exercises one path however much of it there is. Concurrency is the only shape under which a 64-bit read can be answered with a DIFFERENT read's data, and that is the failure this phase grades. The ids are distinct because a slave may legitimately order same-id reads behind one another, which would serialise the traffic and undo the concurrency. AXI permits the shape: several outstanding reads with different ids, each answered with its own data (IHI 0022 A5.3). The depth is DV-owned (`CRYPTO_CONCURRENT_READS` in `env/sep_spec_tables.py`) and is deliberately NOT a hardware slot count: the graded claim is data integrity under concurrency, which holds at any depth, and scoring "every read slot was occupied" against the RTL's own slot count would be the DUT agreeing with itself.
 
@@ -5875,7 +5875,9 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-WIDE-SPLIT
-|The 64-bit read equals the two 32-bit reads of the same words, at every crypto host path the spec names. The golden is the DUT's own single-beat path, so this is wide-against-single-beat and never a recomputation.
+|The 64-bit read equals the two 32-bit reads of the same words, at OTBN, HMAC, AES, KMAC and ESRC. The golden is the DUT's own single-beat path, so this is wide-against-single-beat and never a recomputation.
+|CHK-WIDE-LANE
+|At CSRNG and EDN, the aligned 64-bit read carries the 32-bit register at its address in bits [31:0], as the DRBG lane adapter defines (`hw/ip/drbg/doc/architecture.adoc:69`). The 32-bit golden must be non-zero. The other lane is not defined by the spec and is not graded.
 |CHK-WIDE-NONVAC
 |Every aperture in the table was presented, at least three compared a non-zero value, and at least two had distinct non-zero halves. A pair that reads zero compares 0 against 0, and equal or zero halves hide some mutation classes; the two floors make the exact comparisons and the representative zero/duplicate/swap sensitivity explicit. Also requires that the slot spread ran at every aperture.
 |CHK-WIDE-OUTSTANDING
@@ -5883,11 +5885,11 @@ reported as such rather than counted as a pass.
 |CHK-WIDE-SLOTS
 |Concurrent 64-bit reads at every aperture, distinct ids, each returning the golden. The same integrity claim as CHK-WIDE-OUTSTANDING, carried to every host path in the table rather than only the entropy source, so an aperture answering a concurrent read with zeros or stale data fails. A read answered with another read's data is not visible here because every id reads the same word; CHK-WIDE-OUTSTANDING owns that case with distinct addresses.
 |===
-*Evidence*: every pair has a non-zero generated reset value. KMAC (`CFG_REGWEN` / `CFG_SHADOWED`), the entropy source (`COMPONENT_ID` / `CTRL`), CSRNG (`INT_STATE_READ_ENABLE` / `INT_STATE_READ_ENABLE_REGWEN`) and EDN (`BOOT_INS_CMD` / `BOOT_GEN_CMD`) have distinct non-zero halves and carry the full zero/duplicate/swap mutation sensitivity. AES has equal non-zero halves; HMAC and OTBN have one zero half. Those three still require the 64-bit value to equal their two 32-bit reads exactly, but do not claim that every half mutation is observable on that pair. Addresses come from the generated register header by symbol, never a literal.
+*Evidence*: every pair has a non-zero generated reset value. CSRNG (`INT_STATE_READ_ENABLE`) and EDN (`BOOT_INS_CMD`) have a non-zero low word for the lane check. KMAC (`CFG_REGWEN` / `CFG_SHADOWED`) and the entropy source (`COMPONENT_ID` / `CTRL`) have distinct non-zero halves and carry the full zero/duplicate/swap mutation sensitivity. AES has equal non-zero halves; HMAC and OTBN have one zero half. Those three still require the 64-bit value to equal their two 32-bit reads exactly, but do not claim that every half mutation is observable on that pair. Addresses come from the generated register header by symbol, never a literal.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Scope note*: the walked set is the host-path list in `hw/sys/sep/doc/crypto.adoc:66-72`. The write direction is out of scope: these are status and configuration registers, and writing them to obtain a comparand would test the register rather than the 64-bit read path.
+*Scope note*: the walked set is the host-path list in `hw/sys/sep/doc/crypto.adoc:66-72`; the per-path contract comes from that path's spec. The write direction is out of scope: these are status and configuration registers, and writing them to obtain a comparand would test the register rather than the 64-bit read path.
 
 [[sep_axi_partial_lane_read_test]]
 ===== `sep_axi_partial_lane_read_test`
