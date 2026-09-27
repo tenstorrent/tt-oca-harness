@@ -39,8 +39,7 @@ warns `VCM-HFUFF` once per listed unit the elaboration did not instantiate;
 that is the list being a superset of one build, not an error.
 
 What stays graded is the SMU's own logic: `hw/top/smu_wrapper.sv`,
-`hw/sys/smu/rtl/smu.sv`, `smu_axi_xbar.sv`, `hw/ip/axi_window_remap` and any
-other unit instantiated under `u_smu` outside the three subsystem trees.
+`hw/sys/smu/rtl/smu.sv`, `smu_axi_xbar.sv` and any other unit instantiated under `u_smu` outside the three subsystem trees.
 urg's `hierarchy.txt` for a finished run is the check: at the top it lists
 `u_dut` and the `cov/sv` monitors and nothing else, and under `u_dut` it lists
 `u_smu` and, below it, only those units.
@@ -89,9 +88,9 @@ whether the committed file is stale.
 | `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through untouched; address and id stay graded because the crossbar decodes and remaps them |
 | `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | consumed by the SMC telemetry receivers, graded there |
 | `DFT` | `test_en_i`, `scan_rst_ni` | held at their functional value in simulation |
-| `RTL-CONSTANT` | `lcc_demote_state_*_o`, `lsio_interface_select_o` | driven from a constant inside the SMU |
+| `RTL-CONSTANT` | `lsio_interface_select_o` | driven from a constant inside the SMU |
 | `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union; urg lists the same 8192 flops under three views, and `values` carries every bit once |
-| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_global_base_o`, `sep_region_size_o`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
+| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
 | `PARTIAL` | `timer_count_o[63:20]` | bit k first rises after 2^k reference clocks |
 
 Everything else on the port list is graded per field, both directions, and a
@@ -100,9 +99,8 @@ field that stays uncovered is a stimulus gap for a leaf on this bench.
 ## Block exclusions
 
 `smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
-leaves out toggle points of `smu`, `smu_wrapper`, `smu_axi_xbar` and
-`axi_window_remap`, and the condition rows and branch arms two of the classes
-below name, each for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
+leaves out toggle points of `smu`, `smu_wrapper` and `smu_axi_xbar`, and the
+condition rows of the lifecycle integrity error, each for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
 it from urg's `-dump full_exclusions` templates of the merged database and the
 run's raw report, so every checksum and signature comes from urg, and
 `--check` tells whether the committed file is stale:
@@ -124,16 +122,21 @@ is taken only where the report says Not Covered. Fields
 | Class | Fact | Retired by |
 |---|---|---|
 | `MEM-MACRO` | data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces; `smu.sv` connects each such `u_smc`/`u_sep` port straight to its own port and `smu_wrapper.sv` connects that to `hw/top/smc_ip_integration.sv` or `hw/top/sep_ip_integration.sv`, where the macros are; no SMU logic reads or writes the words | an SMU process on these words, or the macros moving under `u_smu` |
-| `AXI-USER` | the user sideband, which the pulp crossbar, the ID converters and `axi_window_remap` copy beside the channel | an SMU decode or remap that reads it |
+| `AXI-USER` | the user sideband, which the pulp crossbar and the ID converters copy beside the channel | an SMU decode or remap that reads it |
 | `AXI-DATA` | write data, write strobe and read data of every AXI and AXI-Lite channel; the SMU decodes addresses and converts ids and passes data through | an SMU unit that inspects or rewrites data or strobe |
-| `RTL-CONSTANT` | `lcc_demote_state_*_o` tied low and `lsio_interface_select_o` following the SPI enable `smu.sv` assigns 1 with SEP present | either becoming programmable |
+| `RTL-CONSTANT` | `lsio_interface_select_o` following the SPI enable `smu.sv` assigns 1 with SEP present | the SPI enable becoming programmable |
 | `UNION-ALIAS` | the `locks` and `fields` views of the packed-union eFuse shadow map; `values` stays graded | `efuse_map_t` ceasing to be a union |
 | `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
-| `LC-SIGINT-ENCODED` | design fact: `efuse_shadow_regs.sv` (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with `prim_diff_encode_multi`, so the word the SEP exports is always a valid differential pair and the decoders in `sep_lifecycle_ctrl.sv` and `smc_efuse_wrapper.sv` fire only on corruption in flight. Takes `lc_sigint_err_o`, `sep_lc_sigint_err` and `efuse_lc_sigint_err` in `smu`, and the uncovered rows of `smu.sv` 1100 | a fault-injection bench that corrupts the exported pair |
+| `LC-SIGINT-ENCODED` | design fact: `efuse_shadow_regs.sv` (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with `prim_diff_encode_multi`, so the word the SEP exports is always a valid differential pair and the decoders in `sep_lifecycle_ctrl.sv` and `smc_efuse_wrapper.sv` fire only on corruption in flight. Takes `lc_sigint_err_o`, `sep_lc_sigint_err` and `efuse_lc_sigint_err` in `smu`, and the uncovered rows of the `smu.sv` assignments to `lc_sigint_err_o`, which the generator finds in the source | a fault-injection bench that corrupts the exported pair |
 | `ATOP-DISABLED` | `smu_axi_xbar.sv` (131) builds the crossbar with `ATOPs(1'b0)` and `tb_wrapper_top.sv` ties the inbound AWATOP to 0; takes every `aw.atop` field | a crossbar built with ATOPs enabled |
-| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smu_axi_out`, `smc_output_axi_req` and the crossbar's `smc_out` and `ext_out` channels; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159) | outbound traffic from SMC CPU or SEP firmware |
+| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smc_output_axi_req` and the crossbar's `smc_out` port; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159). The crossbar's `ext_out` side and `smu_axi_out` also carry SEP traffic and stay graded | outbound traffic from the SMC CPU |
 | `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
-| `SEP-INITIATED` | bench fact of this package's coverage set: the SEP aperture (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR and region size), the crossbar's `sep_out` port, the SEP's SMN outbound and dedicated SMC channels, and every net, condition and branch of `axi_window_remap`, whose window `smu_pkg` fixes (`smu.sv` 987-994), are driven only by SEP firmware, and no image in `all` programs the aperture or issues alias accesses | a SEP DV firmware image that programs the SEP aperture and issues alias accesses |
+
+The SEP aperture and the SEP's outbound and dedicated SMC channels take no
+class: SEP firmware images program the region size,
+`smu_dtp_sep_dm_sba_test` programs the base and sends a read and a write
+out through the crossbar, and `smu_sep_bidirect_test` drives the dedicated
+channel, so a bit left uncovered there is a stimulus gap.
 
 Cover properties are not excluded here. The ones a legal operating mode of
 this bench cannot reach -- the two EXOKAY responses, the lifecycle

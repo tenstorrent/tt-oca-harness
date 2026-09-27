@@ -3,17 +3,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Write smu_toggle_exclusions.el from urg's toggle template and the raw report.
 
-The SMU scope grades every net of `smu`, `smu_wrapper`, `smu_axi_xbar` and
-`axi_window_remap`. Some of those nets carry bits no SMU logic reads or
+The SMU scope grades every net of `smu`, `smu_wrapper` and `smu_axi_xbar`.
+Some of those nets carry bits no SMU logic reads or
 writes, and each class below states that fact and what would retire it:
 
 * MEM-MACRO: the data words of the subsystem RAM, ROM and TCM interfaces. The
   SMU only routes them between the SMC and SEP ports and the macros in
   `hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv`.
 * AXI-DATA, AXI-USER: write data, write strobe, read data and the user
-  sideband of every AXI and AXI-Lite channel these units carry. The crossbar,
-  the ID converters and the alias remap decode addresses and ids and pass
-  these words through untouched.
+  sideband of every AXI and AXI-Lite channel these units carry. The crossbar
+  and the ID converters decode addresses and ids and pass these words
+  through untouched.
 * RTL-CONSTANT, UNION-ALIAS, SEP-OWNED: the facts
   `smu_wrapper_toggle_exclusions.el` states for the wrapper's ports, where
   the same nets recur as ports of `smu`.
@@ -21,14 +21,19 @@ writes, and each class below states that fact and what would retire it:
   registers make unreachable by re-encoding the word they export; its
   condition rows in `smu.sv` go with it.
 * ATOP-DISABLED: AWATOP, which the crossbar is built not to carry.
-* FIXED-OUTBOUND-ATTRIBUTES: the AXI attributes on the SMC's outbound path
-  that both SMC masters a bench can drive hold constant.
+* FIXED-OUTBOUND-ATTRIBUTES: the AXI attributes on the SMC's outbound path,
+  up to the crossbar port only the SMC feeds, that both SMC masters a bench
+  can drive hold constant. Past that port the channel also carries SEP
+  traffic, so it stays graded.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
-* SEP-INITIATED: the SEP aperture, the SEP's outbound channels and the alias
-  remap, including its conditions and branches, which only SEP firmware
-  drives.
 
-Apart from those last five classes, whose facts name them, no class takes an
+The SEP aperture and the SEP's outbound channels take no class: the SEP
+firmware images program the region size, `smu_dtp_sep_dm_sba_test` programs
+the base and sends a read and a write out through the crossbar, and
+`smu_sep_bidirect_test` drives the dedicated SMC channel, so a hole there is a
+stimulus gap.
+
+Apart from those last four classes, whose facts name them, no class takes an
 address, id, length, size, burst, cache, protection, QoS, region, lock or
 atomic field, nor a valid, ready or enable: those are decode and handshake,
 and a hole in one is a stimulus gap.
@@ -66,7 +71,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 OUTPUT = HERE / "smu_toggle_exclusions.el"
 WRAPPER_FILE = HERE / "smu_wrapper_toggle_exclusions.el"
-MODULES = ("smu", "smu_wrapper", "smu_axi_xbar", "axi_window_remap")
+MODULES = ("smu", "smu_wrapper", "smu_axi_xbar")
 
 MEM_IF = (
     r"(smc_scratch_ram_intf|smc_l1_[id]cache_(tag|data)_intf|smc_rom_intf|trace_mem|"
@@ -99,8 +104,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
     (
         "AXI-USER",
         re.compile(r"\.(aw|ar|w|r|b)\.user$"),
-        "AXI user sideband words. The pulp crossbar, the ID converters and "
-        "axi_window_remap copy them beside the channel, and no SMU logic reads them.",
+        "AXI user sideband words. The pulp crossbar and the ID converters copy them "
+        "beside the channel, and no SMU logic reads them.",
         "an SMU decode or remap that reads the user field",
         None,
         None,
@@ -118,11 +123,10 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
     ),
     (
         "RTL-CONSTANT",
-        re.compile(r"^(lcc_demote_state_[12]_o|lsio_interface_select_o)$"),
-        "outputs smu.sv drives from a constant in this composition: the lifecycle demote "
-        "states are tied low and the LSIO interface select follows the SPI enable, "
-        "which smu.sv assigns 1 when SEP is present.",
-        "the demote states or the SPI enable becoming programmable",
+        re.compile(r"^lsio_interface_select_o$"),
+        "an output smu.sv drives from a constant in this composition: the LSIO interface "
+        "select follows the SPI enable, which smu.sv assigns 1 when SEP is present.",
+        "the SPI enable becoming programmable",
         None,
         None,
     ),
@@ -173,15 +177,15 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
     (
         "FIXED-OUTBOUND-ATTRIBUTES",
         re.compile(
-            r"^(smu_axi_out_req_o|smc_output_axi_req|gen_sep\.smc_out_xbar_req|smc_out_req_i|"
-            r"ext_out_req_o|xbar_slv_req\[1\]|xbar_mst_req\[2\])\.(aw|ar)\."
-            r"(cache|prot|qos|region|lock|burst)$"
+            r"^(smc_output_axi_req|gen_sep\.smc_out_xbar_req|smc_out_req_i|xbar_slv_req\[1\])"
+            r"\.(aw|ar)\.(cache|prot|qos|region|lock|burst)$"
         ),
-        "AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on the SMC's outbound path. "
-        "The two SMC masters a toolchain-free leaf drives hold them constant: "
-        "jtag2axi.sv (1184-1216) and the iDMA register frontend (idma_reg.sv.tpl, "
-        "155-159).",
-        "outbound traffic from SMC CPU or SEP firmware",
+        "AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on the SMC's outbound path "
+        "up to the crossbar's smc_out port. The two SMC masters a toolchain-free leaf "
+        "drives hold them constant: jtag2axi.sv (1184-1216) and the iDMA register "
+        "frontend (idma_reg.sv.tpl, 155-159). The crossbar's ext_out side also carries "
+        "SEP traffic and stays graded.",
+        "outbound traffic from the SMC CPU",
         None,
         None,
     ),
@@ -210,32 +214,6 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window",
         None,
         ((0, 16), (31, 31)),
-    ),
-    (
-        "SEP-INITIATED",
-        re.compile(
-            r"^(addr_map\[0\]\.|sep_end$|sep_global_base_addr_i$|sep_region_size_i$|"
-            r"sep_global_base_o$|sep_region_size_o$|sep_out_(req_i|resp_o)\.|"
-            r"xbar_slv_(req|resp)\[0\]\.|gen_sep\.sep_out_xbar_(req|resp)\.|"
-            r"sep_smn_outbound_axi_(req|resp)\.|sep_ext_to_smc_axi_(req|resp)(_local)?\.)"
-        ),
-        "the SEP aperture, the SEP's outbound channels and the alias remap. "
-        "sep_cpu_ctrl SEP_GLOBAL_BASE_ADDR and the SEP region size are programmed by SEP "
-        "firmware, the alias window is fixed by smu_pkg (smu.sv 992-994), and only "
-        "SEP-issued traffic enters these channels; the package's coverage set carries no "
-        "SEP firmware image that programs the aperture or uses the alias.",
-        "a SEP DV firmware image that programs the SEP aperture and issues alias accesses",
-        ("smu", "smu_axi_xbar"),
-        None,
-    ),
-    (
-        "SEP-INITIATED",
-        re.compile(r"."),
-        "the alias remap, which sits on the SEP's dedicated SMC channel only (smu.sv "
-        "987-994): every net of axi_window_remap carries SEP-issued traffic.",
-        "a SEP DV firmware image that issues alias accesses",
-        ("axi_window_remap",),
-        None,
     ),
 ]
 
@@ -352,9 +330,22 @@ def entries(field: str, sig: str, rows: list[tuple[str, str, str]], bits=None) -
 
 # Condition rows and branch arms, by class: (class, module, source lines or None).
 # The fact and the retiring condition are the toggle class's of the same name.
+SMU_SV = HERE.parents[3] / "rtl" / "smu.sv"
+
+
+def _lines_assigning(path: Path, target: str) -> frozenset[int]:
+    """Source lines of ``path`` whose continuous assignment drives ``target``."""
+    pattern = re.compile(rf"^\s*assign\s+{re.escape(target)}\s*=")
+    lines = frozenset(
+        n for n, text in enumerate(path.read_text().splitlines(), 1) if pattern.match(text)
+    )
+    if not lines:
+        sys.exit(f"{path}: no assignment to {target}")
+    return lines
+
+
 POINT_CLASSES: list[tuple[str, str, frozenset[int] | None]] = [
-    ("LC-SIGINT-ENCODED", "smu", frozenset({1100})),
-    ("SEP-INITIATED", "axi_window_remap", None),
+    ("LC-SIGINT-ENCODED", "smu", _lines_assigning(SMU_SV, "lc_sigint_err_o")),
 ]
 POINT_RE = re.compile(r"^// (Condition|Branch) ")
 LINE_RE = re.compile(r"LineNumber: (\d+)")

@@ -66,11 +66,10 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
     ),
     (
         "RTL-CONSTANT",
-        re.compile(r"^(lcc_demote_state_[12]_o|lsio_interface_select_o)$"),
-        "outputs the SMU drives from a constant in this composition: the lifecycle demote "
-        "states are tied low and the LSIO interface select follows a fixed SPI enable. No "
-        "stimulus can move them; -cm_noconst does not drop them because the constant is "
-        "assigned inside the SMU rather than at the port.",
+        re.compile(r"^lsio_interface_select_o$"),
+        "an output the SMU drives from a constant in this composition: the LSIO interface "
+        "select follows a fixed SPI enable. No stimulus can move it; -cm_noconst does not "
+        "drop it because the constant is assigned inside the SMU rather than at the port.",
     ),
     (
         "UNION-ALIAS",
@@ -83,15 +82,13 @@ CLASSES: list[tuple[str, re.Pattern[str], str]] = [
         "SEP-OWNED",
         re.compile(
             r"^(sep_io_spi_req_o|sep_cpu_trace_o|sep_lockstep_ctrl_i|sep_lockstep_status_o|"
-            r"sep_global_base_o|sep_region_size_o|sep_ext_interrupts_i|"
-            r"entropy_rosc_sample_clk_i|lc_sigint_err_o)(\.|\[|$)"
+            r"sep_ext_interrupts_i|entropy_rosc_sample_clk_i|lc_sigint_err_o)(\.|\[|$)"
         ),
         "SEP passthroughs with no wrapper-level observable on this bench: the SEP SPI host "
         "and CPU trace need SEP firmware, the lockstep pair is inert without "
-        "RV_LOCKSTEP_ENABLE, the SEP aperture CSRs sit behind the reset aperture, the SEP "
-        "external interrupts and entropy sample clock terminate inside the SEP, and the "
-        "lifecycle signal-integrity error needs a fault injected inside it. The SEP bench "
-        "grades each of them.",
+        "RV_LOCKSTEP_ENABLE, the SEP external interrupts and entropy sample clock "
+        "terminate inside the SEP, and the lifecycle signal-integrity error needs a fault "
+        "injected inside it. The SEP bench grades each of them.",
     ),
 ]
 
