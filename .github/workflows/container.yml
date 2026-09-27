@@ -65,8 +65,39 @@ jobs:
           git -c "url.https://x-access-token:${MANIFEST_TOKEN}@github.com/tenstorrent/.insteadOf=git@github.com:tenstorrent/" \
             submodule update --init --recursive hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
-      - name: Prepare Nix build disk
-        run: sudo install -d -m 0755 /mnt/nix-build
+      # ocah_deps.nix builds gcc, boost and openssl from source; the closure
+      # outgrows a hosted runner's root volume and the failure surfaces deep in a
+      # build as "ld.bfd: final link failed: No space left on device". Reclaim the
+      # preinstalled toolchains this job never uses before building.
+      - name: Free disk space for the nix build
+        run: |
+          echo "before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+                      /usr/local/.ghcup /usr/local/share/boost \
+                      /usr/local/lib/node_modules /opt/hostedtoolcache \
+                      /usr/share/swift /usr/lib/jvm /usr/share/miniconda || true
+          sudo docker image prune -af >/dev/null 2>&1 || true
+          echo "after:"; df -h / | tail -1
+
+      # Relocate the nix store onto the largest volume where one exists; a hosted
+      # runner's /mnt dwarfs its root. Bind-mount before the installer populates
+      # the store, so the closure lands there rather than filling root. The build
+      # scratch dir (build-dir below) lives on the same volume.
+      - name: Put the nix store on the largest volume
+        run: |
+          df -h
+          root_free=$(df --output=avail -k / | tail -1)
+          for cand in /mnt /datadisk; do
+            [ -d "$cand" ] || continue
+            cand_free=$(df --output=avail -k "$cand" | tail -1)
+            [ "$cand_free" -gt "$root_free" ] || continue
+            echo "nix store -> $cand (${cand_free}K free, / has ${root_free}K)"
+            sudo mkdir -p "$cand/nix" /nix
+            sudo mount --bind "$cand/nix" /nix
+            break
+          done
+          df -h /nix 2>/dev/null || true
+          sudo install -d -m 0755 /mnt/nix-build
 
       - name: Install Nix
         uses: cachix/install-nix-action@v31.11.1
