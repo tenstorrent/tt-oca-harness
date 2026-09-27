@@ -41,6 +41,20 @@ FW_TEST_COMMON_SRCS := $(FW_DIR)/tests/common/sha256.c
 # lives here and each app is produced by a recursive make on common_otbn's
 # otbn_app.mk - the same entry point upstream uses for its own multi-app test.
 FW_BUILD_DIR    ?= $(FW_DIR)/build
+
+# Build identity. fw_src_digest.py hashes every source directory the images can
+# draw from and writes the digest to fw_build_id.h, touching the header only
+# when the digest changes. drivers/fw_build_id.c compiles it into each image as
+# "FW-BUILD-ID:<digest>"; sep_base_test reads it back out of the loaded TCM
+# image and compares it with the digest of the committed tree
+# (CHK-FW-IDENTITY), so an image built from other source fails a logged check.
+FW_BUILD_ID_H := $(FW_BUILD_DIR)/fw_build_id.h
+FW_SRC_DIGEST := $(shell python3 "$(FW_DIR)/fw_src_digest.py" --write-header "$(FW_BUILD_ID_H)" "$(OCAH_ROOT)")
+ifeq ($(strip $(FW_SRC_DIGEST)),)
+$(error fw_src_digest.py produced no digest; the firmware build identity is required)
+endif
+FW_INCLUDES += -I$(FW_BUILD_DIR)
+
 OTBN_APP_MK     := $(FW_DIR)/tests/common_otbn/otbn_app.mk
 OTBN_BUILD_ROOT := $(FW_BUILD_DIR)/otbn
 
@@ -171,7 +185,7 @@ include $(OCAH_ROOT)/hw/common/dv/fw/compile.mk
 # both the .c and the .h.
 define ocah_otbn_app_rule
 $(call ocah_otbn_app_c,$(1)) $(call ocah_otbn_app_h,$(1)) &: \
-    $(call ocah_otbn_app_src,$(1)) $(OTBN_APP_MK) \
+    $(call ocah_otbn_app_src,$(1)) $(OTBN_APP_MK) $(FW_BUILD_ID_H) \
     $(FW_DIR)/tests/common_otbn/generate_otbn_c.py \
     $(FW_DIR)/tests/common_otbn/otbn_app.ld
 	+$$(MAKE) -f $(OTBN_APP_MK) \
@@ -184,6 +198,14 @@ $(call ocah_otbn_app_c,$(1)) $(call ocah_otbn_app_h,$(1)) &: \
 	  otbn-app
 endef
 $(foreach a,$(OTBN_APPS),$(eval $(call ocah_otbn_app_rule,$(a))))
+
+# Every object depends on the identity header, which changes exactly when the
+# source digest does. A source change therefore rebuilds all of them -- also an
+# edit whose timestamp make cannot see -- so the digest in an image never sits
+# beside an object compiled from other source.
+$(FW_LIB_OBJS) $(FW_ENTRY_OBJS) \
+$(foreach t,$(FW_TEST_NAMES),$(foreach i,$(call ocah_fw_test_images,$(t)),$(FW_TEST_OBJS_$(i)))): \
+    $(FW_BUILD_ID_H)
 
 # The test's own translation unit includes the generated header, and on a clean
 # build there is no depfile yet to say so; without this a parallel build can

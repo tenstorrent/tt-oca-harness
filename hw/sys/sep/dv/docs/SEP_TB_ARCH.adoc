@@ -228,6 +228,14 @@ CPU tests call `boot_firmware()`, which stages ITCM/DTCM hex, loads via
 PASS magic. The trace monitor reconstructs a shadow call stack from EL2
 retirement ports; see <<env-cpu-trace>>.
 
+Before the boot, `RUN-IDENTITY-FW` logs the sha256 of both images and
+`CHK-FW-IDENTITY` checks where they came from. The firmware build (`fw/fw.mk`)
+compiles `FW-BUILD-ID:<digest>` into every image, with `<digest>` from
+`fw/fw_src_digest.py` over the firmware source directories, once in ICCM and
+once in DCCM. The test reads the string out of both loaded images and requires
+each to equal the digest of the tree it runs from, which `RUN-IDENTITY` binds to a commit. An image built from other
+source, or left over from an older build, fails the check.
+
 ==== Register metadata
 
 `sep_reg_meta.py` imports generated PeakRDL headers under

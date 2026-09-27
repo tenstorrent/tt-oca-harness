@@ -1286,16 +1286,71 @@ class sep_base_test(uvm_test):
         return digest.hexdigest(), os.path.getsize(path)
 
     def _log_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
-        """Record sha256 of the staged TCM images.
+        """Record sha256 of the staged TCM images, then check their build identity.
 
         Firmware checkers live in the image. A log that names only the path
-        cannot prove which bytes were loaded.
+        cannot prove which bytes were loaded, and the bytes alone cannot prove
+        which source they came from; CHK-FW-IDENTITY closes that.
         """
         parts = []
         for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
             digest, nbytes = self._sha256_file(path)
             parts.append(f"{label}={path} sha256={digest} bytes={nbytes}")
         self.logger.info("RUN-IDENTITY-FW: %s", " ".join(parts))
+        self._check_firmware_identity(itcm_hex, dtcm_hex)
+
+    @staticmethod
+    def _tcm_hex_bytes(path: str) -> bytes:
+        """Byte stream of a ``objcopy -O verilog`` image, address lines dropped."""
+        out = bytearray()
+        with open(path) as fh:
+            for line in fh:
+                if not line.startswith("@"):
+                    out.extend(int(tok, 16) for tok in line.split())
+        return bytes(out)
+
+    def _check_firmware_identity(self, itcm_hex: str, dtcm_hex: str) -> None:
+        """CHK-FW-IDENTITY: the loaded image was built from the source at this commit.
+
+        The firmware build (``fw/fw.mk``) compiles ``FW-BUILD-ID:<digest>`` into
+        every EL2 TCM image, where ``<digest>`` is ``fw/fw_src_digest.py`` over
+        the firmware source tree at build time. This reads that string out of
+        the same files RUN-IDENTITY-FW hashed and compares it with the digest of
+        the tree this test runs from, which RUN-IDENTITY binds to a commit. An
+        image left over from other source, or built without the identity,
+        fails here.
+        """
+        import importlib.util
+
+        script = _OSS_HW_ROOT / "sys" / "sep" / "dv" / "fw" / "fw_src_digest.py"
+        spec = importlib.util.spec_from_file_location("sep_fw_src_digest", script)
+        assert spec is not None and spec.loader is not None, f"cannot load {script}"
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        expected = mod.digest(_OSS_HW_ROOT.parent)
+
+        # Both images must carry it: the firmware's checkers run from ICCM, so a
+        # current DCCM image beside a stale ICCM image is not a current build.
+        for label, path in (("itcm", itcm_hex), ("dtcm", dtcm_hex)):
+            data = self._tcm_hex_bytes(path)
+            at = data.find(mod.MARKER)
+            assert at >= 0, (
+                f"CHK-FW-IDENTITY FAIL: no FW-BUILD-ID string in the {label} image "
+                f"{path}; it was not built by the current fw/fw.mk"
+            )
+            start = at + len(mod.MARKER)
+            got = data[start : start + 64].decode("ascii", "replace")
+            assert got == expected, (
+                f"CHK-FW-IDENTITY FAIL: the {label} image {path} was built from source "
+                f"digest {got}, but the firmware source at this commit digests to "
+                f"{expected}; the image is stale"
+            )
+        self.logger.info(
+            "CHK-FW-IDENTITY PASS: the itcm and dtcm images both carry FW-BUILD-ID %s, "
+            "equal to the digest of the firmware source at this commit (%d files)",
+            expected,
+            len(mod.source_files(_OSS_HW_ROOT.parent)),
+        )
 
     def _log_run_identity(self) -> None:
         """Record the commit, tree state and run directory in the log.
