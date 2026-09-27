@@ -465,7 +465,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1080203F</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sep_scratch_cold</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Scratch Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cold-reset scratch register bank.</p></td>
 </tr>
 <tr>
@@ -481,7 +481,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x108020BF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sep_scratch_warm</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Scratch Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Warm-reset scratch register bank.</p></td>
 </tr>
 <tr>
@@ -497,7 +497,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10803FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sep_reset_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Reset Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</p></td>
 </tr>
 <tr>
@@ -585,7 +585,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x1091FFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sep_lifecycle_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP Lifecycle Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state and transition control.</p></td>
 </tr>
 <tr>
@@ -609,7 +609,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x109303FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sep_efuse_map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse Map Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cached eFuse shadow registers.</p></td>
 </tr>
 <tr>
@@ -617,7 +617,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x109304FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">efuse_interface_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
 </tr>
 <tr>
@@ -625,7 +625,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x109305FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">efuse_mmr</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Token Registers Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse security-token registers.</p></td>
 </tr>
 <tr>
@@ -665,7 +665,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A07FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">30800 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">axil_mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI-Lite Mailbox Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Eight bidirectional mailbox pairs.</p></td>
 </tr>
 <tr>
@@ -681,7 +681,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A101FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">504 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">local_master_alias_remap_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Alias Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
 </tr>
 <tr>
@@ -689,8 +689,8 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A1027F</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">ap_output_remap_ctrl</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10280</p></td>
@@ -705,8 +705,8 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A1037F</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">stee_output_remap_ctrl</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10380</p></td>
@@ -721,8 +721,8 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A203FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1016 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">outbound_filter_ctrl</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Filter control registers. One per filter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A20400</p></td>
@@ -737,8 +737,8 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A211FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">504 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">inbound_filter_ctrl</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Filter control registers. One per filter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A21200</p></td>
@@ -753,7 +753,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A31FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4104 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">sep_cpu_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU control and interrupt registers.</p></td>
 </tr>
 <tr>

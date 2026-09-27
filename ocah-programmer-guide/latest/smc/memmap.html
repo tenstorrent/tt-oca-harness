@@ -352,7 +352,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x0 – BASE + 0x3FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core0_wdt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 0 watchdog timer.</p></td>
@@ -361,7 +361,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400 – BASE + 0x7FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core1_wdt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 1 watchdog timer.</p></td>
@@ -370,7 +370,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x800 – BASE + 0xBFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core2_wdt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 2 watchdog timer.</p></td>
@@ -379,7 +379,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xC00 – BASE + 0xFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core3_wdt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Watchdog Timer Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 watchdog timer.</p></td>
@@ -388,7 +388,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2000 – BASE + 0x27FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">204 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_reset_unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System reset control.</p></td>
@@ -397,34 +397,34 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2800 – BASE + 0x2FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">524 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_misc_wrap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Miscellaneous Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Top-level addrmap for SMC misc registers including scratch and chip config</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3000 – BASE + 0x3FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1036 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">gpio_intf</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">65 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Interface CSR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000 – BASE + 0x4FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">92 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_avsbus_controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus Controller Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus V1.3.1 Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x5000 – BASE + 0x5FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">3596 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_i2c_wrap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C and SMBus controller.</p></td>
@@ -433,7 +433,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x6000 – BASE + 0x6FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_uart_wrap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART controller.</p></td>
@@ -451,7 +451,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000 – BASE + 0x8FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">efuse_interface_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
@@ -460,7 +460,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x9000 – BASE + 0x9FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">768 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_telemetry_receiver_wrap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry Receiver Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry data receiver.</p></td>
@@ -469,7 +469,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xA000 – BASE + 0xAFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">36 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_system_timer_octs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCTS System Timer Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Open Chiplet Time Synchronization (OCTS) System Timer Registers</p></td>
@@ -487,7 +487,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0xB800 – BASE + 0xBFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">dfx_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFX Control and Status Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT status exposed to boot firmware.</p></td>
@@ -496,7 +496,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x10000 – BASE + 0x11FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">76 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_base_config</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Base Configuration Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC base-address and aperture configuration.</p></td>
@@ -505,7 +505,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x12000 – BASE + 0x12FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">248 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_alias_remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Alias Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
@@ -514,43 +514,43 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x13000 – BASE + 0x13FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_mmode_remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x14000 – BASE + 0x14FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_xvisor_remap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x15000 – BASE + 0x15FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">504 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_inbound_filter_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Filter control registers. One per filter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x16000 – BASE + 0x16FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">504 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_outbound_filter_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Filter control registers. One per filter</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x18000 – BASE + 0x37FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">129104 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC AXI-Lite Mailbox Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Thirty-two bidirectional mailbox pairs.</p></td>
@@ -568,16 +568,16 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x38200 – BASE + 0x382FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">zeroer_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI zeroer control register</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status registers for the AXI memory-zeroing engine.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x39000 – BASE + 0x39FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">704 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cpu_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC CPU-cluster control.</p></td>
@@ -586,10 +586,10 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x3A000 – BASE + 0x3FFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">oca_i3c_wrap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C Controller Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OCA I3C Controller wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wrapper address map instantiating the per-controller I3C CSR blocks.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x40000 – BASE + 0x5FFFF</p></td>
@@ -613,7 +613,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x160000 – BASE + 0x163FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cla</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC DFD MMR Aperture Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core Logic Analyzer debug and trace aperture.</p></td>
@@ -622,7 +622,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x400000 – BASE + 0x7FFFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_external</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC External Window Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-owned external peripheral aperture.</p></td>
@@ -658,7 +658,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x4000000 – BASE + 0x7FFFFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2125832 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_plic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLIC Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Platform-Level Interrupt Controller.</p></td>
@@ -667,7 +667,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8000000 – BASE + 0x800FFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_clint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLINT Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core-Local Interruptor.</p></td>
@@ -676,7 +676,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8010000 – BASE + 0x8010FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core0_beu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 0 bus-error unit.</p></td>
@@ -685,7 +685,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8011000 – BASE + 0x8011FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core1_beu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 1 bus-error unit.</p></td>
@@ -694,7 +694,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8012000 – BASE + 0x8012FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core2_beu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 2 bus-error unit.</p></td>
@@ -703,7 +703,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8013000 – BASE + 0x8013FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_core3_beu</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Bus Error Unit Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 bus-error unit.</p></td>
