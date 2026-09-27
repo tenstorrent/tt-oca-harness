@@ -360,7 +360,7 @@ never when it was written.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|ML-DSA-87 key generation through the ABR register aperture: identity and reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity.
+|ML-DSA-87 key generation through the ABR register aperture: reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity.
 |`sep_abr_mldsa_sign_verify_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -3282,7 +3282,7 @@ is why they are asserted from Python probes rather than left to the SVA.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the ML-DSA-87 key-generation path through the ABR register aperture: identity and reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity. Randomization is RANDCFG — the masking entropy words, and the seed word and bit flipped in the sensitivity leg, come from the run seed (`SepAbrKeygenCfg`).
+*Objective*: Proves the ML-DSA-87 key-generation path through the ABR register aperture: reset status, an ACVP keyGen known-answer public key, completion status, the PIC error and notification legs, `ZEROIZE`, and single-bit seed sensitivity. Randomization is RANDCFG — the masking entropy words, and the seed word and bit flipped in the sensitivity leg, come from the run seed (`SepAbrKeygenCfg`).
 
 *Test Coverage*: ML-DSA-87 keyGen known-answer, PIC legs, `ZEROIZE`, and seed sensitivity.
 
@@ -3294,20 +3294,13 @@ is why they are asserted from Python probes rather than left to the SVA.
 . Accesses are 32-bit beats (`AxSIZE=2`), one register each. Other access sizes and strobes are graded by <<sep_abr_access_size_test>>.
 . The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL.
 . This leaf writes the seed window over the bus. The key-vault seed path is not claimed.
+. The ML-DSA `NAME` and `VERSION` words are read and logged as information only. `abr_reg.rdl` declares them `sw = r` with no reset and no SEP document gives their values, so this leaf does not grade them. The bus-sweep leaves use them as read targets against a reference captured from the DUT (`CHK-ABR-ID-REF`).
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-NAME
-|Identity registers read `MLDSA-87`.
-|CHK-VERSION
-|The MLDSA version registers read `2.0.1`. The RDL declares NAME and VERSION
-`sw = r` with no reset, so the register sweep cannot grade them; the expected
-words are the DV-owned `ABR_ID_WORDS` table (`crypto.adoc` labels packed in
-the Caliptra NAME endian, plus the Adams Bridge 2.0.1 identity). NAME alone
-passes on a core of the wrong version.
 |CHK-RESET-STATUS
 |Reset STATUS is READY, not VALID, not ERROR.
 |CHK-NIST-PK
@@ -3378,15 +3371,16 @@ could only be checked by verifying it, which is the weaker claim.
 so every command is separated by one.
 . The private key and public key are written over the bus. The key-vault seed
 path is not claimed.
+. The ML-DSA `NAME` words are read and logged as information only, not graded:
+`abr_reg.rdl` gives them no reset and no SEP document gives their values. A
+dead aperture fails `CHK-SIGN`, whose window is compared against the published
+vector.
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-NAME
-|Identity registers read `MLDSA-87`. A dead aperture would read zero and every
-window compare below would be against a silent bus.
 |CHK-SIGN
 |The 1157-word `MLDSA_SIGNATURE` window matches the vendored ACVP sigGen vector
 word-for-word, with STATUS VALID and ERROR=0, and PIC `[34]` low.
@@ -3462,20 +3456,16 @@ ACVP publishes that key.
 . A final encapsulation re-establishes a live, vector-matched shared key. A
 sibling engine (HMAC) is then pulsed through `SW_RESET_N`, and afterwards the
 ABR bit itself. The pulse uses `SW_RESET_N.abr_sw_rst_n`.
+. The ML-KEM `NAME` and `VERSION` words are read and logged as information
+only, not graded: `abr_reg.rdl` gives them no reset and no SEP document gives
+their values. A dead decode fails every window compare against the published
+vectors.
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-KEM-NAME
-|The ML-KEM identity registers read `KEM-1024`. Every window compare below reads
-back over this aperture, so a dead decode would turn all of them into compares
-against zero.
-|CHK-KEM-VERSION
-|The ML-KEM version registers read `2.0.1`, from the same DV-owned
-`ABR_ID_WORDS` table as the ML-DSA pair. `sw = r` with no RDL reset, so the
-register sweep cannot grade them.
 |CHK-KEM-KEYGEN
 |For the ACVP seeds, the 392-word encapsulation key and the 792-word
 decapsulation key both match the published vector word-for-word.
@@ -3551,6 +3541,8 @@ both masters pipelining at once.
 *Test Procedure*:
 
 [arabic]
+. `CHK-ABR-ID-REF` reads each identity word alone on `s_axi` and keeps the
+values as the reference for every read below.
 . The inbound filter denies by default, so `s_axi` programs one read window over
 the whole ABR aperture (`0x1094_0000`..`0x1094_FFFF`) before `m_axi` reads.
 . A lone read of `MLDSA_VERSION1` on each master is the control.
@@ -3562,21 +3554,23 @@ pins.
 RID, address and data of each read.
 
 *Randomization*: none. The depths and orders are the cells, and the expected
-words are fixed identity values.
+words are the identity reference captured by `CHK-ABR-ID-REF`.
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-ABR-ID-REF
+|Before any other ABR read, each of the eight identity words (`MLDSA_NAME`, `MLDSA_VERSION`, `MLKEM_NAME`, `MLKEM_VERSION`) is read twice alone on `s_axi` at AxSIZE=2. Each read answers OKAY, the two reads agree, the value is nonzero, and each word differs from the other word of its 8-byte granule, so a lane or half swap is detectable. The bus monitor fails an OKAY beat with X/Z in the lanes read. `abr_reg.rdl` declares these words `sw = r` with no reset and no SEP document gives their values, so this capture, not a DV constant, is the reference for every later identity read. The values themselves are not claimed.
 |CHK-ABR-PIPE-CTRL
-|A lone read of `MLDSA_VERSION1` returns `0x0000_3100` OKAY on each master. The pipelined legs assume a working single read, so a failure here is a path fault rather than a pipelining one.
+|A lone read of `MLDSA_VERSION1` returns its captured reference, OKAY, on each master. The pipelined legs assume a working single read, so a failure here is a path fault rather than a pipelining one.
 |CHK-ABR-PIPE-DEPTH-M-AXI
-|On `m_axi`, every read of each depth-1, 2, 3, 4 and 8 pipeline of `MLDSA_VERSION1` returns `0x0000_3100` OKAY, both through the VIP result and as the lane of the R beat carrying its RID.
+|On `m_axi`, every read of each depth-1, 2, 3, 4 and 8 pipeline of `MLDSA_VERSION1` returns its captured reference, OKAY, both through the VIP result and as the lane of the R beat carrying its RID.
 |CHK-ABR-PIPE-DEPTH-S-AXI
 |The same on `s_axi`.
 |CHK-ABR-PIPE-MIXED
-|On each master, pipelines over `NAME0`, `NAME1`, `VERSION0` and `VERSION1` in ascending, descending and even-words-first order, and an eight-read interleaving with repeats, each return the word they name. The four words differ pairwise within each granule, so a response for the wrong word, or the wrong half of a granule, is a mismatch.
+|On each master, pipelines over `NAME0`, `NAME1`, `VERSION0` and `VERSION1` in ascending, descending and even-words-first order, and an eight-read interleaving with repeats, each return the word they name. `CHK-ABR-ID-REF` requires the two words of each granule to differ, so a response for the wrong half of a granule is a mismatch.
 |CHK-ABR-PIPE-SAME-ID
 |Four reads on one ARID return their own words in request order, so a path that reorders same-ID reads hands a request its neighbour's word.
 |CHK-ABR-PIPE-DUAL
@@ -3589,8 +3583,9 @@ words are fixed identity values.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Anti-vacuity*: the overlap is measured, not assumed, and graded alongside the
-data. The expected words are non-zero and distinct, so a zero or a neighbour's
-word is a mismatch rather than a coincidence.
+data. `CHK-ABR-ID-REF` requires the reference words to be nonzero and to differ
+within each granule, so a zero or the granule neighbour's word is a mismatch
+rather than a coincidence.
 
 *Not claimed*: writes, which <<sep_abr_access_size_test>> and
 <<sep_abr_concurrent_rw_test>> own, and the AHB transfer sequence itself.
@@ -3635,7 +3630,9 @@ writes, including 64-bit beats that cover one word whole and the other in part.
 [arabic]
 . `s_axi`, one access at a time through the SEP AXI sequencer, so the SEP
 scoreboard also fails any response the test did not mark as refused.
-. Reads are graded on the eight ML-DSA and ML-KEM identity words.
+. Reads are graded on the eight ML-DSA and ML-KEM identity words, against the
+reference `CHK-ABR-ID-REF` captures from 32-bit reads alone at the start.
+Neither `abr_reg.rdl` nor any SEP document gives their values.
 . Writes use the `global_intr_en_r` / `error_intr_en_r` pair (`+0x8100` /
 `+0x8104`), the one 8-byte granule with a read-write register in each half, and
 the 32-bit `error_internal_intr_count_r` counter (`+0x8200`), whose upper
@@ -3653,14 +3650,16 @@ through the VIP result.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-ABR-ID-REF
+|Before any other ABR read, each of the eight identity words (`MLDSA_NAME`, `MLDSA_VERSION`, `MLKEM_NAME`, `MLKEM_VERSION`) is read twice alone on `s_axi` at AxSIZE=2. Each read answers OKAY, the two reads agree, the value is nonzero, and each word differs from the other word of its 8-byte granule, so a lane or half swap is detectable. The bus monitor fails an OKAY beat with X/Z in the lanes read. `abr_reg.rdl` declares these words `sw = r` with no reset and no SEP document gives their values, so this capture, not a DV constant, is the reference for every later identity read. The values themselves are not claimed.
 |CHK-ABR-SIZE-RD32
-|Each identity word reads its own value at AxSIZE=2.
+|Each identity word reads its captured reference at AxSIZE=2.
 |CHK-ABR-SIZE-RD64
 |A 64-bit read at each identity pair returns `{high word, low word}`.
 |CHK-ABR-SIZE-RD64-UNALIGNED
 |An AxSIZE=3 read starting at the upper word of a granule returns that word, and the lower four byte lanes of its R beat read zero.
 |CHK-ABR-SIZE-RD-NARROW
-|Every byte and aligned halfword of the ML-DSA NAME and VERSION granules reads back the addressed bytes of the golden, and every other byte lane of its R beat reads zero.
+|Every byte and aligned halfword of the ML-DSA NAME and VERSION granules reads back the addressed bytes of the captured reference, and every other byte lane of its R beat reads zero.
 |CHK-ABR-SIZE-WR32
 |32-bit writes land on each write target, walked to all-ones and back to zero on the enables and through seeded values on the counter.
 |CHK-ABR-SIZE-WR64-FULL
@@ -3727,8 +3726,9 @@ alone, which owns the one read-write register pair in an 8-byte granule.
 issues all its writes on one AWID, so its writes to the register land in issue
 order. `s_axi` owns the interrupt-enable pair and `error_internal_intr_count_r`;
 `m_axi` owns `notif_intr_en_r` and `notif_cmd_done_intr_count_r`.
-. Identity reads name only words whose value no other identity word read holds;
-ML-KEM's VERSION words equal ML-DSA's and are left out, so a response swapped
+. `CHK-ABR-ID-REF` first captures every identity word from the DUT, and the
+seeded streams are built after it. Identity reads name only words whose
+captured value no other identity word read holds, so a response swapped
 between two identity reads is a mismatch.
 . Both masters run their seeded streams at once, each with several accesses
 outstanding, while seeded pause patterns hold RREADY and BREADY low.
@@ -3739,10 +3739,12 @@ outstanding, while seeded pause patterns hold RREADY and BREADY low.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-ABR-ID-REF
+|Before any other ABR read, each of the eight identity words (`MLDSA_NAME`, `MLDSA_VERSION`, `MLKEM_NAME`, `MLKEM_VERSION`) is read twice alone on `s_axi` at AxSIZE=2. Each read answers OKAY, the two reads agree, the value is nonzero, and each word differs from the other word of its 8-byte granule, so a lane or half swap is detectable. The bus monitor fails an OKAY beat with X/Z in the lanes read. `abr_reg.rdl` declares these words `sw = r` with no reset and no SEP document gives their values, so this capture, not a DV constant, is the reference for every later identity read. The values themselves are not claimed.
 |CHK-ABR-CRW-WRITE-RESP
 |Every full-word write answers OKAY and every partial-word write SLVERR.
 |CHK-ABR-CRW-READ
-|Every read answers OKAY. An identity word returns its value exactly. A read-write word returns a value inside its owner's write window: the last write whose response came back before the read was issued, or any later write issued before the read returned. At least one read-write word had a single legal value and at least one cross-master read observed a value the other master wrote.
+|Every read answers OKAY. An identity word returns its captured reference exactly. A read-write word returns a value inside its owner's write window: the last write whose response came back before the read was issued, or any later write issued before the read returned. At least one read-write word had a single legal value and at least one cross-master read observed a value the other master wrote.
 |CHK-ABR-CRW-STRESS
 |The pins show one AR per read and one AW and B per write, at least three accesses outstanding at once on each master, cycles with both masters outstanding, and RREADY and BREADY each held low while a response was valid.
 |CHK-ABR-CRW-FINAL
@@ -5407,7 +5409,7 @@ watermark together; no vehicle asserts that pair.
 . Write-lands is the anti-vacuity control: a complement write must move exactly the software-usable mask.
 . Two skips are read off the generated IP-XACT rather than named in a table, because a name table only silences the registers that happen to fail. A register the RDL declares `sw = w` returns no storage on a read, and a register that is read-only with no RDL reset value is driven by hardware, so the generated `_REG_DEFAULT` is a field default and not a POR value. Both shapes read back 0 against a DEFAULT of 0 in most cases, so a reset compare on them passes without the DUT having shown anything. `_ipxact_access()` joins the IP-XACT to the inventory by address -- the IP-XACT spells an array as one register with a `dim` where the Python header spells one symbol per element -- and `iter_register_walk` refuses an inventory register with no IP-XACT entry rather than deciding a skip on missing data. The `sep_reg_meta` self-test pins the resulting shapes (the ten hardware-driven registers by name, the write-only count, and two read-only-with-reset witnesses), so a generator change that renames the `access` or `resets` element fails there instead of silently restoring the vacuous compare.
 . Read-only WITH a declared reset is a different shape and stays in the reset walk: `ABR.MLDSA_VERIFY_RES_*` is `sw = r` with `resetsignal`, so its reset value is real and only the storage touch refuses it -- software cannot write it, and a touch would compare the readback against a value that never landed.
-. The behaviour behind the access-shaped skips is proven over the frontdoor elsewhere, not dropped: the eight ABR identity words by `CHK-NAME` / `CHK-VERSION` on `sep_abr_mldsa_keygen_kat_test` and `CHK-KEM-NAME` / `CHK-KEM-VERSION` on `sep_abr_mlkem_kat_test`, whose expected words come from the vendor parameter package that drives the registers; `ENTROPY_POOL.IRQ_CAUSE` and `.DATA` by `CHK-IRQ-CAUSE-LOW` and `CHK-POP-DATA` on `sep_entropy_pool_aperture_test`. The write-only registers -- keys, data-in windows, command triggers and clear registers -- have no read-side POR to relocate, and their coverage is the functional tests that write them and observe the effect.
+. The behaviour behind the access-shaped skips is proven over the frontdoor elsewhere, not dropped: the eight ABR identity words have no RDL reset and no value in any SEP document, so no leaf grades a value for them: `sep_abr_access_size_test`, `sep_abr_pipelined_read_matrix_test` and `sep_abr_concurrent_rw_test` read them against a reference captured from the DUT by `CHK-ABR-ID-REF`, which requires each word to answer OKAY, read the same twice, be nonzero and differ from its granule partner; `ENTROPY_POOL.IRQ_CAUSE` and `.DATA` by `CHK-IRQ-CAUSE-LOW` and `CHK-POP-DATA` on `sep_entropy_pool_aperture_test`. The write-only registers -- keys, data-in windows, command triggers and clear registers -- have no read-side POR to relocate, and their coverage is the functional tests that write them and observe the effect.
 . Inbound-filter START/END stay in the write sweep under the full export mask; readback is checked against the `allow_burst=0` 8-byte granule (`hw/ip/axi_filter/doc/index.adoc`, `filter_ctrl.rdl`) with the peer at reset (`END_ADDR` reset `0x7`): START rounds down and END rounds up when they share a beat. The 4 KB granule is `CHK-PAGE-WIDEN` on `sep_fabric_inbound_filter_rule_matrix_test`.
 . The inventory is seed-stable. Measured on the current export: export 2127, inventory 1953, nometa 174, reset 479, write-lands 50, storage touch 131 -- the walk line carries the live tally and the checkers assert against configuration-derived totals, not against these figures. Write-lands is the full-mask registers (scratch-cold, scratch-warm, `SEP_CPU_CTRL`) plus the inbound START/END pairs under the wrap model. Storage touch is every admitted side-effect-free register. `TOUCH_BLOCKS` is the anti-vacuity list (AES/HMAC/KMAC/OTBN/DMA/SPI/WDT and both mailboxes); the sweep fails if any of those nine IPs stops offering a candidate.
 . `WDT_TIMER` threshold registers return the write on `clk_i` and stay busy until `prim_reg_cdc` finishes on `clk_wdt_i`. This sweep runs `clk_wdt` at eight core periods so that handshake retires inside the AXI timeout. The compare is the written value.
@@ -5829,7 +5831,7 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-ABR-CONTROL
-|The control read answers OKAY and returns the generated golden for `MLDSA_VERSION1`. It is the comparand for the whole sweep, so a control that answered zero, or errored, would let every pipelined read compare equal to it and this leaf would be green over a dead aperture. Address and expected word both come from the generated map, never a literal.
+|The control read of `MLDSA_VERSION1` answers OKAY with a known (no X/Z, enforced by the bus monitor) and nonzero value. `abr_reg.rdl` gives the register no reset and no SEP document gives its value, so the control read alone is the comparand for the whole sweep; a control that answered zero, or errored, would let every pipelined read compare equal to it and this leaf would be green over a dead aperture. The address comes from the RDL, never a literal.
 |CHK-ABR-PIPELINED-READ
 |Every read, at every depth, returns the value the register returns when read alone, with an OKAY response. `MLDSA_VERSION1` is read-only with unconditional combinational readback, so it holds one value and any other response is wrong. An error response is recorded separately from silently wrong data. A timeout counts as a failure, not a skip.
 |===
@@ -6861,8 +6863,9 @@ and the vault-confidentiality rule that withholds the shared key from software.
 
 [arabic]
 . Stage a valid PROD OTP image, bring entropy up, release the KM, wait for
-`RESP_KM_READY`. Read `MLKEM_NAME` and require the KEM-1024 identity, so the
-window compares below cannot be zero against zero.
+`RESP_KM_READY`. Read `MLKEM_NAME` and log it as information only: `abr_reg.rdl`
+gives it no reset and no SEP document gives its value, so it is not graded. A
+dead decode reads both reference keys as zero and fails `CHK-KEM-SEED-REF`.
 . KEYGEN on the ALT `(D, Z)` pair written directly to the registers and keep
 the encapsulation key. `ZEROIZE`, then KEYGEN on the REF pair and require a
 different encapsulation key. The registers are left holding REF.
@@ -6898,8 +6901,6 @@ its `KEY_VALID` is clear is not claimed here.
 |Checker |Contract
 |CHK0
 |`rom_main` boots on real entropy and announces `RESP_KM_READY`. This is the bench build with the boot and unrecoverable-fault SRAM wipes compiled out; see Known Limitations, "KM application ROM wipe paths".
-|CHK-KEM-NAME
-|The ML-KEM aperture returns the KEM-1024 identity words, so every window compare below reads a live decode.
 |CHK-KEM-SEED-REF
 |The ALT and REF `(D, Z)` pairs produce different encapsulation keys. Without this the sideload compare could not distinguish a delivered seed from a stale one.
 |CHK-KEM-SEED-SIDELOAD

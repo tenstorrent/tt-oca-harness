@@ -29,7 +29,9 @@ Narrow reads, and 64-bit reads at addr[2]=1, are graded on the whole 64-bit R
 beat that ``AbrBusWatch`` records on the ``s_axi`` pins as well as through the
 VIP result, so a byte lane outside the access that is not zero fails.
 
-Reads are graded on the identity words, whose values are fixed. Writes use the
+Reads are graded on the identity words. Their values are not given by the RDL
+or any SEP document, so ``CHK-ABR-ID-REF`` first reads each word alone at
+AxSIZE=2 and every later read is compared against that capture. Writes use the
 ``global_intr_en_r`` / ``error_intr_en_r`` pair, the one 8-byte granule with a
 read-write register in each half, and the 32-bit ``error_internal_intr_count_r``
 counter, whose upper neighbour owns no register. Every register written here is
@@ -52,6 +54,7 @@ from seq_lib.sep_abr_bus_seq import (
     ERROR_COUNT,
     ERROR_INTR_EN,
     GLOBAL_INTR_EN,
+    IDENTITY_PAIRS,
     IDENTITY_WORDS,
     RESP_OKAY,
     RESP_SLVERR,
@@ -108,7 +111,7 @@ def _selftest() -> None:
     assert _strobe(ERROR_INTR_EN.addr, 4) == 0xF0
     assert _strobe(GLOBAL_INTR_EN.addr, 7) == 0x7F
     assert _strobe(GLOBAL_INTR_EN.addr + 2, 6) == 0xFC
-    assert _in_lanes(0x1094_000D, 0x31) == 0x0000_3100_0000_0000
+    assert _in_lanes(0x1094_000D, 0xA5) == 0x0000_A500_0000_0000
 
 
 _selftest()
@@ -140,6 +143,7 @@ class sep_abr_access_size_test(sep_base_test):
     """ABR 64-bit, narrow and partial-strobe accesses follow [[abr-access-size]]."""
 
     required_evidence = (
+        "CHK-ABR-ID-REF",
         "CHK-ABR-SIZE-RD32",
         "CHK-ABR-SIZE-RD64",
         "CHK-ABR-SIZE-RD64-UNALIGNED",
@@ -203,6 +207,7 @@ class sep_abr_access_size_test(sep_base_test):
         self.logger.info("abr access size: %s", cfg.summary())
         await self.bring_up_no_cpu()
         self.abr = SepAbrBus(self)
+        await self.abr.capture_identity(BUS)
         top: Any = cocotb.top
         self.clk = top.clk_i
         self.watch = AbrBusWatch((BUS,))
@@ -240,12 +245,12 @@ class sep_abr_access_size_test(sep_base_test):
                 f"0x{acc.data:08x}, expected 0x{w.value:08x}"
             )
         self.logger.info(
-            "CHK-ABR-SIZE-RD32 PASS: %d identity words each read their own value at AxSIZE=2",
+            "CHK-ABR-SIZE-RD32 PASS: %d identity words each read their captured value at AxSIZE=2",
             len(IDENTITY_WORDS),
         )
 
         # --- CHK-ABR-SIZE-RD64 ------------------------------------------------
-        pairs = list(zip(IDENTITY_WORDS[::2], IDENTITY_WORDS[1::2]))
+        pairs = list(IDENTITY_PAIRS)
         for lo, hi in pairs:
             acc = await self._rd(lo.addr, nbytes=8, size=3)
             want = (hi.value << 32) | lo.value

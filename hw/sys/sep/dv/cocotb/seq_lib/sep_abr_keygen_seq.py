@@ -3,10 +3,11 @@
 """Adams Bridge ML-DSA-87 keyGen driver (sep_abr_mldsa_keygen_kat_test).
 
 Aperture base is the ABR row of ``hw/sys/sep/doc/memory_map.adoc``.
-Register offsets come from the Caliptra ``abr_reg.rdl``. Identity words
-are the ASCII of ML-DSA-87 from ``crypto.adoc``. 32-bit beats (size=2)
-on the 64-bit port, one register per access; STATUS at +0x14 is an odd-word
-offset. ``[[abr-access-size]]`` in ``hw/sys/sep/doc/adams_bridge.adoc`` gives
+Register offsets come from the Caliptra ``abr_reg.rdl``. The RDL declares the
+``MLDSA_NAME`` / ``MLDSA_VERSION`` identity words ``sw = r`` with no reset, and
+no SEP document gives their values, so this driver holds their addresses
+only. 32-bit beats (size=2) on the 64-bit port, one register per access;
+STATUS at +0x14 is an odd-word offset. ``[[abr-access-size]]`` in ``hw/sys/sep/doc/adams_bridge.adoc`` gives
 the rules for other access sizes.
 """
 
@@ -16,11 +17,9 @@ from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
-    abr_id_golden,
     abr_off,
     agg_from_pic,
     kv_field_mask,
-    mldsa_name_words,
     window,
 )
 
@@ -45,11 +44,6 @@ ABR_NOTIF_INTR_EN = ABR_INTR + abr_off("notif_intr_en_r")
 ABR_ERROR_INTR = ABR_INTR + abr_off("error_internal_intr_r")
 ABR_ERROR_TRIG = ABR_INTR + abr_off("error_intr_trig_r")
 ABR_NOTIF_INTR = ABR_INTR + abr_off("notif_internal_intr_r")
-
-NAME0_EXP, NAME1_EXP = mldsa_name_words()
-# NAME and VERSION are `sw = r` with no RDL reset. The expected words are the
-# DV-owned goldens in sep_spec_tables (crypto.adoc labels + Adams Bridge 2.0.1).
-VER0_EXP, VER1_EXP = abr_id_golden("MLDSA_CORE_VERSION")
 
 CMD_KEYGEN = abr_ctrl_cmd("MLDSA_CTRL", "KEYGEN")
 CMD_SIGN = abr_ctrl_cmd("MLDSA_CTRL", "SIGN")
@@ -179,11 +173,6 @@ def _selftest() -> None:
     assert ABR_ERROR_INTR - ABR_INTR == 0x14
     assert ABR_ERROR_TRIG - ABR_INTR == 0x1C
     assert ABR_NOTIF_INTR - ABR_INTR == 0x18
-    assert NAME0_EXP == 0x44534D4C
-    assert NAME1_EXP == 0x3837412D
-    # The crypto.adoc label encoding and the DV golden table must agree.
-    assert (NAME0_EXP, NAME1_EXP) == abr_id_golden("MLDSA_CORE_NAME")
-    assert (VER0_EXP, VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
     assert ABR_VERSION0 - ABR_NAME0 == 0x8
     cfg = SepAbrKeygenCfg(1)
     assert len(cfg.entropy) == ENTROPY_WORDS

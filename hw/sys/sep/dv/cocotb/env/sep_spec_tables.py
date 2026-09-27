@@ -166,45 +166,6 @@ def fabric_output_remap_regions() -> int:
     return OUTPUT_REMAP_REGIONS
 
 
-def mldsa_name_words(label: str = "MLDSA-87") -> tuple[int, int]:
-    """NAME registers: 8-char ASCII, each 32-bit word half-word swapped.
-
-    crypto.adoc names ML-DSA-87. Caliptra NAME endian stores each
-    four-character group as a 16-bit-swapped word.
-    """
-    raw = label.encode("ascii")
-    if len(raw) != 8:
-        raise ValueError(f"NAME label must be 8 ASCII chars, got {label!r}")
-
-    def word(chunk: bytes) -> int:
-        x = int.from_bytes(chunk, "big")
-        return ((x & 0xFFFF) << 16) | (x >> 16)
-
-    return word(raw[:4]), word(raw[4:])
-
-
-# DV-owned ABR identity goldens. crypto.adoc names ML-DSA-87 and ML-KEM-1024;
-# the Caliptra NAME field stores each 8-char label as two 16-bit-swapped words.
-# Version is the Adams Bridge 2.0.1 identity this package grades — the RDL
-# declares NAME/VERSION ``sw = r`` with no reset, so the register sweep cannot
-# supply them. A compare against a design parameter package would ask the DUT
-# to agree with itself.
-ABR_ID_WORDS: dict[str, tuple[int, int]] = {
-    "MLDSA_CORE_NAME": mldsa_name_words("MLDSA-87"),
-    "MLDSA_CORE_VERSION": mldsa_name_words("2.0.1\0\0\0"),
-    "MLKEM_CORE_NAME": mldsa_name_words("KEM-1024"),
-    "MLKEM_CORE_VERSION": mldsa_name_words("2.0.1\0\0\0"),
-}
-
-
-def abr_id_golden(param: str) -> tuple[int, int]:
-    """The DV-owned expected words for one ABR identity register pair."""
-    try:
-        return ABR_ID_WORDS[param]
-    except KeyError as exc:
-        raise KeyError(f"unknown ABR identity {param!r}") from exc
-
-
 @lru_cache(maxsize=1)
 def abr_offsets() -> dict[str, int]:
     """CSR offsets from ``abr_reg.rdl``."""
@@ -655,13 +616,6 @@ def _selftest() -> None:
     assert CRYPTO_EDN_SINKS == ("aes", "kmac", "otbn_rnd", "otbn_urnd")
     assert kpv_scrambler_ctrl_mask("ENABLE") == 1
     assert kpv_scrambler_ctrl_mask("LOCK") == 2
-    name0, name1 = mldsa_name_words()
-    assert name0 == 0x44534D4C
-    assert name1 == 0x3837412D
-    assert abr_id_golden("MLDSA_CORE_NAME") == (name0, name1)
-    assert abr_id_golden("MLKEM_CORE_NAME") == mldsa_name_words("KEM-1024")
-    assert abr_id_golden("MLDSA_CORE_VERSION") == (0x302E322E, 0x00003100)
-    assert abr_id_golden("MLKEM_CORE_VERSION") == (0x302E322E, 0x00003100)
     locked = esrc_fips_locked_fields()
     # A parse that silently matched nothing would empty the post-lock walk.
     assert len(locked) >= 10, locked

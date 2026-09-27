@@ -67,7 +67,7 @@ from sep_reg_meta import (
     sym,
 )
 
-from seq_lib.sep_abr_keygen_seq import ABR_NAME0, NAME0_EXP
+from seq_lib.sep_abr_keygen_seq import ABR_NAME0
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
@@ -167,8 +167,8 @@ WRITE_ONLY = [
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
 #
 # Blocks whose address AND reset value are exported take both from the header;
-# ABR NAME and the entropy-pool STATUS come from their owning seq modules.
-# ABR NAME0 comes from the owning seq (ASCII of ML-DSA-87).
+# The ABR NAME0 and entropy-pool STATUS addresses come from their owning seq
+# modules.
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     (
@@ -207,7 +207,9 @@ FABRIC_BLOCKS = [
     ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), CSRNG.reset("INTR_STATE")),
     ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), EDN.reset("INTR_STATE")),
     ("ENTROPY_SRC", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR"), None),
-    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]; no OSS RDL block
+    # MLDSA_NAME[0]. abr_reg.rdl declares it sw=r with no reset, and no SEP
+    # document gives its value, so the row checks accessibility only.
+    ("ADAMS_BRIDGE", ABR_NAME0, None),
     ("ENTROPY_POOL", POOL_STATUS, None),  # adapter not in PeakRDL
     ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
     ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),

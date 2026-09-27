@@ -60,8 +60,6 @@ from seq_lib.sep_abr_keygen_seq import (
     CTRL_EXTERNAL_MU,
     CTRL_ZEROIZE,
     IRQ_ABR_ERROR,
-    NAME0_EXP,
-    NAME1_EXP,
     SIG_WORDS,
     ST_ERROR,
     ST_READY,
@@ -128,16 +126,16 @@ class sep_abr_mldsa_sign_verify_kat_test(sep_base_test):
         await self.bring_up_no_cpu()
         abr = SepAbr(self)
 
-        # Same identity gate the keygen leaf uses: if the aperture were dead
-        # every window below would read zero and the compares would be against
-        # a silent bus.
+        # Logged for the record, not graded: abr_reg.rdl declares NAME sw=r
+        # with no reset, and no SEP document gives its value. A dead aperture
+        # fails the signature compare against the published vector below.
         name0 = await abr.rd32(ABR_NAME0)
         name1 = await abr.rd32(ABR_NAME1)
-        assert name0 == NAME0_EXP and name1 == NAME1_EXP, (
-            f"MLDSA NAME 0x{name0:08x}_0x{name1:08x}, "
-            f"expected 0x{NAME0_EXP:08x}_0x{NAME1_EXP:08x} (MLDSA-87)"
+        self.logger.info(
+            "ABR ML-DSA identity words (information only): NAME0=0x%08x NAME1=0x%08x",
+            name0,
+            name1,
         )
-        self.logger.info("CHK-NAME PASS: NAME0=0x%08x NAME1=0x%08x (MLDSA-87)", name0, name1)
 
         await abr.enable_notif()
         await self._assert_irq_low(IRQ_ABR_ERROR, what="before error_intr_trig")

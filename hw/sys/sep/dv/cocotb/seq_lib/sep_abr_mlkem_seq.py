@@ -5,8 +5,9 @@
 ML-KEM has its own register block beside ML-DSA in the Caliptra ``abr_reg.rdl``:
 a separate ``MLKEM_CTRL`` / ``MLKEM_STATUS`` pair and its own key, ciphertext
 and shared-key windows. Offsets come from that RDL by symbol, the same way
-``sep_abr_keygen_seq`` resolves the ML-DSA ones. Identity words are the ASCII
-of ML-KEM-1024 from ``crypto.adoc``, packed as ``KEM-1024``.
+``sep_abr_keygen_seq`` resolves the ML-DSA ones. The RDL declares the
+``MLKEM_NAME`` / ``MLKEM_VERSION`` identity words ``sw = r`` with no reset, and
+no SEP document gives their values, so this driver holds their addresses only.
 
 Two properties of this block shape the driver, and both are false-pass hazards:
 
@@ -24,10 +25,8 @@ from __future__ import annotations
 from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
-    abr_id_golden,
     abr_off,
     kv_field_mask,
-    mldsa_name_words,
     window,
 )
 
@@ -82,12 +81,6 @@ KEM_EK_WORDS = 392
 KEM_DK_WORDS = 792
 KEM_CT_WORDS = 392
 
-# Identity words. crypto.adoc names ML-KEM-1024; the Caliptra NAME field is the
-# 8-char label KEM-1024, packed the same way as the ML-DSA-87 pair.
-KEM_NAME0_EXP, KEM_NAME1_EXP = mldsa_name_words("KEM-1024")
-# `sw = r` with no RDL reset. DV-owned golden from sep_spec_tables.
-KEM_VER0_EXP, KEM_VER1_EXP = abr_id_golden("MLKEM_CORE_VERSION")
-
 
 class SepAbrMlkem(SepAbr):
     """ML-KEM view of the same 32-bit ABR aperture the ML-DSA driver uses."""
@@ -121,12 +114,6 @@ def _selftest() -> None:
     assert MLKEM_ENCAPS_KEY + 4 * KEM_EK_WORDS <= MLKEM_CIPHERTEXT
     # And the whole ML-KEM aperture must stay inside the ABR decode window.
     assert MLKEM_CIPHERTEXT + 4 * KEM_CT_WORDS <= window("ABR").end
-    # Encoding of the crypto.adoc label through the shared NAME packer.
-    assert KEM_NAME0_EXP == 0x4D2D4B45
-    assert KEM_NAME1_EXP == 0x32343130
-    # The crypto.adoc label encoding and the DV golden table must agree.
-    assert (KEM_NAME0_EXP, KEM_NAME1_EXP) == abr_id_golden("MLKEM_CORE_NAME")
-    assert (KEM_VER0_EXP, KEM_VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
     assert MLKEM_VERSION0 - MLKEM_NAME0 == 0x8
 
 
