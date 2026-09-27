@@ -1,0 +1,105 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+name: Update container dependencies
+
+on:
+  schedule:
+    - cron: "43 9 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: update-container-deps
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_AW_GITHUB_TOKEN || github.token }}
+
+      - name: Checkout manifest submodule
+        run: |
+          git config --global \
+            url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf \
+            "git@github.com:tenstorrent/"
+          git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.11"
+
+      # Move the three dependency sources the container closure is built from in
+      # lockstep, so the candidate image is rebuilt and validated once for the
+      # whole set rather than once per source. Patch-sensitive source pins under
+      # nix/packages/ (for example the GCC toolchain) are left for manual review.
+      - name: Update Nix, Python and manifest pins
+        run: |
+          set -euo pipefail
+          nix flake update
+          uv lock --upgrade
+          git submodule update --remote hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+
+      - name: Open update pull request
+        shell: bash
+        run: |
+          set -euo pipefail
+          paths="flake.lock uv.lock hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
+          if [ -z "$(git status --porcelain -- $paths)" ]; then
+            echo "Container dependencies are current."
+            exit 0
+          fi
+
+          branch=automation/update-container-deps
+          git fetch origin "$branch:refs/remotes/origin/$branch" || true
+          git switch -C "$branch"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $paths
+          git commit -m "nix: Update container dependency pins"
+          git push --force-with-lease origin "HEAD:$branch"
+
+          pr="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')"
+          if [ -z "$pr" ]; then
+            gh pr create \
+              --base main \
+              --head "$branch" \
+              --reviewer aottavianoTT \
+              --title "nix: Update container dependency pins" \
+              --body "$(cat <<'EOF'
+          ## Summary
+          Weekly lockstep refresh of the sources the container closure is built from:
+
+          - `flake.lock` — `nix flake update` (nixpkgs and other flake inputs)
+          - `uv.lock` — `uv lock --upgrade` (Python dependency versions)
+          - `tt-oca-manifest` submodule — advanced to its latest upstream commit
+
+          The `container` workflow rebuilds and verifies the candidate image on this
+          PR automatically (its path filter covers `flake.lock`, `uv.lock`, `nix/**`
+          and the manifest gitlink), so a green check here means the refreshed closure
+          builds and passes the image smoke test.
+
+          Patch-sensitive source pins under `nix/packages/` (for example the GCC
+          toolchain) are intentionally not rewritten here; bump those manually.
+
+          ## Test plan
+          `container` workflow (build + verify the candidate image).
+          EOF
+          )"
+          else
+            gh pr edit "$pr" --add-reviewer aottavianoTT
+          fi
