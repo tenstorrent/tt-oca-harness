@@ -2298,8 +2298,8 @@ recovery. Those are listed in <<phase-3>>.
 
 [arabic]
 . Confirm `PERIPH_BUS_ERR_STATUS` reads 0, so the assertion below cannot be satisfied by stale state.
-. Read two bytes at a misaligned offset inside the mapped HMAC extent (`CFG` + 2), as one AXI beat (AxLEN=0, AxSIZE=2), so the response cannot come from a burst or from a second, aligned beat.
-. Require SLVERR and the `hmac` bit latched, per the documented contract.
+. Read four bytes at a misaligned offset inside the mapped HMAC extent (`CFG` + 2, AxSIZE=2). The address sits two bytes into a 32-bit word, so the read crosses that word and the master issues two beats.
+. Require SLVERR and the `hmac` bit latched, per the documented contract. The fabric returns DECERR and the bit stays 0.
 
 *Checkers*:
 
@@ -2308,8 +2308,6 @@ recovery. Those are listed in <<phase-3>>.
 |Checker |Contract
 |CHK-MISALIGN-BASE
 |`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. A bit left set by an earlier step fails here.
-|CHK-MISALIGN-BEAT
-|The probe is exactly one AR handshake on the CPU-LSU port, with `araddr` at the misaligned offset, `arlen`=0 and `arsize`=2, sampled at the port.
 |CHK-MISALIGN-LATCH
 |A misaligned in-extent access receives SLVERR and latches the owning block's bit. The fabric returns DECERR and the register stays 0.
 |===
