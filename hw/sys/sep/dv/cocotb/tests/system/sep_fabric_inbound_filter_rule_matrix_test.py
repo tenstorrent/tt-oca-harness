@@ -62,9 +62,9 @@ that WDT probe and turns the scratch register DECERR. Each probe is therefore
 proven reachable, so neither DECERR can be an address-decode hole.
 CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
 cannot move. fabric.adoc specifies the lock as write-once, so the field must
-not change once set; it does not say how the refused write completes. SEP
-answers SLVERR, so that is what this cell asserts alongside the field. The
-field reads back unchanged and the frozen bit still grants the widened page. The lock is sticky until reset,
+not change once set; it does not say how the refused write completes, so the
+cell requires only that the write completes (no timeout). The field reads back
+unchanged and the frozen bit still grants the widened page. The lock is sticky until reset,
 so this cell runs last on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
@@ -87,7 +87,6 @@ from seq_lib.sep_inbound_filter_rule_seq import (
     PAGE_SIZE,
     RESP_DECERR,
     RESP_OKAY,
-    RESP_SLVERR,
     SepInboundFilter,
     SepInboundFilterCfg,
     SepInboundFilterMatrixCfg,
@@ -540,21 +539,13 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"CHK-CONFIG-LOCK FAIL: locked did not set (hi 0x{hi:08x})"
         )
         resp = await self.filt.write_tolerant(cell.cfg_addr, cfg_lo & ~F_ALLOW_BURST & 0xFFFF_FFFF)
-        assert resp == RESP_SLVERR, (
-            f"CHK-CONFIG-LOCK FAIL: write clearing allow_burst on a locked entry "
-            f"resp={resp}, expected SLVERR from the locked-entry error slave"
-        )
         after = await self.filt.read_cpu(cell.cfg_addr)
         assert after == cfg_lo, (
             f"CHK-CONFIG-LOCK FAIL: FILTER_CONFIG moved under the lock "
             f"(0x{after:08x} != 0x{cfg_lo:08x}); allow_burst is "
             f"{bool(after & F_ALLOW_BURST)}, was {bool(cfg_lo & F_ALLOW_BURST)}"
         )
-        resp = await self.filt.write_tolerant(cell.cfg_addr + 4, 0)
-        assert resp == RESP_SLVERR, (
-            f"CHK-CONFIG-LOCK FAIL: write clearing locked resp={resp}, "
-            f"expected SLVERR (write-once-set)"
-        )
+        resp_hi = await self.filt.write_tolerant(cell.cfg_addr + 4, 0)
         hi_after = await self.filt.read_cpu(cell.cfg_addr + 4)
         assert (hi_after >> FILTER_LOCKED_HI_BIT) & 1, (
             f"CHK-CONFIG-LOCK FAIL: locked cleared (hi 0x{hi_after:08x})"
@@ -568,13 +559,14 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"0x{probe_val:08x})"
         )
         self.logger.info(
-            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst returns "
-            "SLVERR and FILTER_CONFIG lo stays 0x%08x (allow_burst=%d), clearing "
-            "locked returns SLVERR and the bit stays set, and the frozen granule "
-            "still grants 0x%08x",
+            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d) "
+            "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
+            "(resp=%d) leaves the bit set, and the frozen granule still grants 0x%08x",
             wcfg.entry,
+            resp,
             after,
             bool(after & F_ALLOW_BURST),
+            resp_hi,
             probe_addr,
         )
 

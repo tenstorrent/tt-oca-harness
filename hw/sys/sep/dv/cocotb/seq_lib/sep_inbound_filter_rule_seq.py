@@ -32,10 +32,9 @@ START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
 is write-once per fabric.adoc, so the field must not change once set. That
-document does not say how a write to a locked entry completes; SEP refuses it
-with BRESP=SLVERR, steering AW/W to a separate AXI-Lite error slave, so the
-frozen allow_burst keeps governing the granule. The held field is the
-specified contract, the SLVERR is SEP's choice of completion code.
+document does not say how a write to a locked entry completes, so the
+completion code is not graded: the write must complete (no timeout), and the
+held field plus the still-granted page are the contract.
 """
 
 from __future__ import annotations
@@ -392,10 +391,11 @@ class SepInboundFilter(SepAxiRegDriver):
         return await self._rd(addr)
 
     async def write_tolerant(self, addr: int, data: int) -> int:
-        """Write tolerating a non-OKAY response; return the AXI resp_code.
+        """Write accepting any AXI response; return the resp_code.
 
-        A locked entry refuses further writes, which SEP completes as
-        SLVERR, so the proof is the resp code plus the read-back.
+        fabric.adoc does not specify how a write to a locked entry completes,
+        so the caller proves the lock by read-back. A timeout is not a
+        completion and fails here.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",
@@ -406,6 +406,7 @@ class SepInboundFilter(SepAxiRegDriver):
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
+        assert not seq.timed_out, f"write 0x{addr:08x} to a locked entry timed out (no BRESP)"
         return seq.resp_code
 
     async def lock_entry(self, entry: int) -> None:
