@@ -1435,6 +1435,7 @@ module sep_uvm_top
     // 2'b10 wait are taken from the design's state encoding, because no
     // document names them; this leaf grades recovery against that set and
     // injects its complement. Owner: sep_efuse_illegal_state_fail_closed_test.
+    // Approved against ad4ae87ec, the commit that set both encodings.
     // Review at the next change to the state encoding in
     // efuse_read_interface.sv or efuse_program_interface.sv.
     //
