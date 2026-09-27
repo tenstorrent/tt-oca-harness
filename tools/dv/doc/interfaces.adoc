@@ -208,9 +208,9 @@ summary; either grades the run `ERROR`
 (xref:run-dv.adoc#runner-coverage-grading[How the grade forms]). Coverage is
 graded over a complete regression only: an interrupted or truncated run is
 refused. A changed policy changes `comparison_key`, so trend points before
-and after are separate series. A lapsed waiver grades as open. Checked by
-`--validate-configs` (expiry warnings), the coverage-inputs,
-coverage-thresholds, coverage-closure, policy-expiry, and waive tests, and
+and after are separate series, and one run tree graded against one policy
+always grades the same. Checked by `--validate-configs`, the coverage-inputs,
+coverage-thresholds, coverage-closure, and waive tests, and
 the coverage evidence clause of the action's gate. Hosted CI publishes the
 score but does not collect it; the coverage regression runs on the licensed
 simulator flow outside hosted CI

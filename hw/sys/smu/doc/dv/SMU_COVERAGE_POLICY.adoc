@@ -132,13 +132,12 @@ ConfigError on the first run.
 Every `[[holes]]` row must carry:
 
 * `tool`, `metric_family` (the family that database holds: `user` and the
-wrapper's own `toggle`), `hierarchy` or file selector
+wrapper's own `toggle`), `hierarchy` or file selector (`[[holes.native]]`)
 * `category` (one of the runner's hole categories, such as
 `missing_stimulus`, `config_disabled`, `out_of_scope` or `unreachable`)
-* `disposition`
-* `owner`
-* `review_date`
-* `issue` when the disposition is actionable
+* `disposition`, `status`, `confidence`, `rationale`
+* `owner`, `reviewer`
+* `issues` when the disposition is actionable
 
 `max_unclassified_points = 0` is the fail-on-new-hole knob. It is not
 set here; it is set together with the threshold, from a measured weekly
