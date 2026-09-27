@@ -6465,10 +6465,11 @@ Drive `smc_irq_multi_sample_test_seq`. Each checker below is a named compare the
 * Without the gate below, dropping `probe_positive_controls` from the test would turn this testcase into an all-observed-only run that still passes.
 * The credits come from the passive ledger in `env/smc_probe_liveness.py`, which is fed by a DUT observation (the probe seen at 1), so requiring them is DUT-sensitive: a stuck-at-0 / undriven / mis-bound aggregate fails here.
 * `item.resolvable` is **not** presented as this testcase's check: every retained run is Verilator (2-state), where `value.is_resolvable` cannot be False, so it has no FAIL-ON path in the evidence that exists.
+* Two unrelated sources asserted at once: `SYNC_REG.sync` (`reset_unit.rdl`) raises `tb_sync_irq`, and while it is held UART0 `IER.ETBEI` with `ITR.TTBEI` raises `tb_uart_irq_any`. Both must read 1 in one `clk_smc_i` sample; releasing the UART source must drop only `tb_uart_irq_any`, and releasing `SYNC_REG` must return both to 0. A shared or cross-wired output fails one of those samples. The UART clock gate and both UART registers are restored.
 
 *Test Procedure*:
 
-Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
+Drive `smc_irq_observe_test_seq` on the IRQ sequencer, then `smc_irq_concurrent_seq` on the SEP_IN AXI sequencer. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
 
 
 *Checkers*:
@@ -6476,11 +6477,12 @@ Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
+|`CHK-IRQ-CONCURRENT-SOURCES` |Both outputs read 1 together, each release dropped only its own output, and each level held for four cycles, all within a bounded poll
 |`CHK-IRQ-OBSERVE-IDLE-CHECKED` |Named compare in `smc_irq_observe_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
+*Pass Criteria*: `CHK-IRQ-CONCURRENT-SOURCES` and `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `hosted`, `irq`.
 '''''
 
 [[sec-119-smc_temp_interrupt_test]]
