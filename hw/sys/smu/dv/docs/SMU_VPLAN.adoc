@@ -1289,7 +1289,8 @@ row's EXPECT sentence is worth, read the check.
 
 * The TDR is 155 bits on this wrapper: 68 SMC + 8 SEP + 1 EXT ports, two bits each, plus `reset_hold` (`doc/integrator/src/smu.adoc` "IC_RESET TDR Structure"). The EXT port sits nearest TDO, so a helper geometry short of the TDR lands the EXT fields in the SEP slice and the EXT leg below fails; this is the leaf that catches a wrong slice width.
 * Default IC_RESET readback is all-ones over the whole DR, with TDO required resolvable on every readback.
-* EXT enable=0/control=0 asserts ext ovrd=1 and ctrl_n=0 while the SMC slice stays idle.
+* The EXT override is applied and released in two Update-DRs each, `reset_control` first and `reset_enable` second, the order the DTP JTAG chapter (`hw/sys/dtp/doc/jtag.adoc`) gives so a hazard-free consumer multiplexer never sees its select and data move together. `.ovrd` is active high and `.val` carries `reset_control`, so each staging update is visible on the EXT slice alone.
+* EXT control=0 staged under enable=1 drives ctrl_n=0 with ovrd still 0; enable=0 then asserts ovrd=1 with ctrl_n=0 while the SMC slice stays idle; control=1 staged under enable=0 drives ctrl_n=1 with ovrd still 1.
 * SMC cold_reset port override updates the hierarchical SMC slice while the EXT override is released.
 * Clearing the TDR restores both overrides to 0.
 
@@ -1306,6 +1307,8 @@ row's EXPECT sentence is worth, read the check.
 |===
 |Checker |Description
 |`CHK-IC-DEFAULT` |Evidence token `IC_RESET_DEFAULT`: IC_RESET default all-ones
+|`CHK-IC-EXT-STAGED` |Evidence token `IC_RESET_EXT_STAGED`: EXT control staged low reaches `jtag_ic_reset_ext_o.val` while `.ovrd` stays 0
+|`CHK-IC-EXT-RELEASE-STAGED` |Evidence token `IC_RESET_EXT_RELEASE_STAGED`: EXT control staged high reaches `.val` while `.ovrd` stays 1
 |`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: single domain override exclusive
 |===
 

@@ -8,9 +8,18 @@ nearest TDO, so it is the one port whose position does not survive a wrong
 SEP slice width in the helper geometry: a DR shifted short of the TDR lands
 the EXT fields in the SEP slice and the ext ovrd leg below fails.
 
+The EXT override is applied and released in the order the DTP JTAG chapter
+(hw/sys/dtp/doc/jtag.adoc) gives a hazard-free consumer: reset_control is
+written in one Update-DR and reset_enable moved in a second, so the select
+and the data input of the consumer's multiplexer never change together. The
+override leaves the DTP with `.ovrd` active high and `.val` carrying
+reset_control, so each staging update shows on the EXT slice alone.
+
 Real checkers:
   - Default IC_RESET readback is all-ones over the whole DR
+  - EXT control=0 staged with enable=1 drives ctrl_n=0 while ovrd stays 0
   - EXT enable=0/control=0 asserts ext ovrd=1 and ctrl_n=0
+  - EXT control=1 staged with enable=0 drives ctrl_n=1 while ovrd stays 1
   - SMC cold_reset port override updates hierarchical SMC slice
   - Clearing TDR restores ovrd=0
 """
@@ -72,6 +81,23 @@ class smu_jtag_reset_override_test(smu_base_test):
             0,
         )
 
+        ext_staged = pack_ic_reset_ports(
+            reset_hold=1,
+            port_enable={SMU_IC_RESET_EXT_PORT: 1},
+            port_control={SMU_IC_RESET_EXT_PORT: 0},
+        )
+        await jtag.write("IC_RESET", ext_staged)
+        await ClockCycles(dut.clk_smu_i, 16)
+        sb.expect_eq(
+            "ext control staged low with the override still off (ovrd, ctrl_n)",
+            (
+                _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
+                _sample(dut.jtag_ic_reset_ext_ctrl_n, "jtag_ic_reset_ext_ctrl_n"),
+            ),
+            (0, 0),
+            evidence="IC_RESET_EXT_STAGED",
+        )
+
         ext_assert = pack_ic_reset_ports(
             reset_hold=1,
             port_enable={SMU_IC_RESET_EXT_PORT: 0},
@@ -101,6 +127,23 @@ class smu_jtag_reset_override_test(smu_base_test):
             "IC_RESET EXT pattern readback",
             int(rb),
             ext_assert,
+        )
+
+        ext_release_staged = pack_ic_reset_ports(
+            reset_hold=1,
+            port_enable={SMU_IC_RESET_EXT_PORT: 0},
+            port_control={SMU_IC_RESET_EXT_PORT: 1},
+        )
+        await jtag.write("IC_RESET", ext_release_staged)
+        await ClockCycles(dut.clk_smu_i, 16)
+        sb.expect_eq(
+            "ext control staged high with the override still on (ovrd, ctrl_n)",
+            (
+                _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
+                _sample(dut.jtag_ic_reset_ext_ctrl_n, "jtag_ic_reset_ext_ctrl_n"),
+            ),
+            (1, 1),
+            evidence="IC_RESET_EXT_RELEASE_STAGED",
         )
 
         smc_assert = pack_ic_reset_ports(

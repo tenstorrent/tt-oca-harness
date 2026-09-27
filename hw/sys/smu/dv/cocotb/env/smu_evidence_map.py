@@ -447,6 +447,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_jtag_reset_override_test": [
         ("CHK-IC-DEFAULT", "IC_RESET_DEFAULT", "IC_RESET default all-ones"),
+        (
+            "CHK-IC-EXT-STAGED",
+            "IC_RESET_EXT_STAGED",
+            "EXT control staged low reaches ctrl_n while the override stays off",
+        ),
+        (
+            "CHK-IC-EXT-RELEASE-STAGED",
+            "IC_RESET_EXT_RELEASE_STAGED",
+            "EXT control staged high reaches ctrl_n while the override stays on",
+        ),
         ("CHK-IC-DOMAIN", "IC_RESET_DOMAIN_EXCL", "single domain override exclusive"),
     ],
     "smu_otp_bridges_under_dbg_disable_test": [
