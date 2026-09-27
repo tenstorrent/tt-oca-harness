@@ -637,6 +637,27 @@ jobs:
         if: steps.scope.outputs.run == 'true'
         run: uv run --locked --group dv python -m unittest discover tools/dv/tests
 
+  doc-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Install the converter the block catalog tests convert through
+        run: npm install -g @asciidoctor/core@3
+      - name: Run the documentation unit tests
+        run: |
+          NODE_PATH="$(npm root -g)" python3 -m unittest discover tools/doc/tests
+
   # Deletes and regenerates every register block's collateral from the RDLs,
   # then fails if the working tree changes. The shared checker forces every
   # recipe, removes obsolete tracked outputs, validates Python/JSON artifacts,
