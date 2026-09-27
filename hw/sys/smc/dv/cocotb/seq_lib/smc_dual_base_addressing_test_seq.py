@@ -8,6 +8,10 @@ firmware", and that both apertures are sized by ``REGION_SIZE``, which
 "resets to 16 MiB". Those three sentences are the expectations here; nothing
 is read back from the DUT to form them.
 
+While ``GLOBAL_BASE`` holds its pattern, ``LOCAL_BASE`` is also read at its
+global address: ``fabric.adoc`` lets a local resource be addressed "using
+either their global address or a local alias address".
+
 The write-has-no-effect leg is given a positive control in the same block:
 ``GLOBAL_BASE`` takes and returns a pattern through the identical write path,
 so a dropped ``LOCAL_BASE`` write is attributable to the read-only attribute
@@ -37,10 +41,10 @@ GLOBAL_BASE_PATTERN = 0x0000_0050_0000_0000
 # A local base a DUT that ignored the read-only attribute would happily take.
 LOCAL_BASE_WRITE_ATTEMPT = 0xC200_0000
 
-# Reads carrying an expectation: REGION_SIZE, LOCAL_BASE twice, GLOBAL_BASE
-# pattern and restore readbacks.
-EXPECTED_VALUE_CHECKS = 5
-EXPECTED_ACCESSES = 9
+# Reads carrying an expectation: REGION_SIZE, LOCAL_BASE three times (once
+# through the global window), GLOBAL_BASE pattern and restore readbacks.
+EXPECTED_VALUE_CHECKS = 6
+EXPECTED_ACCESSES = 10
 
 
 class smc_dual_base_addressing_test_seq(SmcDecodeProbeSeq):
@@ -70,6 +74,15 @@ class smc_dual_base_addressing_test_seq(SmcDecodeProbeSeq):
         await self.csr_write("GLOBAL_BASE_PATTERN", GLOBAL_BASE, GLOBAL_BASE_PATTERN, length=8)
         await self.csr_read(
             "GLOBAL_BASE_PATTERN_RB", GLOBAL_BASE, expected=GLOBAL_BASE_PATTERN, length=8
+        )
+        # fabric.adoc (Local and Remote Resource Access): "Local resources can be
+        # addressed using either their global address or a local alias address."
+        via_global = GLOBAL_BASE_PATTERN + (LOCAL_BASE - SPEC_LOCAL_BASE)
+        await self.read_reset("LOCAL_BASE_VIA_GLOBAL", via_global, SPEC_LOCAL_BASE, length=8)
+        self.close_cell(
+            "local-resource-via-global-address",
+            f"with GLOBAL_BASE at 0x{GLOBAL_BASE_PATTERN:x}, LOCAL_BASE read "
+            f"0x{SPEC_LOCAL_BASE:08x} at its global address 0x{via_global:x}",
         )
         await self.csr_write("GLOBAL_BASE_RESTORE", GLOBAL_BASE, self.global_base_reset, length=8)
         await self.csr_read(

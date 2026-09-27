@@ -2052,23 +2052,24 @@ Drive `smc_alias_remap_spare_block_decode_test_seq` on the SEP_IN AXI sequencer,
 * The three expectations are the sentences of `memmap.adoc` (Memory Map); nothing is read back from the DUT to form them.
 * The write-has-no-effect leg has a positive control in the same register block: `GLOBAL_BASE`, the programmable sibling, is written and read back through the same path, so a dropped `LOCAL_BASE` write is attributable to the read-only attribute and not to a dead write channel. The control is checked not to already hold the probe pattern, and `GLOBAL_BASE` is restored to the value read at entry.
 * `LOCAL_BASE` is written last, so a DUT that wrongly accepted the write fails its own readback rather than silently re-basing every later access of the run.
+* While `GLOBAL_BASE` holds the pattern, `LOCAL_BASE` is read at its global address, the pattern plus its offset. `fabric.adoc` (Local and Remote Resource Access) lets a local resource be addressed through either its global address or its local alias, so the read reaches the register with address bit 31 clear.
 * `smc_region_size_o` is unconnected in `tb_top`, so the pin-side effect of `REGION_SIZE` is not claimed here.
 
 *Test Procedure*:
 
-Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REGION_SIZE` and `LOCAL_BASE` against their specified values, save `GLOBAL_BASE` and prove the write path on it, then attempt the `LOCAL_BASE` write and require the register to still read 0xC000_0000. The leaf re-checks the scoreboard compare count and books a protocol-VIP record against a stimulus floor.
+Drive `smc_dual_base_addressing_test_seq` on the SEP_IN AXI sequencer: read `REGION_SIZE` and `LOCAL_BASE` against their specified values, save `GLOBAL_BASE`, prove the write path on it and read `LOCAL_BASE` through the global window it now sets, then attempt the `LOCAL_BASE` write and require the register to still read 0xC000_0000. The leaf re-checks the scoreboard compare count and books a protocol-VIP record against a stimulus floor.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DUAL-BASE` |The cell ledger: `local-base-reads-c0000000` and `local-base-write-has-no-effect`, each with the measured evidence behind it, including the `GLOBAL_BASE` write that serves as the positive control
+|`CHK-DUAL-BASE` |The cell ledger: `local-base-reads-c0000000`, `local-resource-via-global-address` and `local-base-write-has-no-effect`, each with the measured evidence behind it, including the `GLOBAL_BASE` write that serves as the positive control
 |`CHK-DUAL-BASE-ADDRESSING` |Summary line: the `LOCAL_BASE` value across the write attempt, the `GLOBAL_BASE` save/pattern/restore sequence and the `REGION_SIZE` reset. Logged after those compares and the stimulus floor have held
 |`CHK-DUAL-BASE-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged
 |===
 
-*Pass Criteria*: `REGION_SIZE` reads the specified 16 MiB reset, `LOCAL_BASE` reads 0xC000_0000 before and after the write attempt, `GLOBAL_BASE` returns the probe pattern and then the restored value, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: `REGION_SIZE` reads the specified 16 MiB reset, `LOCAL_BASE` reads 0xC000_0000 before and after the write attempt and through the global window, `GLOBAL_BASE` returns the probe pattern and then the restored value, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` compares. Enrolled in: `all`, `hosted`.
 
 '''''
 
