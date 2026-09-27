@@ -751,7 +751,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_otbn_compute_rand_test`
 
 |KM sideload consume (AES/HMAC/KMAC/OTBN)
-|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key is proven on `sep_km_command_set_rand_test` CHK-GONE: after the engine's key is shredded it produces no output in a bounded window. Post-error recovery is not claimed.
+|`sep_km_*_sideload_kat_test`. Fail-closed START without a valid key is proven on `sep_km_command_set_rand_test` CHK-GONE: after the engine's key is shredded it produces no output in a bounded window. Post-error recovery is not claimed.
 
 |KM mailbox command set
 |`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; one seed-selected extra `CMD_KEY_TRANSFER` dest (HMAC / KMAC / AES / OTBN); a directed ABR ML-DSA seed transfer every seed; version queries; OTP cold lock; recoverable-fault ACK after a SEP flush; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. One seed does not fill all four classic dest cells — daily reseed accumulates, and the four sideload KATs remain the MUST-fill owners. ABR consume is `sep_km_abr_seed_sideload_test`. The DRBG fault SOURCE is not claimed -- its organic conditions cannot be provoked from the SEP fabric and the KM posts an unsolicited fault rather than a command return code -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
@@ -7025,7 +7025,7 @@ flush) walks in one invocation.
 |CHK-IRQ
 |Enabling the two error IRQs raises aggregator `[14]`. Clearing the enable drops the pin while `IRQ_STATUS` stays. Write-1-to-clear drops both.
 |CHK-FLUSH
-|`CTRL.FLUSH` empties both FIFOs, self-clears, and does not clear the sticky error bits.
+|`CTRL.FLUSH` empties the full inbound FIFO, self-clears, and does not clear the sticky error bits. The outbound FIFO is empty before and after, so its flush is not claimed; see Known Limitations, "KM mailbox outbound flush".
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -7255,6 +7255,9 @@ constraint is not an open defect.
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives reserved addresses whose refuse flavour the map names. Named reserved spans whose refuse flavour is unnamed are excluded and are not asserted.
+
+|KM mailbox outbound flush
+|`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
 
 |Dead-space per-beat refusal on writes (AXI)
 |Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.

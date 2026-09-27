@@ -42,8 +42,11 @@ Checkers:
                OKAY; the sticky bit stays; depth stays 16 (drop)
   CHK-IRQ      enabling the two error IRQs raises aggregator [14]; clearing
                the enable drops the pin while IRQ_STATUS stays; W1C drops both
-  CHK-FLUSH    CTRL.FLUSH empties both FIFOs, self-clears, and does not
-               clear the sticky error bits
+  CHK-FLUSH    CTRL.FLUSH empties the full inbound FIFO, self-clears, and
+               does not clear the sticky error bits. The outbound FIFO is
+               empty before and after: with KM held nothing can push into
+               it, so the outbound flush is not proven (VPLAN known
+               limitation "KM mailbox outbound flush")
 
 Scope deltas:
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
@@ -364,7 +367,9 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
         assert (st & KM_STATUS_LOW_MASK) == (
             (1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)
-        ), f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
+        ), (
+            f"CHK-FLUSH FAIL: inbound not empty, or outbound not still empty, after flush (STATUS=0x{st:08x})"
+        )
         assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK) == 0, (
             f"CHK-FLUSH FAIL: inbound_depth not 0 after flush (STATUS=0x{st:08x})"
         )
@@ -374,6 +379,6 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self._expect_status("CHK-FLUSH", inbound_depth=0)
         await self._expect_irq("CHK-FLUSH", inbound_depth=0)
         self.logger.info(
-            "CHK-FLUSH PASS: flush emptied both FIFOs, self-cleared, and left the "
-            "overflow sticky set until W1C"
+            "CHK-FLUSH PASS: flush emptied the full inbound FIFO, self-cleared, and "
+            "left the overflow sticky set until W1C (outbound was empty throughout)"
         )
