@@ -199,6 +199,10 @@ build_jobs = 8
 # assertions. It is a Limited Customer Availability feature, so VCS refuses the
 # compile without `-lca` -- an opt-in switch, not a separate licence.
 #
+# `-cm_noconst` and `-cm_seqnoconst` leave nets a constant drives, directly or
+# through sequential logic, out of the toggle population, as the DTP and SMU
+# scopes do.
+#
 # The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
 # (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
 # list is a deprecated duplicate and the runner refuses the config.
@@ -207,6 +211,8 @@ compile_args = [
   "line+cond+tgl+fsm+branch+assert",
   "-cm_dir",
   "{build_cov_dir}",
+  "-cm_noconst",
+  "-cm_seqnoconst",
   "-cm_hier",
   "{repo_root}/hw/sys/smc/dv/cov/config/vcs/smc_cov_scope.hier",
   "-lca",
