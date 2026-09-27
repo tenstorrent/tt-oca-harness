@@ -290,6 +290,11 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             f"SEC_DISABLE collapse did not set bit 16: FAULT=0x{fault:x}"
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
+        all_three = FAULT_RMA_SIP | FAULT_RMA_CHIPLET | FAULT_SEC_DISABLE
+        assert (fault & all_three) == all_three, (
+            f"CHK-WHICH-TOKEN FAIL: FAULT=0x{fault:08x} after the third collapse; each fault "
+            f"bit is sticky, so all of 0x{all_three:08x} must still be set"
+        )
         self.logger.info(
             "CHK-WHICH-TOKEN PASS: FAULT=0x%08x (SIP bit0 + CHIPLET bit8 + SEC_DISABLE bit16)",
             fault,
