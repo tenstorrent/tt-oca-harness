@@ -56,6 +56,7 @@ jobs:
     timeout-minutes: 240
     outputs:
       image_hash: ${{ steps.build.outputs.image_hash }}
+      image_digest: ${{ steps.build.outputs.image_digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -123,21 +124,37 @@ jobs:
 
           registry_ref="${REGISTRY_IMAGE}:${image_hash}"
 
-          # The content-hash tag is immutable: an existing one already holds this
-          # exact closure, so skip republishing rather than re-uploading it.
-          if skopeo inspect --insecure-policy "docker://${registry_ref}" >/dev/null 2>&1; then
-            echo "already published: ${registry_ref}"
+          # The content-hash tag is immutable. If it already exists, only the
+          # identical closure may reuse it: the same tag resolving to different
+          # bytes is a hash collision or a tampered upload, so fail rather than
+          # silently trust or overwrite it.
+          if remote_digest=$(skopeo inspect --insecure-policy \
+              --format '{{.Digest}}' "docker://${registry_ref}" 2>/dev/null); then
+            local_digest=$(skopeo inspect --insecure-policy \
+              --format '{{.Digest}}' "docker-archive:${archive}")
+            if [ "${remote_digest}" = "${local_digest}" ]; then
+              echo "already published (identical bytes): ${registry_ref}"
+              digest="${remote_digest}"
+            else
+              echo "::error::${registry_ref} already exists with different bytes" \
+                   "(remote ${remote_digest}, local ${local_digest})"
+              exit 1
+            fi
           else
             # docker-archive reads the gzip archive; skopeo relays its compressed
-            # layers to the registry without unpacking them to disk.
-            skopeo copy --insecure-policy \
+            # layers to the registry without unpacking them to disk. --digestfile
+            # records the digest of the manifest it actually pushed.
+            skopeo copy --insecure-policy --digestfile=digest.txt \
               "docker-archive:${archive}" "docker://${registry_ref}"
+            digest=$(cat digest.txt)
           fi
+          echo "image_digest=${digest}" >> "$GITHUB_OUTPUT"
 
           {
             echo "### Published OCAH container (pending verification)"
             echo
-            echo "\`${registry_ref}\`"
+            echo "- tag: \`${registry_ref}\`"
+            echo "- digest: \`${digest}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Pull the freshly published image on a clean runner and exercise it. Because
@@ -209,10 +226,12 @@ jobs:
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           hash="${{ needs.build-and-publish.outputs.image_hash }}"
+          digest="${{ needs.build-and-publish.outputs.image_digest }}"
           docker tag "${REGISTRY_IMAGE}:${hash}" "${REGISTRY_IMAGE}:main"
           docker push "${REGISTRY_IMAGE}:main"
           {
             echo "### Promoted to :main"
             echo
-            echo "\`${REGISTRY_IMAGE}:${hash}\` -> \`${REGISTRY_IMAGE}:main\`"
+            echo "- \`${REGISTRY_IMAGE}:${hash}\` -> \`${REGISTRY_IMAGE}:main\`"
+            echo "- digest: \`${digest}\`"
           } >> "$GITHUB_STEP_SUMMARY"
