@@ -424,11 +424,12 @@ class SepAbrBus:
         return acc
 
     async def one(self, acc: AbrAccess, *, refused: bool = False) -> AbrAccess:
-        """One access through the bus's SEP AXI sequencer.
+        """One access through the bus's AXI sequencer.
 
-        The sequencer path puts the access in front of the SEP scoreboard as
-        well, which fails any non-OKAY response unless ``refused`` marks it as
-        an access that must be answered with an error.
+        On ``s_axi`` the SEP scoreboard also grades the access: it fails any
+        non-OKAY response unless ``refused`` marks it as an access that must be
+        answered with an error. No scoreboard grades ``m_axi``; there the
+        caller must check ``acc.resp`` and the data itself.
         """
         seq = SepAxiAccessSeq(
             f"abr_{acc.op}",
