@@ -1,0 +1,56 @@
+{
+  "aggregate": {
+    "flows": {
+      "failing": 0,
+      "pass_rate": 100.0,
+      "passing": 1,
+      "total": 1,
+      "unknown": 0
+    },
+    "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/history.json",
+    "history_points": 1,
+    "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/summary.json",
+    "tests": {
+      "failing": 0,
+      "incomplete_runs": 0,
+      "pass_rate": 100.0,
+      "passing": 67,
+      "skipped": 0,
+      "total": 67,
+      "unknown": 0
+    }
+  },
+  "errors": [],
+  "generated_at": "2026-09-27T14:31:22.800904+00:00",
+  "git": {
+    "commit": "607996386f36e1cae96e59d4d8518d0b75003306",
+    "harness_commit": "9cf1e80ad8081af9e9ae331bb179e94f0aaf6369",
+    "nonfree_commit": "5c53990bfa4c1f352c786501b64092063d90ccb6",
+    "remote": "git@aus-gitlab.local.tenstorrent.com:arch/aou-rtl",
+    "requested_ref": "verification"
+  },
+  "jenkins": {
+    "build_number": "7",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/7/",
+    "job_name": "tt-oca-harness/aou/uvm",
+    "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/"
+  },
+  "matrix": [
+    {
+      "collector_rc": 0,
+      "framework": "uvm",
+      "group": "p0",
+      "mode": "regression",
+      "native_result": "",
+      "native_status": "PASS",
+      "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/result.json",
+      "normalized_status": "PASS",
+      "profile": "aou_uvm",
+      "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/runs",
+      "runner_rc": 0,
+      "tool": "vcs"
+    }
+  ],
+  "schema_version": 1,
+  "status": "PASS"
+}
