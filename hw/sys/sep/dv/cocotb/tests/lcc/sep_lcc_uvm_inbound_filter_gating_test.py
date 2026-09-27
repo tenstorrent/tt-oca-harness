@@ -90,6 +90,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         assert image.lc_raw() == LC_PROD, "test bug: image LC_STATE is not PROD"
         self.write_efuse_image(image)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        # Every scoreboard judgment from here on backs the closing PASS line.
+        scenario_mark = self.sb_mark()
         self.logger.info(
             "sensed OTP LC_STATE=%s; SIP_DIS=0x%016x SYS_DIS=0x%016x",
             lc_state_name(image.lc_raw()),
@@ -153,7 +155,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
         # be blocked, which is a second, independent consequence of the same
         # property.
         demote2 = SepLccDemoteSeq(group=2)
+        mark = self.sb_mark()
         await self.start_seq(demote2)
+        self.assert_sb_judged(mark, "CHK-DEMOTE-INDEP DEMOTE_2 readback")
         assert demote2.demote == 1, f"DEMOTE_2.demote read back {demote2.demote}, expected 1"
 
         feat_d2 = feat_ctrl_expected(
@@ -194,7 +198,9 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
 
         # ---- flip PROD -> PROD_DBG_1 via DEMOTE_1 ----
         demote = SepLccDemoteSeq(group=1)
+        mark = self.sb_mark()
         await self.start_seq(demote)
+        self.assert_sb_judged(mark, "CHK-DEMOTE")
         assert demote.demote == 1, f"DEMOTE_1.demote read back {demote.demote}, expected 1"
         self.logger.info("CHK-DEMOTE PASS: DEMOTE_1.demote write -> read-back == 1")
 
@@ -262,4 +268,5 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             "(blocked@sep_debug=0 -> allowed@sep_debug=1)"
         )
         self.logger.info("CHK-NONVAC PASS: PROD blocked + PROD_DBG_1 allowed both observed")
+        self.assert_sb_judged(scenario_mark, "SEP LCC inbound-filter-gating")
         self.logger.info("SEP LCC inbound-filter-gating test PASS")
