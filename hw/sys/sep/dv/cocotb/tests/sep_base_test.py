@@ -458,12 +458,11 @@ class sep_base_test(uvm_test):
     async def check_pre_sense_fail_closed(self) -> None:
         """AXI-read ``FEAT_CTRL`` while sense is still running; expect fail-closed.
 
-        Downstream ``shadow_regs_o`` stays at ``LC_STATE_INVALID`` until
-        ``fuse_sense_done_i || final_sec_disable``
-        (``hw/ip/efuse/rtl/efuse_token_processing.sv``). LCC decodes that as
-        no live chip, so ``FEAT_CTRL`` is 0. The read must land before
-        ``sep_fuse_sense_done_o``. The ``final_sec_disable`` half of the term
-        is not claimed.
+        ``hw/sys/sep/doc/lifecycle_controller.adoc`` (LC State Machine): the
+        OTP controller holds the LC-state shadow output at the INVALID
+        encoding (4'b1111) until fuse sensing completes, so the LCC produces
+        the INVALID feature-control profile, which the DV golden decodes to
+        ``FEAT_CTRL`` = 0. The read must land before ``sep_fuse_sense_done_o``.
         """
         from env.sep_lcc_golden import feat_ctrl_expected
         from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
