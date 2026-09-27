@@ -551,13 +551,23 @@ class SepDeadspace:
         # still caught -- at that control register, where it lands.
         after = {}
         skipped = 0
+        unread: list[str] = []
         for addr in snap:
             if addr in win.hw_updating:
                 skipped += 1
                 continue
-            resp_a, val, _to = await self._access(SepAxiOp.READ, addr)
-            if resp_a == RESP_OKAY:
+            resp_a, val, to_a = await self._access(SepAxiOp.READ, addr)
+            if resp_a == RESP_OKAY and not to_a:
                 after[addr] = val
+            else:
+                unread.append(f"+0x{addr - win.base:x} resp={resp_a} timed_out={to_a}")
+        # An armed register that cannot be read back cannot show it did not
+        # move, so a failed re-read fails the probe instead of shrinking it.
+        if unread:
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} re-read of armed register(s) "
+                f"failed: {' '.join(unread)}"
+            )
         # Report the size of the change compare, not just its verdict. An
         # exclusion that silently grows -- a schema change widening the
         # software-read-only set onto a control register -- would otherwise
