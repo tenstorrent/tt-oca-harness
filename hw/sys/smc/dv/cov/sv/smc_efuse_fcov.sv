@@ -189,9 +189,10 @@ module smc_efuse_fcov #(
   localparam int unsigned CfgLo = 32'(SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR) - MapBase;
   localparam int unsigned OccpLo =
       32'(SMC_TOP_SMC_EFUSE_MAP_OCCP_TRANSPORT_TIMEOUT_BASE_ADDR) - MapBase;
-  localparam int unsigned SpareLo = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0)) - MapBase;
-  localparam int unsigned SpareStride = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(1))
-      - 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0));
+  localparam int unsigned Spare0Addr = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0));
+  localparam int unsigned Spare1Addr = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(1));
+  localparam int unsigned SpareLo = Spare0Addr - MapBase;
+  localparam int unsigned SpareStride = Spare1Addr - Spare0Addr;
   localparam int unsigned SpareNum = 32'(SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
 
   // {valid, slot} of the field holding a fuse bit address.

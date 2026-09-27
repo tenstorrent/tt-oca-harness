@@ -109,10 +109,8 @@ module smc_map_fcov (
   // Last aligned 64-bit word of a unit's decoded extent: past it the fabric
   // refuses the access even inside the unit's aperture (memmap.adoc, Address
   // Space Organization).
-  localparam logic [31:0] DmaTop =
-      ((DmaLo + 32'(SMC_TOP_DMA_CTRL_SIZE)) & ~32'd7) - 32'd8;
-  localparam logic [31:0] ZeroerTop =
-      ((ZeroerLo + 32'(SMC_TOP_ZEROER_CTRL_SIZE)) & ~32'd7) - 32'd8;
+  localparam logic [31:0] DmaTop = ((DmaLo + 32'(SMC_TOP_DMA_CTRL_SIZE)) & ~32'd7) - 32'd8;
+  localparam logic [31:0] ZeroerTop = ((ZeroerLo + 32'(SMC_TOP_ZEROER_CTRL_SIZE)) & ~32'd7) - 32'd8;
   localparam logic [31:0] PlicLo = 32'(SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR - LocalBase);
   localparam logic [31:0] PlicHi = PlicLo + 32'h0400_0000 - 32'd1;
   localparam logic [31:0] PlicEnd = PlicLo + 32'(SMC_TOP_SMC_CLUSTER_PLIC_SIZE);
