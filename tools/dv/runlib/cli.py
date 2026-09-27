@@ -60,8 +60,6 @@ from .coverage_closure import (
 from .coverage_combine import plan_combine
 from .coverage_policy import (
     CoveragePolicy,
-    expired_holes,
-    lapsed_warning,
     load_coverage_policy,
     native_policy_manifest,
 )
@@ -786,16 +784,11 @@ def coverage_policy_paths(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> li
     return paths
 
 
-def coverage_policy_warnings(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> list[str]:
-    """Load every configured policy, raising on a schema error, and list its lapsed waivers."""
+def validate_coverage_policies(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> None:
+    """Load every configured policy, raising on a schema error."""
 
-    warnings: list[str] = []
     for path in coverage_policy_paths(flow, root, sim_cfg):
-        policy = load_coverage_policy(path, expected_dut=flow.name)
-        warnings.extend(
-            f"{repo_rel(root, path)}: {lapsed_warning(rule)}" for rule in expired_holes(policy)
-        )
-    return warnings
+        load_coverage_policy(path, expected_dut=flow.name)
 
 
 def validate_flow(
@@ -804,8 +797,8 @@ def validate_flow(
     simulators: dict[str, Any],
     policies: dict[str, Any],
     executors: dict[str, Any] | None = None,
-) -> list[str]:
-    """Validate one flow; return the warnings that do not fail it (lapsed waivers)."""
+) -> None:
+    """Validate one flow, raising ConfigError on the first problem."""
 
     if not (root / flow.root).exists():
         raise ConfigError(f"{flow.path}: root path does not exist: {flow.root}")
@@ -828,7 +821,7 @@ def validate_flow(
             raise ConfigError(f"{flow.path}: native stage `{stage_name}` missing string `kind`")
     sim_cfg = load_sim_cfg(flow, root)
     validate_native_config_shape(flow, root)
-    policy_warnings = coverage_policy_warnings(flow, root, sim_cfg)
+    validate_coverage_policies(flow, root, sim_cfg)
     if executors is not None:
         scheduler = flow.raw.get("scheduler", {})
         if not isinstance(scheduler, dict):
@@ -842,7 +835,6 @@ def validate_flow(
     merge_simulator_defaults(sim_cfg, simulators, flow.tools)
     load_test_catalog(flow, root)
     validate_parser_extensions(flow, simulators, policies)
-    return policy_warnings
 
 
 @dataclass(frozen=True)
@@ -981,10 +973,8 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
                     suffix = " [overlay skipped: frameworks guard]"
             else:
                 view = base or resolve_dut(root, name, mode=mode, framework=fw, site=site)
-            warnings = validate_flow(view, root, simulators, policies, executors)
+            validate_flow(view, root, simulators, policies, executors)
             print(f"  {label:<16} OK{suffix}")
-            for line in warnings:
-                print(f"  {'':<16} warning: {line}")
         except ConfigError as exc:
             failures += 1
             print(f"  {label:<16} FAIL: {exc}")

@@ -4,8 +4,8 @@
 # SMU wrapper (`--dut smu`) Verilator coverage policy.
 #
 # GENERATED from a measured run: the [[holes]] below are the `user` points the
-# graded run left unhit, each carried with a category, a rationale, an owner
-# and an expiry. Regenerate them from a fresh coverage-details.json rather
+# graded run left unhit, each carried with a category, a rationale and an
+# owner. Regenerate them from a fresh coverage-details.json rather
 # than editing them by hand; this header is the only part written by a person.
 # They were measured from `--dut smu --items all --cov` on the single
 # `compile_smu_chiplet` target (102 leaves, Verilator 5.050:
@@ -36,7 +36,7 @@
 #   SepPresent                 the `g_sep` generate blocks described above.
 #                              Structural OUT, by elaboration.
 #   [[holes]] here             the point exists and is not hit, carried with a
-#                              rationale, an owner and a review date. Its
+#                              category, a rationale and an owner. Its
 #                              selectors include `hierarchy`, which the .vlt
 #                              cannot express.
 #
@@ -51,14 +51,13 @@ scope_epoch = "smu-fcov-v1"
 id = "fcov-smu-c_cold_reset_async_assert_without_clock"
 title = "c cold reset async assert without clock"
 category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
+disposition = "cover"
+status = "open"
 confidence = "medium"
 rationale = "deferred: no enrolled test drives this condition - deferred: no enrolled stimulus in this phase (SMU-RST-COLD.S1:cold_reset_async_assert_without_clock)"
 owner = "smu-dv"
 reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2421"]
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
@@ -75,8 +74,6 @@ confidence = "medium"
 rationale = "no subordinate behind the SMU crossbar answers an exclusive access: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off, so EXOKAY cannot appear on ext_in"
 owner = "smu-dv"
 reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
@@ -93,8 +90,6 @@ confidence = "medium"
 rationale = "no subordinate behind the SMU crossbar answers an exclusive access: every AXI interconnect in the SEP and SMC is built without atomics and the memory adapters tie exokay off, so EXOKAY cannot appear on ext_in"
 owner = "smu-dv"
 reviewer = "smu-dv"
-date = "2026-09-11"
-expires = "2026-12-10"
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
@@ -111,8 +106,6 @@ confidence = "high"
 rationale = "unreachable from this bench boundary: lc_sigint_err rises only when the lifecycle state's differential encoding disagrees with itself, which needs a fault injected inside the SEP; the wrapper bench has no injector on that path and the SEP bench grades it, the fact the toggle exclusion file records for lc_sigint_err_o (SMU-BOOT-LC.S3:lc-sigint-err)"
 owner = "smu-dv"
 reviewer = "smu-dv"
-date = "2026-09-23"
-expires = "2026-12-10"
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
@@ -123,14 +116,13 @@ hierarchy = "smu_wrapper_uvm_top.u_smu_boot_fcov.g_sep__DOT__c_lc_sigint_err"
 id = "fcov-smu-c_map_sep_base_programmed"
 title = "map sep base programmed"
 category = "missing_stimulus"
-disposition = "waive"
-status = "accepted"
+disposition = "cover"
+status = "open"
 confidence = "medium"
 rationale = "deferred: no enrolled test drives this condition - SEP_GLOBAL_BASE_ADDR is a SEP CPU_CTRL register that only SEP firmware writes; no image the all group loads programs it, and the wrapper has no other path to sep_global_base_o. The anchor is a SEP-firmware leaf on this bench, smu_sep_remap_test being the nearest (SMU-XBAR-MAP.S4:map-sep-base-programmed)"
 owner = "smu-dv"
 reviewer = "smu-dv"
-date = "2026-09-23"
-expires = "2026-12-10"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2421"]
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
@@ -147,8 +139,6 @@ confidence = "medium"
 rationale = "credit withheld pending a design answer: smu_axi_xbar forms the SMC crossbar rule as end = base + size, so REGION_SIZE = 0 gives start == end, and the decoder's own map check (addr_decode_dync check_start: start < end or end == 0) fails the leaf that writes it on VCS. The point calls the zero window a legal state that denies the whole region; the decoder calls the rule invalid. Until the SMU owner says which, no leaf drives the value (SMU-XBAR-MAP.S3:map-smc-size-zero)"
 owner = "smu-dv"
 reviewer = "smu-dv"
-date = "2026-09-23"
-expires = "2026-12-10"
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"

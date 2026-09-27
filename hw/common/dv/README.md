@@ -188,9 +188,9 @@ evidence where it cannot; neither turns a failed transaction into PASS.
 A policy file grades hit points over the points that remain after accepted
 waivers at 98 % or more per metric family, fails closed on an uncovered point
 that no entry classifies, and carries a raw threshold so the waived set cannot
-grow unnoticed. Every waiver names its category, rationale, owner, reviewer,
-and expiry; an expired waiver grades as open again, and a waiver that matches a
-covered point fails the run. A hole with reachable stimulus is covered by a
+grow unnoticed. Every waiver names its category, rationale, owner and
+reviewer, and a waiver that matches a covered point fails the run. A hole with
+reachable stimulus is covered by a
 selftest, never waived. Capabilities without a promoted shared package, and
 behavior a package lists as out of scope, earn no coverage or checker credit.
 
