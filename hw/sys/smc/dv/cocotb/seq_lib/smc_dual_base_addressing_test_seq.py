@@ -25,16 +25,24 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import LOCAL_BASE_RESET, REGION_SIZE_RESET, smc_addr
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
 
 LOCAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_LOCAL_BASE_BASE_ADDR")
 GLOBAL_BASE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 REGION_SIZE = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
 
-# memmap.adoc, Memory Map.
-SPEC_LOCAL_BASE = 0xC000_0000
-SPEC_REGION_SIZE_RESET = 16 * 1024 * 1024
+# The goldens are the generated reset values (smc_base_config.h). memmap.adoc
+# (Memory Map) states the same two values in prose; the asserts make a drift
+# between the specification and the RDL fail at import instead of passing.
+SPEC_LOCAL_BASE = LOCAL_BASE_RESET
+SPEC_REGION_SIZE_RESET = REGION_SIZE_RESET
+assert SPEC_LOCAL_BASE == 0xC000_0000, (
+    f"LOCAL_BASE resets to 0x{SPEC_LOCAL_BASE:x}; memmap.adoc fixes it at 0xC000_0000"
+)
+assert SPEC_REGION_SIZE_RESET == 16 * 1024 * 1024, (
+    f"REGION_SIZE resets to 0x{SPEC_REGION_SIZE_RESET:x}; memmap.adoc says 16 MiB"
+)
 # A base inside the 56-bit address space that differs from the reset in every
 # byte the reset sets; restored afterwards.
 GLOBAL_BASE_PATTERN = 0x0000_0050_0000_0000

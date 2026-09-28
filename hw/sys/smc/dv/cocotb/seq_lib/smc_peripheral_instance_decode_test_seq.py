@@ -457,7 +457,8 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.pvt_external_hits = hits
         evidence = (
-            f"0x{PVT_WRAP_BASE:08x} drove smc_external_req_o for {hits} clk_smc_i cycle(s) and the "
+            f"0x{PVT_WRAP_BASE:08x} was presented on smc_external_req_o as a read request for "
+            f"{hits} clk_smc_i cycle(s) and the "
             f"bench PVT model answered OKAY 0x{rdata:08x}"
         )
         # One cell for one measurement: closing a second name on the same

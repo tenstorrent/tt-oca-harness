@@ -160,6 +160,15 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             f"{_JOB_BYTES}-byte job; the field does not follow the zeroer's activity"
         )
 
+    async def _await_rerun(self, what: str) -> None:
+        """A CTRL_STATUS write is the trigger: STATUS must leave idle, then return."""
+        await self._await_status(
+            1 - self.status_idle_level, _BUSY_ASSERT_CYCLES, f"left its idle level after {what}"
+        )
+        await self._await_status(
+            self.status_idle_level, _BUSY_CLEAR_CYCLES, f"returned to its idle level after {what}"
+        )
+
     async def _program_dma(self) -> None:
         """One DMA job of _DMA_REPS eight-byte repetitions through SYS_OUT memory."""
         await self.csr_write("DMA_CONFIG", _dma("CONFIG"), DMA_CONFIG_ENABLED_ND)
@@ -199,6 +208,12 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         assert responder is not None, "SYS_OUT responder not bound"
         for _name, offset, poison in _PROBES:
             await self._fabric_write(OUTPUT_FABRIC_ADDR + offset, poison)
+        for name, offset, poison in _PROBES:
+            got = await self._fabric_read(OUTPUT_FABRIC_ADDR + offset)
+            assert got == poison, (
+                f"probe {name} @ 0x{OUTPUT_FABRIC_ADDR + offset:08x} reads 0x{got:016x} after "
+                f"its re-poison of 0x{poison:016x}; a later zero would prove nothing"
+            )
         dut = cocotb.top
         stalled = [0]
 
@@ -369,9 +384,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         # Any write of this register is also the zeroer's trigger, so the leg
         # waits the operation out before reading.
         await self.csr_write("ZEROER_CTRL_STATUS_UPPER_HALF", ZEROER_CTRL_STATUS + 4, 0, length=4)
-        await self._await_status(
-            self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
-        )
+        await self._await_rerun("the upper-half write with INT_EN set")
         word = await self.csr_read("ZEROER_CTRL_STATUS_INT_EN", ZEROER_CTRL_STATUS, length=8)
         assert word & ZEROER_CTRL_STATUS_START, (
             f"CTRL_STATUS reads 0x{word:x} after a four-byte write at its upper half; that "
@@ -400,33 +413,43 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             f"CTRL_STATUS reads 0x{armed & ~STATUS_BM:x} outside the STATUS bit, the RDL "
             f"contract for the armed register is 0x{ZEROER_CTRL_STATUS_ARMED:x}"
         )
-        # The same two halves with INT_EN clear. A four-byte write at the low
-        # half selects INT_EN's lane and clears it; one at the upper half then
-        # leaves the cleared bit's lane deasserted, and it has to stay clear.
-        # Both writes are triggers too, and DEST_ADDR and SIZE still describe
-        # this leaf's own job, so each re-runs the job over the region it has
-        # already zeroed and is waited out. INT_EN ends at its RDL reset of 0.
-        for tag, addr in (
-            ("LOW_HALF_CLEAR", ZEROER_CTRL_STATUS),
-            ("UPPER_HALF_CLEAR", ZEROER_CTRL_STATUS + 4),
+        # INT_EN clear, then held clear. A four-byte write of 0 at the low half
+        # selects INT_EN's lane and clears it. A four-byte write of all ones at
+        # the upper half then carries a one in the bit position INT_EN takes in
+        # its own half; the only upper-half field is STATUS (sw = r), so a DUT
+        # that steered the upper word onto the low lanes or decoded +4 onto the
+        # low word would set INT_EN, and it has to stay clear. Both writes are
+        # triggers too, and DEST_ADDR and SIZE still describe this leaf's own
+        # job, so each re-runs the job over the region it has already zeroed.
+        # INT_EN ends at its RDL reset of 0.
+        for tag, addr, data, why in (
+            (
+                "LOW_HALF_CLEAR",
+                ZEROER_CTRL_STATUS,
+                0,
+                "a write of 0 at its low half, which selects INT_EN",
+            ),
+            (
+                "UPPER_HALF_ONES",
+                ZEROER_CTRL_STATUS + 4,
+                0xFFFF_FFFF,
+                "a write of all ones at its upper half, which does not select INT_EN",
+            ),
         ):
-            await self.csr_write(f"ZEROER_CTRL_STATUS_{tag}", addr, 0, length=4)
-            await self._await_status(
-                self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
-            )
+            await self.csr_write(f"ZEROER_CTRL_STATUS_{tag}", addr, data, length=4)
+            await self._await_rerun(why)
             word = await self.csr_read(f"ZEROER_CTRL_STATUS_{tag}_RB", ZEROER_CTRL_STATUS, length=8)
             assert word & ZEROER_CTRL_STATUS_START == 0, (
-                f"CTRL_STATUS reads 0x{word:x} after a four-byte write of 0 at "
-                f"{'its low half, which selects INT_EN' if addr == ZEROER_CTRL_STATUS else 'its upper half, with INT_EN already clear'}; "
-                f"INT_EN has to read clear"
+                f"CTRL_STATUS reads 0x{word:x} after {why}; INT_EN has to read clear"
             )
         self.int_en_held = 2
         cocotb.log.info(
             "CHK-ZEROER-INT-EN-HALF-WRITE: CTRL_STATUS.INT_EN held a one across a "
-            "four-byte write at the half of the 64-bit register it does not occupy, was "
-            "cleared by a four-byte write at the half it does, and stayed clear across a "
-            "second write at the other half; every write re-ran this leaf's own job and was "
-            "waited out, and INT_EN ended at its RDL reset",
+            "four-byte write of 0 at the half of the 64-bit register it does not occupy, was "
+            "cleared by a four-byte write of 0 at the half it does, and held a zero across a "
+            "four-byte write of all ones at the other half; each write started this leaf's "
+            "own job (STATUS left its idle level and returned), and INT_EN ended at its RDL "
+            "reset",
         )
         await self._backpressured_job()
 

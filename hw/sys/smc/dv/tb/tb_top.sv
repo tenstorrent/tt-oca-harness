@@ -1453,6 +1453,10 @@ module smc_uvm_top
     assign tb_axil_external_active   = u_dut.u_smc.smc_external_req_o.aw_valid
                                      | u_dut.u_smc.smc_external_req_o.w_valid
                                      | u_dut.u_smc.smc_external_req_o.ar_valid;
+    assign tb_axil_external_arvalid  = u_dut.u_smc.smc_external_req_o.ar_valid;
+    assign tb_axil_external_araddr   = u_dut.u_smc.smc_external_req_o.ar.addr;
+    assign tb_axil_external_awvalid  = u_dut.u_smc.smc_external_req_o.aw_valid;
+    assign tb_axil_external_awaddr   = u_dut.u_smc.smc_external_req_o.aw.addr;
     assign tb_axil_efuse_bank_active = u_dut.u_smc.efuse_bank_ctrl_req_o.aw_valid | u_dut.u_smc.efuse_bank_ctrl_req_o.w_valid |
                                        u_dut.u_smc.efuse_bank_ctrl_req_o.ar_valid;
     assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_external_active | tb_axil_efuse_bank_active;

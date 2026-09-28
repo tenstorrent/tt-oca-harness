@@ -26,7 +26,6 @@ and last instance are probed.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_addr_map import external_gpio_ctrl_addr, external_gpio_ctrl_indices, smc_bootrom_addr
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
@@ -72,8 +71,8 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
         self.hits[label] = hits
         self.close_cell(
             cell,
-            f"0x{addr:08x} drove smc_external_req_o for {hits} clk_smc_i cycle(s) and was answered "
-            f"DECERR/0 by the adopter-window terminator",
+            f"0x{addr:08x} was presented on smc_external_req_o as a read request for {hits} "
+            f"clk_smc_i cycle(s) and was answered DECERR/0 by the adopter-window terminator",
         )
 
     async def body(self) -> None:
@@ -112,40 +111,23 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
         )
 
         # The write channel of the same terminator: a write into the first
-        # per-pad block must drive the port and be refused, like the reads.
+        # per-pad block must reach the port as a write request for that address
+        # and be refused, like the reads.
         pad0 = external_gpio_ctrl_addr(0)
-        wr_hits = [0]
-
-        async def _sample_write() -> None:
-            dut = cocotb.top
-            while True:
-                await RisingEdge(dut.clk_smc_i)
-                value = dut.tb_axil_external_active.value
-                if value.is_resolvable and int(value):
-                    wr_hits[0] += 1
-
-        sampler = cocotb.start_soon(_sample_write())
-        try:
-            self.write_resp = await self.write_expect_error(
-                "GPIO_CTRL_0_CONTROL_WR", pad0, 0xFFFF_FFFF
-            )
-            await ClockCycles(cocotb.top.clk_smc_i, 8)
-        finally:
-            sampler.cancel()
-        assert wr_hits[0] > 0, (
-            f"GPIO_CTRL_0_CONTROL write @ 0x{pad0:08x}: tb_axil_external_active never sampled 1, "
-            f"so the write was not routed to the adopter external AXI-Lite port"
+        self.write_resp, wr_hits = await self.write_external_routed(
+            "GPIO_CTRL_0_CONTROL_WR", pad0, 0xFFFF_FFFF
         )
-        self.hits["GPIO_CTRL_0_CONTROL_WR"] = wr_hits[0]
+        self.hits["GPIO_CTRL_0_CONTROL_WR"] = wr_hits
 
         self.assert_all_reachable(EXPECTED_ACCESSES, "EXTERNAL_WINDOW_PAD_CTRL_DECODE")
         self.report_cells("CHK-EXTWIN-PAD-CTRL")
         cocotb.log.info(
             "CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE: %d control-block and %d per-pad addresses each "
-            "drove the adopter external AXI-Lite port (active cycles %s) and completed DECERR "
+            "reached the adopter external AXI-Lite port as a request carrying that address "
+            "(request cycles %s) and completed DECERR "
             "with zero data, the DV-owned answer for an address nothing behind the window "
-            "decodes; per-pad stride 0x%x, %d instances; a write to per-pad block 0 drove the "
-            "port and was refused with resp=%s",
+            "decodes; per-pad stride 0x%x, %d instances; a write to per-pad block 0 reached the "
+            "port as a write request for that address and was refused with resp=%s",
             len(_CONTROL_BLOCKS),
             3,
             sorted(self.hits.values()),

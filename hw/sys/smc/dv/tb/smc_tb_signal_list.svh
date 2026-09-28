@@ -418,6 +418,12 @@
 // on each of the SMC downstream AXI-Lite master interfaces).
 `SMC_TB_OUT(logic, tb_axil_dtp_csr_active)
 `SMC_TB_OUT(logic, tb_axil_external_active)
+// The adopter external port's request addresses with their valids, so a probe
+// can tie the port activity it sees to the address it issued.
+`SMC_TB_OUT(logic, tb_axil_external_arvalid)
+`SMC_TB_OUT(logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0], tb_axil_external_araddr)
+`SMC_TB_OUT(logic, tb_axil_external_awvalid)
+`SMC_TB_OUT(logic [smc_pkg::SMC_LOCAL_ADDR_WIDTH-1:0], tb_axil_external_awaddr)
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
 
