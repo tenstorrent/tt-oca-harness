@@ -97,7 +97,7 @@ class SiteCase(unittest.TestCase):
 class SiteFileDiscoveryTest(SiteCase):
     def test_no_file_and_no_variable_means_no_layer(self) -> None:
         # A companion checkout beside the configs changes nothing.
-        (self.tmp / "nonfree").mkdir()
+        (self.tmp / "companion").mkdir()
         (self.tmp / "hw" / "common" / "dv" / "configs").mkdir(parents=True)
         self.assertIsNone(site_layer_path(self.tmp, {}))
         self.assertIsNone(load_site_layer(self.tmp, {}))

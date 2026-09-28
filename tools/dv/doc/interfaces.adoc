@@ -355,8 +355,8 @@ simulator to the open views
 (xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
 
 |Companion repository
-|`nonfree/` is ignored, not tracked. `ocah.mk` includes `nonfree/nonfree.mk`
-when that file exists; the runner has no equivalent automatic include.
+|The companion checkout is ignored, not tracked. `ocah.mk` includes its
+makefile when that file exists; the runner has no equivalent automatic include.
 |Runner-side companion material reaches a run only through `--overlay` or
 the site layer, and both are recorded in `result.json`.
 

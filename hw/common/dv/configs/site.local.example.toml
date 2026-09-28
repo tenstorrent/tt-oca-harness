@@ -52,7 +52,7 @@ argv = ["{binary}", "-batch", "{script}", "{args}", "{formal_args}"]
 # `--list` and `--validate-configs` show the view as unavailable and only `--mode formal`
 # on that DUT is an error.
 # [duts.dtp]
-# formal_cfg = "nonfree/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+# formal_cfg = "companion/hw/sys/dtp/dv/dtp_formal_cfg.toml"
 
 # The simulation counterparts. `sim_cfg` replaces the DUT's simulation view, with the same
 # path and absence rules as `formal_cfg`. `tools` adds checked-in simulation tools to the

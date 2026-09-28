@@ -961,7 +961,7 @@ its item-status meaning, and `coverage` keeps its simulation meaning.
 `--overlay <path>` (or the `OCAH_DV_OVERLAY` environment variable; the flag
 wins) applies one adopter-owned TOML file on top of the merged DUT view. It
 is the runner-side equivalent of `ocah.mk`'s adopter include hooks
-(`-include nonfree/nonfree.mk`, `OCAH_ADOPTER_OVERLAY_MK`): an adopter — for
+(the companion checkout's makefile and `OCAH_ADOPTER_OVERLAY_MK`): an adopter — for
 example a commercial-VIP integration living outside this tree — extends a
 build without editing checked-in configs. The layer is *never*
 auto-activated: the presence of an adopter checkout changes nothing until a
