@@ -24,6 +24,11 @@ S3  The second stage is a down-counter reloaded from ``CPU_CTRL.WDT_TIMEOUT``
     ``smc_wdt_second_timeout_o``. ``smc_reset_ctrl.sv:133-136`` makes that the
     warm-reset term, so the SMC warm reset has to drop with it -- which is
     what separates the output from a dangling pin.
+
+S4  Both events are transient: the warm reset clears the cluster watchdog
+    that held the first timeout, which reloads the second stage. The second
+    timeout, the SMC warm reset and the SMC watchdog reset it drives
+    (``rst_wdt_smc_clk_no``, ``smc.sv``) all return to their released levels.
 """
 
 from __future__ import annotations
@@ -68,6 +73,7 @@ POLL_STEP = 32
 FIRST_TIMEOUT_BOUND = 65536
 SECOND_TIMEOUT_BOUND = 32768
 WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
+WDT_RESET_PATH = "u_smc.rst_wdt_smc_clk_no"
 CPU_PATH = "u_smc.u_smc_cpu_wrapper.u_smc_cpu"
 
 
@@ -275,4 +281,24 @@ class smu_smc_wdt_boundary_timeout_seq:
             warm_low_seen,
             1,
             evidence="CHK-SMU-WDT-SECOND",
+        )
+
+        # S4: the warm reset clears what held the timeouts.
+        wdt_reset = hier(smu_scope(dut), WDT_RESET_PATH)
+        released = None
+        for _ in range(SECOND_TIMEOUT_BOUND):
+            await RisingEdge(dut.clk_smu_i)
+            released = (
+                self._bit("tb_smc_wdt_second_timeout"),
+                sample(warm, WARM_RESET_PATH),
+                sample(wdt_reset, WDT_RESET_PATH),
+            )
+            if released == (0, 1, 1):
+                break
+        self.log.info("CHK-SMU-WDT-RELEASE second/warm/wdt-reset=%s", released)
+        self.sb.expect_eq(
+            "CHK-SMU-WDT-RELEASE the second timeout drops and both SMC resets release",
+            released,
+            (0, 1, 1),
+            evidence="CHK-SMU-WDT-RELEASE",
         )

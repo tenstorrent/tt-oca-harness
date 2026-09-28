@@ -19,7 +19,9 @@ S5: ext_in round trips into SEP SRAM (local 0x1000_0000, 256 KiB,
     the issued id, and reads back what was written.
 S6: INCR bursts of AxLEN 0x00, 0x55, 0xAA and 0xFF write a byte pattern into
     SRAM and read it back OKAY; WRAP bursts of 2, 4, 8 and 16 beats and FIXED
-    bursts read OKAY.
+    bursts read OKAY. A WRAP write and the INCR write after it are OKAY, and
+    the longest INCR burst reads and writes back OKAY again while the master
+    holds RREADY and BREADY back.
 S7: a write to the entropy pool drain aperture terminates SLVERR
     (``fabric.adoc``: "Writes to it terminate with BRESP=SLVERR"), and a read and
     a write of SEP-local 0x0, which no component owns, are not OKAY.
@@ -27,7 +29,25 @@ S8: every aperture address bit reaches the crossbar's SEP port on both
     channels: with the window at [4 GiB, 8 GiB) a byte is read and written back
     unchanged at 4 GiB + 2^k for each k below 32 and at 4 GiB itself, and with
     the window at the single byte 2^56 - 1 the same there, each completing
-    with a response; the aperture then returns to its RDL reset values.
+    with a response; the aperture then returns to its RDL reset values, and a
+    byte at the reset base completes with a response.
+
+S9 (before S8): with the aperture grown to cover SEP-local 0x2000_0000, inbound
+    traffic reaches the SEP external aperture and the external TRNG window as
+    the local crossbar's external initiator (``sep_local_axi_xbar_pkg``
+    ``Connectivity``), and both are terminated in DECERR slaves
+    (``hw/top/sep_ip_integration.sv``). Every AxID, AxCACHE/AxQOS/AxREGION/
+    AxLOCK corner, AxPROT encoding, AxSIZE and burst type ext_in offers there
+    completes with an error response.
+S10: eight reads and eight writes, each under its own ID, are launched into SEP
+    SRAM before the first response is taken, with RREADY and BREADY held back;
+    every read returns the word written under its ID and every write is OKAY.
+S11: the SEP debug module's system bus programs the SMC iDMA through the SEP
+    view of the SMC window, with SMC outbound filter entry 0 passing all, to
+    copy a block from SEP SRAM, through the crossbar's SMC-to-SEP route, to an
+    address outside both apertures, which the crossbar sends to ``ext_out``.
+    The destination in the bench responder holds the block ext_in wrote, and a
+    system-bus write and read then leave on ``ext_out`` from the SEP.
 """
 
 from __future__ import annotations
@@ -36,13 +56,24 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import with_timeout
-from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, worst_resp
+from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, AxiTimingProfile, worst_resp
 
-from seq_lib.smu_addr_map import c_header_u32
+from seq_lib.smu_addr_map import (
+    OUTBOUND0_END,
+    OUTBOUND0_FILTER_CONFIG,
+    OUTBOUND0_START,
+    c_header_u32,
+    smc_addr,
+)
 from seq_lib.smu_axi_helpers import AXI_TIMEOUT_NS, make_smu_axi_master
+from seq_lib.smu_boundary_regs import smc_base_config_u32
 from seq_lib.smu_compose_helpers import sample
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import smu_dtp_sep_dm_dmi_test_seq
 from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
+    OUTBOUND_CFG_OPEN,
+    OUTBOUND_END_ADDR,
+    OUTBOUND_FILTER_CONFIG,
+    OUTBOUND_START_ADDR,
     SEP_BASE_ONES,
     SEP_GLOBAL_BASE_ADDR,
     SEP_GLOBAL_BASE_RESET,
@@ -51,12 +82,50 @@ from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
     SEP_SIZE_ONES,
     smu_dtp_sep_dm_sba_test_seq,
 )
+from seq_lib.smu_filter_helpers import PASS_ALL_END, PASS_RW_CONFIG
 from seq_lib.smu_tb_pins import smc_primary_reset
 
 _SEP_ADDR_H = Path(__file__).resolve().parents[6] / "hw/sys/sep/regs/gen/c/sep_addr.h"
 SRAM_LOCAL = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_SRAM_BASE_ADDR")
 SRAM_SIZE = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_SRAM_SIZE")
 ENTROPY_POOL_LOCAL = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_ENTROPY_POOL_BASE_ADDR")
+SEP_EXTERNAL_LOCAL = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EXTERNAL_BASE_ADDR")
+TRNG_LOCAL = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_TRNG_BASE_ADDR")
+SMC_LOCAL_BASE = smc_base_config_u32("SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
+DMA_REGS = {
+    name: smc_addr(f"SMC_TOP_DMA_CTRL_{name}_BASE_ADDR")
+    for name in (
+        "CONFIG",
+        "DST_ADDRESS_LO",
+        "DST_ADDRESS_HI",
+        "SRC_ADDRESS_LO",
+        "SRC_ADDRESS_HI",
+        "LENGTH_LO",
+        "LENGTH_HI",
+        "DST_STRIDE_LO",
+        "DST_STRIDE_HI",
+        "SRC_STRIDE_LO",
+        "SRC_STRIDE_HI",
+        "NUM_REPETITIONS_LO",
+        "NUM_REPETITIONS_HI",
+        "NEXT_ID_0",
+        "DONE_0",
+    )
+}
+# CONFIG.enable_nd (reg_wdata[10] in the generated iDMA register top).
+DMA_CONFIG_ENABLE_ND = 1 << 10
+DMA_LENGTH = 0x100
+DMA_DST = 0x0200_0000
+# A SEP address in the SMU aperture at its sep_cpu_ctrl reset value, which the
+# SEP sends out on the SMN (``hw/sys/sep/doc/fabric.adoc``).
+SEP_EGRESS = (
+    c_header_u32(
+        _SEP_ADDR_H.parent / "blocks" / "sep_cpu_ctrl.h",
+        "SEP_CPU_CTRL__SMU_GLOBAL_BASE_ADDR__ADDR_reset",
+    )
+    + 0x1000_6000
+)
+DMA_POLLS = 64
 
 WIN_BASE = 0x0400_0000
 WIN_SIZE = 0x1100_0000
@@ -71,7 +140,16 @@ QUALIFIERS = (
     {"cache": 0xF, "qos": 0xF, "region": 0xF, "lock": 1},
 )
 BURST_LENS = (0x00, 0x55, 0xAA, 0xFF)
+# Cycles the master holds RREADY and BREADY low before each response beat.
+RESP_BACKPRESSURE_CYCLES = 4
 WRAP_BEATS = (2, 4, 8, 16)
+# SEP-local 0x2000_0000 and the TRNG window are inside this window, which
+# still ends below the SMC window at its reset base.
+WIN_EXT_SIZE = 0x2100_0000
+TRAIN = 8
+# Cycles the master holds RREADY and BREADY low once a train is launched, long
+# enough for the queued responses to fill every buffer back to the SEP port.
+TRAIN_HOLD_CYCLES = 600
 
 
 class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
@@ -184,6 +262,38 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         )
         if resp != RESP_OKAY:
             bad.append(("FIXED", 4, resp))
+        wrap_w, _, _ = await self._ax(
+            master,
+            write=True,
+            addr=base,
+            payload=bytes(range(32)),
+            size=3,
+            burst=AXI_BURST_WRAP,
+            label="wrap_wr",
+        )
+        incr_w, _, _ = await self._ax(
+            master, write=True, addr=base, payload=bytes(8), size=3, label="incr_after_wrap"
+        )
+        if (wrap_w, incr_w) != (RESP_OKAY, RESP_OKAY):
+            bad.append(("WRAP then INCR write", wrap_w, incr_w))
+        length = BURST_LENS[-1]
+        pattern = bytes((0x77 + i) & 0xFF for i in range((length + 1) * 8))
+        master.driver.set_timing(
+            AxiTimingProfile(
+                r_ready_delay=RESP_BACKPRESSURE_CYCLES, b_ready_delay=RESP_BACKPRESSURE_CYCLES
+            )
+        )
+        try:
+            resp_w, _, _ = await self._ax(
+                master, write=True, addr=base, payload=pattern, size=3, label="stall_wr"
+            )
+            resp_r, data, _ = await self._ax(
+                master, write=False, addr=base, payload=len(pattern), size=3, label="stall_rd"
+            )
+        finally:
+            master.driver.set_timing(AxiTimingProfile())
+        if resp_w != RESP_OKAY or resp_r != RESP_OKAY or data != pattern:
+            bad.append(("INCR under RREADY/BREADY backpressure", resp_w, resp_r))
         self._log(f"CHK-AXIIN-SEP-BURST mismatches={bad}")
         sb.expect_eq("CHK-AXIIN-SEP-BURST", bad, [], evidence="CHK-AXIIN-SEP-BURST")
         self.steps["S6"] = True
@@ -249,11 +359,147 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._touch(master, SEP_BASE_ONES)
         completed += 1
         await self._window(jtag, SEP_GLOBAL_BASE_RESET, SEP_REGION_SIZE_RESET)
-        self._log(f"CHK-AXIIN-SEP-ADDRESS-BITS completed={completed} of 34")
+        await self._touch(master, SEP_GLOBAL_BASE_RESET)
+        completed += 1
+        self._log(f"CHK-AXIIN-SEP-ADDRESS-BITS completed={completed} of 35")
         sb.expect_eq(
-            "CHK-AXIIN-SEP-ADDRESS-BITS", completed, 34, evidence="CHK-AXIIN-SEP-ADDRESS-BITS"
+            "CHK-AXIIN-SEP-ADDRESS-BITS", completed, 35, evidence="CHK-AXIIN-SEP-ADDRESS-BITS"
         )
         self.steps["S8"] = True
+
+    async def _external_initiator(self, master, jtag, sb) -> None:
+        """S9: inbound traffic into the SEP external aperture and the TRNG window."""
+        await self._window(jtag, WIN_BASE, WIN_EXT_SIZE)
+        ext = self._global(SEP_EXTERNAL_LOCAL + 0x100)
+        trng = self._global(TRNG_LOCAL)
+        cells = [(ext, {"id": i}) for i in (0x04, 0xFF, 0x00)]
+        cells += [(ext, dict(q)) for q in QUALIFIERS]
+        cells += [(ext, {"prot": p}) for p in range(8)]
+        cells += [(ext + off, {"size": size}) for size, off in ((0, 1), (1, 2), (2, 4), (3, 0))]
+        cells += [(ext, {"size": 3, "beats": 4, "burst": AXI_BURST_INCR})]
+        cells += [(ext, {"size": 3, "beats": 4, "burst": AXI_BURST_WRAP})]
+        cells += [(ext, {"size": 3, "beats": 2, "burst": AXI_BURST_FIXED})]
+        cells += [(ext, {})]
+        cells += [(trng, {"prot": p, "size": 2}) for p in range(8)]
+        cells += [(trng + off, {"size": size}) for size, off in ((0, 1), (1, 2), (0, 3), (2, 4))]
+        observed = []
+        for n, (addr, attrs) in enumerate(cells):
+            attrs = dict(attrs)
+            beats = attrs.pop("beats", 1)
+            nbytes = beats * (1 << attrs.get("size", 3))
+            for write in (True, False):
+                resp, _, _ = await self._ax(
+                    master,
+                    write=write,
+                    addr=addr,
+                    payload=bytes(nbytes) if write else nbytes,
+                    label=f"ext{n}{'w' if write else 'r'}",
+                    **attrs,
+                )
+                observed.append(resp != RESP_OKAY)
+        await self._window(jtag, WIN_BASE, WIN_SIZE)
+        self._log(f"CHK-AXIIN-SEP-EXTERNAL {len(observed)} accesses errors={sum(observed)}")
+        sb.expect_eq(
+            "CHK-AXIIN-SEP-EXTERNAL",
+            observed,
+            [True] * len(observed),
+            evidence="CHK-AXIIN-SEP-EXTERNAL",
+        )
+        self.steps["S9"] = True
+
+    async def _id_train(self, master, sb) -> None:
+        """S10: reads and writes under distinct IDs in flight together."""
+        base = self._global(SRAM_LOCAL) + 0x800
+        words = {i: (0xC0DE_0000_0000_0000 | i).to_bytes(8, "little") for i in range(TRAIN)}
+        master.driver.set_timing(
+            AxiTimingProfile(r_ready_delay=TRAIN_HOLD_CYCLES, b_ready_delay=TRAIN_HOLD_CYCLES)
+        )
+        try:
+            writes = [
+                master.init_write(base + 8 * i, words[i], size=3, id=0x11 * i + 1)
+                for i in range(TRAIN)
+            ]
+            for event in writes:
+                await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+            reads = [
+                master.init_read(base + 8 * i, 8, size=3, id=0x13 * i + 2) for i in range(TRAIN)
+            ]
+            for event in reads:
+                await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+        finally:
+            master.driver.set_timing(AxiTimingProfile())
+        bad = [i for i, event in enumerate(writes) if worst_resp(event.data.resp) != RESP_OKAY]
+        bad += [
+            i
+            for i, event in enumerate(reads)
+            if worst_resp(event.data.resp) != RESP_OKAY or bytes(event.data.data)[:8] != words[i]
+        ]
+        self._log(f"CHK-AXIIN-SEP-ID-TRAIN mismatches={bad}")
+        sb.expect_eq("CHK-AXIIN-SEP-ID-TRAIN", bad, [], evidence="CHK-AXIIN-SEP-ID-TRAIN")
+        self.steps["S10"] = True
+
+    def _smc_view(self, local: int) -> int:
+        return sample(self.dut.smc_global_base_o, "smc_global_base_o") + (local - SMC_LOCAL_BASE)
+
+    async def _smc_dma(self, master, jtag, sb) -> None:
+        """S11: an SMC iDMA copy from SEP SRAM to ext_out, launched over the SEP system bus."""
+        src = self._global(SRAM_LOCAL) + 0x1000
+        payload = bytes((0x5B + 3 * i) & 0xFF for i in range(DMA_LENGTH))
+        resp_w, _, _ = await self._ax(
+            master, write=True, addr=src, payload=payload, size=3, label="dma_src"
+        )
+        mem = self.test.cfg.axi_out_mem
+        mem.write(DMA_DST, bytes(DMA_LENGTH))
+        for addr, value in (
+            (OUTBOUND0_START, 0),
+            (OUTBOUND0_END, PASS_ALL_END),
+            (OUTBOUND0_FILTER_CONFIG, PASS_RW_CONFIG),
+        ):
+            await self._sba_write64(jtag, self._smc_view(addr), value)
+        regs = {name: self._smc_view(addr) for name, addr in DMA_REGS.items()}
+        for name, value in (
+            ("CONFIG", DMA_CONFIG_ENABLE_ND),
+            ("DST_ADDRESS_LO", DMA_DST & 0xFFFF_FFFF),
+            ("DST_ADDRESS_HI", DMA_DST >> 32),
+            ("SRC_ADDRESS_LO", src & 0xFFFF_FFFF),
+            ("SRC_ADDRESS_HI", src >> 32),
+            ("LENGTH_LO", DMA_LENGTH),
+            ("LENGTH_HI", 0),
+            ("DST_STRIDE_LO", 0),
+            ("DST_STRIDE_HI", 0),
+            ("SRC_STRIDE_LO", 0),
+            ("SRC_STRIDE_HI", 0),
+            ("NUM_REPETITIONS_LO", 1),
+            ("NUM_REPETITIONS_HI", 0),
+        ):
+            await self._sba_write(jtag, regs[name], value)
+        # Reading NEXT_ID submits the programmed descriptor; it is read once.
+        start_id = await self._sba_read(jtag, regs["NEXT_ID_0"])
+        done = None
+        for _ in range(DMA_POLLS):
+            done = await self._sba_read(jtag, regs["DONE_0"])
+            if done == start_id:
+                break
+        dst = mem.read(DMA_DST, DMA_LENGTH)
+        await self._sba_write64(jtag, OUTBOUND_START_ADDR, SEP_EGRESS)
+        await self._sba_write64(jtag, OUTBOUND_END_ADDR, SEP_EGRESS + 0xFFF)
+        await self._sba_write(jtag, OUTBOUND_FILTER_CONFIG, OUTBOUND_CFG_OPEN)
+        await self._sba_write(jtag, SEP_EGRESS, 0x0DDBA11)
+        egress = await self._sba_read(jtag, SEP_EGRESS)
+        after, _, _ = await self._ax(
+            master, write=False, addr=src, payload=8, size=3, label="after_dma"
+        )
+        self._log(
+            f"CHK-AXIIN-SEP-SMC-DMA start_id={start_id} done={done} src_wr={resp_w} "
+            f"egress=0x{egress:x} after={after}"
+        )
+        sb.expect_eq(
+            "CHK-AXIIN-SEP-SMC-DMA",
+            (resp_w, done, dst.hex(), egress, after),
+            (RESP_OKAY, start_id, payload.hex(), 0x0DDBA11, RESP_OKAY),
+            evidence="CHK-AXIIN-SEP-SMC-DMA",
+        )
+        self.steps["S11"] = True
 
     async def run(self) -> None:
         await smu_dtp_sep_dm_dmi_test_seq.run(self)
@@ -267,4 +513,7 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._round_trips(master, sb)
         await self._bursts(master, sb)
         await self._errors(master, sb)
+        await self._external_initiator(master, jtag, sb)
+        await self._id_train(master, sb)
+        await self._smc_dma(master, jtag, sb)
         await self._address_bits(master, jtag, sb)

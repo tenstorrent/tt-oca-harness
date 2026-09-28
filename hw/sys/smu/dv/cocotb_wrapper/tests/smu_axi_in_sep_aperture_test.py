@@ -20,6 +20,6 @@ class smu_axi_in_sep_aperture_test(smu_base_test):
         seq = smu_axi_in_sep_aperture_test_seq(self)
         await seq.run()
         steps = (seq.s1_ok, seq.s2_ok, seq.s3_ok) + tuple(
-            seq.steps.get(s, False) for s in ("S4", "S5", "S6", "S7", "S8")
+            seq.steps.get(s, False) for s in ("S4", "S5", "S6", "S7", "S8", "S9", "S10", "S11")
         )
-        assert all(steps), f"sep_aperture incomplete s1..s8={steps}"
+        assert all(steps), f"sep_aperture incomplete s1..s11={steps}"

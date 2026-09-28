@@ -23,6 +23,11 @@ the output high, and only then asserts the cold reset.
 The bench raises the input when a test supplies ``+smc_scratch_ram_hex``,
 because the sweep would otherwise overwrite the image; the testlist entry
 supplies one and the sequence refuses to run without it.
+
+A last leg lowers the input through the bench's ``tb_smc_sram_auto_init_restore``
+and runs a second cold reset: the initialisation enable rises and zeroing
+writes reach the scratch RAM, the behaviour smu_sram_auto_init_done_test proves
+for a run that never raised the input.
 """
 
 from __future__ import annotations
@@ -140,4 +145,38 @@ class smu_sram_auto_init_disabled_seq:
             writes_after,
             writes_before,
             evidence="CHK-SMU-MEMINIT-DISABLED",
+        )
+
+        dut.tb_smc_sram_auto_init_restore.value = 1
+        await ClockCycles(dut.clk_smu_i, 4)
+        restored = sample(disable, "smc_disable_sram_auto_init_i")
+        dut.rst_cold_ni.value = 0
+        for _ in range(RESET_BOUND_REF_CYCLES):
+            await RisingEdge(dut.clk_ref_i)
+            if sample(dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o") == 0:
+                break
+        for _ in range(HOLD_REF_CYCLES):
+            await RisingEdge(dut.clk_ref_i)
+        writes_before = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
+        dut.rst_cold_ni.value = 1
+        enable_seen = 0
+        for _ in range(DONE_BOUND_CYCLES):
+            await RisingEdge(dut.clk_smu_i)
+            enable_seen |= sample(init_enable, "init_mem_enable")
+            if enable_seen:
+                break
+        await ClockCycles(dut.clk_smu_i, 64)
+        writes_after = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
+        self.log.info(
+            "CHK-SMU-MEMINIT-RESTORED input=%d enable_seen=%d writes %d -> %d",
+            restored,
+            enable_seen,
+            writes_before,
+            writes_after,
+        )
+        sb.expect_eq(
+            "CHK-SMU-MEMINIT-RESTORED with the input low again a cold reset starts the sweep",
+            (restored, enable_seen, writes_after > writes_before),
+            (0, 1, True),
+            evidence="CHK-SMU-MEMINIT-RESTORED",
         )

@@ -68,6 +68,26 @@ S7  Wire-OR shared wire. Three wire-OR lanes join one group wire
     every lane above the group; two members pulled in overlapping windows
     still reach every member exactly once and leave every non-member lane
     quiet (``CHK-SMU-CTP-WIRE-SHARED``).
+
+S8  Every lane, point-to-point. Each lane in turn, with its successor as the
+    sink, runs S2 to S4: point-to-point mode moves that lane's pad controls, a
+    request in raises its acknowledge out and, through the matrix, the sink's
+    request out, which the sink's acknowledge in retires
+    (``CHK-SMU-CTP-EVERY-LANE``).
+
+S9  Every lane, wire-OR. With every lane back at wire-OR, a chiplet pull of
+    each lane's private wire raises that lane's ``ct_dst`` once,
+    ``CT_DST_LATENCY`` clocks after the wire is first seen asserted, and no
+    other lane's (``CHK-SMU-CTP-WIRE-RX-EVERY-LANE``).
+
+S10 Every internal lane. With lane 0 back in point-to-point, its destination
+    is routed in turn into the CT_SRC port of each DTP internal lane: the two
+    the SMC keeps (``dtp_xtrig_ctm_src_req`` inside the SMU) and the eight the
+    SMU exposes (``xtrig_ctm_src_req_o``). A request on lane 0 raises that lane
+    once and no other; a lane whose mode bit selects the handshake holds the
+    request until its acknowledge input retires it (``port_table.adoc``). Every
+    exposed lane's acknowledge input is then pulsed with no request in flight,
+    and no lane's request moves (``CHK-SMU-CTM-EVERY-LANE``).
 """
 
 from __future__ import annotations
@@ -84,7 +104,7 @@ from seq_lib.smu_boundary_regs import (
     cross_trigger_network_u32,
     cross_trigger_u32,
 )
-from seq_lib.smu_compose_helpers import bit_width
+from seq_lib.smu_compose_helpers import bit_width, hier, sample
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     J2A_STATUS_SUCCESS,
@@ -96,6 +116,7 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
+from seq_lib.smu_tb_pins import smu_scope
 
 DTP_CSR_BASE = smc_addr("SMC_TOP_DTP_CTRL_REG_BASE_ADDR")
 
@@ -124,6 +145,10 @@ P2P = 1
 SMU_INT_CT_EXPOSED = 8
 
 CTP_MASK = (1 << NUM_CTP) - 1
+# Every DTP internal cross-trigger request inside the SMU, the SMC-reserved
+# lanes below the ones the SMU exposes.
+DTP_CTM_SRC_REQ_PATH = "dtp_xtrig_ctm_src_req"
+DTP_INT_CT_MODE_PATH = "u_dtp.XTRIG_INT_CT_MODE"
 P2P_LANE = 0
 SINK_LANE = 1
 WIRE_OR_LANE = 2
@@ -371,6 +396,9 @@ class smu_xtrig_ctp_pad_seq:
         await self._matrix_route_to_internal()
         await self._wire_or_receive()
         await self._wire_or_shared()
+        await self._every_lane_p2p()
+        await self._every_lane_wire_or()
+        await self._every_internal_lane()
 
     def _check_pads(self, modes: dict[int, int], label: str, evidence: str) -> None:
         for name, want in expected_pad_vectors(modes).items():
@@ -758,3 +786,122 @@ class smu_xtrig_ctp_pad_seq:
         dut.tb_xtrig_ctp_wire_group.value = 0
         dut.tb_xtrig_ctp_wire_group_pull.value = 1
         await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+
+    # ------------------------------------------------------------------
+    # S8 / S9
+    # ------------------------------------------------------------------
+    async def _every_lane_p2p(self) -> None:
+        dut = self.dut
+        observed, want = {}, {}
+        for lane in range(NUM_CTP):
+            sink = (lane + 1) % NUM_CTP
+            await self._set_mode(lane, P2P)
+            await self._set_mode(sink, P2P)
+            pads = expected_pad_vectors({lane: P2P, sink: P2P})
+            pads_ok = all(self._vec(name) == vec for name, vec in pads.items())
+            await self._wr32(self._ctm_src_addr(sink), 1 << lane, f"CTM CT_SRC[{sink}]")
+            dut.tb_xtrig_ctp_req_in_din.value = 1 << lane
+            await self._wait_vec_bit("tb_xtrig_ctp_ack_out_dout", lane, 1, f"lane {lane} ack")
+            await self._wait_vec_bit("tb_xtrig_ctp_req_out_dout", sink, 1, f"lane {sink} req")
+            dut.tb_xtrig_ctp_ack_in_din.value = 1 << sink
+            await self._wait_vec_bit("tb_xtrig_ctp_req_out_dout", sink, 0, f"lane {sink} retire")
+            dut.tb_xtrig_ctp_req_in_din.value = 0
+            await self._wait_vec_bit("tb_xtrig_ctp_ack_out_dout", lane, 0, f"lane {lane} release")
+            dut.tb_xtrig_ctp_ack_in_din.value = 0
+            await self._wr32(self._ctm_src_addr(sink), 0, f"CTM CT_SRC[{sink}]")
+            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+            observed[lane] = (pads_ok, self._vec("tb_xtrig_ctp_req_out_dout"))
+            want[lane] = (True, 0)
+            await self._set_mode(lane, WIRE_OR)
+        await self._set_mode(0, WIRE_OR)
+        self.log.info("CHK-SMU-CTP-EVERY-LANE %s", observed)
+        self.sb.expect_eq(
+            "CHK-SMU-CTP-EVERY-LANE", observed, want, evidence="CHK-SMU-CTP-EVERY-LANE"
+        )
+        self._check_pads({}, "every lane back at wire-OR", "CHK-SMU-CTP-EVERY-LANE")
+
+    async def _every_lane_wire_or(self) -> None:
+        dut = self.dut
+        observed, want = {}, {}
+        for lane in range(NUM_CTP):
+            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+            window = _WireOrWindow(self)
+            window.start((WIRE_ASSERTED_PSEUDO_NAME, "tb_xtrig_ctp_ct_dst"))
+            dut.tb_xtrig_ctp_wire_ext_assert.value = 1 << lane
+            await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+            dut.tb_xtrig_ctp_wire_ext_assert.value = 0
+            await ClockCycles(dut.clk_smu_i, PULSE_BOUND)
+            window.stop()
+            asserted_at = window.first_seen[WIRE_ASSERTED_PSEUDO_NAME].get(lane)
+            received_at = window.first_seen["tb_xtrig_ctp_ct_dst"].get(lane)
+            latency = (
+                -1 if asserted_at is None or received_at is None else received_at - asserted_at
+            )
+            others = self._rises_in_mask(window, "tb_xtrig_ctp_ct_dst", CTP_MASK & ~(1 << lane))
+            observed[lane] = (latency, window.rises["tb_xtrig_ctp_ct_dst"].get(lane, 0), others)
+            want[lane] = (CT_DST_LATENCY, 1, 0)
+        self.log.info("CHK-SMU-CTP-WIRE-RX-EVERY-LANE %s", observed)
+        self.sb.expect_eq(
+            "CHK-SMU-CTP-WIRE-RX-EVERY-LANE",
+            observed,
+            want,
+            evidence="CHK-SMU-CTP-WIRE-RX-EVERY-LANE",
+        )
+
+    # ------------------------------------------------------------------
+    # S10
+    # ------------------------------------------------------------------
+    async def _every_internal_lane(self) -> None:
+        dut = self.dut
+        dtp_lanes = hier(smu_scope(dut), DTP_CTM_SRC_REQ_PATH)
+        dtp_int_ct = NUM_CT_SRC - NUM_CTP
+        reserved = dtp_int_ct - SMU_INT_CT_EXPOSED
+        # A handshake lane (mode bit set) holds its request until acknowledged.
+        mode = sample(hier(smu_scope(dut), DTP_INT_CT_MODE_PATH), DTP_INT_CT_MODE_PATH)
+        await self._set_mode(P2P_LANE, P2P)
+        observed, want = {}, {}
+        for lane in range(dtp_int_ct):
+            port = NUM_CTP + lane
+            await self._wr32(self._ctm_src_addr(port), 1 << P2P_LANE, f"CTM CT_SRC[{port}]")
+            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+            rises = [0] * dtp_int_ct
+            last = sample(dtp_lanes, DTP_CTM_SRC_REQ_PATH)
+            dut.tb_xtrig_ctp_req_in_din.value = 1 << P2P_LANE
+            for cycle in range(2 * PULSE_BOUND):
+                if cycle == PULSE_BOUND:
+                    dut.tb_xtrig_ctp_req_in_din.value = 0
+                await ClockCycles(dut.clk_smu_i, 1)
+                now = sample(dtp_lanes, DTP_CTM_SRC_REQ_PATH)
+                for bit in range(dtp_int_ct):
+                    if (now >> bit) & 1 and not (last >> bit) & 1:
+                        rises[bit] += 1
+                last = now
+            if (mode >> lane) & 1:
+                dut.xtrig_ctm_src_ack.value = 1 << (lane - reserved)
+                for _ in range(PULSE_BOUND):
+                    await ClockCycles(dut.clk_smu_i, 1)
+                    if not (sample(dtp_lanes, DTP_CTM_SRC_REQ_PATH) >> lane) & 1:
+                        break
+                dut.xtrig_ctm_src_ack.value = 0
+                await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+            exposed = self._vec("xtrig_ctm_src_req")
+            await self._wr32(self._ctm_src_addr(port), 0, f"CTM CT_SRC[{port}]")
+            observed[lane] = (rises, exposed)
+            want[lane] = ([int(bit == lane) for bit in range(dtp_int_ct)], 0)
+        ack_moved = 0
+        for bit in range(SMU_INT_CT_EXPOSED):
+            dut.xtrig_ctm_src_ack.value = 1 << bit
+            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+            ack_moved |= sample(dtp_lanes, DTP_CTM_SRC_REQ_PATH)
+            dut.xtrig_ctm_src_ack.value = 0
+            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+        await self._set_mode(P2P_LANE, WIRE_OR)
+        self.log.info(
+            "CHK-SMU-CTM-EVERY-LANE reserved=%d %s ack_moved=0x%x", reserved, observed, ack_moved
+        )
+        self.sb.expect_eq(
+            "CHK-SMU-CTM-EVERY-LANE",
+            (observed, ack_moved),
+            (want, 0),
+            evidence="CHK-SMU-CTM-EVERY-LANE",
+        )

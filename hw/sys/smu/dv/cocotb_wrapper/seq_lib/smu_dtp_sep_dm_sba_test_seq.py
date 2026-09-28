@@ -29,8 +29,10 @@ S6: a SEP read outside the SMC window takes the crossbar. SEP traffic that is
 S7: every bit of the SEP aperture moves both ways. SEP_GLOBAL_BASE_ADDR.addr
     and SEP_REGION_SIZE.size are read-write fields of the widths the
     generated description gives, with no alignment rule, so the walk sets
-    each to its all-ones value and back, choosing every intermediate window
-    to be non-empty and disjoint from the SMC window read off
+    each to its all-ones value and back, passing through a base with every bit
+    above the region-size field set so the aperture's end carries those bits
+    too, choosing every intermediate window to be non-empty and disjoint from
+    the SMC window read off
     ``smc_global_base_o`` / ``smc_region_size_o`` (the crossbar decodes both
     rules at once). Each step is checked on the ports and by a 64-bit
     system-bus readback, and the walk ends at the RDL reset values.
@@ -344,6 +346,7 @@ class smu_dtp_sep_dm_sba_test_seq(smu_dtp_sep_dm_dmi_test_seq):
         above_4g = SEP_SIZE_ONES + 1
         steps = [
             (SEP_GLOBAL_BASE_RESET, 1),
+            (SEP_BASE_ONES & ~SEP_SIZE_ONES, 1),
             (SEP_BASE_ONES, 1),
             (above_4g, 1),
             (above_4g, SEP_SIZE_ONES),

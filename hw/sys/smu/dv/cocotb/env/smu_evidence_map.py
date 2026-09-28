@@ -137,8 +137,24 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "a 2 KiB iDMA copy crosses smu_axi_out as INCR bursts covering the block both "
             "ways, the longest at AxLEN 255, and the destination holds the source",
         ),
+        (
+            "CHK-AXIOUT-BACKPRESSURE",
+            "CHK-AXIOUT-BACKPRESSURE",
+            "the iDMA copy completes intact while the responder stalls every AW, W and AR",
+        ),
+        (
+            "CHK-AXIOUT-ERROR-RESP",
+            "CHK-AXIOUT-ERROR-RESP",
+            "responder SLVERR and DECERR on a read and a write reach JTAG2AXI as that status",
+        ),
     ],
     "smu_axi_in_burst_outstanding_test": [
+        (
+            "CHK-AXIIN-SPM-SWEEP",
+            "CHK-AXIIN-SPM-SWEEP",
+            "every SPM size and address cell reads back, an INCR burst reads back its beats, "
+            "and an INCR write after a WRAP write is OKAY",
+        ),
         (
             "CHK-AXIIN-DEPTH",
             "CHK-AXIIN-DEPTH",
@@ -362,8 +378,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-SEP-BURST",
             "CHK-AXIIN-SEP-BURST",
-            "INCR bursts of AxLEN 0x00/0x55/0xAA/0xFF round-trip SEP SRAM; WRAP and FIXED "
-            "reads are OKAY",
+            "INCR bursts of AxLEN 0x00/0x55/0xAA/0xFF round-trip SEP SRAM, also under response "
+            "backpressure; WRAP and FIXED reads and a WRAP write are OKAY",
         ),
         (
             "CHK-AXIIN-SEP-ERRORS",
@@ -374,6 +390,127 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIIN-SEP-ADDRESS-BITS",
             "CHK-AXIIN-SEP-ADDRESS-BITS",
             "a read at each SEP aperture address bit completes",
+        ),
+        (
+            "CHK-AXIIN-SEP-EXTERNAL",
+            "CHK-AXIIN-SEP-EXTERNAL",
+            "inbound accesses to the SEP external aperture and TRNG window end in error responses",
+        ),
+        (
+            "CHK-AXIIN-SEP-ID-TRAIN",
+            "CHK-AXIIN-SEP-ID-TRAIN",
+            "reads and writes under distinct IDs in flight together complete and read back",
+        ),
+        (
+            "CHK-AXIIN-SEP-SMC-DMA",
+            "CHK-AXIIN-SEP-SMC-DMA",
+            "an SMC iDMA copy from SEP SRAM to ext_out lands, and a SEP egress follows",
+        ),
+    ],
+    "smu_efuse_command_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-EFUSE-CMD-READ",
+            "CHK-EFUSE-CMD-READ",
+            "a read at bit 0 and at every address bit of the spare middle of the array completes",
+        ),
+        (
+            "CHK-EFUSE-CMD-PROGRAM",
+            "CHK-EFUSE-CMD-PROGRAM",
+            "programs of the middle fuse word complete and a read returns every programmed bit",
+        ),
+        (
+            "CHK-EFUSE-CMD-OOB",
+            "CHK-EFUSE-CMD-OOB",
+            "an out-of-range read and program fail, set the sticky address errors, and clear",
+        ),
+    ],
+    "smu_sep_lsu_fabric_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-LSU-HALT",
+            "CHK-SEP-LSU-HALT",
+            "a halt request halts the SEP hart",
+        ),
+        (
+            "CHK-SEP-LSU-OUT",
+            "CHK-SEP-LSU-OUT",
+            "the probe completes through a stalling responder, which holds every byte, all at AxCACHE 0b1111",
+        ),
+        (
+            "CHK-SEP-LSU-OUT-SIDE-EFFECT",
+            "CHK-SEP-LSU-OUT-SIDE-EFFECT",
+            "with the side-effect bit every store keeps its own address and AxCACHE is 0b0000",
+        ),
+        (
+            "CHK-SEP-LSU-SMC",
+            "CHK-SEP-LSU-SMC",
+            "the probe completes against the SEP view of the SMC SPM",
+        ),
+        (
+            "CHK-SEP-LSU-EXTERNAL",
+            "CHK-SEP-LSU-EXTERNAL",
+            "an external-aperture access traps to the vector's ebreak with and without the side-effect bit",
+        ),
+        (
+            "CHK-SEP-LSU-SBA-MIX",
+            "CHK-SEP-LSU-SBA-MIX",
+            "system-bus accesses on each probe path complete before and after the probe runs",
+        ),
+    ],
+    "smu_sep_sba_fabric_sweep_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-SBA-OUT-SWEEP",
+            "CHK-SEP-SBA-OUT-SWEEP",
+            "every size, offset and free SMU-aperture address bit is held by the responder and reads back",
+        ),
+        (
+            "CHK-SEP-SBA-REMAP-HIGH",
+            "CHK-SEP-SBA-REMAP-HIGH",
+            "an alias region offset of each power of two from 2^32 to 2^55 reaches the responder there",
+        ),
+        (
+            "CHK-SEP-SBA-REMAP-CACHEABLE",
+            "CHK-SEP-SBA-REMAP-CACHEABLE",
+            "cacheable raises AxCACHE[3:2] on the remapped write and read",
+        ),
+        (
+            "CHK-SEP-SBA-REMAP-SMC",
+            "CHK-SEP-SBA-REMAP-SMC",
+            "a wrapping offset moves a page into the SMC SPM view; the word reads back both ways",
+        ),
+        (
+            "CHK-SEP-SBA-OUTPUT-REMAP",
+            "CHK-SEP-SBA-OUTPUT-REMAP",
+            "AP and STEE output-remap region 0 accesses reach the responder at the programmed target",
+        ),
+        (
+            "CHK-SEP-SBA-OUT-ERROR",
+            "CHK-SEP-SBA-OUT-ERROR",
+            "responder SLVERR and DECERR on a read and a write each return a system-bus error",
+        ),
+        (
+            "CHK-SEP-SBA-SMC-WINDOW",
+            "CHK-SEP-SBA-SMC-WINDOW",
+            "every size, offset and SPM address bit reads back through the SEP view of the SMC window",
+        ),
+        (
+            "CHK-SEP-SBA-EXTERNAL-DECERR",
+            "CHK-SEP-SBA-EXTERNAL-DECERR",
+            "every external-aperture and TRNG-window access returns a system-bus error",
         ),
     ],
     "smu_dtp_sep_dm_sba_test": [
@@ -416,6 +553,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_ext_boot_seq_gate_test": [
+        (
+            "CHK-BOOT-SEQ-REGATE",
+            "CHK-BOOT-SEQ-REGATE",
+            "ext_boot_seq_done_i low across a cold reset holds the fuse reset until it rises",
+        ),
         ("CHK-BOOT-SEQ-GATE", "CHK-BOOT-SEQ-GATE", "gate holds then releases fuse_reset"),
         ("CHK-PRIMARY-NOT-GATED", "CHK-PRIMARY-NOT-GATED", "primary still releases while gated"),
         (
@@ -896,6 +1038,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_smc_wdt_boundary_timeout_test": [
         (
+            "CHK-SMU-WDT-RELEASE",
+            "CHK-SMU-WDT-RELEASE",
+            "the second timeout drops and the SMC warm and watchdog resets release again",
+        ),
+        (
             "CHK-SMU-WDT-FIRST",
             "CHK-SMU-WDT-FIRST",
             "CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP "
@@ -929,6 +1076,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_telemetry_atb_capture_test": [
+        (
+            "CHK-SMU-TEL-EVERY-RECEIVER",
+            "CHK-SMU-TEL-EVERY-RECEIVER",
+            "each receiver takes a message on its own ATB lane and reports its probe id",
+        ),
+        (
+            "CHK-SMU-TEL-BACKPRESSURE",
+            "CHK-SMU-TEL-BACKPRESSURE",
+            "back-to-back beats on a faster telemetry clock make telemetry_atready_o fall and rise",
+        ),
         (
             "CHK-SMU-TEL-RESET",
             "CHK-SMU-TEL-RESET",
@@ -1114,6 +1271,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     ],
     "smu_sram_auto_init_disabled_test": [
         (
+            "CHK-SMU-MEMINIT-RESTORED",
+            "CHK-SMU-MEMINIT-RESTORED",
+            "with the input lowered again a cold reset starts the zeroing sweep",
+        ),
+        (
             "CHK-SMU-MEMINIT-DISABLED",
             "CHK-SMU-MEMINIT-DISABLED",
             "with smc_disable_sram_auto_init_i high the zeroing sweep never "
@@ -1156,6 +1318,21 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-WRAP-ELAB", "WRAP_ELAB_OK", "wrapper elab/reset contract"),
     ],
     "smu_xtrig_ctp_pad_test": [
+        (
+            "CHK-SMU-CTM-EVERY-LANE",
+            "CHK-SMU-CTM-EVERY-LANE",
+            "a trigger routed into each DTP internal lane raises that lane once and no other",
+        ),
+        (
+            "CHK-SMU-CTP-EVERY-LANE",
+            "CHK-SMU-CTP-EVERY-LANE",
+            "each lane in point-to-point moves its pads, acknowledges and routes to its successor",
+        ),
+        (
+            "CHK-SMU-CTP-WIRE-RX-EVERY-LANE",
+            "CHK-SMU-CTP-WIRE-RX-EVERY-LANE",
+            "a pull of each lane's private wire raises that lane's ct_dst once at the latency",
+        ),
         (
             "CHK-SMU-CTP-DEFAULT",
             "CHK-SMU-CTP-DEFAULT",

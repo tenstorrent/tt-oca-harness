@@ -347,13 +347,13 @@ module smu_wrapper_uvm_top (
   output logic        tb_stap_extra0_tms,
   output logic        tb_stap_extra0_tdo,
   output logic        tb_stap_extra0_tdo_oen,
-  // ATB telemetry source for receiver 0. Receivers 1 and 2 stay idle.
-  input  wire  logic [7:0] tb_telemetry_atdata,
-  input  wire  logic [6:0] tb_telemetry_atid,
-  input  wire  logic       tb_telemetry_atvalid,
-  input  wire  logic       tb_telemetry_afready,
-  output logic             tb_telemetry_atready,
-  output logic             tb_telemetry_afvalid,
+  // ATB telemetry sources, one lane per receiver; lane 0 is the low bits.
+  input  wire  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][7:0] tb_telemetry_atdata,
+  input  wire  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][6:0] tb_telemetry_atid,
+  input  wire  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]      tb_telemetry_atvalid,
+  input  wire  logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]      tb_telemetry_afready,
+  output logic       [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]      tb_telemetry_atready,
+  output logic       [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]      tb_telemetry_afvalid,
   // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
   input  wire  logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0] tb_smc_ext_interrupts,
   input  wire  logic [3:0]  tb_smc_ndmreset_request,
@@ -399,6 +399,8 @@ module smu_wrapper_uvm_top (
   // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
   // reset rather than at an arbitrary time.
   input  wire  logic tb_secure_tm_req,
+  // Clears the SRAM auto-initialisation strap the scratch-RAM preload raises.
+  input  wire  logic tb_smc_sram_auto_init_restore,
   output logic       tb_secure_tm,
   // Cross-trigger port pads. The DTP is the pad controller on all four
   // groups. CT_Req_out sits on an ocah_open_drain_bus shared wire, a private
@@ -593,11 +595,15 @@ module smu_wrapper_uvm_top (
   // +smc_scratch_ram_hex load, so an image placed there does not survive to
   // first fetch. Hold the FSM off whenever a test supplies such an image;
   // hw/sys/smc/dv holds it off unconditionally.
-  logic smc_disable_sram_auto_init = 1'b0;
+  // tb_smc_sram_auto_init_restore returns the input low, so a later cold reset
+  // runs the zeroing sweep over the image.
+  logic smc_scratch_preloaded = 1'b0;
+  logic smc_disable_sram_auto_init;
   initial begin : smc_scratch_preload_gates_auto_init
     string scratch_hex_path;
-    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+    smc_scratch_preloaded = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
   end
+  assign smc_disable_sram_auto_init = smc_scratch_preloaded & ~tb_smc_sram_auto_init_restore;
 
   // CPU memory macros live inside smc_ip_integration, so the ROM request is
   // observed hierarchically.
@@ -686,25 +692,22 @@ module smu_wrapper_uvm_top (
   assign tb_stap_extra0_tdo     = stap_extra_tdo_w[0];
   assign tb_stap_extra0_tdo_oen = stap_extra_tdo_oen_w[0];
 
-  // ATB telemetry: the bench is the source for receiver 0 only.
+  // ATB telemetry: the bench is the source for every receiver.
   localparam int unsigned NUM_TEL = smc_config_pkg::NUM_TELEMETRY_RECEIVERS;
   telemetry_receiver_pkg::telemetry_data_t [NUM_TEL-1:0] tel_atdata_w;
   telemetry_receiver_pkg::atb_id_t         [NUM_TEL-1:0] tel_atid_w;
   logic [NUM_TEL-1:0] tel_atvalid_w, tel_afready_w, tel_atready_w, tel_afvalid_w;
 
   always_comb begin
-    tel_atdata_w     = '0;
-    tel_atid_w       = '0;
-    tel_atvalid_w    = '0;
-    tel_afready_w    = '0;
-    tel_atdata_w[0]  = tb_telemetry_atdata;
-    tel_atid_w[0]    = tb_telemetry_atid;
-    tel_atvalid_w[0] = tb_telemetry_atvalid;
-    tel_afready_w[0] = tb_telemetry_afready;
+    for (int r = 0; r < NUM_TEL; r++) begin
+      tel_atdata_w[r] = tb_telemetry_atdata[r];
+      tel_atid_w[r]   = tb_telemetry_atid[r];
+    end
   end
-
-  assign tb_telemetry_atready = tel_atready_w[0];
-  assign tb_telemetry_afvalid = tel_afvalid_w[0];
+  assign tel_atvalid_w        = tb_telemetry_atvalid;
+  assign tel_afready_w        = tb_telemetry_afready;
+  assign tb_telemetry_atready = tel_atready_w;
+  assign tb_telemetry_afvalid = tel_afvalid_w;
 
   // SMC boundary: the external interrupt vector is NUM_INT_TO_SMC wide and the
   // bench drives its low 32 lanes.

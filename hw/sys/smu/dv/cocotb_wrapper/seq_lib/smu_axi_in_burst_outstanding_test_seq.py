@@ -19,13 +19,18 @@ S2: a WRAP burst and a multi-beat FIXED burst at the same register target.
     implements INCR only and answers an unsupported burst with SLVERR, which
     is a different verdict from the DECERR a filter or decode miss returns --
     the transfer reached a subordinate and was refused there.
+S3: the SMC SPM through the same window. Every AxSIZE, with each of address
+    bits [2:0] set and cleared between transfers, and a write and read at every
+    address bit the SPM leaves free, read back what was written; an INCR burst
+    reads back its beats, and a WRAP write followed by an INCR write both
+    complete.
 """
 
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge
-from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, AxiTimingProfile, resp_name
+from cocotb.triggers import ClockCycles, RisingEdge, with_timeout
+from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, AxiTimingProfile, resp_name, worst_resp
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import (
@@ -46,6 +51,12 @@ from seq_lib.smu_tb_pins import smc_primary_reset, smu_axi_in_prefix
 VERSION_LO = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET
 SCRATCH_COLD = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR")
+SPM_BASE = smc_addr("SMC_TOP_SPM_MEMORY_BASE_ADDR")
+SPM_SIZE = smc_addr("SMC_TOP_SPM_MEMORY_SIZE")
+# (AxSIZE, byte offset) pairs that set and clear each of address bits [2:0].
+SIZE_STEPS = ((3, 0), (0, 1), (1, 2), (2, 4), (0, 7), (1, 6), (3, 0))
+AXI_BURST_INCR = 1
+SPM_BURST_BEATS = 8
 
 # Transactions launched before the first response is collected.
 OUTSTANDING = 64
@@ -132,6 +143,7 @@ class smu_axi_in_burst_outstanding_test_seq:
         self.cfg = test.cfg
         self.s1_ok = False
         self.s2_ok = False
+        self.s3_ok = False
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -312,6 +324,72 @@ class smu_axi_in_burst_outstanding_test_seq:
         await ClockCycles(self.dut.clk_smu_i, 2)
         self.s2_ok = True
 
+    async def _ax(self, master, *, write: bool, addr: int, payload, label: str, **attrs):
+        event = (master.init_write if write else master.init_read)(addr, payload, **attrs)
+        try:
+            await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+        except Exception as exc:
+            raise AssertionError(f"TIMEOUT {label} addr=0x{addr:x} attrs={attrs}: {exc}") from exc
+        raw = event.data
+        return worst_resp(getattr(raw, "resp", None)), bytes(getattr(raw, "data", b""))
+
+    def _spm_walk(self) -> list[int]:
+        """An SPM address with each free address bit set, and cleared from the one before."""
+        addrs = []
+        for bit in range(3, SPM_SIZE.bit_length()):
+            addr = SPM_BASE | (1 << bit)
+            if addr == SPM_BASE or addr >= SPM_BASE + SPM_SIZE:
+                addr = (SPM_BASE + (1 << bit)) & ~((1 << bit) - 1)
+            if SPM_BASE < addr < SPM_BASE + SPM_SIZE:
+                addrs.append(addr)
+        return addrs
+
+    async def _step_spm(self, master, sb) -> None:
+        """S3: sizes, offsets, address bits and burst types into the SPM."""
+        bad = []
+        cells = [(SPM_BASE + 0x100 + off, size) for size, off in SIZE_STEPS]
+        cells += [(addr, 2) for addr in self._spm_walk()]
+        for n, (addr, size) in enumerate(cells):
+            nbytes = 1 << size
+            word = bytes((0x3C + 7 * n + i) & 0xFF for i in range(nbytes))
+            resp_w, _ = await self._ax(
+                master, write=True, addr=addr, payload=word, size=size, label=f"spm_wr{n}"
+            )
+            resp_r, data = await self._ax(
+                master, write=False, addr=addr, payload=nbytes, size=size, label=f"spm_rd{n}"
+            )
+            if (resp_w, resp_r, data[:nbytes]) != (RESP_OKAY, RESP_OKAY, word):
+                bad.append((hex(addr), size, resp_name(resp_w), resp_name(resp_r), data.hex()))
+        beats = bytes((0xA0 + i) & 0xFF for i in range(SPM_BURST_BEATS * 8))
+        base = SPM_BASE + 0x400
+        resp_w, _ = await self._ax(
+            master, write=True, addr=base, payload=beats, size=3, label="incr_wr"
+        )
+        resp_r, data = await self._ax(
+            master, write=False, addr=base, payload=len(beats), size=3, label="incr_rd"
+        )
+        if (resp_w, resp_r, data) != (RESP_OKAY, RESP_OKAY, beats):
+            bad.append(("INCR", resp_name(resp_w), resp_name(resp_r)))
+        wrap_resp, _ = await self._ax(
+            master,
+            write=True,
+            addr=base,
+            payload=beats[:32],
+            size=3,
+            burst=AXI_BURST_WRAP,
+            label="wrap_wr",
+        )
+        incr_resp, _ = await self._ax(
+            master, write=True, addr=base, payload=beats[:8], size=3, label="incr_after_wrap"
+        )
+        if incr_resp != RESP_OKAY:
+            bad.append(("INCR after WRAP", resp_name(incr_resp)))
+        self._log(
+            f"CHK-AXIIN-SPM-SWEEP cells={len(cells)} wrap={resp_name(wrap_resp)} mismatches={bad}"
+        )
+        sb.expect_eq("CHK-AXIIN-SPM-SWEEP", bad, [], evidence="CHK-AXIIN-SPM-SWEEP")
+        self.s3_ok = True
+
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
@@ -326,3 +404,4 @@ class smu_axi_in_burst_outstanding_test_seq:
 
         await self._step_outstanding(master, sb)
         await self._step_burst_type(master, sb)
+        await self._step_spm(master, sb)

@@ -13,7 +13,8 @@ with a fixed AxCACHE (``idma_reg.sv.tpl``). An SMC address outside the SMC
 local window and the SEP aperture leaves on ``smu_axi_out``.
 
 S1: JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper
-    bits are the 0xAA.. and 0x55.. patterns, then reads each back. Each
+    bits are the 0xAA.. and 0x55.. patterns, and 1, 2 and 4 bytes at byte
+    offsets 1, 2, 4, 7 and 6 of one doubleword, then reads each back. Each
     transfer crosses the boundary once with the address and AxSIZE the bridge
     was given and AxLEN 0, the bench responder holds the bytes written, and
     the read returns them.
@@ -21,6 +22,12 @@ S2: the iDMA copies a 2 KiB block between two addresses outside both
     apertures. The boundary
     carries INCR reads and writes whose AxLEN reaches 255, the destination
     holds the source bytes, and DONE reports the id the launch was given.
+S3: the same copy while the bench responder stalls every AW, W and AR
+    handshake. The copy still completes with the destination holding the
+    source bytes, so the boundary READY stalls lose nothing.
+S4: a one-shot SLVERR and DECERR from the responder on a JTAG2AXI read and
+    write each reach the bridge as that response (``jtag2axi.sv`` reports the
+    AXI response in its status), and the next access at the address succeeds.
 """
 
 from __future__ import annotations
@@ -33,6 +40,8 @@ from seq_lib.smu_addr_map import smc_addr
 from seq_lib.smu_filter_helpers import program_outbound0_pass_all
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
+    J2A_STATUS_DECERR,
+    J2A_STATUS_SLVERR,
     J2A_STATUS_SUCCESS,
     SMC_DBG_AXSIZE_4B,
     jtag2axi_single_read,
@@ -45,6 +54,8 @@ ADDR_MASK = (1 << 56) - 1
 OUT_A = 0xAA_AAAA_AAAA_AAA0 & ADDR_MASK
 OUT_B = 0x55_5555_5555_5550 & ADDR_MASK
 SIZES = (0, 1, 2, 3)
+# (AxSIZE, byte offset) pairs inside one doubleword.
+UNALIGNED = ((0, 1), (1, 2), (2, 4), (0, 7), (1, 6))
 PATTERN = 0x8877_6655_4433_2211
 AXI_BURST_INCR = 1
 
@@ -60,6 +71,11 @@ DMA_LEN_LO = smc_addr("SMC_TOP_DMA_CTRL_LENGTH_LO_BASE_ADDR")
 DMA_LEN_HI = smc_addr("SMC_TOP_DMA_CTRL_LENGTH_HI_BASE_ADDR")
 DMA_SRC = 0x0200_0000
 DMA_DST = 0x0300_0000
+DMA_STALLED_SRC = 0x0400_0000
+DMA_STALLED_DST = 0x0500_0000
+BACKPRESSURE_STALL = 6
+AXI_RESP_SLVERR = 2
+AXI_RESP_DECERR = 3
 DMA_DST_STRIDE_LO = smc_addr("SMC_TOP_DMA_CTRL_DST_STRIDE_LO_BASE_ADDR")
 DMA_DST_STRIDE_HI = smc_addr("SMC_TOP_DMA_CTRL_DST_STRIDE_HI_BASE_ADDR")
 DMA_SRC_STRIDE_LO = smc_addr("SMC_TOP_DMA_CTRL_SRC_STRIDE_LO_BASE_ADDR")
@@ -122,6 +138,8 @@ class smu_axi_out_addr_len_size_test_seq:
         self.cfg = test.cfg
         self.s1_ok = False
         self.s2_ok = False
+        self.s3_ok = False
+        self.s4_ok = False
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -184,29 +202,35 @@ class smu_axi_out_addr_len_size_test_seq:
         """S1: every AxSIZE at two 56-bit addresses, written, held and read back."""
         phases, held, readback = {}, {}, {}
         want_phases, want_held, want_rb = {}, {}, {}
-        for base in (OUT_A, OUT_B):
-            for size in SIZES:
-                nbytes = 1 << size
-                addr = base + 8 * size
-                cell = f"0x{addr:014x}/size{size}"
-                value = PATTERN & ((1 << (8 * nbytes)) - 1)
-                mark = tap.mark()
-                w0 = self._pin("smu_axi_out_write_count_o")
-                r0 = self._pin("smu_axi_out_read_count_o")
-                await self._j2a_wr(
-                    jtag, addr, value, f"S1_WR_{cell}", wstrb=(1 << nbytes) - 1, size=size
-                )
-                await self._await_counts(w0 + 1, r0, f"s1_write_{cell}")
-                rdata = await self._j2a_rd(jtag, addr, f"S1_RD_{cell}", size=size)
-                await self._await_counts(w0 + 1, r0 + 1, f"s1_read_{cell}")
-                aw, ar = tap.since(mark)
-                phases[cell] = ([p[:4] for p in aw], [p[:4] for p in ar])
-                want_phases[cell] = ([(addr, 0, size, AXI_BURST_INCR)],) * 2
-                held[cell] = self.cfg.axi_out_mem.read_int(addr, nbytes)
-                want_held[cell] = value
-                readback[cell] = rdata & ((1 << (8 * nbytes)) - 1)
-                want_rb[cell] = value
-                self._log(f"CHK-AXIOUT-SIZE cell {cell} aw={aw} ar={ar} held=0x{held[cell]:x}")
+        cells = [(base + 8 * size, size, 0) for base in (OUT_A, OUT_B) for size in SIZES]
+        # Byte offsets inside one doubleword, so each of address bits [2:0] rises and falls.
+        cells += [(OUT_B + 0x40 + off, size, off) for size, off in UNALIGNED]
+        for addr, size, off in cells:
+            nbytes = 1 << size
+            cell = f"0x{addr:014x}/size{size}"
+            value = PATTERN & ((1 << (8 * nbytes)) - 1)
+            mark = tap.mark()
+            w0 = self._pin("smu_axi_out_write_count_o")
+            r0 = self._pin("smu_axi_out_read_count_o")
+            await self._j2a_wr(
+                jtag,
+                addr,
+                value << (8 * off),
+                f"S1_WR_{cell}",
+                wstrb=((1 << nbytes) - 1) << off,
+                size=size,
+            )
+            await self._await_counts(w0 + 1, r0, f"s1_write_{cell}")
+            rdata = await self._j2a_rd(jtag, addr, f"S1_RD_{cell}", size=size) >> (8 * off)
+            await self._await_counts(w0 + 1, r0 + 1, f"s1_read_{cell}")
+            aw, ar = tap.since(mark)
+            phases[cell] = ([p[:4] for p in aw], [p[:4] for p in ar])
+            want_phases[cell] = ([(addr, 0, size, AXI_BURST_INCR)],) * 2
+            held[cell] = self.cfg.axi_out_mem.read_int(addr, nbytes)
+            want_held[cell] = value
+            readback[cell] = rdata & ((1 << (8 * nbytes)) - 1)
+            want_rb[cell] = value
+            self._log(f"CHK-AXIOUT-SIZE cell {cell} aw={aw} ar={ar} held=0x{held[cell]:x}")
 
         sb.expect_eq(
             "CHK-AXIOUT-SIZE each JTAG2AXI write and read crossed smu_axi_out once with its "
@@ -221,19 +245,17 @@ class smu_axi_out_addr_len_size_test_seq:
         sb.expect_eq("CHK-AXIOUT-SIZE every read returns the bytes written", readback, want_rb)
         self.s1_ok = True
 
-    async def _step_dma(self, jtag, sb, tap) -> None:
-        """S2: an iDMA copy crosses the boundary as INCR bursts up to AxLEN 255."""
-        payload = bytes((i * 37 + 11) & 0xFF for i in range(DMA_LENGTH))
-        self.cfg.axi_out_mem.write(DMA_SRC, payload)
-        self.cfg.axi_out_mem.write(DMA_DST, bytes(DMA_LENGTH))
-        await program_outbound0_pass_all(jtag, scoreboard=sb)
-
+    async def _dma_copy(self, jtag, sb, tap, src: int, dst: int, seed: int):
+        """Copy DMA_LENGTH bytes src->dst with the iDMA; return (done, id, payload, aw, ar)."""
+        payload = bytes((i * 37 + seed) & 0xFF for i in range(DMA_LENGTH))
+        self.cfg.axi_out_mem.write(src, payload)
+        self.cfg.axi_out_mem.write(dst, bytes(DMA_LENGTH))
         await self._j2a_wr32(jtag, DMA_CONFIG, DMA_CONFIG_ENABLE_ND, "DMA_CONFIG")
         for addr, value, name in (
-            (DMA_DST_LO, DMA_DST & 0xFFFF_FFFF, "DMA_DST_LO"),
-            (DMA_DST_HI, DMA_DST >> 32, "DMA_DST_HI"),
-            (DMA_SRC_LO, DMA_SRC & 0xFFFF_FFFF, "DMA_SRC_LO"),
-            (DMA_SRC_HI, DMA_SRC >> 32, "DMA_SRC_HI"),
+            (DMA_DST_LO, dst & 0xFFFF_FFFF, "DMA_DST_LO"),
+            (DMA_DST_HI, dst >> 32, "DMA_DST_HI"),
+            (DMA_SRC_LO, src & 0xFFFF_FFFF, "DMA_SRC_LO"),
+            (DMA_SRC_HI, src >> 32, "DMA_SRC_HI"),
             (DMA_LEN_LO, DMA_LENGTH, "DMA_LEN_LO"),
             (DMA_LEN_HI, 0, "DMA_LEN_HI"),
             (DMA_DST_STRIDE_LO, 0, "DMA_DST_STRIDE_LO"),
@@ -255,6 +277,12 @@ class smu_axi_out_addr_len_size_test_seq:
             if done == start_id:
                 break
         aw, ar = tap.since(mark)
+        return done, start_id, payload, aw, ar
+
+    async def _step_dma(self, jtag, sb, tap) -> None:
+        """S2: an iDMA copy crosses the boundary as INCR bursts up to AxLEN 255."""
+        await program_outbound0_pass_all(jtag, scoreboard=sb)
+        done, start_id, payload, aw, ar = await self._dma_copy(jtag, sb, tap, DMA_SRC, DMA_DST, 11)
         dst = self.cfg.axi_out_mem.read(DMA_DST, DMA_LENGTH)
         status = await self._j2a_rd32(jtag, DMA_STATUS_0, "DMA_STATUS")
         self._log(
@@ -281,6 +309,53 @@ class smu_axi_out_addr_len_size_test_seq:
         )
         self.s2_ok = True
 
+    async def _step_backpressure(self, jtag, sb, tap) -> None:
+        """S3: the S2 copy through a responder that stalls every address and write handshake."""
+        self.cfg.axi_out_mem.enable_backpressure(
+            channels=("aw", "w", "ar"), stall_cycles=BACKPRESSURE_STALL
+        )
+        try:
+            done, start_id, payload, aw, ar = await self._dma_copy(
+                jtag, sb, tap, DMA_STALLED_SRC, DMA_STALLED_DST, 23
+            )
+        finally:
+            self.cfg.axi_out_mem.disable_backpressure()
+        dst = self.cfg.axi_out_mem.read(DMA_STALLED_DST, DMA_LENGTH)
+        self._log(
+            f"CHK-AXIOUT-BACKPRESSURE: start_id={start_id} done={done} aw={len(aw)} ar={len(ar)}"
+        )
+        sb.expect_eq(
+            "CHK-AXIOUT-BACKPRESSURE",
+            (done, dst.hex()),
+            (start_id, payload.hex()),
+            evidence="CHK-AXIOUT-BACKPRESSURE",
+        )
+        self.s3_ok = True
+
+    async def _step_errors(self, jtag, sb) -> None:
+        """S4: responder SLVERR and DECERR on a read and a write reach JTAG2AXI as that status."""
+        mem = self.cfg.axi_out_mem
+        observed, want = {}, {}
+        for resp, status, name in (
+            (AXI_RESP_SLVERR, J2A_STATUS_SLVERR, "SLVERR"),
+            (AXI_RESP_DECERR, J2A_STATUS_DECERR, "DECERR"),
+        ):
+            addr = OUT_A + 0x100 + 8 * resp
+            mem.inject_error(addr, resp, read=True, write=False)
+            rd_st, _ = await jtag2axi_single_read(jtag, addr, require_complete=True, size=3)
+            mem.inject_error(addr, resp, read=False, write=True)
+            wr_st, _ = await jtag2axi_single_write(
+                jtag, addr, PATTERN, require_complete=True, wstrb=0xFF, size=3
+            )
+            await self._j2a_wr(jtag, addr, PATTERN, f"S4_{name}_WR", wstrb=0xFF, size=3)
+            after = await self._j2a_rd(jtag, addr, f"S4_{name}_RD", size=3)
+            observed[name] = (rd_st, wr_st, after)
+            want[name] = (status, status, PATTERN)
+        mem.clear_errors()
+        self._log(f"CHK-AXIOUT-ERROR-RESP {observed}")
+        sb.expect_eq("CHK-AXIOUT-ERROR-RESP", observed, want, evidence="CHK-AXIOUT-ERROR-RESP")
+        self.s4_ok = True
+
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
@@ -291,5 +366,7 @@ class smu_axi_out_addr_len_size_test_seq:
         try:
             await self._step_single(jtag, sb, tap)
             await self._step_dma(jtag, sb, tap)
+            await self._step_backpressure(jtag, sb, tap)
+            await self._step_errors(jtag, sb)
         finally:
             tap.stop()
