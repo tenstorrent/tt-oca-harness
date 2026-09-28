@@ -7968,6 +7968,12 @@ register map follows.</p>
 <h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">2.11. External Window Reference Model</a></h3>
 <div class="paragraph">
 <p>The SEP external-window model supplies the eFuse SHIM control register below.
+The <code>efuse_shim_ctrl</code> instance at offset <code>0x0</code> fixes where that block sits.
+<code>EFUSE_SHIM_SIZE</code> bytes from that base (<code>SEP_EFUSE_SHIM_SIZE</code> at the SMU,
+default <code>0x4</code>) are routed to the eFuse controller, which forwards them
+unchanged on <code>efuse_bank_ctrl</code> to the adopter&#8217;s SHIM rather than out the
+external port. An adopter external map must keep an <code>efuse_shim_ctrl</code>
+instance at that offset.
 Its execute-in-place region is a memory window rather than a register bank.
 Adopter-specific external devices require their own register documentation.</p>
 </div>

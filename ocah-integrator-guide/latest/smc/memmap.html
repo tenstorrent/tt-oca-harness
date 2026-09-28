@@ -738,8 +738,9 @@ avoids a second list of addresses drifting from the implemented decode.</p>
 <p>The <code>smc_external</code> window at <code>BASE + 0x040_0000</code> is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
 technology- and vendor-specific implementations of memory-mapped blocks. The
-window is split into two regions (see <code>smc_external.rdl</code>); hardware treats
-both identically — the split is purely organizational:</p>
+window is split into two regions (see <code>smc_external.rdl</code>). Apart from the
+eFuse SHIM control block described below, hardware treats both identically;
+the split is purely organizational:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -768,8 +769,16 @@ read-only values latched from bonded pads at cold reset and consumed by boot
 firmware.</p>
 </div>
 <div class="paragraph">
-<p>The unallocated remainder of the window is passed through to the chip-level
-adopter external port.</p>
+<p>The eFuse SHIM control block is the exception. Its placement is fixed at the
+base of the window, <code>BASE + 0x040_0000</code>, and its size is the
+<code>EFUSE_SHIM_SIZE</code> parameter (<code>SMC_EFUSE_SHIM_SIZE</code> at the SMU). The peripheral
+crossbar routes that range to the eFuse controller,
+which forwards it unchanged on <code>efuse_bank_ctrl</code> to the adopter&#8217;s SHIM. It
+never appears on the external port. The adopter defines the SHIM&#8217;s control
+registers at offset <code>0x0</code> of its own <code>smc_external</code> map.</p>
+</div>
+<div class="paragraph">
+<p>The rest of the window, is passed through to the smu-level adopter external port.</p>
 </div>
 <div class="sect2">
 <h3 id="external-window-reference-maps"><a class="anchor" href="#external-window-reference-maps"></a><a class="link" href="#external-window-reference-maps">3.1. External Window Reference Maps</a></h3>

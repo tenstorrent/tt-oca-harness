@@ -200,14 +200,14 @@
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Compile-time defines that apply across OCAH rather than to a single block.
-Set the OCAH names in this chapter. Do not set vendor preprocessor names;
-<code>hw/common/defs/ocah_vendor_defines.svh</code> derives the aliases those names
-imply. OCAH lint and Yosys force-include that header. Native DV expands the
+<p>Compile-time defines for OCAH RTL: the names that apply across OCAH, then
+the defines specific to one subsystem. Set the OCAH names in this chapter. Do
+not set vendor preprocessor names; <code>hw/common/defs/ocah_vendor_defines.svh</code>
+derives the aliases those names imply. OCAH lint and Yosys force-include that header. Native DV expands the
 same aliases onto the command line. An adopter compile must do one of those
-two. Block-selection defines are not in this chapter at all: they ride the
-Bender filelist as <code>define</code> lines (<a href="#synthesis-filelist-defines">Synthesis
-filelist defines</a>).</p>
+two. Block-selection defines ride the Bender filelist as <code>define</code> lines
+(<a href="#synthesis-filelist-defines">Synthesis filelist defines</a>); do not restate
+them on the command line.</p>
 </div>
 <div class="paragraph">
 <p>A <code> <code>define </code> in a header is visible only in compilation units that include
@@ -282,6 +282,13 @@ sensing the bank through the adopter&#8217;s SHIM.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Preloads <code>OCAH4CORECluster_rom_ext</code>, the SMC CPU ROM simulation model. Applies
 only to integrations that use the reference memory swaps.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>+cdc_instrumentation_enabled=1</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Arms every <code>prim_cdc_rand_delay</code> and <code>abr_prim_cdc_rand_delay</code> instance. On
+each input change, a random
+subset of bits keeps its old value for one more destination cycle. Without the
+plusarg the delay model passes its input through.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -292,8 +299,9 @@ X, and routes OpenTitan assertion failures in the SEP <code>prim_assert</code> s
 </div>
 <div class="paragraph">
 <p>Two model families it enables make simulation deliberately non-deterministic:
-<code>prim_flop_2sync</code> and its Caliptra and Adams Bridge equivalents insert
-<code>prim_cdc_rand_delay</code> ahead of the synchronizer, and
+<code>prim_flop_2sync</code>, its Adams Bridge equivalent, and the OCAH
+<code>prim_sync3</code> / <code>prim_sync4</code> cells insert <code>prim_cdc_rand_delay</code> ahead of the
+synchronizer, which <code>+cdc_instrumentation_enabled=1</code> arms, and
 <code>prim_lfsr</code> and <code>prim_double_lfsr</code> randomize their default seed on simulators
 other than Verilator (<code>+prim_lfsr_use_default_seed=1</code> pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
@@ -487,13 +495,14 @@ compile.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>COMMON_CELLS_ASSERTS_OFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Strips inline assertion blocks inside PULP <code>common_cells</code> modules. Native DV
-sets it on every tool (Verilator, VCS, Xcelium) from
-<code>hw/common/dv/configs/profiles/native.toml</code>. This spelling is the OCAH name.</p></td>
+sets it on Verilator only, from the shared Verilator flags in
+<code>hw/common/dv/configs/profiles/native.toml</code>; VCS and Xcelium compile and run
+those blocks. It is independent of <code>ASSERTS_OFF</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ASSERTS_OFF</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Turns off PULP <code>OCAH_PULP_INC_ASSERT</code> macros. Verilator DUT flags and
-Verilator lint set it; VCS and Xcelium native compiles do not.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Turns off PULP <code>OCAH_PULP_INC_ASSERT</code> macros. The SMC and DTP Verilator DUT
+flags and Verilator lint set it; VCS and Xcelium native compiles do not.</p></td>
 </tr>
 </tbody>
 </table>
@@ -622,7 +631,394 @@ vendor column.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="synthesis-filelist-defines"><a class="anchor" href="#synthesis-filelist-defines"></a><a class="link" href="#synthesis-filelist-defines">9. Synthesis filelist defines</a></h2>
+<h2 id="subsystem-defines"><a class="anchor" href="#subsystem-defines"></a><a class="link" href="#subsystem-defines">9. Subsystem defines</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Each subsystem graph reads the view, tool and assertion names above as this
+chapter describes. The sections below cover the defines the rest of the
+chapter does not: two shared cells, then each subsystem in turn.</p>
+</div>
+<div class="sect2">
+<h3 id="shared-cell-defines"><a class="anchor" href="#shared-cell-defines"></a><a class="link" href="#shared-cell-defines">9.1. Shared cells</a></h3>
+<div class="paragraph">
+<p>Two cells in <code>hw/common/ocah_prim</code>, compiled into every subsystem graph, read
+a define of their own. Leave both unset.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>GATER_CHK</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In the simulation view, <code>prim_clk_gater_hysteresis</code> expands
+<code>export_dpi_get</code> to export its state over DPI. OCAH does not define that macro,
+so setting <code>GATER_CHK</code> breaks the compile.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIM_APB_ARB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds a test-master APB port set to <code>prim_apb_arb</code>. No OCAH module
+instantiates <code>prim_apb_arb</code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="smc-defines"><a class="anchor" href="#smc-defines"></a><a class="link" href="#smc-defines">9.2. SMC</a></h3>
+<div class="paragraph">
+<p>The SMC graph adds three groups: first-party simulation hooks, the generated
+CPU cluster macros, and the i3c-core configuration.</p>
+</div>
+<div class="sect3">
+<h4 id="smc-defines-hooks"><a class="anchor" href="#smc-defines-hooks"></a><a class="link" href="#smc-defines-hooks">9.2.1. Simulation hooks</a></h4>
+<div class="paragraph">
+<p>The <code>SIMULATION</code> plusargs for the CPU ROM and the eFuse shadow registers are
+listed under <a href="#simulation-define"><code>SIMULATION</code></a>. The SMC RTL also reads these view names:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>smc_4core_cpu</code> prints scratch RAM initialization progress when neither
+<code>SYNTHESIS</code> nor <code>EMULATION</code> is set.</p>
+</li>
+<li>
+<p><code>smc_local_fabric</code> checks its AXI parameter widths at elaboration when
+<code>OCAH_DEBUG_LIVE</code> is defined.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The <code>prim_flop_2sync</code>, <code>prim_sync3</code> and <code>prim_sync4</code> synchronizers instantiate
+<code>prim_cdc_rand_delay</code> in the simulation view, but no <code>smc</code> Bender target lists
+<code>prim_cdc_rand_delay.sv</code>. Add it to any <code>SIMULATION</code> compile of the <code>smc</code>
+filelist; SMC DV lists it as an extra source in
+<code>hw/sys/smc/dv/smc_sim_cfg.toml</code>.</p>
+</div>
+<div class="paragraph">
+<p>The SMC DV <code>dual</code> target sets <code>SYNTHESIS</code> next to <code>SMC_DUAL</code>, so the CPU
+clusters in that build get no time-zero initialization (<a href="#smc-defines-cluster">CPU cluster</a>).
+<code>SMC_DUAL</code> is read only by <code>hw/sys/smc/dv/tb/tb_top.sv</code>, where it selects the
+two-instance testbench.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-defines-cluster"><a class="anchor" href="#smc-defines-cluster"></a><a class="link" href="#smc-defines-cluster">9.2.2. CPU cluster</a></h4>
+<div class="paragraph">
+<p>The Chipyard-generated cluster in
+<code>hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core</code> reads the FIRRTL
+macros in the table below. It ignores <code>EMULATION</code>. The generated code defines
+<code>ENABLE_INITIAL_REG_</code> and <code>ENABLE_INITIAL_MEM_</code> only when <code>SYNTHESIS</code> is
+absent, and those gate every time-zero initializer, so a <code>SYNTHESIS</code> compile
+reads none of the initialization macros.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_REG_INIT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assigns every cluster register from <code>RANDOM</code> at time zero. Without it the
+registers hold X until their first clocked write.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_MEM_INIT</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Assigns every generated memory array from <code>RANDOM</code> at time zero. Without it a
+read before the first write returns X.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The value both initializers assign. Defaults to <code>$random</code>; <code>RANDOM=0</code> makes
+initialization a deterministic zero-fill.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RANDOMIZE_DELAY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Delay before the initializers run, in simulator time units. Defaults to
+<code>0.002</code>. Verilator ignores it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INIT_RANDOM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Code placed at the start of every generated initializer, for a custom seeding
+scheme. Defaults to empty.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FIRRTL_BEFORE_INITIAL</code>, <code>FIRRTL_AFTER_INITIAL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Code placed before and after every generated <code>initial</code> block. Defaults to
+empty.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ASSERT_VERBOSE_COND</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expression that gates the <code>$error</code> message of each generated assertion.
+Defaults to 1.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>STOP_COND</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Expression that gates the <code>$fatal</code> that follows each generated assertion
+failure. Defaults to 1.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Each generated module also defines a default for <code>PRINTF_COND</code>, but the
+cluster contains no <code>printf</code>, so that macro has no effect.</p>
+</div>
+<div class="paragraph">
+<p>Do not set <code>RANDOMIZE</code>, <code>INIT_RANDOM_PROLOG_</code>, <code>ENABLE_INITIAL_REG_</code>,
+<code>ENABLE_INITIAL_MEM_</code>, <code>PRINTF_COND_</code>, <code>ASSERT_VERBOSE_COND_</code> or <code>STOP_COND_</code>.
+The generated code derives them from the macros above.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-defines-i3c"><a class="anchor" href="#smc-defines-i3c"></a><a class="link" href="#smc-defines-i3c">9.2.3. i3c-core configuration</a></h4>
+<div class="paragraph">
+<p><code>vendor/chipsalliance/i3c-core/upstream/src/i3c_defines.svh</code> fixes the
+i3c-core configuration: the AXI host interface (<code>I3C_USE_AXI</code>) and its widths,
+controller and target support, loopback disabled, and the FIFO, DAT and DCT
+depths. Change a value in that header, not on the command line. The header
+leaves these upstream options unset:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Effect when set</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>I3C_USE_AHB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Selects an AHB host interface instead of AXI.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>AXI_ID_FILTERING</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds AXI ID filtering, which needs <code>NUM_PRIV_IDS</code> and changes the <code>i3c</code>
+parameter and port lists.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CALIPTRA_AXI_SUB_EX_EN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds exclusive-access tracking to the AXI subordinate.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>IBI_FIFO_EXT_SIZE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Multiplies the HCI and TTI IBI FIFO depths by 8.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DISABLE_INPUT_FF</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removes the two-flop synchronizers on the SCL and SDA inputs.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="dtp-defines"><a class="anchor" href="#dtp-defines"></a><a class="link" href="#dtp-defines">9.3. DTP</a></h3>
+<div class="paragraph">
+<p>The <code>dtp</code> graph reads no define of its own. Two parts of it respond to the view
+names:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>jtag2axi</code> asserts AXI valid stability and address and data pairing on its
+manager port when <code>OCAH_DEBUG_LIVE</code> is defined.</p>
+</li>
+<li>
+<p>The <code>prim_flop_2sync</code>, <code>prim_sync3</code> and <code>prim_sync4</code> synchronizers
+instantiate <code>prim_cdc_rand_delay</code> in the simulation view. The Bender
+<code>simulation</code> target adds <code>prim_cdc_rand_delay.sv</code> to the <code>dtp</code> graph, so
+generate a simulation filelist with <code>-t dtp -t simulation</code>.</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-defines"><a class="anchor" href="#sep-defines"></a><a class="link" href="#sep-defines">9.4. SEP</a></h3>
+<div class="paragraph">
+<p>The SEP graph adds four groups: the Adams Bridge block-selection defines, the
+VeeR EL2 core configuration, first-party view checks, and testbench-side DV
+names.</p>
+</div>
+<div class="sect3">
+<h4 id="sep-defines-abr"><a class="anchor" href="#sep-defines-abr"></a><a class="link" href="#sep-defines-abr">9.4.1. Adams Bridge</a></h4>
+<div class="paragraph">
+<p>The Adams Bridge source group of the <code>sep</code> Bender target sets these three
+defines, and <code>flist-plus</code> emits them ahead of the source list. Every flow that
+uses the <code>sep</code> target gets them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_ABR_EN</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Includes the Adams Bridge post-quantum engine: <code>sep_crypto</code> instantiates
+<code>sep_crypto_abr_wrapper</code>, and <code>sep_ip_integration</code> builds the ABR SRAMs.
+Without it, <code>sep_crypto</code> terminates the ABR AXI aperture and the key manager&#8217;s
+ABR key bus with DECERR subordinates, and <code>sep_ip_integration</code> drives the ABR
+memory response to zero.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>CALIPTRA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adds the Caliptra Key Vault ports to <code>abr_top</code>, which <code>sep_abr_kv_shim</code>
+binds. The vendored RTL requires it. <code>sep_crypto</code> raises an elaboration
+<code>$error</code> when <code>SEP_ABR_EN</code> is set without <code>CALIPTRA</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TECH_SPECIFIC_ICG</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Removes the behavioural latch gate from <code>abr_icg.sv</code>. The overlay
+<code>abr_clk_gate</code> instantiates <code>prim_clock_gating</code> in its place.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Adams Bridge also reads <code>RV_FPGA_SCA</code>, which adds FPGA side-channel trigger
+outputs to <code>abr_top</code>, and <code>FCOV</code>, which adds a covergroup to its AHB
+subordinate. No OCAH flow sets either.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-defines-veer"><a class="anchor" href="#sep-defines-veer"></a><a class="link" href="#sep-defines-veer">9.4.2. VeeR EL2 core</a></h4>
+<div class="paragraph">
+<p>The <code>RV_*</code> names that configure the VeeR EL2 core come from the snapshot
+header <code>vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common_defines.vh</code>,
+which the <code>sep_el2</code> Bender target puts on the include path. Change the core
+configuration by regenerating the snapshot with the <code>veer</code> command recorded in
+its header, not with a command-line <code>define</code>.</p>
+</div>
+<div class="paragraph">
+<p>The snapshot enables user mode (<code>RV_USER_MODE</code>), Smepmp (<code>RV_SMEPMP</code>) and the
+AXI4 bus interface (<code>RV_BUILD_AXI4</code>). It leaves <code>RV_BUILD_AHB_LITE</code>,
+<code>RV_ASSERT_ON</code>, <code>RV_FPGA_OPTIMIZE</code>, <code>RV_PHYSICAL</code>, <code>RV_CLOCKGATE</code>,
+<code>RV_LOCKSTEP_ENABLE</code> and <code>RV_LOCKSTEP_REGFILE_ENABLE</code> unset.</p>
+</div>
+<div class="paragraph">
+<p><code>RV_LOCKSTEP_ENABLE</code> also changes SEP RTL. With it, <code>sep_cpu</code> connects
+<code>lockstep_ctrl_i</code> and <code>lockstep_status_o</code> to the lockstep ports of
+<code>el2_veer_wrapper</code>. Without it, <code>sep_cpu</code> ignores <code>lockstep_ctrl_i</code> and holds
+<code>lockstep_status_o</code> at zero. The <code>sep_cpu</code> port list is the same either way.</p>
+</div>
+<div class="paragraph">
+<p>The <code>sep_el2</code> Bender target sets <code>TECH_SPECIFIC_EC_RV_ICG</code>, so <code>beh_lib.sv</code>
+uses the snapshot&#8217;s <code>user_clock_gate</code> cell rather than its own behavioural
+clock gate.</p>
+</div>
+<div class="paragraph">
+<p>The core also reads <code>GTLSIM</code>, which zero-initializes its RAM models for
+gate-level simulation, and <code>DUMP_BTB_ON</code>, which prints branch predictor
+configuration and a trace of BTB events. No OCAH flow sets either.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-defines-checks"><a class="anchor" href="#sep-defines-checks"></a><a class="link" href="#sep-defines-checks">9.4.3. First-party view checks</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sep_crypto</code> checks the key manager and eFuse AXI-Lite widths at elaboration
+when <code>OCAH_DEBUG_LIVE</code> is defined.</p>
+</li>
+<li>
+<p><code>sep_local_axi_xbar_wrapper</code> and <code>sep_system_peripherals_xbar_wrapper</code> check
+their AXI parameter widths at elaboration when <code>OCAH_DEBUG_LIVE</code> is defined.</p>
+</li>
+<li>
+<p><code>tlul_rsp_intg_gen</code> asserts that incoming response integrity and user bits
+are zero, where its parameters declare them zero, when <code>OCAH_DEBUG_LIVE</code> is
+defined.</p>
+</li>
+<li>
+<p>In the simulation view, <code>entropy_ring_stage_wrappers</code> adds a <code>#1</code> delay to
+each ring oscillator stage so the ring oscillates. <code>SYNTHESIS</code> and
+<code>EMULATION</code> drop the delay, so a zero-delay simulation of either view has no
+entropy source oscillation.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The key manager&#8217;s picorv32 core reads <code>FORMAL</code>, which compiles its embedded
+<code>assert</code> and <code>restrict</code> properties, and the riscv-formal names
+(<code>RISCV_FORMAL</code>, <code>RISCV_FORMAL_ALTOPS</code>, <code>RISCV_FORMAL_BLACKBOX_REGS</code>,
+<code>RISCV_FORMAL_BLACKBOX_ALU</code>), the <code>DEBUG*</code> trace names and the
+<code>PICORV32_TESTBUG_*</code> fault injections. Leave these unset outside a picorv32
+formal flow.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="sep-defines-dv"><a class="anchor" href="#sep-defines-dv"></a><a class="link" href="#sep-defines-dv">9.4.4. DV testbench names</a></h4>
+<div class="paragraph">
+<p>SEP DV sets these for <code>hw/sys/sep/dv/tb/tb_top.sv</code> and its CPU stub. No DUT
+file reads them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_JTAG_AXIL_LIVE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drives the OTP debug AXI-Lite port from the testbench instead of tying it
+off.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_SMN_INBOUND_AXI_LIVE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drives the SMN inbound AXI port from the testbench instead of tying it off.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_SMC_MEM_MODEL</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Routes the SMC address region to a testbench memory model. Set on the
+<code>rom_boot</code> target.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_CPU_STUB</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compiles <code>hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv</code> in place of <code>sep_cpu</code>, so
+the build contains no VeeR core. The <code>lsu_stub_all_live</code> target sets it and
+removes <code>sep_cpu.sv</code> from the filelist.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SEP DV Verilator flags set neither <code>VERILATOR</code> nor <code>ASSERTS_OFF</code>.
+Verilator predefines the first; without the second, the PULP assertion macros
+expand.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="synthesis-filelist-defines"><a class="anchor" href="#synthesis-filelist-defines"></a><a class="link" href="#synthesis-filelist-defines">10. Synthesis filelist defines</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The Bender <code>synth</code> view is the authoritative source for the defines a
@@ -667,7 +1063,7 @@ precede it in compile order, so it does not replace the force-include
 described at the top of this chapter.</p>
 </div>
 <div class="sect2">
-<h3 id="synthesis-defines-synopsys"><a class="anchor" href="#synthesis-defines-synopsys"></a><a class="link" href="#synthesis-defines-synopsys">9.1. Synopsys Design Compiler and Fusion Compiler</a></h3>
+<h3 id="synthesis-defines-synopsys"><a class="anchor" href="#synthesis-defines-synopsys"></a><a class="link" href="#synthesis-defines-synopsys">10.1. Synopsys Design Compiler and Fusion Compiler</a></h3>
 <div class="paragraph">
 <p><code>analyze</code> rejects a filelist as a native argument (VER-294), and
 <code>analyze -define</code> covers only names given on that command. Hand the filelist
@@ -686,7 +1082,7 @@ so the warning is harmless.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="synthesis-defines-genus"><a class="anchor" href="#synthesis-defines-genus"></a><a class="link" href="#synthesis-defines-genus">9.2. Cadence Genus</a></h3>
+<h3 id="synthesis-defines-genus"><a class="anchor" href="#synthesis-defines-genus"></a><a class="link" href="#synthesis-defines-genus">10.2. Cadence Genus</a></h3>
 <div class="paragraph">
 <p>Genus parses the same lines through its optionfile reader. Select
 SystemVerilog explicitly: <code>read_hdl -f</code> treats sources as Verilog-2001
