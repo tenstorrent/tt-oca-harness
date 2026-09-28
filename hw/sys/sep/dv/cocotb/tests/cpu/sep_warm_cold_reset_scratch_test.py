@@ -80,8 +80,8 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         """Slice cold-bank word ``idx`` (32b) out of the 256b scratch_cold_probe_o.
 
         Only the slice being read is required to be known: CHK-COLD-REINIT and
-        CHK-COLD-BANK expect zero there, and rd would resolve an X to the same
-        zero. The other seven words may legitimately be X and are not demanded.
+        CHK-COLD-BANK expect zero there, so an X in it must raise. The other
+        seven words may legitimately be X and are not demanded.
         """
         probe = self.rd_known(cocotb.top.scratch_cold_probe_o, 0xFFFF_FFFF << (32 * idx))
         return (probe >> (32 * idx)) & 0xFFFF_FFFF
@@ -89,12 +89,10 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
     async def _check_reset_obs(self, sig, name: str, expected: int) -> None:
         """Assert a reset observable equals an exact value.
 
-        A zero expectation reads through rd_known: rd resolves X to 0, so
-        ``== 0`` would also hold for an observable nothing drives, which is the
-        whole point of a reset check. A one expectation is safe on rd -- an X
-        cannot satisfy it.
+        ``rd`` raises on an X/Z bit, so neither ``== 0`` nor ``== 1`` can hold
+        for an observable nothing drives.
         """
-        val = self.rd_known(sig) if expected == 0 else self.rd(sig)
+        val = self.rd(sig)
         if val != expected:
             raise AssertionError(f"{name}: expected {expected}, got {val}")
         self.logger.info("PASS: %s == %d", name, expected)

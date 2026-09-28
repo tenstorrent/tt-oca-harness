@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Accesses to the unmapped tail of the misc, GPIO and data accelerator windows.
+"""Accesses to the unmapped tail of the misc, GPIO and DMA apertures.
 
-Each unmapped write has to leave a seeded live register of the same block
-unchanged, and each unmapped read must not return that seed.
+Each unmapped access lies past the block's decoded extent and has to be
+refused, the read with DECERR; the write has to leave a seeded live register of
+the same block unchanged, and the read must not return that seed.
 """
 
 from __future__ import annotations
@@ -15,7 +16,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_decode_hole_test(smc_base_test):
-    """Write and read the unmapped tail of three block windows."""
+    """Write and read the unmapped tail of three block apertures."""
 
     required_evidence = (
         "CHK-DECODE-HOLE-DATA_ACCEL",

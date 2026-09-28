@@ -20,6 +20,7 @@ from runlib.config import load_test_catalog
 from runlib.duts import resolve_dut
 from runlib.models import ConfigError, Flow, TestCatalog, TestEntry
 from runlib.paths import dut_runs_root, dv_root, repo_path, repo_root
+from runlib.site import load_site_layer
 
 from dashboard.schema import STATUS_FAIL, STATUS_PASS, STATUS_UNKNOWN, make_result, write_json
 
@@ -872,7 +873,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         repo_root_path = repo_root(Path(__file__))
-        flow = resolve_dut(repo_root_path, args.dut, framework=args.framework)
+        flow = resolve_dut(
+            repo_root_path,
+            args.dut,
+            framework=args.framework,
+            site=load_site_layer(repo_root_path),
+        )
         run_dir = Path(args.run_dir).resolve() if args.run_dir else None
         result = collect_flow_result(repo_root_path, flow, run_dir, all_attempts=args.all_attempts)
         collected_framework = str(result.get("framework", ""))

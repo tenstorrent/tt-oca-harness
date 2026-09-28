@@ -182,7 +182,8 @@ Exceptions (a closed set):
 
 ==== `SepEnv` / `SepEnvCfg`
 
-`SepEnvCfg` holds clock periods (seed-randomized `sys_clk_period_ns`), the AXI
+`SepEnvCfg` holds clock periods (`sys_clk_period_ns` is 1.25 ns, the 800 MHz
+silicon target, and `ref_clk_period_ns` is 10 ns), the AXI
 access timeout, and the `reset_done` event the AXI driver waits on. `SepEnv`
 builds both AXI agents, the value scoreboard, and the two passive monitors.
 
@@ -226,6 +227,14 @@ CPU tests call `boot_firmware()`, which stages ITCM/DTCM hex, loads via
 `tcm_load_i`, brings up with `+cpu_boot`, and polls PC-advance / console /
 PASS magic. The trace monitor reconstructs a shadow call stack from EL2
 retirement ports; see <<env-cpu-trace>>.
+
+Before the boot, `RUN-IDENTITY-FW` logs the sha256 of both images and
+`CHK-FW-IDENTITY` checks where they came from. The firmware build (`fw/fw.mk`)
+compiles `FW-BUILD-ID:<digest>` into every image, with `<digest>` from
+`fw/fw_src_digest.py` over the firmware source directories, once in ICCM and
+once in DCCM. The test reads the string out of both loaded images and requires
+each to equal the digest of the tree it runs from, which `RUN-IDENTITY` binds to a commit. An image built from other
+source, or left over from an older build, fails the check.
 
 ==== Register metadata
 
@@ -285,10 +294,11 @@ test uses the AXI front door, and either readout can run any source:
   fresh image. Runs the default (random) source.
 
 Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
-different contract — lifecycle decode, inbound-filter `SEP_DBG` gating — and do
-not replace the shadow-compare pair: `sep_efuse_lcc_lc_state_stitch_test`,
-`sep_lcc_uvm_inbound_filter_gating_test`,
-`sep_fabric_inbound_filter_rule_matrix_test`.
+different contract — lifecycle decode, inbound-filter `SEP_DBG` gating, public-ID
+delivery to the Key Manager — and do not replace the shadow-compare pair:
+`sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`,
+`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`. The
+last reads the Key Manager's OTP input from the `km_otp_sep_*_id_o` ports.
 
 
 === Memory, eFuse, and SPI Models
@@ -600,8 +610,8 @@ reference benches are DTP and SMC.
 
 There is exactly ONE testbench top module: `sep_uvm_top` in `tb/tb_top.sv`,
 shared between both realizations (<<sep-hdl-top>>). Under `UVM` the harness
-adds the three clocks (periods from `sep_tb_if`, the system clock
-randomized over the cocotb `SepEnvCfg.randomize_timing` range), the shared
+adds the clocks (periods from `sep_tb_if`: `clk_i` at 1.25 ns and
+`clk_ref_i` at 10 ns), the shared
 AXI VIP master interface driving the `s_axi_*` request side of the CPU-LSU
 splice and a passive mirror interface for the VIP monitor, quiescent
 tie-offs for every other cocotb-driven pin at the idle value

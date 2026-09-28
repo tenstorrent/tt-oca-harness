@@ -19,9 +19,11 @@ from sep_efuse_image import LOCK_BITS_PER_SLOT
 from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import agg_from_pic
 
-SENTINEL = 0xBADCAB1E
 IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
-RESP_OKAY = 0
+# Error-slave read data named by hw/ip/efuse/doc/architecture.adoc (access
+# control). It is not an expected value here: no staged pattern may equal it, so
+# a read-lock readback that returns it still differs from the stored field.
+DENY_DATA_MARKER = 0xBADCAB1E
 SPARE_COUNT = 8
 # otp_fuse_controller.adoc LOCKS slots 0–31, LOCKS_SPARE slots 32–40. Spare k is slot 32+k.
 SPARE0_SLOT = 32
@@ -53,9 +55,12 @@ def _locks_spare_bit(vector_bit: int) -> int:
 def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
     for _ in range(8):
         v = rng.getrandbits(32)
-        if v not in forbidden and v != 0 and v != SENTINEL:
+        if v not in forbidden and v != 0 and v != DENY_DATA_MARKER:
             return v
-    return 0xA5A5A5A5
+    for v in (0xA5A5A5A5, 0x5A5A5A5A, 0x3C3C3C3C, 0xC3C3C3C3):
+        if v not in forbidden:
+            return v
+    raise ValueError("no fallback pattern left outside the forbidden set")
 
 
 # Fields the specification says must refuse a write while SECURE_TM=1
@@ -166,7 +171,8 @@ def _selftest() -> None:
     cfg = SepLockedFieldIrqCfg(1)
     assert len({cfg.write_spare, cfg.read_spare, cfg.unlocked_spare}) == 3
     assert cfg.locks_spare != 0
-    assert cfg.write_pattern not in (0, SENTINEL)
+    for pat in (cfg.write_pattern, cfg.read_pattern, cfg.unlocked_pattern, cfg.unlocked_write):
+        assert pat not in (0, DENY_DATA_MARKER)
     pins = cfg.image_fixed()
     assert pins["LOCKS_SPARE"] == cfg.locks_spare
     assert cfg.sectm_spare not in (cfg.write_spare, cfg.read_spare, cfg.unlocked_spare)

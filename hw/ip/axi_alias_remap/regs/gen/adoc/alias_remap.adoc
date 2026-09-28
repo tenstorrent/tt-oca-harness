@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-alias_remap]
-== Address Map: alias_remap
+== AXI Alias Remap Address Map
+
+TLB Registers for address remapping and attribute tagging
 
 [cols="1,4,1,6", options="header"]
 |===

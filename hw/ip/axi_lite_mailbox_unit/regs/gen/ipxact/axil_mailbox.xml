@@ -12,7 +12,8 @@
       <ipxact:name>axil_mailbox_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>axil_mailbox</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>

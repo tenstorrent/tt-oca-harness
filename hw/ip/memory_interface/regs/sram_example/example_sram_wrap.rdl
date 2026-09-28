@@ -8,9 +8,10 @@
 `include "example_sram.rdl"
 
 addrmap example_sram_wrap {
+    name = "Example SRAM Wrapper Address Map";
+    desc = "Example SRAM address map composing the SRAM macro and its control and status registers.";
 
-   desc = "Example SRAM Wrap";
-
+   
    ////////////////////////////////////////////////////////////////////////////
    // Address Map
    ////////////////////////////////////////////////////////////////////////////

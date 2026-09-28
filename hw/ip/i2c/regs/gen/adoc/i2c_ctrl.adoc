@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-i2c_ctrl]
-== Address Map: i2c_ctrl
+== I2C Control Address Map
+
+Top-level enable registers selecting I2C, controller-mode, and SMBus operation.
 
 [NOTE]
 ======

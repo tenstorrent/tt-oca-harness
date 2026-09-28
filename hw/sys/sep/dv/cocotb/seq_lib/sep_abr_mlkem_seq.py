@@ -5,8 +5,9 @@
 ML-KEM has its own register block beside ML-DSA in the Caliptra ``abr_reg.rdl``:
 a separate ``MLKEM_CTRL`` / ``MLKEM_STATUS`` pair and its own key, ciphertext
 and shared-key windows. Offsets come from that RDL by symbol, the same way
-``sep_abr_keygen_seq`` resolves the ML-DSA ones. Identity words are the ASCII
-of ML-KEM-1024 from ``crypto.adoc``, packed as ``KEM-1024``.
+``sep_abr_keygen_seq`` resolves the ML-DSA ones. The RDL declares the
+``MLKEM_NAME`` / ``MLKEM_VERSION`` identity words ``sw = r`` with no reset, and
+no SEP document gives their values, so this driver holds their addresses only.
 
 Two properties of this block shape the driver, and both are false-pass hazards:
 
@@ -24,9 +25,8 @@ from __future__ import annotations
 from env.sep_spec_tables import (
     abr_ctrl_cmd,
     abr_field_mask,
-    abr_id_golden,
     abr_off,
-    mldsa_name_words,
+    kv_field_mask,
     window,
 )
 
@@ -50,20 +50,17 @@ MLKEM_CIPHERTEXT = ABR_BASE + abr_off("MLKEM_CIPHERTEXT")
 
 # Caliptra Key-Vault controls for the ML-KEM lanes. SEP has no Caliptra KV; the
 # facade is sep_abr_kv_shim, which serves the KM-written sideload CSR on the KV
-# ports. read_en / write_en are bit 0 and are hwclr, so each one arms a single
-# transfer and the engine clears it.
-# abr_reg.rdl names all six registers of this block (:438-443), but only the
-# first carries an explicit address; the rest are typedef instantiations that
-# abr_offsets() does not resolve. The other two are therefore derived from the
-# anchored one, in RDL declaration order (seed rd, msg rd, sharedkey wr), and
-# the selftest pins all three against the generated decoder in abr_reg.sv so a
-# layout change fails at import rather than writing a wrong address
-# mid-simulation.
+# ports. read_en / write_en (kv_def.rdl) are hwclr, so each one arms a single
+# transfer and the engine clears it. abr_reg.rdl anchors this block at
+# kv_mlkem_seed_rd_ctrl and packs the other instances after it; abr_offsets()
+# resolves each by name. The selftest pins all three against the generated
+# decoder in abr_reg.sv, so a layout change fails at import rather than writing
+# a wrong address mid-simulation.
 MLKEM_KV_SEED_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_seed_rd_ctrl")
-MLKEM_KV_MSG_RD_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x8
-MLKEM_KV_SK_WR_CTRL = MLKEM_KV_SEED_RD_CTRL + 0x10
-KV_READ_EN = 1 << 0
-KV_WRITE_EN = 1 << 0
+MLKEM_KV_MSG_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_msg_rd_ctrl")
+MLKEM_KV_SK_WR_CTRL = ABR_BASE + abr_off("kv_mlkem_sharedkey_wr_ctrl")
+KV_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
+KV_WRITE_EN = kv_field_mask("kv_write_ctrl_reg", "write_en")
 
 KEM_CMD_NONE = abr_ctrl_cmd("MLKEM_CTRL", "NONE")
 KEM_CMD_KEYGEN = abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN")
@@ -83,12 +80,6 @@ KEM_K_WORDS = 8
 KEM_EK_WORDS = 392
 KEM_DK_WORDS = 792
 KEM_CT_WORDS = 392
-
-# Identity words. crypto.adoc names ML-KEM-1024; the Caliptra NAME field is the
-# 8-char label KEM-1024, packed the same way as the ML-DSA-87 pair.
-KEM_NAME0_EXP, KEM_NAME1_EXP = mldsa_name_words("KEM-1024")
-# `sw = r` with no RDL reset. DV-owned golden from sep_spec_tables.
-KEM_VER0_EXP, KEM_VER1_EXP = abr_id_golden("MLKEM_CORE_VERSION")
 
 
 class SepAbrMlkem(SepAbr):
@@ -123,12 +114,6 @@ def _selftest() -> None:
     assert MLKEM_ENCAPS_KEY + 4 * KEM_EK_WORDS <= MLKEM_CIPHERTEXT
     # And the whole ML-KEM aperture must stay inside the ABR decode window.
     assert MLKEM_CIPHERTEXT + 4 * KEM_CT_WORDS <= window("ABR").end
-    # Encoding of the crypto.adoc label through the shared NAME packer.
-    assert KEM_NAME0_EXP == 0x4D2D4B45
-    assert KEM_NAME1_EXP == 0x32343130
-    # The crypto.adoc label encoding and the DV golden table must agree.
-    assert (KEM_NAME0_EXP, KEM_NAME1_EXP) == abr_id_golden("MLKEM_CORE_NAME")
-    assert (KEM_VER0_EXP, KEM_VER1_EXP) == (0x302E322E, 0x00003100)  # "2.0.1"
     assert MLKEM_VERSION0 - MLKEM_NAME0 == 0x8
 
 

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-oca_i3c_wrap]
-== Address Map: oca_i3c_wrap
+== OCA I3C Controller Wrapper Address Map
+
+Wrapper address map instantiating the per-controller I3C CSR blocks.
 
 [NOTE]
 ======

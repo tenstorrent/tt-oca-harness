@@ -32,7 +32,13 @@ from env.sep_reg_meta import CSRNG, EDN, ENTROPY_SOURCE, SEP_CPU_CTRL, sym
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_entropy_pool_seq import EDN_CTRL_DISABLE, POOL_POP, POOL_STATUS, RESP_SLVERR
+from seq_lib.sep_entropy_pool_seq import (
+    EDN_CTRL_DISABLE,
+    POOL_POP,
+    POOL_STATUS,
+    RESP_SLVERR,
+    pool_level,
+)
 from seq_lib.sep_esrc_bringup_seq import (
     EDN_CTRL,
     EDN_CTRL_AUTO,
@@ -106,7 +112,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         for _ in range(timeout // 20):
             seq = await self._read(POOL_STATUS)
             assert seq.resp_ok, "entropy-pool status read failed"
-            level = seq.rdata & 0x3F
+            level = pool_level(seq.rdata)
             if bool(level) == nonzero:
                 return level
             await ClockCycles(cocotb.top.clk_i, 20)
@@ -352,12 +358,29 @@ class sep_trng_reset_recovery_test(sep_base_test):
             raise AssertionError("TRNG isolation did not clear during JTAG reset")
 
         jtag_reset.value = 0
+        # The override is synchronized into clk_i. The gated reset stays low
+        # until that synchronizer retires.
         await Timer(1, units="ps")
-        assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 1, (
-            "TRNG reset did not release after the final JTAG override cleared"
+        assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0, (
+            "TRNG gated reset released before clk_i sampled the cleared JTAG override"
+        )
+        await ClockCycles(cocotb.top.clk_i, 1)
+        await Timer(1, units="ps")
+        assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0, (
+            "TRNG gated reset released on the first clk_i edge after the JTAG override cleared"
+        )
+        release_edge = 0
+        for edge in (2, 3):
+            await ClockCycles(cocotb.top.clk_i, 1)
+            await Timer(1, units="ps")
+            if int(cocotb.top.trng_gated_rst_n_probe_o.value) == 1:
+                release_edge = edge
+                break
+        assert release_edge, (
+            "TRNG gated reset still held three clk_i edges after the JTAG override cleared"
         )
         assert int(cocotb.top.trng_reset_active_probe_o.value) == 1, (
-            "TRNG clear followed the asynchronous reset release without synchronization"
+            "TRNG clear released in the same cycle the gated reset released"
         )
         await ClockCycles(cocotb.top.clk_i, 1)
         await Timer(1, units="ps")
@@ -371,7 +394,10 @@ class sep_trng_reset_recovery_test(sep_base_test):
         )
         self.logger.info(
             "CHK-TRNG-JTAG PASS: the JTAG override held the coordinated reset through a "
-            "software release, isolation cleared under it, and clear released synchronously"
+            "software release, isolation cleared under it, the gated reset stayed low "
+            "until clk_i edge %d after the override cleared, and clear released "
+            "on the second edge after that",
+            release_edge,
         )
 
         held = await resets.read_back()

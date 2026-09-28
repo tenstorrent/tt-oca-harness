@@ -51,8 +51,13 @@ MANIFEST_PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked --group manifest 
 
 # Generated SEP register headers, read from the register flow's own output so
 # they cannot drift from the RDL the RTL is built from.
+# Overlay inputs must be explicit make command-line assignments. These
+# assignments discard ambient environment values while preserving command-line
+# overrides.
+OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep :=
+OCAH_FW_OVERLAY_SOURCES_sep :=
 include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
-REG_INCLUDE_DIRS := $(call ocah_fw_nonfree_reg_includes,sep) $(call ocah_fw_reg_includes,sep)
+REG_INCLUDE_DIRS := $(call ocah_fw_reg_includes,sep)
 
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
@@ -185,7 +190,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 #
 # Objects land in a subdirectory, NOT flat in $(BUILD_DIR): the library ships its
 # own lifecycle.c, which would otherwise overwrite this ROM's src/lifecycle.o.
-# That is also why NONFREE_BOOTCODE_SOURCES is the wrong hook for it -- that one
+# That is also why the firmware overlay hook is wrong for it -- that hook
 # $(notdir)s every source into one flat namespace.
 OCA_LIB_DIR  := $(TT_OCA_MANIFEST_DIR)/validators/oca/lib
 OCA_LIB_SRCS := $(wildcard $(OCA_LIB_DIR)/*.c)
@@ -227,13 +232,12 @@ OBJS += $(OCA_LIB_OBJS)
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
-# Optional extra sources injected by a nonfree overlay build (absolute .c paths).
+# Optional extra sources injected by an adopter overlay build (absolute .c paths).
 # Their strong symbols override the weak stubs in src/ at link time (e.g. a
-# companion-supplied SPI controller driver overriding the weak src/sep_spi.c
-# stub). Same pattern as the SMC prod ROM's NONFREE_DRIVER_SOURCES.
-NONFREE_BOOTCODE_SOURCES ?=
-NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
-OBJS += $(NONFREE_BOOTCODE_OBJS)
+# supplied SPI controller driver overriding the weak src/sep_spi.c stub).
+SEP_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_sep)
+SEP_FW_OVERLAY_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SEP_FW_OVERLAY_SOURCES)))
+OBJS += $(SEP_FW_OVERLAY_OBJS)
 
 # rv32im (no C) + no relax. zifencei is spelled out because binutils >= 2.38
 # rejects fence.i without it.
@@ -348,8 +352,8 @@ toolchain-images: key-digests
 	    BOOT_SPI_CONTROLLER_OT="$(BOOT_SPI_CONTROLLER_OT)" \
 	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
 	    BOOT_OT_SPI_PROFILE="$(BOOT_OT_SPI_PROFILE)" \
-	    NONFREE_ROOT="$(NONFREE_ROOT)" \
-	    NONFREE_BOOTCODE_SOURCES="$(NONFREE_BOOTCODE_SOURCES)" \
+	    OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep="$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep)" \
+	    OCAH_FW_OVERLAY_SOURCES_sep="$(OCAH_FW_OVERLAY_SOURCES_sep)" \
 	    RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf \
 	    toolchain-images-build; \
 	else \
@@ -373,7 +377,8 @@ BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) 
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
 	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) ICCM_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
-	NONFREE=$(if $(NONFREE_ROOT),1,0) \
+	REG_OVERLAY=$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep) \
+	SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_sep) \
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \
 	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES) ENTROPY=$(SEP_ENTROPY_BRINGUP) \
 	DEFER_FIPS=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
@@ -470,10 +475,10 @@ $(OTBN_APP_C):
 # rsa_verify.c/otbn_driver.c include the generated header too (order-only).
 $(OBJS): | $(OTBN_APP_C)
 
-# Compile rule for NONFREE_BOOTCODE_SOURCES (static pattern rule so Make maps
+# Compile rule for overlay sources (static pattern rule so Make maps
 # each object back to its out-of-tree source path).
-$(NONFREE_BOOTCODE_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
-	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(NONFREE_BOOTCODE_SOURCES))" -o "$@"
+$(SEP_FW_OVERLAY_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
+	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(SEP_FW_OVERLAY_SOURCES))" -o "$@"
 
 # The ROM-hash insert is not optional. g_rom_sha256_str (src/rom_metadata.c) ships as
 # an all-zero placeholder, and a silently skipped insert leaves it that way -- which
