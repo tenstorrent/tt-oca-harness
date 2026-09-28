@@ -18,7 +18,7 @@
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t status = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (status.f.sha3_idle) {
             return 0;
         }
@@ -30,21 +30,21 @@ static int wait_for_idle(void) {
 static void clear_error(void) {
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.err_processed = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 }
 
 static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 }
 
 static int assert_allow_path(const char *tag) {
     /* OT: ERR_CODE is sticky; only require kmac_err==0 on the allow-path. */
-    kmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
-    uint32_t err = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
+    kmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
+    uint32_t err = READ_REG(SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
     if (intr.f.kmac_err) {
         printf("  FAIL: %s allow-path dirty kmac_err=1 (ERR_CODE=0x%08x)\n", tag, err);
         return -1;
@@ -65,37 +65,37 @@ static int run_legal_empty_sha3(void) {
     cfg.f.entropy_ready = 1;
     write_cfg_shadowed(cfg);
     for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0x13579bdfu + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0x13579bdfu + (uint32_t)i);
     }
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
+        kmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
         if (intr.f.kmac_done) break;
     }
     if (timeout <= 0) {
         printf("  FAIL: legal SHA3 timeout\n");
         return -1;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     clear_error();
     return wait_for_idle();
 }
 
 static int expect_error(const char *name, uint32_t expected_code) {
-    uint32_t err = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
+    uint32_t err = READ_REG(SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
     uint32_t code = SEP_KMAC_ERR_CODE_BYTE(err);
-    kmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
+    kmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
     int pass = 1;
 
     printf("  %s ERR_CODE=0x%08x code=0x%02x expected=0x%02x kmac_err=%u\n", name, err, code,
@@ -125,20 +125,20 @@ static int test_hash_without_entropy_ready(void) {
     /* Ensure CFG_SHADOWED is writable after the legal SHA3 op. */
     kmac__CFG_REGWEN_t regwen = {.w = 0};
     regwen.f.en = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR, regwen.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR, regwen.w);
 
     /*
      * PREFIX = encode_string("KMAC") || encode_string("").
      * First 6B must match EncodedStringKMAC or err_prefix (0x07) beats 0x09.
      */
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001U);
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00014341U);
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001U);
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00014341U);
     for (int i = 2; i < 11; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
+        WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
     }
     kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.len = 0x0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
+    WRITE_REG(SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
 
     kmac__CFG_SHADOWED_t cfg = {.w = 0};
     cfg.f.kmac_en = 1;
@@ -151,7 +151,7 @@ static int test_hash_without_entropy_ready(void) {
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     /* Check immediately — do not PROCESS (would overwrite ERR_CODE with 0x08). */
     return expect_error("ErrSwHashingWithoutEntropyReady",
                         SEP_KMAC_ERR_SW_HASHING_WITHOUT_ENTROPY_READY);
@@ -171,12 +171,12 @@ static int test_unsupported_mode_strength(void) {
     cfg.f.en_unsupported_modestrength = 0;
     write_cfg_shadowed(cfg);
     for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0x13579bdfu + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0x13579bdfu + (uint32_t)i);
     }
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     /* Check immediately — MSG/PROCESS after rejected START yields ErrSwCmdSequence(0x08). */
     return expect_error("ErrUnexpectedModeStrength", SEP_KMAC_ERR_UNEXPECTED_MODE_STRENGTH);
 }
@@ -192,7 +192,7 @@ int main(void) {
     intr_en.f.kmac_done = 1;
     intr_en.f.fifo_empty = 1;
     intr_en.f.kmac_err = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
     clear_error();
 
     int pass = 1;
@@ -206,7 +206,7 @@ int main(void) {
         pass = 0;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0);
     clear_error();
 
     printf("\n========================================\n");

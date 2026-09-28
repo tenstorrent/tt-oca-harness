@@ -3,7 +3,7 @@
 
 // AES-128-CBC decryption driver for OROM.
 //
-// Drives the OpenTitan AES IP at OCH_SEP_TOP_AES_BASE_ADDR (0x10910000).
+// Drives the OpenTitan AES IP at SEP_TOP_AES_BASE_ADDR (0x10910000).
 // Register interface and flow ported from:
 //   fw/sep/tests/sep_aes_basic_smoke_test/sep_aes_basic_smoke_test.c
 //
@@ -48,7 +48,7 @@
 static int wait_idle(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         aes__STATUS_t s;
-        s.w = mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
+        s.w = mmio_read32(SEP_TOP_AES_STATUS_BASE_ADDR);
         if (s.f.IDLE) return 0;
     }
     // Report the register rather than just the timeout. The two ways this fails
@@ -59,7 +59,7 @@ static int wait_idle(void) {
     // looks like. Both were hit bringing this path up in simulation, and without
     // this value they are a full debug cycle apart.
     simputs("AES_IDLE_TIMEOUT=");
-    simputhex32(mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR));
+    simputhex32(mmio_read32(SEP_TOP_AES_STATUS_BASE_ADDR));
     simputs("\n");
     return -1;
 }
@@ -70,7 +70,7 @@ static int wait_idle(void) {
 // from "rejected, still on stale settings". ALERT_FATAL_FAULT is unrecoverable.
 static int check_no_alert(void) {
     aes__STATUS_t s;
-    s.w = mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
+    s.w = mmio_read32(SEP_TOP_AES_STATUS_BASE_ADDR);
     if (s.f.ALERT_RECOV_CTRL_UPDATE_ERR || s.f.ALERT_FATAL_FAULT) {
         simputshex32("AES_ALERT_STATUS=", s.w);
         return -1;
@@ -81,7 +81,7 @@ static int check_no_alert(void) {
 static int wait_input_ready(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         aes__STATUS_t s;
-        s.w = mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
+        s.w = mmio_read32(SEP_TOP_AES_STATUS_BASE_ADDR);
         if (s.f.INPUT_READY) return 0;
     }
     return -1;
@@ -90,7 +90,7 @@ static int wait_input_ready(void) {
 static int wait_output_valid(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         aes__STATUS_t s;
-        s.w = mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
+        s.w = mmio_read32(SEP_TOP_AES_STATUS_BASE_ADDR);
         if (s.f.OUTPUT_VALID) return 0;
     }
     return -1;
@@ -98,8 +98,8 @@ static int wait_output_valid(void) {
 
 // Write CTRL_SHADOWED (must be written twice for shadowed register).
 static void write_ctrl(uint32_t val) {
-    mmio_write32(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, val);
-    mmio_write32(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, val);
 }
 
 // Load a key of key_bytes (16 or 32) into KEY_SHARE0, zero-filling the rest of
@@ -111,15 +111,15 @@ static void write_key(const uint8_t *key, uint32_t key_bytes) {
     for (uint32_t i = 0; i < words; ++i) {
         uint32_t w = (uint32_t)key[i * 4] | ((uint32_t)key[i * 4 + 1] << 8) |
                      ((uint32_t)key[i * 4 + 2] << 16) | ((uint32_t)key[i * 4 + 3] << 24);
-        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (i * 4u), w);
+        mmio_write32(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (i * 4u), w);
     }
     for (uint32_t i = words; i < 8u; ++i) {
-        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (i * 4u), 0u);
+        mmio_write32(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + (i * 4u), 0u);
     }
 
     // KEY_SHARE1: all zeros (no masking).
     for (uint32_t i = 0; i < 8u; ++i) {
-        mmio_write32(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + (i * 4u), 0u);
+        mmio_write32(SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + (i * 4u), 0u);
     }
 }
 
@@ -127,7 +127,7 @@ static void write_iv(const uint8_t *iv) {
     for (int i = 0; i < 4; ++i) {
         uint32_t w = (uint32_t)iv[i * 4] | ((uint32_t)iv[i * 4 + 1] << 8) |
                      ((uint32_t)iv[i * 4 + 2] << 16) | ((uint32_t)iv[i * 4 + 3] << 24);
-        mmio_write32(OCH_SEP_TOP_AES_IV_BASE_ADDR(0) + (uint32_t)(i * 4), w);
+        mmio_write32(SEP_TOP_AES_IV_BASE_ADDR(0) + (uint32_t)(i * 4), w);
     }
 }
 
@@ -135,13 +135,13 @@ static void write_data_in(const uint8_t *in) {
     for (int i = 0; i < 4; ++i) {
         uint32_t w = (uint32_t)in[i * 4] | ((uint32_t)in[i * 4 + 1] << 8) |
                      ((uint32_t)in[i * 4 + 2] << 16) | ((uint32_t)in[i * 4 + 3] << 24);
-        mmio_write32(OCH_SEP_TOP_AES_DATA_IN_BASE_ADDR(0) + (uint32_t)(i * 4), w);
+        mmio_write32(SEP_TOP_AES_DATA_IN_BASE_ADDR(0) + (uint32_t)(i * 4), w);
     }
 }
 
 static void read_data_out(uint8_t *out) {
     for (int i = 0; i < 4; ++i) {
-        uint32_t w = mmio_read32(OCH_SEP_TOP_AES_DATA_OUT_BASE_ADDR(0) + (uint32_t)(i * 4));
+        uint32_t w = mmio_read32(SEP_TOP_AES_DATA_OUT_BASE_ADDR(0) + (uint32_t)(i * 4));
         out[i * 4] = (uint8_t)(w);
         out[i * 4 + 1] = (uint8_t)(w >> 8);
         out[i * 4 + 2] = (uint8_t)(w >> 16);
@@ -160,7 +160,7 @@ static void aes_cleanup(void) {
     aes__TRIGGER_t trig = {.w = 0};
     trig.f.KEY_IV_DATA_IN_CLEAR = 1;
     trig.f.DATA_OUT_CLEAR = 1;
-    mmio_write32(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trig.w);
+    mmio_write32(SEP_TOP_AES_TRIGGER_BASE_ADDR, trig.w);
 }
 
 // ---------------------------------------------------------------------------
@@ -172,12 +172,12 @@ int aes_init(void) {
     // masking PRNG reseeds off EDN before the core reports STATUS.IDLE. The
     // caller establishes it (see oca_platform.c).
     // Release AES from SW reset.
-    uint32_t rst = mmio_read32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t rst = mmio_read32(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     rst |= SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, rst);
+    mmio_write32(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, rst);
     __asm__ volatile("fence" ::: "memory");
 
-    if (!(mmio_read32(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
+    if (!(mmio_read32(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
           SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm)) {
         simputs("AES_RST_FAIL\n");
         return -1;

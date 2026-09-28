@@ -137,7 +137,7 @@ static void gen_plaintext(uint32_t pt[4], int block_idx) {
 /* ------------------------------------------------------------------ */
 
 static int check_block_status(int block, const char *phase) {
-    aes__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+    aes__STATUS_t st = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
     if (st.f.OUTPUT_LOST) {
         printf("  ERROR: OUTPUT_LOST at %s block %d (STATUS=0x%08x)\n", phase, block, st.w);
         return -1;
@@ -337,7 +337,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_back_to_back_test (STRESS-001)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x\n", OCH_SEP_TOP_AES_BASE_ADDR);
+    printf("AES base=0x%08x\n", SEP_TOP_AES_BASE_ADDR);
     printf("Total blocks: %d (A=%d + B=%d + C=%d + D=%d)\n",
            PHASE_A_BLOCKS + PHASE_B_BLOCKS + PHASE_C_BLOCKS + PHASE_D_BLOCKS, PHASE_A_BLOCKS,
            PHASE_B_BLOCKS, PHASE_C_BLOCKS, PHASE_D_BLOCKS);

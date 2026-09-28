@@ -34,7 +34,7 @@ static uint32_t g_vconsole_prev_val;
 
 static inline void vconsole_write_scratch2(uint32_t val) {
     if (val == g_vconsole_prev_val) val ^= 1u;
-    mmio_write32(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2), val);
+    mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2), val);
     g_vconsole_prev_val = val;
 }
 

@@ -48,7 +48,7 @@ module sep_local_axi_xbar_wrapper (
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    cpu_tcm_axi_resp_i,  // Response from the core DMA slave port.
   output sep_pkg::sep_32_64_6_12_axi_req_t     dma_csr_axi_req_o,  // Request for the secure DMA
                                                                    // register extent from
-                                                                   // och_sep_top_addrmap_pkg.
+                                                                   // sep_top_addrmap_pkg.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    dma_csr_axi_resp_i,  // Response from the secure DMA registers.
   output sep_pkg::sep_32_64_6_12_axi_req_t     sram_axi_req_o,  // Request for the SEP SRAM,
                                                                 // 0x1000_0000-0x1003_FFFF.
@@ -76,7 +76,7 @@ module sep_local_axi_xbar_wrapper (
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_wdt_axi_req_o,  // Request for the watchdog timer
                                                                    // register extent from
-                                                                   // och_sep_top_addrmap_pkg.
+                                                                   // sep_top_addrmap_pkg.
   input  sep_pkg::sep_32_64_6_12_axi_resp_t    sep_wdt_axi_resp_i,  // Response from the watchdog timer.
 
   output sep_pkg::sep_32_64_6_12_axi_req_t     sep_reset_ctrl_axi_req_o,  // Request for sep_reset_ctrl,

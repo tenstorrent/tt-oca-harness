@@ -148,7 +148,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_basic_smoke_test (FUNC-001)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x\n", OCH_SEP_TOP_AES_BASE_ADDR);
+    printf("AES base=0x%08x\n", SEP_TOP_AES_BASE_ADDR);
 
     /* Part 1: ECB encrypt + decrypt roundtrip */
     if (rc == 0) rc = run_ecb_roundtrip();

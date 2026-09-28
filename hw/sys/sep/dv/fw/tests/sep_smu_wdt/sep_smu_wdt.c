@@ -22,7 +22,7 @@
  * after the clear-all write, not that the written word reads back.
  *
  * Register addresses come from the generated SEP address map by symbol
- * (OCH_SEP_TOP_WDT_TIMER_*, hw/sys/sep/regs/gen/c/sep_addr.h via sep.h) -- this
+ * (SEP_TOP_WDT_TIMER_*, hw/sys/sep/regs/gen/c/sep_addr.h via sep.h) -- this
  * is the SEP's own WDT, not the SMC's -- and the field masks from the generated
  * block header by symbol (AON_TIMER__*_bm, aon_timer.h).
  */
@@ -71,53 +71,53 @@ static inline int wdt_readback_holds(uintptr_t addr, uint32_t mask, uint32_t exp
 }
 
 static int run_wdt_programming_sequence(void) {
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDT_WDOG_CTRL_PROG);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, WDT_WDOG_COUNT_PROG);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_WDOG_BARK_THOLD_PROG);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_WDOG_BITE_THOLD_PROG);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, WDT_INTR_STATE_CLEAR_ALL);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WDT_WKUP_CTRL_PROG);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WDT_WKUP_THOLD_LO_PROG);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_HI_BASE_ADDR, WDT_WKUP_THOLD_HI_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDT_WDOG_CTRL_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, WDT_WDOG_COUNT_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_WDOG_BARK_THOLD_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_WDOG_BITE_THOLD_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, WDT_INTR_STATE_CLEAR_ALL);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WDT_WKUP_CTRL_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WDT_WKUP_THOLD_LO_PROG);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WKUP_THOLD_HI_BASE_ADDR, WDT_WKUP_THOLD_HI_PROG);
 
     /* All eight stores retire before the first readback is issued. */
     fence_io();
 
     /* Thresholds first: the widest deltas. */
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR,
-                            WDT_WDOG_BARK_THOLD_MASK, WDT_WDOG_BARK_THOLD_PROG)) {
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_WDOG_BARK_THOLD_MASK,
+                            WDT_WDOG_BARK_THOLD_PROG)) {
         return -1;
     }
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR,
-                            WDT_WDOG_BITE_THOLD_MASK, WDT_WDOG_BITE_THOLD_PROG)) {
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_WDOG_BITE_THOLD_MASK,
+                            WDT_WDOG_BITE_THOLD_PROG)) {
         return -2;
     }
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WDT_WKUP_THOLD_LO_MASK,
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WKUP_THOLD_LO_BASE_ADDR, WDT_WKUP_THOLD_LO_MASK,
                             WDT_WKUP_THOLD_LO_PROG)) {
         return -3;
     }
 
     /* Control, count and the high threshold: non-reset values with the
      * counters still stopped. */
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDT_WDOG_CTRL_MASK,
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDT_WDOG_CTRL_MASK,
                             WDT_WDOG_CTRL_PROG)) {
         return -4;
     }
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, WDT_WDOG_COUNT_MASK,
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, WDT_WDOG_COUNT_MASK,
                             WDT_WDOG_COUNT_PROG)) {
         return -5;
     }
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WDT_WKUP_CTRL_MASK,
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WKUP_CTRL_BASE_ADDR, WDT_WKUP_CTRL_MASK,
                             WDT_WKUP_CTRL_PROG)) {
         return -6;
     }
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_WKUP_THOLD_HI_BASE_ADDR, WDT_WKUP_THOLD_HI_MASK,
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_WKUP_THOLD_HI_BASE_ADDR, WDT_WKUP_THOLD_HI_MASK,
                             WDT_WKUP_THOLD_HI_PROG)) {
         return -7;
     }
 
     /* Write-one-to-clear: both defined bits must read clear after the write. */
-    if (!wdt_readback_holds(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, WDT_INTR_STATE_MASK,
+    if (!wdt_readback_holds(SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR, WDT_INTR_STATE_MASK,
                             WDT_INTR_STATE_EXPECTED)) {
         return -8;
     }

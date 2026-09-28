@@ -40,7 +40,7 @@ int main(void) {
 
     /* Step 1: Verify CFG default */
     printf("Step 1: CFG default check\n");
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("CFG default", cfg.w, SPI_CONTROLLER__CONFIGOPTS_reset)) pass = 0;
 
     /* Step 2: Test CLKDIV values */
@@ -48,20 +48,20 @@ int main(void) {
 
     cfg.w = 0;
     cfg.f.CLKDIV = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("CLKDIV=0 (fastest)", cfg.f.CLKDIV, 0)) pass = 0;
 
     cfg.w = 0;
     cfg.f.CLKDIV = 49;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("CLKDIV=49 (1MHz@50MHz)", cfg.f.CLKDIV, 49)) pass = 0;
 
     cfg.w = 0;
     cfg.f.CLKDIV = 0xFFFF;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("CLKDIV=0xFFFF (max)", cfg.f.CLKDIV, 0xFFFF)) pass = 0;
 
     /* Step 3: Test all 4 SPI modes */
@@ -72,8 +72,8 @@ int main(void) {
             cfg.w = 0;
             cfg.f.CPOL = cpol;
             cfg.f.CPHA = cpha;
-            WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-            cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+            WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+            cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
             printf("  Mode %u (CPOL=%u, CPHA=%u): readback CPOL=%u, CPHA=%u - %s\n",
                    (cpol << 1) | cpha, cpol, cpha, cfg.f.CPOL, cfg.f.CPHA,
                    (cfg.f.CPOL == cpol && cfg.f.CPHA == cpha) ? "PASS" : "FAIL");
@@ -85,13 +85,13 @@ int main(void) {
     printf("\nStep 4: FULLCYC mode\n");
     cfg.w = 0;
     cfg.f.FULLCYC = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("FULLCYC=1", cfg.f.FULLCYC, 1)) pass = 0;
 
     cfg.f.FULLCYC = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("FULLCYC=0", cfg.f.FULLCYC, 0)) pass = 0;
 
     /* Step 5: Test CS timing fields */
@@ -100,8 +100,8 @@ int main(void) {
     cfg.f.CSNIDLE = 0xF;
     cfg.f.CSNLEAD = 0xF;
     cfg.f.CSNTRAIL = 0xF;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("CSNIDLE=0xF", cfg.f.CSNIDLE, 0xF)) pass = 0;
     if (!check_reg("CSNLEAD=0xF", cfg.f.CSNLEAD, 0xF)) pass = 0;
     if (!check_reg("CSNTRAIL=0xF", cfg.f.CSNTRAIL, 0xF)) pass = 0;
@@ -110,8 +110,8 @@ int main(void) {
     cfg.f.CSNIDLE = 0;
     cfg.f.CSNLEAD = 0;
     cfg.f.CSNTRAIL = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     {
         const uint32_t cs_timing_bm = SPI_CONTROLLER__CONFIGOPTS__CSNIDLE_bm |
                                       SPI_CONTROLLER__CONFIGOPTS__CSNTRAIL_bm |
@@ -129,8 +129,8 @@ int main(void) {
     cfg.f.CSNIDLE = 4;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 3;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    cfg.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR);
     if (!check_reg("CLKDIV", cfg.f.CLKDIV, 9)) pass = 0;
     if (!check_reg("CPOL", cfg.f.CPOL, 1)) pass = 0;
     if (!check_reg("CPHA", cfg.f.CPHA, 1)) pass = 0;

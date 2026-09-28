@@ -29,23 +29,23 @@ void pic_register_handler(uint32_t source_id, pic_handler_t handler) {
 }
 
 void pic_set_priority(uint32_t source_id, uint32_t priority) {
-    uint32_t addr = OCH_SEP_TOP_PIC_MEIPL_BASE_ADDR(source_id);
+    uint32_t addr = SEP_TOP_PIC_MEIPL_BASE_ADDR(source_id);
     pic_write_reg(addr, priority & EL2_PIC__MEIPL__INTPRIORITY_bm);
 }
 
 void pic_set_gateway(uint32_t source_id, uint32_t type, uint32_t polarity) {
-    uint32_t addr = OCH_SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(source_id);
+    uint32_t addr = SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(source_id);
     el2_pic__MEIGWCTRL_t val = {.f = {.polarity = polarity & 0x1, .irq_type = type & 0x1}};
     pic_write_reg(addr, val.w);
 }
 
 void pic_enable_source(uint32_t source_id) {
-    uint32_t addr = OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
+    uint32_t addr = SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
     pic_write_reg(addr, 1);
 }
 
 void pic_disable_source(uint32_t source_id) {
-    uint32_t addr = OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
+    uint32_t addr = SEP_TOP_PIC_MEIE_BASE_ADDR(source_id);
     pic_write_reg(addr, 0);
 }
 
