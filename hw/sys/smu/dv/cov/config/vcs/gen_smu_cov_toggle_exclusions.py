@@ -45,9 +45,10 @@ writes, and each class below states that fact and what would retire it:
 * OUTBOUND-FIXED-ATTRIBUTES: AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the
   crossbar's ext_out port, which the SEP initiators and the SMC masters a
   bench can drive all hold constant.
-* DECERR-SLAVE-RESPONSE, SEP-EXTERNAL-WINDOW, TRNG-WINDOW: the response code of
-  the DECERR slaves on the SEP external and TRNG ports, and the address bits the
-  decode that feeds each port holds fixed.
+* DECERR-SLAVE-RESPONSE, SEP-EXTERNAL-WINDOW, TRNG-WINDOW, SMC-EXTERNAL-WINDOW:
+  the response code of the DECERR slaves on the SEP external and TRNG ports, and
+  the address bits the decode that feeds each window holds fixed.
+* EFUSE-COMMAND-LENGTH: the fuse-command word-count bits no command source sets.
 * XBAR-CONNECTIVITY: the input-port bits of the crossbar's output ID that the
   connectivity matrix never sets on a given output.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
@@ -511,6 +512,28 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "a TRNG window that moves or grows past 4 KiB",
         None,
         window_bits(0x1091_7000, 12, 31),
+    ),
+    (
+        "EFUSE-COMMAND-LENGTH",
+        re.compile(r"^(sep|smc)_efuse_shim_command_req(_o)?\.access_length_words$"),
+        "bits [7:1] of the fuse-command word count. The read and program interfaces "
+        "ask for one word (efuse_read_interface.sv 144, efuse_program_interface.sv 158) "
+        "and the sense for the whole shadow file, 256 words of the 8192-bit arrays "
+        "(efuse_shadow_regs.sv 57, 428-429; sep_efuse_pkg.sv 291, smc_efuse_pkg.sv 124), "
+        "so only bits 0 and 8 move.",
+        "a fuse-command source that asks for another word count",
+        None,
+        ((1, 7),),
+    ),
+    (
+        "SMC-EXTERNAL-WINDOW",
+        re.compile(r"^smc_external_req(_o)?\.(aw|ar)\.addr$"),
+        "address bits [29:23] of the SMC external window. The SMC peripheral crossbar "
+        "sends only 0xC040_0000-0xC07F_FFFF there (smc_periph_axi_lite_xbar.sv 145-149, "
+        "smc_addr.h SMC_TOP_SMC_EXTERNAL), where those bits are 0.",
+        "an SMC external window that moves or grows past 4 MiB",
+        None,
+        window_bits(0xC040_0000, 23, 29),
     ),
     (
         "XBAR-CONNECTIVITY",

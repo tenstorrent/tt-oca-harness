@@ -1504,6 +1504,14 @@ Toggle ext_trng_axil_req_o.aw.addr [27:24] "logic ext_trng_axil_req_o.aw.addr[31
 Toggle 1to0 ext_trng_axil_req_o.aw.addr [28] "logic ext_trng_axil_req_o.aw.addr[31:0]"
 Toggle ext_trng_axil_req_o.aw.addr [31:29] "logic ext_trng_axil_req_o.aw.addr[31:0]"
 
+ANNOTATION: "SMU-TGL-EFUSE-COMMAND-LENGTH: bits [7:1] of the fuse-command word count. The read and program interfaces ask for one word (efuse_read_interface.sv 144, efuse_program_interface.sv 158) and the sense for the whole shadow file, 256 words of the 8192-bit arrays (efuse_shadow_regs.sv 57, 428-429; sep_efuse_pkg.sv 291, smc_efuse_pkg.sv 124), so only bits 0 and 8 move. Retired by a fuse-command source that asks for another word count."
+Toggle smc_efuse_shim_command_req_o.access_length_words [7:1] "logic smc_efuse_shim_command_req_o.access_length_words[8:0]"
+Toggle sep_efuse_shim_command_req_o.access_length_words [7:1] "logic sep_efuse_shim_command_req_o.access_length_words[8:0]"
+
+ANNOTATION: "SMU-TGL-SMC-EXTERNAL-WINDOW: address bits [29:23] of the SMC external window. The SMC peripheral crossbar sends only 0xC040_0000-0xC07F_FFFF there (smc_periph_axi_lite_xbar.sv 145-149, smc_addr.h SMC_TOP_SMC_EXTERNAL), where those bits are 0. Retired by an SMC external window that moves or grows past 4 MiB."
+Toggle smc_external_req_o.ar.addr [29:23] "logic smc_external_req_o.ar.addr[31:0]"
+Toggle smc_external_req_o.aw.addr [29:23] "logic smc_external_req_o.aw.addr[31:0]"
+
 ANNOTATION: "SMU-TGL-XBAR-CONNECTIVITY: the top bit of the crossbar's output ID, which carries the input port index (ext_in is port 2). smu_axi_xbar_pkg.sv (127-133) gives ext_in no path to ext_out, so on ext_out and past it that bit stays 0. Retired by a crossbar connectivity matrix that routes ext_in to ext_out."
 Toggle smu_axi_out_req_o.ar.id [9] "logic smu_axi_out_req_o.ar.id[9:0]"
 Toggle smu_axi_out_req_o.aw.id [9] "logic smu_axi_out_req_o.aw.id[9:0]"
@@ -2406,6 +2414,14 @@ Toggle 1to0 ext_trng_axil_req.aw.addr [23] "logic ext_trng_axil_req.aw.addr[31:0
 Toggle ext_trng_axil_req.aw.addr [27:24] "logic ext_trng_axil_req.aw.addr[31:0]"
 Toggle 1to0 ext_trng_axil_req.aw.addr [28] "logic ext_trng_axil_req.aw.addr[31:0]"
 Toggle ext_trng_axil_req.aw.addr [31:29] "logic ext_trng_axil_req.aw.addr[31:0]"
+
+ANNOTATION: "SMU-TGL-EFUSE-COMMAND-LENGTH: bits [7:1] of the fuse-command word count. The read and program interfaces ask for one word (efuse_read_interface.sv 144, efuse_program_interface.sv 158) and the sense for the whole shadow file, 256 words of the 8192-bit arrays (efuse_shadow_regs.sv 57, 428-429; sep_efuse_pkg.sv 291, smc_efuse_pkg.sv 124), so only bits 0 and 8 move. Retired by a fuse-command source that asks for another word count."
+Toggle smc_efuse_shim_command_req.access_length_words [7:1] "logic smc_efuse_shim_command_req.access_length_words[8:0]"
+Toggle sep_efuse_shim_command_req.access_length_words [7:1] "logic sep_efuse_shim_command_req.access_length_words[8:0]"
+
+ANNOTATION: "SMU-TGL-SMC-EXTERNAL-WINDOW: address bits [29:23] of the SMC external window. The SMC peripheral crossbar sends only 0xC040_0000-0xC07F_FFFF there (smc_periph_axi_lite_xbar.sv 145-149, smc_addr.h SMC_TOP_SMC_EXTERNAL), where those bits are 0. Retired by an SMC external window that moves or grows past 4 MiB."
+Toggle smc_external_req.ar.addr [29:23] "logic smc_external_req.ar.addr[31:0]"
+Toggle smc_external_req.aw.addr [29:23] "logic smc_external_req.aw.addr[31:0]"
 
 ANNOTATION: "SMU-TGL-XBAR-CONNECTIVITY: the top bit of the crossbar's output ID, which carries the input port index (ext_in is port 2). smu_axi_xbar_pkg.sv (127-133) gives ext_in no path to ext_out, so on ext_out and past it that bit stays 0. Retired by a crossbar connectivity matrix that routes ext_in to ext_out."
 Toggle smu_axi_out_req_o.ar.id [9] "logic smu_axi_out_req_o.ar.id[9:0]"
