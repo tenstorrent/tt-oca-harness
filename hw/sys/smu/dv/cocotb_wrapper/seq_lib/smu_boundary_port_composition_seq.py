@@ -4,8 +4,7 @@
 
 Reads the elaborated SEP=1 `smu` boundary passively: port presence, the widths
 the specifications state, the idle values the specifications state, and the
-inertness of the cross-trigger CTP channels whose data inputs the wrapper ties
-to zero.
+inertness of the cross-trigger CTP channels while no CTP is asserted.
 
 Every width that carries an evidence token is a specification value:
 `hw/sys/smu/doc/port_table.adoc` for the port rows, `doc/integrator/src/smu.adoc`
@@ -136,20 +135,30 @@ class smu_boundary_port_composition_seq:
             for leg in CTP_LEGS:
                 self._width(smu, f"xtrig_ctp_{group}_{leg}", XTRIG_NUM_CTP, "CHK-SMU-XTRIG-CTP-S1")
 
-        # SMU-XTRIG-CTP.S6: tied-zero data inputs, observed at the DTP consumer,
-        # leave every CTP output and the CTM boundary static at zero.
-        din_names = [f"xtrig_ctp_{g}_din_i" for g in CTP_GROUPS]
-        for name in din_names:
+        # SMU-XTRIG-CTP.S6: while no CTP is asserted, every CTP output and the
+        # CTM boundary stays static.
+        #
+        # req_out's din is not tied off. It comes from the modelled CT_Req_out
+        # wire-OR board, which is active low and rests at its pull while no
+        # chiplet pulls it -- drive_idle_inputs() holds tb_xtrig_ctp_wire_pull
+        # at all ones for the reset-default INVERT=0. So "nobody is asserting"
+        # reads there as din == pull, the same relation smu_xtrig_ctp_pad_seq
+        # uses. The wrapper does drive the other three groups to zero.
+        wire_pull = sample(self.dut.tb_xtrig_ctp_wire_pull, "tb_xtrig_ctp_wire_pull")
+        idle_level = {"req_out": wire_pull}
+        for group in CTP_GROUPS:
+            name = f"xtrig_ctp_{group}_din_i"
+            expected = idle_level.get(group, 0)
             sb.expect_eq(
-                f"{name} tie-off at the SMU boundary",
+                f"{name} idle at the SMU boundary",
                 sample(hier(smu, name), name),
-                0,
+                expected,
                 evidence="CHK-SMU-XTRIG-CTP-S6",
             )
             sb.expect_eq(
-                f"{name} tie-off at the DTP consumer",
+                f"{name} idle at the DTP consumer",
                 sample(hier(smu, f"u_dtp.{name}"), f"u_dtp.{name}"),
-                0,
+                expected,
                 evidence="CHK-SMU-XTRIG-CTP-S6",
             )
         watched = {f"xtrig_ctp_{g}_dout_o": hier(smu, f"xtrig_ctp_{g}_dout_o") for g in CTP_GROUPS}
@@ -175,7 +184,7 @@ class smu_boundary_port_composition_seq:
             evidence="CHK-SMU-XTRIG-CTP-S6",
         )
         sb.expect_eq(
-            "CTP outputs and CTM boundary idle at zero under tied-zero inputs",
+            "CTP outputs and CTM boundary idle at zero while no CTP is asserted",
             sum(first.values()),
             0,
             evidence="CHK-SMU-XTRIG-CTP-S6",
