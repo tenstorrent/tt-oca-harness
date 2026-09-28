@@ -46,11 +46,14 @@ include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
 The last two columns state how the SMC answers a 32-bit access that no
-register or memory backs, as seen at its inbound AXI port. _Hole in Extent_ covers
-the unbacked offsets inside a unit's decoded extent. Where the space between a
-wrapper's sub-blocks answers differently, the cell names it separately, and
-`between instances` names the padding after each element of an array. _Past
-Extent_ covers the rest of the unit's aperture.
+register or memory backs, as seen at its inbound AXI port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes.
 
 An address between unit apertures reaches no unit. A read there answers `DECERR`
 with data `0xBADCAB1E`, and a write answers `DECERR`, except from
@@ -59,12 +62,6 @@ with data `0xBADCAB1E`, and a write answers `DECERR`, except from
 An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
 SMC initiators only; an access to them from the inbound port answers `DECERR`.
-
-In the response cells, `-` means the region does not exist: the unit is
-memory, its registers fill its extent, or its aperture ends at its extent.
-`Forwarded` means the SMC does not decode the aperture and the target of the
-forwarded access answers, and `Adopter-defined` means the adopter's
-implementation answers.
 
 == Detailed Address Map
 

@@ -66,15 +66,14 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 Each row below is the aperture reserved for a unit, and the Decoded Extent
 column gives the part of it that registers or memory back. The last two
 columns state how SEP answers a 32-bit access that no register or memory
-backs, as seen at its inbound AXI port. _Hole in Extent_ covers the unbacked
-offsets inside a unit's decoded extent, _Past Extent_ covers the rest of its
-aperture, and the `Reserved` rows are the addresses between unit apertures.
-
-In the response cells, `-` means the region does not exist: the unit is
-memory, its registers fill its extent, or its aperture ends at its extent.
-`Forwarded` means SEP does not decode the aperture and the target of the
-forwarded access answers, and `Adopter-defined` means the adopter's
-implementation answers.
+backs, as seen at its inbound AXI port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes.
 
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
 does not decode offsets inside that window, so every access reaches the TRNG
