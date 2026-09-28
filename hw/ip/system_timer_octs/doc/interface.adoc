@@ -4,297 +4,90 @@
 [[system-timer-octs-interface]]
 == Interface
 
-The System Timer OCTS IP provides interfaces supporting both PRIMARY and
-SECONDARY timer modes, with flexible support for either AXI4-Lite or
-APB4 bus protocols. All interface signals operate synchronously to the
-system clock.
-
-=== Configuration Parameters
-
-<<octs-configuration-parameters-table>> lists the timer configuration parameters and
-defaults.
+The `system_timer_octs` wrapper has no configurable module parameters.
+Its package fixes AXI4-Lite addresses and data at 32 bits. The timer core
+receives its step from `CTRL.STEP`; `timer_cnt_step_i` is a core input,
+not an external wrapper port.
 
 ifdef::backend-html5[]
 ++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS configuration parameters" tabindex="0">
+<span id="configuration-parameters"></span>
 ++++
 endif::backend-html5[]
 
 [[octs-configuration-parameters-table]]
-[cols="30,16,54",options="header",role="port-reference"]
-.OCTS configuration parameters
-|=======================================================================
-|Parameter |Default |Description
-|BUS_PROTOCOL |AXI4-Lite |Register interface protocol (AXI4-Lite or
-APB4)
-
-|ADDR_WIDTH |32 |Address bus width (8-bit effective)
-
-|DATA_WIDTH |32 |Data bus width
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-NOTE: Timer mode selection (PRIMARY vs SECONDARY) is controlled at runtime
-via the `is_primary_i` input signal, not through a compile-time parameter.
-
-=== Global Interface
-
-<<octs-global-interface-signals-table>> defines the timer clock, reset, and global
-interface signals.
+.OCTS configuration sources
+[cols="1,1,3",options="header"]
+|===
+|Setting |Reset/default |Source
+|Role |Integration-defined |`is_primary_i`: 1 primary, 0 secondary.
+|Credit interval |10 |`CTRL.CREDIT_VAL[7:0]`.
+|Pulse width |2 |`CTRL.PULSE_WIDTH[15:8]`, in primary clock cycles.
+|Secondary step |1 |`CTRL.STEP[23:16]`.
+|Register bus |32-bit AXI4-Lite |Fixed wrapper interface.
+|===
 
 ifdef::backend-html5[]
 ++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS global interface signals" tabindex="0">
+<span id="global-interface"></span>
+<span id="test-interface"></span>
+<span id="octs-test-interface-signals-table"></span>
+<span id="integration-guidelines"></span>
 ++++
 endif::backend-html5[]
 
 [[octs-global-interface-signals-table]]
-.OCTS Global Interface Signals
-[cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
-|=======================================================================
-|Signal Name |Width |Direction |Active |Description
-|`clk_i` |1 |Input |Rising |System clock. All logic operates
-synchronously to this clock. Frequency determines timer resolution and
-synchronization timing.
-
-|`rst_ni` |1 |Input |Low |System reset. Asynchronous assertion and
-synchronous deassertion. Resets all counters, state machines, and
-registers to initial values.
-
-|`is_primary_i` |1 |Input |High |Runtime mode selection: 1=PRIMARY
-(master timer that generates synchronization pulses), 0=SECONDARY (slave
-timer that receives synchronization pulses). This signal determines timer
-behavior, register visibility, and synchronization signal direction.
-|=======================================================================
+.OCTS clock, reset and register interface
+[cols="2,1,3",options="header"]
+|===
+|Signal |Direction |Meaning
+|`clk_i` |Input |Local clock for the core and registers.
+|`rst_ni` |Input |Active-low asynchronous reset.
+|`is_primary_i` |Input |Role selection; hold stable during operation.
+|`axil_req_i` / `axil_resp_o` |Input / output |AXI4-Lite register request/response.
+|===
 
 ifdef::backend-html5[]
 ++++
-</div>
-++++
-endif::backend-html5[]
-
-=== Test Interface
-
-<<octs-test-interface-signals-table>> defines the timer test controls.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS test interface signals" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[octs-test-interface-signals-table]]
-.OCTS Test Interface Signals
-[cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
-|=======================================================================
-|Signal Name |Width |Direction |Active |Description
-|`test_en_i` |1 |Input |High |Test enable signal for manufacturing test
-mode and debug access.
-
-|`scan_rst_ni` |1 |Input |Low |Scan reset for manufacturing test.
-Provides independent reset control for scan chain operation and ATPG
-support.
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-=== OCTS Synchronization Interface
-
-<<octs-synchronization-interface-signals-table>> defines the synchronization inputs and
-outputs.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS synchronization interface signals" tabindex="0">
+<span id="octs-synchronization-interface"></span>
 ++++
 endif::backend-html5[]
 
 [[octs-synchronization-interface-signals-table]]
-.OCTS Synchronization Interface Signals
-[cols="28,9,13,10,40",options="header",role="port-reference port-reference-wide"]
-|=======================================================================
-|Signal Name |Width |Direction |Active |Description
-|`timer_sync_load_i` |1 |Input |High |Synchronization load pulse input.
-Triggers coordinated timer initialization from the preset value.
+.OCTS synchronization interface
+[cols="2,1,3",options="header"]
+|===
+|Signal |Direction |Meaning
+|`timer_sync_load_i` |Input |Secondary preset-load event, detected on a rising edge.
+|`timer_cnt_credit_i` |Input |Secondary credit-boundary event, detected on a rising edge.
+|`timer_sync_load_o` |Output |Primary load pulse.
+|`timer_cnt_credit_o` |Output |Primary credit pulse.
+|===
 
-|`timer_cnt_credit_i` |1 |Input |High |Credit pulse input. Provides
-periodic credit replenishment for SECONDARY timer synchronization.
-
-|`timer_sync_load_o` |1 |Output |High |Synchronization load pulse
-output. Generated by the PRIMARY timer for system-wide initialization.
-
-|`timer_cnt_credit_o` |1 |Output |High |Credit pulse output. Generated
-by the PRIMARY timer for maintaining synchronization of SECONDARY
-timers.
-|=======================================================================
+A primary ignores both inputs. A secondary holds both outputs low.
+See <<octs-pulses>> for pulse capture and spacing requirements.
 
 ifdef::backend-html5[]
 ++++
-</div>
-++++
-endif::backend-html5[]
-
-When operating in PRIMARY mode, the timer generates synchronization
-pulses: `timer_sync_load_o` is asserted when the START register is
-written, and `timer_cnt_credit_o` is asserted periodically according to
-internal credit generation logic. Any synchronization input signals are
-ignored in PRIMARY mode. In contrast, SECONDARY mode relies on input
-from the PRIMARY: `timer_sync_load_i` directs the timer to initialize
-using a preset value, and `timer_cnt_credit_i` delivers credit pulses
-that allow continuous synchronization. In this mode, the outputs remain
-inactive.
-
-=== Timer Counter Interface
-
-<<octs-timer-counter-interface-signals-table>> defines the counter-step and
-counter-value interfaces.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS timer counter interface signals" tabindex="0">
+<span id="timer-counter-interface"></span>
 ++++
 endif::backend-html5[]
 
 [[octs-timer-counter-interface-signals-table]]
-.OCTS Timer Counter Interface Signals
-[cols="28,9,13,50",options="header",role="port-reference"]
-|=======================================================================
-|Signal Name |Width |Direction |Description
-|`timer_cnt_step_i` |8 |Input |Timer count step value (used in SECONDARY
-mode) determines the increment per clock cycle.
+.OCTS count, GPIO and debug outputs
+[cols="2,1,3",options="header"]
+|===
+|Signal |Width |Meaning
+|`timer_count_o` |64 |Current local count, in the `clk_i` domain.
+|`timer_gpio_enable_o` |1 |`TIMER_GPIO_ENABLE.GPIO_ENABLE`; selects the timer's GPIO LSIO path in SMC.
+|`cur_credits_debug_o` |9 |Consumed secondary credits.
+|`credits_left_debug_o` |1 |Consumed credits are less than `CREDIT_VAL`.
+|===
 
-|`timer_count_o` |64 |Output |Real-time 64-bit timer value available to
-the system.
-|=======================================================================
+Connect primary outputs to the corresponding secondary inputs. Where the
+SMC GPIO path is used, enable it after configuration and before START.
+Crossing `timer_count_o` into another clock domain requires separate coherent
+capture; the synchronization pulse inputs do not provide that capture.
 
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-For SECONDARY timers, the step input (`timer_cnt_step_i`) enables
-granular control over the increment rate. Typically set to 1 for a
-standard per-cycle increment, this parameter can be tuned to adjust for
-differing clock ratios or calibration needs, but is only effective when
-credits are available (i.e., when the credit counter permits counting).
-
-The timer's count output (`timer_count_o`) provides direct and
-continuous access to the current counter value, updating every clock
-cycle while the timer is running. This value is useful for timestamping,
-monitoring, or debugging, and can also be read from the COUNT_LO and
-COUNT_HI registers.
-
-=== Timing Specifications
-
-All input signals are required to meet setup and hold times with respect
-to the rising edge of clk_i.
-
-<<octs-timing-requirements-table>> lists the stated setup and hold requirements by
-signal group.
-
-ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="OCTS timing requirements" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[octs-timing-requirements-table]]
-.OCTS Timing Requirements
-[cols="30,15,15,40",options="header",role="port-reference"]
-|=======================================================================
-|Signal Group |Setup Time |Hold Time |Notes
-|Register Interface |2.0 ns |0.5 ns |AXI4-Lite/APB4 protocol signals
-
-|Synchronization Inputs |N/A |N/A |Edge detection provides internal
-synchronization
-
-|Control Inputs |2.0 ns |0.5 ns |test_en_i, scan_rst_ni,
-timer_cnt_step_i
-
-|Timer Count Output |N/A |N/A |Output signal with 3.0 ns clock-to-output
-delay
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-The interface ensures that register outputs are valid within 3.0 ns of a
-rising clock edge, while the timer count output also updates within 3.0
-ns of the clock. Synchronization outputs are generated as pulses with
-programmable widths.
-
-Regarding clock domain crossing, the synchronization protocol relies on
-pulses wide enough to be reliably detected: each pulse should last for
-at least two destination clock cycles, and the maximum supported
-frequency ratio between domains is 10:1.
-
-Pulse events must be separated by at least 10 destination clock cycles.
-Edge detection logic ensures synchronization latency of 2–3 destination
-clock cycles and provides robust protection against metastability (using
-a 2FF synchronizer with closure on all relevant timing), with internal
-logic maintaining the width of each transmitted pulse.
-
-=== Reset Behavior and Initialization
-
-When reset is asserted asynchronously (`rst_ni`), all outputs
-immediately transition to safe, inactive states. The timer count is
-forced to zero, synchronization outputs are driven low, and register
-interface outputs indicate the reset condition. Deasserting reset
-synchronously causes all internal state machines to return to their
-initial states, resets all registers to their defaults, disables the
-timer until the START register is accessed, and prepares the
-synchronization inputs for edge detection.
-
-A recommended reset sequence is to assert `rst_ni` for at least 5 clock
-cycles, ensure a glitch-free deassertion, allow 3 cycles for the reset
-to propagate internally, and only then begin register configuration.
-
-Initialization occurs in a defined startup sequence: First, during the
-reset phase, all timers are held in reset. Next, software configures
-timer parameters. Synchronization follows, as the PRIMARY timer asserts
-START and generates a sync_load pulse, which launches synchronized
-operation across all timers.
-
-It's important to ensure the sync_load pulse is delivered to all
-SECONDARY timers within the synchronization window, and credit pulses
-must continue to arrive at intervals to guarantee ongoing
-synchronization. Clock domain crossing will add 2–3 cycles of latency to
-these signals.
-
-=== Integration Guidelines
-
-For multi-chiplet integration, the PRIMARY timer should be placed
-centrally to achieve the most efficient signal distribution and minimize
-routing distances to all SECONDARY timers, with inter-chiplet signal
-integrity always taken into account. The synchronization inputs of
-SECONDARY timers should be connected directly to the PRIMARY outputs,
-with proper termination provided for long routes and buffering added as
-needed for greater fan-out.
-
-The synchronization protocol is supported across clock domains operating
-at a variety of frequencies; edge detection circuits must be properly
-timed, and the effects of jitter and phase noise should be factored in
-when synchronization accuracy is ensured.
-
-At the system level, the timer’s register interface is connected to the
-system control bus with appropriate address mapping for each instance.
-Interrupt connections can be implemented as required. Reset integration
-should guarantee that all timer instances receive reset signals
-simultaneously and reliably, with careful attention given to reset
-sequencing. For power management, clock gating is used for unused
-timers, power domain isolation is implemented where appropriate, and
-low-power operating modes are planned such that timer state is preserved
-across power events.
+The wrapper exposes no APB, interrupt, `test_en_i` or `scan_rst_ni` port.
+Physical setup/hold, reset and pad timing belong to the integrated implementation.

@@ -1,18 +1,39 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+ifdef::backend-html5[]
+++++
+<span id="overview-3"></span>
+++++
+endif::backend-html5[]
+
 [[log-engine-memory-map]]
-== Memory Map
+== Register Reference
 
-=== Overview
+Offsets below are relative to the Log Engine register bank. All registers
+reset to zero. The generated map gives field access and side effects.
 
-The Log Engine provides a comprehensive register interface for
-configuration, control, and status monitoring. All registers are
-accessible via a 32-bit AXI4-Lite interface and follow standard
-read/write access patterns. The register map is organized into logical
-groups for ease of use and programming.
+[cols="2,1,3",options="header"]
+.Log-engine register summary
+|===
+|Register |Offset |Purpose
+|`CTRL` |`0x00` |Engine enable.
+|`LOG_REGION_SIZE` |`0x04` |Total region size in bytes.
+|`LOG_REGION_ADDR` |`0x08/0x0C` |Low/high halves of the 56-bit fetch base.
+|`LOG_WRITE_ADDR` |`0x10` |UART write address.
+|`INTR_STATUS` |`0x14` |Latched fetch/write errors; write 1 to clear.
+|`INTR_ENABLE` |`0x18` |Error interrupt enables.
+|`INTR_TEST` |`0x1C` |Force error status for interrupt testing.
+|`LOG_CTRL[i]` |`0x40 + 4*i` |Submitted byte length for slot 0–15; cleared on completion.
+|===
 
-=== Detailed Register Map
+ifdef::backend-html5[]
+++++
+<span id="detailed-register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Register Map
 
 ifdef::backend-html5[]
 ++++

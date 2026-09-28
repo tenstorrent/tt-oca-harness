@@ -4,35 +4,28 @@
 [[log-engine]]
 = Log Engine
 
+ifdef::backend-html5[]
+++++
+<span id="description-and-features"></span>
+++++
+endif::backend-html5[]
+
 == Overview
 
-The OCA Log Engine is a DMA-based logging system that efficiently
-transfers log messages from a configured memory region to a UART
-interface. It provides a scalable solution for system-level logging with
-hardware acceleration, reducing CPU overhead for log transmission. The
-engine supports up to 16 independent log entries with fair round-robin
-arbitration, making it suitable for multi-threaded or multi-core logging
-scenarios.
+The Log Engine sends memory-resident messages to a UART without a CPU
+copying each byte. Software supplies one memory region, divided into 16
+slots, and submits each message by writing its slot's length. The engine
+selects pending slots in round-robin order and completes one message before
+moving to the next.
 
-== Description and Features
-
-The Log Engine features a multi-interface architecture, combining a
-32-bit AXI4-Lite register interface with both 64-bit log fetch and
-32-bit log write AXI4-Lite interfaces for efficient data movement. Its
-design scales to manage up to 16 independent log entries, each with
-flexible, configurable memory regions and 64-bit addressing.
-
-Round-robin arbitration ensures fair scheduling among logs, and hardware
-integration with the UART transmitter—including flow control—streamlines
-log data output. Error conditions in log fetch or write operations are
-tracked via a comprehensive interrupt system for robust monitoring.
+A 64-bit AXI4-Lite read path fetches message data into a FIFO. A separate
+32-bit AXI4-Lite write path sends one character at a time to a fixed UART
+address, paced by `uart_tx_ready_i`. The register interface is also
+32-bit AXI4-Lite. Fetch addresses are 56 bits; UART addresses are 32 bits.
 
 [[log-engine-wrapper-diagram]]
 .SMC log-engine wrapper and data paths
 image::UART_Log_Engine_Wrap_FIG025-2.png[alt="SMC log-engine wrapper and data paths",width=100%,pdfwidth=100%]
-
-<<log-engine-wrapper-diagram>> shows the SMC wrapper and its memory-to-UART
-data paths.
 
 ifdef::backend-html5[]
 include::partial$log_engine/doc/architecture.adoc[]
@@ -40,21 +33,24 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 include::architecture.adoc[]
 endif::backend-pdf[]
+
 ifdef::backend-html5[]
 include::partial$log_engine/doc/interface.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::interface.adoc[]
 endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$log_engine/doc/memmap.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::memmap.adoc[]
-endif::backend-pdf[]
+
 ifdef::backend-html5[]
 include::partial$log_engine/doc/programming.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]
+
+ifdef::backend-html5[]
+include::partial$log_engine/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::memmap.adoc[]
 endif::backend-pdf[]
