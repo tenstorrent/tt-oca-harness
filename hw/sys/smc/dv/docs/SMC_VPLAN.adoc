@@ -12006,7 +12006,7 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_d
 
 *Source Module*: `smc_prod_rom_occp_ready_test`
 
-*BFM / Model*: ocah_axi_vip (AXI); production boot ROM built with `I3C_CORE=swap`
+*BFM / Model*: ocah_axi_vip (AXI); production boot ROM built with `I3C_CORE=chipsalliance`
 
 *Objective*: Production boot ROM reaches its OCCP command processing loop.
 

@@ -205,7 +205,7 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
 #ifdef I3C_USE_HCI_CORE
-    /* I3C_CORE=swap (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c pads via
+    /* I3C_CORE=chipsalliance (OCA/HCI i3c-core as the OCCP target): the OCA core reaches the i3c pads via
      * the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
      * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
      * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated

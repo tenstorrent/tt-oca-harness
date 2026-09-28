@@ -82,7 +82,7 @@ ROM_PADDING_SELFTEST ?=
 # open DV flow builds the HCI one, from the same checkout. Sharing one directory
 # lets whichever ran last decide what the other links. The default selection
 # keeps the unsuffixed path.
-ifeq ($(I3C_CORE),swap)
+ifeq ($(I3C_CORE),chipsalliance)
     OUT_VARIANT := _hci
 else
     OUT_VARIANT :=
@@ -209,8 +209,8 @@ endif
 # files are always compiled; the define picks exactly one implementation (the
 # HCI driver body is #ifdef'd in, the Cadence override and the weak-stub
 # receive paths stay untouched otherwise). Inherited from the environment, so
-# `I3C_CORE=swap make ...` (or the DV build) propagates it here.
-ifeq ($(I3C_CORE),swap)
+# `I3C_CORE=chipsalliance make ...` (or the DV build) propagates it here.
+ifeq ($(I3C_CORE),chipsalliance)
     DEFINES += -DI3C_USE_HCI_CORE
 endif
 

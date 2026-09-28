@@ -7,7 +7,7 @@
  *  Implements the SAME public API as the Cadence driver (i3c_target_driver.h)
  *  but re-expressed against the HCI programming model (PIO command/response/
  *  data ports + DAT + DCT). Drop-in: select exactly ONE of {the nonfree
- *  Cadence strong override, this file} per build via I3C_CORE=swap.
+ *  Cadence strong override, this file} per build via I3C_CORE=chipsalliance.
  *
  *  This whole file is gated by I3C_USE_HCI_CORE so adding it to the build list
  *  is a no-op until that flag is defined (keeps the default ROM build intact:
