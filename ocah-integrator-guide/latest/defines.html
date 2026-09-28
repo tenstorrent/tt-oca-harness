@@ -322,15 +322,82 @@ leave it unset.</p>
 <h2 id="emulation-define"><a class="anchor" href="#emulation-define"></a><a class="link" href="#emulation-define">3. <code>EMULATION</code></a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><code>EMULATION</code> is the reserved OCAH name for a synthesizable emulator view
-(Palladium, Zebu, and similar): assertions, cover, assume, and <code>$display</code> /
-<code>$error</code> / <code>$fatal</code> stay compiled, while procedural delays, random-init
-<code>initial</code> blocks, <code>force</code>/<code>release</code>, dump/<code>$fopen</code> tasks, and non-synthesizable
-real-time constructs do not.</p>
+<p><code>EMULATION</code> selects the emulation view of OCAH RTL: synthesizable RTL for a
+hardware emulator (Palladium, Zebu, and similar) that keeps the debug hooks an
+emulator can map into hardware. Set it on the emulator compile, and set neither
+<code>SIMULATION</code> nor <code>SYNTHESIS</code> alongside it:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-shell hljs" data-lang="shell">+define+EMULATION</code></pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 50%;">
+<col style="width: 50%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Compiled in</th>
+<th class="tableblock halign-left valign-top">Compiled out</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Concurrent and immediate assertions, cover and assume: first-party,
+OpenTitan, Adams Bridge, Caliptra, and PULP macros.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Procedural delays. <code>ASSERT_INIT_NET</code> and its equivalents keep the check and
+drop the <code>#1ps</code> settle.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Elaboration-time parameter checks.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Random CDC delay models and randomized seeds.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>$display</code>, <code>$error</code>, and <code>$fatal</code> debug messages.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Testbench handshake <code>initial</code> blocks, and the testbench tasks in the i3c
+<code>axi_if</code> interface.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>final</code> blocks, and plusarg hooks outside the <code>SIMULATION</code> set, such as
+<code>+show_mem_paths</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DPI exports, and the <code>SIMULATION</code> plusargs with their ROM and
+shadow-register file preload.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>$readmemh</code> initialization from a memory&#8217;s <code>MemInitFile</code> parameter.</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><code>EMULATION</code> takes precedence over <code>SYNTHESIS</code> in first-party RTL and in the
+vendored assertion headers, so a compile where the tool predefines <code>SYNTHESIS</code>
+still gets the view above. Generated RTL (the SMC CPU cluster and the register
+blocks) and vendored logic outside the assertion headers still follow
+<code>SYNTHESIS</code>, so a compile that sets both loses their elaboration checks and
+debug messages. First-party RTL gives <code>EMULATION</code> precedence over <code>SIMULATION</code>
+too, but vendored CDC delay models and seed randomization follow <code>SIMULATION</code>
+whatever else is set.</p>
 </div>
 <div class="paragraph">
-<p>The tree has no <code>EMULATION</code> gating. Setting the name does not select that view.
-Do not set <code>SYNTHESIS</code> in order to keep emulator debug hooks; <code>SYNTHESIS</code>
+<p>The vendor aliases need the force-include or alias expansion described at the
+top of this chapter; without it, PULP assertions follow <code>SYNTHESIS</code> and
+<code>ASSERTS_OFF</code> instead.</p>
+</div>
+<div class="paragraph">
+<p>In the emulation view the entropy source ring oscillator is a zero-delay
+combinational loop. The emulator compile must break or model it.</p>
+</div>
+<div class="paragraph">
+<p>The emulation view has no testbench preloads. <code>OCAH4CORECluster_rom_ext</code> is a
+<code>prim_rom</code> with an empty <code>MemInitFile</code>, so load the SMC CPU ROM image through
+the emulator&#8217;s memory backdoor. Fuse sense reads the bank through the adopter&#8217;s
+SHIM, which the emulation must model.</p>
+</div>
+<div class="paragraph">
+<p>Do not set <code>SYNTHESIS</code> in order to keep emulator debug hooks; <code>SYNTHESIS</code>
 strips assertions as well. Do not set <code>PULP_FPGA_EMUL</code> as a substitute:
 that name is an FPGA clock-mux path.</p>
 </div>
@@ -451,18 +518,26 @@ Verilator lint set it; VCS and Xcelium native compiles do not.</p></td>
 </thead>
 <tbody>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_DEBUG_LIVE</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First-party elaboration checks and debug messages. <code>ocah_assert.svh</code> defines
+it when <code>EMULATION</code> is set or <code>SYNTHESIS</code> is absent.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_INC_ASSERT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">First-party concurrent SVA. <code>ocah_assert.svh</code> defines it only when
-<code>SYNTHESIS</code>, <code>VERILATOR</code>, and <code>NO_OCAH_ASSERT</code> are all absent.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First-party concurrent SVA. <code>ocah_assert.svh</code> defines it when
+<code>OCAH_DEBUG_LIVE</code> is defined and <code>VERILATOR</code> and <code>NO_OCAH_ASSERT</code> are both
+absent.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_OT_INC_ASSERT</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan-derived SVA, from <code>SYNTHESIS</code> and <code>VERILATOR</code> (YOSYS forces it on).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan-derived SVA: off under <code>VERILATOR</code>, otherwise on unless <code>SYNTHESIS</code>
+is set without <code>EMULATION</code> (YOSYS forces it on). The Adams Bridge and Caliptra
+assertion gates give <code>EMULATION</code> the same precedence over <code>SYNTHESIS</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_PULP_INC_ASSERT</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">PULP <code>OCAH_PULP_ASSERT*</code> macros, unless <code>ASSERTS_OFF</code>, <code>SYNTHESIS</code>, or
-<code>XSIM</code> is set.</p></td>
+<code>XSIM</code> is set. <code>ASSERTS_OVERRIDE_ON</code>, which <code>EMULATION</code> implies, forces it on.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>NO_OCAH_ASSERT</code></p></td>
@@ -498,6 +573,10 @@ vendor column.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIMULATION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ABR_SIMULATION</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>EMULATION</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ASSERTS_OVERRIDE_ON</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>VERILATOR</code></p></td>

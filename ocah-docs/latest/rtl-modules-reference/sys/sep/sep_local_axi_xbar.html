@@ -625,7 +625,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">sep_local_axi_xbar</h1>
-<p>Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.</p><p>DMA and watchdog address bounds come from och_sep_top_addrmap_pkg; the remaining address rules are explicit integration apertures in AddrMap below. Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity get DECERR.</p>
+<p>Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.</p><p>DMA and watchdog address bounds come from sep_top_addrmap_pkg; the remaining address rules are explicit integration apertures in AddrMap below. Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity get DECERR.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
@@ -647,9 +647,9 @@
 <tr><td><code>cpu_tcm_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from the core DMA slave port.</td></tr>
 <tr><td><code>sram_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the SEP SRAM, 0x1000_0000-0x1003_FFFF.</td></tr>
 <tr><td><code>sram_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from the SEP SRAM.</td></tr>
-<tr><td><code>dma_csr_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the secure DMA register extent from och_sep_top_addrmap_pkg.</td></tr>
+<tr><td><code>dma_csr_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the secure DMA register extent from sep_top_addrmap_pkg.</td></tr>
 <tr><td><code>dma_csr_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from the secure DMA registers.</td></tr>
-<tr><td><code>sep_wdt_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the watchdog timer register extent from och_sep_top_addrmap_pkg.</td></tr>
+<tr><td><code>sep_wdt_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for the watchdog timer register extent from sep_top_addrmap_pkg.</td></tr>
 <tr><td><code>sep_wdt_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from the watchdog timer.</td></tr>
 <tr><td><code>sep_reset_ctrl_req_o</code></td><td>output</td><td><code>axi_out_req_t</code></td><td>Request for sep_reset_ctrl, 0x1080_3000-0x1080_3007.</td></tr>
 <tr><td><code>sep_reset_ctrl_resp_i</code></td><td>input</td><td><code>axi_out_resp_t</code></td><td>Response from sep_reset_ctrl.</td></tr>

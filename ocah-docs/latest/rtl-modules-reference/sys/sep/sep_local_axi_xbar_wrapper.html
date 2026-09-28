@@ -644,7 +644,7 @@
 <tr><td><code>ext_axi_resp_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_3_12_axi_resp_t</code></td><td>Response to ext; unmapped or unconnected addresses get DECERR.</td></tr>
 <tr><td><code>cpu_tcm_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for the ICCM (0xC000_0000-0xC003_FFFF) or DCCM (0xC004_0000-0xC005_FFFF), to the core DMA slave port.</td></tr>
 <tr><td><code>cpu_tcm_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from the core DMA slave port.</td></tr>
-<tr><td><code>dma_csr_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for the secure DMA register extent from och_sep_top_addrmap_pkg.</td></tr>
+<tr><td><code>dma_csr_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for the secure DMA register extent from sep_top_addrmap_pkg.</td></tr>
 <tr><td><code>dma_csr_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from the secure DMA registers.</td></tr>
 <tr><td><code>sram_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for the SEP SRAM, 0x1000_0000-0x1003_FFFF.</td></tr>
 <tr><td><code>sram_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from the SEP SRAM.</td></tr>
@@ -656,7 +656,7 @@
 <tr><td><code>entropy_fifo_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from the entropy pool.</td></tr>
 <tr><td><code>sep_system_peripherals_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for sep_system_peripherals: scratch 0x1080_2000-0x1080_20FF, CSRs 0x10A0_0000-0x10A5_FFFF, remap window 0x1100_0000-0x11FF_FFFF, external chiplet 0x0000_0000-0x0FFF_FFFF, and SMU 0x4000_0000-0xBFFF_FFFF.</td></tr>
 <tr><td><code>sep_system_peripherals_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from sep_system_peripherals.</td></tr>
-<tr><td><code>sep_wdt_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for the watchdog timer register extent from och_sep_top_addrmap_pkg.</td></tr>
+<tr><td><code>sep_wdt_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for the watchdog timer register extent from sep_top_addrmap_pkg.</td></tr>
 <tr><td><code>sep_wdt_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from the watchdog timer.</td></tr>
 <tr><td><code>sep_reset_ctrl_axi_req_o</code></td><td>output</td><td><code>sep_pkg::sep_32_64_6_12_axi_req_t</code></td><td>Request for sep_reset_ctrl, 0x1080_3000-0x1080_3007.</td></tr>
 <tr><td><code>sep_reset_ctrl_axi_resp_i</code></td><td>input</td><td><code>sep_pkg::sep_32_64_6_12_axi_resp_t</code></td><td>Response from sep_reset_ctrl.</td></tr>

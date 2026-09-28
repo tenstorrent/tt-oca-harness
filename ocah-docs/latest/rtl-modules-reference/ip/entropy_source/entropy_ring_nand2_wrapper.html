@@ -625,7 +625,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">entropy_ring_nand2_wrapper</h1>
-<p>Wrap ring-oscillator stage primitives with simulation-only propagation delay.</p><p>entropy_ring_oscillator is a free-running combinational loop; without delay, RTL simulation never advances time because every stage settles in the same delta cycle.</p><p>Real delay comes from whichever prim_clock_nand2 / prim_buf / prim_stdmux2 flavor synthesis binds each stage to. The generic and technology-specific flavors are swapped in as a group per build target, so every flavor keeps the same port list and none carries a delay parameter. Each wrapper instances one unmodified prim and adds a #1 delay under `ifndef SYNTHESIS`, so synthesis and every other consumer of those prims see the ordinary zero-delay cell.</p>
+<p>Wrap ring-oscillator stage primitives with simulation-only propagation delay.</p><p>entropy_ring_oscillator is a free-running combinational loop; without delay, RTL simulation never advances time because every stage settles in the same delta cycle.</p><p>Real delay comes from whichever prim_clock_nand2 / prim_buf / prim_stdmux2 flavor synthesis binds each stage to. The generic and technology-specific flavors are swapped in as a group per build target, so every flavor keeps the same port list and none carries a delay parameter. Each wrapper instances one unmodified prim and adds a #1 delay only when neither SYNTHESIS nor EMULATION is defined, so synthesis, emulation and every other consumer of those prims see the ordinary zero-delay cell. In the emulation view the ring is a zero-delay combinational loop that the emulator compile must break or model.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">

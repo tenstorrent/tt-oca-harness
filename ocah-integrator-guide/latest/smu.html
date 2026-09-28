@@ -449,7 +449,7 @@ operations report a hardware error.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OCAH includes an I3C implementation, but the adopter may select a different
 I3C target and driver for the final system.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">When the ROM FW must use an active I3C target, select the open HCI
-implementation with <code>I3C_CORE=swap</code>, or connect the adopter&#8217;s I3C target
+implementation with <code>I3C_CORE=chipsalliance</code>, or connect the adopter&#8217;s I3C target
 through the SMC external AXI-Lite master (<code>smc_external_req_o</code> and
 <code>smc_external_resp_i</code>) and link strong implementations that conform to
 <code>drivers/include/i3c_target_driver.h</code>.</p></td>

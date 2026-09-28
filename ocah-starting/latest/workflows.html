@@ -224,10 +224,7 @@
 <div class="ulist">
 <ul>
 <li>
-<p>More details on Yosys/Synthesis once finalised - Port local PDK usage from <code>lowrisc/container-testing</code></p>
-</li>
-<li>
-<p>DV FW sections reference source files frequently, how necessary is this?</p>
+<p>More details on Yosys/Synthesis once finalised</p>
 </li>
 <li>
 <p>Linters are still WIP on findings; the shared <code>flow.mk</code> path is the one to run</p>
@@ -497,7 +494,9 @@ RISCV_TOOLCHAIN=/path/to/toolchain/bin make -C hw/sys/smc/bootrom/prod</code></p
 <h3 id="sep-boot-rom"><a class="anchor" href="#sep-boot-rom"></a><a class="link" href="#sep-boot-rom">3.3. SEP boot ROM</a></h3>
 <div class="paragraph">
 <p><code>hw/sys/sep/bootrom/prod/</code> is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
-It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via <code>NONFREE_BOOTCODE_SOURCES</code> (same pattern as the SMC prod ROM).
+It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly.
+A build that carries its own drivers overrides the stubs at link time: it passes the driver sources as <code>OCAH_FW_OVERLAY_SOURCES_sep</code>, and the include flags (<code>-I&lt;dir&gt;</code>) for their register headers as <code>OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep</code>, on the <code>make</code> command line.
+The Makefile ignores both variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
 See <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md"><code>hw/sys/sep/bootrom/prod/README.md</code></a> and
 <a href="https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc"><code>hw/sys/sep/bootrom/prod/doc/</code></a> for
 the full target list, build variables, key provisioning, and boot flow.</p>
@@ -1353,6 +1352,11 @@ Scheduled and manually dispatched pipelines always run in full.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>format-c</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>format-c</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>make format-c-check</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>format-nix</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>format-nix</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>make format-nix-check</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lint-tcl</code></p></td>
