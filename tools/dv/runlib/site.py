@@ -24,7 +24,7 @@ Layout of a site file::
     extra_env = { VCS_HOME = "/opt/vcs" }
 
     [duts.dtp]
-    formal_cfg = "nonfree/hw/sys/dtp/dv/dtp_formal_cfg.toml"
+    formal_cfg = "companion/hw/sys/dtp/dv/dtp_formal_cfg.toml"
 
     [executors.lsf]                       # a complete schema-2 cluster table, or per-key
     kind = "cluster"                      # overrides on one the registry declares
