@@ -44,12 +44,12 @@
       "coverage_total_percent": 81.2,
       "flow": "smu",
       "framework": "cocotb",
-      "pass_rate": 99.07,
+      "pass_rate": 100.0,
       "tests_total": 107,
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-28T14:37:17+00:00",
+  "generated_at": "2026-09-28T19:27:50+00:00",
   "results": [
     {
       "coverage": {
