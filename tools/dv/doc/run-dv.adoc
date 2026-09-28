@@ -429,9 +429,10 @@ python3 tools/dv/run_dv.py --help
 `hw/comp/<name>/dv`, `hw/periph/<name>/dv`, and
 `hw/common/prim/<name>/dv`.
 
-Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
-the `[duts.<name>].formal_cfg` pointer of the site layer
-(<<runner-site-layer>>), else the registry's `formal_cfg` override, else
+Each mode loads the first config named by the site layer's `[duts.<name>]`
+pointer (<<runner-site-layer>>), the registry's override of the same name, or
+the naming convention. Simulation mode, the default, reads `sim_cfg` and then
+`<name>_sim_cfg.toml`; formal mode reads `formal_cfg` and then
 `<name>_formal_cfg.toml` beside the sim config:
 
 [source,bash]
@@ -445,10 +446,13 @@ shows it as a `fv` row and `--validate-configs` validates it as
 unavailable in both listings and is an error only when selected; a registry
 `formal_cfg` that is absent fails validation. A DV root that carries a formal
 config and no sim config is not a DUT. <<runner-formal>> is the contributor's
-route through formal mode.
+route through formal mode. A site-named simulation config that is absent
+leaves the DUT's simulation view unavailable the same way, and selecting the
+DUT in simulation mode is the error.
 
 `--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
-present in the flow's `tools` allowlist and in `simulators.toml`.
+present in the flow's `tools` allowlist, which the site layer can extend, and
+in the tool registry merged with the site layer.
 
 The shared cocotb profile allows these simulation backends:
 
@@ -1142,10 +1146,30 @@ companion-owned formal view is reached without editing `duts.toml`. The DUT
 must be selectable; the path is repo-relative or absolute. An absent file
 leaves the view `unavailable` in `--list` and `--validate-configs` and is an
 error only when the DUT is selected with `--mode formal`.
+
+|`[duts.<dut>]` `sim_cfg = "path"`
+|replaces
+|The simulation config `--mode sim` loads for that DUT, ahead of the
+registry's `sim_cfg` and the `<name>_sim_cfg.toml` convention: how a
+companion-owned simulation view, such as an SV-UVM view with a commercial
+VIP, is reached without editing `duts.toml`. The path, the validation, and
+the `unavailable` state follow `formal_cfg`; an absent file is an error only
+when the DUT is selected in simulation mode.
+
+|`[duts.<dut>]` `tools = ["<tool>", ...]`
+|appends
+|Simulation tools added to that DUT's `tools` allowlist. Each joins the views
+whose framework it serves, after the DUT's own tools, and `default_tool` is
+unchanged. Each name must be a simulation tool of the merged registry, and
+the stages drive `verilator`, `vcs` and `xcelium` only: a tool under another
+name is selectable but fails at `hdl_compile`, so the list adds one of those
+three to a view that lists fewer. `--list` marks a licensed one `(licensed)`
+from its `license_env`. A formal view takes its tools from its formal config.
 |===
 
-Any other key fails validation, as does a checked-in registry that carries
-`launcher`, `extra_env`, or `setup_hook`. Inside one command the stage's own
+Any other key fails validation, as does a `[duts.<dut>]` table that sets none
+of the three, or a checked-in registry that carries `launcher`, `extra_env`,
+or `setup_hook`. Inside one command the stage's own
 variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
 their values; below them the `setup_hook` exports win over `extra_env`,
 which wins over the ambient environment. The stage's `env/` snapshot records
@@ -1774,6 +1798,25 @@ Both commands run the same item; the tool choice is the only difference, and
 each run records the site file under `site` in its `result.json`.
 `hw/common/dv/configs/site.local.example.toml` is the template for the site
 file.
+
+A licensed simulation flow for an open DUT uses the same site file. The
+simulator's table, overridden above with its launch details, makes it
+launchable here; the DUT's entry then either adds it to the open views with
+`tools`, or replaces the simulation view with a companion-owned config
+through `sim_cfg`:
+
+[source,toml]
+----
+[duts.dtp]
+tools = ["xcelium"]
+
+[duts.smc]
+sim_cfg = "companion/hw/sys/smc/dv/smc_sim_cfg.toml"
+----
+
+Without a site file every open view, its default tool, and its runs are
+unchanged. A run on a site-named or site-extended view records the site file
+under `site` in its `result.json`, as the formal runs do.
 
 == Stage planning
 
@@ -2445,7 +2488,8 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 default tool; tools that need a license, and frameworks that no open-source
 tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
 row with the formal tool set; a site-named formal config that is absent
-shows as `unavailable`. An `alias_of` name from `duts.toml` gets one
+shows as `unavailable`, and a site-named simulation config that is absent
+gives its DUT one `unavailable` row. An `alias_of` name from `duts.toml` gets one
 `alias of <dut>` row. The per-DUT detail view adds the `license` and
 `runnability` fields from the merged config; `--mode formal` selects the
 formal view.
@@ -2453,8 +2497,8 @@ formal view.
 |`--validate-configs`
 |Validate registries (with the site layer merged in when one is active),
 every selectable DUT's simulation views, and every discovered formal view.
-Exit `2` if any fail; a site-named formal config that is absent is reported
-`UNAVAILABLE` without failing the set. With `--overlay`, every view is
+Exit `2` if any fail; a site-named simulation or formal config that is
+absent is reported `UNAVAILABLE` without failing the set. With `--overlay`, every view is
 additionally validated with the overlay applied (guard-excluded views fall
 back to base validation).
 
@@ -3211,9 +3255,11 @@ entry per view with its tool set, default tool, and license need, so
 a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
 joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. Every entry carries `mode` (`sim` or `formal`) and
-`available`; a formal view whose site-named config is absent is listed with
-`available: false`, its `path`, and a `reason`, so a formal job selects
-`.duts[] | select(.mode == "formal" and .available)`. An `alias_of` name
+`available`; a simulation or formal view whose site-named config is absent
+is listed with `available: false`, its `path`, and a `reason`, so a formal
+job selects `.duts[] | select(.mode == "formal" and .available)`. An
+unavailable simulation entry carries no `kind`, `framework`, or tools,
+because those live in the absent file. An `alias_of` name
 adds no entry, so a matrix never selects one DUT twice; each entry lists
 the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix

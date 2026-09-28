@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unit tests for the formal backend registry: the `sby` entry as the only checked-in formal
 backend, the `native-formal` profile, a site-supplied licensed backend selected like a checked-in
-one, and the --doctor / --list views of the free default beside it.
+one, the --doctor / --list views of the free default beside it, and the `(licensed)` marking of a
+simulator the site layer adds to an open view.
 
 Run from the repository root:
 
@@ -14,6 +15,7 @@ from __future__ import annotations
 import io
 import re
 import sys
+import tempfile
 import unittest
 from argparse import Namespace
 from contextlib import redirect_stdout
@@ -24,8 +26,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from runlib import cli, site  # noqa: E402
 from runlib.config import configs_root, load_profile, load_simulators  # noqa: E402
+from runlib.duts import resolve_dut  # noqa: E402
 from runlib.models import ConfigError, Dut  # noqa: E402
-from runlib.site import SiteLayer, load_site_layer, merged_simulators  # noqa: E402
+from runlib.site import (  # noqa: E402
+    SiteLayer,
+    load_site_layer,
+    merged_simulators,
+    validate_site_dut_tools,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 # The example site file adds `fvtool`, a complete licensed formal backend table.
@@ -216,6 +224,35 @@ class ListFlowsMarkingTest(RegistryFixture):
         self.assertRegex(row, r"\bformal\s+sby/")
         self.assertNotIn("sby (licensed)", row)
         self.assertIn(f"{tool} (licensed)", row)
+
+    def test_simulator_a_site_adds_to_an_open_view_is_marked_licensed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "site.toml"
+            path.write_text(
+                "[simulators.simtool]\n"
+                'kind = "simulation"\n'
+                'frameworks = ["cocotb"]\n'
+                'license_env = ["SIMTOOL_LICENSE_FILE"]\n'
+                "[duts.cross_trigger_port]\n"
+                'tools = ["simtool"]\n',
+                encoding="utf-8",
+            )
+            layer = load_site_layer(REPO_ROOT, {site.SITE_ENV: str(path)})
+        assert layer is not None
+        merged = merged_simulators(self.simulators, layer)
+        validate_site_dut_tools(layer, merged)
+        flow = resolve_dut(REPO_ROOT, "cross_trigger_port", site=layer)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            cli.list_flows({flow.name: flow}, merged)
+        row = next(
+            line
+            for line in ANSI_RE.sub("", out.getvalue()).splitlines()
+            if line.startswith("cross_trigger_port")
+        )
+        self.assertRegex(row, r"\bcocotb\s+verilator/")
+        self.assertIn("simtool (licensed)", row)
+        self.assertEqual(flow.default_tool, "verilator")
 
 
 if __name__ == "__main__":
