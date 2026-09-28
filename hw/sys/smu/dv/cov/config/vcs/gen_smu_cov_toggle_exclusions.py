@@ -39,26 +39,40 @@ writes, and each class below states that fact and what would retire it:
   up to the crossbar port only the SMC feeds, that both SMC masters a bench
   can drive hold constant. Past that port the channel also carries SEP
   traffic, so it stays graded.
+* SEP-INITIATOR-FIXED: AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID
+  bits 2 and 5 on the SEP's outbound and SMC channels, which every SEP
+  initiator that reaches them drives as constants.
+* OUTBOUND-FIXED-ATTRIBUTES: AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the
+  crossbar's ext_out port, which the SEP initiators and the SMC masters a
+  bench can drive all hold constant.
+* DECERR-SLAVE-RESPONSE, SEP-EXTERNAL-WINDOW, TRNG-WINDOW: the response code of
+  the DECERR slaves on the SEP external and TRNG ports, and the address bits the
+  decode that feeds each port holds fixed.
+* XBAR-CONNECTIVITY: the input-port bits of the crossbar's output ID that the
+  connectivity matrix never sets on a given output.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
 * REGISTER-WIDTH: the SEP region-size bits above the register field.
 
-The SEP aperture and the SEP's outbound channels take no class: the SEP
-firmware images program the region size, `smu_dtp_sep_dm_sba_test` programs
-the base and sends a read and a write out through the crossbar, and
-`smu_sep_bidirect_test` drives the dedicated SMC channel, so a hole there is a
-stimulus gap.
+The SEP aperture takes no class: the SEP firmware images program the region
+size and `smu_dtp_sep_dm_sba_test` walks the base and size. On the SEP's
+channels only the fields SEP-INITIATOR-FIXED names are taken; the address,
+size, cache, region and the other ID bits are driven by
+`smu_sep_sba_fabric_sweep_test` and `smu_sep_lsu_fabric_test`, so a hole there
+is a stimulus gap.
 
-Apart from those last five classes and MEM-MACRO-CONTROL, AXSIZE-BUS-WIDTH,
-EXT-TRNG-STREAM-TIED and JTAG2AXI-FIXED, whose facts name them, no class takes an
-address, id, length, size, burst, cache, protection, QoS, region, lock or
-atomic field, nor a valid, ready or enable: those are decode and handshake,
-and a hole in one is a stimulus gap.
+Apart from the classes from FIXED-OUTBOUND-ATTRIBUTES on and MEM-MACRO-CONTROL,
+AXSIZE-BUS-WIDTH, EXT-TRNG-STREAM-TIED and JTAG2AXI-FIXED, whose facts name
+them, no class takes an address, id, length, size, burst, cache, protection,
+QoS, region, lock or atomic field, nor a valid, ready or enable: those are
+decode and handshake, and a hole in one is a stimulus gap.
 
 An entry names only what the raw report marks uncovered. A field every bit of
 which is uncovered in both directions is excluded whole; otherwise each
 uncovered range is excluded, in the direction the report marks missing, with
-every index of a multi-dimensional range written out. A class that names a
-bit window applies it to one-dimensional ranges only.
+every index of a multi-dimensional range written out; the report's "Other bits
+of" row stands for the declared bits no row lists, and those are written out
+the same way. A class that names a bit window applies it to one-dimensional
+ranges only.
 
 A condition row or branch arm is taken only where the raw report marks it
 Not Covered.
@@ -94,11 +108,40 @@ MEM_IF = (
     r"i3c_(dat|dct|rlt)_mem|(sep_)?km_(sram|rom)_mem|sep_(sram|crypto_pka_[id]mem_sram|"
     r"boot_rom|cpu_tcm)|abr_mem)_(req|rsp|resp|sink|src)(_[io])?(\[\d+\])?"
 )
+# The SEP-only request and response channels from the local crossbar's peripheral
+# target to the SMU crossbar's sep_out port, and the dedicated SEP-to-SMC channel.
+SEP_REQ = (
+    r"(sep_smn_outbound_axi_req|gen_sep\.sep_out_xbar_req|sep_out_req_i|xbar_slv_req\[0\]|"
+    r"sep_ext_to_smc_axi_req|smc_sep_axi_in_req)"
+)
+SEP_RESP = (
+    r"(sep_smn_outbound_axi_resp|gen_sep\.sep_out_xbar_resp|sep_out_resp_o|xbar_slv_resp\[0\]|"
+    r"sep_ext_to_smc_axi_resp|smc_sep_axi_in_resp)"
+)
+# The crossbar's ext_out request channel and the boundary past it.
+EXT_OUT = r"(xbar_mst_req\[2\]|ext_out_req_o|smu_axi_out_req_o)"
 MEM_DATA = (
     r"([a-z0-9_]*_)?(wdata|rdata|wmask|wstrobe|strb|be|wparity|rparity|parity|"
     r"mem_wr_data|mem_rd_data|wr_data_bank|wr_ecc_bank|bank_wr_data|bank_wr_ecc|"
     r"bank_dout|bank_ecc)"
 )
+
+
+def window_bits(base: int, lo: int, hi: int) -> tuple:
+    """Windows over bits lo..hi of a fixed ``base``: a 0 bit never moves, a 1 bit never falls."""
+    out: list[tuple] = []
+    for bit in range(lo, hi + 1):
+        direction = "1to0" if (base >> bit) & 1 else None
+        if (
+            out
+            and out[-1][1] == bit - 1
+            and (out[-1][2] if len(out[-1]) > 2 else None) == direction
+        ):
+            out[-1] = (out[-1][0], bit) + ((direction,) if direction else ())
+        else:
+            out.append((bit, bit) + ((direction,) if direction else ()))
+    return tuple(out)
+
 
 # (class, matcher over the full field name, fact, what would retire it,
 #  modules the class applies to or None for all four, bit windows (lo, hi) a
@@ -310,6 +353,192 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         None,
     ),
     (
+        "SEP-INITIATOR-FIXED",
+        re.compile(rf"^{SEP_REQ}\.(aw|ar)\.(len|lock|qos)$"),
+        "AXI attributes every SEP initiator that reaches the SEP's outbound and SMC "
+        "paths drives as constants. The local crossbar connects only the load/store "
+        "unit, the debug module's system bus and the secure DMA to the peripheral "
+        "target those paths leave from (sep_local_axi_xbar_pkg.sv 140-146). The "
+        "load/store unit issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and an "
+        "ID that is a bus-buffer entry index below four (el2_lsu_bus_buffer.sv 213, "
+        "519, 878-904; LSU_NUM_NBLOAD 4 in the sep common_defines.vh 61); the system "
+        "bus issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and ID 0 "
+        "(el2_dbg.sv 736-770); the DMA's AXI-Lite master drives AxPROT 0 "
+        "(tlul_to_axi_lite.sv 158) and axi_lite_to_axi.sv (38-66) adds FIXED and "
+        "zeroes AxLEN, AxLOCK, AxQOS and the ID (sep_dma_wrap.sv 274-285). The crossbar "
+        "puts the initiator index in ID bits [5:3], at most 3 on these paths, and the "
+        "outbound mux adds its port in bits [7:6] (sep_system_peripherals.sv 349-379). "
+        "So AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID bits 2 and 5 cannot "
+        "move.",
+        "a SEP initiator on these paths that issues bursts, locks, QoS, non-secure or instruction accesses, or IDs of four or more",
+        None,
+        None,
+    ),
+    (
+        "SEP-INITIATOR-FIXED",
+        re.compile(rf"^{SEP_REQ}\.(aw|ar)\.burst$"),
+        "AXI attributes every SEP initiator that reaches the SEP's outbound and SMC "
+        "paths drives as constants. The local crossbar connects only the load/store "
+        "unit, the debug module's system bus and the secure DMA to the peripheral "
+        "target those paths leave from (sep_local_axi_xbar_pkg.sv 140-146). The "
+        "load/store unit issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and an "
+        "ID that is a bus-buffer entry index below four (el2_lsu_bus_buffer.sv 213, "
+        "519, 878-904; LSU_NUM_NBLOAD 4 in the sep common_defines.vh 61); the system "
+        "bus issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and ID 0 "
+        "(el2_dbg.sv 736-770); the DMA's AXI-Lite master drives AxPROT 0 "
+        "(tlul_to_axi_lite.sv 158) and axi_lite_to_axi.sv (38-66) adds FIXED and "
+        "zeroes AxLEN, AxLOCK, AxQOS and the ID (sep_dma_wrap.sv 274-285). The crossbar "
+        "puts the initiator index in ID bits [5:3], at most 3 on these paths, and the "
+        "outbound mux adds its port in bits [7:6] (sep_system_peripherals.sv 349-379). "
+        "So AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID bits 2 and 5 cannot "
+        "move.",
+        "a SEP initiator on these paths that issues bursts, locks, QoS, non-secure or instruction accesses, or IDs of four or more",
+        None,
+        ((1, 1),),
+    ),
+    (
+        "SEP-INITIATOR-FIXED",
+        re.compile(rf"^{SEP_REQ}\.(aw|ar)\.prot$"),
+        "AXI attributes every SEP initiator that reaches the SEP's outbound and SMC "
+        "paths drives as constants. The local crossbar connects only the load/store "
+        "unit, the debug module's system bus and the secure DMA to the peripheral "
+        "target those paths leave from (sep_local_axi_xbar_pkg.sv 140-146). The "
+        "load/store unit issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and an "
+        "ID that is a bus-buffer entry index below four (el2_lsu_bus_buffer.sv 213, "
+        "519, 878-904; LSU_NUM_NBLOAD 4 in the sep common_defines.vh 61); the system "
+        "bus issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and ID 0 "
+        "(el2_dbg.sv 736-770); the DMA's AXI-Lite master drives AxPROT 0 "
+        "(tlul_to_axi_lite.sv 158) and axi_lite_to_axi.sv (38-66) adds FIXED and "
+        "zeroes AxLEN, AxLOCK, AxQOS and the ID (sep_dma_wrap.sv 274-285). The crossbar "
+        "puts the initiator index in ID bits [5:3], at most 3 on these paths, and the "
+        "outbound mux adds its port in bits [7:6] (sep_system_peripherals.sv 349-379). "
+        "So AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID bits 2 and 5 cannot "
+        "move.",
+        "a SEP initiator on these paths that issues bursts, locks, QoS, non-secure or instruction accesses, or IDs of four or more",
+        None,
+        ((1, 2),),
+    ),
+    (
+        "SEP-INITIATOR-FIXED",
+        re.compile(rf"^({SEP_REQ}\.(aw|ar)|{SEP_RESP}\.(b|r))\.id$"),
+        "AXI attributes every SEP initiator that reaches the SEP's outbound and SMC "
+        "paths drives as constants. The local crossbar connects only the load/store "
+        "unit, the debug module's system bus and the secure DMA to the peripheral "
+        "target those paths leave from (sep_local_axi_xbar_pkg.sv 140-146). The "
+        "load/store unit issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and an "
+        "ID that is a bus-buffer entry index below four (el2_lsu_bus_buffer.sv 213, "
+        "519, 878-904; LSU_NUM_NBLOAD 4 in the sep common_defines.vh 61); the system "
+        "bus issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and ID 0 "
+        "(el2_dbg.sv 736-770); the DMA's AXI-Lite master drives AxPROT 0 "
+        "(tlul_to_axi_lite.sv 158) and axi_lite_to_axi.sv (38-66) adds FIXED and "
+        "zeroes AxLEN, AxLOCK, AxQOS and the ID (sep_dma_wrap.sv 274-285). The crossbar "
+        "puts the initiator index in ID bits [5:3], at most 3 on these paths, and the "
+        "outbound mux adds its port in bits [7:6] (sep_system_peripherals.sv 349-379). "
+        "So AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID bits 2 and 5 cannot "
+        "move.",
+        "a SEP initiator on these paths that issues bursts, locks, QoS, non-secure or instruction accesses, or IDs of four or more",
+        None,
+        ((2, 2), (5, 5)),
+    ),
+    (
+        "OUTBOUND-FIXED-ATTRIBUTES",
+        re.compile(rf"^{EXT_OUT}\.(aw|ar)\.(qos|lock)$"),
+        "AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the crossbar's ext_out port and "
+        "the boundary past it, which carry only SMC and SEP traffic "
+        "(smu_axi_xbar_pkg.sv 127-133). The two SMC masters a toolchain-free leaf "
+        "drives hold them at 0 (jtag2axi.sv 1184-1216; the iDMA register frontend, "
+        "idma_reg.sv.tpl 134 and 155-159), and every SEP initiator does too "
+        "(SEP-INITIATOR-FIXED).",
+        "outbound traffic from the SMC CPU",
+        None,
+        None,
+    ),
+    (
+        "OUTBOUND-FIXED-ATTRIBUTES",
+        re.compile(rf"^{EXT_OUT}\.(aw|ar)\.burst$"),
+        "AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the crossbar's ext_out port and "
+        "the boundary past it, which carry only SMC and SEP traffic "
+        "(smu_axi_xbar_pkg.sv 127-133). The two SMC masters a toolchain-free leaf "
+        "drives hold them at 0 (jtag2axi.sv 1184-1216; the iDMA register frontend, "
+        "idma_reg.sv.tpl 134 and 155-159), and every SEP initiator does too "
+        "(SEP-INITIATOR-FIXED).",
+        "outbound traffic from the SMC CPU",
+        None,
+        ((1, 1),),
+    ),
+    (
+        "OUTBOUND-FIXED-ATTRIBUTES",
+        re.compile(rf"^{EXT_OUT}\.(aw|ar)\.prot$"),
+        "AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the crossbar's ext_out port and "
+        "the boundary past it, which carry only SMC and SEP traffic "
+        "(smu_axi_xbar_pkg.sv 127-133). The two SMC masters a toolchain-free leaf "
+        "drives hold them at 0 (jtag2axi.sv 1184-1216; the iDMA register frontend, "
+        "idma_reg.sv.tpl 134 and 155-159), and every SEP initiator does too "
+        "(SEP-INITIATOR-FIXED).",
+        "outbound traffic from the SMC CPU",
+        None,
+        ((1, 2),),
+    ),
+    (
+        "DECERR-SLAVE-RESPONSE",
+        re.compile(r"^(sep_external_resp(_i)?|ext_trng_axil_resp(_i)?)\.(b|r)\.resp$"),
+        "the response code of the SEP external aperture and the external TRNG window. "
+        "hw/top/sep_ip_integration.sv (760-795) terminates both in DECERR slaves, and "
+        "axi_err_slv.sv (145, 197), which prim_axi_lite_err_slv wraps, drives the code as "
+        "a constant, so its bits never move.",
+        "an integration that connects a peripheral to either port",
+        None,
+        None,
+    ),
+    (
+        "SEP-EXTERNAL-WINDOW",
+        re.compile(r"^sep_external_req(_o)?\.(aw|ar)\.addr$"),
+        "address bits [31:29] of the SEP external aperture. The local crossbar sends "
+        "only 0x2000_0000-0x3FFF_FFFF there (sep_local_axi_xbar.sv 192-196), so bit 29 "
+        "is 1 on every request and never falls, and bits 31:30 are 0.",
+        "a local crossbar rule that widens the external aperture",
+        None,
+        window_bits(0x2000_0000, 29, 31),
+    ),
+    (
+        "TRNG-WINDOW",
+        re.compile(r"^ext_trng_axil_req(_o)?\.(aw|ar)\.addr$"),
+        "address bits [31:12] of the external TRNG window. The crypto interconnect sends "
+        "only single-beat accesses to 0x1091_7000-0x1091_7FFF to that port "
+        "(sep_crypto_pkg.sv 113-121, sep_crypto_axi_interconnect.sv 205-214), so those "
+        "bits hold the window base on every request: a 0 there never moves and a 1 "
+        "never falls.",
+        "a TRNG window that moves or grows past 4 KiB",
+        None,
+        window_bits(0x1091_7000, 12, 31),
+    ),
+    (
+        "XBAR-CONNECTIVITY",
+        re.compile(
+            r"^(xbar_mst_req\[2\]\.(aw|ar)|xbar_mst_resp\[2\]\.(b|r)|ext_out_req_o\.(aw|ar)|"
+            r"ext_out_resp_i\.(b|r)|smu_axi_out_req_o\.(aw|ar)|smu_axi_out_resp_i\.(b|r))\.id$"
+        ),
+        "the top bit of the crossbar's output ID, which carries the input port index "
+        "(ext_in is port 2). smu_axi_xbar_pkg.sv (127-133) gives ext_in no path to "
+        "ext_out, so on ext_out and past it that bit stays 0.",
+        "a crossbar connectivity matrix that routes ext_in to ext_out",
+        None,
+        ((9, 9),),
+    ),
+    (
+        "XBAR-CONNECTIVITY",
+        re.compile(
+            r"^(xbar_mst_req\[1\]\.(aw|ar)|xbar_mst_resp\[1\]\.(b|r)|smc_in_req_o\.(aw|ar)|"
+            r"smc_in_resp_i\.(b|r)|xbar_to_smc_req\.(aw|ar)|xbar_to_smc_resp\.(b|r))\.id$"
+        ),
+        "the low bit of the input-port index in the crossbar's output ID on the SMC "
+        "port. smu_axi_xbar_pkg.sv (127-133) routes sep_out (port 0) and ext_in (port 2) "
+        "to smc_in and not smc_out (port 1), so bit 8 stays 0 there.",
+        "a crossbar connectivity matrix that routes smc_out to smc_in",
+        None,
+        ((8, 8),),
+    ),
+    (
         "APERTURE-ALIGNMENT",
         re.compile(
             r"^(addr_map\[1\]\.(start|end)_addr|smc_end|smc_global_base_addr_i|smc_global_base_o)$"
@@ -349,6 +578,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
 ]
 
 TOGGLE_RE = re.compile(r'^// Toggle (\S+) "(.*)"$')
+OTHER = "other bits of "
 RANGES = re.compile(r"((?:\[[^\]]*\])+)$")
 
 
@@ -389,6 +619,9 @@ def report_rows(path: Path) -> dict[str, list[tuple[str, str, str]]]:
             p = line.split()
             if len(p) >= 4 and p[1] in ("Yes", "No"):
                 rows.append((p[0], p[2], p[3]))
+            elif p[:3] == ["Other", "bits", "of"] and len(p) >= 7:
+                # The bits of the field no row above lists, all with this status.
+                rows.append((OTHER + p[3], p[5], p[6]))
     return out
 
 
@@ -415,19 +648,78 @@ def _span(rng: str, sig: str) -> tuple[int, int] | None:
     return 0, 0
 
 
-def _clip(span: tuple[int, int], bits) -> list[tuple[int, int]]:
+def _clip(span: tuple[int, int], bits) -> list[tuple[int, int, str | None]]:
+    """The parts of ``span`` inside the windows, each with its window's direction."""
     if bits is None:
-        return [span]
+        return [(span[0], span[1], None)]
     out = []
-    for lo, hi in bits:
+    for window in bits:
+        lo, hi = window[0], window[1]
+        direction = window[2] if len(window) > 2 else None
         a, b = max(lo, span[0]), min(hi, span[1])
         if a <= b:
-            out.append((a, b))
+            out.append((a, b, direction))
     return out
+
+
+def _dims(rng: str) -> list[tuple[int, int]]:
+    return [
+        (min(int(a), int(b or a)), max(int(a), int(b or a)))
+        for a, b in re.findall(r"\[(\d+)(?::(\d+))?\]", rng)
+    ]
+
+
+def _other_entries(field: str, sig: str, rows: list[tuple[str, str, str]]) -> list[str]:
+    """Index-by-index lines for the bits an "Other bits of" row covers.
+
+    Those are the bits of the field's declared ranges that no listed row names.
+    """
+    out = []
+    for name, t10, t01 in rows:
+        if not name.startswith(OTHER) or (t10, t01) == ("Yes", "Yes"):
+            continue
+        dims = _dims(name[len(OTHER) + len(field) :])
+        listed: set[tuple[int, ...]] = set()
+        for row, _, _ in rows:
+            if row.startswith(OTHER):
+                continue
+            rdims = _dims(row[len(field) :])
+            if len(rdims) != len(dims):
+                continue
+            grid = [range(lo, hi + 1) for lo, hi in rdims]
+            listed |= {tuple(ix) for ix in _product(grid)}
+        direction = "" if (t10, t01) == ("No", "No") else ("0to1 " if t01 == "No" else "1to0 ")
+        outer = [range(lo, hi + 1) for lo, hi in dims[:-1]]
+        lo, hi = dims[-1]
+        for head in _product(outer):
+            run: list[int] = []
+            for bit in list(range(lo, hi + 2)):
+                if bit <= hi and (*head, bit) not in listed:
+                    run.append(bit)
+                    continue
+                if run:
+                    idx = "".join(f"[{i}]" for i in head)
+                    sel = f"[{run[-1]}:{run[0]}]" if len(run) > 1 else f"[{run[0]}]"
+                    out.append(f'Toggle {direction}{field} {idx}{sel} "{sig}"')
+                    run = []
+    return out
+
+
+def _product(ranges):
+    result: list[tuple[int, ...]] = [()]
+    for r in ranges:
+        result = [(*prefix, i) for prefix in result for i in r]
+    return result
 
 
 def entries(field: str, sig: str, rows: list[tuple[str, str, str]], bits=None) -> list[str]:
     """Exclusion lines for the uncovered part of one field, inside ``bits`` if given."""
+    others = [r for r in rows if r[0].startswith(OTHER)]
+    if others:
+        listed = [r for r in rows if not r[0].startswith(OTHER)]
+        return (entries(field, sig, listed, bits) if listed else []) + (
+            _other_entries(field, sig, rows) if bits is None else []
+        )
     if not rows or all(r[1] == "Yes" and r[2] == "Yes" for r in rows):
         return []
     if bits is None and all(r[1] == "No" and r[2] == "No" for r in rows):
@@ -447,15 +739,18 @@ def entries(field: str, sig: str, rows: list[tuple[str, str, str]], bits=None) -
                 continue
             whole = not rng and span == (0, 0) and "[" not in sig
             sels = [
-                "" if whole else (f" [{hi}:{lo}]" if hi != lo else f" [{lo}]")
-                for lo, hi in _clip(span, bits)
+                ("" if whole else (f" [{hi}:{lo}]" if hi != lo else f" [{lo}]"), only)
+                for lo, hi, only in _clip(span, bits)
             ]
-        for sel in sels:
-            if t10 == "No" and t01 == "No":
+        missing = {d for d, t in (("1to0", t10), ("0to1", t01)) if t == "No"}
+        for sel, only in [(x, None) if isinstance(x, str) else x for x in sels]:
+            if only is not None:
+                if only in missing:
+                    out.append(f'Toggle {only} {field}{sel} "{sig}"')
+            elif len(missing) == 2:
                 out.append(f'Toggle {field}{sel} "{sig}"')
             else:
-                direction = "0to1" if t01 == "No" else "1to0"
-                out.append(f'Toggle {direction} {field}{sel} "{sig}"')
+                out.append(f'Toggle {next(iter(missing))} {field}{sel} "{sig}"')
     return out
 
 
@@ -593,7 +888,7 @@ def render(
         rows = reports.get(module, [])
         by_field: dict[str, list[tuple[str, str, str]]] = {f: [] for f, _ in fields}
         for row in rows:
-            name = row[0]
+            name = row[0].removeprefix(OTHER)
             while name not in by_field:
                 m = RANGES.search(name)
                 if not m:

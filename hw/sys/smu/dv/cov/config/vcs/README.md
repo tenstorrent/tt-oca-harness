@@ -114,8 +114,10 @@ The file is generated from an `all` run, the coverage set: a point `all`
 leaves uncovered is uncovered in `hosted` too, so the file holds for both.
 An entry names only what the raw report marks uncovered: a toggle field wholly
 uncovered is excluded whole, otherwise each uncovered range in the direction
-the report marks missing, clipped to the bits a class names; a partly
-uncovered multi-dimensional range is written index by index, and a class that
+the report marks missing, clipped to the bits a class names (and, where a
+class names a direction for a bit window, only that direction); a partly
+uncovered multi-dimensional range is written index by index, as are the
+declared bits a report's "Other bits of" row stands for, and a class that
 names a bit window leaves such a range graded; a condition row or branch arm
 is taken only where the report says Not Covered. Fields
 `smu_wrapper_toggle_exclusions.el` already names are skipped.
@@ -130,14 +132,20 @@ is taken only where the report says Not Covered. Fields
 | `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
 | `LC-SIGINT-ENCODED` | design fact: `efuse_shadow_regs.sv` (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with `prim_diff_encode_multi`, so the word the SEP exports is always a valid differential pair and the decoders in `sep_lifecycle_ctrl.sv` and `smc_efuse_wrapper.sv` fire only on corruption in flight. Takes `lc_sigint_err_o`, `sep_lc_sigint_err` and `efuse_lc_sigint_err` in `smu`, and the uncovered rows of the `smu.sv` assignments to `lc_sigint_err_o`, which the generator finds in the source | a fault-injection bench that corrupts the exported pair |
 | `ATOP-DISABLED` | `smu_axi_xbar.sv` (131) builds the crossbar with `ATOPs(1'b0)` and `tb_wrapper_top.sv` ties the inbound AWATOP to 0; takes every `aw.atop` field | a crossbar built with ATOPs enabled |
-| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smc_output_axi_req` and the crossbar's `smc_out` port; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159). The crossbar's `ext_out` side and `smu_axi_out` also carry SEP traffic and stay graded | outbound traffic from the SMC CPU |
+| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smc_output_axi_req` and the crossbar's `smc_out` port; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159). On the crossbar's `ext_out` side and `smu_axi_out` SEP traffic moves AxCACHE and AxREGION, so only the fields `OUTBOUND-FIXED-ATTRIBUTES` names are taken there | outbound traffic from the SMC CPU |
+| `SEP-INITIATOR-FIXED` | AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID bits 2 and 5 on the SEP's outbound channel up to the crossbar's `sep_out` port and on the dedicated SEP-to-SMC channel. Only the load/store unit, the debug system bus and the secure DMA reach them (`sep_local_axi_xbar_pkg.sv` 140-146); the load/store unit issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and a bus-buffer index below four as ID (`el2_lsu_bus_buffer.sv` 213, 519, 878-904), the system bus the same attributes with ID 0 (`el2_dbg.sv` 736-770), the DMA AxPROT 0 (`tlul_to_axi_lite.sv` 158) with FIXED and zero AxLEN, AxLOCK, AxQOS and ID (`axi_lite_to_axi.sv` 38-66); the crossbar puts an initiator index of at most 3 in ID bits [5:3] | a SEP initiator on these channels that issues bursts, locks, QoS, non-secure or instruction accesses, or IDs of four or more |
+| `OUTBOUND-FIXED-ATTRIBUTES` | AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the crossbar's `ext_out` port and `smu_axi_out`, which carry only SMC and SEP traffic; the two SMC masters a toolchain-free leaf drives hold them at 0 (`jtag2axi.sv` 1184-1216, `idma_reg.sv.tpl` 134 and 155-159) and so does every SEP initiator | outbound traffic from the SMC CPU |
+| `DECERR-SLAVE-RESPONSE` | the response code of the SEP external aperture and the external TRNG window: `hw/top/sep_ip_integration.sv` (760-795) terminates both in DECERR slaves, which drive the code as a constant (`axi_err_slv.sv` 145, 197) | an integration that connects a peripheral to either port |
+| `SEP-EXTERNAL-WINDOW` | address bits [31:29] of the SEP external aperture: the local crossbar sends only `0x2000_0000`-`0x3FFF_FFFF` there (`sep_local_axi_xbar.sv` 192-196), so bits 31:30 stay 0 and bit 29, 1 on every request, never falls; only that direction of bit 29 is taken | a local crossbar rule that widens the aperture |
+| `TRNG-WINDOW` | address bits [31:12] of the external TRNG window: the crypto interconnect sends only single-beat accesses to `0x1091_7000`-`0x1091_7FFF` there (`sep_crypto_pkg.sv` 113-121, `sep_crypto_axi_interconnect.sv` 205-214); a 0 bit of the base is taken in both directions, a 1 bit only falling | a TRNG window that moves or grows past 4 KiB |
+| `XBAR-CONNECTIVITY` | the crossbar output ID carries the input port index in bits [9:8]; `smu_axi_xbar_pkg.sv` (127-133) routes ext_in (port 2) nowhere near `ext_out` and smc_out (port 1) nowhere near `smc_in`, so bit 9 on `ext_out` and past it, and bit 8 on `smc_in` and past it, stay 0 | a connectivity matrix that adds either route |
 | `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
 
-The SEP aperture and the SEP's outbound and dedicated SMC channels take no
-class: SEP firmware images program the region size,
-`smu_dtp_sep_dm_sba_test` programs the base and sends a read and a write
-out through the crossbar, and `smu_sep_bidirect_test` drives the dedicated
-channel, so a bit left uncovered there is a stimulus gap.
+The SEP aperture takes no class: SEP firmware images program the region size
+and `smu_dtp_sep_dm_sba_test` walks the base and size. On the SEP's outbound
+and dedicated SMC channels only the fields `SEP-INITIATOR-FIXED` names are
+taken; `smu_sep_sba_fabric_sweep_test` and `smu_sep_lsu_fabric_test` drive the
+rest, so a bit left uncovered there is a stimulus gap.
 
 Cover properties are not excluded here. The ones a legal operating mode of
 this bench cannot reach -- the two EXOKAY responses, the lifecycle
