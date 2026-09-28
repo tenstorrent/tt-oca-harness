@@ -93,7 +93,9 @@ addrmap plic {
 
             # The authored name is the visible heading; the identifier stays in
             # the anchor and the <h2> id that the catalog tooling keys off.
-            self.assertIn("[#regmap-{regmap-instance}-plic]\n== PLIC Address Map\n", adoc.read_text())
+            self.assertIn(
+                "[#regmap-{regmap-instance}-plic]\n== PLIC Address Map\n", adoc.read_text()
+            )
             self.assertIn('<h2 id="regmap-plic">PLIC Address Map</h2>', html.read_text())
             self.assertNotIn("Address Map: plic", adoc.read_text())
             self.assertNotIn("Address Map: plic", html.read_text())
