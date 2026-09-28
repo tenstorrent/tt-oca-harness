@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T23:53:27+00:00",
+  "generated_at": "2026-09-28T13:40:09+00:00",
   "points": [
     {
       "failed_tests": 2,
@@ -1180,6 +1180,67 @@
             "branch": 83.07,
             "condition": 81.0,
             "fsm_state": 52.99,
+            "functional": 98.43,
+            "line": 92.72,
+            "toggle": 58.54,
+            "user": 94.5263
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": false,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.03
+    },
+    {
+      "failed_tests": 3,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-28T13:40:09+00:00",
+      "id": "251eb42dc8bebe91",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-506e75da961a31f1",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 94.38,
+            "branch": 86.92,
+            "condition": 83.01,
+            "fsm_state": 71.78,
+            "functional": 98.43,
+            "line": 94.77,
+            "toggle": 83.2,
+            "user": 94.5263
+          },
+          "flow": "dtp",
+          "framework": "uvm",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 26
+            },
+            "by_disposition": {
+              "cover": 26
+            },
+            "by_metric": {
+              "user": 26
+            },
+            "by_status": {
+              "open": 26
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 26,
+            "observations_complete": false,
+            "open": 26,
+            "unclassified": 26
+          },
+          "raw_metrics": {
+            "assertion": 94.38,
+            "branch": 83.04,
+            "condition": 80.97,
+            "fsm_state": 52.92,
             "functional": 98.43,
             "line": 92.72,
             "toggle": 58.54,
