@@ -14,6 +14,7 @@ from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_tap_device import unpack_jtag2axi_caps
 from env.dtp_types import (
     JTAG2AXI_TARGETS,
+    MEM_IMAGE_CHECK_ID,
     SMC_DBG_AXSIZE_8B,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
@@ -143,18 +144,32 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             value = await self.read_tdr(cfg.caps_reg)
             observed = unpack_jtag2axi_caps(value)
             self.log.info(
-                "GEOMETRY %s raw=0x%04x bus_type=%d addr_size=%d data_size=%d",
+                "GEOMETRY %s raw=0x%04x bus_type=%d addr_size=%d data_size=%d wr_pl=%d rd_pl=%d",
                 cfg.caps_reg,
                 value,
                 observed["bus_type"],
                 observed["addr_size"],
                 observed["data_size"],
+                observed["wr_pl_depth"],
+                observed["rd_pl_depth"],
             )
             checker.expect_equal(
                 GEOMETRY_CHECK_ID,
-                (observed["bus_type"], observed["addr_size"], observed["data_size"]),
-                (cfg.bus_type, cfg.addr_width ^ int(negative), cfg.data_size),
-                context=f"{cfg.caps_reg} (bus_type, addr_size, data_size)",
+                (
+                    observed["bus_type"],
+                    observed["addr_size"],
+                    observed["data_size"],
+                    observed["wr_pl_depth"],
+                    observed["rd_pl_depth"],
+                ),
+                (
+                    cfg.bus_type,
+                    cfg.addr_width ^ int(negative),
+                    cfg.data_size,
+                    cfg.wr_pl_depth,
+                    cfg.rd_pl_depth,
+                ),
+                context=f"{cfg.caps_reg} (bus_type, addr_size, data_size, wr_pl_depth, rd_pl_depth)",
             )
         checker.finalize()
 
@@ -496,6 +511,50 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         self.target_memory(target).write(addr, payload)
         self._mirror_model_preload(target, addr, payload)
 
+    # --- end-state byte image of a random write stream ---------------------------
+    def snapshot_target_word(
+        self, target: str, image: dict[int, int], addr: int, size: int
+    ) -> None:
+        """Record the bytes of the word at ``addr`` that the image lacks."""
+        word = self.read_target_mem_int(target, addr, size)
+        for byte_idx in range(self.size_bytes(size)):
+            image.setdefault(addr + byte_idx, (word >> (8 * byte_idx)) & 0xFF)
+
+    @staticmethod
+    def image_write(image: dict[int, int], addr: int, data: int, wstrb: int, size: int) -> None:
+        """Apply one write's enabled lanes to the byte image."""
+        for byte_idx in range(1 << size):
+            if (wstrb >> byte_idx) & 0x1:
+                image[addr + byte_idx] = (data >> (8 * byte_idx)) & 0xFF
+
+    def check_memory_image(self, target: str, image: dict[int, int], *, context: str) -> None:
+        """Emit CHK-J2A-MEM-IMAGE: every byte of ``image`` matches the responder memory.
+
+        The image holds every lane a stream wrote at its last value and every
+        untouched lane of a touched word at its prior value, so a write that
+        landed on the wrong lane or disturbed a neighbour fails here.
+        """
+        mismatches = 0
+        for addr in sorted(image):
+            observed = self.read_target_mem_int(target, addr, 0)
+            if observed != image[addr]:
+                mismatches += 1
+                self.log.error(
+                    "%s: %s byte 0x%x holds 0x%02x, image 0x%02x",
+                    context,
+                    target,
+                    addr,
+                    observed,
+                    image[addr],
+                )
+        detail = f"target={target} bytes={len(image)}"
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            scoreboard.expect_equal(
+                MEM_IMAGE_CHECK_ID, mismatches, 0, context=f"{context} {detail}"
+            )
+        self.assert_equal(f"{context}.mem_image", mismatches, 0, detail)
+
     def log_jtag2axi_op(
         self,
         context: str,
@@ -625,19 +684,27 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         await self.write_tdr(cfg.single_op_reg, value)
 
     async def poll_target_single_status(self, target: str) -> tuple[int, int]:
-        """Poll a target SINGLE_OP TDR until the bridge reports not-busy."""
+        """Poll a target SINGLE_OP TDR until the bridge reports not-busy.
+
+        Returns the settled status and read data; the log line counts the
+        captures that read BUSY_OR_FULL before it, which at the bench's TCK
+        ratio is usually none, since a scan outlasts the bus access.
+        """
         cfg = self.target_cfg(target)
         status, rdata = DtpJtag2AxiStatus.BUSY_OR_FULL, 0
+        busy_polls = 0
         for _ in range(16):
             raw = await self.read_tdr(cfg.single_op_reg)
             status, rdata = unpack_single_op(raw, target=cfg)
             if status != DtpJtag2AxiStatus.BUSY_OR_FULL:
                 break
+            busy_polls += 1
         self.log.info(
-            "%s SINGLE_OP status=%s rdata=0x%x",
+            "%s SINGLE_OP status=%s rdata=0x%x busy_polls=%d",
             target,
             DtpJtag2AxiStatus(status).name,
             rdata,
+            busy_polls,
         )
         return status, rdata
 

@@ -10,9 +10,9 @@
 // signal. The points here are driven by the map outputs and the inbound AXI
 // handshake, so a bin is hit because the DUT did the thing.
 //
-// One passive, signal-driven module instantiated by both benches. Every port
-// is a smu_tb_signal_list.svh signal, except axil_external_active_i, which
-// the wrapper bench reads from a window smu_wrapper keeps inside itself.
+// One passive, signal-driven module. Every port is a signal of the bench
+// top, except axil_external_active_i, which the bench reads from a window
+// smu_wrapper keeps inside itself.
 //
 // Points must need stimulus beyond power-up and reset release. The map
 // outputs take whatever the fuses and straps leave at power-up, so a level
@@ -249,7 +249,13 @@ module smu_xbar_fcov #(
   covergroup cg_axi_in_resp with function sample (logic [1:0] resp);
     option.per_instance = 1;
     cp_resp: coverpoint resp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
+      bins okay = {2'b00};
+      bins slverr = {2'b10};
+      bins decerr = {2'b11};
+      // No subordinate behind the crossbar answers an exclusive access: every
+      // AXI interconnect in the SEP and SMC is built without atomics and the
+      // memory adapters tie exokay off.
+      ignore_bins exokay = {2'b01};
     }
   endgroup
 

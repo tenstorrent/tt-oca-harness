@@ -5,15 +5,18 @@
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
 state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
 (idle, then waiting for a bank response). No document names the encodings.
-This leaf treats ``2'b01`` as idle and ``2'b10`` as wait, and injects the
-other two values for one cycle. Those two codes have no frontdoor.
+The legal encodings, ``2'b01`` idle and ``2'b10`` wait, come from the
+signed-off state-inject record in ``tb/tb_top.sv``, which accepts them as the
+legal set for this leaf. The leaf injects the other two values for one cycle.
+Those two codes have no frontdoor.
 
 The recovery this leaf grades is DV-owned:
 
-* while the injected encoding is held, no command reaches the bank;
-* on the next edge the interface is idle, not busy, reports done with the
-  error flag set, still issues no command, and does not hand back the
-  sensed fuse word.
+* an in-flight read command is withdrawn while the illegal encoding is held;
+* on the next edge the read interface reports done and not busy with the error
+  set, issues no command, and does not hand back the sensed fuse word;
+* an idle program interface recovers to a legal encoding without issuing a
+  bank command. Its pre-settled retirement status is not graded.
 
 Failing closed is the point: an FSM that resumed a read from a corrupted state
 could return fuse data it never legitimately fetched.
@@ -38,11 +41,10 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
-# hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting).
-# The injection uses the two 2-bit values that are not a one-hot encoding of
-# those states. They construct stimulus only -- the recovery is graded on the
-# documented outputs (not busy, done, no bank command, not the sensed fuse
-# word), never on the state register reading a particular number.
+# hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting)
+# and no encodings. The legal set below is the one the signed-off state-inject
+# record in tb/tb_top.sv accepts. The injection walks its complement, and each
+# recovery must return the state register to a member of it.
 _ST_IDLE = 0b01
 _ST_WAIT_RESP = 0b10
 _ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
@@ -70,6 +72,17 @@ _TIMEOUT_EN = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_REQ_TIMEOUT", "read_re
 # rather than the read completing first.
 _TIMEOUT_CYCLES = 4
 
+
+def _place(block, reg: str, field: str, value: int) -> int:
+    """Put ``value`` into ``reg.field`` by its generated mask and LSB."""
+    mask = block.field_mask(reg, field)
+    lsb = block.field_lsb(reg, field)
+    placed = value << lsb
+    if placed & ~mask:
+        raise ValueError(f"{reg}.{field}: {value:#x} does not fit mask {mask:#x}")
+    return placed
+
+
 # The program interface is driven register-directly, not through
 # sep_efuse_otp_program_seq: the injection aborts the operation in flight, and
 # that sequence raises on the resulting PROGRAM_ERR rather than returning.
@@ -95,7 +108,7 @@ _PROGRAM_BITS_NEEDED = 2 + len(_ILLEGAL_STATES)
 
 @pyuvm.test()
 class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
-    """An illegal FSM encoding recovers to idle, reports error, issues nothing."""
+    """Illegal FSM encodings recover legally; an in-flight read fails closed."""
 
     required_evidence = (
         "CHK-READ-ALIVE",
@@ -190,7 +203,17 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # 2. A read that outlives its timeout budget sets the error
         #    (ReadTimeoutSetsError). The budget is short enough that the SHIM
         #    cannot answer inside it, so the timeout decides the outcome.
-        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, _TIMEOUT_CYCLES | _TIMEOUT_EN)
+        await self._csr(
+            SepAxiOp.WRITE,
+            _READ_TIMEOUT,
+            _place(
+                EFUSE_INTERFACE_CTRL,
+                "EFUSE_READ_REQ_TIMEOUT",
+                "read_req_timeout_cycles",
+                _TIMEOUT_CYCLES,
+            )
+            | _TIMEOUT_EN,
+        )
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
         done, busy, err, _ = await self._await_read_done()
         assert (done, busy, err) == (1, 0, 1), (
@@ -240,7 +263,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "test bug: TEST_EN raised and resensed but secure_tm_o is still 0, so the "
             "guard is not blocking and the refusal below would not be under test"
         )
-        await self._csr(SepAxiOp.WRITE, _READ_CTRL, (self._control_word * 32) | _GO | _ENABLE)
+        addr = _place(
+            EFUSE_INTERFACE_CTRL, "EFUSE_READ_CTRL", "efuse_addr", self._control_word * 32
+        )
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, addr | _GO | _ENABLE)
         done, busy, err, data = await self._await_read_done()
         assert (done, busy, err) == (1, 0, 1), (
             f"CHK-READ-ERR-BLOCKED FAIL: a guard-blocked read reported done={done} "
@@ -293,13 +319,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def _kick(self, which: str, bit_addr: int) -> None:
         """Start one frontdoor operation and return without retiring it."""
         if which == "read":
-            await self._csr(SepAxiOp.WRITE, _READ_CTRL, (bit_addr & 0xFFFF) | _GO | _ENABLE)
+            addr = _place(EFUSE_INTERFACE_CTRL, "EFUSE_READ_CTRL", "efuse_addr", bit_addr)
+            await self._csr(SepAxiOp.WRITE, _READ_CTRL, addr | _GO | _ENABLE)
         else:
-            await self._csr(
-                SepAxiOp.WRITE,
-                _PROGRAM_CTRL,
-                (bit_addr & 0xFFFF) | _PG_GO | _PG_ENABLE | _PG_DATA,
-            )
+            addr = _place(EFUSE_INTERFACE_CTRL, "EFUSE_PROGRAM_CTRL", "efuse_addr", bit_addr)
+            await self._csr(SepAxiOp.WRITE, _PROGRAM_CTRL, addr | _PG_GO | _PG_ENABLE | _PG_DATA)
 
     async def _quiesce(self, which: str) -> None:
         """Drop the enable and clear the sticky request error.
@@ -505,9 +529,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
             f"command while recovering from {state:#04x}"
         )
-        # Both interfaces retire the same way, so both are graded the same way:
-        # the machine reports done and not busy with the error set, and does
-        # not hand back the sensed control-word value.
+        # Sample the shared status/data shape. These terms are graded only for
+        # an in-flight read; an idle program interface has them pre-settled.
         data_probe = (
             dut.efuse_read_back_data_o if which == "read" else dut.efuse_program_read_back_data_o
         )

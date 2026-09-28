@@ -1,47 +1,74 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Run the OCTS credit-based primary/secondary timer counter.
+//
+// Primary emits sync and credit; secondary consumes them and may step by
+// timer_cnt_step_i.
+// A primary counts up by one per cycle from the preset loaded on reg_start_i and pulses
+// timer_cnt_credit_o every reg_credit_val_i cycles. A secondary loads the preset on a sync
+// pulse, adds timer_cnt_step_i each cycle until the steps since the last pulse reach
+// reg_credit_val_i, and on each credit pulse jumps to the expected count, which grows by
+// reg_credit_val_i per pulse. Inbound pulses are synchronized into clk_i and edge detected.
+// Once started, the timer runs until reset.
+// Register ports are bus-agnostic.
+// credit_expired_o counts clk_i cycles a secondary spends without credits and clears on a
+// credit or sync pulse or on credit_expired_clr_i.
+// timer_cnt_step_i and credit_expired_* apply in secondary mode only.
+
 module system_timer_octs_core
     import system_timer_octs_pkg::*;
 
     `include "prim_assert.sv"
 (
-    input  logic                  clk_i,
-    input  logic                  rst_ni,
+    input  logic                  clk_i,                    // System clock.
+    input  logic                  rst_ni,                   // Async reset, active-low.
 
-    // Primary/Secondary mode select (runtime signal)
-    input  logic                  is_primary_i,
+    input  logic                  is_primary_i,             // Runtime primary/secondary mode
+                                                            // select; 1 selects primary.
 
-    // Register interface - agnostic of bus type
-    input  logic                  reg_start_i,
-    input  logic [7:0]            reg_credit_val_i,
-    input  logic [DATA_WIDTH-1:0] reg_preset_lo_i,
-    input  logic [DATA_WIDTH-1:0] reg_preset_hi_i,
-    input  logic [7:0]            reg_pulse_width_i,
+    input  logic                  reg_start_i,              // Software start pulse; in primary mode
+                                                            // loads the preset and emits
+                                                            // timer_sync_load_o.
+    input  logic [7:0]            reg_credit_val_i,         // Credit period in cycles for a primary
+                                                            // and count advance per credit pulse
+                                                            // for a secondary; must exceed the
+                                                            // pulse width.
+    input  logic [DATA_WIDTH-1:0] reg_preset_lo_i,          // Preset count low half.
+    input  logic [DATA_WIDTH-1:0] reg_preset_hi_i,          // Preset count high half.
+    input  logic [7:0]            reg_pulse_width_i,        // Sync/credit pulse width in clk_i
+                                                            // cycles; zero acts as one.
 
-    output logic                  reg_mode_o,
-    output logic                  reg_running_o,
-    output logic [DATA_WIDTH-1:0] reg_count_lo_o,
-    output logic [DATA_WIDTH-1:0] reg_count_hi_o,
+    output logic                  reg_mode_o,               // Reports mode: 0 for primary, 1 for
+                                                            // secondary.
+    output logic                  reg_running_o,            // Timer is started and its count is
+                                                            // nonzero.
+    output logic [DATA_WIDTH-1:0] reg_count_lo_o,           // Count low half.
+    output logic [DATA_WIDTH-1:0] reg_count_hi_o,           // Count high half.
 
-    // OCTS synchronization signals
-    input  logic                  timer_sync_load_i,
-    input  logic                  timer_cnt_credit_i,
-    output logic                  timer_sync_load_o,
-    output logic                  timer_cnt_credit_o,
+    input  logic                  timer_sync_load_i,        // Inbound sync-load pulse; ignored in
+                                                            // primary mode.
+    input  logic                  timer_cnt_credit_i,       // Inbound credit pulse; ignored in
+                                                            // primary mode.
+    output logic                  timer_sync_load_o,        // Outbound sync-load pulse; low in
+                                                            // secondary mode.
+    output logic                  timer_cnt_credit_o,       // Outbound credit pulse; low in
+                                                            // secondary mode.
 
-    // System Timer Counter signal (SECONDARY only)
-    input  logic [7:0]            timer_cnt_step_i,
+    input  logic [7:0]            timer_cnt_step_i,         // Secondary count increment per clk_i
+                                                            // cycle while credits remain.
 
-    // Credit expired counter (SECONDARY only)
-    output logic [31:0]           credit_expired_o,
+    input  logic                  credit_expired_clr_i,     // Clear the credit-expired counter.
+    output logic [31:0]           credit_expired_o,         // Secondary clk_i cycles without
+                                                            // credits since the last credit or sync
+                                                            // pulse.
 
-    // Timer outputs
-    output logic [63:0]           timer_count_o,
+    output logic [63:0]           timer_count_o,            // Live 64-bit timer count.
 
-    // Debug output
-    output logic [8:0]            cur_credits_debug_o,
-    output logic                  credits_left_debug_o
+    output logic [8:0]            cur_credits_debug_o,      // Secondary steps consumed since the
+                                                            // last credit or sync pulse.
+    output logic                  credits_left_debug_o      // High while cur_credits_debug_o is
+                                                            // below reg_credit_val_i.
 );
 
     /////////////////////////
@@ -68,6 +95,9 @@ module system_timer_octs_core
 
     // Credit counter signals (SECONDARY only)
     logic [8:0]                cur_credits; // 9 bits to handle the case where cur_credits = reg_credit_val_i
+    logic                      credits_left;
+
+    assign credits_left = (cur_credits < {1'b0, reg_credit_val_i});
 
     // Carry-select adder outputs
     logic [63:0]               timer_count_plus_one;
@@ -191,7 +221,7 @@ module system_timer_octs_core
                 timer_count_d = timer_preset;
             end else if (timer_cnt_credit_sync_posedge) begin
                 timer_count_d = expected_count_plus_credit;
-            end else if (cur_credits < {1'b0, reg_credit_val_i}) begin // Lint Fix F2
+            end else if (credits_left) begin
                 timer_count_d = timer_count_plus_step;
             end
         end
@@ -276,10 +306,13 @@ module system_timer_octs_core
             expected_count_q <= expected_count_d;
             if (timer_cnt_credit_sync_posedge | timer_sync_load_sync_posedge) begin
                 cur_credits <= 8'h0;
+            end else if (credits_left) begin
+                cur_credits <= cur_credits[7:0] + timer_cnt_step_i;
+            end
+
+            if (timer_cnt_credit_sync_posedge | timer_sync_load_sync_posedge | credit_expired_clr_i) begin
                 credit_expired_o <= 32'h0;
-            end else if (cur_credits < {1'b0, reg_credit_val_i}) begin // Lint Fix F2
-                cur_credits <= cur_credits[7:0] + timer_cnt_step_i; // Lint Fix F7: slice prevents lint warning; upstream mux guarantees overflow cannot occur on this path
-            end else begin
+            end else if (!credits_left) begin
                 credit_expired_o <= credit_expired_o + 32'h1;
             end
         end
@@ -346,6 +379,6 @@ module system_timer_octs_core
 
     // Debug outputs
     assign cur_credits_debug_o      = cur_credits;
-    assign credits_left_debug_o     = (cur_credits < {1'b0, reg_credit_val_i}); // Lint Fix F2
+    assign credits_left_debug_o     = credits_left;
 
 endmodule

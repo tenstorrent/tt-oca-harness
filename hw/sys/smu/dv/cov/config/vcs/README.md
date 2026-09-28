@@ -1,71 +1,81 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 
-# SMU wrapper VCS coverage scope
+# SMU VCS coverage scope
 
 `smu_wrapper_cov_scope.hier` is passed to VCS at compile time as `-cm_hier`
 plus `-cm_common_hier` (`[coverage.vcs]` in `smu_sim_cfg.toml`), so what it
-drops never enters the coverage database. Edit the file then `--rebuild`; the
-contents are not fingerprinted. It is the instance-tree form of
-`../verilator/smu_wrapper_cov_scope.vlt`, which names the same trees by
-source path; the two are kept in step by hand.
+drops never enters the coverage database. `gen_smu_cov_scope.py` writes it
+from the build filelists; regenerate it after a build and `--rebuild`, and
+`--check` tells whether the committed file is stale. The contents are not
+fingerprinted, and VCS accepts a stale file silently.
 
-## What it excludes
+    python3 tools/dv/run_dv.py --dut smu --items smoke      # any build
+    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_scope.py
 
-    -tree smu_wrapper_uvm_top 1                          TB top's own body, children kept
-    -tree smu_wrapper_uvm_top.u_dut.u_smu                the SMU block, graded on --dut smu_block
-    -tree smu_wrapper_uvm_top.u_dut.u_smc_ip_integration SMC and its adopter-side collateral
-    -tree smu_wrapper_uvm_top.u_dut.u_sep_ip_integration SEP and its adopter-side collateral
-    -tree smu_wrapper_uvm_top.u_axi_out_bridge           bench-side AXI egress glue: the struct
-    -tree smu_wrapper_uvm_top.u_axi_out_cut               bridge, register cut and interface that
-    -tree smu_wrapper_uvm_top.u_axi_out_if                carry the DUT's outbound port to the
-                                                          bench slave; testbench code, not DUT
-    begin assert / -tree axi_pkg / end                    package-level assertions of the vendored
-                                                          AXI package
+## The rule
 
-The wrapper is graded on its interface. Everything it instantiates is internal
-logic with an owner of its own -- the SMU block on the block bench, SMC, DTP
-and SEP in their own DV packages -- and grading it again here would attribute
-their holes to SMU and bury the interface inside a denominator two orders of
-magnitude larger. What remains is `hw/top/smu_wrapper.sv` itself and the
-`cov/sv` functional-coverage modules under the TB top. urg's `hierarchy.txt`
-for a finished run is the check: it lists `u_dut` and the ten `u_smu_*_fcov`
-instances and nothing under `u_dut`.
+The scope follows the rule `hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier`
+states and `hw/sys/smc/dv/cov/config/vcs/smc_cov_scope.hier` applies, so the
+three subsystems' signoff figures are read on one definition: the bench and
+the library and interconnect cells leave the database, a block graded on a
+bench of its own leaves as an instance tree, and the rest stays graded.
 
-## Toggle on the ports only
+| Drop | Form | Why |
+|---|---|---|
+| TB top's own body | `-tree smu_wrapper_uvm_top 1` | testbench code; its children are named below or stay |
+| `u_dut.u_smu.u_smc`, `u_dut.u_smu.u_dtp`, `u_dut.u_smu.gen_sep.u_sep` | `-tree` | SMC, DTP and SEP are graded on their own benches (`hw/sys/smc/dv`, `hw/sys/dtp/dv`, `hw/sys/sep/dv`); grading them here attributes their holes to SMU, the argument SMC uses to drop its I3C controllers |
+| `u_dut.u_smc_ip_integration`, `u_dut.u_sep_ip_integration` | `-tree` | adopter-side collateral of SMC and SEP, owned by those packages |
+| `u_axi_out_bridge`, `u_axi_out_cut`, `u_axi_out_if` | `-tree` | bench-side AXI egress glue carrying the outbound port to the bench slave |
+| bench units (`hw/sys/{smu,smc}/dv/{tb,models}`, `hw/common/dv/vip`, `hw/ip/*/dv`) | `-module` | testbench models and interfaces |
+| library cells (pulp `common_cells`, OpenTitan `prim*`, OCAH `och_prim`) | `-module` | leaf primitives whose behaviour is the same in every design; the same list SMC drops |
+| interconnect cells (vendored pulp AXI, APB, register_interface, AXI-Stream, OBI) | `-module` | the pulp `axi_xbar` inside `smu_axi_xbar` and the `axi_iw_converter` ID adapters; `smu_axi_xbar`, which configures and wraps them, stays graded, so a decode fault lands on SMU's own module |
+| `axi_pkg` | `-module` | a package, which would report an assertion row with no logic behind it |
+| `cov/sv` monitors | `-module` inside `begin line+cond+fsm+branch+tgl` | bench code for the code and toggle metrics; outside that block they stay in the assertion metric, which carries their `cover property` points, and their covergroups are outside `-cm_hier` altogether |
 
-`-cm_tgl portsonly` in `[coverage.vcs]` keeps toggle on module ports, and with
-the subtrees above dropped the ports that remain are `smu_wrapper`'s. urg then
-reports two toggle figures for the module, and they answer different
-questions:
+The `-module` lines are generated because VCS scopes by design unit or
+instance and a library cell is instantiated where no `-tree` reaches it. VCS
+warns `VCM-HFUFF` once per listed unit the elaboration did not instantiate;
+that is the list being a superset of one build, not an error.
 
-* `Port Bits`: every bit of every port, each in both directions. This is the
-  number urg puts in its `TOGGLE` column and in the dashboard score.
-* `Ports`: urg's per-field view. A struct port is split into its fields and
-  bit slices, and a row counts covered only when every bit of it toggled in
-  both directions.
+What stays graded is the SMU's own logic: `hw/top/smu_wrapper.sv`,
+`hw/sys/smu/rtl/smu.sv`, `smu_axi_xbar.sv`, `hw/ip/axi_window_remap` and any
+other unit instantiated under `u_smu` outside the three subsystem trees.
+urg's `hierarchy.txt` for a finished run is the check: under `u_dut` it lists
+`u_smu` and, below it, only those units.
 
-The interface figure in `SMU_COVERAGE_POLICY.adoc` is a third one: a port of
-`smu_wrapper` has toggled when any bit of it moved in either direction, so a
-256-bit struct port is one interface. `../../interface_toggle.py` derives it
-from the urg text report (`urg -dir merged.vdb -report <dir> -format text
--metric tgl -show tests`, then pass its `modinfo.txt`) exactly as it does from
-a Verilator database, so the two simulators are compared on one definition.
+## Two populations
 
-A `begin tgl(portsonly) ... end` block in the hierarchy file does not do this:
-VCS keeps the excluded subtrees' toggle points when the metric block is
-present, so the option is given on the command line instead.
+`../verilator/smu_wrapper_cov_scope.vlt` keeps a narrower set: it turns
+coverage off for `hw/sys/smu/rtl/*` as well, so the public Verilator figure
+is the wrapper and the `cov/sv` points, while the VCS figure is the SMU block
+under the rule above. Verilator's `coverage_off` takes source-path globs
+only, and the public runner compiles the coverage-instrumented model in a
+fixed time budget, so widening its population is a separate decision with a
+measurement of its own. Quote the flow with the number.
+
+## Toggle on every net
+
+Toggle covers every net of the units the scope keeps, in both directions, as
+on the SMC scope. `-cm_tgl portsonly` is not used: with `u_smu` graded the
+kept population is no longer one wiring module, and `smu.sv` and
+`smu_axi_xbar.sv` hold the region registers, address decode and ID
+remapping whose internal nets a ports-only count would hide. SMC grades a
+unit of OpenTitan origin on its ports only, at report time; no unit the SMU
+scope keeps is of OpenTitan origin (the OpenTitan units in the build are
+library cells above or sit inside the SEP and SMC trees), so there is no such
+file here.
 
 `-cm_noconst` and `-cm_seqnoconst` drop nets a constant drives from the toggle
-population, so a port the wrapper ties off is not a hole; the DTP scope sets
-the same two options.
+population, so a port tied off is not a hole; the DTP scope sets the same two
+options.
 
 ## Port toggle exclusions
 
 `smu_wrapper.sv` is wiring: three instances, no assign, no process, no
 generate. Every port is a point-to-point connection to a subsystem port, so
-the wrapper's toggle is graded on urg's per-field `Ports` view of its own
-ports, with the fields below left out through
+the wrapper's ports are graded per field, with the fields below left out
+through
 `smu_wrapper_toggle_exclusions.el` (`-elfile`, named by the policy's
 `[[native_files]]`). `gen_smu_wrapper_toggle_exclusions.py` writes that file
 from urg's `-dump full_exclusions tgl` template of the merged database, so the
@@ -79,29 +89,118 @@ whether the committed file is stale.
 | `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | consumed by the SMC telemetry receivers, graded there |
 | `DFT` | `test_en_i`, `scan_rst_ni` | held at their functional value in simulation |
 | `RTL-CONSTANT` | `lcc_demote_state_*_o`, `lsio_interface_select_o` | driven from a constant inside the SMU |
+| `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union; urg lists the same 8192 flops under three views, and `values` carries every bit once |
 | `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_global_base_o`, `sep_region_size_o`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
 | `PARTIAL` | `timer_count_o[63:20]` | bit k first rises after 2^k reference clocks |
 
 Everything else on the port list is graded per field, both directions, and a
 field that stays uncovered is a stimulus gap for a leaf on this bench.
 
+## Block exclusions
+
+`smu_toggle_exclusions.el` (`-elfile`, named by the policy's `[[native_files]]`)
+leaves out toggle points of `smu`, `smu_wrapper`, `smu_axi_xbar` and
+`axi_window_remap`, and the condition rows and branch arms two of the classes
+below name, each for a stated fact. `gen_smu_cov_toggle_exclusions.py` writes
+it from urg's `-dump full_exclusions` templates of the merged database and the
+run's raw report, so every checksum and signature comes from urg, and
+`--check` tells whether the committed file is stale:
+
+    urg -dir <run dir>/cov/merged.vdb -dump full_exclusions tgl+cond+branch -report <dir>
+    python3 hw/sys/smu/dv/cov/config/vcs/gen_smu_cov_toggle_exclusions.py \
+        fullexclude_module.tgl <run dir>/cov/report_raw/modinfo.txt \
+        --cond fullexclude_module.cond --branch fullexclude_module.branch
+
+The file is generated from an `all` run, the coverage set: a point `all`
+leaves uncovered is uncovered in `hosted` too, so the file holds for both.
+An entry names only what the raw report marks uncovered: a toggle field wholly
+uncovered is excluded whole, otherwise each uncovered range in the direction
+the report marks missing, clipped to the bits a class names; a partly
+uncovered multi-dimensional range stays graded; a condition row or branch arm
+is taken only where the report says Not Covered. Fields
+`smu_wrapper_toggle_exclusions.el` already names are skipped.
+
+| Class | Fact | Retired by |
+|---|---|---|
+| `MEM-MACRO` | data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces; `smu.sv` connects each such `u_smc`/`u_sep` port straight to its own port and `smu_wrapper.sv` connects that to `hw/top/smc_ip_integration.sv` or `hw/top/sep_ip_integration.sv`, where the macros are; no SMU logic reads or writes the words | an SMU process on these words, or the macros moving under `u_smu` |
+| `AXI-USER` | the user sideband, which the pulp crossbar, the ID converters and `axi_window_remap` copy beside the channel | an SMU decode or remap that reads it |
+| `AXI-DATA` | write data, write strobe and read data of every AXI and AXI-Lite channel; the SMU decodes addresses and converts ids and passes data through | an SMU unit that inspects or rewrites data or strobe |
+| `RTL-CONSTANT` | `lcc_demote_state_*_o` tied low and `lsio_interface_select_o` following the SPI enable `smu.sv` assigns 1 with SEP present | either becoming programmable |
+| `UNION-ALIAS` | the `locks` and `fields` views of the packed-union eFuse shadow map; `values` stays graded | `efuse_map_t` ceasing to be a union |
+| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
+| `LC-SIGINT-ENCODED` | design fact: `efuse_shadow_regs.sv` (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with `prim_diff_encode_multi`, so the word the SEP exports is always a valid differential pair and the decoders in `sep_lifecycle_ctrl.sv` and `smc_efuse_wrapper.sv` fire only on corruption in flight. Takes `lc_sigint_err_o`, `sep_lc_sigint_err` and `efuse_lc_sigint_err` in `smu`, and the uncovered rows of `smu.sv` 1100 | a fault-injection bench that corrupts the exported pair |
+| `ATOP-DISABLED` | `smu_axi_xbar.sv` (131) builds the crossbar with `ATOPs(1'b0)` and `tb_wrapper_top.sv` ties the inbound AWATOP to 0; takes every `aw.atop` field | a crossbar built with ATOPs enabled |
+| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smu_axi_out`, `smc_output_axi_req` and the crossbar's `smc_out` and `ext_out` channels; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159) | outbound traffic from SMC CPU or SEP firmware |
+| `APERTURE-ALIGNMENT` | `smc_base_config.rdl` (38) requires GLOBAL_BASE and LOCAL_BASE to be aligned to REGION_SIZE; JTAG2AXI reaches BASE_CONFIG through the local window, so no size below 128 KiB can be followed by another setting, and base, rule start and rule end bits [16:0] stay 0; LOCAL_BASE is fixed at `0xC000_0000`, so REGION_SIZE[31] is never legal. Takes only those bits | a programmable LOCAL_BASE or a BASE_CONFIG path outside the local window |
+| `SEP-INITIATED` | bench fact of this package's coverage set: the SEP aperture (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR and region size), the crossbar's `sep_out` port, the SEP's SMN outbound and dedicated SMC channels, and every net, condition and branch of `axi_window_remap`, whose window `smu_pkg` fixes (`smu.sv` 987-994), are driven only by SEP firmware, and no image in `all` programs the aperture or issues alias accesses | a SEP DV firmware image that programs the SEP aperture and issues alias accesses |
+
+Not waived, and why:
+
+* `c_map_smc_size_zero` and `g_sep.c_map_sep_size_zero`: whether a zero
+  window is a legal state is the open design question carried from #2224
+  (the rule it forms has `start == end`, which `addr_decode_dync` rejects).
+* `c_cold_reset_async_assert_without_clock`: `smc_reset_ctrl.sv` (63-80)
+  passes cold reset downstream only after 32 `clk_ref` cycles of its
+  deglitcher while powergood is stable, and its only asynchronous path is
+  powergood falling, which the monitor's `not_powered` disable excludes; the
+  monitor's premise is for its owner to settle.
+* `c_axi_in_bresp_exokay` and `c_axi_in_rresp_exokay`: a bench fact for the
+  cover-property policy, which is owned with the functional coverage, not
+  here. No exclusive monitor sits behind the inbound port, and
+  `smu_axi_in_attribute_sweep_test` checks that an AxLOCK=1 access is answered
+  OKAY.
+
+Address, id and handshake fields outside the classes that name them stay
+graded, and a hole in one is a stimulus gap.
+
+## Covergroups from vendored RTL
+
+`-cm_hier` scopes line, condition, FSM, toggle and branch, and `-cm_common_hier`
+extends it to assertions; neither reaches a covergroup. A covergroup declared
+inside RTL is graded wherever the elaboration instantiates it, so the six
+`cg_bus_event_fsm_transitions` groups the chipsalliance I3C core declares in
+`i3c_target_fsm.sv` land in urg's GROUP score beside the wrapper's own
+`cov/sv` covergroups, and none of the wrapper leaves drive an I3C bus event.
+`smu_wrapper_group_exclusions.el` (`-elfile`, named by the policy's
+`[[native_files]]`) drops them at report time.
+`gen_smu_wrapper_group_exclusions.py` writes that file from urg's
+`-dump full_exclusions group` template of the merged database, so the
+definition checksum and every instance path come from urg, and `--check`
+tells whether the committed file is stale. Every covergroup under `u_dut`
+must fall in a class the script names; one that does not stops the script,
+so a covergroup a future vendored block adds is a decision, not a silent
+inclusion.
+
+| Class | Covergroups | Why they are not the wrapper's to fill |
+|---|---|---|
+| `VENDORED-I3C` | `xi3c_target_fsm::cg_bus_event_fsm_transitions`, six instances | the I3C controllers' internals are graded by `hw/ip/i3ccore_wrap/dv`; the wrapper reaches them only through the SMC |
+
+What remains in GROUP is the `u_smu_*_fcov::cg_*` set, the covergroup half of
+the wrapper's functional coverage; `cov/sv` cover properties are the other
+half and are read under `assertion`.
+
 ## Reading a finished run
 
 ```
-python3 tools/dv/run_dv.py --dut smu --tool vcs --items hosted --cov --rebuild
-python3 hw/sys/smu/dv/cov/interface_toggle.py <run dir>/cov/report/modinfo.txt \
-    --module hw/top/smu_wrapper.sv
+python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
 ```
 
-The first command prints the runner's families and grades them against
-`smu_wrapper_coverage_policy.toml`, which floors `assertion` at 80 percent:
-urg reads the cov/sv `cover property` points under its assert metric together
-with the `assert property` statements left in scope, and
-`cov/report/asserts.txt` splits the two. The report's `Toggle Coverage for Module : smu_wrapper` section carries the
-graded figure in its `Ports` row, after the exclusions above; the runner's
-own `toggle` column is the `Port Bits` row of the same section. The second
-command folds the `Port Details` rows into the per-port connectivity figure,
-a port counting once any bit of it moved; `--list` names the ports that never
-did.
+`all` is the coverage set, as it is for SEP: the 102 leaves of the package
+regression, including the SEP firmware and lifecycle leaves whose images the
+`c_compile` stage builds with the RISC-V toolchain. `hosted` is the
+toolchain-free subset the workflows run and leaves that stimulus out.
+
+The runner compiles with the scope, runs the group, merges, writes the urg
+report with the exclusion files, and prints one `coverage` line with every
+family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `toggle`
+and `assertion` at 80 percent and the result carries `coverage=PASS` or
+`FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column after the
+exclusions; `assertion` is where urg reads the cov/sv `cover property` points,
+together with the `assert property` statements left in scope, and
+`cov/report/asserts.txt` splits the two. Per-port detail is in the `Port
+Details` rows of the module's section in `cov/report/modinfo.txt`, with
+`Excluded` and the class annotation on every field the exclusion file dropped.
+The same payload, sideband and SEP-owned fields reappear as ports and nets of
+`smu` and are graded there until a class of the same kind names them.
 
 No public CI job runs the VCS flow for this DUT.

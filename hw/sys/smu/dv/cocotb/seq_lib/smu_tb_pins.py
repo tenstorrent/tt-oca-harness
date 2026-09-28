@@ -1,14 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Resolve a signal by whichever name the loaded SMU testbench gives it.
+"""Resolve a signal by the role it plays on the loaded SMU testbench top.
 
-seq_lib is shared by both SMU DUTs, so a sequence cannot hardcode a pin name:
-tb/tb_top.sv and tb/tb_wrapper_top.sv expose the same signals under different
-ones. The differences are naming, not substance -- the AXI slave is
-``s_axi_*`` against ``ext_in_*``, and the SMC primary reset observable is
-``rst_primary_smc_clk_no`` against ``rst_primary_smc_clk_n_o``.
-
-Ask for the signal by role instead, and the sequence runs on either DUT.
+A sequence asks for a signal by role rather than by pin name, and each helper
+here accepts the spellings a top may give it -- the AXI slave as ``ext_in_*``
+or ``s_axi_*``, the SMC primary reset observable as ``rst_primary_smc_clk_n_o``
+or ``rst_primary_smc_clk_no`` -- so the sequence does not depend on how the
+top flattens the DUT's ports.
 """
 
 from __future__ import annotations
@@ -60,10 +58,10 @@ def smu_axi_in_prefix(dut: Any) -> str:
 def smu_scope(dut: Any) -> Any:
     """The `smu` instance, wherever this testbench put it.
 
-    tb_top.sv instantiates smu directly as u_dut; tb_wrapper_top.sv's u_dut is
-    smu_wrapper, with smu one level down as u_smu. A sequence reaching into
-    smu's own hierarchy asks for this rather than writing dut.u_dut, so the
-    same reach works on both DUTs.
+    tb_wrapper_top.sv's u_dut is smu_wrapper, with smu one level down as
+    u_smu; a top that instantiates smu directly as u_dut resolves too. A
+    sequence reaching into smu's own hierarchy asks for this rather than
+    writing the path out.
     """
     u_dut = tb_pin(dut, "u_dut")
     # `is not None`, not a truth test: a cocotb handle raises TypeError when

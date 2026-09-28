@@ -34,7 +34,7 @@
 #include "sep_entropy.h"
 #include "sep_outbound_filter.h"
 
-#define SCRATCH(n) OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n)
+#define SCRATCH(n) SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n)
 #define SC_PHASE SCRATCH(1)
 
 #define PH_ENTER 0x5EED0001u

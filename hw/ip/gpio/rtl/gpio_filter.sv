@@ -1,34 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// GPIO Access control filter
+// Gate GPIO AXI-Lite register reads and writes by AxPROT.
 //
-//-----------------------------------------------------------------------------
-
+// Independent enables and required AxPROT values apply on the AW and AR paths; failing
+// beats never reach the subordinate. An axi_lite_demux routes them to an error subordinate
+// that answers DECERR with read data 0xBADCAB1E.
 
 module gpio_filter
   import gpio_pkg::*;
 #(
-  parameter int unsigned MAX_TRANS = 32
+  parameter int unsigned MAX_TRANS = 32                     // Maximum open transactions per channel
+                                                            // in the demux.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                                        // System clock.
+  input logic rst_ni,                                       // Async reset, active-low.
+  input logic test_en_i,                                    // DFT test enable, driven to the demux
+                                                            // test input.
 
-  // Filter Configuration
-  input logic       write_filter_enable_i,
-  input logic       read_filter_enable_i,
-  input logic [2:0] awprot_requirement_i,
-  input logic [2:0] arprot_requirement_i,
+  input logic       write_filter_enable_i,                  // Enable AW AxPROT filter.
+  input logic       read_filter_enable_i,                   // Enable AR AxPROT filter.
+  input logic [2:0] awprot_requirement_i,                   // AW AxPROT value that must match
+                                                            // exactly.
+  input logic [2:0] arprot_requirement_i,                   // AR AxPROT value that must match
+                                                            // exactly.
 
-  // AXI4-Lite Register Interface -- from Manager
-  input  gpio_axil_req_t  axil_req_i,
-  output gpio_axil_resp_t axil_resp_o,
+  input  gpio_axil_req_t  axil_req_i,                       // Manager-side AXI-Lite request.
+  output gpio_axil_resp_t axil_resp_o,                      // Manager-side AXI-Lite response.
 
-  // AXI4-Lite Register Interface -- to Subordinate
-  output gpio_axil_req_t  filtered_axil_req_o,
-  input  gpio_axil_resp_t filtered_axil_resp_i
+  output gpio_axil_req_t  filtered_axil_req_o,              // Subordinate-side AXI-Lite request.
+  input  gpio_axil_resp_t filtered_axil_resp_i              // Subordinate-side AXI-Lite response.
 );
 
   //==========================================================================
@@ -84,7 +85,7 @@ module gpio_filter
     .SpillB      (1'b0),
     .SpillAr     (1'b0),
     .SpillR      (1'b0)
-  ) axil_filter (
+  ) u_axil_filter (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
@@ -97,12 +98,16 @@ module gpio_filter
   );
 
   // Connect demuxed port [0] to AXI-Lite error slave
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH(gpio_pkg::DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH(gpio_pkg::ADDR_WIDTH),
+    .AXI_DATA_WIDTH(gpio_pkg::DATA_WIDTH),
     .axil_req_t(gpio_axil_req_t),
-    .axil_resp_t(gpio_axil_resp_t)
-  ) filter_err_slv (
+    .axil_resp_t(gpio_axil_resp_t),
+    .RESP(axi_pkg::RESP_DECERR),
+    .RESP_WIDTH(gpio_pkg::DATA_WIDTH),
+    .RESP_DATA(32'hBADCAB1E),
+    .MAX_TRANS(1)
+  ) u_filter_err_slv (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .axil_req_i(axil_reqs_filtered[0]),

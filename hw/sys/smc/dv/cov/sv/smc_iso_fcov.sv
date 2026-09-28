@@ -123,10 +123,15 @@ module smc_iso_fcov (
       logic sw_term, logic flr_term, logic any_isolated
   );
     option.per_instance = 1;
-    cp_sw: coverpoint sw_term;
-    cp_flr: coverpoint flr_term;
-    cp_any: coverpoint any_isolated;
-    x_terms: cross cp_sw, cp_flr, cp_any;
+    cp_sw: coverpoint sw_term {bins clear = {1'b0}; bins set = {1'b1};}
+    cp_flr: coverpoint flr_term {bins clear = {1'b0}; bins set = {1'b1};}
+    cp_any: coverpoint any_isolated {bins none = {1'b0}; bins some = {1'b1};}
+    // Each subsystem's isolation is the OR of the software, pin and FLR terms
+    // (clk_rst.adoc, Isolation Control Architecture), so a software request
+    // with nothing isolated is not a state the composition can hold.
+    x_terms: cross cp_sw, cp_flr, cp_any{
+      ignore_bins sw_without_isolation = binsof (cp_sw.set) && binsof (cp_any.none);
+    }
   endgroup
 
   cg_isolate_terms u_cg_isolate_terms = new();

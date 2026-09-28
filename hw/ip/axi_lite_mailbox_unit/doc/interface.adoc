@@ -19,7 +19,11 @@ The request and response struct types are supplied by the integrator through
 the `axi_req_t`/`axi_resp_t` parameters, together with the per-channel types
 `aw_chan_t`, `w_chan_t`, `b_chan_t`, `ar_chan_t` and `r_chan_t`.
 
-.Interface Characteristics
+<<mailbox-interface-characteristics-table>> summarises the AXI4-Lite register interface
+characteristics.
+
+[[mailbox-interface-characteristics-table]]
+.Mailbox Interface Characteristics
 [width="100%",cols="30%,70%",options="header",]
 |==============================================================
 |Parameter |Value
@@ -38,7 +42,11 @@ output logic [NUM_MAILBOXES-1:0] inbound_interrupt_o,
 output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o
 ----
 
-.Interrupt Characteristics
+<<mailbox-interrupt-characteristics-table>> describes the triggering and configuration
+of mailbox interrupts.
+
+[[mailbox-interrupt-characteristics-table]]
+.Mailbox Interrupt Characteristics
 [width="100%",cols="30%,70%",options="header",]
 |=============================================================
 |Parameter |Value
@@ -57,18 +65,14 @@ input logic rst_ni,      // Active-low asynchronous reset
 input logic test_en_i    // Test enable for DFT
 ----
 
-.Control Signal Descriptions
-[width="100%",cols="20%,80%",options="header",]
-|=====================================================================
-|Signal |Description
-|`clk_i` |Primary system clock for all mailbox logic and AXI interface
-|`rst_ni` |Asynchronous reset (active low), resets all mailbox state
-|`test_en_i` |Test enable for design-for-test (DFT) functionality
-|=====================================================================
-
 === Timing Characteristics
 
+<<mailbox-timing-characteristics-table>> summarises latency, throughput, and
+outstanding-transaction capacity.
+
+[[mailbox-timing-characteristics-table]]
 [width="100%",cols="30%,70%",options="header",]
+.Mailbox timing characteristics
 |========================================================
 |Parameter |Value
 |Latency |One clock cycle; the R and B responses pass through spill registers
@@ -78,7 +82,12 @@ input logic test_en_i    // Test enable for DFT
 
 === Error Handling
 
+<<mailbox-error-handling-table>> describes how empty reads, full writes, and interrupt
+conditions are handled.
+
+[[mailbox-error-handling-table]]
 [width="100%",cols="30%,70%",options="header",]
+.Mailbox error handling
 |===================================================================
 |Error Condition |Behavior
 |Read from empty FIFO (`READ_DATA`) |Sets `read_error` in ERROR_FLAGS and the
@@ -104,7 +113,12 @@ the clearing read is retained
 
 === Integration Requirements
 
+<<mailbox-integration-requirements-table>> lists the address-space and
+system-integration requirements.
+
+[[mailbox-integration-requirements-table]]
 [width="100%",cols="30%,70%",options="header",]
+.Mailbox integration requirements
 |=======================================================================
 |Requirement |Description
 |*Address Space* |`MAILBOX_SIZE` (2KB) per aperture, 4KB per mailbox pair;

@@ -5,8 +5,9 @@
 `define ALIAS_REMAP_REG_RDL
 
 addrmap alias_remap {
+    name = "AXI Alias Remap Address Map";
     desc = "TLB Registers for address remapping and attribute tagging";
-
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

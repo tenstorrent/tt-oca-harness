@@ -1,50 +1,65 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Top Module
+// Bridge core cross-trigger pulses to GPIO pads in wire-OR or point-to-point mode with AXI-Lite
+// CSRs.
 //
-// Description:
-// Top-level module for the Cross Trigger Port IP. Supports both Wire-OR and
-// Point-to-Point modes for inter-chiplet cross triggering via GPIO pads.
-//------------------------------------------------------------------------------
-
+// Wraps cross_trigger_port_core; CSRs program mode, invert, stretch, and handshake reset.
+// ct_src_i is the synchronous core source pulse; ct_dst_o is the registered destination
+// pulse; busy_o marks a transfer in progress.
+// Pad ports cover CT_Req_out/in and CT_Ack_in/out with dout, dout_en, din, and din_en as
+// required by mode.
+// The CSR MODE field selects wire-OR at 0 and point-to-point at 1; it resets to wire-OR.
 
 module cross_trigger_port #(
-  // Parameterized AXI-Lite bus interface types (default logic to force explicit definition)
-  parameter type axil_req_t = cross_trigger_port_pkg::ctp_axil_req_t,
-  parameter type axil_resp_t = cross_trigger_port_pkg::ctp_axil_resp_t
+  parameter type axil_req_t = cross_trigger_port_pkg::ctp_axil_req_t,  // CTP AXI-Lite request type.
+  parameter type axil_resp_t = cross_trigger_port_pkg::ctp_axil_resp_t  // CTP AXI-Lite response type.
 ) (
-  // Global Interface
-  input  logic        clk_i,
-  input  logic        rst_ni,
+  input  logic        clk_i,            // System clock for the AXI-Lite CSRs and the port logic.
+  input  logic        rst_ni,           // Active-low asynchronous system reset.
 
-  // AXI4-Lite Register Interface
-  input  axil_req_t   axil_req_i,
-  output axil_resp_t  axil_resp_o,
+  input  axil_req_t   axil_req_i,       // AXI-Lite CSR request; only address bits [3:0] are
+                                        // decoded.
+  output axil_resp_t  axil_resp_o,      // AXI-Lite CSR response.
 
-  // Core-side cross trigger interface
-  input  logic        ct_src_i,      // Cross trigger source pulse (synchronous)
-  output logic        ct_dst_o,       // Cross trigger destination pulse (registered)
-  output logic        busy_o,         // Optional: transfer in progress
+  input  logic        ct_src_i,         // Core-side cross-trigger pulse to transmit, synchronous to
+                                        // clk_i.
+  output logic        ct_dst_o,         // Core-side received cross-trigger pulse, registered.
+  output logic        busy_o,           // High while the stretched pulse is active in wire-OR mode,
+                                        // or while the outgoing or incoming handshake is active in
+                                        // point-to-point mode. Optional; leave unconnected when
+                                        // unused.
 
-  // GPIO pad interface - CT_Req_out
-  output logic        ct_req_out_dout_en_o,  // Output enable for CT_Req_out pad
-  output logic        ct_req_out_din_en_o,   // Input enable for CT_Req_out pad
-  output logic        ct_req_out_dout_o,     // Output data for CT_Req_out pad
-  input  logic        ct_req_out_din_i,      // Input data from CT_Req_out pad
+  output logic        ct_req_out_dout_en_o,  // Output enable for the CT_Req_out pad. Follows the
+                                             // stretched outgoing pulse in wire-OR mode; high in
+                                             // point-to-point mode.
+  output logic        ct_req_out_din_en_o,  // Input enable for the CT_Req_out pad.
+                                            // High in wire-OR mode; low in point-to-point mode.
+  output logic        ct_req_out_dout_o,  // Output data for the CT_Req_out pad. Carries the
+                                          // outgoing handshake request in point-to-point mode. Held
+                                          // low in wire-OR mode, or high when the CSR INVERT field
+                                          // is set.
+  input  logic        ct_req_out_din_i,  // Input data from the CT_Req_out pad. In wire-OR mode its
+                                         // synchronized assertion edge, falling unless inverted,
+                                         // pulses ct_dst_o; unused in point-to-point mode.
 
-  // GPIO pad interface - CT_Req_in (point-to-point mode only)
-  output logic        ct_req_in_din_en_o,    // Input enable for CT_Req_in pad
-  input  logic        ct_req_in_din_i,       // Input data from CT_Req_in pad
+  output logic        ct_req_in_din_en_o,  // Input enable for the CT_Req_in pad.
+                                           // High in point-to-point mode; low in wire-OR mode.
+  input  logic        ct_req_in_din_i,  // Input data from the CT_Req_in pad. In point-to-point mode
+                                        // its synchronized request pulses ct_dst_o; unused in
+                                        // wire-OR mode.
 
-  // GPIO pad interface - CT_Ack_in (point-to-point mode only)
-  output logic        ct_ack_in_din_en_o,     // Input enable for CT_Ack_in pad
-  input  logic        ct_ack_in_din_i,       // Input data from CT_Ack_in pad
+  output logic        ct_ack_in_din_en_o,  // Input enable for the CT_Ack_in pad.
+                                           // High in point-to-point mode; low in wire-OR mode.
+  input  logic        ct_ack_in_din_i,  // Input data from the CT_Ack_in pad. In point-to-point mode
+                                        // its synchronized acknowledge clears the outgoing request;
+                                        // unused in wire-OR mode.
 
-  // GPIO pad interface - CT_Ack_out (point-to-point mode only)
-  output logic        ct_ack_out_dout_en_o,  // Output enable for CT_Ack_out pad
-  output logic        ct_ack_out_dout_o       // Output data for CT_Ack_out pad
+  output logic        ct_ack_out_dout_en_o,  // Output enable for the CT_Ack_out pad.
+                                             // High in point-to-point mode; low in wire-OR mode.
+  output logic        ct_ack_out_dout_o  // Output data for the CT_Ack_out pad. Acknowledges the
+                                         // synchronized CT_Req_in request in point-to-point mode;
+                                         // held low in wire-OR mode.
 );
 
   import cross_trigger_port_reg_pkg::*;

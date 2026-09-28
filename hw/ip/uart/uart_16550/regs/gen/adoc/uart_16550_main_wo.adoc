@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-uart_16550_main_wo]
+== UART 16550 Main Write-Only Address Map
+
+Contains the write-only registers accessible only when `LCR.DLAB = 0`.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | THR | W a| Transmitter Holding Register
-| 0x8 | FCR | W a| FIFO Control Register
+| 0x0 | <<reg-{regmap-instance}-uart_16550_main_wo-THR,THR>> | W a| Transmitter Holding Register
+| 0x8 | <<reg-{regmap-instance}-uart_16550_main_wo-FCR,FCR>> | W a| FIFO Control Register
 |===
 
+[#reg-{regmap-instance}-uart_16550_main_wo-THR]
+=== THR
+
 [cols="1,3,1,1,6", options="header"]
-.THR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -19,8 +27,10 @@ field points to the top of the TX FIFO. Otherwise, this field points to a
 single-byte Transmitter Holding Register.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main_wo-FCR]
+=== FCR
+
 [cols="1,3,1,1,6", options="header"]
-.FCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved

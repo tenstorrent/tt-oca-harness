@@ -20,7 +20,12 @@
 
 `include "ocah_fcov_macros.svh"
 
-module smc_fabric_fcov (
+module smc_fabric_fcov #(
+  // 1 when the bench answers the SMC's DTP CSR AXI-Lite port. The SMC bench
+  // ties that response port off, so no access to it completes and none is
+  // issued; the DTP-active bins are dropped rather than carried unhittable.
+  parameter bit DtpCsrResponder = 1'b0
+) (
   input wire clk_smc_i,
   input wire rst_cold_ni,
 
@@ -144,7 +149,11 @@ module smc_fabric_fcov (
   // No all-idle point: idle is the quiescent state, true from reset release
   // with no stimulus, so it would be covered by construction.
   wire axil_any_e = (axil_any_master_active_i === 1'b1);
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): the DTP CSR port is served by the DTP, which
+  // smc_wrapper leaves outside the bench with the port unterminated.
   `OCAH_FCOV_COVER(c_axil_dtp_csr_active, axil_dtp_csr_e, clk_smc_i, in_reset)
+`endif
   `OCAH_FCOV_COVER(c_axil_external_active, axil_external_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_efuse_bank_active, axil_efuse_bank_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_any_master_active, axil_any_e, clk_smc_i, in_reset)
@@ -253,7 +262,12 @@ module smc_fabric_fcov (
   `OCAH_FCOV_COVER(c_sep_in_arsize_word, sep_ar_size_word_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_sep_in_wstrb_full, sep_strb_full_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_sep_in_wstrb_partial, sep_strb_partial_e, clk_smc_i, in_reset)
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): a zero-strobe beat is legal AXI, but the bench
+  // AXI manager derives WSTRB from the bytes a payload covers and cannot
+  // present one.
   `OCAH_FCOV_COVER(c_sep_in_wstrb_none, sep_strb_none_e, clk_smc_i, in_reset)
+`endif
 
   // ------------------------------------------------------------------
   // TB-owned response holds. These are the stimulus the hang detector
@@ -281,17 +295,17 @@ module smc_fabric_fcov (
   `OCAH_FCOV_COVER(c_efuse_jtag_w_accept, ej_w_accept_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_efuse_jtag_ar_accept, ej_ar_accept_e, clk_smc_i, in_reset)
 
+  // A request the lifecycle policy blocks gets "an error response" from the
+  // port's error slave (efuse architecture.adoc, JTAG Access Control Based on
+  // LC_STATE), which the DECERR points record; an admitted request is
+  // answered OKAY.
   wire ej_bresp_okay_e = ej_b_accept && (ej_bresp_i == 2'b00);
-  wire ej_bresp_slverr_e = ej_b_accept && (ej_bresp_i == 2'b10);
   wire ej_bresp_decerr_e = ej_b_accept && (ej_bresp_i == 2'b11);
   wire ej_rresp_okay_e = ej_r_accept && (ej_rresp_i == 2'b00);
-  wire ej_rresp_slverr_e = ej_r_accept && (ej_rresp_i == 2'b10);
   wire ej_rresp_decerr_e = ej_r_accept && (ej_rresp_i == 2'b11);
   `OCAH_FCOV_COVER(c_efuse_jtag_bresp_okay, ej_bresp_okay_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_efuse_jtag_bresp_slverr, ej_bresp_slverr_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_efuse_jtag_bresp_decerr, ej_bresp_decerr_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_efuse_jtag_rresp_okay, ej_rresp_okay_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_efuse_jtag_rresp_slverr, ej_rresp_slverr_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_efuse_jtag_rresp_decerr, ej_rresp_decerr_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
@@ -405,7 +419,7 @@ module smc_fabric_fcov (
   // ------------------------------------------------------------------
   covergroup cg_axil_masters with function sample (logic dtp_csr, logic external, logic efuse_bank);
     option.per_instance = 1;
-    cp_dtp_csr: coverpoint dtp_csr;
+    cp_dtp_csr: coverpoint dtp_csr {ignore_bins no_responder = {1'b1} with (!DtpCsrResponder);}
     cp_external: coverpoint external;
     cp_efuse_bank: coverpoint efuse_bank;
     x_concurrency: cross cp_dtp_csr, cp_external, cp_efuse_bank;
@@ -415,15 +429,27 @@ module smc_fabric_fcov (
       logic [2:0] awsize, logic [1:0] awburst, logic [7:0] wstrb
   );
     option.per_instance = 1;
-    cp_awsize: coverpoint awsize {bins sizes[] = {[0 : 3]}; bins wide = default;}
-    // The reserved encoding gets a normal bin, not illegal_bins: an
-    // illegal bin turns a hit into a runtime error, which would let this
-    // coverage module end a simulation and change a test's verdict.
-    // Rejecting the encoding is an assertion's job.
-    cp_awburst: coverpoint awburst {
-      bins fixed = {2'b00}; bins incr = {2'b01}; bins wrap = {2'b10}; bins reserved = {2'b11};
+    // SEP_IN is a 64-bit port, so AxSIZE above 3 names a beat wider than the
+    // bus and no manager may drive it.
+    cp_awsize: coverpoint awsize {
+      bins sizes[] = {[0 : 3]}; ignore_bins wide = {[4 : 7]};
     }
-    cp_wstrb: coverpoint wstrb {bins none = {8'h00}; bins full = {8'hFF}; bins partial = default;}
+    // 2'b11 is the reserved AxBURST encoding, which no manager drives. An
+    // ignore bin, not illegal_bins: an illegal bin turns a hit into a runtime
+    // error, which would let this coverage module end a simulation and change
+    // a test's verdict. Rejecting the encoding is an assertion's job.
+    cp_awburst: coverpoint awburst {
+      bins fixed = {2'b00};
+      bins incr = {2'b01};
+      bins wrap = {2'b10};
+      ignore_bins reserved = {2'b11};
+    }
+    // A zero-strobe beat is legal AXI, but the bench AXI manager derives WSTRB
+    // from the bytes a payload covers and cannot present one; it is in the
+    // Phase 2 set with c_sep_in_wstrb_none.
+    cp_wstrb: coverpoint wstrb {
+      bins full = {8'hFF}; bins partial = default; ignore_bins none = {8'h00};
+    }
     x_size_burst: cross cp_awsize, cp_awburst;
   endgroup
 

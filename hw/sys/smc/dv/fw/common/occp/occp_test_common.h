@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Test Common Definitions
- *
- * Common definitions, types, and function declarations for OCCP test suite
+ * Protocol types, encoders and helper declarations shared by the OCCP controller-side tests.
  */
 
 #ifndef OCCP_TEST_COMMON_H
@@ -21,7 +19,7 @@
 #include "i2c_controller_driver.h"
 #include "smc_occp_error_codes.h"
 
-// Test configuration flags
+// Select which occp_master test categories are built.
 #define RUN_TEST_GET_COMMANDS \
     1                          // Tests 1-4: GET_VERSION, GET_STATUS, GET_SEP_STATUS, GET_SMC_STATUS
 #define RUN_TEST_BASIC_RW 1    // Test 5: Basic READ/WRITE operations (8-byte, 4-byte, 1-byte)
@@ -33,22 +31,21 @@
 #define RUN_TEST_SIZE_LIMITS 1 // Test 11: I3C Transfer size limits
 #define RUN_TEST_STATUS_DUMP 1 // Test 12: Ring buffer status dumping
 
-// Common constants
 #define I3C_RECOVERY_CONTROLLER_ID 0
 #define I3C_CONTROLLER_ID 1
 #define I3C_BACKUP_CONTROLLER_ID 3
 #define SMC_SCRATCHPAD_SIM_PASS_CODE 0xacafaca1
 #define SMC_SCRATCHPAD_SIM_FAIL_CODE 0xffffffff
 #define MAX_WRITES 25 // Maximum number of write transactions to scoreboard
-// write size is the max size minus the write header length
+// MAX_OCCP_READ_SIZE less the 12-byte address/length header a write body carries
 #define MAX_OCCP_WRITE_SIZE 2035
 #define MAX_OCCP_READ_SIZE 2047
 
 // Standardized OCCP test address range
-#define SMC_SRAM_BASE_ADDR 0xC0060000ULL               // Start of SRAM range
-#define OCCP_TEST_BASE_ADDR 0xC0066400ULL              // Start of standardized test range
-#define OCCP_TEST_BUFFER_SAFE_UPPER_ADDR 0xC0157000ULL // End of standardized test range (inclusive)
-#define OCCP_TEST_UPPER_ADDR 0xC0160000ULL             // End of standardized test range (inclusive)
+#define SMC_SRAM_BASE_ADDR 0xC0060000ULL
+#define OCCP_TEST_BASE_ADDR 0xC0066400ULL              // First OCCP-accessible SRAM address
+#define OCCP_TEST_BUFFER_SAFE_UPPER_ADDR 0xC0157000ULL // Exclusive bound for random test addresses
+#define OCCP_TEST_UPPER_ADDR 0xC0160000ULL             // End of SRAM, exclusive
 
 // OCCP Command definitions
 typedef enum {
@@ -143,7 +140,6 @@ typedef enum {
     OCCP_TIMEOUT,
 } occp_result_t;
 
-/* CRC error injection control */
 typedef enum {
     OCCP_CRC_INJECT_NONE = 0,
     OCCP_CRC_INJECT_DETECTABLE,
@@ -152,7 +148,6 @@ typedef enum {
     OCCP_CORRUPT_CRC
 } occp_crc_inject_mode_t;
 
-/* Invalid header injection control */
 typedef enum {
     OCCP_INVALID_HDR_INJECT_NONE = 0,
     OCCP_INVALID_HDR_INVALID_MSGID,
@@ -160,12 +155,8 @@ typedef enum {
     OCCP_INVALID_HDR_INVALID_BOTH
 } occp_invalid_header_inject_mode_t;
 
-/* -------------------------------------------------------------------------- */
-/* Status message bitfield (from specification, not ROM headers)              */
-/*   [31:24] Message Type   (0x1=status, 0x8=warning, 0xF=error)             */
-/*   [23:16] Firmware ID    (0x1=SEP_BL0, 0x2=SEP_BL1, 0x3=SMC_BL0, 0x4=SMC_BL1) */
-/*   [15:0]  Message Value  (status or error code; may include extra data)    */
-/* -------------------------------------------------------------------------- */
+/* Status message layout (status-coordination.adoc): [31:24] message type,
+ * [23:16] firmware ID, [15:0] message value. */
 
 typedef enum {
     OCCP_STATUS_MSG_STATUS = 0x01,
@@ -212,18 +203,15 @@ typedef enum {
     OCCP_SPEC_ERROR_JUMP_READ_FAILED = 0x202,
 } smc_status_code_t;
 
-/* Parsing helpers for the 32-bit status message (spec-defined layout) */
 #define OCCP_STATUS_EXTRACT_MSG_TYPE(v) ((uint8_t)(((v) >> 24) & 0xFF))
 #define OCCP_STATUS_EXTRACT_FW_ID(v) ((uint8_t)(((v) >> 16) & 0xFF))
 #define OCCP_STATUS_EXTRACT_VALUE(v) ((uint16_t)((v)&0xFFFF))
 
-/* Application IDs */
 typedef enum {
     OCCP_APP_BASE = 0x0,
     OCCP_APP_BOOT = 0x1,
 } occp_app_id_t;
 
-/* Base message IDs */
 typedef enum {
     OCCP_BASE_MSG_GET_VERSION = 0x0,
     OCCP_BASE_MSG_GET_STATUS = 0x1,
@@ -231,7 +219,6 @@ typedef enum {
     OCCP_BASE_MSG_READ = 0x3,
 } occp_base_msg_id_t;
 
-/* Boot message IDs */
 typedef enum {
     OCCP_BOOT_MSG_GET_VERSION = 0x0,
     OCCP_BOOT_MSG_EXECUTE_IMAGE = 0x1,
@@ -291,7 +278,6 @@ static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
     uint8_t crc = 0xFF;
     const uint8_t poly = 0xD3u; /* x^8 + x^7 + x^6 + x^4 + x + 1 */
     for (int i = 0; i < length; i++) {
-        // calculate in little endian order
         uint8_t data_byte = data[i];
         for (int j = 0; j < 8; j++) {
             uint8_t data_bit = (data_byte & 0x80u) ? 1u : 0u;
@@ -310,11 +296,9 @@ static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
 
 static inline uint32_t calculate_crc32(uint8_t *data, size_t length) {
     uint32_t crc = 0xFFFFFFFF;
-    const uint32_t poly = 0x992c1a4c; /* x^32 + x^26 + x^23 + x^22 + x^16 + x^12 + x^11 + x^10 + x^8
-                                         + x^7 + x^5 + x^4 + x^2 + x + 1 */
+    const uint32_t poly = 0x992c1a4c;
 
     for (int i = 0; i < length; i++) {
-        // calculate in little endian order
         uint32_t data_word = (uint32_t)data[i] << 24;
         for (int j = 0; j < 8; j++) {
             uint32_t data_bit = (data_word & 0x80000000u) ? 1u : 0u;
@@ -331,12 +315,11 @@ static inline uint32_t calculate_crc32(uint8_t *data, size_t length) {
     return ~crc;
 }
 /*
- * Encode OCCP header as a 32-bit word using bit layout:
+ * Build a request header and its CRC-8. Header word layout, sent little-endian:
  *  bits  0.. 7: app_id
  *  bits  8..15: msg_id
  *  bits 16..20: flags
- *  bits 21..31: length (11 bits)
- * The encoded word should be transmitted little-endian byte order on the bus.
+ *  bits 21..31: length
  */
 static inline occp_req_header_t occp_encode_header_word(occp_command_t command,
                                                         uint16_t data_length, bool has_body_crc) {
@@ -403,17 +386,14 @@ static inline occp_req_header_t occp_encode_header_word(occp_command_t command,
     header.reserved = 0;
     header.header_word = header_word;
 
-    header.header_crc = calculate_crc8(
-        ((uint8_t *)&header) + 1,
-        sizeof(header) -
-            1); // CRC calculation is for the whole header and not just the occp_header 4 bytes.
+    // The header CRC covers every header byte after the CRC byte itself.
+    header.header_crc = calculate_crc8(((uint8_t *)&header) + 1, sizeof(header) - 1);
     simputshex32("Sending header crc: ", header.header_crc);
     simputshex32("Sending length: ", header.header_word.length);
     simputshex32("Sending body crc present: ", header.body_crc_present);
     return header;
 }
 
-/* Write 32-bit word to byte buffer in little-endian order */
 static inline void occp_write_le32(uint8_t *dst, uint32_t w) {
     dst[0] = (uint8_t)(w & 0xFF);
     dst[1] = (uint8_t)((w >> 8) & 0xFF);
@@ -421,7 +401,6 @@ static inline void occp_write_le32(uint8_t *dst, uint32_t w) {
     dst[3] = (uint8_t)((w >> 24) & 0xFF);
 }
 
-/* Write 64-bit word to byte buffer in big-endian order */
 static inline void occp_write_be64(uint8_t *dst, uint64_t w) {
     dst[0] = (uint8_t)((w >> 56) & 0xFF);
     dst[1] = (uint8_t)((w >> 48) & 0xFF);
@@ -444,7 +423,6 @@ static inline void occp_write_le64(uint8_t *dst, uint64_t w) {
     dst[7] = (uint8_t)((w >> 56) & 0xFF);
 }
 
-// Scoreboard entry structure
 typedef struct {
     uint64_t address;
     uint16_t len;
@@ -453,9 +431,8 @@ typedef struct {
 
 typedef enum { DRIVER_TYPE_I3C, DRIVER_TYPE_I2C } driver_type_t;
 
-// Test context structure
 typedef struct {
-    driver_type_t type; // Type of driver (I3C or I2C)
+    driver_type_t type;
     union {
         I3C_Driver *i3c_drv;
         I2C_Driver *i2c_drv;
@@ -469,29 +446,16 @@ typedef struct {
     int cmd_count;
     occp_error_code_t exp_response_code;
     int exp_occp_last_error;
-    /* Opt in to having GET_OCCP_ERROR_CODE compare against
-     * exp_occp_last_error. Off by default, and deliberately so: the ROM's
-     * error code is latched by occp_status_set_error_code() and nothing
-     * clears it on a later success, so a test that provokes any error and
-     * then reads the code back sees the sticky value, not zero. Thirty-two
-     * tests set exp_occp_last_error = 0 without modelling that, so the
-     * comparison is only sound for a test that tracks the latch. */
-    bool check_occp_last_error;
     int timeout;
     bool exp_timeout;
     I3C_DeviceInfo discovered_devices[I3C_MAX_DEVICES];
-    /* CRC injection configuration */
     occp_crc_inject_mode_t header_crc_err_inject_mode;
     occp_crc_inject_mode_t body_crc_err_inject_mode;
-    /* Invalid header injection configuration */
     occp_invalid_header_inject_mode_t invalid_header_inject_mode;
-    /* Length injection: simple global switch */
+    /* Send a request whose body length is invalid for its command */
     bool invalid_len_err_inject_enable;
-    /* Undersize header injection */
     bool inject_undersize_header_err;
-    /* Undersize body injection */
     bool inject_undersize_body_err;
-    /* Oversize body injection */
     bool inject_oversize_body_err;
     /* Force zero-length message body when length injection is enabled */
     bool invalid_message_length_zero_inject_enable;
@@ -501,7 +465,7 @@ typedef struct {
     bool status_reporting_disabled;
 } test_context_t;
 
-// Function declarations for I3C interface functions
+// Controller bring-up for the I3C or I2C interface
 bool initialize_interface(test_context_t *ctx);
 bool initialize_i3c_controller(I3C_Driver **drv);
 bool initialize_i2c_controller(I2C_Driver **drv);
@@ -528,8 +492,7 @@ int occp_send_get_occp_command_count_command(test_context_t *ctx, uint64_t i3c_a
 int occp_send_get_occp_error_code_command(test_context_t *ctx, uint64_t i3c_addr, uint32_t *status);
 int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr);
 int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr);
-/* Send an invalid header (controlled by ctx->invalid_header_inject_mode), followed by random body
- * bytes */
+/* Send a header corrupted per ctx->invalid_header_inject_mode, then random body bytes. */
 int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr);
 
 int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
@@ -543,10 +506,8 @@ void dump_ring_buffer_status(test_context_t *ctx, uint64_t slave_addr, const cha
 void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_interface_status,
                             int exp_boot_status);
 
-/* Validate a 32-bit status against expected fields. Returns true on match.
- * For SMC BL0 error messages, matching uses spec-defined masks per error code
- * (upper-nibble, lower-nibble, or full-code) automatically if match_full_status_data is false.
- */
+/* Return true when status_value matches the expected fields. Unless match_full_status_data is
+ * set, an SMC BL0 error code that carries data is compared under its per-code mask. */
 bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_fw_id,
                                   occp_status_msg_type_t expected_msg_type,
                                   uint16_t expected_status_data, bool match_full_status_data);

@@ -194,6 +194,15 @@ class CoverageDetails:
         }
 
 
+# The sample holes live in cov/report/summary.json alone; every other file carries the counts.
+HOLE_SAMPLE_KEYS = ("samples", "sample_truncated")
+
+
+def holes_summary_counts(summary: dict[str, Any] | None) -> dict[str, Any]:
+    """The holes summary without its sample holes."""
+    return {key: value for key, value in (summary or {}).items() if key not in HOLE_SAMPLE_KEYS}
+
+
 def metrics_from_observations(
     observations: list[CoverageObservation],
 ) -> list[MetricRecord]:

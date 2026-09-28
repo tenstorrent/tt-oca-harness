@@ -1,89 +1,68 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-// Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_axi_lite_xbar.sv
- * @brief AXI4-Lite crossbar for the Key Manager subsystem.
- *
- * @details Routes transactions from a single KM CPU master port to ten
- *          slave ports:
- *          - Internal: KPV, KMCSR, DRBG Sampler, Mailbox
- *          - External crypto engines: OTBN, AES, KMAC, HMAC, Adams Bridge
- *          - OTP/eFuse (index 8): KM-local window OTP_BASE_ADDR-OTP_END_ADDR,
- *            forwarded to otp_req_o; key_manager.sv remaps addr[31:12] to
- *            OTP_EFUSE_REMAP_BASE[31:12] before driving efuse_req_o.
- *
- *          Uses the PULP axi_lite_xbar IP with address-based routing.
- *          Zero-latency mode is configured (no pipeline stages).
- *
- * @param axil_req_t       AXI-Lite request struct type.
- * @param axil_resp_t      AXI-Lite response struct type.
- * @param axil_aw_chan_t   Write address channel type.
- * @param axil_w_chan_t    Write data channel type.
- * @param axil_b_chan_t    Write response channel type.
- * @param axil_ar_chan_t   Read address channel type.
- * @param axil_r_chan_t    Read data channel type.
- */
+// Route Key Manager CPU AXI4-Lite transactions by address to the ten KM peripheral ports.
+//
+// Address rules use the Key Manager interface constants defined in km_intf_pkg. Routes to
+// KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the
+// OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode.
+// OTP addresses leave this block unchanged; key_manager remaps addr[31:12] before driving
+// efuse_req_o. An address outside every rule is answered with DECERR by the xbar. The
+// channel type parameters must match the req/resp types.
 
 module km_axi_lite_xbar
   import km_intf_pkg::*;
   import axi_pkg::*;
 #(
-  // AXI-Lite interface types
-  parameter type axil_req_t  = km_axil_req_t,
-  parameter type axil_resp_t = km_axil_resp_t,
-  // Channel types (must match the req/resp types)
-  parameter type axil_aw_chan_t = km_axil_aw_chan_t,
-  parameter type axil_w_chan_t  = km_axil_w_chan_t,
-  parameter type axil_b_chan_t  = km_axil_b_chan_t,
-  parameter type axil_ar_chan_t = km_axil_ar_chan_t,
-  parameter type axil_r_chan_t  = km_axil_r_chan_t
+  parameter type axil_req_t  = km_axil_req_t,         // AXI-Lite request struct type.
+  parameter type axil_resp_t = km_axil_resp_t,        // AXI-Lite response struct type.
+  parameter type axil_aw_chan_t = km_axil_aw_chan_t,  // Write address channel type.
+  parameter type axil_w_chan_t  = km_axil_w_chan_t,   // Write data channel type.
+  parameter type axil_b_chan_t  = km_axil_b_chan_t,   // Write response channel type.
+  parameter type axil_ar_chan_t = km_axil_ar_chan_t,  // Read address channel type.
+  parameter type axil_r_chan_t  = km_axil_r_chan_t    // Read data channel type.
 ) (
-  // Clock and Reset
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,   // System clock.
+  input  logic rst_ni,  // Active-low asynchronous reset; the warm reset in key_manager.
+  input  logic test_i,  // DFT test mode for the PULP xbar.
 
-  // Slave Port (from KM CPU)
-  input  axil_req_t slv_req_i,
-  output axil_resp_t slv_resp_o,
+  input  axil_req_t slv_req_i,    // Slave port request from the KM CPU.
+  output axil_resp_t slv_resp_o,  // Slave port response to the KM CPU.
 
-  // Master Ports (to peripherals)
-  // Internal peripherals
-  output axil_req_t  kpv_req_o,
-  input  axil_resp_t kpv_resp_i,
+  output axil_req_t  kpv_req_o,   // Internal peripheral master port request to KPV.
+  input  axil_resp_t kpv_resp_i,  // Master port response from KPV.
 
-  output axil_req_t  kmcsr_req_o,
-  input  axil_resp_t kmcsr_resp_i,
+  output axil_req_t  kmcsr_req_o,   // Internal peripheral master port request to KMCSR.
+  input  axil_resp_t kmcsr_resp_i,  // Master port response from KMCSR.
 
-  output axil_req_t  drbg_req_o,
-  input  axil_resp_t drbg_resp_i,
+  output axil_req_t  drbg_req_o,   // Internal peripheral master port request to the DRBG
+                                   // sampler.
+  input  axil_resp_t drbg_resp_i,  // Master port response from the DRBG sampler.
 
-  output axil_req_t  mbox_req_o,
-  input  axil_resp_t mbox_resp_i,
+  output axil_req_t  mbox_req_o,   // Internal peripheral master port request to the mailbox.
+  input  axil_resp_t mbox_resp_i,  // Master port response from the mailbox.
 
-  // External crypto engine ports
-  output axil_req_t  otbn_req_o,
-  input  axil_resp_t otbn_resp_i,
+  output axil_req_t  otbn_req_o,   // External crypto engine master port request to OTBN.
+  input  axil_resp_t otbn_resp_i,  // Master port response from OTBN.
 
-  output axil_req_t  aes_req_o,
-  input  axil_resp_t aes_resp_i,
+  output axil_req_t  aes_req_o,   // External crypto engine master port request to AES.
+  input  axil_resp_t aes_resp_i,  // Master port response from AES.
 
-  output axil_req_t  kmac_req_o,
-  input  axil_resp_t kmac_resp_i,
+  output axil_req_t  kmac_req_o,   // External crypto engine master port request to KMAC.
+  input  axil_resp_t kmac_resp_i,  // Master port response from KMAC.
 
-  output axil_req_t  hmac_req_o,
-  input  axil_resp_t hmac_resp_i,
+  output axil_req_t  hmac_req_o,   // External crypto engine master port request to HMAC.
+  input  axil_resp_t hmac_resp_i,  // Master port response from HMAC.
 
-  output axil_req_t  abr_req_o,
-  input  axil_resp_t abr_resp_i,
+  output axil_req_t  abr_req_o,   // External crypto engine master port request to Adams
+                                  // Bridge.
+  input  axil_resp_t abr_resp_i,  // Master port response from Adams Bridge.
 
-  // OTP/eFuse pass-through port (index 8, OTP_BASE_ADDR-OTP_END_ADDR).
-  // Addresses are forwarded unchanged; key_manager.sv applies the
-  // OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.
-  output axil_req_t  otp_req_o,
-  input  axil_resp_t otp_resp_i
+  output axil_req_t  otp_req_o,  // OTP/eFuse pass-through port request (index 8,
+                                 // OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded
+                                 // unchanged; key_manager.sv applies the OTP_EFUSE_REMAP_BASE
+                                 // remap before driving efuse_req_o.
+  input  axil_resp_t otp_resp_i  // OTP/eFuse pass-through port response.
 );
 
   `include "prim_assert.sv"
@@ -92,7 +71,7 @@ module km_axi_lite_xbar
   // Type Definitions for Crossbar
   //=========================================================================
 
-  /** @brief Address-map rule for axi_lite_xbar (end_addr is 33 bits to handle overflow). */
+  // Address-map rule for axi_lite_xbar (end_addr is 33 bits to handle overflow).
   typedef struct packed {
     int unsigned idx;
     logic [KM_AXI_ADDR_WIDTH-1:0] start_addr;
@@ -103,7 +82,7 @@ module km_axi_lite_xbar
   // Crossbar Configuration
   // =========================================================================
 
-  /** @brief PULP axi_lite_xbar configuration: 1 slave, 10 masters, zero-latency. */
+  // PULP axi_lite_xbar configuration: 1 slave, 10 masters, zero-latency.
   localparam xbar_cfg_t XbarCfg = '{
       NoSlvPorts: 1,  // KM CPU only
       NoMstPorts: 10,  // KPV, KMCSR, DRBG, Mailbox + 5 external (OTBN, AES, KMAC, HMAC, ABR) + OTP
@@ -127,7 +106,7 @@ module km_axi_lite_xbar
   // Address Map
   // =========================================================================
 
-  /** @brief Address decode rules mapping master indices to peripheral regions. */
+  // Address decode rules mapping master indices to peripheral regions.
   localparam xbar_rule_t [9:0] AddrMap = '{
       // Index 0: KPV
       '{
@@ -200,7 +179,7 @@ module km_axi_lite_xbar
   // The window sizes come from the generated register packages, but a moved
   // base or an added rule can still break either property.
 
-  /** @brief Every rule is a power of two in size and aligned to that size. */
+  // Every rule is a power of two in size and aligned to that size.
   function automatic bit km_addr_map_aligned();
     logic [KM_AXI_ADDR_WIDTH:0] base;
     logic [KM_AXI_ADDR_WIDTH:0] size;
@@ -214,7 +193,7 @@ module km_axi_lite_xbar
     return 1'b1;
   endfunction
 
-  /** @brief No two rules cover a common address. */
+  // No two rules cover a common address.
   function automatic bit km_addr_map_disjoint();
     for (int unsigned i = 0; i < XbarCfg.NoAddrRules; i++) begin
       for (int unsigned j = i + 1; j < XbarCfg.NoAddrRules; j++) begin

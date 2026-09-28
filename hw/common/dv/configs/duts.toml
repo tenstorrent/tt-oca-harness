@@ -26,17 +26,11 @@ schema_version = 1
 # name for it.
 #
 # Frameworks are NOT registered here: a DUT implementing both cocotb and SV-UVM
-# (e.g. dtp, smu_block) declares them as [frameworks.<name>] tables in its one
+# (e.g. dtp) declares them as [frameworks.<name>] tables in its one
 # sim config and is selected with `--framework`.
 [duts.smu_wrapper]
 root = "hw/sys/smu/dv"
 alias_of = "smu"
-
-# The bare `smu #(.SEP(0))` block bench, tb/tb_top.sv. A second sim config in
-# a DV root the convention resolves to `smu`, so it is registered rather than
-# discovered.
-[duts.smu_block]
-root = "hw/sys/smu/dv"
 
 [duts.dtp]
 root = "hw/sys/dtp/dv"
@@ -62,6 +56,12 @@ root = "hw/common/dv/vip/ocah_spi_vip/dv"
 # RTL).
 [duts.ocah_uart_vip]
 root = "hw/common/dv/vip/ocah_uart_vip/dv"
+
+# AXI4-Lite to AHB-Lite converter unit bench. The shared AXI RTL under
+# hw/common/axi sits outside the directory convention, so it is registered
+# here.
+[duts.axi_lite_to_ahb]
+root = "hw/common/axi/dv"
 
 # Cross-trigger IP-level benches: the family nests one level below the
 # hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is

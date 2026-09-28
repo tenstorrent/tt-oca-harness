@@ -74,6 +74,13 @@ ONE_BYTE_DST_ADDR = 0x0200_0040
 ONE_BYTE_SRC_WORD = bytes.fromhex("c3a5960f1e2d3c4b")
 ONE_BYTE_DST_POISON = bytes(0xEE for _ in range(8))
 ONE_BYTE_DST_EXPECTED = ONE_BYTE_SRC_WORD[:1] + ONE_BYTE_DST_POISON[1:]
+# Thirty-two bytes, four full-width beats in one burst. Every source byte is
+# distinct and every destination poison byte differs from the source byte in
+# the same lane, so a beat that lands in the wrong place is visible.
+BLOCK_SRC_ADDR = 0x0200_0100
+BLOCK_DST_ADDR = 0x0200_0200
+BLOCK_SRC_DATA = bytes(0x40 + i for i in range(32))
+BLOCK_DST_POISON = bytes(0xA0 + (i % 8) for i in range(32))
 
 
 class _OutputFabricWatch:
@@ -162,7 +169,8 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         item = SmcSysAxiItem(item_name)
         item.op = SmcSysAxiOp.WRITE
         item.addr = addr
-        item.length = len(data)
+        item.length = min(len(data), 8)
+        item.beats = max(1, len(data) // 8)
         item.wdata = int.from_bytes(data, "little")
         item.update_golden = update_golden
         item.memory_region = DMA_MODEL_REGION
@@ -174,7 +182,8 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         item = SmcSysAxiItem(item_name)
         item.op = SmcSysAxiOp.READ
         item.addr = addr
-        item.length = length
+        item.length = min(length, 8)
+        item.beats = max(1, length // 8)
         item.check_golden = check_golden
         item.memory_region = DMA_MODEL_REGION
         await _OneShot(item, f"{item_name}_os").start(self.env.jtag_axi_agent.sequencer)
@@ -288,7 +297,62 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         )
         self.checked_bytes = len(DMA_PAYLOAD)
         self.model_checks = self.env.scoreboard.memory_model_checks_seen
+        await self._copy_block()
         await self._copy_one_byte()
+
+    async def _copy_block(self) -> None:
+        """Descriptor with LENGTH = 32: one four-beat burst per direction.
+
+        The eight-byte and one-byte legs each move a single beat, so neither
+        shows the engine forming a burst. Thirty-two bytes is four full-width
+        beats, small enough to stay one burst, and the destination is poisoned
+        beat by beat so a burst that repeats, drops or misplaces a beat fails
+        on the bytes rather than on the completion count.
+        """
+        await self._write_bytes(BLOCK_SRC_ADDR, BLOCK_SRC_DATA)
+        await self._write_bytes(BLOCK_DST_ADDR, BLOCK_DST_POISON)
+        assert await self._read_bytes(BLOCK_SRC_ADDR, len(BLOCK_SRC_DATA)) == BLOCK_SRC_DATA, (
+            "block source preload did not stick"
+        )
+        assert await self._read_bytes(BLOCK_DST_ADDR, len(BLOCK_DST_POISON)) == BLOCK_DST_POISON, (
+            "block destination poison did not stick"
+        )
+
+        base_reads, base_writes = self.watch.snapshot()
+        baseline_done = await self.csr_read("DMA_DONE_0_BASELINE_BLOCK", DMA_CTRL_DONE_0)
+        await self._program_dma(
+            tag="_BLOCK", src=BLOCK_SRC_ADDR, dst=BLOCK_DST_ADDR, length=len(BLOCK_SRC_DATA)
+        )
+        start_id = await self.csr_read("DMA_NEXT_ID_0_START_BLOCK", DMA_CTRL_NEXT_ID_0)
+        done_id = await self._wait_done(baseline_done)
+        assert done_id == start_id, (
+            f"block transfer completed id {done_id}, but this leg launched id {start_id}"
+        )
+
+        actual = await self._read_bytes(BLOCK_DST_ADDR, len(BLOCK_SRC_DATA))
+        assert actual == BLOCK_SRC_DATA, (
+            f"LENGTH={len(BLOCK_SRC_DATA)} transfer wrote {actual.hex()}, expected "
+            f"{BLOCK_SRC_DATA.hex()}"
+        )
+        reads, writes = self.watch.snapshot()
+        src_reads = _delta(reads, base_reads, BLOCK_SRC_ADDR)
+        dst_reads = _delta(reads, base_reads, BLOCK_DST_ADDR)
+        dst_writes = _delta(writes, base_writes, BLOCK_DST_ADDR)
+        assert dst_writes == 1, (
+            f"the LENGTH={len(BLOCK_SRC_DATA)} transfer addressed {BLOCK_DST_ADDR:#x} with "
+            f"{dst_writes} write transaction(s) on the output responder, expected one burst"
+        )
+        assert src_reads == 1, (
+            f"the LENGTH={len(BLOCK_SRC_DATA)} transfer addressed its source "
+            f"{BLOCK_SRC_ADDR:#x} with {src_reads} read transaction(s) on the output "
+            f"responder, expected one burst"
+        )
+        assert dst_reads == 1, (
+            f"the LENGTH={len(BLOCK_SRC_DATA)} verification read addressed "
+            f"{BLOCK_DST_ADDR:#x} with {dst_reads} read transaction(s) on the output "
+            f"responder, expected exactly one"
+        )
+        self.block_dst = actual
 
     async def _copy_one_byte(self) -> None:
         """Second descriptor with LENGTH = 1: exactly one byte moves.
@@ -360,15 +424,25 @@ class smc_dma_sanity_test_seq(SmcCsrSeq):
         await RisingEdge(cocotb.top.clk_smc_i)
         await self.watcher
         cocotb.log.info(
-            "CHK-DMA-OUTPUT-FABRIC-TRAFFIC: both transfers addressed the SYS_OUT responder "
-            "exactly once per leg and direction (%#x read, %#x written and read back; %#x read, "
+            "CHK-DMA-OUTPUT-FABRIC-TRAFFIC: all three transfers addressed the SYS_OUT responder "
+            "exactly once per leg and direction (%#x read, %#x written and read back; %#x read "
+            "and %#x written as one 4-beat burst each and read back; %#x read, "
             "%#x written and read back) while %d unrelated read transaction(s) from other "
             "masters completed on the same responder",
             DMA_SRC_ADDR,
             DMA_DST_ADDR,
+            BLOCK_SRC_ADDR,
+            BLOCK_DST_ADDR,
             ONE_BYTE_SRC_ADDR,
             ONE_BYTE_DST_ADDR,
             self.watch.foreign_reads(
-                (DMA_SRC_ADDR, DMA_DST_ADDR, ONE_BYTE_SRC_ADDR, ONE_BYTE_DST_ADDR)
+                (
+                    DMA_SRC_ADDR,
+                    DMA_DST_ADDR,
+                    BLOCK_SRC_ADDR,
+                    BLOCK_DST_ADDR,
+                    ONE_BYTE_SRC_ADDR,
+                    ONE_BYTE_DST_ADDR,
+                )
             ),
         )

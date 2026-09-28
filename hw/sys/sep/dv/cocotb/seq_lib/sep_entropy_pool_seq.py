@@ -13,7 +13,7 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from env.sep_spec_tables import agg_from_pic, window
-from sep_reg_meta import ENTROPY_SOURCE
+from sep_reg_meta import EDN, ENTROPY_SOURCE, RegBlock, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
@@ -22,9 +22,15 @@ from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 # Aperture from memory_map.adoc EPOOL. Occupancy and pool_low are graded
 # from the live status / aggregator flags, not from a FIFO watermark.
 POOL_BASE = window("EPOOL").base
-POOL_STATUS = POOL_BASE + 0x00
-POOL_IRQ_CAUSE = POOL_BASE + 0x08
-POOL_POP = POOL_BASE + 0x10
+POOL_STATUS = sym("ENTROPY_POOL_STATUS_REG_ADDR")
+POOL_IRQ_CAUSE = sym("ENTROPY_POOL_IRQ_CAUSE_REG_ADDR")
+POOL_POP = sym("ENTROPY_POOL_DATA_REG_ADDR")
+if (POOL_STATUS, POOL_IRQ_CAUSE, POOL_POP) != (
+    POOL_BASE,
+    POOL_BASE + sym("ENTROPY_POOL_IRQ_CAUSE_REG_OFFSET"),
+    POOL_BASE + sym("ENTROPY_POOL_DATA_REG_OFFSET"),
+):
+    raise RuntimeError("entropy-pool RDL addresses do not match the EPOOL window")
 # Occupancy ceiling used only as the CHK-WRITE-SLVERR room bound. The live
 # STATUS.level / pool_edn_req_o compare grades fullness, not this constant.
 FIFO_DEPTH = 32
@@ -34,6 +40,27 @@ STALL_THRESH = 4096
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
+
+# STATUS and IRQ_CAUSE field geometry from the SEP_ENTROPY_POOL RDL export.
+_POOL = RegBlock("SEP_ENTROPY_POOL")
+ST_LEVEL_MASK = _POOL.field_mask("STATUS", "fifo_level")
+ST_LEVEL_LSB = _POOL.field_lsb("STATUS", "fifo_level")
+ST_POOL_LOW = _POOL.field_mask("STATUS", "pool_low")
+ST_FILL_STALL = _POOL.field_mask("STATUS", "fill_stall")
+ST_POOL_ERROR = _POOL.field_mask("STATUS", "pool_error")
+CAUSE_POOL_LOW = _POOL.field_mask("IRQ_CAUSE", "pool_low")
+CAUSE_FILL_STALL = _POOL.field_mask("IRQ_CAUSE", "fill_stall")
+
+
+def pool_level(status: int) -> int:
+    """STATUS.fifo_level of a pool STATUS read."""
+    return (status & ST_LEVEL_MASK) >> ST_LEVEL_LSB
+
+
+def pool_flag(status: int, mask: int) -> int:
+    """One single-bit STATUS field as 0/1."""
+    return 1 if status & mask else 0
+
 
 IRQ_POOL_LOW = agg_from_pic("Entropy pool low")
 IRQ_FILL_STALL = agg_from_pic("Entropy pool fill stall")
@@ -57,11 +84,14 @@ _UNIQUE_DEAD = (0x18, 0x40, 0x80)
 # Legal disable: MODULE_ENABLE=0, every other CTRL field at its reset (including
 # SHA256_WHITENING_ENABLE=1). A hand-cleared multi-bit field is an alert.
 ESRC_CTRL_DISABLE = ENTROPY_SOURCE.value("CTRL", MODULE_ENABLE=0)
-# EDN_CTRL mubi4: True=0x6, False=0x9. AUTO bring-up is 0x9666 (ENABLE=T).
-# MODULE_ENABLE=0 does not drop AUTO-mode EDN acks while CSRNG still has a
-# seed, so fill-stall needs EDN_ENABLE=False to leave the pool request
-# outstanding without ack.
-EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~0xF) | 0x9
+# EDN_CTRL.EDN_ENABLE is mubi4 and resets to mubi-false. MODULE_ENABLE=0 does
+# not drop AUTO-mode EDN acks while CSRNG still has a seed, so fill-stall
+# needs EDN_ENABLE=False to leave the pool request outstanding without ack.
+# Every other field keeps its AUTO bring-up value.
+_EDN_ENABLE = EDN.fields("CTRL")["EDN_ENABLE"]
+EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~_EDN_ENABLE["bm"]) | (
+    (_EDN_ENABLE["reset"] << _EDN_ENABLE["bp"]) & _EDN_ENABLE["bm"]
+)
 
 
 class SepEntropyPoolCfg:

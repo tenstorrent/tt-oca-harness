@@ -1,24 +1,33 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-uart_16550_main]
+== UART 16550 Main Address Map
+
+Contains the mode-independent registers and the read-only registers accessible only
+when `DLAB = 0`.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | RBR | R a| Receiver Buffer Register
-| 0x4 | IER | RW a| Interrupt Enable Register
-| 0x8 | IIR | R a| Interrupt Identification Register
-| 0xC | LCR | RW a| Line Control Register
-| 0x10 | MCR | RW a| Modem Control Register
-| 0x14 | LSR | R a| Line Status Register
-| 0x18 | MSR | R a| Modem Status Register
-| 0x1C | SCR | RW a| Scratch Register
-| 0x20 | ECR | RW a| Extended Control Register
-| 0x24 | ITR | RW a| Interrupt Test Register
+| 0x0 | <<reg-{regmap-instance}-uart_16550_main-RBR,RBR>> | R a| Receiver Buffer Register
+| 0x4 | <<reg-{regmap-instance}-uart_16550_main-IER,IER>> | RW a| Interrupt Enable Register
+| 0x8 | <<reg-{regmap-instance}-uart_16550_main-IIR,IIR>> | R a| Interrupt Identification Register
+| 0xC | <<reg-{regmap-instance}-uart_16550_main-LCR,LCR>> | RW a| Line Control Register
+| 0x10 | <<reg-{regmap-instance}-uart_16550_main-MCR,MCR>> | RW a| Modem Control Register
+| 0x14 | <<reg-{regmap-instance}-uart_16550_main-LSR,LSR>> | R a| Line Status Register
+| 0x18 | <<reg-{regmap-instance}-uart_16550_main-MSR,MSR>> | R a| Modem Status Register
+| 0x1C | <<reg-{regmap-instance}-uart_16550_main-SCR,SCR>> | RW a| Scratch Register
+| 0x20 | <<reg-{regmap-instance}-uart_16550_main-ECR,ECR>> | RW a| Extended Control Register
+| 0x24 | <<reg-{regmap-instance}-uart_16550_main-ITR,ITR>> | RW a| Interrupt Test Register
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-RBR]
+=== RBR
+
 [cols="1,3,1,1,6", options="header"]
-.RBR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -27,8 +36,10 @@ points to the bottom of the RX FIFO. Otherwise, this field points to a single-
 byte Receiver Buffer Register.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-IER]
+=== IER
+
 [cols="1,3,1,1,6", options="header"]
-.IER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -40,8 +51,10 @@ Interrupt.
 | 0 | `ERBFI` | RW | 0x0 a| Enable Receiver Buffer Full (Received Data Ready) Interrupt.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-IIR]
+=== IIR
+
 [cols="1,3,1,1,6", options="header"]
-.IIR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -59,8 +72,10 @@ Interrupt.
 | 0 | `INTERRUPT_PENDING` | R | 0x1 a| Interrupt Pending. Active-low.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-LCR]
+=== LCR
+
 [cols="1,3,1,1,6", options="header"]
-.LCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -85,8 +100,10 @@ even parity is selected and `1` if odd parity is selected.
 * `0x3` - 8 bits per character
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-MCR]
+=== MCR
+
 [cols="1,3,1,1,6", options="header"]
-.MCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -104,8 +121,10 @@ polarity.
 opposite polarity.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-LSR]
+=== LSR
+
 [cols="1,3,1,1,6", options="header"]
-.LSR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -137,8 +156,10 @@ This bit triggers the Receiver Line Status Interrupt.
 mode) contains data.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-MSR]
+=== MSR
+
 [cols="1,3,1,1,6", options="header"]
-.MSR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
@@ -163,16 +184,20 @@ the last time this register was read. This bit triggers the Modem Status
 Interrupt.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-SCR]
+=== SCR
+
 [cols="1,3,1,1,6", options="header"]
-.SCR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
 | 7:0 | `SCR` | RW | 0x0 a| Scratch. Holds user data.
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-ECR]
+=== ECR
+
 [cols="1,3,1,1,6", options="header"]
-.ECR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -193,8 +218,10 @@ configurations for the trigger levels are:
 * `0xB` - 4096 characters
 |===
 
+[#reg-{regmap-instance}-uart_16550_main-ITR]
+=== ITR
+
 [cols="1,3,1,1,6", options="header"]
-.ITR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved

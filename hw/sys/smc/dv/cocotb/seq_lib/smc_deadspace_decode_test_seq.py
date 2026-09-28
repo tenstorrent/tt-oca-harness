@@ -1,26 +1,38 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Prove whether SMC register windows alias unmapped offsets onto live CSRs.
+"""Prove that SMC register windows refuse offsets past their decoded extent.
 
 Golden legality is PeakRDL ``SIZE`` / ``TOTAL_SIZE`` read by symbol from
 ``smc_addr.h`` (``_block_extent`` + ``DeadspaceProbe.__post_init__``), never
-the xbar window and never a hand-copied literal.
-A dead write that wraps onto a live register is the defect under test.
+the xbar window and never a hand-copied literal. The crossbars are sized from
+the same generated parameters, so a regenerated map moves the decode and the
+probe definitions together.
 
-SCOPE -- OKAY-into-void: a write into unmapped space that returns OKAY and
-leaves the live register alone is tallied as ACCEPTED and is OUT
-OF SCOPE for eight of the nine probes; only ``i2c0_intr_enable`` carries
-``expect_refuse`` and asserts on it, because the i2c_wrap SIZE range-check is a
-decode contract this testcase can hold the DUT to. For the other eight no
-authority establishes that the SMC xbar must DECERR an unmapped offset rather
-than silently accept it, so ``accepted=N`` in the summary is a reported tally
-and not a verdict. Deciding that contract for the whole map is not this
-testcase's job.
+CONTRACT -- ``hw/sys/smc/doc/memmap.adoc``: the fabric refuses an address that
+falls between unit apertures or past a unit's decoded extent; such an access
+never reaches a unit. Every probe here therefore expects the dead read and both
+dead writes to come back non-OKAY with the live register untouched. The three
+ways the DUT fails this testcase are ranked by what they mean:
+
+* WRAP-TO-LIVE -- a dead write changed the live register (the aliasing defect);
+* READ-ALIAS -- a dead read returned the live register's seeded value with OKAY;
+* ACCEPTED -- a dead access answered OKAY without reaching a register
+  (OKAY-into-void), which the memmap contract forbids past the decoded extent.
+
+The i2c probe lands in the SIZE-to-stride hole between two I2C instances, which
+is inside the I2C_WRAP aperture the fabric decodes; there the refusal is the
+i2c_wrap's own SIZE range-check, and this probe holds it to the same verdict.
+
+Each live register is seeded with a value the generated field model says it
+can hold before its dead offsets are touched, so "the live register did not
+change" is drawn only after the change detector was shown to be sensitive.
 """
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 
 import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
@@ -28,16 +40,26 @@ from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 from .smc_addr_map import smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
+# Generated PeakRDL field model (hw/sys/smc/regs/gen/py/smc_reg.py): the
+# per-register field layout the seed mask is read from.
+_SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
+if str(_SMC_REG_PY) not in sys.path:
+    sys.path.insert(0, str(_SMC_REG_PY))
+
+import smc_reg  # noqa: E402
+
 AXI_RESP_OKAY = 0
+WORD_MASK = 0xFFFFFFFF
 PAYLOAD = 0xA5A5A5A5
 PAYLOAD_ZERO = 0x00000000
-# Non-zero seed written into every live CSR before the dead access, so the
-# read-alias compare is discriminating (a dead read of 0 cannot look
-# like the live value) and so the wrap compare starts from a value the probe
-# itself established. Chosen to differ from BOTH dead payloads, which is what
-# makes the PAYLOAD/PAYLOAD_ZERO collision case impossible by construction.
-SEED_SENTINEL = 0x5A5A5A5A
-SEED_SENTINEL_ALT = 0x3C3C3C3C
+# Seed candidates, tried in order against the live register's field mask. A
+# seed must raise at least one field bit the live register currently holds at
+# 0: the PAYLOAD_ZERO dead write lowers every writable bit, so a wrap onto a
+# register seeded that way is visible whatever PAYLOAD looks like under the
+# mask. The two sentinels differ from both dead payloads on every bit position
+# they share; `_pick_seed` falls back to the complement and the whole mask for
+# registers too narrow to take either (a 1-bit field at bit 0 sees 0 from both).
+SEED_CANDIDATES = (0x5A5A5A5A, 0x3C3C3C3C)
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
 
@@ -68,6 +90,27 @@ def _block_extent(prefix: str, *, indexed: bool) -> int:
     return _smc_def(f"{prefix}_SIZE")
 
 
+def _field_mask(reg_type: str) -> int:
+    """Bits of a register's low word that the generated model declares as fields.
+
+    ``smc_reg.py`` lays every register out as a ctypes bit-field struct from
+    bit 0 upward, with ``rsvd*`` fillers for the gaps, so the implemented
+    footprint of the register is the union of its named fields. Read from the
+    model rather than guessed, so a seed never targets a bit the RDL does not
+    implement.
+    """
+    struct = getattr(smc_reg, f"{reg_type}_reg_t")
+    mask = 0
+    lsb = 0
+    for name, _ctype, width in struct._fields_:
+        if not name.startswith("rsvd"):
+            mask |= ((1 << width) - 1) << lsb
+        lsb += width
+    mask &= WORD_MASK
+    assert mask, f"{reg_type}: the generated model declares no field in the low 32 bits"
+    return mask
+
+
 @dataclass(frozen=True)
 class DeadspaceProbe:
     """One wrap candidate: ``dead_addr = live_addr + wrap_period``.
@@ -77,6 +120,8 @@ class DeadspaceProbe:
     is inside the block and ``dead_addr`` is past its mapped extent, so a
     regenerated map that maps the offset fails the probe DEFINITION instead of
     silently changing what is being probed ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+    ``reg_type`` names the live register's type in the generated Python model;
+    its field layout is the seed mask.
     """
 
     name: str
@@ -84,8 +129,7 @@ class DeadspaceProbe:
     wrap_period: int
     block_base: int
     block_extent: int
-    # I2C wrap range-checks SIZE; this probe should REFUSE if that decode holds.
-    expect_refuse: bool = False
+    reg_type: str
 
     def __post_init__(self) -> None:
         end = self.block_base + self.block_extent
@@ -101,10 +145,15 @@ class DeadspaceProbe:
             f"so it is not deadspace at all -- regenerate or re-pick the "
             f"wrap period"
         )
+        _field_mask(self.reg_type)
 
     @property
     def dead_addr(self) -> int:
         return self.live_addr + self.wrap_period
+
+    @property
+    def field_mask(self) -> int:
+        return _field_mask(self.reg_type)
 
 
 def _probes() -> tuple[DeadspaceProbe, ...]:
@@ -115,6 +164,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x40,
             _smc_def("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR"),
             _block_extent("SMC_TOP_SMC_SYSTEM_TIMER_OCTS", indexed=False),
+            "SYSTEM_TIMER_OCTS_TIMER_PRESET_LO",
         ),
         DeadspaceProbe(
             "reset_unit_sync",
@@ -122,6 +172,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x100,
             _smc_def("SMC_TOP_SMC_RESET_UNIT_BASE_ADDR"),
             _block_extent("SMC_TOP_SMC_RESET_UNIT", indexed=False),
+            "RESET_UNIT_SYNC_REG",
         ),
         DeadspaceProbe(
             "base_config_hang_det_timeout",
@@ -129,6 +180,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x80,
             _smc_def("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR"),
             _block_extent("SMC_TOP_SMC_BASE_CONFIG", indexed=False),
+            "SMC_BASE_CONFIG_HANG_DET_TIMEOUT_THRESHOLD",
         ),
         DeadspaceProbe(
             "outbound_filter0_start",
@@ -136,6 +188,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x200,
             smc_indexed_addr("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_BASE_ADDR", 0),
             _block_extent("SMC_TOP_SMC_OUTBOUND_FILTER_CTRL", indexed=True),
+            "FILTER_CTRL_START_ADDR",
         ),
         DeadspaceProbe(
             "alias_remap0_region_end",
@@ -143,6 +196,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x100,
             smc_indexed_addr("SMC_TOP_SMC_ALIAS_REMAP_REGION_BASE_ADDR", 0),
             _block_extent("SMC_TOP_SMC_ALIAS_REMAP_REGION", indexed=True),
+            "REMAP_REGION_REGION_END",
         ),
         DeadspaceProbe(
             "dfx_debug_ctrl",
@@ -150,6 +204,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x20,
             _smc_def("SMC_TOP_DFX_CTRL_BASE_ADDR"),
             _block_extent("SMC_TOP_DFX_CTRL", indexed=False),
+            "DFX_CTRL_STATUS_DEBUG_CTRL",
         ),
         DeadspaceProbe(
             "avsbus_cfg0",
@@ -157,6 +212,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x80,
             _smc_def("SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR"),
             _block_extent("SMC_TOP_SMC_AVSBUS_CONTROLLER", indexed=False),
+            "AVSBUS_CONTROLLER_AVS_CFG_0",
         ),
         DeadspaceProbe(
             "zeroer_dest",
@@ -164,19 +220,18 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
             0x20,
             _smc_def("SMC_TOP_ZEROER_CTRL_BASE_ADDR"),
             _block_extent("SMC_TOP_ZEROER_CTRL", indexed=False),
+            "ZEROER_CTRL_DEST_ADDR",
         ),
         # PeakRDL I2C instance SIZE is 0x84, STRIDE is 0x200. live+0x100 lands
         # in the SIZE-to-stride hole (not I2C1 at +0x200), so the extent used
         # here is the INSTANCE `_SIZE`, not the array `_TOTAL_SIZE`.
-        # expect_refuse is the decode-window contract: OKAY-into-void and
-        # wrap onto INTR_ENABLE both fail this probe.
         DeadspaceProbe(
             "i2c0_intr_enable",
             smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR", 0),
             0x100,
             smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR", 0),
             _smc_def("SMC_TOP_SMC_I2C_WRAP_I2C_SIZE"),
-            expect_refuse=True,
+            "I2C_INTR_ENABLE",
         ),
     )
 
@@ -189,6 +244,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         self.wrap_to_live: list[str] = []
         self.accepted_dead: list[str] = []
         self.refused: list[str] = []
+        self.read_refused: list[str] = []
         self.read_alias: list[str] = []
         # Probes whose live CSR did not accept the seed. Their NEGATIVE
         # conclusions ("no alias", "no live change") carry no proof, so they
@@ -241,8 +297,27 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             extra,
         )
 
-    async def _seed_live(self, probe: DeadspaceProbe) -> tuple[int, int]:
-        """Seed a known non-zero value into the live CSR and prove it took.
+    @staticmethod
+    def _pick_seed(probe: DeadspaceProbe, original: int) -> int:
+        """First candidate that raises a field bit the live register holds at 0.
+
+        The sentinels come first; the complement of the current value and the
+        whole field mask follow for registers too narrow to take either (a
+        1-bit field at bit 0 sees 0 from both sentinels). Only field bits are
+        written, so the seed never targets a bit the RDL does not implement.
+        """
+        mask = probe.field_mask
+        for candidate in (*SEED_CANDIDATES, ~original, WORD_MASK):
+            seed = candidate & mask
+            if seed & ~original & mask:
+                return seed
+        raise AssertionError(
+            f"{probe.name}: live 0x{probe.live_addr:08x} holds 0x{original:08x}, every "
+            f"field bit of mask 0x{mask:08x} is already 1, so no seed can raise one"
+        )
+
+    async def _seed_live(self, probe: DeadspaceProbe) -> tuple[int, int, bool]:
+        """Seed a known value into the live CSR and prove it took.
 
         Seeding serves two purposes:
 
@@ -255,10 +330,11 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
           indistinguishable from a register that cannot change at all
           ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 
-        Writing a sentinel and reading it back establishes both at once: the
-        seeded value is non-zero, differs from the original, and differs from
-        both dead payloads, so the change detector is demonstrably sensitive
-        before any negative conclusion is drawn.
+        The seed is chosen from the register's generated field mask so that it
+        raises at least one field bit currently at 0 (``_pick_seed``); the
+        readback then proves the change detector is sensitive: a bit the seed
+        raised is a bit the PAYLOAD_ZERO dead write would lower, so a wrap is
+        visible on that leg whatever PAYLOAD looks like under the mask.
 
         A live CSR that does NOT accept the seed is not silently tolerated and
         does not abort the sweep either: the probe keeps running (a POSITIVE
@@ -275,9 +351,9 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             f"{probe.name}: live CSR 0x{probe.live_addr:08x} resp="
             f"{_RESP_NAME.get(live_rd.resp_code)} (block is not awake)"
         )
-        original = live_rd.rdata & 0xFFFFFFFF
+        original = live_rd.rdata & WORD_MASK
 
-        seed = SEED_SENTINEL if original != SEED_SENTINEL else SEED_SENTINEL_ALT
+        seed = self._pick_seed(probe, original)
         seed_wr = await self._xfer(
             f"{probe.name}_seed_wr", SmcSysAxiOp.WRITE, probe.live_addr, seed
         )
@@ -290,35 +366,38 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             f"{probe.name}: seeded readback of 0x{probe.live_addr:08x} resp="
             f"{_RESP_NAME.get(seed_rd.resp_code)}"
         )
-        seeded = seed_rd.rdata & 0xFFFFFFFF
+        seeded = seed_rd.rdata & WORD_MASK
 
-        seed_ok = seeded != original and seeded != 0
-        # A seed that landed must not collide with a dead payload, or a wrap
-        # that wrote that payload would look like "no change".
-        assert not (seed_ok and seeded in (PAYLOAD, PAYLOAD_ZERO)), (
-            f"{probe.name}: seeded value 0x{seeded:08x} collides with a dead "
-            f"payload, so a wrap that wrote it would look like 'no change'"
-        )
+        # The seed took if at least one bit rose. That implies `seeded` is
+        # non-zero and differs from `original`, which is what the alias and
+        # wrap compares below need.
+        raised = seeded & ~original & WORD_MASK
+        seed_ok = raised != 0
         if seed_ok:
-            self._log_proof(
-                "SEEDED",
-                probe,
-                original=f"0x{original:08x}",
-                wrote=f"0x{seed:08x}",
-                seeded=f"0x{seeded:08x}",
+            cocotb.log.info(
+                "CHK-DEADSPACE-SEED: %s live=0x%08x original=0x%08x wrote=0x%08x "
+                "seeded=0x%08x raised=0x%08x field_mask=0x%08x",
+                probe.name,
+                probe.live_addr,
+                original,
+                seed,
+                seeded,
+                raised,
+                probe.field_mask,
             )
         else:
             cocotb.log.error(
                 "DEADSPACE SEED-REFUSED: %s live=0x%08x wrote=0x%08x readback "
-                "0x%08x (unchanged from 0x%08x). The change detector this "
-                "probe relies on was NOT shown to be sensitive, so any "
-                "negative conclusion from it is unproven; the probe needs a "
-                "writable observable in this block.",
+                "0x%08x (from 0x%08x, field_mask=0x%08x) raised no bit. The "
+                "change detector this probe relies on was NOT shown to be "
+                "sensitive, so any negative conclusion from it is unproven; the "
+                "probe needs a writable observable in this block.",
                 probe.name,
                 probe.live_addr,
                 seed,
                 seeded,
                 original,
+                probe.field_mask,
             )
         return original, seeded, seed_ok
 
@@ -340,11 +419,9 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
 
     async def _probe_after_seed(self, probe: DeadspaceProbe, before: int, seed_ok: bool) -> None:
         dead_rd = await self._xfer(f"{probe.name}_dead_rd", SmcSysAxiOp.READ, probe.dead_addr)
-        if (
-            dead_rd.resp_code == AXI_RESP_OKAY
-            and (dead_rd.rdata & 0xFFFFFFFF) == before
-            and before != 0
-        ):
+        rd_resp = _RESP_NAME.get(dead_rd.resp_code)
+        rdata = dead_rd.rdata & WORD_MASK
+        if dead_rd.resp_code == AXI_RESP_OKAY and rdata == before and before != 0:
             proof = (
                 f"{probe.name} dead 0x{probe.dead_addr:08x} read 0x{before:08x} "
                 f"matching live 0x{probe.live_addr:08x} (resp OKAY)"
@@ -365,14 +442,33 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
                 f"so the alias compare had no discriminating value"
             )
             self._log_proof("ALIAS-NOT-CHECKABLE", probe, before=f"0x{before:08x}")
+        elif dead_rd.resp_code == AXI_RESP_OKAY:
+            # OKAY with a value other than the live one: the fabric answered an
+            # address past the decoded extent, which the memmap contract
+            # forbids. Not an alias, but not a refusal either.
+            proof = (
+                f"{probe.name} dead 0x{probe.dead_addr:08x} read resp=OKAY "
+                f"rdata=0x{rdata:08x} (into void)"
+            )
+            self.accepted_dead.append(proof)
+            self._log_proof("READ-ACCEPTED", probe, rdata=f"0x{rdata:08x}")
+        else:
+            self.read_refused.append(
+                f"{probe.name} dead 0x{probe.dead_addr:08x} read resp={rd_resp}"
+            )
+            cocotb.log.info(
+                "CHK-DEADSPACE-READ-REFUSED: %s dead=0x%08x resp=%s (live 0x%08x seeded "
+                "0x%08x was not returned)",
+                probe.name,
+                probe.dead_addr,
+                rd_resp,
+                probe.live_addr,
+                before,
+            )
 
-        # The second payload exists for the collision case: if the live CSR
-        # already held the first payload, `after == before` even though the
-        # dead write wrapped through. `_seed_live` requires the seeded `before`
-        # to equal neither payload, so that collision is impossible by
-        # construction and the OKAY path's early return cannot hide it.
-        # PAYLOAD_ZERO is therefore only the second attempt on the refused
-        # path.
+        # PAYLOAD first, PAYLOAD_ZERO second. `_pick_seed` made the seed raise
+        # a field bit, so even a live register whose masked PAYLOAD equals the
+        # seeded value cannot hide a wrap: the zero write lowers that bit.
         for payload in (PAYLOAD, PAYLOAD_ZERO):
             dead_wr = await self._xfer(
                 f"{probe.name}_dead_wr_{payload:08x}",
@@ -386,7 +482,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
                 SmcSysAxiOp.READ,
                 probe.live_addr,
             )
-            after = after_rd.rdata & 0xFFFFFFFF
+            after = after_rd.rdata & WORD_MASK
             if after != before:
                 proof = (
                     f"{probe.name} dead 0x{probe.dead_addr:08x} wrote "
@@ -418,6 +514,18 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
                 self.refused.append(proof)
                 self._log_proof("REFUSED", probe, wr_resp=wr_resp)
                 self._book_unproven_negative(probe, "REFUSED", seed_ok)
+                if seed_ok:
+                    cocotb.log.info(
+                        "CHK-DEADSPACE-WRITE-REFUSED: %s dead=0x%08x payloads=0x%08x,0x%08x "
+                        "resp=%s live 0x%08x held 0x%08x",
+                        probe.name,
+                        probe.dead_addr,
+                        PAYLOAD,
+                        PAYLOAD_ZERO,
+                        wr_resp,
+                        probe.live_addr,
+                        before,
+                    )
 
     def _book_unproven_negative(self, probe: DeadspaceProbe, kind: str, seed_ok: bool) -> None:
         """Record a "no live change" verdict taken without a positive control.
@@ -461,7 +569,7 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             f"0x{sentinel_recovery:08x}"
         )
         cocotb.log.info(
-            "DEADSPACE BYSTANDER: CLOCK_GATE_CONTROL@0x%08x unchanged across "
+            "CHK-DEADSPACE-BYSTANDER: CLOCK_GATE_CONTROL@0x%08x unchanged across "
             "the sweep (0x%08x == 0x%08x)",
             sentinel,
             sentinel_baseline,
@@ -475,13 +583,14 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
         alias_checked = len(probes) - len(self.alias_not_checkable)
         cocotb.log.info(
             "DEADSPACE SUMMARY: wrap_to_live=%d read_alias=%d of %d checkable "
-            "probe(s) accepted=%d refused=%d alias_not_checkable=%d "
+            "probe(s) accepted=%d refused=%d read_refused=%d alias_not_checkable=%d "
             "change_not_proven=%d",
             len(self.wrap_to_live),
             len(self.read_alias),
             alias_checked,
             len(self.accepted_dead),
             len(self.refused),
+            len(self.read_refused),
             len(self.alias_not_checkable),
             len(self.change_not_proven),
         )
@@ -489,50 +598,52 @@ class smc_deadspace_decode_test_seq(SmcCsrSeq):
             cocotb.log.error("DEADSPACE PROOF WRAP-TO-LIVE: %s", line)
         for line in self.read_alias:
             cocotb.log.error("DEADSPACE PROOF READ-ALIAS: %s", line)
+        for line in self.accepted_dead:
+            cocotb.log.error("DEADSPACE PROOF ACCEPTED: %s", line)
         for line in self.alias_not_checkable:
             cocotb.log.error("DEADSPACE ALIAS-NOT-CHECKABLE: %s", line)
         for line in self.change_not_proven:
             cocotb.log.error("DEADSPACE CHANGE-NOT-PROVEN: %s", line)
 
-        i2c = next(p for p in probes if p.expect_refuse)
-        i2c_refused = any(i2c.name in row for row in self.refused)
-        i2c_wrapped = any(i2c.name in row for row in self.wrap_to_live)
-        i2c_accepted = any(i2c.name in row for row in self.accepted_dead)
-        if i2c_wrapped:
-            cocotb.log.error("DEADSPACE I2C wrap still aliases; i2c_wrap SIZE check did not hold")
-        elif i2c_refused:
-            cocotb.log.info(
-                "DEADSPACE I2C: 0x%08x refused (i2c_wrap range-check held)",
-                i2c.dead_addr,
-            )
-
-        # Two ways for this testcase to fail, in one gate so the leading cause
-        # stays the aliasing evidence:
-        #   1. aliasing was FOUND (the defect under test), or
-        #   2. a probe reached a NEGATIVE conclusion its own run could not
+        # Three ways for this testcase to fail, in one gate so the leading
+        # cause stays the aliasing evidence:
+        #   1. aliasing was FOUND (a dead write reached a live register, or a
+        #      dead read returned one),
+        #   2. a dead access was ACCEPTED with OKAY past the decoded extent,
+        #      which memmap.adoc says the fabric must refuse, or
+        #   3. a probe reached a NEGATIVE conclusion its own run could not
         #      support, because the live CSR refused this run's seed -- a
         #      "clean" result there would be an unchecked leg presented as a
         #      pass.
         assert (
             not self.wrap_to_live
             and not self.read_alias
+            and not self.accepted_dead
             and not self.alias_not_checkable
             and not self.change_not_proven
         ), (
             "SMC deadspace aliased live registers "
             f"(wrap_to_live={len(self.wrap_to_live)} "
             f"read_alias={len(self.read_alias)}) "
+            f"or accepted a dead access (accepted={len(self.accepted_dead)}) "
             f"or could not check for aliasing "
             f"(alias_not_checkable={len(self.alias_not_checkable)} "
             f"change_not_proven={len(self.change_not_proven)}): "
             + " | ".join(
                 self.wrap_to_live
                 + self.read_alias
+                + self.accepted_dead
                 + self.alias_not_checkable
                 + self.change_not_proven
             )
         )
-        assert i2c_refused and not i2c_accepted and not i2c_wrapped, (
-            "SMC deadspace expect_refuse probe did not refuse "
-            f"(refused={i2c_refused} accepted={i2c_accepted} wrapped={i2c_wrapped})"
+        # Every probe's dead read and both of its dead writes were refused.
+        assert len(self.refused) == len(probes) and len(self.read_refused) == len(probes), (
+            f"SMC deadspace refusal count short of the {len(probes)} probes "
+            f"(write refused={len(self.refused)} read refused={len(self.read_refused)})"
+        )
+        cocotb.log.info(
+            "CHK-DEADSPACE-SWEEP: %d probes, each dead read and both dead writes refused "
+            "with the seeded live register unchanged; wrap_to_live=0 read_alias=0 accepted=0",
+            len(probes),
         )

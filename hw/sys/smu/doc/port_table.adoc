@@ -9,7 +9,7 @@
 
 |`clk_smu_i` |`logic` |Input |1 |Primary SMU clock domain. Shared by SMC and DTP system logic. |PLL output |N/A
 |`clk_ref_i` |`logic` |Input |1 |Reference clock domain for timing-sensitive operations. |PLL reference clock |N/A
-|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Asynchronous assertion, synchronous deassertion. Also serves as DTP power-on reset. |System cold reset |N/A
+|`rst_cold_ni` |`logic` |Input |1 |Cold reset (active low). Assertion and deassertion are synchronous to `clk_ref_i` and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling `powergood_i` asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles. |System cold reset |N/A
 |`rst_cold_stable_ref_clk_no` |`logic` |Output |1 |Stable cold reset synchronized to reference clock domain (active low). |Downstream subsystems |N/A
 |`powergood_i` |`logic` |Input |1 |Power-good indication from supply supervisor. |Power supply supervisor |N/A
 
@@ -131,8 +131,8 @@
 |`lc_state_o` |`logic` |Output |`[2*LC_STATE_WIDTH-1:0]` |Lifecycle state output (driven by SEP when `SEP=1`, else `8'hf0`). |External systems |N/A
 |`lc_sigint_err_o` |`logic` |Output |1 |Lifecycle signal integrity error. |External systems |N/A
 
-|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |Non-debug-module reset requests. |Debug infrastructure |Tie to '0 if unused
-|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Non-debug-module reset process indicators. |Debug infrastructure |N/A
+|`smc_ndmreset_request_i` |`logic` |Input |`[CPU_CLUSTER_COUNT-1:0]` |NDM reset request from external CPU cluster `i` on bit `i`. |External CPU clusters |Tie to '0 if unused
+|`smc_ndmreset_process_o` |`logic` |Output |`[CPU_CLUSTER_COUNT-1:0]` |Firmware response to external CPU cluster `i` on bit `i`. |SMC → external CPU clusters |N/A
 
 |`smc_ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs. |External targets |N/A
 

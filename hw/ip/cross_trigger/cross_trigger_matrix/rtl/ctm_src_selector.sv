@@ -1,31 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Matrix Source Selector Module
+// Mask CT_Dst inputs with a select vector, OR them, and register the CT_Src pulse.
 //
-// Description:
-// Implements the selection and OR logic for a single CT_Src output port.
-// Selects which CT_Dst inputs to forward based on the select mask, then ORs
-// them together. The output is registered to prevent glitches.
-//------------------------------------------------------------------------------
-
+// select_i enables which destinations contribute; registration prevents glitches on
+// ct_src_o.
 
 module ctm_src_selector #(
-  parameter int unsigned NUM_CT_DST = 4
+  parameter int unsigned NUM_CT_DST = 4  // CT_Dst input count.
 ) (
-  // Clock and Reset
-  input  logic                    clk_i,
-  input  logic                    rst_ni,
+  input  logic                    clk_i,  // System clock.
+  input  logic                    rst_ni,  // Active-low asynchronous reset; clears ct_src_o.
 
-  // CT_Dst input pulses
-  input  logic [NUM_CT_DST-1:0]   ct_dst_i,
+  input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger pulses from every CT_Dst port, one bit
+                                             // per port.
 
-  // Selection mask from register (each bit enables corresponding CT_Dst)
-  input  logic [NUM_CT_DST-1:0]   select_i,
+  input  logic [NUM_CT_DST-1:0]   select_i,  // Per-destination enable mask from this CT_Src's
+                                             // CT_DST_SELECT field; bit i admits ct_dst_i[i] into
+                                             // the OR.
 
-  // CT_Src output pulse (registered)
-  output logic                    ct_src_o
+  output logic                    ct_src_o  // OR of the selected ct_dst_i bits, registered on
+                                            // clk_i; one cycle of latency.
 );
 
   // Combinatorial logic: AND each CT_Dst with its select bit, then OR all together

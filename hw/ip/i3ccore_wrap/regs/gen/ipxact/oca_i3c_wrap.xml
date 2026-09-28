@@ -12,7 +12,8 @@
       <ipxact:name>oca_i3c_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>oca_i3c_wrap</ipxact:name>
-        <ipxact:description>OCA I3C Controller wrapper</ipxact:description>
+        <ipxact:displayName>OCA I3C Controller Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Wrapper address map instantiating the per-controller I3C CSR blocks.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h6000</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -485,7 +486,7 @@ all other reserved.</ipxact:description>
               <ipxact:field>
                 <ipxact:name>SOFT_RST</ipxact:name>
                 <ipxact:displayName>SOFT_RST</ipxact:displayName>
-                <ipxact:description>Reset controller from software.</ipxact:description>
+                <ipxact:description>Reset controller from software. Not supported currently</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>

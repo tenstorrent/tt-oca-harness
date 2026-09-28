@@ -57,10 +57,14 @@ PHASES = {
 class SmuSepEntropySeq:
     """Require the firmware bring-up to make real entropy reach the DRBG."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_ENTROPY_FW_BRINGUP_OK", "SEP_ENTROPY_CHAIN_FLOWS_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -176,7 +180,7 @@ class SmuSepEntropySeq:
             "produced an accepted seed, CSRNG consumed it, and the CTR_DRBG "
             "produced genbits -- the chain runs, not just its registers)"
         )
-        for token in ("SEP_ENTROPY_FW_BRINGUP_OK", "SEP_ENTROPY_CHAIN_FLOWS_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

@@ -13,8 +13,9 @@ proven at its consumer: ``tb_axil_external_active`` must pulse while the
 access is in flight.
 
 Regions the SEP_IN port cannot reach in this bench are named in the log and
-left open, not claimed: the PLIC and CLINT/BEU windows above bit 25 fold onto
-the local base in ``smc_local_fabric`` (see ``smc_cluster_beu_test``), the
+left open, not claimed: the PLIC and CLINT/BEU windows lie outside the local and
+global apertures at the reset ``REGION_SIZE`` and answer DECERR (see
+``smc_cluster_beu_test`` and ``smc_region_size_plic_clint_beu_decode_test``), the
 debug-module region has no register in the generated map, and the remap
 regions are outbound-path apertures with no inbound decode pinned by the
 specification.
@@ -30,13 +31,17 @@ import cocotb
 from .smc_addr_map import (
     _REPO,
     DFX_STATUS_IDLE,
+    LOCAL_BASE_RESET,
     SPM_MEMORY_BASE,
     SPM_MEMORY_SIZE,
+    generated_decoded_extent,
+    generated_unit_at,
+    generated_window,
     smc_addr,
     smc_bootrom_addr,
     smc_indexed_addr,
 )
-from .smc_decode_probe_utils import SmcDecodeProbeSeq
+from .smc_decode_probe_utils import AXI_RESP_DECERR, SmcDecodeProbeSeq
 from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WINDOW
 from .smc_i3c_to_fabric_test_seq import HCI_VERSION_OFFSET, I3C_HCI_VERSION_RESET
 
@@ -91,6 +96,26 @@ GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
     "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
 )
 
+# --- Words past a generated block's extent -------------------------------------------------
+# The crossbars decode each block to its generated SIZE / TOTAL_SIZE, so these
+# go to the error slave: past the GPIO_INTF instances (TOTAL_SIZE), past
+# misc_wrap (SIZE), and, in the data-accelerator range, past the DMA block
+# (the gap below the zeroer) and past the zeroer block.
+GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
+    "SMC_TOP_GPIO_INTF_TOTAL_SIZE"
+)
+MISC_PAST_LAST = MISC_WRAP_BASE + MISC_WRAP_SIZE + 4
+DMA_DESC_FIRST = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
+DMA_DESC_WORDS = 12
+DMA_PAST_LAST = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR") + smc_addr("SMC_TOP_DMA_CTRL_SIZE")
+ZEROER_BASE = smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR")
+ZEROER_PAST_LAST = ZEROER_BASE + smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
+assert DMA_PAST_LAST < ZEROER_BASE, "the DMA and zeroer blocks abut; no gap left to probe"
+assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
+assert generated_decoded_extent("zeroer_ctrl") == smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
+assert generated_unit_at(DMA_PAST_LAST - LOCAL_BASE_RESET) is None
+assert generated_unit_at(ZEROER_PAST_LAST - LOCAL_BASE_RESET) is None
+
 # --- I3C: six CSR windows -----------------------------------------------------------------
 I3C_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
 I3C0_HCI_VERSION = (
@@ -118,9 +143,10 @@ OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
 # The DFX block is the last one the generated map declares below the fabric
-# control registers at 0xC001_0000. Its 2 KiB crossbar window ends 0x800
-# above its base; the address right after it belongs to no block.
-DFX_REGION_BEYOND = smc_addr("SMC_TOP_DFX_CTRL_BASE_ADDR") + 0x800
+# control registers at 0xC001_0000. The first address past its 2 KiB aperture
+# in the generated memory map belongs to no block.
+DFX_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("dfx_ctrl")[1] + 1
+assert generated_unit_at(DFX_REGION_BEYOND - LOCAL_BASE_RESET) is None
 assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
 
 # --- fabric control ----------------------------------------------------------------------------
@@ -158,6 +184,23 @@ EXTERNAL_MANDATORY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_
 EXTERNAL_SUPPLEMENTARY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
 assert EXTERNAL_MANDATORY_BASE == smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
 assert EFUSE_SHIM_CTRL_WINDOW == EXTERNAL_MANDATORY_BASE
+# memmap.adoc, "Captured GPIO Straps": STRAPS_LO at the adopter external window
+# plus 0x5800, STRAPS_HI after it. The block's size is the generated straps
+# header's; the first word past it is claimed by nothing in the window.
+_STRAPS_OFFSET = 0x5800
+_STRAPS_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "straps.h"
+
+
+def _straps_block_size() -> int:
+    for line in _STRAPS_H.read_text(encoding="utf-8").splitlines():
+        if "static_assert(sizeof(straps_t)" in line:
+            return int(line.split("==")[1].split(",")[0].strip(), 0)
+    raise AssertionError(f"{_STRAPS_H} declares no straps_t size")
+
+
+STRAPS_LO = EXTERNAL_MANDATORY_BASE + _STRAPS_OFFSET
+STRAPS_HI = STRAPS_LO + 4
+STRAPS_BEYOND = STRAPS_LO + _straps_block_size()
 
 _PATTERN_A = 0xA5A5_5A5A
 _PATTERN_B = 0x5A5A_A5A5
@@ -169,8 +212,8 @@ _SPM_PATTERN_HI = 0x5A5A_A5A5_FFFF_FFF8
 # Exact-value compares this body issues (reads carrying ``expected=``). A
 # literal, so a table edit that silently dropped an expectation fails here
 # rather than shrinking the floor with it.
-EXPECTED_VALUE_CHECKS = 39
-EXPECTED_DECERR_CHECKS = 3
+EXPECTED_VALUE_CHECKS = 56
+EXPECTED_DECERR_CHECKS = 4
 
 
 def _rom_word0() -> int:
@@ -398,6 +441,49 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"@0x{CLA_FUNNEL_SCRATCHLO:08x} held distinct co-resident patterns",
         )
 
+    async def _past_last_block(self) -> None:
+        """Words past a block's generated extent are refused, with no side effect."""
+        corners = (
+            ("GPIO_PAST_LAST", GPIO_PAST_LAST, GPIO_LAST_ACCESS_FILTER, True),
+            ("MISC_PAST_LAST", MISC_PAST_LAST, MISC_LAST, False),
+        )
+        for label, addr, neighbour, read_too in corners:
+            before = await self.csr_read(f"{label}_NEIGHBOUR_BEFORE", neighbour)
+            if read_too:
+                await self.csr_read_expect_error(f"{label}_RD", addr)
+            await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
+            await self.csr_read(f"{label}_NEIGHBOUR_AFTER", neighbour, expected=before)
+        # Both data-accelerator probes take an all-ones write: every DMA
+        # descriptor register and the zeroer DEST_ADDR hold 0, so a write that
+        # reached either block at any offset shows in the readback.
+        snapshot = [
+            await self.csr_read(f"DMA_DESC_BEFORE_{i}", DMA_DESC_FIRST + 4 * i)
+            for i in range(DMA_DESC_WORDS)
+        ]
+        assert not any(snapshot), f"DMA descriptor registers not idle: {snapshot}"
+        await self.csr_read("ZEROER_DEST_BEFORE", ZEROER_DEST_ADDR, expected=0)
+        for label, addr in (
+            ("DMA_PAST_LAST", DMA_PAST_LAST),
+            ("ZEROER_PAST_LAST", ZEROER_PAST_LAST),
+        ):
+            await self.read_decerr(f"{label}_RD", addr)
+            resp = await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
+            assert resp == AXI_RESP_DECERR, (
+                f"{label} @ 0x{addr:08x}: write answered resp={resp}, expected DECERR from the "
+                f"error slave"
+            )
+        for i in range(DMA_DESC_WORDS):
+            await self.csr_read(f"DMA_DESC_AFTER_{i}", DMA_DESC_FIRST + 4 * i, expected=0)
+        await self.csr_read("ZEROER_DEST_AFTER", ZEROER_DEST_ADDR, expected=0)
+        self.close_cell(
+            "past-last-block-refused",
+            f"0x{GPIO_PAST_LAST:08x} (past GPIO_INTF[{GPIO_NUM - 1}], read and write) and "
+            f"0x{MISC_PAST_LAST:08x} (past misc_wrap) were refused with an error response, "
+            f"the last register before each unchanged; 0x{DMA_PAST_LAST:08x} (past dma_ctrl) and "
+            f"0x{ZEROER_PAST_LAST:08x} (past zeroer_ctrl) answered DECERR to a read and an "
+            f"all-ones write, the DMA descriptor and zeroer registers still 0",
+        )
+
     async def _region_external(self) -> None:
         # Mandatory region base: the eFuse SHIM CSR at window offset 0, which
         # the peripheral crossbar hands to the eFuse controller before the
@@ -422,6 +508,27 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"cycle(s) and was answered DECERR by the adopter window terminator (no supplementary "
             f"device attached in this bench)",
         )
+        # The first word past the straps block: routed to the external port and
+        # answered DECERR there, with both straps words unchanged across it.
+        straps_before = [
+            (await self.read_external_routed(f"EXTWIN_{name}_BEFORE", addr))[0]
+            for name, addr in (("STRAPS_LO", STRAPS_LO), ("STRAPS_HI", STRAPS_HI))
+        ]
+        _rdata, straps_hits = await self.read_external_routed(
+            "EXTWIN_STRAPS_BEYOND", STRAPS_BEYOND, decerr=True
+        )
+        self.external_hits["straps_beyond"] = straps_hits
+        for (name, addr), before in zip(
+            (("STRAPS_LO", STRAPS_LO), ("STRAPS_HI", STRAPS_HI)), straps_before
+        ):
+            await self.read_external_routed(f"EXTWIN_{name}_AFTER", addr, expected=before)
+        self.close_cell(
+            "straps-window-beyond",
+            f"0x{STRAPS_BEYOND:08x}, the first word past the straps block, drove "
+            f"smc_external_req_o for {straps_hits} clk_smc_i cycle(s) and was answered DECERR "
+            f"by the window terminator; STRAPS_LO/HI read 0x{straps_before[0]:08x}/"
+            f"0x{straps_before[1]:08x} on both sides of it",
+        )
         self.close_cell(
             "axil-external-region",
             f"mandatory base 0x{EXTERNAL_MANDATORY_BASE:08x} (eFuse SHIM reset) and supplementary "
@@ -433,15 +540,21 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # four are the intended error-slave probes. The supplementary external
-        # base is one of them: this bench attaches no supplementary device, so
-        # the adopter window's terminator answers it.
+        # five are the intended error-slave probes. Two are in the adopter
+        # window and answered by its terminator: the supplementary base, since
+        # this bench attaches no supplementary device, and the first word past
+        # the straps block.
         self.env.axi_monitor.expected_decerr_addrs.update(
             {
                 WDT_REGION_BEYOND,
                 DFX_REGION_BEYOND,
                 FABRIC_CTRL_BEYOND,
                 EXTERNAL_SUPPLEMENTARY_BASE,
+                STRAPS_BEYOND,
+                GPIO_PAST_LAST,
+                MISC_PAST_LAST,
+                DMA_PAST_LAST,
+                ZEROER_PAST_LAST,
             }
         )
 
@@ -457,6 +570,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         await self._region_memory()
         await self._region_cla()
         await self._region_external()
+        await self._past_last_block()
 
         self.close_cell(
             "region-base-decodes",
@@ -489,13 +603,15 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.leave_open(
             "plic-region",
-            "PLIC window 0xC400_0000 folds onto the local base in smc_local_fabric (bits [31:25] "
-            "replaced), so no SEP_IN access reaches it; needs the CPU local path",
+            "PLIC window 0xC400_0000 lies outside the local and global apertures at the reset "
+            "REGION_SIZE and answers DECERR; smc_region_size_plic_clint_beu_decode_test reaches it "
+            "after widening REGION_SIZE",
         )
         self.leave_open(
             "timer-buserror-region",
-            "CLINT/BEU window 0xC800_0000 folds onto the local base (see smc_cluster_beu_test); "
-            "needs the CPU local path",
+            "CLINT/BEU window 0xC800_0000 lies outside the local and global apertures at the "
+            "reset REGION_SIZE and answers DECERR (smc_cluster_beu_test); "
+            "smc_region_size_plic_clint_beu_decode_test reaches it after widening REGION_SIZE",
         )
         self.leave_open(
             "debug-region",
@@ -518,12 +634,14 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         cocotb.log.info(
             "CHK-ADDRESS-MAP-REGION-DECODE: %d regions probed at base and top with %d "
             "scoreboard exact-value compares (floor %d), %d beyond-region DECERR probes, "
-            "external port active %d cycle(s) on the supplementary base; %d cells left open "
+            "external port active %d cycle(s) on the supplementary base and %d past the "
+            "straps block; %d cells left open "
             "as unreachable from SEP_IN",
             len(self.cells),
             self.value_checks_measured,
             EXPECTED_VALUE_CHECKS,
             EXPECTED_DECERR_CHECKS,
             self.external_hits.get("supplementary_base", 0),
+            self.external_hits.get("straps_beyond", 0),
             len(self.unreachable),
         )

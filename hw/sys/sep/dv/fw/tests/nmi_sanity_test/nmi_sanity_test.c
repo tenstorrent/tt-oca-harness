@@ -157,7 +157,8 @@ int main(void) {
     if (g_nmi_fired) {
         // The bark must have been SET when the handler ran; that is what ties
         // this NMI to the watchdog.
-        if (!(g_nmi_bark_state & WDT_INTR_BARK)) {
+        int bark_seen = (g_nmi_bark_state & WDT_INTR_BARK) != 0u;
+        if (!bark_seen) {
             sep_mbx_puts("FAIL: NMI taken but INTR_STATE.bark was not set in handler ");
             sep_mbx_puthex(g_nmi_bark_state);
             sep_mbx_putc('\n');
@@ -175,7 +176,9 @@ int main(void) {
             sep_mbx_puthex(ctrl_after);
             sep_mbx_putc('\n');
             errors++;
-        } else {
+        } else if (bark_seen) {
+            // The PASS line needs all three legs: bark set in the handler,
+            // bark cleared after, and WDOG_CTRL disabled.
             sep_mbx_puts("CHK-WDT-CLEAR PASS: INTR_STATE.bark observed set in handler, cleared "
                          "after, WDOG_CTRL disabled\n");
         }

@@ -60,28 +60,31 @@ from .coverage_closure import (
 from .coverage_combine import plan_combine
 from .coverage_policy import (
     CoveragePolicy,
-    expired_holes,
-    lapsed_warning,
     load_coverage_policy,
     native_policy_manifest,
 )
 from .duts import (
-    FormalView,
+    ConfigView,
     discover_formal_views,
     list_dut_names,
     load_duts,
     load_formal_views,
     resolve_dut,
+    unavailable_sim_views,
 )
 from .executors import (
     ClusterError,
     build_executor,
     dispatch_blocker,
+    executor_builds,
     executor_driver,
     executor_limits,
 )
 from .executors.base import (
+    BUILD_ROLE,
+    Executor,
     JobHandle,
+    JobObservation,
     JobState,
     LeafTask,
     ResourceRequest,
@@ -89,11 +92,9 @@ from .executors.base import (
     resolve_resources,
     task_identifier,
 )
-from .executors.cluster import UNCONFIRMED_CANCELS_NAME
 from .executors.manifest import (
     attempt_args,
     execute_attempt,
-    jobs_dir,
     manifest_path,
     manifest_payload,
     repo_identity,
@@ -127,6 +128,7 @@ from .site import (
     site_summary,
     tool_launch,
     tool_source,
+    validate_site_dut_tools,
     validate_site_duts,
 )
 from .stages import (
@@ -402,6 +404,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         metavar="NAME",
         help="Executor from executors.toml (`local`, or a cluster entry the run may use)",
+    )
+    parallel.add_argument(
+        "--builds",
+        choices=["local", "scheduler"],
+        default=None,
+        help=(
+            "Where a cluster executor runs the target builds: as scheduler jobs the leaves "
+            "wait for, or in this process (the executor's `builds` key when omitted)"
+        ),
     )
     parallel.add_argument("--queue", metavar="NAME", help="Executor queue/partition metadata")
     parallel.add_argument("--cores", type=int, metavar="N", help="Executor CPU-core request")
@@ -775,16 +786,11 @@ def coverage_policy_paths(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> li
     return paths
 
 
-def coverage_policy_warnings(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> list[str]:
-    """Load every configured policy, raising on a schema error, and list its lapsed waivers."""
+def validate_coverage_policies(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> None:
+    """Load every configured policy, raising on a schema error."""
 
-    warnings: list[str] = []
     for path in coverage_policy_paths(flow, root, sim_cfg):
-        policy = load_coverage_policy(path, expected_dut=flow.name)
-        warnings.extend(
-            f"{repo_rel(root, path)}: {lapsed_warning(rule)}" for rule in expired_holes(policy)
-        )
-    return warnings
+        load_coverage_policy(path, expected_dut=flow.name)
 
 
 def validate_flow(
@@ -793,8 +799,8 @@ def validate_flow(
     simulators: dict[str, Any],
     policies: dict[str, Any],
     executors: dict[str, Any] | None = None,
-) -> list[str]:
-    """Validate one flow; return the warnings that do not fail it (lapsed waivers)."""
+) -> None:
+    """Validate one flow, raising ConfigError on the first problem."""
 
     if not (root / flow.root).exists():
         raise ConfigError(f"{flow.path}: root path does not exist: {flow.root}")
@@ -817,7 +823,7 @@ def validate_flow(
             raise ConfigError(f"{flow.path}: native stage `{stage_name}` missing string `kind`")
     sim_cfg = load_sim_cfg(flow, root)
     validate_native_config_shape(flow, root)
-    policy_warnings = coverage_policy_warnings(flow, root, sim_cfg)
+    validate_coverage_policies(flow, root, sim_cfg)
     if executors is not None:
         scheduler = flow.raw.get("scheduler", {})
         if not isinstance(scheduler, dict):
@@ -831,7 +837,6 @@ def validate_flow(
     merge_simulator_defaults(sim_cfg, simulators, flow.tools)
     load_test_catalog(flow, root)
     validate_parser_extensions(flow, simulators, policies)
-    return policy_warnings
 
 
 @dataclass(frozen=True)
@@ -862,10 +867,12 @@ def load_registries(root: Path) -> Registries:
     executors = load_executors(root)
     policies = validate_parser_registry(root)
     site = load_site_layer(root)
+    merged = merged_simulators(simulators, site)
     if site is not None:
         validate_site_duts(site, list_dut_names(root))
+        validate_site_dut_tools(site, merged)
     return Registries(
-        simulators=merged_simulators(simulators, site),
+        simulators=merged,
         executors=merged_executors(executors, site),
         policies=policies,
         site=site,
@@ -873,14 +880,14 @@ def load_registries(root: Path) -> Registries:
     )
 
 
-def validate_all(root: Path) -> tuple[dict[str, Flow], Registries, dict[str, FormalView]]:
+def validate_all(root: Path) -> tuple[dict[str, Flow], Registries, dict[str, ConfigView]]:
     """Load and validate every selectable DUT and every available formal view.
 
-    A formal view whose site-named file is absent stays unavailable and is not an error here;
-    selecting it with --mode formal is.
+    A simulation or formal view whose site-named file is absent stays unavailable and is not
+    an error here; selecting its DUT in that mode is.
     """
     registries = load_registries(root)
-    duts = load_duts(root)
+    duts = load_duts(root, registries.site)
     for flow in duts.values():
         validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
     formal_views = load_formal_views(root, registries.site)
@@ -937,7 +944,8 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
         print(f"  site layer       OK ({registries.site_summary()})")
 
     try:
-        duts = load_duts(root)
+        duts = load_duts(root, registries.site)
+        absent_sim = unavailable_sim_views(root, registries.site)
     except ConfigError as exc:
         print(f"  DUT discovery    FAIL: {exc}")
         print("\nResult: could not load the DUT set")
@@ -970,15 +978,19 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
                     suffix = " [overlay skipped: frameworks guard]"
             else:
                 view = base or resolve_dut(root, name, mode=mode, framework=fw, site=site)
-            warnings = validate_flow(view, root, simulators, policies, executors)
+            validate_flow(view, root, simulators, policies, executors)
             print(f"  {label:<16} OK{suffix}")
-            for line in warnings:
-                print(f"  {'':<16} warning: {line}")
         except ConfigError as exc:
             failures += 1
             print(f"  {label:<16} FAIL: {exc}")
 
-    for name in sorted(duts):
+    for name in sorted(set(duts) | set(absent_sim)):
+        if name in absent_sim:
+            # The checkout the site layer points into may be absent on this machine.
+            rows += 1
+            unavailable += 1
+            print(f"  {name:<16} UNAVAILABLE: {absent_sim[name].reason}")
+            continue
         flow = duts[name]
         # Validate every framework view a DUT implements, not only its default: the default row
         # keeps the bare DUT name; additional frameworks get their own `name (fw)` row.
@@ -1001,7 +1013,7 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
             failures += 1
             print(f"  {label:<16} FAIL: {formal.reason}")
 
-    total = len(duts)
+    total = len(set(duts) | set(absent_sim))
     tail = f", {unavailable} unavailable" if unavailable else ""
     print(
         f"\nResult: {total} DUT(s), {rows} view(s): "
@@ -1573,12 +1585,53 @@ def _doctor_executors(
     return rows, missing_selected
 
 
+def _alias_of(name: str, flows: dict[str, Flow]) -> str | None:
+    """The canonical DUT an `alias_of` name selects, or None when ``name`` is canonical.
+
+    An alias resolves to its canonical :class:`Dut`, so the loaded name differs from the key.
+    """
+    flow = flows.get(name)
+    return flow.name if flow is not None and flow.name != name else None
+
+
+def _aliases_by_dut(flows: dict[str, Flow]) -> dict[str, list[str]]:
+    """Canonical DUT name -> the sorted alias names that select it."""
+    aliases: dict[str, list[str]] = {}
+    for name in sorted(flows):
+        canonical = _alias_of(name, flows)
+        if canonical is not None:
+            aliases.setdefault(canonical, []).append(name)
+    return aliases
+
+
+def _listed_formal_views(
+    flows: dict[str, Flow], formal_views: dict[str, ConfigView]
+) -> dict[str, ConfigView]:
+    """The formal views to list: an alias's view is omitted when it is its canonical DUT's view."""
+    listed: dict[str, ConfigView] = {}
+    for name, view in formal_views.items():
+        canonical = _alias_of(name, flows)
+        canonical_view = formal_views.get(canonical) if canonical is not None else None
+        if canonical_view is not None and canonical_view.path == view.path:
+            continue
+        listed[name] = view
+    return listed
+
+
 def list_flows(
     flows: dict[str, Flow],
     simulators: dict[str, Any],
-    formal_views: dict[str, FormalView] | None = None,
+    formal_views: dict[str, ConfigView] | None = None,
+    unavailable_sim: dict[str, ConfigView] | None = None,
+    root: Path | None = None,
+    site: SiteLayer | None = None,
 ) -> None:
-    """The DUT table: one row per simulation framework view, then the DUT's `fv` row."""
+    """The DUT table: one row per simulation framework view, then the DUT's `fv` row.
+
+    An alias gets a single row naming the DUT it selects. A simulation view whose site-named
+    config is absent gets one row giving the reason. With ``root``, each framework row lists
+    the tools of that framework's own view; without it, the tools of the DUT's default view.
+    """
     BOLD = "\033[1m"
     NORMAL = "\033[0m"
     SELECT_BEGIN = BOLD
@@ -1636,10 +1689,16 @@ def list_flows(
             f"{name:<{widths[0]}} {kind:<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {description}"
         )
 
-    formal_views = formal_views or {}
-    for name in sorted(set(flows) | set(formal_views)):
+    formal_views = _listed_formal_views(flows, formal_views or {})
+    unavailable_sim = unavailable_sim or {}
+    for name in sorted(set(flows) | set(formal_views) | set(unavailable_sim)):
         flow = flows.get(name)
-        if flow is not None:
+        canonical = _alias_of(name, flows)
+        if canonical is not None:
+            print(f"{name:<{widths[0]}} alias of {canonical}")
+        elif name in unavailable_sim:
+            row(name, "-", "-", "-", f"unavailable: {unavailable_sim[name].reason}")
+        elif flow is not None:
             spill = False
             frameworks = {
                 framework: format_selected_licensed(
@@ -1654,11 +1713,16 @@ def list_flows(
                 )
             } or {"": "-"}
             for framework, label in frameworks.items():
+                view = (
+                    resolve_dut(root, name, framework=framework, site=site)
+                    if root is not None and framework and framework != flow.framework
+                    else flow
+                )
                 row(
                     flow.name if not spill else "",
                     flow.kind if not spill else " " + chr(8627),
                     label,
-                    tools_column(flow, framework),
+                    tools_column(view, framework),
                     flow.description if not spill else "",
                 )
                 spill = True
@@ -1770,24 +1834,42 @@ def _flow_view_dict(flow: Flow) -> dict[str, Any]:
 def list_flows_json(
     root: Path,
     flows: dict[str, Flow],
-    formal_views: dict[str, FormalView] | None = None,
+    formal_views: dict[str, ConfigView] | None = None,
+    unavailable_sim: dict[str, ConfigView] | None = None,
+    site: SiteLayer | None = None,
 ) -> None:
     """Machine-readable enumeration: one entry per (DUT, framework) view plus one per formal view.
 
     CI matrices consume this instead of hardcoding DUT names — e.g. a licensed UVM job selects
     `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need;
     a formal job selects `.duts[] | select(.mode == "formal" and .available)`.
+    An alias adds no entry of its own, so a matrix never runs one DUT twice; every entry
+    lists the names that select the same DUT under `aliases`. A simulation view whose
+    site-named config is absent is one entry with `available` false; its kind and frameworks
+    live in the absent file, so it carries neither.
     """
     views: list[dict[str, Any]] = []
     for name in sorted(flows):
+        if _alias_of(name, flows) is not None:
+            continue
         flow = flows[name]
         views.append(_flow_view_dict(flow))
         for fw in flow.frameworks:
             if fw != flow.framework:
-                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
-    for name, view in sorted((formal_views or {}).items()):
+                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw, site=site)))
+    for name, view in sorted((unavailable_sim or {}).items()):
+        views.append(
+            {
+                "name": name,
+                "mode": "sim",
+                "available": False,
+                "path": repo_rel(root, view.path),
+                "reason": view.reason,
+            }
+        )
+    for name, view in sorted(_listed_formal_views(flows, formal_views or {}).items()):
         if view.flow is not None:
-            views.append(_flow_view_dict(view.flow))
+            views.append({**_flow_view_dict(view.flow), "name": name})
         else:
             views.append(
                 {
@@ -1800,6 +1882,9 @@ def list_flows_json(
                     "reason": view.reason,
                 }
             )
+    aliases = _aliases_by_dut(flows)
+    for entry in views:
+        entry["aliases"] = aliases.get(entry["name"], [])
     print(json.dumps({"schema_version": 1, "duts": views}, indent=2))
 
 
@@ -1974,18 +2059,6 @@ def _update_regression_coverage(
     payload = _read_json_object(path)
     if payload is None:
         return
-    previous = payload.get("coverage")
-    merged = dict(previous) if isinstance(previous, dict) else {}
-    merged.update(coverage)
-    merged.update(
-        {
-            "requested": bool(coverage.get("enabled")),
-            "overall_percent": coverage.get("total_percent"),
-            "report_dir": coverage.get("report"),
-            "summary_json": coverage.get("summary"),
-        }
-    )
-    payload["coverage"] = merged
     payload["status"] = run_status
     payload["exit_code"] = exit_code_for_status(run_status)
     artifacts = payload.setdefault("artifacts", {})
@@ -2317,6 +2390,7 @@ def cmd_waive(
     policies: dict[str, Any],
     executors: dict[str, Any],
     args: argparse.Namespace,
+    site: SiteLayer | None = None,
 ) -> int:
     """`--waive`: exit 0 when the re-graded coverage meets its thresholds, 1 when it does
     not, 2 when nothing was written."""
@@ -2329,6 +2403,7 @@ def cmd_waive(
             mode=args.mode,
             framework=framework,
             adopter_overlay=adopter_overlay_path(args),
+            site=site,
         )
         validate_flow(flow, root, simulators, policies, executors)
         return waive_run(
@@ -2521,6 +2596,25 @@ def resource_request(
     return resolve_resources(
         cli,
         ResourceRequest.from_mapping(stage.get("resources")),
+        ResourceRequest.from_mapping(executor_cfg.get("defaults")),
+    )
+
+
+def build_resource_request(
+    args: argparse.Namespace, stage: dict[str, Any], executor_cfg: dict[str, Any]
+) -> ResourceRequest:
+    """Resources for one target build: the command line, the build stage's table, then the
+    executor's `build_defaults` before its `defaults`."""
+    cli = ResourceRequest(
+        queue=getattr(args, "queue", None),
+        cores=getattr(args, "cores", None),
+        mem_mb=getattr(args, "mem_mb", None),
+        walltime=getattr(args, "walltime", None),
+    )
+    return resolve_resources(
+        cli,
+        ResourceRequest.from_mapping(stage.get("resources")),
+        ResourceRequest.from_mapping(executor_cfg.get("build_defaults")),
         ResourceRequest.from_mapping(executor_cfg.get("defaults")),
     )
 
@@ -3067,6 +3161,10 @@ def run_flow(
     executor = selected_executor(flow, args, registries.executors)
     executor_cfg = registries.executors[executor]
     setattr(args, "_cluster_executor", executor_cfg.get("kind") == "cluster")
+    builds = getattr(args, "builds", None) or executor_builds(executor_cfg)
+    if builds == "scheduler" and not args._cluster_executor:
+        raise ConfigError("--builds scheduler needs a cluster executor; `local` builds in-process")
+    setattr(args, "_scheduler_builds", builds == "scheduler" and not args.dry_run)
     if getattr(args, "walltime", None):
         parse_walltime_sec(str(args.walltime))
     validate_selected_tool_available(tool, simulators, args, flow)
@@ -3294,8 +3392,6 @@ def run_flow(
             "active_count": len(visible_active),
             "missing_count": len(missing),
             "interrupted_count": len(interrupted),
-            "expected": [dict(leaf) for leaf in expected_leaves],
-            "completed": completed,
             "active": visible_active,
             "missing": missing,
             "interrupted": interrupted,
@@ -3324,19 +3420,73 @@ def run_flow(
         with progress_lock:
             leaf_jobs.setdefault(task.leaf_id, {})[task.task_id] = {
                 "task_id": task.task_id,
-                "attempt": task.attempt,
-                "debug_only": task.debug_only,
-                "executor": handle.executor,
-                "driver": handle.driver,
                 "job_id": handle.native_job_id,
-                "submitted_at": handle.submitted_at,
             }
 
-    def note_cancel_confirmed(task: LeafTask, confirmed: bool) -> None:
-        with progress_lock:
-            job = leaf_jobs.get(task.leaf_id, {}).get(task.task_id)
-            if job is not None:
-                job["cancel_confirmed"] = confirmed
+    def record_cancellation(
+        executor_impl: Executor,
+        tasks: dict[str, LeafTask],
+        outstanding: list[JobHandle],
+        confirmed: dict[str, bool],
+        finished: set[str],
+        cancel_grace: float,
+    ) -> None:
+        requested = [handle for handle in outstanding if handle.task_id not in finished]
+        unconfirmed = [
+            handle.native_job_id
+            for handle in outstanding
+            if not confirmed.get(handle.task_id, False) and handle.task_id not in finished
+        ]
+        cancellation.clear()
+        cancellation.update(
+            {
+                "requested": len(requested),
+                "confirmed": len(requested) - len(unconfirmed),
+                "unconfirmed": unconfirmed,
+            }
+        )
+        if unconfirmed:
+            ids = ", ".join(str(job_id) for job_id in unconfirmed)
+            console.event(
+                "executor",
+                f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
+                f"(job ids {ids}); check them with the scheduler by id",
+                force=True,
+            )
+
+    def cancel_outstanding(
+        executor_impl: Executor,
+        tasks: dict[str, LeafTask],
+        handles: dict[str, JobHandle],
+        cancel_grace: float,
+    ) -> set[str]:
+        """The interrupted-run cleanup both dispatch loops share: a final poll, the cancel
+        request with its bounded confirmation wait, and the cancellation record. Returns the
+        task ids whose attempt had ended before the cancellation reached them."""
+        # From here on a signal unwinds nothing more; it ends the confirmation wait.
+        interruption_requested.set()
+        outstanding = list(handles.values())
+        # A scheduler that stopped answering must not keep the run from its summary.
+        try:
+            snapshot = executor_impl.poll(outstanding)
+        except Exception as exc:  # noqa: BLE001
+            console.event("executor", f"final poll failed: {exc}", force=True)
+            snapshot = {}
+        finished = {
+            task_id
+            for task_id, seen in snapshot.items()
+            if seen.state.terminal and seen.state is not JobState.CANCELLED
+        }
+        try:
+            confirmed = executor_impl.cancel(
+                outstanding, grace_sec=cancel_grace, stop=cleanup_hurry
+            )
+        except Exception as exc:  # noqa: BLE001
+            console.event("executor", f"cancel failed: {exc}", force=True)
+            confirmed = {}
+        request_stage_cancellation()
+        record_cancellation(executor_impl, tasks, outstanding, confirmed, finished, cancel_grace)
+        return finished
 
     def leaf_is_completed(leaf: dict[str, Any]) -> bool:
         with progress_lock:
@@ -3473,6 +3623,150 @@ def run_flow(
         )
         return result
 
+    # Targets whose build ended without a usable model, with the build job that failed them;
+    # their leaves grade `dependency_blocked` instead of running.
+    blocked_targets: dict[str, dict[str, Any]] = {}
+
+    def run_builds(stage: str, targets: list[str]) -> None:
+        """Build every target of ``stage`` and append the results.
+
+        In-process builds stop at the first failure, as a flat run does. Scheduler builds run
+        every target as its own job, wait for all of them, and record each failed target as
+        blocked, so the other targets' leaves still run.
+        """
+        if not getattr(args, "_scheduler_builds", False):
+            for target in targets:
+                result = run_stage(
+                    flow,
+                    root,
+                    target_cfgs[target],
+                    catalog,
+                    stage,
+                    None,
+                    args,
+                    tool,
+                    run_dir,
+                    simulators,
+                    policies,
+                    nest=nest,
+                )
+                results.append(result)
+                if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                    break
+            return
+        build_cfg_table = registries.executors[executor]
+        limits = executor_limits(build_cfg_table)
+        executor_impl = build_executor(
+            executor,
+            build_cfg_table,
+            runner=local_runner,
+            max_workers=max(1, len(targets)),
+            root=root,
+            run_dir=run_dir,
+            on_event=lambda text: console.event("executor", text),
+        )
+        poll_interval = float(limits["poll_interval_sec"])
+        cancel_grace = float(limits["cancel_grace_sec"])
+        request = build_resource_request(args, flow_stages(flow).get(stage, {}), build_cfg_table)
+        commit, dirty = repo_identity(root)
+        tasks: dict[str, LeafTask] = {}
+        handles: dict[str, JobHandle] = {}
+        target_of: dict[str, str] = {}
+        for index, target in enumerate(targets):
+            safe_target = "".join(ch if ch.isalnum() or ch in "_.-" else "_" for ch in target)
+            label = f"build-{stage}-{safe_target}"
+            task = LeafTask(
+                task_id=label,
+                leaf_id=-(index + 1),
+                stage=stage,
+                item="",
+                seed=0,
+                attempt=0,
+                run_dir=run_dir,
+                leaf_dir=run_dir / "stages" / "regress" / "builds" / label,
+                target=target,
+                nest=False,
+                role=BUILD_ROLE,
+                resources=request,
+            )
+            payload = manifest_payload(
+                task,
+                flow=flow,
+                root=root,
+                tool=tool,
+                executor=executor,
+                argv=list(getattr(args, "_raw_argv", []) or []),
+                ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
+                multi_target=multi_target,
+                overlay=adopter_overlay_path(args),
+                site=registries.site.path if registries.site is not None else None,
+                repo_commit=commit,
+                repo_dirty=dirty,
+            )
+            task = replace(
+                task, manifest_path=write_manifest(manifest_path(run_dir, label), payload)
+            )
+            handle = executor_impl.submit(task)
+            tasks[label] = task
+            handles[label] = handle
+            target_of[label] = target
+            console.event(
+                "build",
+                f"{stage} target={target} submitted as job {handle.native_job_id or '(refused)'}",
+            )
+
+        def settle(task_id: str, handle: JobHandle, seen: JobObservation) -> None:
+            task = tasks[task_id]
+            target = target_of[task_id]
+            outcome = executor_impl.collect(handle)
+            result = outcome.result
+            if result is None:
+                result = error_result(
+                    task,
+                    f"environment_error: build {task_id} ended {outcome.state.value.lower()}: "
+                    f"{outcome.error or seen.reason or 'no result'}",
+                )
+                result.metadata = {
+                    **(result.metadata or {}),
+                    "scheduler": {"job_id": handle.native_job_id, "state": outcome.state.value},
+                }
+            result.item = None
+            result.metadata = {**(result.metadata or {}), "target": target}
+            results.append(result)
+            console.stage_result(
+                stage=stage, status=result.status, duration_sec=result.duration_sec, target=target
+            )
+            if result.status == "PASS":
+                args._cocotb_prebuilt_targets.add(target)
+                return
+            blocked_targets[target] = {
+                "stage": stage,
+                "task_id": task_id,
+                "job_id": handle.native_job_id,
+                "state": outcome.state.value,
+                "status": result.status,
+                "reason": result.reason,
+            }
+            console.event(
+                "build",
+                f"{stage} target={target} {result.status}: its leaves are dependency-blocked",
+                force=True,
+            )
+
+        try:
+            while handles:
+                live = list(handles.values())
+                executor_impl.wait(live, poll_interval)
+                for task_id, seen in executor_impl.poll(live).items():
+                    if seen.state.terminal:
+                        settle(task_id, handles.pop(task_id), seen)
+        except BaseException:
+            cancel_outstanding(executor_impl, tasks, handles, cancel_grace)
+            executor_impl.close(wait=False)
+            raise
+        else:
+            executor_impl.close(wait=True)
+
     def attach_wave_debug(
         final: StageResult,
         jobs: list[dict[str, Any]],
@@ -3540,7 +3834,8 @@ def run_flow(
         submit_cap = executor_impl.submit_batch_size
         poll_interval = float(limits["poll_interval_sec"])
         cancel_grace = float(limits["cancel_grace_sec"])
-        pending = deque(leaves)
+        blocked_leaves = [leaf for leaf in leaves if leaf.get("target") in blocked_targets]
+        pending = deque(leaf for leaf in leaves if leaf.get("target") not in blocked_targets)
         leaf_by_id = {int(leaf["id"]): leaf for leaf in leaves}
         tasks: dict[str, LeafTask] = {}
         handles: dict[str, JobHandle] = {}
@@ -3557,80 +3852,54 @@ def run_flow(
                     return dict(built.metadata["target_build"])
             return None
 
-        def submit(task: LeafTask) -> None:
-            if executor_impl.requires_manifest:
-                if not identity:
-                    identity.append(repo_identity(root))
-                commit, dirty = identity[0]
-                payload = manifest_payload(
-                    task,
-                    flow=flow,
-                    root=root,
-                    tool=tool,
-                    executor=executor,
-                    argv=list(getattr(args, "_raw_argv", []) or []),
-                    ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
-                    multi_target=multi_target,
-                    overlay=adopter_overlay_path(args),
-                    site=registries.site.path if registries.site is not None else None,
-                    repo_commit=commit,
-                    repo_dirty=dirty,
-                    target_build=build_of(task.target),
-                )
-                path = write_manifest(manifest_path(run_dir, task.task_id), payload)
-                task = replace(task, manifest_path=path)
-            handle = executor_impl.submit(task)
+        def prepare(task: LeafTask) -> LeafTask:
+            """The task with its manifest written, when the executor reads one."""
+            if not executor_impl.requires_manifest:
+                return task
+            if not identity:
+                identity.append(repo_identity(root))
+            commit, dirty = identity[0]
+            payload = manifest_payload(
+                task,
+                flow=flow,
+                root=root,
+                tool=tool,
+                executor=executor,
+                argv=list(getattr(args, "_raw_argv", []) or []),
+                ui_leaf_mode=str(getattr(args, "_ui_leaf_mode", "full")),
+                multi_target=multi_target,
+                overlay=adopter_overlay_path(args),
+                site=registries.site.path if registries.site is not None else None,
+                repo_commit=commit,
+                repo_dirty=dirty,
+                target_build=build_of(task.target),
+            )
+            path = write_manifest(manifest_path(run_dir, task.task_id), payload)
+            return replace(task, manifest_path=path)
+
+        def register(task: LeafTask, handle: JobHandle) -> None:
             tasks[task.task_id] = task
             handles[task.task_id] = handle
             if executor_impl.requires_manifest and handle.native_job_id:
                 note_leaf_job(task, handle)
 
-        def record_cancellation(
-            outstanding: list[JobHandle], confirmed: dict[str, bool], finished: set[str]
-        ) -> None:
-            requested = [handle for handle in outstanding if handle.task_id not in finished]
-            unconfirmed: list[dict[str, Any]] = []
-            for handle in outstanding:
-                task = tasks[handle.task_id]
-                stopped = bool(confirmed.get(handle.task_id, False))
-                note_cancel_confirmed(task, stopped)
-                if stopped or handle.task_id in finished:
-                    continue
-                unconfirmed.append(
-                    {
-                        "task_id": task.task_id,
-                        "item": task.item,
-                        "seed": task.seed,
-                        "target": task.target,
-                        "attempt": task.attempt,
-                        "debug_only": task.debug_only,
-                        "executor": handle.executor,
-                        "driver": handle.driver,
-                        "job_id": handle.native_job_id,
-                    }
-                )
-            record = jobs_dir(run_dir) / UNCONFIRMED_CANCELS_NAME
-            cancellation.clear()
-            cancellation.update(
-                {
-                    "executor": executor_impl.name,
-                    "driver": executor_impl.driver,
-                    "requested": len(requested),
-                    "confirmed": len(requested) - len(unconfirmed),
-                    "unconfirmed": unconfirmed,
-                    "grace_sec": cancel_grace,
-                    "wait_cut_short": cleanup_hurry.is_set(),
-                    "record": repo_rel(root, record) if record.is_file() else None,
-                }
-            )
-            if unconfirmed:
-                ids = ", ".join(str(job["job_id"]) for job in unconfirmed)
-                console.event(
-                    "executor",
-                    f"{len(unconfirmed)} of {len(requested)} cancelled job(s) unconfirmed "
-                    f"(job ids {ids}); check them with the scheduler by id",
-                    force=True,
-                )
+        def submit(task: LeafTask) -> None:
+            task = prepare(task)
+            register(task, executor_impl.submit(task))
+
+        def submit_batch(batch: list[LeafTask]) -> None:
+            """First attempts submitted together; a driver with job arrays makes them one.
+
+            Handles are registered as each submission returns, so an interruption part-way
+            through the batch cancels every job already submitted.
+            """
+            prepared = {task.task_id: prepare(task) for task in batch}
+
+            def registered(handles: list[JobHandle]) -> None:
+                for handle in handles:
+                    register(prepared[handle.task_id], handle)
+
+            executor_impl.submit_many(list(prepared.values()), registered)
 
         def finish_leaf(
             leaf: dict[str, Any], final: StageResult, jobs: list[dict[str, Any]]
@@ -3677,6 +3946,38 @@ def run_flow(
             )
             finish_leaf(leaf, skipped, [regression_job(stage, item, seed, 0, skipped)])
 
+        def block_leaf(leaf: dict[str, Any]) -> None:
+            """A leaf whose target has no model: `ERROR` with a `dependency_blocked` bucket."""
+            item = str(leaf["item"])
+            seed = int(leaf["seed"])
+            target = str(leaf.get("target"))
+            dependency = blocked_targets[target]
+            stamp = datetime.now(UTC).isoformat()
+            job = dependency["job_id"] or "not submitted"
+            blocked = StageResult(
+                stage=stage,
+                item=item,
+                status="ERROR",
+                return_code=exit_code_for_status("ERROR"),
+                duration_sec=0.0,
+                started_at=stamp,
+                ended_at=stamp,
+                reason=(
+                    f"dependency_blocked: {dependency['stage']} of target {target} "
+                    f"{dependency['status']} (job {job}): {dependency['reason']}"
+                ),
+                failure_buckets=[
+                    {
+                        "kind": "dependency_blocked",
+                        "signature": f"{dependency['stage']} {target}",
+                        "count": 1,
+                    }
+                ],
+                metadata={"seed": seed, "attempt": 0, "target": target},
+                target=target,
+            )
+            finish_leaf(leaf, blocked, [regression_job(stage, item, seed, 0, blocked)])
+
         def attempt_done(task: LeafTask, result: StageResult) -> None:
             leaf = leaf_by_id[task.leaf_id]
             jobs = jobs_by_leaf[task.leaf_id]
@@ -3685,6 +3986,7 @@ def run_flow(
                 attach_wave_debug(final, jobs, task, result)
                 finish_leaf(leaf, final, jobs)
                 return
+            result.result_json = repo_rel(root, task.result_json)
             attempts[task.leaf_id].append(result)
             jobs.append(
                 regression_job(
@@ -3693,7 +3995,7 @@ def run_flow(
                     task.seed,
                     task.attempt,
                     result,
-                    repo_rel(root, task.result_json),
+                    result.result_json,
                 )
             )
             if result.status != "PASS" and scheduler and task.attempt < (args.retry or 0):
@@ -3721,10 +4023,13 @@ def run_flow(
                 f"{outcome.state.value.lower()}: {detail}",
             )
 
+        for leaf in blocked_leaves:
+            block_leaf(leaf)
         try:
             while pending or handles:
                 submitted = 0
-                while pending and len(handles) < max_in_flight:
+                batch: list[LeafTask] = []
+                while pending and len(handles) + len(batch) < max_in_flight:
                     if submit_cap is not None and submitted >= submit_cap:
                         break
                     submitted += 1
@@ -3742,7 +4047,9 @@ def run_flow(
                     leaf_id = int(leaf["id"])
                     attempts[leaf_id] = []
                     jobs_by_leaf[leaf_id] = []
-                    submit(leaf_task(leaf, 0))
+                    batch.append(leaf_task(leaf, 0))
+                if batch:
+                    submit_batch(batch)
                 if not handles:
                     continue
                 live = list(handles.values())
@@ -3756,31 +4063,10 @@ def run_flow(
                     task = tasks.pop(task_id)
                     attempt_done(task, collect_result(handle, task, observation.reason))
         except BaseException:
-            # From here on a signal unwinds nothing more; it ends the confirmation wait.
-            interruption_requested.set()
-            outstanding = list(handles.values())
             # Only an attempt that had ended before the interruption counts as a completed
             # leaf; whatever the cancellation ends is interrupted, whichever result it wrote.
-            # A scheduler that stopped answering must not keep the run from its summary.
-            try:
-                snapshot = executor_impl.poll(outstanding)
-            except Exception as exc:  # noqa: BLE001
-                console.event("executor", f"final poll failed: {exc}", force=True)
-                snapshot = {}
-            finished = {
-                task_id
-                for task_id, seen in snapshot.items()
-                if seen.state.terminal and seen.state is not JobState.CANCELLED
-            }
-            try:
-                confirmed = executor_impl.cancel(
-                    outstanding, grace_sec=cancel_grace, stop=cleanup_hurry
-                )
-            except Exception as exc:  # noqa: BLE001
-                console.event("executor", f"cancel failed: {exc}", force=True)
-                confirmed = {}
-            request_stage_cancellation()
-            record_cancellation(outstanding, confirmed, finished)
+            outstanding = list(handles.values())
+            finished = cancel_outstanding(executor_impl, tasks, handles, cancel_grace)
             for handle in outstanding:
                 if handle.task_id not in finished:
                     continue
@@ -3875,25 +4161,34 @@ def run_flow(
         emit_dry_run_config_summary(console, flow, root, sim_cfg, simulators, tool, args)
         for stage_index, stage in enumerate(stages):
             if stage in {"flist", "hdl_compile", "elaborate"}:
-                for target in build_targets:
-                    result = run_stage(
-                        flow,
-                        root,
-                        target_cfgs[target],
-                        catalog,
-                        stage,
-                        None,
-                        args,
-                        tool,
-                        run_dir,
-                        simulators,
-                        policies,
-                        nest=nest,
+                if stage == "flist":
+                    for target in build_targets:
+                        result = run_stage(
+                            flow,
+                            root,
+                            target_cfgs[target],
+                            catalog,
+                            stage,
+                            None,
+                            args,
+                            tool,
+                            run_dir,
+                            simulators,
+                            policies,
+                            nest=nest,
+                        )
+                        results.append(result)
+                        if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                            break
+                else:
+                    run_builds(
+                        stage, [target for target in build_targets if target not in blocked_targets]
                     )
-                    results.append(result)
-                    if result.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
-                        break
-                if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}:
+                # A failed scheduler build blocks its target's leaves in the sim stage instead
+                # of ending the run here, so the record accounts for every planned leaf.
+                if aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"} and (
+                    stage == "flist" or not getattr(args, "_scheduler_builds", False)
+                ):
                     break
             elif stage in {"sim", "regress", "formal"}:
                 leaves = leaf_plans_by_stage.get(stage_index, [])
@@ -3918,37 +4213,21 @@ def run_flow(
                         for target in build_targets
                         if needs_parallel_cocotb_prebuild(stage, target)
                     ]
+                    prebuild_stage = (
+                        "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
+                    )
                     for target in missing_prebuilds:
-                        prebuild_stage = (
-                            "hdl_compile" if "hdl_compile" in flow_stages(flow) else "elaborate"
-                        )
                         console.event(
                             "scheduler",
                             f"pre-building cocotb model for target `{target}` before parallel sim",
                         )
-                        prebuild = run_stage(
-                            flow,
-                            root,
-                            target_cfgs[target],
-                            catalog,
-                            prebuild_stage,
-                            None,
-                            args,
-                            tool,
-                            run_dir,
-                            simulators,
-                            policies,
-                            nest=nest,
-                        )
-                        results.append(prebuild)
-                        if prebuild.status != "PASS":
-                            break
-                    if missing_prebuilds and aggregate_status(results) in {
-                        "FAIL",
-                        "ERROR",
-                        "TIMEOUT",
-                        "UNKNOWN",
-                    }:
+                    if missing_prebuilds:
+                        run_builds(prebuild_stage, missing_prebuilds)
+                    if (
+                        missing_prebuilds
+                        and aggregate_status(results) in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"}
+                        and not getattr(args, "_scheduler_builds", False)
+                    ):
                         break
                 if scheduler:
                     console.regression_start(
@@ -4119,8 +4398,7 @@ def run_flow(
                 "recorded_at": datetime.now(UTC).isoformat(),
             }
             exit_code = exit_code_for_status("ERROR")
-        interruption["signals"] = [signal.Signals(num).name for num in interruption_signal]
-        if cancellation:
+        if cancellation.get("unconfirmed"):
             interruption["cancellation"] = dict(cancellation)
         progress = checkpoint_progress("interrupted")
         elapsed_sec = time.monotonic() - run_started
@@ -4201,6 +4479,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_doctor(root, args)
 
         duts, registries, formal_views = validate_all(root)
+        absent_sim = unavailable_sim_views(root, registries.site)
         simulators, executors, policies = (
             registries.simulators,
             registries.executors,
@@ -4223,9 +4502,9 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     list_flow_detail(flow, root)
             elif args.json:
-                list_flows_json(root, duts, formal_views)
+                list_flows_json(root, duts, formal_views, absent_sim, registries.site)
             else:
-                list_flows(duts, simulators, formal_views)
+                list_flows(duts, simulators, formal_views, absent_sim, root, registries.site)
             return 0
 
         if not args.dut:
@@ -4233,10 +4512,10 @@ def main(argv: list[str] | None = None) -> int:
                 "--dut is required unless --list, --validate-configs, or --doctor is used "
                 "(start with --list to see the selectable DUTs)"
             )
-        if args.dut not in duts:
+        if args.dut not in duts and args.dut not in absent_sim:
             raise ConfigError(f"unknown DUT `{args.dut}`")
         if args.waive is not None:
-            return cmd_waive(root, simulators, policies, executors, args)
+            return cmd_waive(root, simulators, policies, executors, args, site=registries.site)
         if args.cov_combine:
             return cmd_cov_combine(root, registries, args)
         flow = resolve_dut(

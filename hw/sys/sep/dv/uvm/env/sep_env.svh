@@ -51,7 +51,8 @@ class sep_env extends ocah_env;
       `uvm_fatal(get_type_name(), "sep_env_cfg `env_cfg` not found in uvm_config_db")
     if (!uvm_config_db#(virtual sep_tb_if)::get(this, "", "tb_vif", tb_vif))
       `uvm_fatal(get_type_name(), "virtual sep_tb_if `tb_vif` not found in uvm_config_db")
-    tb_vif.sys_clk_period_ns     = cfg.clk_period_ns;
+    tb_vif.sys_clk_period_ns     = cfg.sys_clk_period_ns;
+    tb_vif.ref_clk_period_ns     = cfg.ref_clk_period_ns;
     tb_vif.wdt_clk_period_ns     = cfg.wdt_clk_period_ns;
     tb_vif.entropy_clk_period_ns = cfg.entropy_clk_period_ns;
     `uvm_info(get_type_name(), {"env cfg: ", cfg.convert2string()}, UVM_MEDIUM)

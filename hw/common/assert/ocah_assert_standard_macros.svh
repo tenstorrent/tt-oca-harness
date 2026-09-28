@@ -30,8 +30,11 @@
 `ifdef OCAH_INC_ASSERT                            \
   initial begin                              \
     // Nets are assigned after the initial block in some simulators; delay 1ps  \
-    // so the value is checked after the assignment completes.                   \
+    // so the value is checked after the assignment completes. The emulation     \
+    // view has no procedural delays.                                            \
+`ifndef EMULATION                            \
     #1ps;                                    \
+`endif                                       \
     __name: assert (__prop)                  \
       else begin                             \
         `OCAH_ASSERT_ERROR(__name)           \

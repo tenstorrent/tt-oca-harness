@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Key Manager component documentation
+= Key Manager (KM)
+:description: Key Manager hardware architecture and firmware reference.
+
+[[key-manager-km-key-manager-km]]
+
+The Key Manager provides isolated key storage, random key generation, explicit
+revocation, and delivery to the cryptographic accelerators. UID-derived key
+hierarchies and automatic configuration-bound revocation are design targets,
+not implemented firmware services. The following sections
+describe its hardware architecture and firmware interface.
+
 ifdef::backend-html5[]
-include::partial$key_manager/doc/architecture.adoc[]
+include::partial$key_manager/doc/architecture.adoc[leveloffset=+1]
+include::partial$key_manager/doc/firmware.adoc[leveloffset=+1]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::architecture.adoc[]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::partial$key_manager/doc/firmware.adoc[]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-include::firmware.adoc[]
+include::architecture.adoc[leveloffset=+1]
+include::firmware.adoc[leveloffset=+1]
 endif::backend-pdf[]

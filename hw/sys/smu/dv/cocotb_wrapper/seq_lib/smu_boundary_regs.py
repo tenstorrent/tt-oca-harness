@@ -221,7 +221,6 @@ def smc_indexed2_addr(symbol: str, outer: int = 0, inner: int = 0) -> int:
 # Integrator Guide smu.adoc "STAP Scan Chain Topology"). The SMU parameter
 # table there sets JTAG_STAP_IO_ENABLE=1, JTAG_SMC_DBG_ENABLE=1 and
 # JTAG_NUM_EXTRA_STAPS=1, and SEP=1 enables the SEP debug STAP.
-# smu_jtag_helpers.SMU_STAP_ORDER is the SEP=0 chain; this is the SEP=1 one.
 SMU_SEP_STAP_ORDER = ("io", "smc", "sep", "extra0")
 
 
@@ -237,15 +236,30 @@ def stap_3dcr_scan_word(
     config_hold: int,
     stap_sel: int,
     tms_hold: int,
-    close_sib: int = 0,
+    sib_en: int = 0,
     order: tuple[str, ...] = (),
 ) -> tuple[int, int]:
-    """SIB bits then the 3-bit STAP 3DCR, for the given chain order."""
+    """The STAP chain segment of a TAP_3DCR scan while only ``name``'s SIB is open.
+
+    The chain carries one SIB flop per STAP in chain order, TDI-nearest first,
+    and an open SIB splices its STAP's 3-bit 3DCR (tms_hold, stap_sel,
+    config_hold) TDI-side of that SIB (IEEE 1838 serial configuration; the DTP
+    scan reference model's ``chain_layout``). ``sib_en`` is the value the
+    target SIB latches at Update-DR: 0 closes it again.
+    """
     chain = order or SMU_SEP_STAP_ORDER
     payload = stap_3dcr_payload(config_hold=config_hold, stap_sel=stap_sel, tms_hold=tms_hold)
-    value = (close_sib & 0x1) << (len(chain) - 1 - chain.index(name))
-    value |= payload << len(chain)
-    return value, len(chain) + STAP_3DCR_WIDTH
+    value = 0
+    width = 0
+    for stap in chain:
+        if stap == name:
+            value = (value << STAP_3DCR_WIDTH) | payload
+            width += STAP_3DCR_WIDTH
+            value = (value << 1) | (sib_en & 0x1)
+        else:
+            value <<= 1
+        width += 1
+    return value, width
 
 
 def ptap_prefixed(

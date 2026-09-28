@@ -6,7 +6,7 @@
 // the telemetry and SEP-watchdog domains running apart from them.
 //
 // The block clocks arrive as the hierarchical clock mirrors tb_wrapper_top
-// exposes (obs_*_clk_o), so this module lives in the wrapper bench only.
+// exposes (obs_*_clk_o).
 //
 // A clock is measured by counting its rising edges and reading the counters
 // half a clk_smu period later, on the falling edge of clk_smu. A block on
@@ -109,12 +109,24 @@ module smu_clk_fcov #(
 `ifndef VERILATOR
   // ------------------------------------------------------------------
   // Commercial-simulator covergroup: the per-window edge count of the
-  // telemetry domain against the primary one.
+  // telemetry domain against the primary one, as a relation. The bench keeps
+  // the telemetry period unequal to the primary one so the two domains stay
+  // distinguishable at the boundary, and the SEP watchdog clock runs an order
+  // of magnitude slower, so `slower` and `faster` are the cells the bench
+  // walks; `same_rate` and `stopped` name the relations it does not.
   // ------------------------------------------------------------------
   covergroup cg_tel_rate with function sample (logic [15:0] tel);
     option.per_instance = 1;
+    // An equal-rate clock counts WindowEdges or WindowEdges + 1 edges in the
+    // window depending on phase, so same_rate is not a stable bin; the bench
+    // never gates the telemetry clock.
     cp_tel: coverpoint tel {
-      bins stopped = {16'd0}; bins same_rate = {WindowEdges}; bins other = default;
+      bins stopped = {16'd0};
+      bins slower = {[16'd1 : WindowEdges - 16'd1]};
+      bins same_rate = {WindowEdges};
+      bins faster = {[WindowEdges + 16'd1 : 16'hFFFF]};
+      ignore_bins never_gated = {16'd0};
+      ignore_bins phase_dependent = {WindowEdges};
     }
   endgroup
 
@@ -129,7 +141,7 @@ module smu_clk_fcov #(
   // The SEP and crossbar blocks sharing the primary domain, and the
   // SEP watchdog domain running while SEP is out of reset. Only
   // elaborated with SEP present: both blocks and the watchdog clock come
-  // out of smu.sv's gen_sep branch, and every bench ties their clock and
+  // out of smu.sv's gen_sep branch, and the bench ties their clock and
   // reset mirrors off without it.
   // ------------------------------------------------------------------
   if (SepPresent) begin : g_sep
@@ -180,8 +192,15 @@ module smu_clk_fcov #(
     // count against the primary domain.
     covergroup cg_wdt_rate with function sample (logic [15:0] wdt);
       option.per_instance = 1;
+      // The SEP watchdog clock is an order of magnitude slower than the SMU
+      // clock (80/100/120 ns against 8/10/12 ns) and the bench never gates it.
       cp_wdt: coverpoint wdt {
-        bins stopped = {16'd0}; bins same_rate = {WindowEdges}; bins other = default;
+        bins stopped = {16'd0};
+        bins slower = {[16'd1 : WindowEdges - 16'd1]};
+        bins same_rate = {WindowEdges};
+        bins faster = {[WindowEdges + 16'd1 : 16'hFFFF]};
+        ignore_bins never_gated = {16'd0};
+        ignore_bins not_reached = {[WindowEdges : 16'hFFFF]};
       }
     endgroup
 

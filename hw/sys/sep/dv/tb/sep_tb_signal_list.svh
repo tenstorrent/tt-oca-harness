@@ -276,6 +276,11 @@
 // pattern as every other observable above. Default backdoor data-compare
 // path; one eFuse test uses the AXI front door instead.
 `SEP_TB_OUT(logic [sep_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
+// The three public-ID fields of the Key Manager's OTP input, taken at the KM
+// instance's otp_data_i port. Each is the 512-bit dual-rail word {~id, id}.
+`SEP_TB_OUT(logic [511:0], km_otp_sep_chiplet_id_o)
+`SEP_TB_OUT(logic [511:0], km_otp_sep_sip_id_o)
+`SEP_TB_OUT(logic [511:0], km_otp_sep_sys_id_o)
 // SEP scratch-cold CSR array (8 words x 32b), surfaced as a top-level probe so
 // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
 // summary (host loop count + KM-contention error counters) with no AXI master
@@ -300,6 +305,9 @@
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
+// KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
+// for km_rom_otp_id.S, which writes its results to those words.
+`SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
@@ -411,6 +419,7 @@
 // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
 // completion bits, used to prove reset cannot precede the slowest drain.
 `SEP_TB_OUT(logic, trng_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, trng_reset_active_probe_o)
 `SEP_TB_OUT(logic [2:0], trng_axi_isolated_probe_o)
 // Same observation for the HMAC accelerator domain. An accelerator reset
 // depends on BOTH its host path and its Key Manager path, so both isolate
@@ -432,6 +441,9 @@
 // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
 // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
+// Saturating count of cycles where CPU-LSU and DMA simultaneously present an
+// SRAM request on the same local-crossbar address channel.
+`SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)

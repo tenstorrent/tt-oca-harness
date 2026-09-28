@@ -1,0 +1,83 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut axi_lite_to_ahb`, registered in
+# hw/common/dv/configs/duts.toml because hw/common/axi is outside the
+# hw/ip/<name>/dv directory convention.
+# IP-level cocotb bench for the AXI4-Lite to AHB-Lite converter. tb/tb_top.sv
+# elaborates the converter three times (the SEP Adams Bridge parameter set, and
+# 32-bit and 64-bit sets that admit sub-word writes) with every AXI4-Lite and
+# AHB-Lite signal on a pin; cocotb drives the AXI side with cocotbext-axi and
+# answers the AHB side with the slave model in cocotb/models.
+name = "axi_lite_to_ahb"
+profile = "native"
+default_framework = "cocotb"
+description = "AXI4-Lite to AHB-Lite converter IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/common/axi/dv/build"]
+
+[build]
+top_module = "axi_lite_to_ahb_tb_top"
+top_file = "hw/common/axi/dv/tb/tb_top.sv"
+filelist = "hw/common/axi/dv/build/axi_lite_to_ahb_dut_compile.f"
+bender_filelist = "hw/common/axi/dv/build/axi_lite_to_ahb_bender.f"
+work_dir = "hw/common/axi/dv/build"
+# The RTL closure is axi_lite_to_ahb.sv alone. The pulp axi dependency supplies
+# axi_pkg and the axi/typedef.svh include the tb_top struct types come from, and
+# the opentitan dependency the prim_assert.sv include path; both are exported
+# for every target, so no dependency target is named here.
+bender_targets = ["axi_lite_to_ahb"]
+
+[coverage.verilator]
+# Line and SVA cover-property coverage; toggle and expression coverage, both
+# part of the simulator-default `--coverage`, stay off. Toggle is off as in the
+# SEP, SMU and DTP configs. With expression coverage Verilator 5.050 stops on an
+# internal error (V3Localize) at the converter's `disable iff` assertions.
+build_args = ["--coverage-line", "--coverage-user"]
+
+[frameworks.cocotb]
+python_root = "hw/common/axi/dv/cocotb"
+test_dir = "hw/common/axi/dv/cocotb/tests"
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Converter word write/readback on both AHB data lanes"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Converter strobe, wait-state, error, backpressure, arbitration, and reset scenarios"
+timeout_sec = 900
+args = []
+
+[run_modes.stress]
+description = "Converter random traffic against a reference-memory scoreboard"
+timeout_sec = 1800
+args = []
+
+[targets.default]
+description = "AXI4-Lite to AHB-Lite converter IP-level cocotb target"
+build_dir = "hw/common/axi/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+# prim_assert.sv defines OCAH_OT_INC_ASSERT for every tool except Verilator and
+# synthesis, so the converter's SVA compile to nothing here unless it is
+# defined on the command line; --assert then evaluates them, and a failed rule
+# prints %Error and fails the leaf.
+flags = [
+  "-Wno-TIMESCALEMOD",
+  "+define+VERILATOR",
+  "+define+OCAH_OT_INC_ASSERT",
+  "--assert",
+]

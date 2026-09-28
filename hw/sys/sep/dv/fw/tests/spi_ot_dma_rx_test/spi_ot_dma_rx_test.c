@@ -10,8 +10,10 @@
 //
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
-// This whole datapath is internal to bare `sep`
-// (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
+// This whole datapath is internal to bare `sep`; hw/sys/sep/doc/spi.adoc names
+// the SPI host DMA trigger (`lsio_trigger_o`). Handshake index 0 is the
+// stimulus: on any other index the DMA gets no trigger, never reaches DONE, and
+// the test fails.
 // Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
 // Beyond the reference suite: the reference test only checks "DMA done + no SPI error"
@@ -37,7 +39,7 @@
 #define DMA_CHUNK 16u   // RX_WM(4 words) * 4B: drain to below WM
 #define RX_WATERMARK 4u // RX FIFO words that assert lsio_trigger
 #define DST_STAGING_OFF 0x6000u
-#define DST_ADDR ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + DST_STAGING_OFF)
+#define DST_ADDR ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR + DST_STAGING_OFF)
 #define RX_PATTERN 0xA5u        // BFM-preloaded flash byte (see test .py)
 #define EXPECT_WORD 0xA5A5A5A5u // 4 x RX_PATTERN, packing-agnostic
 #define FILL_WORD 0xDEADBEEFu   // pre-DMA SRAM marker
@@ -52,7 +54,7 @@ int main(void) {
     int errors = 0;
 
     /* Staging offset must stay inside the generated SEP SRAM aperture. */
-    if (DST_STAGING_OFF + RX_SIZE > (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE) {
+    if (DST_STAGING_OFF + RX_SIZE > (uint32_t)SEP_TOP_SEP_SRAM_SIZE) {
         sep_mbx_puts("FAIL: DST staging offset outside SEP SRAM\n");
         return 1;
     }
@@ -64,15 +66,14 @@ int main(void) {
     // --- OpenTitan SPI host init ---------------------------------------------
     // RX watermark = 4 words (asserts lsio_trigger), TX watermark = 0, enable the
     // controller + output.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
            (RX_WATERMARK << SPI_CONTROLLER__CONTROL__RX_WATERMARK_bp) |
                SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm | SPI_CONTROLLER__CONTROL__SPIEN_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
     sep_mbx_puts("STEP SPI host configured: RX watermark, clock divider, enable\n");
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR,
-           SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, SPI_CONTROLLER__EVENT_ENABLE__RXWM_bm);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
            0xFFFFFFFFu); // clear any sticky error
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host not ready\n");
@@ -89,27 +90,27 @@ int main(void) {
     // Hardware handshake from the SPI lsio_trigger (bit 0). lsio_trigger is
     // FIFO-level based, so no interrupt-source clear is needed (the CTN clear bus
     // is tied off in bare sep and would hang).
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, SECURE_DMA__RANGE_VALID__RANGE_VALID_bm);
     sep_mbx_puts("STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake\n");
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
-               OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DST_ADDR);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
+               SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DST_ADDR);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
                SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset,
                                  SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset));
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
+    sep_dma_wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
                SECURE_DMA__SRC_CONFIG__WRAP_bm); // fixed RXDATA register
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
                SECURE_DMA__DST_CONFIG__INCREMENT_bm); // walk through SRAM
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, RX_SIZE);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+    sep_dma_wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, RX_SIZE);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
                SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
                    SECURE_DMA__CONTROL__HARDWARE_HANDSHAKE_ENABLE_bm | SEP_DMA_OPCODE_COPY);
 
@@ -117,16 +118,16 @@ int main(void) {
     // TX segment: opcode 0x03 + 24-bit address 0 (4 bytes, LSB-first in TXDATA),
     // CS held asserted (CSAAT). RX segment: clock in RX_SIZE bytes, release CS.
     // The flash BFM streams its preloaded 0xA5 bytes back on MISO.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
            SPI_READ_OPCODE); // 0x03, then addr bytes 0,0,0
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            (SPI_CMD_DIR_TX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
                SPI_CONTROLLER__COMMAND__CSAAT_bm | ((4u - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     if (spi_wait_ready(SPI_POLL_TIMEOUT) != 0) {
         sep_mbx_puts("FAIL: SPI host stuck after command phase\n");
         errors++;
     }
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            (SPI_CMD_DIR_RX << SPI_CONTROLLER__COMMAND__DIRECTION_bp) |
                ((RX_SIZE - 1u) << SPI_CONTROLLER__COMMAND__LEN_bp));
     sep_mbx_puts("STEP flash READ issued: opcode 0x03 + 24-bit address\n");
@@ -135,7 +136,7 @@ int main(void) {
     uint32_t status_before_clear = 0;
     int timeout = DMA_POLL_TIMEOUT;
     while (timeout-- > 0) {
-        status_before_clear = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        status_before_clear = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (status_before_clear & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) {
             break;
         }
@@ -148,7 +149,7 @@ int main(void) {
         sep_mbx_puts("FAIL: DMA reported error\n");
         errors++;
     }
-    if (sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR) != 0) {
+    if (sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR) != 0) {
         sep_mbx_puts("FAIL: DMA error code set\n");
         errors++;
     }
@@ -156,9 +157,9 @@ int main(void) {
     // --- RW1C status-clear proof ---------------------------------------------
     // Prove the full status-clear contract, not just that DONE was observed:
     // write 1 to the asserted RW1C status bits and confirm they read back 0.
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RW1C_MASK);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RW1C_MASK);
     __asm__ volatile("fence" ::: "memory");
-    uint32_t status_after_clear = sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+    uint32_t status_after_clear = sep_dma_rd(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
     sep_mbx_puts("STEP DMA polled to completion; status write-one-to-clear applied\n");
     if (status_after_clear & DMA_STATUS_RW1C_MASK) {
         sep_mbx_puts("FAIL: DMA STATUS RW1C bits did not clear\n");
@@ -171,7 +172,7 @@ int main(void) {
         sep_mbx_puts("FAIL: SPI host stuck active\n");
         errors++;
     }
-    uint32_t spi_err_status = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    uint32_t spi_err_status = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (spi_err_status != 0) {
         sep_mbx_puts("FAIL: SPI error status set\n");
         errors++;
@@ -182,7 +183,7 @@ int main(void) {
     sep_mbx_puts("CHK-NOERR: dma_status=");
     sep_mbx_puthex(status_after_clear);
     sep_mbx_puts(" dma_err_code=");
-    sep_mbx_puthex(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+    sep_mbx_puthex(sep_dma_rd(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
     sep_mbx_puts(" spi_idle=");
     sep_mbx_putc(spi_idle ? '1' : '0');
     sep_mbx_puts(" spi_err_status=");
@@ -216,8 +217,8 @@ int main(void) {
     }
 
     // --- Cleanup -------------------------------------------------------------
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x0);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x0);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0);
 
     if (errors == 0) {
         sep_mbx_puts("PASS: SPI RX FIFO -> DMA -> SRAM (0xA5) + RW1C verified\n");

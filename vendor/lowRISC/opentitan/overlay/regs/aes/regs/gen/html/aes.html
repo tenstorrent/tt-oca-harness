@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: aes</h2>
+<h2 id="regmap-aes">AES Accelerator</h2>
+<p>AES encryption and decryption engine with SCA and FI countermeasures</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x4, stride 0x4</li>
@@ -15,7 +16,7 @@
 <li><strong>DATA_IN[4]</strong>: 4 registers, base 0x54, stride 0x4</li>
 <li><strong>DATA_OUT[4]</strong>: 4 registers, base 0x64, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
@@ -31,7 +32,7 @@
 <tr><td>0x84</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x88</td><td><a href="#CTRL_GCM_SHADOWED">CTRL_GCM_SHADOWED</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="ALERT_TEST">ALERT_TEST</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

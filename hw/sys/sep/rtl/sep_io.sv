@@ -1,28 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP System IO
+// Demux SEP IO register AXI onto SPI and an error slave.
+//
+// The 64-bit AXI4 slave is downsized to 32 bits and converted to AXI-Lite. Addresses inside
+// the SPI controller window go to a single-chip-select sep_ot_spi_wrap; all others receive
+// DECERR with read data 0xBADCAB1E.
+// NUM_COMPONENTS sizes the IO fabric. NUM_SLAVES is NUM_COMPONENTS + 1 for the error
+// slave.
+// sep_io_spi_req_o / sep_io_spi_rsp_i carry the SPI pad request/response struct, which also
+// holds the SPI interrupt and DMA trigger.
 
 `include "axi/assign.svh"
 
 module sep_io #(
-  parameter  int unsigned NUM_COMPONENTS = 1,
-  localparam int unsigned NUM_SLAVES     = NUM_COMPONENTS + 1 // +1 for error slave
+  parameter  int unsigned NUM_COMPONENTS = 1,  // Number of IO fabric components; the decode serves
+                                               // only the SPI controller, so only 1 is supported.
+  localparam int unsigned NUM_SLAVES     = NUM_COMPONENTS + 1  // IO fabric slaves including the
+                                                               // error slave.
 ) (
-  // Global Interface
-  input  logic                      clk_i,
-  input  logic                      rst_ni,
+  input  logic                      clk_i,    // System clock.
+  input  logic                      rst_ni,   // Active-low reset.
 
-  // Test/Scan Interface
-  input  logic                      test_en_i,
+  input  logic                      test_en_i,  // DFT test-enable (scan-enable).
 
-  // Full AXI4 slave from local crossbar (register access)
-  input  sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req_i,
-  output sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp_o,
+  input  sep_pkg::sep_32_64_6_12_axi_req_t  sep_io_axi_req_i,  // Full AXI4 slave from local
+                                                               // crossbar (register access).
+  output sep_pkg::sep_32_64_6_12_axi_resp_t sep_io_axi_resp_o,  // Response to the local crossbar.
 
-  // SPI
-  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
-  input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i
+  output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,  // SPI pad outputs (clock, chip select, 4
+                                                          // data lanes and their output enables),
+                                                          // plus the SPI interrupt and DMA trigger.
+  input  sep_io_pkg::sep_io_spi_rsp_t  sep_io_spi_rsp_i  // SPI data-lane inputs from the pads.
 );
 
   /////////////////////////
@@ -60,7 +69,7 @@ module sep_io #(
     .axi_mst_resp_t      (sep_pkg::sep_32_32_6_12_axi_resp_t),          // 32-bit master (input)
     .axi_slv_req_t       (sep_pkg::sep_32_64_6_12_axi_req_t),           // 64-bit slave (input)
     .axi_slv_resp_t      (sep_pkg::sep_32_64_6_12_axi_resp_t)           // 64-bit slave (output)
-  ) axi_dw_converter (
+  ) u_axi_dw_converter (
     .clk_i,
     .rst_ni,
     .slv_req_i           (sep_io_axi_req_i),
@@ -87,7 +96,7 @@ module sep_io #(
     .full_resp_t     (sep_pkg::sep_32_32_6_12_axi_resp_t),
     .lite_req_t      (sep_io_pkg::axil_req_t),
     .lite_resp_t     (sep_io_pkg::axil_resp_t)
-  ) axi_to_axi_lite (
+  ) u_axi_to_axi_lite (
     .clk_i,
     .rst_ni,
     .test_i          (test_en_i),
@@ -101,8 +110,8 @@ module sep_io #(
 
   // Address decode: SPI or error slave
   always_comb begin
-    if (axil_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR &&
-            axil_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_SIZE) begin
+    if (axil_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR &&
+            axil_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE) begin
       axil_aw_select = 1'b0;  // SPI
     end else begin
       axil_aw_select = 1'b1;  // Error slave
@@ -110,8 +119,8 @@ module sep_io #(
   end
 
   always_comb begin
-    if (axil_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR &&
-            axil_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_SIZE) begin
+    if (axil_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR &&
+            axil_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_SIZE) begin
       axil_ar_select = 1'b0;  // SPI
     end else begin
       axil_ar_select = 1'b1;  // Error slave
@@ -134,7 +143,7 @@ module sep_io #(
     .SpillB          (1'b0),
     .SpillAr         (1'b1), // Pipeline AR to ease timing and area
     .SpillR          (1'b0)
-  ) axi_lite_demux (
+  ) u_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (test_en_i),
@@ -176,12 +185,16 @@ module sep_io #(
     .lsio_trigger_o (sep_io_spi_req_o.lsio_trigger)
   );
 
-  prim_axil_err_slv #(
-    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
+  prim_axi_lite_err_slv #(
     .AXI_ADDR_WIDTH (sep_io_pkg::ADDR_WIDTH),
+    .AXI_DATA_WIDTH (sep_io_pkg::DATA_WIDTH),
     .axil_req_t     (sep_io_pkg::axil_req_t),
-    .axil_resp_t    (sep_io_pkg::axil_resp_t)
-  ) axil_err_slv (
+    .axil_resp_t    (sep_io_pkg::axil_resp_t),
+    .RESP           (axi_pkg::RESP_DECERR),
+    .RESP_WIDTH     (sep_io_pkg::DATA_WIDTH),
+    .RESP_DATA      (32'hBADCAB1E),
+    .MAX_TRANS      (1)
+  ) u_axil_err_slv (
     .clk_i,
     .rst_ni,
     .axil_req_i  (axil_reqs [NUM_SLAVES-1]),

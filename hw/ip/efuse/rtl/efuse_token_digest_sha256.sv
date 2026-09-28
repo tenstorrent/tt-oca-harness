@@ -1,39 +1,36 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// SHA-256 Token Hash (OpenTitan prim_sha2 feeder)
+// Hash a fixed 256-bit token through OpenTitan prim_sha2_32 into a sticky digest.
 //
-// Description:
-// Generic single-block SHA-256 helper for hashing a fixed 256-bit token.
-// Wraps the OpenTitan `prim_sha2_32` engine (SHA-256 only, MultimodeEn = 0)
-// and provides a small feeder FSM that drives the streaming FIFO interface:
-//   1. pulse `hash_start_i` (the real "go")
-//   2. stream the eight 32-bit token words through the FIFO handshake,
-//      most-significant word first (token_i[7] -> message schedule w[0])
-//   3. assert `hash_process_i` to mark the message complete
-//   4. wait for `hash_done_o`
-// The 256-bit message always fits in a single 512-bit block.
-//
-// The produced digest is the standard SHA-256 of the token byte stream (no
-// endianness swap), with H0 placed in the most-significant bits of digest_o.
-//-----------------------------------------------------------------------------
+// Feeder FSM pulses hash_start, streams eight 32-bit words MSW-first (token_i[7] →
+// message schedule w[0]), asserts hash_process, and waits for hash_done.
+// The 256-bit message always fits in one 512-bit block; MultimodeEn is 0 (SHA-256 only).
+// Digest is standard SHA-256 of the token byte stream with no endianness swap; H0 sits in
+// the MSBs of the sticky digest.
+// test_en_i freezes the retained digest for DFT; digest_vld_sticky_o marks validity.
 
 `include "prim_assert.sv"
 
 module efuse_token_digest_sha256
   import prim_sha2_pkg::*;
 (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                    // System clock.
+  input logic rst_ni,                   // Active-low asynchronous reset of the feeder and the SHA
+                                        // engine; the digest and valid latches are not reset.
 
-  input logic test_en_i,  // DFT test-enable: freeze the retained digest
+  input logic test_en_i,                // DFT test-enable: freeze the retained digest.
 
-  input logic             start_i,  // start a hash of token_i
-  input logic [7:0][31:0] token_i,  // 256-bit token, MSW = token_i[7]
+  input logic             start_i,      // Starts a hash of token_i when the feeder and engine are
+                                        // idle; while high it also clears digest_vld_sticky_o.
+  input logic [7:0][31:0] token_i,      // 256-bit token, MSW = token_i[7].
 
-  output logic         digest_vld_sticky_o,  // sticky valid when digest_o is valid
-  output logic [255:0] sha_digest_sticky_o
+  output logic         digest_vld_sticky_o,  // High when the retained digest is valid; cleared by
+                                             // start_i, set one cycle after the engine finishes,
+                                             // and held in a latch across reset.
+  output logic [255:0] sha_digest_sticky_o  // SHA-256 digest of the last hashed token, H0 in the
+                                            // MSBs; held in a latch across reset and frozen while
+                                            // test_en_i is high.
 );
 
   typedef enum logic [2:0] {

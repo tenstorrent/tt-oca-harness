@@ -1,0 +1,50 @@
+' SPDX-License-Identifier: CC-BY-4.0
+' SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+@startuml SEP_KM_Key_Load_Transfer
+skinparam shadowing false
+skinparam backgroundColor #FFFFFF
+skinparam sequenceMessageAlign center
+skinparam participant {
+  BackgroundColor #D5E8D4
+  BorderColor #82B366
+}
+skinparam sequenceGroupBorderColor #666666
+skinparam sequenceGroupBackgroundColor #EEEEEE
+
+participant "SEP\nhost firmware" as SEP
+participant "SEP <-> KM\nmailbox" as MBX
+participant "KM\nfirmware" as KM
+participant "Key & Policy\nVault (KPV)" as KPV
+participant "Crypto engine\nsideload key registers\n(HMAC / KMAC / AES /\nOTBN / ABR)" as ENG
+
+group Key load — CMD_KEY_LOAD (0x26)
+  SEP -> MBX : push framed command message\n(header, KEY_SIZE, DEST_VALID,\nKEY_DATA[0..KEY_SIZE], PAYLOAD_CRC32)
+  MBX -> KM : message-available IRQ
+  KM -> MBX : pop command message
+  KM -> KM : validate header CRC, CMD_SEQ_NUM,\ncommand ID, PAYLOAD_LEN, payload CRC
+  KM -> KM : validate KEY_SIZE / DEST_VALID,\ncheck KPV free slots and free handle
+  KM -> KPV : shred chosen slots, write KEY_DATA,\nwrite-lock slots
+  KM -> KM : compute key CRC-32C; record handle,\nDEST_VALID and CRC in key registry
+  KM -> MBX : push RESP_CMD success\n(KEY_HANDLE, REQ_SIZE, DEST_VALID)
+  MBX -> SEP : response IRQ
+  SEP -> MBX : pop response, save KEY_HANDLE
+end
+
+group Key transfer — CMD_KEY_TRANSFER (0x24)
+  SEP -> MBX : push framed command message\n(KEY_HANDLE, DEST_ENGINE)
+  MBX -> KM : message-available IRQ
+  KM -> MBX : pop command message
+  KM -> KM : validate message framing;\ncheck DEST_ENGINE against key's\nDEST_VALID policy (any disallowed\nengine fails the whole request)
+  KM -> KPV : read key words for KEY_HANDLE
+  KM -> ENG : write key words into each requested\nengine's sideload key registers\n(external AXI4-Lite master ports)
+  KM -> MBX : push RESP_CMD success\n(KEY_HANDLE, completed DEST_ENGINE)
+  MBX -> SEP : response IRQ
+  SEP -> MBX : pop response
+end
+
+group Crypto operation (outside KM)
+  SEP -> ENG : configure engine and start operation\nusing the sideloaded key
+  ENG -> SEP : operation-complete IRQ
+end
+@enduml

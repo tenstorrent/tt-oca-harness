@@ -6,12 +6,13 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: telemetry_receiver</h2>
+<h2 id="regmap-telemetry_receiver">Telemetry Receiver Address Map</h2>
+<p>Configuration, status, and data-buffer registers for a single telemetry receiver channel.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>TELEMETRY_COUNTER[32]</strong>: 32 registers, base 0x80, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Control Register</td></tr>
@@ -23,7 +24,7 @@
 <tr><td>0x18</td><td><a href="#TELEMETRY_COUNTER_VLDS">TELEMETRY_COUNTER_VLDS</a></td><td>R</td><td>Telemetry Counter Valid Bits Register</td></tr>
 <tr><td>0x80 - 0xFC</td><td><a href="#TELEMETRY_COUNTER_32_">TELEMETRY_COUNTER[32]</a></td><td>R</td><td>Telemetry Counter Register</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="CTRL">CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -32,7 +33,7 @@
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` flushes the Telemetry Receiver Buffer and<br>all other storage elements in the Telemetry Receiver.</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUFFER_POP</td><td>W</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>

@@ -17,7 +17,8 @@ multi-bit W1S program persistence across a resense.
 from __future__ import annotations
 
 import pyuvm
-from env.sep_efuse_image import SepEfuseImage
+from env.sep_efuse_feat_ctrl import feat_ctrl_nonvacuous_fixed
+from env.sep_efuse_image import WORD_BITS, SepEfuseImage
 from env.sep_lcc_golden import feat_ctrl_expected
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
@@ -29,11 +30,13 @@ from seq_lib.sep_lcc_inbound_filter_gating_seq import SepLccFeatCtrlCheckSeq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# CHIPLET_UID is a benign, shadow-visible data field (8 words = 256 bits) pinned to
-# zero in the initial image, so every burn target is a known 0->1 bit. Global fuse
-# bit index = word*32 + bit.
+# CHIPLET_UID is a benign, shadow-visible data field pinned to zero in the initial
+# image, so every burn target is a known 0->1 bit. Its word offset and width come
+# from the generated map. Global fuse bit index = word*32 + bit.
+_UID_FIELD = SepEfuseImage.field("CHIPLET_UID")
 _UID_WORD0 = sym("SEP_EFUSE_MAP_CHIPLET_UID_REG_OFFSET") // 4
-_UID_NBITS = 8 * 32  # 256 bits across the 8 CHIPLET_UID words
+assert _UID_FIELD.word == _UID_WORD0, "CHIPLET_UID offset disagrees with the generated map"
+_UID_NBITS = _UID_FIELD.n_words * WORD_BITS
 _NUM_BURN = 10
 
 
@@ -46,7 +49,14 @@ class sep_efuse_image_test(sep_base_test):
         # reproduces this exact image for the model's t=0 load; see
         # cocotb/dv_sim_prestage.py). write_efuse_image records it as the golden for
         # the base post-sense backdoor compare.
-        img = self.select_efuse_image(fixed={"CHIPLET_UID": 0})
+        # CHIPLET_UID is pinned because the test programs one of its bits after
+        # the first sense. The disable vectors stay random: the helper returns
+        # them untouched unless the draw would make post-sense FEAT_CTRL zero,
+        # which would make the fail-closed contrast below vacuous.
+        # MIRROR: dv_sim_prestage.py EFUSE_IMAGE_REGISTRY["sep_efuse_image_test"].
+        img = self.select_efuse_image(
+            fixed=feat_ctrl_nonvacuous_fixed(self.random_seed(), base={"CHIPLET_UID": 0})
+        )
         self.write_efuse_image(img)
         await self.release_no_cpu_reset()
         await self.check_pre_sense_fail_closed()
@@ -60,7 +70,13 @@ class sep_efuse_image_test(sep_base_test):
             "the fail-closed contrast would be vacuous"
         )
         opened_seq = SepLccFeatCtrlCheckSeq(opened)
+        mark = self.sb_mark()
         await self.start_seq(opened_seq)
+        self.assert_sb_judged(mark, "CHK-PRE-SENSE-OPEN")
+        assert opened_seq.feat_ctrl == opened, (
+            f"CHK-PRE-SENSE-OPEN FAIL: FEAT_CTRL=0x{opened_seq.feat_ctrl:016x} after "
+            f"sense-done, expected 0x{opened:016x}"
+        )
         self.logger.info(
             "CHK-PRE-SENSE-OPEN PASS: FEAT_CTRL=0x%016x after sense-done (guard opened)",
             opened_seq.feat_ctrl,
@@ -105,8 +121,9 @@ class sep_efuse_image_test(sep_base_test):
         # bit in the same word. Program two bits in one UID word in sequence and confirm
         # a direct OTP read shows BOTH set -- catches a bank that overwrites (=) instead
         # of OR (|=), which would clear the first bit when the second is programmed.
-        nc_word = _UID_WORD0 + 7  # last CHIPLET_UID word (offsets 224..255)
-        nc_a, nc_b = 224, 225  # bits 0 and 1 of that word
+        nc_word = _UID_WORD0 + _UID_FIELD.n_words - 1  # last CHIPLET_UID word
+        nc_a = (_UID_FIELD.n_words - 1) * WORD_BITS  # bit 0 of that word
+        nc_b = nc_a + 1  # bit 1 of that word
         for off in (nc_a, nc_b):
             await self.start_seq(sep_efuse_otp_program_seq(_UID_WORD0 * 32 + off))
             golden.words[_UID_WORD0 + off // 32] |= 1 << (off % 32)
@@ -123,7 +140,9 @@ class sep_efuse_image_test(sep_base_test):
         # expected image), resense, and verify the shadow tracks image + all bits.
         self.write_efuse_image(golden)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        mark = self.sb_mark()
         await self.start_seq(sep_efuse_shadow_check_seq(golden))
+        self.assert_sb_judged(mark, "CHK-W1S-PERSIST")
         self.logger.info(
             "CHK-W1S-PERSIST PASS: resense shadow == initial image + %d W1S bits", _NUM_BURN
         )

@@ -1,6 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for dtp_jtag_clamp_release_test."""
+"""Sequence for dtp_jtag_clamp_release_test.
+
+Like CLAMP_HOLD, CLAMP_RELEASE scans the one-bit bypass register
+(``CHK-BYPASS-DELAY``); the 2-bit register is TMP_STATUS.
+"""
 
 from __future__ import annotations
 
@@ -15,7 +19,13 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
     async def body(self) -> None:
         self.log_banner("CLAMP_RELEASE TMP persistence")
         await self.attach_family_checker(
-            {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK", "CHK-TMP-PERSIST"},
+            {
+                "CHK-TAP-RESET-TLR",
+                "CHK-IR-DECODE",
+                "CHK-BSR-LOOPBACK",
+                "CHK-BYPASS-DELAY",
+                "CHK-TMP-PERSIST",
+            },
             # TMP_STATUS reads go through driver-level TDR ops the sequence
             # cannot count, so the pin-level scan monitor stays off.
             use_monitor=False,
@@ -34,7 +44,8 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
             context="initial release",
         )
 
-        patterns = self.directed_patterns(8, rng=self.rng("clamp_release"))
+        rng = self.rng("clamp_release")
+        patterns = self.directed_patterns(8, rng=rng)
         self.log_step(2, "Loop through hold/release patterns")
         for idx, pattern in enumerate(patterns, start=1):
             self.log_iteration(idx, len(patterns), "SAMPLE_PRELOAD pattern=0x%02x", pattern)
@@ -62,8 +73,7 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
                 context="pre-release switch",
             )
 
-            await self.load_ir(DtpJtagInstr.CLAMP_RELEASE)
-            await self.expect_decoded_instruction(DtpJtagInstr.CLAMP_RELEASE)
+            await self.check_bypass_delay(DtpJtagInstr.CLAMP_RELEASE, self.random_pattern(64, rng))
             released = await self.read_tmp_status()
             decoded_released = self.log_tmp_status("After CLAMP_RELEASE", released)
             self.family_check(
@@ -85,6 +95,11 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
             0,
             context="repeated release",
         )
+
+        self.log_step(
+            4, "SAMPLE/PRELOAD after the release selects the chain and loops the pattern back"
+        )
+        await self.check_loopback_scan(DtpJtagInstr.SAMPLE_PRELOAD, patterns[-1], 8)
 
         self.log_summary("CLAMP_RELEASE TMP persistence complete", patterns=len(patterns))
         await self.finalize_family_checker()

@@ -14,9 +14,11 @@ Determined parameters:
   * AES key size : 256 bits
   * BlkLen       : 128 bits
   * SeedLen      : 384 bits
-  * CtrLen       : 32 bits; CtrLen < BlkLen so only V[31:0] increments
-                              and wraps mod 2**32
-  * Derivation function : NONE (RTL line 5; seed consumed directly)
+  * CtrLen       : 32 bits; CtrLen < BlkLen so only V[31:0] increments.
+                   No specification pins this width and the CAVP vector
+                   never wraps it, so the model raises before V[31:0] would
+                   wrap instead of choosing a wrap behaviour.
+  * Derivation function : NONE (SP 800-90A 10.2.1.3.1; seed consumed directly)
   * Block output ordering : MSB-first chain. In update(), the i-th cipher block
                             is shifted into the high end of `temp`
                             (`temp = {temp, output_block}`), so the first
@@ -25,16 +27,17 @@ Determined parameters:
                             block is emitted as one 128-bit big-endian word
                             in the order produced.
 
-RTL-specific behavior relative to a textbook SP800-90A description:
+The CAVP "use df = false" profile of SP 800-90A:
   * instantiate() does NOT apply a derivation function. The 384-bit entropy is
     XORed with the 384-bit additional_input and fed straight into
     ctr_drbg_update as the provided_data / seed_material. (CAVP "use df = false".)
   * generate() unconditionally runs the final update(additional_input) after the
     block loop, matching SP800-90A step 6. With additional_input == 0,
     update still mutates Key and V (it is NOT skipped) -- the all-zero seed is a
-    valid provided_data, exactly as the SV does it.
-  * V counter increment: only the low CtrLen (32) bits increment and wrap mod
-    2**32; the high (BlkLen-CtrLen) bits of V are preserved.
+    valid provided_data (SP 800-90A 10.2.1.5.1 step 6).
+  * V counter increment: only the low CtrLen (32) bits increment; the high
+    (BlkLen-CtrLen) bits of V are preserved. The model raises instead of
+    wrapping when V[31:0] is all-ones (see CtrLen above).
 """
 
 from __future__ import annotations
@@ -427,15 +430,19 @@ class SepCtrDrbgGolden:
         self.reseed_counter = 0
         self.instantiated = False
 
-    # -- AES-256 ECB block encrypt (SV block_encrypt, lines 53-70) -----------
+    # -- AES-256 ECB block encrypt (FIPS-197) ----------------------------------
     def _block_encrypt(self, key: int, input_block: int) -> int:
         return _aes_ecb_encrypt_int(key & ((1 << KEY_LEN) - 1), KEY_LEN, input_block & _BLK_MASK)
 
     # -- V counter increment (CtrLen < BlkLen branch) ------------------------
     def _v_increment(self) -> None:
         low = self.v & _CTR_MASK
-        inc = (low + 1) & _CTR_MASK  # wrap mod 2**CTR_LEN
-        self.v = (self.v & ~_CTR_MASK) | inc  # preserve high (BlkLen-CtrLen) bits
+        if low == _CTR_MASK:
+            raise RuntimeError(
+                "CTR_DRBG golden: V[31:0] would wrap; the counter width and its wrap "
+                "behaviour have no specification source, so no expected value is produced"
+            )
+        self.v = (self.v & ~_CTR_MASK) | (low + 1)  # preserve high (BlkLen-CtrLen) bits
         self.v &= _BLK_MASK
 
     # -- ctr_drbg_update ------------------------------------------------------
@@ -445,7 +452,7 @@ class SepCtrDrbgGolden:
         for _ in range(SEED_LEN // BLOCK_LEN):  # 3 iterations
             self._v_increment()
             output_block = self._block_encrypt(self.key, self.v)
-            # SV: temp = {temp, output_block}  -> MSB-first concatenation
+            # SP 800-90A 10.2.1.2: temp = temp || output_block (MSB-first)
             temp = ((temp << BLOCK_LEN) | output_block) & _SEED_MASK
         temp ^= provided_data
         self.key = (temp >> BLOCK_LEN) & ((1 << KEY_LEN) - 1)  # temp[SEED_LEN-1 : BLOCK_LEN]
@@ -473,7 +480,7 @@ class SepCtrDrbgGolden:
         """Generate ``num_128b_blocks`` blocks of 128-bit output.
 
         Returns a list of 128-bit integers, in generation order (first block
-        first). Mirrors SP800-90A 10.2.1.5.1 / SV ctr_drbg_generate: optional
+        first). SP 800-90A 10.2.1.5.1: optional
         leading update when additional_input != 0, the V++/AES block loop, then
         the mandatory trailing update(additional_input)."""
         additional_input &= _SEED_MASK
@@ -485,7 +492,7 @@ class SepCtrDrbgGolden:
         self.generate_done(additional_input)
         return out
 
-    # -- per-block Generate, for RTL-segmented (demand-driven) modelling ----
+    # -- per-block Generate, for demand-driven command segmentation -----------
     #
     # A CSRNG Generate(glen) command is glen x (V++, AES) followed by exactly
     # ONE trailing Update. The block VALUES depend only on the running (key, V)
@@ -535,7 +542,6 @@ def _selftest_aes() -> None:
     expected192 = 0xDDA97CA4864CDFE06EAF70A0EC0D7191
     got192 = _aes_ecb_encrypt_int(key192, 192, pt)
     assert got192 == expected192, f"AES-192 KAT FAIL: got {got192:032x}"
-    print("AES KAT PASS (AES-128/192/256 ECB FIPS-197)")
 
 
 def _selftest_ctr_drbg() -> None:
@@ -568,10 +574,13 @@ def _selftest_ctr_drbg() -> None:
     assert got == expected_returned_bits, (
         f"CTR_DRBG KAT FAIL:\n  got      {got:0128x}\n  expected {expected_returned_bits:0128x}"
     )
-    print("CTR_DRBG KAT PASS (NIST CAVP AES-256 use df=false, no reseed, COUNT=0)")
 
+
+# Every import checks the model against FIPS-197 and the NIST CAVP vector, so no
+# simulation compares DUT output with a golden that has drifted from them.
+# run_golden_selftests.py executes this file as a script, which runs these once.
+_selftest_aes()
+_selftest_ctr_drbg()
 
 if __name__ == "__main__":
-    _selftest_aes()
-    _selftest_ctr_drbg()
-    print("CTRDRBG GOLDEN SELFTEST PASS")
+    print("CTRDRBG GOLDEN SELFTEST PASS (FIPS-197 AES, NIST CAVP AES-256 use df=false)")

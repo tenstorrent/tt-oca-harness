@@ -87,9 +87,9 @@ uint32_t measurement_enroll_rom_hash(void) {
 
     // Recompute over the hashed ROM region: .text + .metadata, i.e.
     // [ROM base, __metadata_end).  Matches tools/insert-rom-sha256.py.
-    const uint8_t *rom = (const uint8_t *)OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR;
+    const uint8_t *rom = (const uint8_t *)SEP_TOP_SEP_BOOT_ROM_BASE_ADDR;
     uint32_t len =
-        (uint32_t)((uintptr_t)__metadata_end - (uintptr_t)OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
+        (uint32_t)((uintptr_t)__metadata_end - (uintptr_t)SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
     if (sha256(rom, len, computed) != 0) {
         simputs("ROM_HASH_COMPUTE_FAIL\n");
         return 1u;

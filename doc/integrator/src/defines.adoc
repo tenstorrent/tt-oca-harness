@@ -9,7 +9,9 @@ Set the OCAH names in this chapter. Do not set vendor preprocessor names;
 `hw/common/defs/ocah_vendor_defines.svh` derives the aliases those names
 imply. OCAH lint and Yosys force-include that header. Native DV expands the
 same aliases onto the command line. An adopter compile must do one of those
-two.
+two. Block-selection defines are not in this chapter at all: they ride the
+Bender filelist as `+define+` lines (<<synthesis-filelist-defines,Synthesis
+filelist defines>>).
 
 A `` `define `` in a header is visible only in compilation units that include
 it. Command-line `+define+` / `-D` is global. Force-include (or the flow's
@@ -78,22 +80,73 @@ seed with any failure you intend to reproduce.
 `SYNTHESIS` selects the implementation view: simulation-only SVA, `$readmemh`
 preload, procedural delays, and similar non-synthesizable paths are omitted.
 Slang lint, Verilator lint, and Yosys set it (`OCAH_FLOW_COMMON_DEFINES`, or
-`+define+SYNTHESIS=1` for Verilator lint). A Synopsys (Design Compiler,
-Fusion Compiler) or Cadence Genus synthesis compile must set it too; those
-tools may also predefine the name. Native DV does not, except the SMC `dual`
-target, which lists it next to `SMC_DUAL`. The open formal path (`sby` /
-`read_slang`) keeps it defined. Licensed formal backends leave it unset.
+`+define+SYNTHESIS=1` for Verilator lint). The Bender `synth` view emits
+`+define+SYNTHESIS=1` on its filelist, so a synthesis compile that consumes
+the filelist's defines (<<synthesis-filelist-defines,below>>) gets it without
+tool setup; Synopsys tools also predefine the name. Native DV does not set
+it, except the SMC `dual` target, which lists it next to `SMC_DUAL`. The open
+formal path (`sby` / `read_slang`) keeps it defined. Licensed formal backends
+leave it unset.
 
 [[emulation-define]]
 == `EMULATION`
 
-`EMULATION` is the reserved OCAH name for a synthesizable emulator view
-(Palladium, Zebu, and similar): assertions, cover, assume, and `$display` /
-`$error` / `$fatal` stay compiled, while procedural delays, random-init
-`initial` blocks, `force`/`release`, dump/`$fopen` tasks, and non-synthesizable
-real-time constructs do not.
+`EMULATION` selects the emulation view of OCAH RTL: synthesizable RTL for a
+hardware emulator (Palladium, Zebu, and similar) that keeps the debug hooks an
+emulator can map into hardware. Set it on the emulator compile, and set neither
+`SIMULATION` nor `SYNTHESIS` alongside it:
 
-The tree has no `EMULATION` gating. Setting the name does not select that view.
+[source,shell]
+----
++define+EMULATION
+----
+
+[cols="<50%,<50%",options="header"]
+|===
+|Compiled in |Compiled out
+
+|Concurrent and immediate assertions, cover and assume: first-party,
+OpenTitan, Adams Bridge, Caliptra, and PULP macros.
+|Procedural delays. `ASSERT_INIT_NET` and its equivalents keep the check and
+drop the `#1ps` settle.
+
+|Elaboration-time parameter checks.
+|Random CDC delay models and randomized seeds.
+
+|`$display`, `$error`, and `$fatal` debug messages.
+|Testbench handshake `initial` blocks, and the testbench tasks in the i3c
+`axi_if` interface.
+
+|`final` blocks, and plusarg hooks outside the `SIMULATION` set, such as
+`+show_mem_paths`.
+|DPI exports, and the `SIMULATION` plusargs with their ROM and
+shadow-register file preload.
+
+|`$readmemh` initialization from a memory's `MemInitFile` parameter.
+|
+|===
+
+`EMULATION` takes precedence over `SYNTHESIS` in first-party RTL and in the
+vendored assertion headers, so a compile where the tool predefines `SYNTHESIS`
+still gets the view above. Generated RTL (the SMC CPU cluster and the register
+blocks) and vendored logic outside the assertion headers still follow
+`SYNTHESIS`, so a compile that sets both loses their elaboration checks and
+debug messages. First-party RTL gives `EMULATION` precedence over `SIMULATION`
+too, but vendored CDC delay models and seed randomization follow `SIMULATION`
+whatever else is set.
+
+The vendor aliases need the force-include or alias expansion described at the
+top of this chapter; without it, PULP assertions follow `SYNTHESIS` and
+`ASSERTS_OFF` instead.
+
+In the emulation view the entropy source ring oscillator is a zero-delay
+combinational loop. The emulator compile must break or model it.
+
+The emulation view has no testbench preloads. `OCAH4CORECluster_rom_ext` is a
+`prim_rom` with an empty `MemInitFile`, so load the SMC CPU ROM image through
+the emulator's memory backdoor. Fuse sense reads the bank through the adopter's
+SHIM, which the emulation must model.
+
 Do not set `SYNTHESIS` in order to keep emulator debug hooks; `SYNTHESIS`
 strips assertions as well. Do not set `PULP_FPGA_EMUL` as a substitute:
 that name is an FPGA clock-mux path.
@@ -169,16 +222,23 @@ Do not set these. Headers define them from the view and tool names above.
 |===
 |Define |Defined when
 
+|`OCAH_DEBUG_LIVE`
+|First-party elaboration checks and debug messages. `ocah_assert.svh` defines
+it when `EMULATION` is set or `SYNTHESIS` is absent.
+
 |`OCAH_INC_ASSERT`
-|First-party concurrent SVA. `ocah_assert.svh` defines it only when
-`SYNTHESIS`, `VERILATOR`, and `NO_OCAH_ASSERT` are all absent.
+|First-party concurrent SVA. `ocah_assert.svh` defines it when
+`OCAH_DEBUG_LIVE` is defined and `VERILATOR` and `NO_OCAH_ASSERT` are both
+absent.
 
 |`OCAH_OT_INC_ASSERT`
-|OpenTitan-derived SVA, from `SYNTHESIS` and `VERILATOR` (YOSYS forces it on).
+|OpenTitan-derived SVA: off under `VERILATOR`, otherwise on unless `SYNTHESIS`
+is set without `EMULATION` (YOSYS forces it on). The Adams Bridge and Caliptra
+assertion gates give `EMULATION` the same precedence over `SYNTHESIS`.
 
 |`OCAH_PULP_INC_ASSERT`
 |PULP `OCAH_PULP_ASSERT*` macros, unless `ASSERTS_OFF`, `SYNTHESIS`, or
-`XSIM` is set.
+`XSIM` is set. `ASSERTS_OVERRIDE_ON`, which `EMULATION` implies, forces it on.
 
 |`NO_OCAH_ASSERT`
 |Optional escape: drops first-party SVA only. No OCAH flow sets it.
@@ -199,6 +259,9 @@ vendor column.
 
 |`SIMULATION`
 |`ABR_SIMULATION`
+
+|`EMULATION`
+|`ASSERTS_OVERRIDE_ON`
 
 |`VERILATOR`
 |`TARGET_VERILATOR`
@@ -223,3 +286,65 @@ No checked-in config sets these. An adopter overlay
 |`OCAH_AXI_VENDOR_IF`
 |Nests a commercial AXI verification interface.
 |===
+
+[[synthesis-filelist-defines]]
+== Synthesis filelist defines
+
+The Bender `synth` view is the authoritative source for the defines a
+synthesis compile needs. Generate the filelist from that view — or use the
+filelist shipped in a release package, which is generated the same way:
+
+[source,shell]
+----
+bender script flist-plus <block targets> -t synth > <block>.f
+----
+
+The filelist carries the defines as `+define+` lines paired with the sources
+they select:
+`SYNTHESIS=1`, and the package switches that choose between behavioural
+models and technology-cell overlays in vendored RTL. Consume the `+define+`
+lines from the filelist rather than restating them on the tool command line:
+the set changes as the tree does, and the filelist pairs each switch with the
+overlay sources it selects.
+
+[WARNING]
+====
+A compile that drops the `+define+` lines analyzes and elaborates without
+error. The failure is silent mis-selection: vendored RTL builds its
+behavioural models instead of the technology-cell overlays, and optional
+blocks compile out of the hierarchy. After elaboration, confirm the netlist
+instantiates the primitive cells and the block structure you expect.
+====
+
+The filelist also lists `ocah_vendor_defines.svh`, but vendored packages
+precede it in compile order, so it does not replace the force-include
+described at the top of this chapter.
+
+[[synthesis-defines-synopsys]]
+=== Synopsys Design Compiler and Fusion Compiler
+
+`analyze` rejects a filelist as a native argument (VER-294), and
+`analyze -define` covers only names given on that command. Hand the filelist
+to the VCS-compatible reader, which parses its `+define+` and `+incdir+`
+lines:
+
+[source,tcl]
+----
+analyze -format sverilog -vcs "-f <block>.f"
+----
+
+These tools predefine `SYNTHESIS`; when the filelist restates it, Design
+Compiler keeps its own value and warns (VER-1051). The value is 1 either way,
+so the warning is harmless.
+
+[[synthesis-defines-genus]]
+=== Cadence Genus
+
+Genus parses the same lines through its optionfile reader. Select
+SystemVerilog explicitly: `read_hdl -f` treats sources as Verilog-2001
+regardless of the `hdl_language` attribute.
+
+[source,tcl]
+----
+read_hdl -language sv -f <block>.f
+----

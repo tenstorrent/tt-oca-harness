@@ -1,0 +1,1479 @@
+2026-09-15T23:39:11.444702Z 00O [0KRunning with gitlab-runner 19.3.1 (a16f5092)[0;m
+2026-09-15T23:39:11.444715Z 00O [0K  on Quasar soc-c-06 Shell Runner 01 tyFHHon3m, system ID: s_5d7d42da7bcb[0;m
+2026-09-15T23:39:11.444734Z 00O [0K[36;1mResolving secrets[0;m[0;m
+2026-09-15T23:39:11.444833Z 00O section_start:1789515551:prepare_executor
+[0K
+2026-09-15T23:39:11.444837Z 00O+[0K[36;1mPreparing the "shell" executor[0;m[0;m
+2026-09-15T23:39:11.444915Z 00O [0KUsing Shell (bash) executor...[0;m
+2026-09-15T23:39:11.444917Z 00O section_end:1789515551:prepare_executor
+[0K
+2026-09-15T23:39:11.445022Z 00O+section_start:1789515551:prepare_script
+[0K
+2026-09-15T23:39:11.445025Z 00O+[0K[36;1mPreparing environment[0;m[0;m
+2026-09-15T23:39:11.873212Z 01O Running on soc-c-06...
+2026-09-15T23:39:11.914247Z 00O section_end:1789515551:prepare_script
+[0K
+2026-09-15T23:39:11.914755Z 00O+section_start:1789515551:get_sources
+[0K
+2026-09-15T23:39:11.914759Z 00O+[0K[36;1mGetting source from Git repository[0;m[0;m
+2026-09-15T23:39:13.003636Z 01O [32;1mGitaly correlation ID: 01M2KQ0MDVK8YD0AKR3WJZQNT9[0;m
+2026-09-15T23:39:13.598345Z 01O [32;1mFetching changes with git depth set to 20...[0;m
+2026-09-15T23:39:13.722205Z 01O Reinitialized existing Git repository in /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/.git/
+2026-09-15T23:39:30.788674Z 01O [32;1mChecking out d9921cf8 as detached HEAD (ref is inmcm/sep_rom_oca_manifest)...[0;m
+2026-09-15T23:39:52.328235Z 01O Removing block_flow_customizations
+2026-09-15T23:39:52.328245Z 01O Removing nonfree/
+2026-09-15T23:39:55.032230Z 01O 
+2026-09-15T23:39:55.032240Z 01O [32;1mSkipping Git submodules setup[0;m
+2026-09-15T23:39:55.183263Z 00O section_end:1789515595:get_sources
+[0K
+2026-09-15T23:39:55.190040Z 00O+section_start:1789515595:step_script
+[0K
+2026-09-15T23:39:55.190053Z 00O+[0K[36;1mExecuting "step_script" stage of the job script[0;m[0;m
+2026-09-15T23:39:55.575234Z 01O [32;1m$ make ocah-nonfree-init[0;m
+2026-09-15T23:39:57.481280Z 01E Cloning into '/proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree'...
+2026-09-15T23:40:03.879229Z 01E Updating files:   0% (6/3273)
+2026-09-15T23:40:04.254871Z 01E+Updating files:   0% (8/3273)
+2026-09-15T23:40:04.699217Z 01E+Updating files:   1% (33/3273)
+2026-09-15T23:40:04.783235Z 01E+Updating files:   2% (66/3273)
+2026-09-15T23:40:04.828228Z 01E+Updating files:   3% (99/3273)
+2026-09-15T23:40:04.870232Z 01E+Updating files:   4% (131/3273)
+2026-09-15T23:40:04.920224Z 01E+Updating files:   5% (164/3273)
+2026-09-15T23:40:04.969227Z 01E+Updating files:   6% (197/3273)
+2026-09-15T23:40:05.027231Z 01E+Updating files:   7% (230/3273)
+2026-09-15T23:40:05.073271Z 01E+Updating files:   8% (262/3273)
+2026-09-15T23:40:05.120322Z 01E+Updating files:   9% (295/3273)
+2026-09-15T23:40:05.136015Z 01E+Updating files:   9% (306/3273)
+2026-09-15T23:40:05.203224Z 01E+Updating files:  10% (328/3273)
+2026-09-15T23:40:05.328228Z 01E+Updating files:  11% (361/3273)
+2026-09-15T23:40:05.430228Z 01E+Updating files:  12% (393/3273)
+2026-09-15T23:40:05.472233Z 01E+Updating files:  13% (426/3273)
+2026-09-15T23:40:05.525232Z 01E+Updating files:  14% (459/3273)
+2026-09-15T23:40:05.576231Z 01E+Updating files:  15% (491/3273)
+2026-09-15T23:40:05.618226Z 01E+Updating files:  16% (524/3273)
+2026-09-15T23:40:05.774220Z 01E+Updating files:  17% (557/3273)
+2026-09-15T23:40:05.852233Z 01E+Updating files:  18% (590/3273)
+2026-09-15T23:40:05.885231Z 01E+Updating files:  19% (622/3273)
+2026-09-15T23:40:05.929248Z 01E+Updating files:  20% (655/3273)
+2026-09-15T23:40:05.972228Z 01E+Updating files:  21% (688/3273)
+2026-09-15T23:40:06.037270Z 01E+Updating files:  22% (721/3273)
+2026-09-15T23:40:06.095276Z 01E+Updating files:  23% (753/3273)
+2026-09-15T23:40:06.136449Z 01E+Updating files:  23% (780/3273)
+2026-09-15T23:40:06.141434Z 01E+Updating files:  24% (786/3273)
+2026-09-15T23:40:06.199286Z 01E+Updating files:  25% (819/3273)
+2026-09-15T23:40:06.241558Z 01E+Updating files:  26% (851/3273)
+2026-09-15T23:40:06.282357Z 01E+Updating files:  27% (884/3273)
+2026-09-15T23:40:06.327304Z 01E+Updating files:  28% (917/3273)
+2026-09-15T23:40:06.394316Z 01E+Updating files:  29% (950/3273)
+2026-09-15T23:40:06.463586Z 01E+Updating files:  30% (982/3273)
+2026-09-15T23:40:06.529332Z 01E+Updating files:  31% (1015/3273)
+2026-09-15T23:40:06.575312Z 01E+Updating files:  32% (1048/3273)
+2026-09-15T23:40:06.616232Z 01E+Updating files:  33% (1081/3273)
+2026-09-15T23:40:06.661282Z 01E+Updating files:  34% (1113/3273)
+2026-09-15T23:40:06.703229Z 01E+Updating files:  35% (1146/3273)
+2026-09-15T23:40:06.751940Z 01E+Updating files:  36% (1179/3273)
+2026-09-15T23:40:06.790556Z 01E+Updating files:  37% (1212/3273)
+2026-09-15T23:40:06.823225Z 01E+Updating files:  38% (1244/3273)
+2026-09-15T23:40:06.871223Z 01E+Updating files:  39% (1277/3273)
+2026-09-15T23:40:06.924229Z 01E+Updating files:  40% (1310/3273)
+2026-09-15T23:40:06.968210Z 01E+Updating files:  41% (1342/3273)
+2026-09-15T23:40:07.011223Z 01E+Updating files:  42% (1375/3273)
+2026-09-15T23:40:07.069280Z 01E+Updating files:  43% (1408/3273)
+2026-09-15T23:40:07.140228Z 01E+Updating files:  43% (1429/3273)
+2026-09-15T23:40:07.151209Z 01E+Updating files:  44% (1441/3273)
+2026-09-15T23:40:07.181232Z 01E+Updating files:  45% (1473/3273)
+2026-09-15T23:40:07.221222Z 01E+Updating files:  46% (1506/3273)
+2026-09-15T23:40:07.318223Z 01E+Updating files:  47% (1539/3273)
+2026-09-15T23:40:07.376226Z 01E+Updating files:  48% (1572/3273)
+2026-09-15T23:40:07.405286Z 01E+Updating files:  49% (1604/3273)
+2026-09-15T23:40:07.445223Z 01E+Updating files:  50% (1637/3273)
+2026-09-15T23:40:07.515217Z 01E+Updating files:  51% (1670/3273)
+2026-09-15T23:40:07.556312Z 01E+Updating files:  52% (1702/3273)
+2026-09-15T23:40:07.588318Z 01E+Updating files:  53% (1735/3273)
+2026-09-15T23:40:07.649242Z 01E+Updating files:  54% (1768/3273)
+2026-09-15T23:40:07.682255Z 01E+Updating files:  55% (1801/3273)
+2026-09-15T23:40:07.711227Z 01E+Updating files:  56% (1833/3273)
+2026-09-15T23:40:07.748230Z 01E+Updating files:  57% (1866/3273)
+2026-09-15T23:40:07.804273Z 01E+Updating files:  58% (1899/3273)
+2026-09-15T23:40:07.844848Z 01E+Updating files:  59% (1932/3273)
+2026-09-15T23:40:07.888228Z 01E+Updating files:  60% (1964/3273)
+2026-09-15T23:40:07.921239Z 01E+Updating files:  61% (1997/3273)
+2026-09-15T23:40:07.952221Z 01E+Updating files:  62% (2030/3273)
+2026-09-15T23:40:07.977467Z 01E+Updating files:  63% (2062/3273)
+2026-09-15T23:40:08.010254Z 01E+Updating files:  64% (2095/3273)
+2026-09-15T23:40:08.037248Z 01E+Updating files:  65% (2128/3273)
+2026-09-15T23:40:08.073238Z 01E+Updating files:  66% (2161/3273)
+2026-09-15T23:40:08.095514Z 01E+Updating files:  67% (2193/3273)
+2026-09-15T23:40:08.135236Z 01E+Updating files:  67% (2222/3273)
+2026-09-15T23:40:08.146218Z 01E+Updating files:  68% (2226/3273)
+2026-09-15T23:40:08.194227Z 01E+Updating files:  69% (2259/3273)
+2026-09-15T23:40:08.228233Z 01E+Updating files:  70% (2292/3273)
+2026-09-15T23:40:08.246480Z 01E+Updating files:  71% (2324/3273)
+2026-09-15T23:40:08.274174Z 01E+Updating files:  72% (2357/3273)
+2026-09-15T23:40:08.303885Z 01E+Updating files:  73% (2390/3273)
+2026-09-15T23:40:08.351216Z 01E+Updating files:  74% (2423/3273)
+2026-09-15T23:40:08.385220Z 01E+Updating files:  75% (2455/3273)
+2026-09-15T23:40:08.518219Z 01E+Updating files:  76% (2488/3273)
+2026-09-15T23:40:08.603536Z 01E+Updating files:  77% (2521/3273)
+2026-09-15T23:40:09.147212Z 01E+Updating files:  77% (2552/3273)
+Updating files:  78% (2553/3273)
+2026-09-15T23:40:09.283239Z 01E+Updating files:  79% (2586/3273)
+2026-09-15T23:40:09.448239Z 01E+Updating files:  80% (2619/3273)
+2026-09-15T23:40:09.545222Z 01E+Updating files:  81% (2652/3273)
+2026-09-15T23:40:09.645267Z 01E+Updating files:  82% (2684/3273)
+2026-09-15T23:40:09.840555Z 01E+Updating files:  83% (2717/3273)
+2026-09-15T23:40:10.021299Z 01E+Updating files:  84% (2750/3273)
+2026-09-15T23:40:10.169389Z 01E+Updating files:  84% (2776/3273)
+2026-09-15T23:40:10.517226Z 01E+Updating files:  85% (2783/3273)
+2026-09-15T23:40:11.137221Z 01E+Updating files:  85% (2799/3273)
+2026-09-15T23:40:11.293249Z 01E+Updating files:  86% (2815/3273)
+2026-09-15T23:40:11.441251Z 01E+Updating files:  87% (2848/3273)
+2026-09-15T23:40:11.595273Z 01E+Updating files:  88% (2881/3273)
+2026-09-15T23:40:11.704821Z 01E+Updating files:  89% (2913/3273)
+2026-09-15T23:40:11.892281Z 01E+Updating files:  90% (2946/3273)
+2026-09-15T23:40:12.024597Z 01E+Updating files:  91% (2979/3273)
+2026-09-15T23:40:12.145247Z 01E+Updating files:  91% (3011/3273)
+Updating files:  92% (3012/3273)
+2026-09-15T23:40:12.355279Z 01E+Updating files:  93% (3044/3273)
+2026-09-15T23:40:12.520022Z 01E+Updating files:  94% (3077/3273)
+2026-09-15T23:40:12.664272Z 01E+Updating files:  95% (3110/3273)
+2026-09-15T23:40:12.826726Z 01E+Updating files:  96% (3143/3273)
+2026-09-15T23:40:12.949206Z 01E+Updating files:  97% (3175/3273)
+2026-09-15T23:40:13.045265Z 01E+Updating files:  98% (3208/3273)
+2026-09-15T23:40:13.161238Z 01E+Updating files:  98% (3231/3273)
+2026-09-15T23:40:13.197075Z 01E+Updating files:  99% (3241/3273)
+2026-09-15T23:40:13.305284Z 01E+Updating files: 100% (3273/3273)
+2026-09-15T23:40:13.316213Z 01E+Updating files: 100% (3273/3273), done.
+2026-09-15T23:40:13.474243Z 01O [32;1m$ source nonfree/setup_env.sh[0;m
+2026-09-15T23:40:13.580505Z 01O Detected internal server (soc-c-06), will load tt_ocah_env module
+2026-09-15T23:40:14.791216Z 01E Loading:   soc_tools version 1.0
+2026-09-15T23:40:14.802199Z 01E Loading:   git version 2.26.2
+2026-09-15T23:40:15.107138Z 01E Loading:   Bender version 0.28.1-tenstorrent8-mr_fixes
+2026-09-15T23:40:15.115889Z 01E Loading:   Python version 3.9
+2026-09-15T23:40:15.124413Z 01E Loading:   Perl version perl-5.36.0
+2026-09-15T23:40:15.129098Z 01O Purging existing modules...
+2026-09-15T23:40:15.163697Z 01E Unloading: Perl version perl-5.36.0
+2026-09-15T23:40:15.170079Z 01E Unloading: Python version 3.9
+2026-09-15T23:40:15.175880Z 01E Unloading: Bender version 0.28.1-tenstorrent8-mr_fixes
+2026-09-15T23:40:15.178308Z 01E Unloading: git version 2.26.2
+2026-09-15T23:40:15.184606Z 01E Unloading: soc_tools version 1.0
+2026-09-15T23:40:15.222844Z 01O Loading tt_ocah_env module...
+2026-09-15T23:40:16.580698Z 01E Loading:   direnv version 2.35.0
+2026-09-15T23:40:16.594785Z 01E Loading:   IBM LSF (YYZ) Environment version 10.1
+2026-09-15T23:40:16.605440Z 01E Loading:   git version 2.26.2
+2026-09-15T23:40:16.616422Z 01E Loading:   gcc version 11.2.1
+2026-09-15T23:40:16.627837Z 01E Loading:   Bender version 0.28.1-tenstorrent8-mr_fixes
+2026-09-15T23:40:17.019233Z 01E Loading:   Synopsys Licenses version 2.3
+2026-09-15T23:40:17.019245Z 01E Loading:   Synopsys Formality version T-2022.03-SP5
+2026-09-15T23:40:17.115223Z 01E Loading:   Synopsys Spyglass version U-2023.03-SP1-1
+2026-09-15T23:40:17.211222Z 01E Loading:   Synopsys CoreTools version V-2024.06-2
+2026-09-15T23:40:17.305242Z 01E Loading:   Synopsys ICC2 version Q-2019.12-SP6
+2026-09-15T23:40:17.407232Z 01E Loading:   Synopsys Library Compiler version T-2022.03-SP4
+2026-09-15T23:40:17.504226Z 01E Loading:   Synopsys VC-Static version X-2025.06
+2026-09-15T23:40:17.605245Z 01E Loading:   Synopsys ARChitect version X-2025.06
+2026-09-15T23:40:17.705224Z 01E Loading:   Synopsys VCS version X-2025.06
+2026-09-15T23:40:17.807217Z 01E Loading:   Synopsys Verdi version X-2025.06
+2026-09-15T23:40:17.906222Z 01E Loading:   Synopsys Synthesis version W-2024.09-SP4-VAL-20250309
+2026-09-15T23:40:17.922222Z 01E Loading:   Perl version 5.36.0
+2026-09-15T23:40:17.933224Z 01E Loading:   soc_tools version 1.0
+2026-09-15T23:40:17.955355Z 01E Loading:   verilator version 5.050
+2026-09-15T23:40:17.983213Z 01E Loading:   slang version 8.0
+2026-09-15T23:40:17.998219Z 01E Loading:   Python version 3.9.18
+2026-09-15T23:40:18.012220Z 01E Loading:   node.js version v22.14.0
+2026-09-15T23:40:18.078232Z 01E Loading:   ttem version v4.16.0
+2026-09-15T23:40:18.089225Z 01E Loading:   . version tt_ocah_env
+2026-09-15T23:40:18.220253Z 01E 
+2026-09-15T23:40:18.220263Z 01E Switching from tt_ocah_env to tt_ocah_env
+2026-09-15T23:40:18.220266Z 01E   Loading requirement: direnv/2.35.0 lsf/10.1 git/2.26.2 gcc/11.2.1
+2026-09-15T23:40:18.220268Z 01E     bender/0.28.1-tenstorrent8-mr_fixes synopsys/licenses/2.3
+2026-09-15T23:40:18.220269Z 01E     synopsys/fm/T-2022.03-SP5 synopsys/spyglass/U-2023.03-SP1-1
+2026-09-15T23:40:18.220270Z 01E     synopsys/coretools/V-2024.06-2 synopsys/icc2/Q-2019.12-SP6
+2026-09-15T23:40:18.220271Z 01E     synopsys/lc/T-2022.03-SP4 synopsys/vc_static/X-2025.06
+2026-09-15T23:40:18.220271Z 01E     synopsys/architect/X-2025.06 synopsys/vcs/X-2025.06 synopsys/verdi/X-2025.06
+2026-09-15T23:40:18.220272Z 01E     synopsys/syn/W-2024.09-SP4-VAL-20250309 perl/5.36.0 soc_tools/1.0
+2026-09-15T23:40:18.220272Z 01E     verilator/5.050 slang/8.0 python/3.9.18 node.js/v22.14.0 ttem/v4.16.0
+2026-09-15T23:40:18.481701Z 01E Currently Loaded Modulefiles:
+2026-09-15T23:40:18.728801Z 01E  1) direnv/2.35.0 <aL>                                 23) ttem/v4.16.0 <aL>  
+2026-09-15T23:40:18.728811Z 01E  2) lsf/10.1(default) <aL>                             24) tt_ocah_env        
+2026-09-15T23:40:18.728812Z 01E  3) git/2.26.2(default) <aL>                           
+2026-09-15T23:40:18.728813Z 01E  4) gcc/11.2.1 <aL>                                    
+2026-09-15T23:40:18.728814Z 01E  5) bender/0.28.1-tenstorrent8-mr_fixes(default) <aL>  
+2026-09-15T23:40:18.728815Z 01E  6) synopsys/licenses/2.3 <aL>                         
+2026-09-15T23:40:18.728861Z 01E  7) synopsys/fm/T-2022.03-SP5 <aL>                     
+2026-09-15T23:40:18.728861Z 01E  8) synopsys/spyglass/U-2023.03-SP1-1(default) <aL>    
+2026-09-15T23:40:18.728862Z 01E  9) synopsys/coretools/V-2024.06-2(default) <aL>       
+2026-09-15T23:40:18.728862Z 01E 10) synopsys/icc2/Q-2019.12-SP6 <aL>                   
+2026-09-15T23:40:18.728862Z 01E 11) synopsys/lc/T-2022.03-SP4 <aL>                     
+2026-09-15T23:40:18.728863Z 01E 12) synopsys/vc_static/X-2025.06 <aL>                  
+2026-09-15T23:40:18.728863Z 01E 13) synopsys/architect/X-2025.06 <aL>                  
+2026-09-15T23:40:18.728863Z 01E 14) synopsys/vcs/X-2025.06 <aL>                        
+2026-09-15T23:40:18.728864Z 01E 15) synopsys/verdi/X-2025.06 <aL>                      
+2026-09-15T23:40:18.728864Z 01E 16) synopsys/syn/W-2024.09-SP4-VAL-20250309 <aL>       
+2026-09-15T23:40:18.728864Z 01E 17) perl/5.36.0 <aL>                                   
+2026-09-15T23:40:18.728864Z 01E 18) soc_tools/1.0 <aL>                                 
+2026-09-15T23:40:18.728865Z 01E 19) verilator/5.050 <aL>                               
+2026-09-15T23:40:18.728865Z 01E 20) slang/8.0 <aL>                                     
+2026-09-15T23:40:18.728865Z 01E 21) python/3.9.18 <aL>                                 
+2026-09-15T23:40:18.728866Z 01E 22) node.js/v22.14.0(default) <aL>                     
+2026-09-15T23:40:18.729131Z 01E 
+2026-09-15T23:40:18.729131Z 01E Key:
+2026-09-15T23:40:18.729151Z 01E (symbolic-version)  <module-tag>  <aL>=auto-loaded  
+2026-09-15T23:40:18.732672Z 01O 
+2026-09-15T23:40:18.732674Z 01O INFO: tt_ocah_env loaded successfully
+2026-09-15T23:40:18.789118Z 01O 
+2026-09-15T23:40:18.789128Z 01O Harness environment ready.
+2026-09-15T23:40:18.789129Z 01O   OCH_ROOT=/proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness
+2026-09-15T23:40:18.789131Z 01O   NONFREE_ROOT=/proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree
+2026-09-15T23:40:18.847684Z 01O   ttem=/tools_soc/tt/ttem/v4.16.0/ttem
+2026-09-15T23:40:18.847693Z 01O 
+2026-09-15T23:40:18.847693Z 01O [32;1m$ set -e[0;m
+2026-09-15T23:40:18.847694Z 01O [32;1m$ if [ -f scripts/ci/check-regen-regs.sh ]; then # collapsed multi-line command[0;m
+2026-09-15T23:40:21.955300Z 01E changed: .gitignore, .gitmodules, .yamllint.yml, flows/lint/markdownlint.mk, flows/lint/vale.mk, hw/sys/sep/bootrom/prod/Makefile, hw/sys/sep/bootrom/prod/configs/encrypted_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/non_secure_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_aes128_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_aes128_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_der_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_der_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_ecdsa_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_ecdsa_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_encrypted_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_encrypted_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_identity_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_identity_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_multi_image_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_multi_image_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_no_bl1_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_no_bl1_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_non_secure_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_non_secure_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_otp_key_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_otp_key_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_pqc_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_pqc_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key1_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key1_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key2_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key2_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key3_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key3_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key4_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key4_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key5_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_rom_key5_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_secure_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_secure_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/oca_sip_key_boot_image.yaml, hw/sys/sep/bootrom/prod/configs/oca_sip_key_boot_test.yaml, hw/sys/sep/bootrom/prod/configs/secure_boot_test.yaml, hw/sys/sep/bootrom/prod/doc/rom.adoc, hw/sys/sep/bootrom/prod/include/aes_driver.h, hw/sys/sep/bootrom/prod/include/bl0_state.h, hw/sys/sep/bootrom/prod/include/boot_flash.h, hw/sys/sep/bootrom/prod/include/fuse_lock.h, hw/sys/sep/bootrom/prod/include/kdf.h, hw/sys/sep/bootrom/prod/include/key_digests.h, hw/sys/sep/bootrom/prod/include/lifecycle.h, hw/sys/sep/bootrom/prod/include/manifest.h, hw/sys/sep/bootrom/prod/include/manifest_crypto.h, hw/sys/sep/bootrom/prod/include/measurement.h, hw/sys/sep/bootrom/prod/include/oca_boot.h, hw/sys/sep/bootrom/prod/include/oca_platform.h, hw/sys/sep/bootrom/prod/include/sep_entropy.h, hw/sys/sep/bootrom/prod/include/sep_smc_interface.h, hw/sys/sep/bootrom/prod/include/status_values.h, hw/sys/sep/bootrom/prod/link/rom.ld, hw/sys/sep/bootrom/prod/src/aes_driver.c, hw/sys/sep/bootrom/prod/src/fuse_lock.c, hw/sys/sep/bootrom/prod/src/hmac_sha256.c, hw/sys/sep/bootrom/prod/src/kdf.c, hw/sys/sep/bootrom/prod/src/key_digests.c, hw/sys/sep/bootrom/prod/src/lifecycle.c, hw/sys/sep/bootrom/prod/src/manifest_crypto.c, hw/sys/sep/bootrom/prod/src/manifest_load.c, hw/sys/sep/bootrom/prod/src/measurement.c, hw/sys/sep/bootrom/prod/src/oca_boot.c, hw/sys/sep/bootrom/prod/src/oca_platform.c, hw/sys/sep/bootrom/prod/src/otbn_driver.c, hw/sys/sep/bootrom/prod/src/pll_init.c, hw/sys/sep/bootrom/prod/src/rom_handoff.c, hw/sys/sep/bootrom/prod/src/rom_main.c, hw/sys/sep/bootrom/prod/src/rom_mem_clear.c, hw/sys/sep/bootrom/prod/src/rom_metadata.c, hw/sys/sep/bootrom/prod/src/sep_entropy.c, hw/sys/sep/bootrom/prod/src/vector.S, hw/sys/sep/bootrom/prod/tests/signing_keys/ec_private_key.pem, hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem, hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key1.pem, hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key2.pem, hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key3.pem, hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key4.pem, hw/sys/sep/bootrom/prod/tests/signing_keys/rsa_private_key.rom_key5.pem, hw/sys/sep/bootrom/prod/tools/generate_key_digests.py, hw/sys/sep/bootrom/prod/tools/tt-boot-manifest, hw/sys/sep/bootrom/prod/tools/tt-oca-manifest, hw/sys/sep/doc/checks/README.md, hw/sys/sep/doc/checks/check_error_codes.py, hw/sys/sep/doc/checks/check_manifest_offsets.py, hw/sys/sep/doc/checks/check_reg_addresses.py, hw/sys/sep/doc/checks/check_status_names.py, hw/sys/sep/doc/checks/check_tables.py, hw/sys/sep/doc/checks/check_xrefs.py, hw/sys/sep/doc/cpu.adoc, hw/sys/sep/doc/crypto.adoc, hw/sys/sep/doc/gen/status_values.adoc, hw/sys/sep/doc/gen_status_table.py, hw/sys/sep/doc/lifecycle_controller.adoc, hw/sys/sep/doc/memory_map.adoc, hw/sys/sep/dv/cocotb/env/sep_boot_scoreboard.py, hw/sys/sep/dv/cocotb/env/sep_esrc_noise.py, hw/sys/sep/dv/cocotb/env/sep_manifest_mutate.py, hw/sys/sep/dv/cocotb/env/sep_payload_mutate.py, hw/sys/sep/dv/cocotb/env/sep_smc_mem.py, hw/sys/sep/dv/cocotb/env/sep_spi_slot_evidence.py, hw/sys/sep/dv/cocotb/seq_lib/sep_address_map_seq.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_backup_manifest_fail_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_bl1_entry_invalid_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_bl1_image_invalid_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_bl1_size_invalid_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_boot_recovery_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_chiplet_pubkey_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_decryption_failure_failover_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_decryption_failure_terminal_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_demotion_decision_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_demotion_prod_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_demotion_prod_end_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_failover_sram_clear_assertion_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_invalid_key_hash_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_invalid_public_key_selection_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_invalid_security_version_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_invalid_signature_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_invalid_signature_type_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_pubkey_rom_0_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_pubkey_rom_1_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_pubkey_rom_2_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_pubkey_rom_3_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_pubkey_rom_4_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_pubkey_rom_5_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_rom_key_index_invalid_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_rom_key_valid_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_backup_unpopulated_rom_key_slot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_bl1_ver_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_chiplet_pubkey_0_revoke_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_chiplet_pubkey_0_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_chiplet_pubkey_0_wrong_digest_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_chiplet_pubkey_1_revoke_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_chiplet_pubkey_1_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_cntl_secure_boot_flow_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_auth_flag_0_prod_end_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_auth_flag_0_prod_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_no_flag_prod_end_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_device_cntl_non_secure_boot_flow_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_encrypted_boot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_enforced_secure_boot_flow_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_mbist_fail_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_invalid_key_hash_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_invalid_public_key_selection_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_invalid_security_version_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_invalid_signature_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_invalid_signature_type_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_pubkey_rom_0_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_pubkey_rom_1_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_pubkey_rom_2_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_pubkey_rom_3_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_pubkey_rom_4_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_pubkey_rom_5_revoked_key_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_rom_key_index_invalid_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_firmware_primary_rom_key_valid_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_otbn_rsa_verify_failure_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_primary_fail_backup_boot_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_pubkey_rom_revoked_primary_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_non_secure_boot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_oca_encrypted_boot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_oca_otp_key_boot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_oca_tamper_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_ot_dma_boot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rom_ot_secure_boot_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_rotate_update_set_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_scratch_7_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_spi_detect_success_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_spi_not_detected_terminal_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_spi_primary_fail_backup_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_warm_dispatch_base.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_warm_reset_bad_target_exception_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_warm_reset_below_range_hang_test.py, hw/sys/sep/dv/cocotb/tests/rom_fw/sep_warm_reset_invalid_hang_test.py, hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc, hw/sys/sep/dv/fw/tests/bl1_pass_test/Makefile, hw/sys/sep/dv/fw/tests/bl1_pass_test/build2/bl1_pass_test.bin, hw/sys/sep/dv/fw/tests/bl1_pass_test/build2/bl1_pass_test.sym, hw/sys/sep/dv/fw/tests/bl1_pass_test/build2_ot/bl1_pass_test.bin, hw/sys/sep/dv/fw/tests/bl1_pass_test/build2_ot/bl1_pass_test.sym, hw/sys/sep/dv/fw/tests/bl1_pass_test/build2_ot_pio/bl1_pass_test.bin, hw/sys/sep/dv/fw/tests/bl1_pass_test/build2_ot_pio/bl1_pass_test.sym, hw/sys/sep/dv/fw/tests/bl1_pass_test/build3/bl1_pass_test.bin, hw/sys/sep/dv/fw/tests/bl1_pass_test/build3/bl1_pass_test.sym, hw/sys/sep/dv/sep_sim_cfg.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0_revoke.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key1.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key1_revoke.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml, hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml, hw/sys/sep/dv/tb/tb_top.sv, hw/sys/sep/dv/testlists/all.toml, hw/sys/sep/dv/testlists/rom_fw.toml, pyproject.toml, tools/dv/runlib/cli.py, tools/dv/runlib/config.py, tools/dv/runlib/models.py, tools/dv/runlib/results.py, tools/dv/tests/test_config.py
+2026-09-15T23:40:21.955382Z 01E documentation_only=false
+2026-09-15T23:40:22.118229Z 01E register_regen_required=true
+2026-09-15T23:40:22.129262Z 01O Register inputs or generated collateral changed; running regeneration check.
+2026-09-15T23:42:43.955064Z 01E Using CPython 3.11.11 interpreter at: /usr/bin/python3.11
+2026-09-15T23:42:43.956591Z 01E Creating virtual environment at: .venv
+2026-09-15T23:42:44.231479Z 01E Resolved 66 packages in 46ms
+2026-09-15T23:42:47.752004Z 01E warning: Failed to hardlink files; falling back to full copy. This may lead to degraded performance.
+2026-09-15T23:42:47.752018Z 01E          If the cache and target directories are on different filesystems, hardlinking may not be supported.
+2026-09-15T23:42:47.752020Z 01E          If this is intentional, set `export UV_LINK_MODE=copy` or use `--link-mode=copy` to suppress this warning.
+2026-09-15T23:44:19.582645Z 01E Installed 57 packages in 1m 32s
+2026-09-15T23:44:19.582657Z 01E  + antlr4-python3-runtime==4.13.2
+2026-09-15T23:44:19.582658Z 01E  + cfgv==3.5.0
+2026-09-15T23:44:19.582659Z 01E  + clang-format==14.0.6
+2026-09-15T23:44:19.582660Z 01E  + codespell==2.4.3
+2026-09-15T23:44:19.582661Z 01E  + colorama==0.4.6
+2026-09-15T23:44:19.582662Z 01E  + contextlib2==21.6.0
+2026-09-15T23:44:19.582662Z 01E  + distlib==0.4.3
+2026-09-15T23:44:19.582662Z 01E  + filelock==3.32.4
+2026-09-15T23:44:19.582663Z 01E  + ghp-import==2.1.0
+2026-09-15T23:44:19.582663Z 01E  + git-me-the-url==2.2.0
+2026-09-15T23:44:19.582663Z 01E  + gitdb==4.0.12
+2026-09-15T23:44:19.582664Z 01E  + gitpython==3.1.50
+2026-09-15T23:44:19.582664Z 01E  + hjson==3.1.0
+2026-09-15T23:44:19.582664Z 01E  + identify==2.6.19
+2026-09-15T23:44:19.582664Z 01E  + importlib-metadata==6.8.0
+2026-09-15T23:44:19.582664Z 01E  + jinja2==3.1.6
+2026-09-15T23:44:19.582665Z 01E  + mako==1.3.12
+2026-09-15T23:44:19.582665Z 01E  + markdown==3.10.2
+2026-09-15T23:44:19.582665Z 01E  + markupsafe==3.0.3
+2026-09-15T23:44:19.582665Z 01E  + mypy==1.18.1
+2026-09-15T23:44:19.582666Z 01E  + mypy-extensions==1.1.0
+2026-09-15T23:44:19.582666Z 01E  + nodeenv==1.10.0
+2026-09-15T23:44:19.582666Z 01E  + pathspec==0.11.2
+2026-09-15T23:44:19.582666Z 01E  + peakrdl==1.5.0
+2026-09-15T23:44:19.582666Z 01E  + peakrdl-cheader==1.1.0
+2026-09-15T23:44:19.582667Z 01E  + peakrdl-cli==1.5.0
+2026-09-15T23:44:19.582667Z 01E  + peakrdl-html==2.12.2
+2026-09-15T23:44:19.582667Z 01E  + peakrdl-ipxact==3.5.0
+2026-09-15T23:44:19.582667Z 01E  + peakrdl-markdown==1.0.3
+2026-09-15T23:44:19.582668Z 01E  + peakrdl-rawheader==0.2.4
+2026-09-15T23:44:19.582668Z 01E  + peakrdl-regblock==1.3.1
+2026-09-15T23:44:19.582668Z 01E  + peakrdl-systemrdl==1.0.1
+2026-09-15T23:44:19.582668Z 01E  + peakrdl-uvm==2.4.0
+2026-09-15T23:44:19.582668Z 01E  + platformdirs==4.11.5
+2026-09-15T23:44:19.582669Z 01E  + ply==3.11
+2026-09-15T23:44:19.582669Z 01E  + pre-commit==4.5.1
+2026-09-15T23:44:19.582669Z 01E  + py-markdown-table==1.3.0
+2026-09-15T23:44:19.582669Z 01E  + pyelftools==0.33
+2026-09-15T23:44:19.582670Z 01E  + python-dateutil==2.9.0.post0
+2026-09-15T23:44:19.582670Z 01E  + python-discovery==1.6.0
+2026-09-15T23:44:19.582670Z 01E  + python-markdown-math==0.9
+2026-09-15T23:44:19.582670Z 01E  + pyyaml==6.0.3
+2026-09-15T23:44:19.582671Z 01E  + ruff==0.16.5
+2026-09-15T23:44:19.582671Z 01E  + schema==0.7.5
+2026-09-15T23:44:19.582671Z 01E  + semantic-version==2.10.0
+2026-09-15T23:44:19.582671Z 01E  + shellcheck-py==0.11.0.1
+2026-09-15T23:44:19.582671Z 01E  + shfmt-py==4.1.0
+2026-09-15T23:44:19.582672Z 01E  + six==1.17.0
+2026-09-15T23:44:19.582672Z 01E  + smmap==5.0.3
+2026-09-15T23:44:19.582672Z 01E  + systemrdl-compiler==1.32.2
+2026-09-15T23:44:19.582672Z 01E  + tclint==0.4.2
+2026-09-15T23:44:19.582673Z 01E  + tomllint==0.3.6
+2026-09-15T23:44:19.582673Z 01E  + types-pyyaml==6.0.12.20260815
+2026-09-15T23:44:19.582673Z 01E  + typing-extensions==4.15.0
+2026-09-15T23:44:19.582673Z 01E  + virtualenv==21.7.7
+2026-09-15T23:44:19.582674Z 01E  + yamllint==1.37.1
+2026-09-15T23:44:19.582674Z 01E  + zipp==4.1.0
+2026-09-15T23:45:12.131827Z 01O Scanning register includes for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:45:12.196246Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:45:12.196258Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:45:12.209658Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:45:12.314574Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:45:12.333926Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:45:12.354448Z 01O Scanning register includes for nonfree/hw/sys/smc
+2026-09-15T23:45:12.367114Z 01O Scanning register includes for nonfree/hw/sys/sep
+2026-09-15T23:45:30.250746Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:45:30.274281Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:45:30.297215Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:45:30.339655Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:45:30.362707Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:45:30.500226Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:45:32.733230Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:45:33.918215Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:45:34.370125Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:45:34.402264Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:45:34.424435Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:45:34.463427Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:45:34.538874Z 01O Scanning register includes for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:45:36.443260Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:45:36.630277Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:45:38.159601Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:45:38.674255Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:45:38.815490Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:45:39.529255Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:45:40.098249Z 01O Scanning register includes for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:45:40.164266Z 01O Scanning register includes for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:45:40.565307Z 01O Scanning register includes for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:45:40.861257Z 01O Scanning register includes for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:45:41.711232Z 01O Scanning register includes for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:45:41.805241Z 01O Scanning register includes for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:45:41.840633Z 01O Scanning register includes for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:45:41.868314Z 01O Scanning register includes for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:45:42.642984Z 01O Scanning register includes for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:45:42.792897Z 01O Scanning register includes for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:45:44.387226Z 01O Scanning register includes for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:45:44.797239Z 01O Scanning register includes for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:45:44.835247Z 01O Scanning register includes for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:45:44.857223Z 01O Scanning register includes for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:45:44.901225Z 01O Scanning register includes for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:45:45.243470Z 01O Scanning register includes for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:45:45.669228Z 01O Scanning register includes for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:45:46.811278Z 01O Scanning register includes for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:45:47.067228Z 01O Scanning register includes for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:45:47.222244Z 01O Scanning register includes for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:45:47.247246Z 01O Scanning register includes for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:45:47.312235Z 01O Scanning register includes for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:45:47.497297Z 01O Scanning register includes for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:45:47.926221Z 01O Scanning register includes for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:45:49.059239Z 01O Scanning register includes for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:45:49.462229Z 01O Scanning register includes for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:45:49.653664Z 01O Scanning register includes for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:45:49.859606Z 01O Scanning register includes for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:45:49.932278Z 01O Scanning register includes for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:45:50.172381Z 01O Scanning register includes for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:45:50.815282Z 01O Scanning register includes for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:45:51.629216Z 01O Scanning register includes for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:45:51.792217Z 01O Scanning register includes for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:45:51.955274Z 01O Scanning register includes for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:45:52.299510Z 01O Scanning register includes for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:45:53.055451Z 01O Scanning register includes for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:45:53.402223Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:45:54.500103Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:45:54.551801Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:45:54.687239Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:45:54.883231Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:45:55.113260Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:45:55.803238Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:45:55.885232Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:45:56.861218Z 01O Scanning register includes for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:45:57.732232Z 01O Scanning register includes for hw/sys/smc
+2026-09-15T23:45:57.937080Z 01O Scanning register includes for hw/sys/sep
+2026-09-15T23:45:58.056245Z 01O Scanning register includes for hw/ip/uart/uart_wrap
+2026-09-15T23:45:58.738294Z 01O Scanning register includes for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:45:58.961724Z 01O Scanning register includes for hw/ip/telemetry_receiver
+2026-09-15T23:45:59.034915Z 01O Scanning register includes for hw/ip/uart/log_engine
+2026-09-15T23:45:59.813565Z 01O Scanning register includes for hw/ip/system_timer_octs
+2026-09-15T23:46:00.387256Z 01O Scanning register includes for hw/ip/key_manager
+2026-09-15T23:46:00.442253Z 01O Scanning register includes for hw/ip/output_remap
+2026-09-15T23:46:00.695255Z 01O Scanning register includes for hw/ip/i2c
+2026-09-15T23:46:00.772237Z 01O Scanning register includes for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:46:00.772248Z 01O Scanning register includes for hw/ip/entropy_source
+2026-09-15T23:46:01.623705Z 01O Scanning register includes for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:46:02.281227Z 01O Scanning register includes for hw/ip/avsbus_controller
+2026-09-15T23:46:38.543244Z 01O Regenerating register SV for hw/ip/avsbus_controller
+2026-09-15T23:46:38.557215Z 01O Regenerating register SV for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:46:38.771375Z 01O Regenerating register SV for hw/ip/i2c
+2026-09-15T23:46:38.787689Z 01O Regenerating register SV for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:46:38.822597Z 01O Regenerating register SV for hw/ip/key_manager
+2026-09-15T23:46:38.824033Z 01O Regenerating register SV for hw/ip/system_timer_octs
+2026-09-15T23:46:38.832097Z 01O Regenerating register SV for hw/ip/entropy_source
+2026-09-15T23:46:39.060799Z 01O Regenerating register SV for hw/ip/output_remap
+2026-09-15T23:46:47.242068Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/key_manager/regs/key_manager.rdl:35:21: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:46:47.242082Z 01O addrmap key_manager {
+2026-09-15T23:46:47.242084Z 01O                     ^
+2026-09-15T23:46:47.873696Z 01O Regenerating register SV for hw/ip/uart/uart_wrap
+2026-09-15T23:46:47.904708Z 01O Regenerating register SV for hw/ip/telemetry_receiver
+2026-09-15T23:46:47.927421Z 01O Regenerating register SV for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:46:47.937753Z 01O Regenerating register SV for hw/ip/uart/log_engine
+2026-09-15T23:46:47.964292Z 01O Regenerating register SV for hw/sys/sep sub-block sep_scratch
+2026-09-15T23:46:47.975976Z 01O Regenerating register SV for hw/sys/sep sub-block sep_cpu_ctrl
+2026-09-15T23:46:47.987051Z 01O Regenerating register SV for hw/sys/sep sub-block sep_reset_ctrl
+2026-09-15T23:46:47.987054Z 01O Regenerating register SV for hw/sys/sep sub-block sep_lifecycle_ctrl
+2026-09-15T23:46:50.098229Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_wrap.rdl:11:30: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:46:50.098243Z 01O addrmap uart_log_engine_wrap {
+2026-09-15T23:46:50.098245Z 01O                              ^
+2026-09-15T23:46:50.436236Z 01O Regenerating register SV for hw/sys/smc sub-block chip_config
+2026-09-15T23:46:51.154226Z 01O Regenerating register SV for hw/sys/smc sub-block cpu_ctrl
+2026-09-15T23:46:51.356647Z 01O Regenerating register SV for hw/sys/smc sub-block dfx_ctrl_status
+2026-09-15T23:46:51.607694Z 01O Regenerating register SV for hw/sys/smc sub-block gpio_poc_pbias_ctrl
+2026-09-15T23:46:51.719679Z 01O Regenerating register SV for hw/sys/smc sub-block reset_unit
+2026-09-15T23:46:51.750853Z 01O Regenerating register SV for hw/sys/smc sub-block ndm_reset
+2026-09-15T23:46:51.891345Z 01O Regenerating register SV for hw/sys/smc sub-block scratch
+2026-09-15T23:46:52.998247Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/uart/uart_wrap/regs/uart_wrap.rdl:11:3: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:46:52.998260Z 01O ) {
+2026-09-15T23:46:52.998262Z 01O   ^
+2026-09-15T23:46:55.095223Z 01O Regenerating register SV for hw/sys/smc sub-block straps
+2026-09-15T23:46:55.145228Z 01O Regenerating register SV for hw/sys/smc sub-block smc_base_config
+2026-09-15T23:46:55.638314Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/aes (RTL sourced outside regblock)
+2026-09-15T23:46:56.573461Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/aon_timer (RTL sourced outside regblock)
+2026-09-15T23:46:57.063233Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/csrng (RTL sourced outside regblock)
+2026-09-15T23:46:57.271954Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/edn (RTL sourced outside regblock)
+2026-09-15T23:46:57.308509Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/hmac (RTL sourced outside regblock)
+2026-09-15T23:46:57.846915Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/kmac (RTL sourced outside regblock)
+2026-09-15T23:46:57.933628Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/spi_controller (RTL sourced outside regblock)
+2026-09-15T23:46:58.100809Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/otbn (RTL sourced outside regblock)
+2026-09-15T23:46:58.112258Z 01O Skipping register SV for vendor/lowRISC/opentitan/overlay/regs/secure_dma (RTL sourced outside regblock)
+2026-09-15T23:46:58.245225Z 01O Regenerating register SV for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:46:58.903236Z 01O Skipping register SV for hw/ip/dfd/regs/smc_cla (RTL sourced outside regblock)
+2026-09-15T23:46:58.903246Z 01O Regenerating register SV for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:46:58.914350Z 01O Regenerating register SV for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:46:59.109223Z 01O Regenerating register SV for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:46:59.121801Z 01O Regenerating register SV for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:46:59.968671Z 01O Regenerating register SV for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:47:00.005450Z 01O Regenerating register SV for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:47:02.781263Z 01O Regenerating register SV for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:47:04.754217Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap.rdl:9:31: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:04.754228Z 01O addrmap axil_mailbox_smc_wrap {
+2026-09-15T23:47:04.754230Z 01O                               ^
+2026-09-15T23:47:05.629021Z 01O Regenerating register SV for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:47:05.691247Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap.rdl:9:31: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:05.691259Z 01O addrmap axil_mailbox_sep_wrap {
+2026-09-15T23:47:05.691261Z 01O                               ^
+2026-09-15T23:47:06.120856Z 01O Regenerating register SV for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:47:06.214229Z 01O Regenerating register SV for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:47:06.527231Z 01O Regenerating register SV for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:47:07.219685Z 01O Regenerating register SV for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:47:08.123722Z 01O Regenerating register SV for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:47:08.388221Z 01O Regenerating register SV for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:47:08.567513Z 01O Regenerating register SV for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:47:10.488318Z 01O Regenerating register SV for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:47:11.375239Z 01O Regenerating register SV for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:47:12.674348Z 01O Regenerating register SV for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:47:15.311232Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/gpio/regs/gpio_wrap.rdl:10:19: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:15.311244Z 01O addrmap gpio_wrap {
+2026-09-15T23:47:15.311244Z 01O                   ^
+2026-09-15T23:47:15.897241Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/i2c/regs/i2c_wrap.rdl:12:3: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:15.897251Z 01O ) {
+2026-09-15T23:47:15.897252Z 01O   ^
+2026-09-15T23:47:16.735501Z 01O Regenerating register SV for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:47:16.795529Z 01O Regenerating register SV for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:47:17.384216Z 01O Regenerating register SV for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:47:17.924088Z 01O Regenerating register SV for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:47:19.279225Z 01O Regenerating register SV for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:47:20.298424Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/i3ccore_wrap/regs/oca_i3c_wrap.rdl:11:3: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:20.298434Z 01O ) {
+2026-09-15T23:47:20.298435Z 01O   ^
+2026-09-15T23:47:22.125244Z 01O Regenerating register SV for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:47:23.819221Z 01O Regenerating register SV for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:47:25.171239Z 01O Regenerating register SV for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:47:26.820308Z 01O Regenerating register SV for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:47:27.589229Z 01O Regenerating register SV for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:47:27.675226Z 01O Regenerating register SV for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:47:27.698229Z 01O Skipping register SV for hw/sys/sep/dv/models/regs/sep_external (RTL sourced outside regblock)
+2026-09-15T23:47:28.718913Z 01O Skipping register SV for hw/sys/smc/dv/models/regs/pll_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:30.085879Z 01O Skipping register SV for hw/sys/smc/dv/models/regs/pvt_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:30.682226Z 01O Regenerating register SV for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:47:31.196380Z 01O Skipping register SV for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys (RTL sourced outside regblock)
+2026-09-15T23:47:31.230231Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap.rdl:13:3: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:31.230242Z 01O ) {
+2026-09-15T23:47:31.230243Z 01O   ^
+2026-09-15T23:47:32.685484Z 01O Regenerating register SV for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:47:32.702279Z 01O Skipping register SV for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration (RTL sourced outside regblock)
+2026-09-15T23:47:33.624261Z 01O Regenerating register SV for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:47:33.657269Z 01O Regenerating register SV for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:47:34.495237Z 01O Regenerating register SV for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:47:35.324233Z 01O Skipping register SV for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external (RTL sourced outside regblock)
+2026-09-15T23:47:36.471464Z 01O Regenerating register SV for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:47:36.736918Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:47:36.736928Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:47:38.583236Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg.rdl:12:27: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:38.583247Z 01O addrmap cdns_xspi_phy_reg {
+2026-09-15T23:47:38.583248Z 01O                           ^
+2026-09-15T23:47:40.228263Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:47:40.232536Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:47:40.405143Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg.rdl:12:28: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:40.405154Z 01O addrmap cdns_xspi_ctrl_reg {
+2026-09-15T23:47:40.405155Z 01O                            ^
+2026-09-15T23:47:41.973380Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c (RTL sourced outside regblock)
+2026-09-15T23:47:41.998606Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:42.591246Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm (RTL sourced outside regblock)
+2026-09-15T23:47:42.630416Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:47:43.247232Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm (RTL sourced outside regblock)
+2026-09-15T23:47:43.257479Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory.rdl:26:32: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:43.257487Z 01O addrmap smc_external_mandatory {
+2026-09-15T23:47:43.257489Z 01O                                ^
+2026-09-15T23:47:43.394235Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:44.359663Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop (RTL sourced outside regblock)
+2026-09-15T23:47:44.558759Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:44.571514Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:47:44.807928Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:47:44.865140Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree/hw/sys/smc/dv/shims/regs/smc_external.rdl:21:22: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:44.865148Z 01O addrmap smc_external {
+2026-09-15T23:47:44.865149Z 01O                      ^
+2026-09-15T23:47:44.913229Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:45.058859Z 01O Regenerating register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:47:45.377829Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary.rdl:13:36: warning: Addrmap being exported only contains external components. Unable to infer the CPUIF bus width. Assuming 32-bits.
+2026-09-15T23:47:45.377840Z 01O addrmap smc_external_supplementary {
+2026-09-15T23:47:45.377841Z 01O                                    ^
+2026-09-15T23:47:45.656087Z 01O Skipping register SV for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl (RTL sourced outside regblock)
+2026-09-15T23:47:45.811184Z 01O Skipping register SV for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap (RTL sourced outside regblock)
+2026-09-15T23:47:46.713913Z 01O Regenerating raw C address header for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:47:46.826765Z 01O Regenerating firmware C header for hw/ip/avsbus_controller
+2026-09-15T23:47:46.877765Z 01O Regenerating firmware C header for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:47:46.889610Z 01O Regenerating raw C address header for hw/ip/avsbus_controller
+2026-09-15T23:47:47.876214Z 01O Regenerating firmware C header for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:47:50.378008Z 01O Regenerating raw C address header for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:47:50.655229Z 01O Regenerating firmware C header for hw/ip/entropy_source
+2026-09-15T23:47:50.898233Z 01O Regenerating raw C address header for hw/ip/entropy_source
+2026-09-15T23:47:51.021233Z 01O Regenerating firmware C header for hw/ip/i2c
+2026-09-15T23:47:52.185788Z 01O Regenerating raw C address header for hw/ip/i2c
+2026-09-15T23:47:52.930218Z 01O Regenerating firmware C header for hw/ip/key_manager
+2026-09-15T23:47:52.931553Z 01O Regenerating raw C address header for hw/ip/key_manager
+2026-09-15T23:47:57.422575Z 01O Regenerating firmware C header for hw/ip/output_remap
+2026-09-15T23:47:58.393255Z 01O Regenerating raw C address header for hw/ip/output_remap
+2026-09-15T23:47:59.359232Z 01O Regenerating firmware C header for hw/ip/system_timer_octs
+2026-09-15T23:47:59.370236Z 01O Regenerating raw C address header for hw/ip/system_timer_octs
+2026-09-15T23:47:59.386220Z 01O Regenerating firmware C header for hw/ip/telemetry_receiver
+2026-09-15T23:48:00.311233Z 01O Regenerating raw C address header for hw/ip/telemetry_receiver
+2026-09-15T23:48:00.813253Z 01O Regenerating firmware C header for hw/ip/uart/log_engine
+2026-09-15T23:48:01.575964Z 01O Regenerating raw C address header for hw/ip/uart/log_engine
+2026-09-15T23:48:02.986231Z 01O Regenerating firmware C header for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:48:03.620240Z 01O Regenerating raw C address header for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:48:03.749234Z 01O Regenerating firmware C header for hw/ip/uart/uart_wrap
+2026-09-15T23:48:04.751213Z 01O Regenerating firmware C header for hw/sys/sep sub-block el2_pic
+2026-09-15T23:48:04.959237Z 01O Regenerating firmware C header for hw/sys/sep sub-block sep_cpu_ctrl
+2026-09-15T23:48:05.068244Z 01O Regenerating raw C address header for hw/ip/uart/uart_wrap
+2026-09-15T23:48:05.507236Z 01O Regenerating firmware C header for hw/sys/sep sub-block sep_efuse_map
+2026-09-15T23:48:07.381226Z 01O Regenerating firmware C header for hw/sys/sep sub-block sep_lifecycle_ctrl
+2026-09-15T23:48:08.684229Z 01O Regenerating firmware C header for hw/sys/sep sub-block sep_reset_ctrl
+2026-09-15T23:48:09.612235Z 01O Regenerating firmware C header for hw/sys/sep sub-block sep_scratch
+2026-09-15T23:48:10.053222Z 01O Regenerating firmware C header for hw/sys/sep sub-block spi_controller
+2026-09-15T23:48:10.197994Z 01O Regenerating raw C address header for hw/sys/sep
+2026-09-15T23:48:10.229192Z 01O Regenerating firmware C header for hw/sys/smc sub-block bus_error_unit
+2026-09-15T23:48:11.035230Z 01O Regenerating firmware C header for hw/sys/smc sub-block chip_config
+2026-09-15T23:48:11.534673Z 01O Regenerating firmware C header for hw/sys/smc sub-block clint
+2026-09-15T23:48:12.599713Z 01O Regenerating firmware C header for hw/sys/smc sub-block cpu_ctrl
+2026-09-15T23:48:13.175320Z 01O Regenerating firmware C header for hw/sys/smc sub-block debug_module
+2026-09-15T23:48:13.205223Z 01O Regenerating firmware C header for hw/sys/smc sub-block dfx_ctrl_status
+2026-09-15T23:48:14.375239Z 01O Regenerating firmware C header for hw/sys/smc sub-block gpio_poc_pbias_ctrl
+2026-09-15T23:48:15.999240Z 01O Regenerating firmware C header for hw/sys/smc sub-block misc_wrap
+2026-09-15T23:48:16.278232Z 01O Regenerating firmware C header for hw/sys/smc sub-block ndm_reset
+2026-09-15T23:48:16.948410Z 01O Regenerating firmware C header for hw/sys/smc sub-block plic
+2026-09-15T23:48:17.709524Z 01O Regenerating firmware C header for hw/sys/smc sub-block reset_unit
+2026-09-15T23:48:19.417227Z 01O Regenerating firmware C header for hw/sys/smc sub-block scratch
+2026-09-15T23:48:19.786233Z 01O Regenerating firmware C header for hw/sys/smc sub-block smc_base_config
+2026-09-15T23:48:21.842223Z 01O Regenerating firmware C header for hw/sys/smc sub-block wdt
+2026-09-15T23:48:22.095226Z 01O Regenerating firmware C header for hw/sys/smc sub-block straps
+2026-09-15T23:48:22.139228Z 01O Regenerating firmware C header for hw/sys/smc sub-block smc_efuse_map
+2026-09-15T23:48:22.416508Z 01O Regenerating raw C address header for hw/sys/smc
+2026-09-15T23:48:22.460498Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:48:22.679798Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:48:22.914264Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:48:24.071261Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:48:27.964359Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:48:28.040352Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:48:30.103227Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:48:30.158231Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:48:30.220244Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:48:30.690220Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:48:38.831241Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:48:43.939213Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:48:44.230235Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:48:44.526227Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:48:44.526238Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:48:44.588232Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:48:44.780020Z 01O Regenerating firmware C header for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:48:45.126239Z 01O Regenerating raw C address header for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:48:49.679434Z 01O Regenerating firmware C header for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:48:50.975333Z 01O Regenerating raw C address header for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:48:50.992386Z 01O Regenerating firmware C header for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:48:52.346754Z 01O Regenerating raw C address header for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:48:53.621785Z 01O Regenerating firmware C header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:48:53.634567Z 01O Regenerating raw C address header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:48:54.280857Z 01O Regenerating firmware C header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:48:55.170350Z 01O Regenerating raw C address header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:48:55.935848Z 01O Regenerating firmware C header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:48:56.559035Z 01O Regenerating raw C address header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:49:00.179011Z 01O Regenerating firmware C header for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:49:03.329209Z 01O Regenerating raw C address header for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:49:04.172189Z 01O Regenerating firmware C header for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:49:04.225933Z 01O Regenerating raw C address header for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:49:05.796241Z 01O Regenerating firmware C header for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:49:06.497225Z 01O Regenerating raw C address header for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:49:06.761479Z 01O Regenerating firmware C header for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:49:10.621362Z 01O Regenerating raw C address header for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:49:11.393951Z 01O Regenerating firmware C header for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:49:11.747232Z 01O Regenerating raw C address header for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:49:15.187271Z 01O Regenerating raw C address header for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:49:15.298247Z 01O Regenerating firmware C header for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:49:15.336217Z 01O Regenerating firmware C header for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:49:17.013624Z 01O Regenerating raw C address header for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:49:20.862454Z 01O Regenerating firmware C header for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:49:20.954073Z 01O Regenerating firmware C header for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:49:21.047395Z 01O Regenerating raw C address header for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:49:21.209009Z 01O Regenerating raw C address header for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:49:22.376470Z 01O Regenerating firmware C header for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:49:22.516270Z 01O Regenerating raw C address header for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:49:26.594239Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:49:27.746241Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:49:27.922481Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:49:28.122229Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:49:28.876219Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:49:28.965273Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:49:29.960233Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:49:30.791246Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:49:33.790430Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:49:34.086996Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:49:35.818862Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:49:35.835382Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:49:35.943828Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:49:36.505604Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:49:36.708236Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:49:40.291241Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:49:40.616235Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:49:41.129691Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:49:41.971210Z 01O Regenerating firmware C header for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:49:42.689236Z 01O Regenerating raw C address header for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:49:42.826071Z 01O Regenerating firmware C header for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:49:43.861238Z 01O Regenerating raw C address header for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:49:51.249013Z 01O Regenerating firmware C header for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:49:52.306318Z 01O Regenerating raw C address header for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:49:53.401229Z 01O Regenerating firmware C header for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:49:53.602229Z 01O Regenerating raw C address header for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:49:53.982248Z 01O Regenerating firmware C header for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:49:54.995330Z 01O Regenerating raw C address header for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:49:59.183012Z 01O Regenerating raw C address header for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:49:59.475389Z 01O Regenerating firmware C header for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:50:07.148465Z 01O Regenerating firmware C header for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:50:07.701355Z 01O Regenerating raw C address header for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:50:08.137231Z 01O Regenerating firmware C header for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:50:09.614249Z 01O Regenerating raw C address header for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:50:10.851710Z 01O Regenerating firmware C header for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:50:11.015255Z 01O Regenerating raw C address header for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:50:13.616250Z 01O Regenerating firmware C header for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:50:13.673227Z 01O Regenerating raw C address header for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:50:14.599688Z 01O Regenerating firmware C header for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:50:15.983227Z 01O Regenerating raw C address header for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:50:16.472232Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:50:20.940629Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:50:21.480403Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:50:21.569230Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:50:23.050270Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:50:24.211615Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:50:26.376212Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:50:26.566225Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:50:26.582428Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:50:34.095221Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:50:35.847114Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:50:36.386228Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:50:38.080849Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:50:38.226774Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:50:38.602855Z 01O Regenerating firmware C header for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:50:38.897276Z 01O Regenerating raw C address header for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:50:40.706275Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:50:40.916233Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:50:46.363686Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:50:47.986686Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:50:48.924380Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:50:49.213220Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:50:51.251318Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:50:51.317220Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:50:57.653832Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:51:01.432246Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:51:01.541538Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:51:05.688233Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:51:06.933228Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:51:08.009641Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:51:08.055512Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:51:08.219227Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:51:08.810553Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:51:10.492760Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:51:11.258247Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:51:12.542146Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:51:12.571549Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:51:13.516999Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:51:13.645749Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:51:13.717735Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:51:14.326874Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:51:15.061752Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:51:17.953160Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:51:18.008593Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:51:18.028508Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:51:18.803238Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:51:19.501636Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:51:20.221881Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:51:20.454838Z 01O Regenerating firmware C header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:51:20.778109Z 01O Regenerating raw C address header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:51:21.614809Z 01O Regenerating firmware C header for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:51:21.624449Z 01O Regenerating raw C address header for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:51:22.960728Z 01O Regenerating raw C address header for nonfree/hw/sys/smc
+2026-09-15T23:51:23.236407Z 01O Regenerating raw C address header for nonfree/hw/sys/sep
+2026-09-15T23:51:24.490915Z 01O Regenerating SystemVerilog address package for hw/ip/avsbus_controller
+2026-09-15T23:51:24.842450Z 01O Regenerating SystemVerilog address package for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:51:24.885125Z 01O Regenerating SystemVerilog address package for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:51:26.131235Z 01O Regenerating SystemVerilog address package for hw/ip/entropy_source
+2026-09-15T23:51:27.418873Z 01O Regenerating SystemVerilog address package for hw/ip/i2c
+2026-09-15T23:51:27.917231Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager
+2026-09-15T23:51:29.553266Z 01O Regenerating SystemVerilog address package for hw/ip/system_timer_octs
+2026-09-15T23:51:29.559714Z 01O Regenerating SystemVerilog address package for hw/ip/output_remap
+2026-09-15T23:51:30.567684Z 01O Regenerating SystemVerilog address package for hw/ip/telemetry_receiver
+2026-09-15T23:51:31.653239Z 01O Regenerating SystemVerilog address package for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:51:31.720215Z 01O Regenerating SystemVerilog address package for hw/ip/uart/log_engine
+2026-09-15T23:51:35.121438Z 01O Regenerating SystemVerilog address package for hw/ip/uart/uart_wrap
+2026-09-15T23:51:35.453483Z 01O Regenerating SystemVerilog address package for hw/sys/sep
+2026-09-15T23:51:39.376679Z 01O Regenerating SystemVerilog address package for hw/sys/smc
+2026-09-15T23:51:40.160233Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:51:40.946227Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:51:42.633230Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:51:42.644232Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:51:42.845226Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:51:44.492223Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:51:44.495840Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:51:45.993575Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:51:46.238779Z 01O Regenerating SystemVerilog address package for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:51:47.300411Z 01O Regenerating SystemVerilog address package for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:51:47.736610Z 01O Regenerating SystemVerilog address package for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:51:47.857587Z 01O Regenerating SystemVerilog address package for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:51:48.017817Z 01O Regenerating SystemVerilog address package for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:51:48.322229Z 01O Regenerating SystemVerilog address package for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:51:51.298228Z 01O Regenerating SystemVerilog address package for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:51:51.334254Z 01O Regenerating SystemVerilog address package for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:51:52.914230Z 01O Regenerating SystemVerilog address package for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:51:55.759820Z 01O Regenerating SystemVerilog address package for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:51:56.411582Z 01O Regenerating SystemVerilog address package for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:51:56.826221Z 01O Regenerating SystemVerilog address package for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:51:56.904815Z 01O Regenerating SystemVerilog address package for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:52:00.144226Z 01O Regenerating SystemVerilog address package for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:52:00.594235Z 01O Regenerating SystemVerilog address package for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:52:00.635230Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:52:00.713224Z 01O Regenerating SystemVerilog address package for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:52:01.598472Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:52:01.669385Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:52:01.909228Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:52:02.087231Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:52:04.380677Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:52:06.850413Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:52:06.889699Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:52:07.503943Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:52:07.973239Z 01O Regenerating SystemVerilog address package for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:52:07.995235Z 01O Regenerating SystemVerilog address package for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:52:08.423227Z 01O Regenerating SystemVerilog address package for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:52:08.684221Z 01O Regenerating SystemVerilog address package for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:52:09.407268Z 01O Regenerating SystemVerilog address package for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:52:09.533215Z 01O Regenerating SystemVerilog address package for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:52:09.992059Z 01O Regenerating SystemVerilog address package for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:52:11.200223Z 01O Regenerating SystemVerilog address package for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:52:11.516224Z 01O Regenerating SystemVerilog address package for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:52:11.806223Z 01O Regenerating SystemVerilog address package for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:52:14.343223Z 01O Regenerating SystemVerilog address package for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:52:14.839236Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:52:15.103239Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:52:15.196073Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:52:17.699232Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:52:18.498005Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:52:20.223208Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:52:20.306900Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:52:20.673507Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:52:20.888814Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:52:22.425233Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:52:23.250226Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:52:23.322227Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:52:24.158839Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:52:27.202668Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:52:27.312226Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:52:27.334258Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:52:27.395251Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:52:29.196265Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:52:34.531137Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:52:35.250712Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:52:35.281132Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:52:35.623236Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:52:35.983243Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:52:36.136237Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:52:36.275623Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:52:36.876243Z 01O Regenerating SystemVerilog address package for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:52:39.121221Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/smc
+2026-09-15T23:52:39.215233Z 01O Regenerating SystemVerilog address package for nonfree/hw/sys/sep
+2026-09-15T23:52:39.826235Z 01O Regenerating flattened SV header for hw/ip/avsbus_controller
+2026-09-15T23:52:40.125228Z 01O Regenerating flattened SV header for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:52:40.511096Z 01O Regenerating flattened SV header for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:52:41.311224Z 01O Regenerating flattened SV header for hw/ip/entropy_source
+2026-09-15T23:52:41.391222Z 01O Regenerating flattened SV header for hw/ip/i2c
+2026-09-15T23:52:41.949745Z 01O Regenerating flattened SV header for hw/ip/key_manager
+2026-09-15T23:52:42.506701Z 01O Regenerating flattened SV header for hw/ip/output_remap
+2026-09-15T23:52:42.719292Z 01O Regenerating flattened SV header for hw/ip/system_timer_octs
+2026-09-15T23:52:42.946915Z 01O Regenerating flattened SV header for hw/ip/uart/log_engine
+2026-09-15T23:52:43.260887Z 01O Regenerating flattened SV header for hw/ip/telemetry_receiver
+2026-09-15T23:52:43.985682Z 01O Regenerating flattened SV header for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:52:44.202399Z 01O Regenerating flattened SV header for hw/ip/uart/uart_wrap
+2026-09-15T23:52:44.274466Z 01O Regenerating flattened SV header for hw/sys/sep
+2026-09-15T23:52:44.972527Z 01O Regenerating flattened SV header for hw/sys/smc
+2026-09-15T23:52:45.539233Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:52:45.760236Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:52:46.365246Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:52:50.492234Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:52:50.793226Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:52:50.893239Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:52:51.017231Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:52:54.660487Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:52:55.290239Z 01O Regenerating flattened SV header for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:52:55.534226Z 01O Regenerating flattened SV header for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:52:56.150233Z 01O Regenerating flattened SV header for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:52:57.845609Z 01O Regenerating flattened SV header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:52:57.950269Z 01O Regenerating flattened SV header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:52:58.503819Z 01O Regenerating flattened SV header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:52:58.988315Z 01O Regenerating flattened SV header for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:52:59.121907Z 01O Regenerating flattened SV header for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:53:00.064423Z 01O Regenerating flattened SV header for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:53:00.108438Z 01O Regenerating flattened SV header for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:53:00.390659Z 01O Regenerating flattened SV header for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:53:00.742121Z 01O Regenerating flattened SV header for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:53:01.906212Z 01O Regenerating flattened SV header for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:53:01.969197Z 01O Regenerating flattened SV header for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:53:02.785220Z 01O Regenerating flattened SV header for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:53:03.224243Z 01O Regenerating flattened SV header for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:53:03.301514Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:53:04.044451Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:53:04.459771Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:53:04.653988Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:53:05.057248Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:53:05.414833Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:53:06.183367Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:53:06.554227Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:53:07.297235Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:53:07.297246Z 01O Regenerating flattened SV header for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:53:07.365235Z 01O Regenerating flattened SV header for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:53:07.925229Z 01O Regenerating flattened SV header for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:53:08.370232Z 01O Regenerating flattened SV header for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:53:08.409228Z 01O Regenerating flattened SV header for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:53:09.480270Z 01O Regenerating flattened SV header for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:53:10.296688Z 01O Regenerating flattened SV header for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:53:10.324220Z 01O Regenerating flattened SV header for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:53:11.710125Z 01O Regenerating flattened SV header for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:53:11.713128Z 01O Regenerating flattened SV header for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:53:11.824502Z 01O Regenerating flattened SV header for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:53:12.661624Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:53:13.308126Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:53:13.653013Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:53:16.892232Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:53:16.892242Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:53:16.914230Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:53:18.609232Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:53:19.416234Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:53:20.453219Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:53:21.044231Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:53:21.073229Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:53:21.551235Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:53:23.272759Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:53:24.075215Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:53:25.426972Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:53:25.496234Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:53:25.735125Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:53:27.187761Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:53:28.188204Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:53:30.924217Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:53:30.944773Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:53:31.078796Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:53:31.551929Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:53:31.651672Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:53:31.854254Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:53:35.848232Z 01O Regenerating flattened SV header for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:53:35.859235Z 01O Regenerating Python register header for hw/ip/avsbus_controller
+2026-09-15T23:53:35.938233Z 01O Regenerating flattened SV header for nonfree/hw/sys/sep
+2026-09-15T23:53:35.968230Z 01O Regenerating flattened SV header for nonfree/hw/sys/smc
+2026-09-15T23:53:35.972230Z 01O Regenerating Python register header for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:53:39.057551Z 01O Regenerating Python register header for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:53:41.516631Z 01O Regenerating Python register header for hw/ip/i2c
+2026-09-15T23:53:41.732380Z 01O Regenerating Python register header for hw/ip/entropy_source
+2026-09-15T23:53:42.831232Z 01O Regenerating Python register header for hw/ip/output_remap
+2026-09-15T23:53:43.224242Z 01O Regenerating Python register header for hw/ip/key_manager
+2026-09-15T23:53:45.030227Z 01O Regenerating Python register header for hw/ip/system_timer_octs
+2026-09-15T23:53:45.484488Z 01O Regenerating Python register header for hw/ip/telemetry_receiver
+2026-09-15T23:53:45.584478Z 01O Regenerating Python register header for hw/ip/uart/log_engine
+2026-09-15T23:53:48.024236Z 01O Regenerating Python register header for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:53:48.223250Z 01O Regenerating Python register header for hw/ip/uart/uart_wrap
+2026-09-15T23:53:48.571258Z 01O Regenerating Python register header for hw/sys/sep
+2026-09-15T23:53:51.216480Z 01O Regenerating Python register header for hw/sys/smc
+2026-09-15T23:53:52.191229Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:53:52.488587Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:53:59.453282Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:53:59.923231Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:54:07.429810Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:54:08.509244Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:54:08.704224Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:54:15.677234Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:54:17.963228Z 01O Regenerating Python register header for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:54:18.007640Z 01O Regenerating Python register header for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:54:21.157218Z 01O Regenerating Python register header for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:54:21.264223Z 01O Regenerating Python register header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:54:24.294236Z 01O Regenerating Python register header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:54:26.259489Z 01O Regenerating Python register header for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:54:27.219702Z 01O Regenerating Python register header for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:54:27.852465Z 01O Regenerating Python register header for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:54:29.157995Z 01O Regenerating Python register header for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:54:31.187241Z 01O Regenerating Python register header for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:54:32.098517Z 01O Regenerating Python register header for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:54:32.197221Z 01O Regenerating Python register header for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:54:35.730235Z 01O Regenerating Python register header for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:54:36.003434Z 01O Regenerating Python register header for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:54:36.837228Z 01O Regenerating Python register header for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:54:37.518524Z 01O Regenerating Python register header for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:54:37.926221Z 01O Regenerating Python register header for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:54:37.986224Z 01O Regenerating Python register header for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:54:43.836237Z 01O Regenerating Python register header for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:54:44.232229Z 01O Regenerating Python register header for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:54:44.258221Z 01O Regenerating Python register header for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:54:44.303224Z 01O Regenerating Python register header for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:54:45.549252Z 01O Regenerating Python register header for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:54:46.875230Z 01O Regenerating Python register header for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:54:53.181229Z 01O Regenerating Python register header for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:54:53.268227Z 01O Regenerating Python register header for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:54:53.343241Z 01O Regenerating Python register header for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:54:53.366228Z 01O Regenerating Python register header for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:54:53.522238Z 01O Regenerating Python register header for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:54:54.538235Z 01O Regenerating Python register header for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:54:58.922751Z 01O Regenerating Python register header for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:55:02.467654Z 01O Regenerating Python register header for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:55:02.499559Z 01O Regenerating Python register header for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:55:02.583539Z 01O Regenerating Python register header for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:55:02.628216Z 01O Regenerating Python register header for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:55:03.767661Z 01O Regenerating Python register header for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:55:03.857224Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:55:08.787246Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:55:10.281267Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:55:10.471540Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:55:10.519258Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:55:10.541251Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:55:11.565263Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:55:11.778240Z 01O Regenerating Python register header for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:55:14.498209Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:55:14.521203Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:55:14.886225Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:55:15.532233Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:55:15.643219Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:55:17.961923Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:55:18.796878Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:55:21.715215Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:55:21.785202Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:55:21.830206Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:55:22.146214Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:55:22.303234Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:55:23.954225Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:55:25.845234Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:55:28.487203Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:55:28.506309Z 01O Regenerating Python register header for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:55:28.516592Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:55:28.561783Z 01O Regenerating Python register header for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:55:28.647376Z 01O Regenerating Python register header for nonfree/hw/sys/smc
+2026-09-15T23:55:29.488230Z 01O Regenerating Python register header for nonfree/hw/sys/sep
+2026-09-15T23:55:30.344591Z 01O Regenerating UVM RAL model for hw/ip/entropy_source
+2026-09-15T23:55:31.946234Z 01O Regenerating UVM RAL model for hw/ip/output_remap
+2026-09-15T23:55:32.109229Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block el2_pic
+2026-09-15T23:55:32.403308Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block sep_cpu_ctrl
+2026-09-15T23:55:32.932242Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block sep_efuse_map
+2026-09-15T23:55:37.103239Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block sep_lifecycle_ctrl
+2026-09-15T23:55:43.208238Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block sep_scratch
+2026-09-15T23:55:43.610786Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block sep_reset_ctrl
+2026-09-15T23:55:43.835220Z 01O Regenerating UVM RAL model for hw/sys/sep sub-block spi_controller
+2026-09-15T23:55:45.576193Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:55:48.176229Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:55:48.364235Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:55:49.942263Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:55:58.288262Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:56:03.150500Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:56:03.510051Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:56:03.527500Z 01O Regenerating UVM RAL model for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:56:04.228244Z 01O Regenerating UVM RAL model for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:56:05.982211Z 01O Regenerating UVM RAL model for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:56:07.753261Z 01O Regenerating UVM RAL model for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:56:08.134470Z 01O Regenerating UVM RAL model for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:56:11.742230Z 01O Regenerating UVM RAL model for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:56:17.072895Z 01O Regenerating UVM RAL model for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:56:18.016258Z 01O Regenerating UVM RAL model for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:56:18.161229Z 01O Regenerating UVM RAL model for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:56:18.607220Z 01O Regenerating UVM RAL model for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:56:20.703224Z 01O Regenerating UVM RAL model for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:56:22.849237Z 01O Regenerating UVM RAL model for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:56:24.126207Z 01O Regenerating JSON register model for hw/sys/smc
+2026-09-15T23:56:24.148208Z 01O Regenerating UVM RAL model for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:56:26.808226Z 01O Regenerating JSON register model for nonfree/hw/sys/smc
+2026-09-15T23:56:28.624224Z 01O Regenerating IP-XACT component for hw/ip/avsbus_controller
+2026-09-15T23:56:29.985221Z 01O Regenerating IP-XACT component for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:56:30.824931Z 01O Regenerating IP-XACT component for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:56:31.679233Z 01O Regenerating IP-XACT component for hw/ip/entropy_source
+2026-09-15T23:56:33.777233Z 01O Regenerating IP-XACT component for hw/ip/i2c
+2026-09-15T23:56:34.578225Z 01O Regenerating IP-XACT component for hw/ip/key_manager
+2026-09-15T23:56:34.682203Z 01O Regenerating IP-XACT component for hw/ip/system_timer_octs
+2026-09-15T23:56:34.763211Z 01O Regenerating IP-XACT component for hw/ip/output_remap
+2026-09-15T23:56:34.788459Z 01O Regenerating IP-XACT component for hw/ip/telemetry_receiver
+2026-09-15T23:56:37.782843Z 01O Regenerating IP-XACT component for hw/ip/uart/log_engine
+2026-09-15T23:56:39.242152Z 01O Regenerating IP-XACT component for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:56:40.986216Z 01O Regenerating IP-XACT component for hw/ip/uart/uart_wrap
+2026-09-15T23:56:41.128248Z 01O Regenerating IP-XACT component for hw/sys/smc
+2026-09-15T23:56:41.219236Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:56:41.259236Z 01O Regenerating IP-XACT component for hw/sys/sep
+2026-09-15T23:56:41.680240Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:56:43.395241Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:56:43.449356Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:56:44.805224Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:56:45.094237Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:55:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_sram'
+2026-09-15T23:56:45.094251Z 01O     external sep_sram          sep_sram                 @BASE_ADDR + 0x1000_0000;
+2026-09-15T23:56:45.094252Z 01O                                ^^^^^^^^
+2026-09-15T23:56:45.105249Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:59:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_boot_rom'
+2026-09-15T23:56:45.105259Z 01O     external sep_boot_rom      sep_boot_rom             @BASE_ADDR + 0x1004_0000;
+2026-09-15T23:56:45.105261Z 01O                                ^^^^^^^^^^^^
+2026-09-15T23:56:45.127228Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:255:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.otbn.IMEM'
+2026-09-15T23:56:45.127276Z 01O     } external IMEM @ 0x4000;
+2026-09-15T23:56:45.127277Z 01O                ^^^^
+2026-09-15T23:56:45.138241Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:259:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.otbn.DMEM'
+2026-09-15T23:56:45.138253Z 01O     } external DMEM @ 0x8000;
+2026-09-15T23:56:45.138256Z 01O                ^^^^
+2026-09-15T23:56:45.149248Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:262:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.hmac.MSG_FIFO'
+2026-09-15T23:56:45.149259Z 01O     } external MSG_FIFO @ 0x1000;
+2026-09-15T23:56:45.149261Z 01O                ^^^^^^^^
+2026-09-15T23:56:45.149263Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:410:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.kmac.STATE'
+2026-09-15T23:56:45.149264Z 01O     } external STATE @ 0x400;
+2026-09-15T23:56:45.149264Z 01O                ^^^^^
+2026-09-15T23:56:45.149265Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:414:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.kmac.MSG_FIFO'
+2026-09-15T23:56:45.149265Z 01O     } external MSG_FIFO @ 0x800;
+2026-09-15T23:56:45.149266Z 01O                ^^^^^^^^
+2026-09-15T23:56:45.176235Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:175:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.ap_region'
+2026-09-15T23:56:45.176247Z 01O     external remapped_region       ap_region        @BASE_ADDR + 0x1100_0000;
+2026-09-15T23:56:45.176248Z 01O                                    ^^^^^^^^^
+2026-09-15T23:56:45.186243Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:176:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.stee_region'
+2026-09-15T23:56:45.186254Z 01O     external remapped_region       stee_region      @BASE_ADDR + 0x1180_0000;
+2026-09-15T23:56:45.186255Z 01O                                    ^^^^^^^^^^^
+2026-09-15T23:56:45.197265Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/dv/models/regs/sep_external.rdl:22:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_external.xip_region'
+2026-09-15T23:56:45.197276Z 01O     } external xip_region @0x1000_0000;
+2026-09-15T23:56:45.197277Z 01O                ^^^^^^^^^^
+2026-09-15T23:56:45.197278Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:194:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_iccm'
+2026-09-15T23:56:45.197279Z 01O     external sep_iccm          sep_iccm                  @BASE_ADDR + 0xC000_0000;
+2026-09-15T23:56:45.197280Z 01O                                ^^^^^^^^
+2026-09-15T23:56:45.197281Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:199:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_dccm'
+2026-09-15T23:56:45.197315Z 01O     external sep_dccm          sep_dccm                  @BASE_ADDR + 0xC004_0000;
+2026-09-15T23:56:45.197315Z 01O                                ^^^^^^^^
+2026-09-15T23:56:45.675231Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:67:46: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.dtp_ctrl_reg'
+2026-09-15T23:56:45.675243Z 01O     external ext_memory #(.NUM_ENTRIES(512)) dtp_ctrl_reg         @BASE_ADDR + 0x000_b000;
+2026-09-15T23:56:45.675244Z 01O                                              ^^^^^^^^^^^^
+2026-09-15T23:56:45.958617Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:56:45.967290Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl:94:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.oca_i3c_wrap.i3c_csr[].DAT'
+2026-09-15T23:56:45.967304Z 01O     } external DAT @ DAT_offset;
+2026-09-15T23:56:45.967306Z 01O                ^^^
+2026-09-15T23:56:45.967307Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl:101:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.oca_i3c_wrap.i3c_csr[].DCT'
+2026-09-15T23:56:45.967308Z 01O     } external DCT @ DCT_offset;
+2026-09-15T23:56:45.967309Z 01O                ^^^
+2026-09-15T23:56:45.967310Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:87:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.spm_rom_memory'
+2026-09-15T23:56:45.967311Z 01O     external spm_rom_memory        spm_rom_memory              @BASE_ADDR + 0x004_0000;
+2026-09-15T23:56:45.967311Z 01O                                    ^^^^^^^^^^^^^^
+2026-09-15T23:56:45.967312Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:89:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.spm_memory'
+2026-09-15T23:56:45.967313Z 01O     external spm_memory            spm_memory                  @BASE_ADDR + 0x006_0000;
+2026-09-15T23:56:45.967313Z 01O                                    ^^^^^^^^^^
+2026-09-15T23:56:45.984347Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/include/smc_external.rdl:20:62: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.smc_external.region'
+2026-09-15T23:56:45.984359Z 01O     external ext_memory #(.NUM_ENTRIES(1048576), .WIDTH(32)) region @0x0000;
+2026-09-15T23:56:45.984361Z 01O                                                              ^^^^^^
+2026-09-15T23:56:45.984362Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:95:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.ecam_region'
+2026-09-15T23:56:45.984363Z 01O     external remapped_region       ecam_region                 @BASE_ADDR + 0x080_0000;
+2026-09-15T23:56:45.984364Z 01O                                    ^^^^^^^^^^^
+2026-09-15T23:56:45.984365Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:97:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.mmode_region'
+2026-09-15T23:56:45.984366Z 01O     external remapped_region       mmode_region                @BASE_ADDR + 0x100_0000;
+2026-09-15T23:56:45.984398Z 01O                                    ^^^^^^^^^^^^
+2026-09-15T23:56:45.984398Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:99:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.xvisor_region'
+2026-09-15T23:56:45.984399Z 01O     external remapped_region       xvisor_region               @BASE_ADDR + 0x180_0000;
+2026-09-15T23:56:45.984399Z 01O                                    ^^^^^^^^^^^^^
+2026-09-15T23:56:46.090222Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:56:47.363822Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:56:47.886242Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:262:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'hmac.MSG_FIFO'
+2026-09-15T23:56:47.886253Z 01O     } external MSG_FIFO @ 0x1000;
+2026-09-15T23:56:47.886254Z 01O                ^^^^^^^^
+2026-09-15T23:56:48.155969Z 01O Regenerating IP-XACT component for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:56:48.729238Z 01O Regenerating IP-XACT component for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:56:49.039679Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:410:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'kmac.STATE'
+2026-09-15T23:56:49.039690Z 01O     } external STATE @ 0x400;
+2026-09-15T23:56:49.039691Z 01O                ^^^^^
+2026-09-15T23:56:49.040586Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:414:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'kmac.MSG_FIFO'
+2026-09-15T23:56:49.040601Z 01O     } external MSG_FIFO @ 0x800;
+2026-09-15T23:56:49.040603Z 01O                ^^^^^^^^
+2026-09-15T23:56:49.042780Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:255:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'otbn.IMEM'
+2026-09-15T23:56:49.042790Z 01O     } external IMEM @ 0x4000;
+2026-09-15T23:56:49.042791Z 01O                ^^^^
+2026-09-15T23:56:49.048268Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:259:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'otbn.DMEM'
+2026-09-15T23:56:49.048277Z 01O     } external DMEM @ 0x8000;
+2026-09-15T23:56:49.048279Z 01O                ^^^^
+2026-09-15T23:56:49.256244Z 01O Regenerating IP-XACT component for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:56:49.304037Z 01O Regenerating IP-XACT component for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:56:49.749248Z 01O Regenerating IP-XACT component for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:56:50.628441Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:301:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'spi_controller.RXDATA[]'
+2026-09-15T23:56:50.628452Z 01O     } external RXDATA[1] @ 0x24 += 0x4;
+2026-09-15T23:56:50.628454Z 01O                ^^^^^^
+2026-09-15T23:56:50.629265Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/spi_controller.rdl:304:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'spi_controller.TXDATA[]'
+2026-09-15T23:56:50.629304Z 01O     } external TXDATA[1] @ 0x28 += 0x4;
+2026-09-15T23:56:50.629305Z 01O                ^^^^^^
+2026-09-15T23:56:50.792877Z 01O Regenerating IP-XACT component for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:56:51.038317Z 01O Regenerating IP-XACT component for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:56:51.498228Z 01O Regenerating IP-XACT component for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:56:51.509225Z 01O Regenerating IP-XACT component for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:56:51.531231Z 01O Regenerating IP-XACT component for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:56:52.782586Z 01O Regenerating IP-XACT component for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:56:53.579283Z 01O Regenerating IP-XACT component for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:56:53.691221Z 01O Regenerating IP-XACT component for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:56:54.180232Z 01O Regenerating IP-XACT component for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:56:54.297234Z 01O Regenerating IP-XACT component for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:56:54.343209Z 01O Regenerating IP-XACT component for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:56:55.748752Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:56:56.030231Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:56:56.645256Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:56:57.351556Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:56:57.465972Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:56:58.083226Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl:94:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'oca_i3c_wrap.i3c_csr[].DAT'
+2026-09-15T23:56:58.083236Z 01O     } external DAT @ DAT_offset;
+2026-09-15T23:56:58.083237Z 01O                ^^^
+2026-09-15T23:56:58.094234Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl:101:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'oca_i3c_wrap.i3c_csr[].DCT'
+2026-09-15T23:56:58.094240Z 01O     } external DCT @ DCT_offset;
+2026-09-15T23:56:58.094242Z 01O                ^^^
+2026-09-15T23:56:58.372031Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:56:58.400669Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:56:59.034950Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:56:59.768225Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:57:00.201235Z 01O Regenerating IP-XACT component for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:57:00.670212Z 01O Regenerating IP-XACT component for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:57:01.293371Z 01O Regenerating IP-XACT component for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:57:01.315573Z 01O Regenerating IP-XACT component for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:57:02.405729Z 01O Regenerating IP-XACT component for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:57:03.618306Z 01O Regenerating IP-XACT component for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:57:03.789500Z 01O Regenerating IP-XACT component for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:57:05.092609Z 01O Regenerating IP-XACT component for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:57:08.593639Z 01O Regenerating IP-XACT component for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:57:09.162502Z 01O Regenerating IP-XACT component for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:57:09.789857Z 01O Regenerating IP-XACT component for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:57:10.037482Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:57:10.678220Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:57:11.575228Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:57:11.781219Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:57:13.925236Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:57:14.006231Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:57:15.721262Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:57:17.657729Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:57:18.771231Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:57:20.500251Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:57:20.559253Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:57:21.405237Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:57:22.079231Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:57:22.746299Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:57:26.320242Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:57:26.320253Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:57:26.587245Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:57:27.012681Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:57:27.221230Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:57:29.205626Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:57:29.522324Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:57:30.109036Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:57:30.109048Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:57:30.120748Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:57:31.959983Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:57:32.071231Z 01O Regenerating IP-XACT component for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:57:32.082236Z 01O Regenerating IP-XACT component for nonfree/hw/sys/smc
+2026-09-15T23:57:32.760222Z 01O Regenerating IP-XACT component for nonfree/hw/sys/sep
+2026-09-15T23:57:35.576231Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:55:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_sram'
+2026-09-15T23:57:35.576241Z 01O     external sep_sram          sep_sram                 @BASE_ADDR + 0x1000_0000;
+2026-09-15T23:57:35.576242Z 01O                                ^^^^^^^^
+2026-09-15T23:57:35.598228Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:59:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_boot_rom'
+2026-09-15T23:57:35.598238Z 01O     external sep_boot_rom      sep_boot_rom             @BASE_ADDR + 0x1004_0000;
+2026-09-15T23:57:35.598239Z 01O                                ^^^^^^^^^^^^
+2026-09-15T23:57:35.609239Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:255:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.otbn.IMEM'
+2026-09-15T23:57:35.609248Z 01O     } external IMEM @ 0x4000;
+2026-09-15T23:57:35.609300Z 01O                ^^^^
+2026-09-15T23:57:35.609301Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/otbn/regs/otbn.rdl:259:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.otbn.DMEM'
+2026-09-15T23:57:35.609302Z 01O     } external DMEM @ 0x8000;
+2026-09-15T23:57:35.609303Z 01O                ^^^^
+2026-09-15T23:57:35.620237Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/hmac/regs/hmac.rdl:262:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.hmac.MSG_FIFO'
+2026-09-15T23:57:35.620244Z 01O     } external MSG_FIFO @ 0x1000;
+2026-09-15T23:57:35.620245Z 01O                ^^^^^^^^
+2026-09-15T23:57:35.631258Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:410:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.kmac.STATE'
+2026-09-15T23:57:35.631269Z 01O     } external STATE @ 0x400;
+2026-09-15T23:57:35.631270Z 01O                ^^^^^
+2026-09-15T23:57:35.631271Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/lowRISC/opentitan/overlay/regs/kmac/regs/kmac.rdl:414:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.kmac.MSG_FIFO'
+2026-09-15T23:57:35.631272Z 01O     } external MSG_FIFO @ 0x800;
+2026-09-15T23:57:35.631273Z 01O                ^^^^^^^^
+2026-09-15T23:57:35.663185Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:175:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.ap_region'
+2026-09-15T23:57:35.663196Z 01O     external remapped_region       ap_region        @BASE_ADDR + 0x1100_0000;
+2026-09-15T23:57:35.663197Z 01O                                    ^^^^^^^^^
+2026-09-15T23:57:35.674241Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:176:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.stee_region'
+2026-09-15T23:57:35.674251Z 01O     external remapped_region       stee_region      @BASE_ADDR + 0x1180_0000;
+2026-09-15T23:57:35.674251Z 01O                                    ^^^^^^^^^^^
+2026-09-15T23:57:35.682518Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external.rdl:39:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_external.xip_region'
+2026-09-15T23:57:35.682529Z 01O     } external xip_region @0x1000_0000;
+2026-09-15T23:57:35.682530Z 01O                ^^^^^^^^^^
+2026-09-15T23:57:35.693258Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:194:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_iccm'
+2026-09-15T23:57:35.693268Z 01O     external sep_iccm          sep_iccm                  @BASE_ADDR + 0xC000_0000;
+2026-09-15T23:57:35.693269Z 01O                                ^^^^^^^^
+2026-09-15T23:57:35.693270Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/sep/regs/sep.rdl:199:32: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'och_sep_top.sep_dccm'
+2026-09-15T23:57:35.693271Z 01O     external sep_dccm          sep_dccm                  @BASE_ADDR + 0xC004_0000;
+2026-09-15T23:57:35.693315Z 01O                                ^^^^^^^^
+2026-09-15T23:57:36.482224Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:67:46: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.dtp_ctrl_reg'
+2026-09-15T23:57:36.482235Z 01O     external ext_memory #(.NUM_ENTRIES(512)) dtp_ctrl_reg         @BASE_ADDR + 0x000_b000;
+2026-09-15T23:57:36.482236Z 01O                                              ^^^^^^^^^^^^
+2026-09-15T23:57:36.944227Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl:94:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.oca_i3c_wrap.i3c_csr[].DAT'
+2026-09-15T23:57:36.944238Z 01O     } external DAT @ DAT_offset;
+2026-09-15T23:57:36.944240Z 01O                ^^^
+2026-09-15T23:57:36.944240Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/vendor/chipsalliance/i3c-core/upstream/src/rdl/registers.rdl:101:16: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.oca_i3c_wrap.i3c_csr[].DCT'
+2026-09-15T23:57:36.944242Z 01O     } external DCT @ DCT_offset;
+2026-09-15T23:57:36.944242Z 01O                ^^^
+2026-09-15T23:57:36.944242Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:87:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.spm_rom_memory'
+2026-09-15T23:57:36.944243Z 01O     external spm_rom_memory        spm_rom_memory              @BASE_ADDR + 0x004_0000;
+2026-09-15T23:57:36.944243Z 01O                                    ^^^^^^^^^^^^^^
+2026-09-15T23:57:36.944244Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:89:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.spm_memory'
+2026-09-15T23:57:36.944244Z 01O     external spm_memory            spm_memory                  @BASE_ADDR + 0x006_0000;
+2026-09-15T23:57:36.944245Z 01O                                    ^^^^^^^^^^
+2026-09-15T23:57:37.319220Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:95:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.ecam_region'
+2026-09-15T23:57:37.319230Z 01O     external remapped_region       ecam_region                 @BASE_ADDR + 0x080_0000;
+2026-09-15T23:57:37.319237Z 01O                                    ^^^^^^^^^^^
+2026-09-15T23:57:37.329229Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:97:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.mmode_region'
+2026-09-15T23:57:37.329240Z 01O     external remapped_region       mmode_region                @BASE_ADDR + 0x100_0000;
+2026-09-15T23:57:37.329241Z 01O                                    ^^^^^^^^^^^^
+2026-09-15T23:57:37.329242Z 01O /proj_soc_scratch_ps/gitlab/runner-builds/quasar_soc-c-06_shell_runner_01/tyFHHon3m/0/tensix/soc/tt-oca-harness/hw/sys/smc/regs/smc.rdl:99:36: warning: IP-XACT does not support 'mem' nodes that are nested in hierarchy. Discarding 'smc_top.xvisor_region'
+2026-09-15T23:57:37.329243Z 01O     external remapped_region       xvisor_region               @BASE_ADDR + 0x180_0000;
+2026-09-15T23:57:37.329244Z 01O                                    ^^^^^^^^^^^^^
+2026-09-15T23:57:37.885211Z 01O Regenerating AsciiDoc register docs for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:57:37.921225Z 01O Regenerating AsciiDoc register docs for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:57:38.076233Z 01O Regenerating AsciiDoc register docs for hw/ip/avsbus_controller
+2026-09-15T23:57:38.194353Z 01O Regenerating AsciiDoc register docs for hw/ip/entropy_source
+2026-09-15T23:57:38.605278Z 01O Regenerating AsciiDoc register docs for hw/ip/i2c
+2026-09-15T23:57:38.915227Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager
+2026-09-15T23:57:39.811740Z 01O Regenerating AsciiDoc register docs for hw/ip/output_remap
+2026-09-15T23:57:40.103620Z 01O Regenerating AsciiDoc register docs for hw/ip/system_timer_octs
+2026-09-15T23:57:40.356360Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:57:40.356372Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/uart_wrap
+2026-09-15T23:57:40.426574Z 01O Regenerating AsciiDoc register docs for hw/ip/telemetry_receiver
+2026-09-15T23:57:40.586700Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/log_engine
+2026-09-15T23:57:41.100823Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block el2_pic
+2026-09-15T23:57:41.258809Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block sep_efuse_map
+2026-09-15T23:57:41.264646Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block sep_cpu_ctrl
+2026-09-15T23:57:41.549772Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block sep_lifecycle_ctrl
+2026-09-15T23:57:42.706227Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block sep_reset_ctrl
+2026-09-15T23:57:43.363253Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block spi_controller
+2026-09-15T23:57:43.363264Z 01O Regenerating AsciiDoc register docs for hw/sys/sep sub-block sep_scratch
+2026-09-15T23:57:44.487223Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block bus_error_unit
+2026-09-15T23:57:44.901411Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block chip_config
+2026-09-15T23:57:44.961599Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block clint
+2026-09-15T23:57:45.002104Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block cpu_ctrl
+2026-09-15T23:57:45.381433Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block debug_module
+2026-09-15T23:57:45.904248Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block dfx_ctrl_status
+2026-09-15T23:57:46.038309Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block gpio_poc_pbias_ctrl
+2026-09-15T23:57:49.368225Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block misc_wrap
+2026-09-15T23:57:49.368236Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block ndm_reset
+2026-09-15T23:57:49.390236Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block reset_unit
+2026-09-15T23:57:49.444220Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block plic
+2026-09-15T23:57:49.519634Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block scratch
+2026-09-15T23:57:50.508089Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block smc_efuse_map
+2026-09-15T23:57:50.609206Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block smc_base_config
+2026-09-15T23:57:51.615044Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block straps
+2026-09-15T23:57:51.687815Z 01O Regenerating AsciiDoc register docs for hw/sys/smc sub-block wdt
+2026-09-15T23:57:52.769233Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:57:52.769245Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:57:52.791235Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:57:52.791247Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:57:52.810233Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:57:52.848237Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:57:54.787228Z 01O Regenerating AsciiDoc register docs for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:57:54.797856Z 01O Regenerating AsciiDoc register docs for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:57:54.797866Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:57:54.819784Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:57:54.901983Z 01O Regenerating AsciiDoc register docs for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:57:55.185383Z 01O Regenerating AsciiDoc register docs for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:57:56.411231Z 01O Regenerating AsciiDoc register docs for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:57:56.482231Z 01O Regenerating AsciiDoc register docs for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:57:56.500479Z 01O Regenerating AsciiDoc register docs for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:57:56.500490Z 01O Regenerating AsciiDoc register docs for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:57:56.513438Z 01O Regenerating AsciiDoc register docs for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:57:56.584480Z 01O Regenerating AsciiDoc register docs for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:57:56.885233Z 01O Regenerating AsciiDoc register docs for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:57:57.699107Z 01O Regenerating AsciiDoc register docs for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:57:58.138023Z 01O Regenerating AsciiDoc register docs for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:57:58.139016Z 01O Regenerating AsciiDoc register docs for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:57:58.279209Z 01O Regenerating AsciiDoc register docs for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:57:58.291911Z 01O Regenerating AsciiDoc register docs for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:57:58.303809Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:57:58.513547Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:57:58.692929Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:57:59.693229Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:58:00.184772Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:58:00.196930Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:58:00.387236Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:58:00.909116Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:58:00.970227Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:58:01.050751Z 01O Regenerating AsciiDoc register docs for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:58:01.050805Z 01O Regenerating AsciiDoc register docs for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:58:01.052899Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:58:01.886944Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:58:02.240232Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:58:02.313245Z 01O Regenerating AsciiDoc register docs for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:58:02.339378Z 01O Regenerating AsciiDoc register docs for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:58:02.340731Z 01O Regenerating AsciiDoc register docs for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:58:02.488228Z 01O Regenerating AsciiDoc register docs for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:58:02.748219Z 01O Regenerating AsciiDoc register docs for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:58:03.092945Z 01O Regenerating AsciiDoc register docs for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:58:03.736232Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:58:04.185298Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:58:04.272434Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:58:04.272445Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:58:05.079230Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:58:05.107225Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:58:05.217228Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:58:05.478231Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:58:05.478242Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:58:06.003241Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:58:06.275241Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:58:06.589232Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:58:06.606232Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:58:07.587231Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:58:07.655852Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:58:08.067973Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:58:08.202026Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:58:08.753833Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:58:08.754864Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:58:09.440243Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:58:09.460227Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:58:09.797515Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:58:10.209249Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:58:10.250234Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:58:10.308269Z 01O Regenerating AsciiDoc register docs for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:58:10.665531Z 01O Regenerating AsciiDoc register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:58:10.747209Z 01O Regenerating HTML register docs for hw/ip/avsbus_controller
+2026-09-15T23:58:11.519580Z 01O Regenerating HTML register docs for hw/ip/cross_trigger/cross_trigger_port
+2026-09-15T23:58:11.590876Z 01O Regenerating HTML register docs for hw/ip/entropy_source
+2026-09-15T23:58:11.590889Z 01O Regenerating HTML register docs for hw/ip/cross_trigger/cross_trigger_matrix
+2026-09-15T23:58:11.708680Z 01O Regenerating HTML register docs for hw/ip/output_remap
+2026-09-15T23:58:11.733628Z 01O Regenerating HTML register docs for hw/ip/key_manager
+2026-09-15T23:58:11.778394Z 01O Regenerating HTML register docs for hw/ip/i2c
+2026-09-15T23:58:12.834090Z 01O Regenerating HTML register docs for hw/ip/uart/log_engine
+2026-09-15T23:58:12.866235Z 01O Regenerating HTML register docs for hw/ip/uart/uart_log_engine_wrap
+2026-09-15T23:58:12.869211Z 01O Regenerating HTML register docs for hw/ip/system_timer_octs
+2026-09-15T23:58:13.004996Z 01O Regenerating HTML register docs for hw/sys/sep sub-block el2_pic
+2026-09-15T23:58:13.025753Z 01O Regenerating HTML register docs for hw/ip/uart/uart_wrap
+2026-09-15T23:58:13.406194Z 01O Regenerating HTML register docs for hw/ip/telemetry_receiver
+2026-09-15T23:58:13.406204Z 01O Regenerating HTML register docs for hw/sys/sep sub-block sep_efuse_map
+2026-09-15T23:58:13.802215Z 01O Regenerating HTML register docs for hw/sys/sep sub-block sep_cpu_ctrl
+2026-09-15T23:58:13.821210Z 01O Regenerating HTML register docs for hw/sys/sep sub-block sep_lifecycle_ctrl
+2026-09-15T23:58:14.217662Z 01O Regenerating HTML register docs for hw/sys/sep sub-block sep_reset_ctrl
+2026-09-15T23:58:14.484214Z 01O Regenerating HTML register docs for hw/sys/sep sub-block spi_controller
+2026-09-15T23:58:14.764761Z 01O Regenerating HTML register docs for hw/sys/smc sub-block bus_error_unit
+2026-09-15T23:58:15.094622Z 01O Regenerating HTML register docs for hw/sys/sep sub-block sep_scratch
+2026-09-15T23:58:15.366627Z 01O Regenerating HTML register docs for hw/sys/smc sub-block chip_config
+2026-09-15T23:58:15.963221Z 01O Regenerating HTML register docs for hw/sys/smc sub-block clint
+2026-09-15T23:58:16.161654Z 01O Regenerating HTML register docs for hw/sys/smc sub-block cpu_ctrl
+2026-09-15T23:58:16.680226Z 01O Regenerating HTML register docs for hw/sys/smc sub-block debug_module
+2026-09-15T23:58:16.940394Z 01O Regenerating HTML register docs for hw/sys/smc sub-block gpio_poc_pbias_ctrl
+2026-09-15T23:58:17.087234Z 01O Regenerating HTML register docs for hw/sys/smc sub-block dfx_ctrl_status
+2026-09-15T23:58:17.151295Z 01O Regenerating HTML register docs for hw/sys/smc sub-block misc_wrap
+2026-09-15T23:58:17.243243Z 01O Regenerating HTML register docs for hw/sys/smc sub-block ndm_reset
+2026-09-15T23:58:17.414502Z 01O Regenerating HTML register docs for hw/sys/smc sub-block plic
+2026-09-15T23:58:17.625229Z 01O Regenerating HTML register docs for hw/sys/smc sub-block reset_unit
+2026-09-15T23:58:18.511228Z 01O Regenerating HTML register docs for hw/sys/smc sub-block smc_base_config
+2026-09-15T23:58:18.550943Z 01O Regenerating HTML register docs for hw/sys/smc sub-block scratch
+2026-09-15T23:58:18.667683Z 01O Regenerating HTML register docs for hw/sys/smc sub-block smc_efuse_map
+2026-09-15T23:58:18.773235Z 01O Regenerating HTML register docs for hw/sys/smc sub-block straps
+2026-09-15T23:58:18.853237Z 01O Regenerating HTML register docs for hw/sys/smc sub-block wdt
+2026-09-15T23:58:19.458237Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/aes
+2026-09-15T23:58:19.671274Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/aon_timer
+2026-09-15T23:58:20.147222Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/csrng
+2026-09-15T23:58:20.260218Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/edn
+2026-09-15T23:58:20.271220Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/hmac
+2026-09-15T23:58:21.589228Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/secure_dma
+2026-09-15T23:58:21.666235Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/kmac
+2026-09-15T23:58:21.795753Z 01O Regenerating HTML register docs for hw/ip/axi_alias_remap/regs/alias_remap
+2026-09-15T23:58:21.803568Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/otbn
+2026-09-15T23:58:21.831562Z 01O Regenerating HTML register docs for vendor/lowRISC/opentitan/overlay/regs/spi_controller
+2026-09-15T23:58:21.957215Z 01O Regenerating HTML register docs for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox
+2026-09-15T23:58:22.058234Z 01O Regenerating HTML register docs for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_sep_wrap
+2026-09-15T23:58:22.117224Z 01O Regenerating HTML register docs for hw/ip/axi_filter/regs/filter_ctrl
+2026-09-15T23:58:23.703483Z 01O Regenerating HTML register docs for hw/ip/gpio/regs/gpio_intf
+2026-09-15T23:58:23.769310Z 01O Regenerating HTML register docs for hw/ip/gpio/regs/gpio_ctrl
+2026-09-15T23:58:23.801230Z 01O Regenerating HTML register docs for hw/ip/dfd/regs/smc_cla
+2026-09-15T23:58:23.822223Z 01O Regenerating HTML register docs for hw/ip/efuse/regs/efuse_mmr
+2026-09-15T23:58:23.839619Z 01O Regenerating HTML register docs for hw/ip/efuse/regs/efuse_interface_ctrl
+2026-09-15T23:58:23.842151Z 01O Regenerating HTML register docs for hw/ip/efuse/dv/models/regs/efuse_shim_ctrl
+2026-09-15T23:58:24.099703Z 01O Regenerating HTML register docs for hw/ip/gpio/regs/gpio_wrap
+2026-09-15T23:58:24.189227Z 01O Regenerating HTML register docs for hw/ip/axi_lite_mailbox_unit/regs/axil_mailbox_smc_wrap
+2026-09-15T23:58:24.843514Z 01O Regenerating HTML register docs for hw/ip/i2c/regs/i2c_ctrl
+2026-09-15T23:58:24.864151Z 01O Regenerating HTML register docs for hw/ip/i2c/regs/i2c_wrap
+2026-09-15T23:58:25.574320Z 01O Regenerating HTML register docs for hw/ip/i3ccore_wrap/regs/oca_i3c_wrap
+2026-09-15T23:58:25.977440Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/km_csr
+2026-09-15T23:58:26.059281Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/abr_wrapper_key
+2026-09-15T23:58:26.189772Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/hmac_wrapper_key
+2026-09-15T23:58:26.190902Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/km_drbg_sampler
+2026-09-15T23:58:26.193564Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/km_kpv
+2026-09-15T23:58:26.349506Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/aes_wrapper_key
+2026-09-15T23:58:26.738133Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/km_mailbox_km
+2026-09-15T23:58:26.750762Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/km_mailbox_sep
+2026-09-15T23:58:27.350211Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/kmac_wrapper_key
+2026-09-15T23:58:27.478034Z 01O Regenerating HTML register docs for hw/ip/key_manager/regs/otbn_wrapper_key
+2026-09-15T23:58:27.818854Z 01O Regenerating HTML register docs for hw/ip/telemetry_receiver/regs/telemetry_receiver_wrap
+2026-09-15T23:58:27.899463Z 01O Regenerating HTML register docs for hw/ip/uart/uart_log_engine_wrap/regs/uart_log_engine_ctrl
+2026-09-15T23:58:27.910248Z 01O Regenerating HTML register docs for hw/ip/uart/uart_16550/regs/uart_16550_main_wo
+2026-09-15T23:58:28.059236Z 01O Regenerating HTML register docs for hw/ip/uart/uart_16550/regs/uart_16550_dl
+2026-09-15T23:58:28.093348Z 01O Regenerating HTML register docs for hw/ip/uart/uart_16550/regs/uart_16550_main
+2026-09-15T23:58:28.198735Z 01O Regenerating HTML register docs for hw/ip/zeroer/regs/zeroer_ctrl
+2026-09-15T23:58:29.798230Z 01O Regenerating HTML register docs for hw/sys/sep/dv/models/regs/sep_external
+2026-09-15T23:58:30.269026Z 01O Regenerating HTML register docs for hw/sys/smc/dv/models/regs/pll_wrap
+2026-09-15T23:58:31.242767Z 01O Regenerating HTML register docs for hw/sys/smc/dv/models/regs/pvt_wrap
+2026-09-15T23:58:31.511571Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_synopsys
+2026-09-15T23:58:31.523363Z 01O Regenerating HTML register docs for nonfree/hw/ip/efuse/dv/shims/vendor/samsung/regs/efuse_shim_ctrl
+2026-09-15T23:58:31.559522Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper_integration
+2026-09-15T23:58:31.607638Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_ctrl_reg
+2026-09-15T23:58:31.621711Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/sep_wrappers/trng_wrapper/data/registers/rdl/trng_wrapper
+2026-09-15T23:58:31.895220Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/cdns_xspi_phy_reg
+2026-09-15T23:58:32.556220Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/och_sep_cdns_spi_ctrl
+2026-09-15T23:58:33.198541Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/cadence/xspi/sep_external
+2026-09-15T23:58:33.310232Z 01O Regenerating HTML register docs for nonfree/hw/sys/sep/dv/shims/regs/vendor/samsung/spi_mux_or_pad/och_sep_spi_mux_ctrl
+2026-09-15T23:58:33.332237Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/smc_external_supplementary
+2026-09-15T23:58:33.807223Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/smc_external
+2026-09-15T23:58:33.817614Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/smc_external_mandatory
+2026-09-15T23:58:33.970387Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/alpha_solutions/ts/temp_sensor
+2026-09-15T23:58:34.322222Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cdns_i3c_wrap
+2026-09-15T23:58:34.333101Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/cadence_i3c
+2026-09-15T23:58:35.291230Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/cadence/i3c/i3c_ctrl
+2026-09-15T23:58:35.394222Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm
+2026-09-15T23:58:35.664482Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/cgm/cgm
+2026-09-15T23:58:35.692860Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/awm/awm_wrap
+2026-09-15T23:58:36.042236Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_cntl
+2026-09-15T23:58:36.053223Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/droop/droop
+2026-09-15T23:58:36.358248Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/combined_pvt_ctrl
+2026-09-15T23:58:36.783441Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/movellus/pll/pll_wrap
+2026-09-15T23:58:37.486234Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/pvt_wrap
+2026-09-15T23:58:37.608241Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_ctrl
+2026-09-15T23:58:37.871784Z 01O Regenerating HTML register docs for nonfree/hw/sys/smc/dv/shims/regs/vendor/samsung/pvt/rdl/temp_sensor_wrap
+2026-09-15T23:58:38.704232Z 01O Regenerating HTML register docs for vendor/pulp-platform/idma/overlay/rdl/dma_ctrl
+2026-09-15T23:58:57.340088Z 01O stamped 78 file(s)
+2026-09-15T23:58:59.044229Z 01O stamped 76 file(s)
+2026-09-15T23:59:01.414237Z 01O stamped 77 file(s)
+2026-09-15T23:59:03.908234Z 01O stamped 70 file(s)
+2026-09-15T23:59:05.582213Z 01O stamped 75 file(s)
+2026-09-15T23:59:05.989317Z 01O stamped 10 file(s)
+2026-09-15T23:59:07.016058Z 01O stamped 84 file(s)
+2026-09-15T23:59:08.168076Z 01O stamped 60 file(s)
+2026-09-15T23:59:17.627961Z 01O Validated 86 generated Python header(s) and 2 generated JSON model(s)
+2026-09-15T23:59:18.207603Z 01O sep_reg_meta: 33 register(s) match the generated RDL header; export=1921 inventory=1763 nometa=158
+2026-09-15T23:59:34.527636Z 01E ERROR: register collateral is stale in 'nonfree'.
+2026-09-15T23:59:34.527649Z 01E  M hw/sys/smc/regs/gen/ipxact/smc.xml
+2026-09-15T23:59:43.288229Z 01E diff --git hw/sys/smc/regs/gen/ipxact/smc.xml hw/sys/smc/regs/gen/ipxact/smc.xml
+2026-09-15T23:59:43.288239Z 01E index ddf98c4d..987ff856 100644
+2026-09-15T23:59:43.288240Z 01E --- hw/sys/smc/regs/gen/ipxact/smc.xml
+2026-09-15T23:59:43.288241Z 01E +++ hw/sys/smc/regs/gen/ipxact/smc.xml
+2026-09-15T23:59:43.288242Z 01E @@ -32229,7 +32229,7 @@ The written value is treated as a signed number using 2s compliment.</ipxact:des
+2026-09-15T23:59:43.288242Z 01E          </ipxact:registerFile>
+2026-09-15T23:59:43.288243Z 01E          <ipxact:registerFile>
+2026-09-15T23:59:43.288243Z 01E            <ipxact:name>oca_i3c_wrap</ipxact:name>
+2026-09-15T23:59:43.288243Z 01E -          <ipxact:description>OCA I3C Controller wrapper</ipxact:description>
+2026-09-15T23:59:43.288244Z 01E +          <ipxact:description>OCA I3C Controller wrapper (i3c-core-fork)</ipxact:description>
+2026-09-15T23:59:43.288244Z 01E            <ipxact:addressOffset>'hc003a000</ipxact:addressOffset>
+2026-09-15T23:59:43.288244Z 01E            <ipxact:range>'h6000</ipxact:range>
+2026-09-15T23:59:43.288245Z 01E            <ipxact:registerFile>
+2026-09-15T23:59:44.147090Z 00O section_end:1789516784:step_script
+[0K
+2026-09-15T23:59:44.147922Z 00O+section_start:1789516784:cleanup_file_variables
+[0K
+2026-09-15T23:59:44.147928Z 00O+[0K[36;1mCleaning up project directory and file based variables[0;m[0;m
+2026-09-15T23:59:44.992288Z 00O section_end:1789516784:cleanup_file_variables
+[0K
+2026-09-15T23:59:44.992430Z 00O [31;1mERROR: Job failed: exit status 1[0;m

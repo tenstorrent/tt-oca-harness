@@ -1,53 +1,63 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
-// Memory Interface
+// Bridge an AXI memory port onto mem_req/mem_rsp banks and forward an AXI-Lite CSR port.
 //
-//------------------------------------------------
+// The two ports are independent; there is no address decode between them.
+// The memory port subtracts MEM_BASE_ADDR from AW and AR addresses and feeds axi_to_mem
+// with a buffer depth of 1 and NUM_BANKS banks.
+// The CSR port subtracts CSR_BASE_ADDR from AW and AR addresses and forwards all traffic to
+// csr_out_*.
+// busy_o is the axi_to_mem busy status.
 
 module memory_interface #(
 
-  // Memory Generic Parameters
-  parameter int unsigned MEM_ADDR_WIDTH   = 0,
-  parameter int unsigned MEM_DATA_WIDTH   = 0,
-  parameter int unsigned MEM_ID_WIDTH     = 0,
-  parameter type mem_req_t                = logic,
-  parameter type mem_rsp_t                = logic,
-  parameter type mem_axi_req_t            = logic,
-  parameter type mem_axi_resp_t           = logic,
+  parameter int unsigned MEM_ADDR_WIDTH   = 0,              // Memory AXI address width; at most 64.
+  parameter int unsigned MEM_DATA_WIDTH   = 0,              // Memory AXI and bank data width; one
+                                                            // of 32, 64, 128, 256, 512 or 1024.
+  parameter int unsigned MEM_ID_WIDTH     = 0,              // Memory ID width.
+  parameter type mem_req_t                = logic,          // Memory request type.
+  parameter type mem_rsp_t                = logic,          // Memory response type.
+  parameter type mem_axi_req_t            = logic,          // AXI memory request type.
+  parameter type mem_axi_resp_t           = logic,          // AXI memory response type.
 
-  // CSR Port Generic Parameters
-  parameter int unsigned CSR_ADDR_WIDTH   = 0,
-  parameter int unsigned CSR_DATA_WIDTH   = 0,
-  parameter type csr_axil_req_t           = logic,
-  parameter type csr_axil_resp_t          = logic,
+  parameter int unsigned CSR_ADDR_WIDTH   = 0,              // CSR AXI-Lite address width; at most
+                                                            // 64.
+  parameter int unsigned CSR_DATA_WIDTH   = 0,              // Data width of both CSR AXI-Lite
+                                                            // ports; 32 or 64.
+  parameter type csr_axil_req_t           = logic,          // CSR AXI-Lite request type.
+  parameter type csr_axil_resp_t          = logic,          // CSR AXI-Lite response type.
 
-  // Address Decode
-  parameter logic [31:0] CSR_BASE_ADDR    = 0,    // CSR base address
-  parameter logic [31:0] MEM_BASE_ADDR    = 0,    // Memory (SRAM) base address
+  parameter logic [31:0] CSR_BASE_ADDR    = 0,              // Subtracted from CSR AW and AR
+                                                            // addresses; must be aligned to
+                                                            // CSR_DATA_WIDTH/8 bytes.
+  parameter logic [31:0] MEM_BASE_ADDR    = 0,              // Subtracted from memory AW and AR
+                                                            // addresses; must be aligned to
+                                                            // MEM_DATA_WIDTH/8 bytes.
 
-  parameter int unsigned NUM_BANKS        = 1     // Number of memory banks (for split banks)
+  parameter int unsigned NUM_BANKS        = 1               // Number of banks axi_to_mem splits
+                                                            // each data word across; 1 to 16.
 ) (
-  input   logic                           clk_i,
-  input   logic                           rst_ni,
+  input   logic                           clk_i,            // System clock.
+  input   logic                           rst_ni,           // Async reset, active-low.
 
-  // AXI interface
-  input   mem_axi_req_t                   mem_axi_req_i,
-  output  mem_axi_resp_t                  mem_axi_resp_o,
+  input   mem_axi_req_t                   mem_axi_req_i,    // AXI memory slave request; addresses
+                                                            // are offset by MEM_BASE_ADDR before
+                                                            // axi_to_mem.
+  output  mem_axi_resp_t                  mem_axi_resp_o,   // AXI memory slave response.
 
-  // AXI4-Lite IN interface
-  input   csr_axil_req_t                  csr_in_axil_req_i,
-  output  csr_axil_resp_t                 csr_in_axil_resp_o,
+  input   csr_axil_req_t                  csr_in_axil_req_i, // Inbound CSR AXI-Lite request.
+  output  csr_axil_resp_t                 csr_in_axil_resp_o, // Inbound CSR AXI-Lite response.
 
-  // AXI4-Lite OUT interface
-  output csr_axil_req_t                   csr_out_axil_req_o,
-  input  csr_axil_resp_t                  csr_out_axil_resp_i,
+  output csr_axil_req_t                   csr_out_axil_req_o, // csr_in_axil_req_i with
+                                                              // CSR_BASE_ADDR subtracted from the
+                                                              // AW and AR addresses.
+  input  csr_axil_resp_t                  csr_out_axil_resp_i, // Forwarded CSR AXI-Lite response.
 
-  // Memory Interface
-  output mem_req_t                        mem_req_o,
-  input  mem_rsp_t                        mem_rsp_i,
-  output                                  busy_o
+  output mem_req_t                        mem_req_o,        // Bank memory request.
+  input  mem_rsp_t                        mem_rsp_i,        // Bank memory response.
+  output                                  busy_o            // High while axi_to_mem has a
+                                                            // memory-port transaction in progress.
 );
 
   `include "axi/typedef.svh"

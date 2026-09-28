@@ -5,36 +5,14 @@
 
 === Signal Interface
 
+Packed control and bus types remain bundles at the `jtag_stap` boundary; their
+members are not separate scalar ports.
+
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="STAP signal interface" tabindex="0">
-++++
+The parameters and ports of `jtag_stap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_stap/jtag_stap.adoc[jtag_stap].
 endif::backend-html5[]
-
-[cols="<28,<13,<9,<50",options="header",role="port-reference"]
-|===
-|Signal |Direction |Width |Description
-|clk_i |Input |1 |JTAG TCK clock
-|rst_ni |Input |1 |Active-low asynchronous reset (TRST or POR)
-|tdi_i |Input |1 |Test Data In from upstream (PTAP or previous STAP)
-|tdo_o |Output |1 |Test Data Out to downstream (next STAP or PTAP)
-|capture_i |Input |1 |Capture control from PTAP
-|shift_i |Input |1 |Shift control from PTAP
-|update_i |Input |1 |Update control from PTAP
-|tms_i |Input |1 |TMS from PTAP
-|security_disable_i |Input |1 |Active-high disable (1 = STAP locked out)
-|stap_tdi_o |Output |1 |TDI to downstream TAP
-|stap_tdo_i |Input |1 |TDO from downstream TAP
-|stap_tms_o |Output |1 |TMS to downstream TAP (or parked value when disabled)
-|stap_tck_o |Output |1 |TCK to downstream TAP
-|stap_trst_no |Output |1 |TRST to downstream TAP
-|stap_enabled_o |Output |1 |Indicates STAP is selected and enabled
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `jtag_stap` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 === Timing Requirements
@@ -51,4 +29,4 @@ The STAP interface timing follows IEEE 1838-2019:
 
 The STAP depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells (clock gating, synchronizers)
+* `hw/common/ocah_prim` - Primitive cells (clock gating, synchronizers)

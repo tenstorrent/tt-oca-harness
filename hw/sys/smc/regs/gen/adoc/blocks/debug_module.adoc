@@ -1,65 +1,66 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-debug_module]
+== RISC-V Debug Module Registers
+
+RISC-V External Debug Support Version 0.13.2 - Section 3.12. Field reset values updated as per specification and user rules (Preset/- -> 0x0). HW access permissions are derived based on SW access. SW 'w' access changed to 'rw'. Fields previously rw1c now use 'woclr'.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *abstractdata[12]*: 12 registers
-  ** Base Address: 0x10
-  ** Address Increment: 0x4 per register
-
-* *confstrptr[3]*: 3 registers
-  ** Base Address: 0x64
-  ** Address Increment: 0x4 per register
-
-* *progbuf[16]*: 16 registers
-  ** Base Address: 0x80
-  ** Address Increment: 0x4 per register
-
+* *abstractdata[12]*: 12 registers, base 0x10, stride 0x4
+* *confstrptr[3]*: 3 registers, base 0x64, stride 0x4
+* *progbuf[16]*: 16 registers, base 0x80, stride 0x4
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x10 - 0x3C | abstractdata[12] | RW a| Abstract Data Register. Used for arguments/return values of abstract commands.
-| 0x40 | dmcontrol | RW a| Controls the overall Debug Module and selected harts. Writes to action bits (haltreq, resumereq, etc.) apply to the new value of hartsel and hasel.
-| 0x44 | dmstatus | R a| Reports status for the Debug Module and currently selected harts. This entire register is read-only.
-| 0x48 | hartinfo | R a| Information about the hart currently selected by hartsel. Optional; reads all-zero if not present. Entire register is read-only.
-| 0x4C | haltsum1 | R a| Read-only. Each bit indicates if any hart in a group of 32 is halted. May not be present in systems with fewer than 33 harts. Unavailable/nonexistent harts are not considered halted.
-| 0x50 | hawindowsel | RW a| Selects which 32-bit portion of the hart array mask register is accessible in hawindow.
-| 0x54 | hawindow | RW a| R/W access to a 32-bit portion of the hart array mask register, selected by hawindowsel.
-| 0x58 | abstractcs | RW a| Controls and status for abstract commands. Writing this register while an abstract command is executing (busy=1) sets cmderr to 1 (busy) if cmderr was 0.
-| 0x5C | command | RW a| Writes cause corresponding abstract command to execute. Writing while busy sets cmderr=1 (if cmderr=0). Ignored if cmderr is non-zero.
-| 0x60 | abstractauto | RW a| Optional. Allows more efficient burst accesses. Writing while busy sets cmderr=1 (if cmderr=0). Detect support by R/W test.
-| 0x64 - 0x6C | confstrptr[3] | R a| Part of configuration string pointer address (if dmstatus.confstrptrvalid=1) or unspecified identifier information. Read-only.
-| 0x74 | nextdm | R a| If multiple DMs on DMI, this holds base address of the next DM. 0 if this is the last. Read-only.
-| 0x80 - 0xBC | progbuf[16] | RW a| Program Buffer word. For debugger to write small programs.
-| 0xC0 | authdata | RW a| 32-bit serial port to/from authentication module. Use when dmstatus.authbusy is clear.
-| 0xD0 | haltsum2 | R a| Read-only. Each bit indicates if any hart in a group of 1024 is halted. May not be present if < 1025 harts.
-| 0xD4 | haltsum3 | R a| Read-only. Each bit indicates if any hart in a group of 32768 is halted. May not be present if < 32769 harts.
-| 0xDC | sbaddress3 | RW a| Bits 127:96 of the physical system bus address for System Bus Access. Not present if sbcs.sbasize < 97. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xE0 | sbcs | RW a| Controls and status for the System Bus Access master. Writes while sbbusy=1 result in undefined behavior.
-| 0xE4 | sbaddress0 | RW a| Bits 31:0 of the physical system bus address. Not present if sbcs.sbasize=0. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror. If sbcs.sberror=0, sbcs.sbbusyerror=0, and sbcs.sbreadonaddr=1, write triggers read sequence.
-| 0xE8 | sbaddress1 | RW a| Bits 63:32 of the physical system bus address. Not present if sbcs.sbasize < 33. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xEC | sbaddress2 | RW a| Bits 95:64 of the physical system bus address. Not present if sbcs.sbasize < 65. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xF0 | sbdata0 | RW a| Bits 31:0 of system bus data. Not present if all sbcs.sbaccess* flags are 0. Accesses do nothing if sbcs.sberror or sbcs.sbbusyerror are non-zero. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror. Write triggers bus write sequence. Read triggers read sequence including conditional next read if sbcs.sbreadondata=1.
-| 0xF4 | sbdata1 | RW a| Bits 63:32 of system bus data. Not present if sbcs.sbaccess64 and sbcs.sbaccess128 are 0. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xF8 | sbdata2 | RW a| Bits 95:64 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0xFC | sbdata3 | RW a| Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
-| 0x100 | haltsum0 | R a| Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5'h0}, MSB for hart {hartsel[19:5],5'h1f}.
+| 0x10 - 0x3C | <<reg-{regmap-instance}-debug_module-abstractdata-0-,abstractdata[12]>> | RW a| Abstract Data Register. Used for arguments/return values of abstract commands.
+| 0x40 | <<reg-{regmap-instance}-debug_module-dmcontrol,dmcontrol>> | RW a| Controls the overall Debug Module and selected harts. Writes to action bits (haltreq, resumereq, etc.) apply to the new value of hartsel and hasel.
+| 0x44 | <<reg-{regmap-instance}-debug_module-dmstatus,dmstatus>> | R a| Reports status for the Debug Module and currently selected harts. This entire register is read-only.
+| 0x48 | <<reg-{regmap-instance}-debug_module-hartinfo,hartinfo>> | R a| Information about the hart currently selected by hartsel. Optional; reads all-zero if not present. Entire register is read-only.
+| 0x4C | <<reg-{regmap-instance}-debug_module-haltsum1,haltsum1>> | R a| Read-only. Each bit indicates if any hart in a group of 32 is halted. May not be present in systems with fewer than 33 harts. Unavailable/nonexistent harts are not considered halted.
+| 0x50 | <<reg-{regmap-instance}-debug_module-hawindowsel,hawindowsel>> | RW a| Selects which 32-bit portion of the hart array mask register is accessible in hawindow.
+| 0x54 | <<reg-{regmap-instance}-debug_module-hawindow,hawindow>> | RW a| R/W access to a 32-bit portion of the hart array mask register, selected by hawindowsel.
+| 0x58 | <<reg-{regmap-instance}-debug_module-abstractcs,abstractcs>> | RW a| Controls and status for abstract commands. Writing this register while an abstract command is executing (busy=1) sets cmderr to 1 (busy) if cmderr was 0.
+| 0x5C | <<reg-{regmap-instance}-debug_module-command,command>> | RW a| Writes cause corresponding abstract command to execute. Writing while busy sets cmderr=1 (if cmderr=0). Ignored if cmderr is non-zero.
+| 0x60 | <<reg-{regmap-instance}-debug_module-abstractauto,abstractauto>> | RW a| Optional. Allows more efficient burst accesses. Writing while busy sets cmderr=1 (if cmderr=0). Detect support by R/W test.
+| 0x64 - 0x6C | <<reg-{regmap-instance}-debug_module-confstrptr-0-,confstrptr[3]>> | R a| Part of configuration string pointer address (if dmstatus.confstrptrvalid=1) or unspecified identifier information. Read-only.
+| 0x74 | <<reg-{regmap-instance}-debug_module-nextdm,nextdm>> | R a| If multiple DMs on DMI, this holds base address of the next DM. 0 if this is the last. Read-only.
+| 0x80 - 0xBC | <<reg-{regmap-instance}-debug_module-progbuf-0-,progbuf[16]>> | RW a| Program Buffer word. For debugger to write small programs.
+| 0xC0 | <<reg-{regmap-instance}-debug_module-authdata,authdata>> | RW a| 32-bit serial port to/from authentication module. Use when dmstatus.authbusy is clear.
+| 0xD0 | <<reg-{regmap-instance}-debug_module-haltsum2,haltsum2>> | R a| Read-only. Each bit indicates if any hart in a group of 1024 is halted. May not be present if < 1025 harts.
+| 0xD4 | <<reg-{regmap-instance}-debug_module-haltsum3,haltsum3>> | R a| Read-only. Each bit indicates if any hart in a group of 32768 is halted. May not be present if < 32769 harts.
+| 0xDC | <<reg-{regmap-instance}-debug_module-sbaddress3,sbaddress3>> | RW a| Bits 127:96 of the physical system bus address for System Bus Access. Not present if sbcs.sbasize < 97. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+| 0xE0 | <<reg-{regmap-instance}-debug_module-sbcs,sbcs>> | RW a| Controls and status for the System Bus Access master. Writes while sbbusy=1 result in undefined behavior.
+| 0xE4 | <<reg-{regmap-instance}-debug_module-sbaddress0,sbaddress0>> | RW a| Bits 31:0 of the physical system bus address. Not present if sbcs.sbasize=0. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror. If sbcs.sberror=0, sbcs.sbbusyerror=0, and sbcs.sbreadonaddr=1, write triggers read sequence.
+| 0xE8 | <<reg-{regmap-instance}-debug_module-sbaddress1,sbaddress1>> | RW a| Bits 63:32 of the physical system bus address. Not present if sbcs.sbasize < 33. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+| 0xEC | <<reg-{regmap-instance}-debug_module-sbaddress2,sbaddress2>> | RW a| Bits 95:64 of the physical system bus address. Not present if sbcs.sbasize < 65. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+| 0xF0 | <<reg-{regmap-instance}-debug_module-sbdata0,sbdata0>> | RW a| Bits 31:0 of system bus data. Not present if all sbcs.sbaccess* flags are 0. Accesses do nothing if sbcs.sberror or sbcs.sbbusyerror are non-zero. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror. Write triggers bus write sequence. Read triggers read sequence including conditional next read if sbcs.sbreadondata=1.
+| 0xF4 | <<reg-{regmap-instance}-debug_module-sbdata1,sbdata1>> | RW a| Bits 63:32 of system bus data. Not present if sbcs.sbaccess64 and sbcs.sbaccess128 are 0. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+| 0xF8 | <<reg-{regmap-instance}-debug_module-sbdata2,sbdata2>> | RW a| Bits 95:64 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+| 0xFC | <<reg-{regmap-instance}-debug_module-sbdata3,sbdata3>> | RW a| Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.
+| 0x100 | <<reg-{regmap-instance}-debug_module-haltsum0,haltsum0>> | R a| Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5'h0}, MSB for hart {hartsel[19:5],5'h1f}.
 |===
 
+[#reg-{regmap-instance}-debug_module-abstractdata-0-]
+=== abstractdata[12]
+
 [cols="1,3,1,1,6", options="header"]
-.abstractdata[12] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Data value for abstract commands.
 |===
 
+[#reg-{regmap-instance}-debug_module-dmcontrol]
+=== dmcontrol
+
 [cols="1,3,1,1,6", options="header"]
-.dmcontrol Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `haltreq` | RW | 0x0 a| Halt request for currently selected harts. Write 0 to clear, 1 to set.
@@ -77,8 +78,10 @@
 | 0 | `dmactive` | RW | 0x0 a| Debug Module active and reset. 0: DM takes reset values (except this bit). 1: DM functions normally.
 |===
 
+[#reg-{regmap-instance}-debug_module-dmstatus]
+=== dmstatus
+
 [cols="1,3,1,1,6", options="header"]
-.dmstatus Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:23 | `_reserved_31_23` | R | 0x0 a| Reserved.
@@ -103,8 +106,10 @@
 | 3:0 | `version` | R | 0x2 a| Debug Module version. 0=No DM, 1=v0.11, 2=v0.13, 15=Non-conformant.
 |===
 
+[#reg-{regmap-instance}-debug_module-hartinfo]
+=== hartinfo
+
 [cols="1,3,1,1,6", options="header"]
-.hartinfo Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `_reserved_31_24` | R | 0x0 a| Reserved.
@@ -115,30 +120,38 @@
 | 11:0 | `dataaddr` | R | 0x0 a| If dataaccess=0: Number of first CSR for dataN. If dataaccess=1: Signed address of RAM where dataN are shadowed (relative to zero).
 |===
 
+[#reg-{regmap-instance}-debug_module-haltsum1]
+=== haltsum1
+
 [cols="1,3,1,1,6", options="header"]
-.haltsum1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `haltsum1` | R | 0x0 a| Halt status summary. LSB for harts {hartsel[19:10],10'h0}-{hartsel[19:10],10'h1f}, MSB for harts {hartsel[19:10],10'h3e0}-{hartsel[19:10],10'h3ff}.
 |===
 
+[#reg-{regmap-instance}-debug_module-hawindowsel]
+=== hawindowsel
+
 [cols="1,3,1,1,6", options="header"]
-.hawindowsel Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `_reserved_31_15` | R | 0x0 a| Reserved. High bits may be tied to 0 depending on hart array mask size.
 | 14:0 | `hawindowsel` | RW | 0x0 a| Window select for hart array mask register. E.g., on a system with 48 harts, only bit 0 may be writable.
 |===
 
+[#reg-{regmap-instance}-debug_module-hawindow]
+=== hawindow
+
 [cols="1,3,1,1,6", options="header"]
-.hawindow Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `maskdata` | RW | 0x0 a| 32-bit window into the hart array mask register. Some bits may be constant 0, depending on hawindowsel and implemented harts.
 |===
 
+[#reg-{regmap-instance}-debug_module-abstractcs]
+=== abstractcs
+
 [cols="1,3,1,1,6", options="header"]
-.abstractcs Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `_reserved_31_29` | R | 0x0 a| Reserved.
@@ -151,16 +164,20 @@
 | 3:0 | `datacount` | R | 0x0 a| Number of data registers (dataN) implemented. Valid sizes are 1-12.
 |===
 
+[#reg-{regmap-instance}-debug_module-command]
+=== command
+
 [cols="1,3,1,1,6", options="header"]
-.command Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `cmdtype` | RW | 0x0 a| Type of abstract command (e.g., 0 for Access Register, 1 for Quick Access, 2 for Access Memory).
 | 23:0 | `control` | RW | 0x0 a| Command-specific control field.
 |===
 
+[#reg-{regmap-instance}-debug_module-abstractauto]
+=== abstractauto
+
 [cols="1,3,1,1,6", options="header"]
-.abstractauto Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `autoexecprogbuf` | RW | 0x0 a| Bitmask (16 bits). If bit N=1, R/W to progbufN re-executes command in 'command' register.
@@ -168,57 +185,73 @@
 | 11:0 | `autoexecdata` | RW | 0x0 a| Bitmask (12 bits). If bit N=1, R/W to dataN re-executes command in 'command' register.
 |===
 
+[#reg-{regmap-instance}-debug_module-confstrptr-0-]
+=== confstrptr[3]
+
 [cols="1,3,1,1,6", options="header"]
-.confstrptr[3] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `addr` | R | 0x0 a| Bits of configuration string pointer or identifier information.
 |===
 
+[#reg-{regmap-instance}-debug_module-nextdm]
+=== nextdm
+
 [cols="1,3,1,1,6", options="header"]
-.nextdm Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `addr` | R | 0x0 a| Base address of the next Debug Module or 0.
 |===
 
+[#reg-{regmap-instance}-debug_module-progbuf-0-]
+=== progbuf[16]
+
 [cols="1,3,1,1,6", options="header"]
-.progbuf[16] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Program instruction word.
 |===
 
+[#reg-{regmap-instance}-debug_module-authdata]
+=== authdata
+
 [cols="1,3,1,1,6", options="header"]
-.authdata Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Data for authentication mechanism.
 |===
 
+[#reg-{regmap-instance}-debug_module-haltsum2]
+=== haltsum2
+
 [cols="1,3,1,1,6", options="header"]
-.haltsum2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `haltsum2` | R | 0x0 a| Halt status summary. LSB for harts {hartsel[19:15],15'h0}-{hartsel[19:15],15'h3ff}, etc.
 |===
 
+[#reg-{regmap-instance}-debug_module-haltsum3]
+=== haltsum3
+
 [cols="1,3,1,1,6", options="header"]
-.haltsum3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `haltsum3` | R | 0x0 a| Halt status summary. LSB for harts 20'h0-20'h7fff, etc.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbaddress3]
+=== sbaddress3
+
 [cols="1,3,1,1,6", options="header"]
-.sbaddress3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `address` | RW | 0x0 a| Address bits 127:96 for system bus access.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbcs]
+=== sbcs
+
 [cols="1,3,1,1,6", options="header"]
-.sbcs Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:29 | `sbversion` | R | 0x1 a| System Bus interface version. 0=pre-2018 drafts, 1=this version (0.13).
@@ -229,67 +262,82 @@
 | 19:17 | `sbaccess` | RW | 0x2 a| Access size for system bus accesses: 0=8-bit, 1=16-bit, 2=32-bit, 3=64-bit, 4=128-bit. If unsupported, access fails, sberror=4.
 | 16 | `sbautoincrement` | RW | 0x0 a| 1: sbaddress is incremented by access size (from sbaccess) after every system bus access.
 | 15 | `sbreadondata` | RW | 0x0 a| 1: Every read from sbdata0 automatically triggers a system bus read at (possibly auto-incremented) address.
-| 14:12 | `_reserved_14_12` | R | 0x0 a| Reserved.
-| 11:9 | `sberror` | RW | 0x0 a| System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.
-| 8:5 | `sbasize` | R | 0x0 a| Width of system bus addresses in bits (e.g., 32 for 32-bit addresses). 0 indicates no bus access support. NOTE: This field is 4 bits wide ([8:5]), which is insufficient to directly store typical bus widths like 32 or 64. This implies the value is an encoding or there is a spec issue. The text implies it stores values like 32, 64, etc (e.g. 'if sbasize < 33').
+| 14:12 | `sberror` | RW | 0x0 a| System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.
+| 11:5 | `sbasize` | R | 0x38 a| Width of system bus addresses in bits. The integrated debug module reports 56. Zero indicates no system bus access support.
 | 4 | `sbaccess128` | R | 0x0 a| 1: 128-bit system bus accesses are supported.
-| 3 | `sbaccess64` | R | 0x0 a| 1: 64-bit system bus accesses are supported.
-| 2 | `sbaccess32` | R | 0x0 a| 1: 32-bit system bus accesses are supported.
-| 1 | `sbaccess16` | R | 0x0 a| 1: 16-bit system bus accesses are supported.
-| 0 | `sbaccess8` | R | 0x0 a| 1: 8-bit system bus accesses are supported.
+| 3 | `sbaccess64` | R | 0x1 a| 1: 64-bit system bus accesses are supported.
+| 2 | `sbaccess32` | R | 0x1 a| 1: 32-bit system bus accesses are supported.
+| 1 | `sbaccess16` | R | 0x1 a| 1: 16-bit system bus accesses are supported.
+| 0 | `sbaccess8` | R | 0x1 a| 1: 8-bit system bus accesses are supported.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbaddress0]
+=== sbaddress0
+
 [cols="1,3,1,1,6", options="header"]
-.sbaddress0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `address` | RW | 0x0 a| Address bits 31:0.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbaddress1]
+=== sbaddress1
+
 [cols="1,3,1,1,6", options="header"]
-.sbaddress1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `address` | RW | 0x0 a| Address bits 63:32.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbaddress2]
+=== sbaddress2
+
 [cols="1,3,1,1,6", options="header"]
-.sbaddress2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `address` | RW | 0x0 a| Address bits 95:64.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbdata0]
+=== sbdata0
+
 [cols="1,3,1,1,6", options="header"]
-.sbdata0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Data bits 31:0.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbdata1]
+=== sbdata1
+
 [cols="1,3,1,1,6", options="header"]
-.sbdata1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Data bits 63:32.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbdata2]
+=== sbdata2
+
 [cols="1,3,1,1,6", options="header"]
-.sbdata2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Data bits 95:64.
 |===
 
+[#reg-{regmap-instance}-debug_module-sbdata3]
+=== sbdata3
+
 [cols="1,3,1,1,6", options="header"]
-.sbdata3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x0 a| Data bits 127:96.
 |===
 
+[#reg-{regmap-instance}-debug_module-haltsum0]
+=== haltsum0
+
 [cols="1,3,1,1,6", options="header"]
-.haltsum0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `haltsum0` | R | 0x0 a| Halt status for 32 harts based on hartsel[19:5].

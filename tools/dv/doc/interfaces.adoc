@@ -42,8 +42,8 @@ tools/dv/run_dv.py
   uploads artifact dv-run-<dut>-<tool>-<tier>[-<label>]
   |
   v
-tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.1")
-tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.1")
+tools/dv/run_dashboard.py collect     -> <dut>.result.json   (string "0.2")
+tools/dv/run_dashboard.py dashboard   -> summary.json        (string "0.2")
                                          history.json        (string "0.2")
 .github/workflows/dashboard.yml       -> classification.json
 tools/dv/run_dashboard.py publish     -> manifest.json       (string "0.1")
@@ -61,7 +61,9 @@ Three boundaries carry no shared code:
   shared file is the run-level `result.json`.
 * The dashboard and the pages that render it meet only at the published
   data. The documentation build reads the branch through
-  `tools/doc/stage_dashboard_data.sh` and imports nothing from `tools/dv`.
+  `tools/doc/stage_dashboard_data.sh`
+  (xref:run-dashboard.adoc#dashboard-site[Documentation site]) and imports
+  nothing from `tools/dv`.
 * The workflow callers and the composite action meet at the action's inputs.
   A caller owns its matrix and tier policy; the action owns toolchain setup,
   the run, the result gate, and the upload.
@@ -131,19 +133,27 @@ registries, and by the site-layer tests.
 worker refuses a mismatch; the overrides a manifest may carry are limited to
 wave and console options; the worker writes only its own leaf directory and
 the completion record, and a manifest it cannot trust or run leaves an
-`ERROR` result whose reason starts with `environment_error`. Checked by the
+`ERROR` result whose reason starts with `environment_error`. A manifest with
+`role = "build"` names a target and no item, and the worker runs its build
+stage with the job's core request as the build concurrency. Checked by the
 worker tests in `tools/dv/tests`.
 
-|Cluster job files: `<run>/stages/regress/scripts/<task>.sh`,
-`logs/<task>.log`, `logs/executor.log`, and `jobs/cancel-unconfirmed.json`
+|Cluster job files: `<run>/stages/regress/scripts/<task>.sh` (or
+`<stage>-arr<N>.sh` with its `.tasks` list for a job array),
+`logs/<task>.log` (or `<stage>-arr<N>.<index>.log`), `logs/executor.log`,
+`jobs/cancel-unconfirmed.json`, and a scheduler-managed build's
+`jobs/build-<stage>-<target>.json` manifest with its result under
+`builds/build-<stage>-<target>/`
 |`tools/dv/runlib/executors/cluster.py`
 |The scheduler, which receives the script as `{script}` and the log as
 `{joblog}` in `submit_argv`; operators reading a run
 |The script exports the executor's `env_passthrough` values, changes to the
-checkout, and execs `worker_argv`. The executor log holds every scheduler
-command with its status and output. The unconfirmed-cancel record lists the
-job ids an interrupted run could not confirm stopped; the run-level summary
-repeats them under `interruption.cancellation`. Checked by
+checkout, and execs `worker_argv`; an array's script first picks its element's
+task from the list by the scheduler's index variable. The executor log holds
+every scheduler command with its status and output. The unconfirmed-cancel
+record names the jobs an interrupted run could not confirm stopped; the
+run-level summary lists the same ids under
+`interruption.cancellation.unconfirmed`. Checked by
 `tools/dv/tests/test_cluster_executor.py`, which drives both drivers through
 fake scheduler commands, interrupts a coordinator mid-run, and on demand by
 the `slurm-qualify` workflow, which runs the Slurm driver on a single-node
@@ -169,10 +179,13 @@ per-leaf `result.json`, and `results/results.xml`
 an `UNKNOWN` checkpoint before the first leaf, so an incomplete run is never
 read as a pass. A run that did not finish carries `tests.completed = false`
 and `tests.pass_rate = null`, and a handled interruption adds an
-`interruption` object (the signals received and, under `cancellation`, the
-attempts asked to stop, confirmed, and unconfirmed with their job ids) and a
-run-level errored JUnit testcase; on a cluster executor the checkpoint's
-active and interrupted leaves list their scheduler jobs. The gate in
+`interruption` object (the signal received and, when a stop went
+unconfirmed, a `cancellation` with the attempts asked to stop, the number
+confirmed, and the unconfirmed job ids) and a run-level errored JUnit
+testcase; on a cluster executor the checkpoint's active and interrupted
+leaves list their scheduler job ids. A leaf's `stages` entry repeats only its
+identity, status, timing, log, and failure buckets, and points at its leaf
+`result.json` through `result_json`. The gate in
 `.github/actions/dv-run` requires `schema_version == 1`, a `flow` and `tool`
 matching the invocation, `status == "PASS"`, and coverage evidence when the
 row collects coverage. The completion and expected-failure tests cover the
@@ -197,9 +210,9 @@ summary; either grades the run `ERROR`
 (xref:run-dv.adoc#runner-coverage-grading[How the grade forms]). Coverage is
 graded over a complete regression only: an interrupted or truncated run is
 refused. A changed policy changes `comparison_key`, so trend points before
-and after are separate series. A lapsed waiver grades as open. Checked by
-`--validate-configs` (expiry warnings), the coverage-inputs,
-coverage-thresholds, coverage-closure, policy-expiry, and waive tests, and
+and after are separate series, and one run tree graded against one policy
+always grades the same. Checked by `--validate-configs`, the coverage-inputs,
+coverage-thresholds, coverage-closure, and waive tests, and
 the coverage evidence clause of the action's gate. Hosted CI publishes the
 score but does not collect it; the coverage regression runs on the licensed
 simulator flow outside hosted CI
@@ -211,8 +224,8 @@ simulator flow outside hosted CI
 |The documentation site's dashboard pages through `tools/doc`; external
 consumers; `dashboard` itself for history
 |One record per weekly DUT, one `dut_status` row and one `per_dut` history
-entry each. String `schema_version` values: `"0.1"` for the per-DUT record,
-the summary, and the manifest, `"0.2"` for the history;
+entry each. String `schema_version` values: `"0.2"` for the per-DUT record,
+the summary, and the history, `"0.1"` for the manifest;
 `classification.json` carries none. The conversion from the native result is
 lossy: native `ERROR` and `TIMEOUT` collapse into `FAIL`.
 `classification.json` is computed from the native leaf records, which keep
@@ -223,8 +236,13 @@ not enforce the schema version; the workflow gates each record on it, on its
 DUT count, and publishes
 nothing when a weekly DUT left no run tree
 (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
-The artifact and the branch carry identical content. Checked by the
-dashboard schema, link, and completion tests and by the Operational checks
+The artifact and the branch carry identical content. The fields the
+documentation site renders are the ones `tools/doc/trim_dashboard_data.py`
+names
+(xref:run-dashboard.adoc#dashboard-site[Documentation site]), and every one
+of them is present in each record, `dut_status` row,
+test row, and history point the tools write. Checked by the dashboard
+schema, link, completion, and site-data tests and by the Operational checks
 section of xref:run-dashboard.adoc[DV and FV Dashboard].
 
 |Hosted workflows and the composite action: `sim.yml`, `regress.yml`,
@@ -330,11 +348,15 @@ formal config named by `[duts.<dut>] formal_cfg`
 |The shipped `ocah_<proto>_if` interfaces carry guarded include hooks behind
 `OCAH_<PROTO>_VENDOR_IF` defines. The tree ships no vendor header.
 |An adopter overlay adds the include directories, defines, tool flags,
-runtime arguments, and environment the vendor package needs.
+runtime arguments, and environment the vendor package needs. A site-layer
+`[duts.<dut>] sim_cfg` replaces the DUT's simulation view with a
+companion-owned one instead, and `[duts.<dut>] tools` adds a licensed
+simulator to the open views
+(xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
 
 |Companion repository
-|`nonfree/` is ignored, not tracked. `ocah.mk` includes `nonfree/nonfree.mk`
-when that file exists; the runner has no equivalent automatic include.
+|The companion checkout is ignored, not tracked. `ocah.mk` includes its
+makefile when that file exists; the runner has no equivalent automatic include.
 |Runner-side companion material reaches a run only through `--overlay` or
 the site layer, and both are recorded in `result.json`.
 
@@ -420,6 +442,21 @@ workflow; `make ocah-lint-vale VALE_PATH=tools/dv/doc` lints its prose.
 
 == Changing an interface
 
+* The key set of every JSON file is pinned: the native run, regression, leaf
+  and per-test records and the coverage files in
+  `tools/dv/tests/test_json_contract.py`; the published record, summary,
+  history and manifest in `test_dashboard_schema.py` and
+  `test_dashboard_links.py`; the checkpoint, interruption and scheduler
+  records in `test_cluster_executor.py`; and the fields the documentation
+  site reads in `test_dashboard_site_data.py`. A key enters or leaves a file
+  only together with its pinned set and its readers. Each fact is written
+  once: the leaf record holds an attempt's detail, the run-level files hold
+  identities, verdicts and pointers, `cov/report/summary.json` holds the
+  coverage detail, and the published record holds what the dashboard and the
+  site read.
+* `tools/doc/trim_dashboard_data.py` is the reference for what the site
+  renders. A producer change that its output does not survive is a defect in
+  the producer; the script is not edited to absorb one.
 * A registry, result file, or normalized file carries `schema_version`. A
   change that a current reader cannot consume increments it; an additive
   field does not.

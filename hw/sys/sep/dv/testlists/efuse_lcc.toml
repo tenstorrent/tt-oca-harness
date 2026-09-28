@@ -35,22 +35,29 @@ timeout_sec = 1800
 tags = ["lcc", "subsystem", "efuse"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-# Program-failure injection = deterministic floor + seed-driven extras:
-# count=1 fails the first program attempt after each reset (one failure per
-# reset, not per bit), so the retry path runs once per sense regardless of
-# seed -- the floor that the test's non-vacuity assert relies on.
-# percent=30 -> after the floor, inject extra failures probabilistically; the
-# generic efuse model's LFSR is seeded from the regression RANDOM_SEED
-# via `+sep_efuse_prog_fail_seed={seed}` (the runlib renders {seed} into
-# run_mode/test args), so `--regress` sweeps the injection pattern per
-# leaf. Each retry is an independent draw, so exhausting the firmware's
-# 10-attempt budget is negligibly unlikely (0.3^10).
-# The count=1 floor keeps it from ever going vacuous even on a zero-extra seed.
+# Program-failure injection is a one-shot per reset. count=1 fails the first
+# bank write after each reset, which is the floor the retry check requires.
+# percent stays 0: a second probabilistic failure is the same PROGRAM_DONE+ERR
+# the secure-TM guard produces, so it cannot be told apart from the guard.
+# The model's LFSR seed is still passed so the one-shot is reproducible.
 args = [
     "+sep_efuse_prog_fail_count=1",
-    "+sep_efuse_prog_fail_percent=30",
+    "+sep_efuse_prog_fail_percent=0",
     "+sep_efuse_prog_fail_seed={seed}",
 ]
+
+[[tests]]
+# TEST_DEV JTAG allow leg for the two windows the PROD mux test denies.
+# Real fuse sense (no +skip_fuse_sense): the JTAG gate reads the sensed
+# LC_STATE. TEST_DEV is not PROD or RMA_SIP, so shadow and
+# EFUSE_PROGRAM_CTRL answer OKAY.
+name = "sep_efuse_jtag_window_allow_test"
+module = "efuse.sep_efuse_jtag_window_allow_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "jtag"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
 
 [[tests]]
 # eFuse JTAG-AXIL + EL2-CPU mux arbitration (the reference suite's
@@ -99,7 +106,7 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse shadow write-policy sweep: every periphs.adoc fuse-field row
+# eFuse shadow write-policy sweep: every otp_fuse_controller.adoc fuse-field row
 # except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
 # overwrite. LOCK is both RDL windows after the other rows. Word index
 # and bit patterns come from the run seed.
@@ -166,6 +173,22 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# KM public-ID OTP readout. RANDCFG: the three SEP_*_ID values and which one
+# carries its eFuse read lock. Real fuse sense, LC_PROD. The KM ROM image copies
+# the KMCSR OTP_SEP_*_ID words to KM SRAM, sets the KM-side OTP_READ_LOCK bits
+# and copies them again. no_cpu.
+name = "sep_efuse_km_public_id_test"
+module = "efuse.sep_efuse_km_public_id_test"
+firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "km", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_otp_id.parhex"]
+
+[[tests]]
 # SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
 # SIP_DIS and SYS_DIS SECURE_TM_LOCK, so a shadow write to them is refused while
 # the latched TEST_EN strap is high. Each field takes the same seeded payload
@@ -217,7 +240,7 @@ target = "lsu_stub_all_live"
 # the seed; the cells within a leaf are fixed, so no contract is seed-selected.
 # Real fuse sense, no_cpu.
 #
-# The six sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
+# The seven sep_lcc_lc_state_w1s_* entries are plusarg-selected variants of one
 # module, sep_lcc_lc_state_transition_matrix_test: +lc_start=N picks the start
 # state, so none of them ends the module name. See Naming Rules in
 # docs/SEP_VPLAN.adoc.
@@ -276,7 +299,9 @@ args = ["+lc_start=6"]
 
 [[tests]]
 # PROD_END: every reachable set lands outside the named encodings, which is the
-# chapter's "the only permitted transition is to INVALID".
+# chapter's "the only permitted transition is to INVALID". One sensed start
+# allows one exit, so the two exits are two leaves: the ungated bit 0 here,
+# the RMA_SIP-matched bit 1 in the next entry.
 name = "sep_lcc_lc_state_w1s_prod_end_test"
 module = "lcc.sep_lcc_lc_state_transition_matrix_test"
 seed = 1
@@ -285,7 +310,20 @@ timeout_sec = 1800
 tags = ["lcc", "efuse", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
-args = ["+lc_start=8"]
+args = ["+lc_start=8", "+lc_prod_end_exit=bit0"]
+
+[[tests]]
+# PROD_END, RMA exit: an RMA_SIP token match then a write of bit 1 must still
+# land on INVALID, never on a named RMA state.
+name = "sep_lcc_lc_state_w1s_prod_end_rma_test"
+module = "lcc.sep_lcc_lc_state_transition_matrix_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["lcc", "efuse", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+lc_start=8", "+lc_prod_end_exit=rma_sip"]
 
 [[tests]]
 # Transient RMA from PROD_END: the same W1S and token rules apply on a path with

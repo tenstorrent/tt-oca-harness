@@ -90,8 +90,8 @@ def lc_raw_from_efuse_image(path: str) -> int:
     comes from the generated SEP address map.
     """
     lc_idx = (
-        c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
-        - c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+        c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+        - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
     ) // 4
     words: dict[int, int] = {}
     idx = 0
@@ -259,11 +259,15 @@ class SepSenseMonitor:
 class SmuSepLccFlowSeq:
     """Prove the sensed posture and the firmware-driven demote reach feat_ctrl, DTP and SMC."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_LCC_SENSE_OBSERVED_OK", "SEP_LCC_FW_FLOW_OK", "SEP_LCC_FANOUT_TO_SMC_DTP_OK")
+
     def __init__(self, test, monitor: SepSenseMonitor) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
         self.mon = monitor
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -467,11 +471,7 @@ class SmuSepLccFlowSeq:
             "posture sampled at cold-reset release and a compare against the lifecycle "
             "table's value for the sensed image; the write-once lock rules out plain storage)"
         )
-        for token in (
-            "SEP_LCC_SENSE_OBSERVED_OK",
-            "SEP_LCC_FW_FLOW_OK",
-            "SEP_LCC_FANOUT_TO_SMC_DTP_OK",
-        ):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

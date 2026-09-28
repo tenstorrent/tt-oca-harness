@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// --------------------------------------------------------------------
-// SMC Version ID Wrap
+// Generate the SMC version identifier from metal-programmable revision cells.
 //
-// --------------------------------------------------------------------
+// Eight prim_rev_cell instances each produce one byte, so a metal-only respin can change
+// the version; the current ties give 0x00000000_000100A0. The module has no bus
+// interface: smc_misc_wrap reports the value through the chip_config VERSION_LO and
+// VERSION_HI registers.
 
 module smc_version_id_wrap (
-  output logic [63:0] version_id_o
+  output logic [63:0] version_id_o      // Version identifier from eight metal-programmable revision
+                                        // cells, one byte per cell; read back through the
+                                        // chip_config VERSION_LO and VERSION_HI registers.
 );
 
   // rev cell, pulls tie signals to top metal layer to allow for easy re-spin
@@ -19,7 +23,7 @@ module smc_version_id_wrap (
   logic [63:0] low;
   logic [63:0] high;
 
-  prim_rev_cell prim_rev_cell_0 (
+  prim_rev_cell u_prim_rev_cell_0 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -30,7 +34,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[7:0])
   );
 
-  prim_rev_cell prim_rev_cell_1 (
+  prim_rev_cell u_prim_rev_cell_1 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -41,7 +45,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[15:8])
   );
 
-  prim_rev_cell prim_rev_cell_2 (
+  prim_rev_cell u_prim_rev_cell_2 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -52,7 +56,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[23:16])
   );
 
-  prim_rev_cell prim_rev_cell_3 (
+  prim_rev_cell u_prim_rev_cell_3 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -63,7 +67,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[31:24])
   );
 
-  prim_rev_cell prim_rev_cell_4 (
+  prim_rev_cell u_prim_rev_cell_4 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -74,7 +78,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[39:32])
   );
 
-  prim_rev_cell prim_rev_cell_5 (
+  prim_rev_cell u_prim_rev_cell_5 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -85,7 +89,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[47:40])
   );
 
-  prim_rev_cell prim_rev_cell_6 (
+  prim_rev_cell u_prim_rev_cell_6 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 
@@ -96,7 +100,7 @@ module smc_version_id_wrap (
     .out_o(version_id_o[55:48])
   );
 
-  prim_rev_cell prim_rev_cell_7 (
+  prim_rev_cell u_prim_rev_cell_7 (
     .src_low_i(1'b0),
     .src_high_i(1'b1),
 

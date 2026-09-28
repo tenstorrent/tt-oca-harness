@@ -1,26 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-spi_controller]
+== SPI Host
+
+Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATE | RW a| -
-| 0x4 | INTR_ENABLE | RW a| -
-| 0x8 | INTR_TEST | W a| -
-| 0xC | ALERT_TEST | W a| -
-| 0x10 | CONTROL | RW a| -
-| 0x14 | STATUS | R a| -
-| 0x18 | CONFIGOPTS | RW a| -
-| 0x1C | CSID | RW a| -
-| 0x20 | COMMAND | W a| -
-| 0x2C | ERROR_ENABLE | RW a| -
-| 0x30 | ERROR_STATUS | RW a| -
-| 0x34 | EVENT_ENABLE | RW a| -
+| 0x0 | <<reg-{regmap-instance}-spi_controller-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-spi_controller-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-spi_controller-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-spi_controller-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-spi_controller-CONTROL,CONTROL>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-spi_controller-STATUS,STATUS>> | R a| -
+| 0x18 | <<reg-{regmap-instance}-spi_controller-CONFIGOPTS,CONFIGOPTS>> | RW a| -
+| 0x1C | <<reg-{regmap-instance}-spi_controller-CSID,CSID>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-spi_controller-COMMAND,COMMAND>> | W a| -
+| 0x2C | <<reg-{regmap-instance}-spi_controller-ERROR_ENABLE,ERROR_ENABLE>> | RW a| -
+| 0x30 | <<reg-{regmap-instance}-spi_controller-ERROR_STATUS,ERROR_STATUS>> | RW a| -
+| 0x34 | <<reg-{regmap-instance}-spi_controller-EVENT_ENABLE,EVENT_ENABLE>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-spi_controller-INTR_STATE]
+=== INTR_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -30,8 +38,10 @@ information.
 information.
 |===
 
+[#reg-{regmap-instance}-spi_controller-INTR_ENABLE]
+=== INTR_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -39,8 +49,10 @@ information.
 | 0 | `ERROR` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.error is set.
 |===
 
+[#reg-{regmap-instance}-spi_controller-INTR_TEST]
+=== INTR_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -48,16 +60,20 @@ information.
 | 0 | `ERROR` | W | 0x0 a| Write 1 to force !!INTR_STATE.error to 1.
 |===
 
+[#reg-{regmap-instance}-spi_controller-ALERT_TEST]
+=== ALERT_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
 | 0 | `FATAL_FAULT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
+[#reg-{regmap-instance}-spi_controller-CONTROL]
+=== CONTROL
+
 [cols="1,3,1,1,6", options="header"]
-.CONTROL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `SPIEN` | RW | 0x0 a| Enables the SPI host.  On reset, this field is 0, meaning
@@ -79,8 +95,10 @@ an interrupt when the depth of the RX FIFO reaches
 RX_WATERMARK words (32b each).
 |===
 
+[#reg-{regmap-instance}-spi_controller-STATUS]
+=== STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `READY` | R | 0x0 a| When high, indicates the SPI host is ready to receive
@@ -117,8 +135,10 @@ Indicates how many unsent 32-bit words are currently in the TX FIFO.
 When active, this result may be an overestimate due to synchronization delays.
 |===
 
+[#reg-{regmap-instance}-spi_controller-CONFIGOPTS]
+=== CONFIGOPTS
+
 [cols="1,3,1,1,6", options="header"]
-.CONFIGOPTS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `CPOL` | RW | 0x0 a| The polarity of the sck clock signal.  When CPOL is 0,
@@ -159,15 +179,19 @@ factor of (CLKDIV+1) relative to the core clock frequency.  The
 period of sck, T(sck) then becomes `2*(CLK_DIV+1)*T(core)`
 |===
 
+[#reg-{regmap-instance}-spi_controller-CSID]
+=== CSID
+
 [cols="1,3,1,1,6", options="header"]
-.CSID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `CSID` | RW | 0x0 a| Chip Select ID
 |===
 
+[#reg-{regmap-instance}-spi_controller-COMMAND]
+=== COMMAND
+
 [cols="1,3,1,1,6", options="header"]
-.COMMAND Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:25 | `Reserved` | - | - a| Reserved
@@ -197,8 +221,10 @@ pausing for dummy cycles, and transmitting or receiving data from
 the device.
 |===
 
+[#reg-{regmap-instance}-spi_controller-ERROR_ENABLE]
+=== ERROR_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.ERROR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -217,8 +243,10 @@ interrupt whenever a command is issued while busy (i.e. a 1 is
 when !!STATUS.READY is not asserted.)
 |===
 
+[#reg-{regmap-instance}-spi_controller-ERROR_STATUS]
+=== ERROR_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.ERROR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -234,8 +262,10 @@ speed
 | 0 | `CMDBUSY` | RW | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
 |===
 
+[#reg-{regmap-instance}-spi_controller-EVENT_ENABLE]
+=== EVENT_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.EVENT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved

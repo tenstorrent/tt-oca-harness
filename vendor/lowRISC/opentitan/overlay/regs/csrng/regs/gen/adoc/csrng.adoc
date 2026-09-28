@@ -1,38 +1,46 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-csrng]
+== Cryptographically Secure Random Number Generator
+
+Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | INTR_STATE | RW a| -
-| 0x4 | INTR_ENABLE | RW a| -
-| 0x8 | INTR_TEST | W a| -
-| 0xC | ALERT_TEST | W a| -
-| 0x10 | REGWEN | RW a| -
-| 0x14 | CTRL | RW a| -
-| 0x18 | CMD_REQ | W a| -
-| 0x1C | RESEED_INTERVAL | RW a| -
-| 0x20 | RESEED_COUNTER_0 | R a| -
-| 0x24 | RESEED_COUNTER_1 | R a| -
-| 0x28 | RESEED_COUNTER_2 | R a| -
-| 0x2C | SW_CMD_STS | R a| -
-| 0x30 | GENBITS_VLD | R a| -
-| 0x34 | GENBITS | R a| -
-| 0x38 | INT_STATE_READ_ENABLE | RW a| -
-| 0x3C | INT_STATE_READ_ENABLE_REGWEN | RW a| -
-| 0x40 | INT_STATE_NUM | RW a| -
-| 0x44 | INT_STATE_VAL | R a| -
-| 0x48 | FIPS_FORCE | RW a| -
-| 0x4C | HW_EXC_STS | RW a| -
-| 0x50 | RECOV_ALERT_STS | RW a| -
-| 0x54 | ERR_CODE | R a| -
-| 0x58 | ERR_CODE_TEST | RW a| -
-| 0x5C | MAIN_SM_STATE | R a| -
+| 0x0 | <<reg-{regmap-instance}-csrng-INTR_STATE,INTR_STATE>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-csrng-INTR_ENABLE,INTR_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-csrng-INTR_TEST,INTR_TEST>> | W a| -
+| 0xC | <<reg-{regmap-instance}-csrng-ALERT_TEST,ALERT_TEST>> | W a| -
+| 0x10 | <<reg-{regmap-instance}-csrng-REGWEN,REGWEN>> | RW a| -
+| 0x14 | <<reg-{regmap-instance}-csrng-CTRL,CTRL>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-csrng-CMD_REQ,CMD_REQ>> | W a| -
+| 0x1C | <<reg-{regmap-instance}-csrng-RESEED_INTERVAL,RESEED_INTERVAL>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-csrng-RESEED_COUNTER_0,RESEED_COUNTER_0>> | R a| -
+| 0x24 | <<reg-{regmap-instance}-csrng-RESEED_COUNTER_1,RESEED_COUNTER_1>> | R a| -
+| 0x28 | <<reg-{regmap-instance}-csrng-RESEED_COUNTER_2,RESEED_COUNTER_2>> | R a| -
+| 0x2C | <<reg-{regmap-instance}-csrng-SW_CMD_STS,SW_CMD_STS>> | R a| -
+| 0x30 | <<reg-{regmap-instance}-csrng-GENBITS_VLD,GENBITS_VLD>> | R a| -
+| 0x34 | <<reg-{regmap-instance}-csrng-GENBITS,GENBITS>> | R a| -
+| 0x38 | <<reg-{regmap-instance}-csrng-INT_STATE_READ_ENABLE,INT_STATE_READ_ENABLE>> | RW a| -
+| 0x3C | <<reg-{regmap-instance}-csrng-INT_STATE_READ_ENABLE_REGWEN,INT_STATE_READ_ENABLE_REGWEN>> | RW a| -
+| 0x40 | <<reg-{regmap-instance}-csrng-INT_STATE_NUM,INT_STATE_NUM>> | RW a| -
+| 0x44 | <<reg-{regmap-instance}-csrng-INT_STATE_VAL,INT_STATE_VAL>> | R a| -
+| 0x48 | <<reg-{regmap-instance}-csrng-FIPS_FORCE,FIPS_FORCE>> | RW a| -
+| 0x4C | <<reg-{regmap-instance}-csrng-HW_EXC_STS,HW_EXC_STS>> | RW a| -
+| 0x50 | <<reg-{regmap-instance}-csrng-RECOV_ALERT_STS,RECOV_ALERT_STS>> | RW a| -
+| 0x54 | <<reg-{regmap-instance}-csrng-ERR_CODE,ERR_CODE>> | R a| -
+| 0x58 | <<reg-{regmap-instance}-csrng-ERR_CODE_TEST,ERR_CODE_TEST>> | RW a| -
+| 0x5C | <<reg-{regmap-instance}-csrng-MAIN_SM_STATE,MAIN_SM_STATE>> | R a| -
 |===
 
+[#reg-{regmap-instance}-csrng-INTR_STATE]
+=== INTR_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -42,8 +50,10 @@
 | 0 | `CS_CMD_REQ_DONE` | RW | 0x0 a| Asserted when a command request is completed.
 |===
 
+[#reg-{regmap-instance}-csrng-INTR_ENABLE]
+=== INTR_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -53,8 +63,10 @@
 | 0 | `CS_CMD_REQ_DONE` | RW | 0x0 a| Enable interrupt when !!INTR_STATE.cs_cmd_req_done is set.
 |===
 
+[#reg-{regmap-instance}-csrng-INTR_TEST]
+=== INTR_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.INTR_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -64,8 +76,10 @@
 | 0 | `CS_CMD_REQ_DONE` | W | 0x0 a| Write 1 to force !!INTR_STATE.cs_cmd_req_done to 1.
 |===
 
+[#reg-{regmap-instance}-csrng-ALERT_TEST]
+=== ALERT_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.ALERT_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -73,8 +87,10 @@
 | 0 | `RECOV_ALERT` | W | 0x0 a| Write 1 to trigger one alert event of this kind.
 |===
 
+[#reg-{regmap-instance}-csrng-REGWEN]
+=== REGWEN
+
 [cols="1,3,1,1,6", options="header"]
-.REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
@@ -82,8 +98,10 @@
 When false, they become read-only.
 |===
 
+[#reg-{regmap-instance}-csrng-CTRL]
+=== CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
@@ -100,8 +118,10 @@ of the entropy complex may only be enabled and disabled in a specific order, see
 Programmers Guide for details.
 |===
 
+[#reg-{regmap-instance}-csrng-CMD_REQ]
+=== CMD_REQ
+
 [cols="1,3,1,1,6", options="header"]
-.CMD_REQ Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `CMD_REQ` | W | 0x0 a| Writing this request with defined CSRNG commands will initiate all
@@ -109,8 +129,10 @@ possible CSRNG actions. The application interface must wait for the
 "ack" to return before issuing new commands.
 |===
 
+[#reg-{regmap-instance}-csrng-RESEED_INTERVAL]
+=== RESEED_INTERVAL
+
 [cols="1,3,1,1,6", options="header"]
-.RESEED_INTERVAL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_INTERVAL` | RW | 0xFFFFFFFF a| Setting this field will set the number of generate requests that can be
@@ -124,29 +146,37 @@ If the violating command was issued by a HW instance, an interrupt will
 be triggered.
 |===
 
+[#reg-{regmap-instance}-csrng-RESEED_COUNTER_0]
+=== RESEED_COUNTER_0
+
 [cols="1,3,1,1,6", options="header"]
-.RESEED_COUNTER_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_COUNTER_0` | R | 0x0 a| Reseed Counter indicating the number of completed Generate requests since the last Instantiate or Reseed command.
 |===
 
+[#reg-{regmap-instance}-csrng-RESEED_COUNTER_1]
+=== RESEED_COUNTER_1
+
 [cols="1,3,1,1,6", options="header"]
-.RESEED_COUNTER_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_COUNTER_0` | R | 0x0 a| For RESEED_COUNTER1
 |===
 
+[#reg-{regmap-instance}-csrng-RESEED_COUNTER_2]
+=== RESEED_COUNTER_2
+
 [cols="1,3,1,1,6", options="header"]
-.RESEED_COUNTER_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `RESEED_COUNTER_0` | R | 0x0 a| For RESEED_COUNTER2
 |===
 
+[#reg-{regmap-instance}-csrng-SW_CMD_STS]
+=== SW_CMD_STS
+
 [cols="1,3,1,1,6", options="header"]
-.SW_CMD_STS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -168,8 +198,10 @@ Before starting to write a new command to !!SW_CMD_REQ, this field needs to be p
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
+[#reg-{regmap-instance}-csrng-GENBITS_VLD]
+=== GENBITS_VLD
+
 [cols="1,3,1,1,6", options="header"]
-.GENBITS_VLD Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -177,8 +209,10 @@ Before starting to write a new command to !!SW_CMD_REQ, this field needs to be p
 | 0 | `GENBITS_VLD` | R | - a| This bit is set when genbits are available on this application interface after a generate command has been issued.
 |===
 
+[#reg-{regmap-instance}-csrng-GENBITS]
+=== GENBITS
+
 [cols="1,3,1,1,6", options="header"]
-.GENBITS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `GENBITS` | R | - a| Reading this register will get the generated bits that were requested with
@@ -191,8 +225,10 @@ In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBoo
 Otherwise, the register reads as 0.
 |===
 
+[#reg-{regmap-instance}-csrng-INT_STATE_READ_ENABLE]
+=== INT_STATE_READ_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.INT_STATE_READ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -202,8 +238,10 @@ Note that for !!INT_STATE_VAL to provide read access to the internal state, also
 In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBool8True`.
 |===
 
+[#reg-{regmap-instance}-csrng-INT_STATE_READ_ENABLE_REGWEN]
+=== INT_STATE_READ_ENABLE_REGWEN
+
 [cols="1,3,1,1,6", options="header"]
-.INT_STATE_READ_ENABLE_REGWEN Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
@@ -211,8 +249,10 @@ In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBoo
 If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.
 |===
 
+[#reg-{regmap-instance}-csrng-INT_STATE_NUM]
+=== INT_STATE_NUM
+
 [cols="1,3,1,1,6", options="header"]
-.INT_STATE_NUM Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
@@ -227,8 +267,10 @@ Note: This register should be read back after being written to ensure
 that the !!INT_STATE_VAL read back is accurate.
 |===
 
+[#reg-{regmap-instance}-csrng-INT_STATE_VAL]
+=== INT_STATE_VAL
+
 [cols="1,3,1,1,6", options="header"]
-.INT_STATE_VAL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `INT_STATE_VAL` | R | - a| Reading this register will dump out the contents of the selected internal state field.
@@ -243,8 +285,10 @@ Also, the !!INT_STATE_READ_ENABLE bit of the selected instance needs to be set t
 Otherwise, the register reads as 0.
 |===
 
+[#reg-{regmap-instance}-csrng-FIPS_FORCE]
+=== FIPS_FORCE
+
 [cols="1,3,1,1,6", options="header"]
-.FIPS_FORCE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
@@ -256,8 +300,10 @@ After setting a particular bit to 1, the FIPS/CC compliance flag of the correspo
 Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBitBool4True.
 |===
 
+[#reg-{regmap-instance}-csrng-HW_EXC_STS]
+=== HW_EXC_STS
+
 [cols="1,3,1,1,6", options="header"]
-.HW_EXC_STS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
@@ -269,8 +315,10 @@ to the SW instance, check the !!SW_CMD_STS register). Writing a zero to this reg
 resets the status bits.
 |===
 
+[#reg-{regmap-instance}-csrng-RECOV_ALERT_STS]
+=== RECOV_ALERT_STS
+
 [cols="1,3,1,1,6", options="header"]
-.RECOV_ALERT_STS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
@@ -308,8 +356,10 @@ a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
 |===
 
+[#reg-{regmap-instance}-csrng-ERR_CODE]
+=== ERR_CODE
+
 [cols="1,3,1,1,6", options="header"]
-.ERR_CODE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `Reserved` | - | - a| Reserved
@@ -357,8 +407,10 @@ bits (bits 28 through 30 of this register).
 This bit will stay set until the next reset.
 |===
 
+[#reg-{regmap-instance}-csrng-ERR_CODE_TEST]
+=== ERR_CODE_TEST
+
 [cols="1,3,1,1,6", options="header"]
-.ERR_CODE_TEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
@@ -370,8 +422,10 @@ register is to test that any error properly propagates to either
 an interrupt or an alert.
 |===
 
+[#reg-{regmap-instance}-csrng-MAIN_SM_STATE]
+=== MAIN_SM_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.MAIN_SM_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved

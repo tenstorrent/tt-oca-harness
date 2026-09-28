@@ -6,8 +6,8 @@
 
 from ctypes import Structure, Union, c_uint16, c_uint32, c_uint64, c_uint8
 
-OCH_SEP_TOP_REG_MAP_BASE_ADDR = 0x10000000
-OCH_SEP_TOP_REG_MAP_SIZE = 0xB0085400
+SEP_TOP_REG_MAP_BASE_ADDR = 0x10000000
+SEP_TOP_REG_MAP_SIZE = 0xB0085400
 SEP_SRAM_MEM_BASE_ADDR = 0x10000000
 SEP_SRAM_MEM_SIZE = 0x00040000
 SEP_BOOT_ROM_MEM_BASE_ADDR = 0x10040000
@@ -13037,7 +13037,7 @@ class AXIL_MAILBOX_READ_DATA_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000000
+AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000001
 class AXIL_MAILBOX_STATUS_reg_t(Structure):
     _fields_ = [
         ('empty', c_uint8, 1),
@@ -13046,7 +13046,7 @@ class AXIL_MAILBOX_STATUS_reg_t(Structure):
         ('read_level_above_thresh', c_uint8, 1),
     ]
 
-AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000000
+AXIL_MAILBOX_STATUS_REG_DEFAULT = 0x0000000000000001
 
 class AXIL_MAILBOX_STATUS_reg_u(Union):
     _fields_ = [

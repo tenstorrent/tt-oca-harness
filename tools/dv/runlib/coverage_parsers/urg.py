@@ -16,6 +16,7 @@ from ..coverage_model import (
     CoverageDetails,
     CoverageObservation,
     MetricRecord,
+    percentage,
     stable_id,
 )
 
@@ -33,8 +34,20 @@ URG_METRIC_MAP = {
     "assertion": "assertion",
     "group": "functional",
     "functional": "functional",
+    # urg has no user family. The `cover property` statements the cov/sv
+    # modules declare through OCAH_FCOV_COVER are what Verilator reports as
+    # `user`, and urg reads them under its assert metric together with the
+    # `assert property` statements; `asserts.txt` is the only place it splits
+    # the two. The cover-property half is reported here as `user` so the same
+    # policy family grades the same points on both simulators.
+    "cover_property": "user",
+    "user": "user",
 }
 PERCENT_RE = re.compile(r"\d+(?:\.\d+)?")
+COVER_SUMMARY_TITLE_RE = re.compile(r"^\s*Summary for Cover Properties\s*$")
+COVER_SUMMARY_ROW_RE = re.compile(r"^\s*([A-Za-z][A-Za-z ]*?)\s+(\d+)\s+\d+(?:\.\d+)?\s*$")
+COVER_DETAIL_TITLE_RE = re.compile(r"^\s*Detail Report for Cover Properties\s*$")
+COVER_DETAIL_ROW_RE = re.compile(r"^\s*(\S+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*$")
 
 
 def _text(path: Path) -> str:
@@ -43,6 +56,93 @@ def _text(path: Path) -> str:
         value = re.sub(r"<[^>]+>", " ", value)
         value = html.unescape(value)
     return value
+
+
+def _cover_property_summary(paths: list[Path]) -> MetricRecord | None:
+    """The `Summary for Cover Properties` block of asserts.txt as one `user` record.
+
+    urg prints the block as `<label> <count> <percent>` rows: `Total Number`,
+    `Uncovered`, `Matches` and, when an exclusion file dropped properties,
+    `Excluded`. Matches over the non-excluded population is the effective
+    figure; over the whole population it is the raw one, which the raw report
+    (written without exclusions) supersedes when the report stage kept one.
+    """
+    for path in paths:
+        if path.name.lower() != "asserts.txt":
+            continue
+        lines = _text(path).splitlines()
+        for index, line in enumerate(lines):
+            if not COVER_SUMMARY_TITLE_RE.match(line):
+                continue
+            rows: dict[str, int] = {}
+            for row in lines[index + 1 : index + 10]:
+                match = COVER_SUMMARY_ROW_RE.match(row)
+                if match:
+                    rows[match.group(1).strip().lower()] = int(match.group(2))
+                elif rows and not row.strip():
+                    break
+            total = rows.get("total number")
+            covered = rows.get("matches")
+            if total is None or covered is None:
+                return None
+            excluded = rows.get("excluded", 0)
+            record = MetricRecord(
+                metric_family="user",
+                native_metric="cover_property",
+                covered=covered,
+                total=total,
+                excluded=excluded,
+                raw_percent=percentage(covered, total),
+                effective_percent=percentage(covered, total - excluded),
+            )
+            return record
+    return None
+
+
+def _cover_property_observations(paths: list[Path], tool: str) -> list[CoverageObservation]:
+    """One observation per row of asserts.txt's `Detail Report for Cover Properties`.
+
+    The rows carry the property's full hierarchical name and its match count, so
+    a policy `[[holes]]` entry can select an unhit point by `hierarchy` exactly as
+    it does on the Verilator database.
+    """
+    observations: list[CoverageObservation] = []
+    for path in paths:
+        if path.name.lower() != "asserts.txt":
+            continue
+        in_detail = False
+        for line in _text(path).splitlines():
+            if COVER_DETAIL_TITLE_RE.match(line):
+                in_detail = True
+                continue
+            if not in_detail:
+                continue
+            if re.match(r"^\s*Detail Report for ", line):
+                break
+            match = COVER_DETAIL_ROW_RE.match(line)
+            if match is None or match.group(1).upper() == "COVER":
+                continue
+            hierarchy = match.group(1)
+            matches = int(match.group(5))
+            observations.append(
+                CoverageObservation(
+                    id=stable_id(
+                        "URGCOV",
+                        {"tool": tool, "metric": "cover_property", "locator": hierarchy},
+                    ),
+                    tool=tool,
+                    metric_family="user",
+                    native_metric="cover_property",
+                    native_locator=hierarchy,
+                    hierarchy=hierarchy,
+                    count=matches,
+                    goal=1,
+                    covered=matches >= 1,
+                    category="user",
+                )
+            )
+        break
+    return observations
 
 
 def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
@@ -57,8 +157,9 @@ def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
             family = URG_METRIC_MAP.get(native)
             if family:
                 values.setdefault(family, (native, value))
+    cover = _cover_property_summary(paths)
     if values:
-        return [
+        records = [
             MetricRecord(
                 metric_family=family,
                 native_metric=native,
@@ -67,6 +168,9 @@ def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
             )
             for family, (native, value) in sorted(values.items())
         ]
+        if cover is not None and "user" not in values:
+            records.append(cover)
+        return records
     for path in paths:
         text = _text(path)
         for match in re.finditer(
@@ -92,7 +196,7 @@ def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
                 family = URG_METRIC_MAP.get(native)
                 if family:
                     values.setdefault(family, (native, value))
-    return [
+    records = [
         MetricRecord(
             metric_family=family,
             native_metric=native,
@@ -101,6 +205,9 @@ def _summary_metrics(paths: list[Path]) -> list[MetricRecord]:
         )
         for family, (native, value) in sorted(values.items())
     ]
+    if cover is not None and "user" not in values:
+        records.append(cover)
+    return records
 
 
 def _kv_hole(line: str) -> dict[str, str] | None:
@@ -242,9 +349,15 @@ def parse_urg_details(
         report_paths.append(log_path)
     report_paths = sorted(set(report_paths))
     observations = _hole_observations(detail_paths, tool)
-    details_available = bool(detail_paths) and any(
-        "COVERAGE_HOLE" in _text(path) or re.search(r"(?i)\b(uncovered|urg)\b", _text(path))
-        for path in detail_paths
+    cover_observations = _cover_property_observations(detail_paths, tool)
+    seen = {observation.id for observation in observations}
+    observations.extend(o for o in cover_observations if o.id not in seen)
+    details_available = bool(detail_paths) and (
+        bool(cover_observations)
+        or any(
+            "COVERAGE_HOLE" in _text(path) or re.search(r"(?i)\b(uncovered|urg)\b", _text(path))
+            for path in detail_paths
+        )
     )
     warnings: list[str] = []
     if not report_paths:

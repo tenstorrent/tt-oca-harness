@@ -7,7 +7,7 @@ seed (CTRL functional, health-test window/enable, decorrelator,
 ring-osc enable/tune, one generator sample-clock divider, FIFO churn,
 alert threshold). A pre-lock write moves the field off reset so the
 post-lock reject is not a stuck register. Write-0 leaves LOCK=1.
-Retired CTRL[0] is RAZ/WI before the lock and does not clear it after;
+Reserved CTRL.RSVD0 is RAZ/WI before the lock and does not clear it after;
 rst_ni does. The advisory RCT/APT cutoffs track MIN_ENTROPY_H against an
 SP 800-90B oracle. BIW observe enable stays writable. Health-test ENABLE
 stays 0 so this vehicle does not trip the alert path.
@@ -22,6 +22,7 @@ import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_esrc_fips_lock_seq import (
     APT_WINDOW,
+    CTRL_RSVD0_BIT,
     SepEsrcFipsLock,
     SepEsrcFipsLockCfg,
     rct_limit_golden,
@@ -64,18 +65,22 @@ class sep_esrc_fips_lock_test(sep_base_test):
         for target in cfg.targets:
             await self._check_pre(esrc, target)
 
-        # CTRL[0] is retired: sw = r, hw = na. Prove RAZ/WI here, before the lock,
-        # where every other CTRL field is demonstrably writable -- under the lock
-        # an unchanged CTRL is explained by the lock alone and says nothing about
-        # bit 0. The post-lock repeat below keeps only the "does not clear the
-        # lock" half.
+        # entropy_source.rdl: CTRL.RSVD0 is sw = r, hw = na, "Reserved; reads zero
+        # and ignores writes." Prove RAZ/WI here, before the lock, where every other
+        # CTRL field is demonstrably writable -- under the lock an unchanged CTRL is
+        # explained by the lock alone and says nothing about RSVD0. The post-lock
+        # repeat below keeps only the "does not clear the lock" half.
         ctrl_before, ctrl_after = await esrc.poke_reserved_ctrl_bit()
+        assert (ctrl_before & CTRL_RSVD0_BIT) == 0 and (ctrl_after & CTRL_RSVD0_BIT) == 0, (
+            f"CHK-CTRL-RSVD FAIL: CTRL.RSVD0 does not read zero "
+            f"(0x{ctrl_before:08x} before, 0x{ctrl_after:08x} after the write)"
+        )
         assert ctrl_after == ctrl_before, (
-            f"CHK-CTRL-RSVD FAIL: pre-lock CTRL[0] write changed "
+            f"CHK-CTRL-RSVD FAIL: pre-lock CTRL.RSVD0 write changed "
             f"0x{ctrl_before:08x} -> 0x{ctrl_after:08x}"
         )
         self.logger.info(
-            "CHK-CTRL-RSVD PASS: CTRL[0] is RAZ/WI while CTRL is writable (0x%08x held)",
+            "CHK-CTRL-RSVD PASS: CTRL.RSVD0 is RAZ/WI while CTRL is writable (0x%08x held)",
             ctrl_after,
         )
 
@@ -137,8 +142,8 @@ class sep_esrc_fips_lock_test(sep_base_test):
 
         await esrc.poke_reserved_ctrl_bit()
         got = await esrc.read_lock()
-        assert got == 1, f"CHK-CTRL-RSVD FAIL: CTRL[0] write cleared lock to {got}"
-        self.logger.info("CHK-CTRL-RSVD PASS: a CTRL[0] write left FIPS_LOCK.LOCK=1")
+        assert got == 1, f"CHK-CTRL-RSVD FAIL: CTRL.RSVD0 write cleared lock to {got}"
+        self.logger.info("CHK-CTRL-RSVD PASS: a CTRL.RSVD0 write left FIPS_LOCK.LOCK=1")
 
         await self.resense()
         got = await esrc.read_lock()

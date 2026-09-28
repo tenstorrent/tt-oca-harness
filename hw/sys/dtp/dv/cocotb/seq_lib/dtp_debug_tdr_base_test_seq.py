@@ -14,16 +14,14 @@ The SV-UVM twin is ``uvm/seq_lib/dtp_debug_tdr_base_test_seq.svh``.
 
 from __future__ import annotations
 
+from env.dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
     DTP_EXPECTED_JTAG2AXI_CAPS,
     DTP_EXPECTED_JTAG_CAPS,
     DTP_IC_RESET_LEN,
     DTP_JTAG2AXI_CAPS_LEN,
-    DTP_JTAG2AXI_RD_PL_DEPTH,
-    DTP_JTAG2AXI_WR_PL_DEPTH,
     DTP_JTAG_CAPS_LEN,
-    DTP_NUM_CLK_STOP_REQ,
     DTP_TMP_STATUS_LEN,
     unpack_jtag2axi_caps,
 )
@@ -474,8 +472,8 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
             "bus_type": target.bus_type,
             "addr_size": target.addr_width,
             "data_width_bits": target.data_width,
-            "rd_pl_depth": DTP_JTAG2AXI_RD_PL_DEPTH,
-            "wr_pl_depth": DTP_JTAG2AXI_WR_PL_DEPTH,
+            "rd_pl_depth": target.rd_pl_depth,
+            "wr_pl_depth": target.wr_pl_depth,
         }
         for name, expected in expected_fields.items():
             self.family_check(CAPS_CHECK_ID, f"{reg}.{name}", decoded[name], expected)

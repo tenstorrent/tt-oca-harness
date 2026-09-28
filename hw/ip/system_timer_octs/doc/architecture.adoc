@@ -22,6 +22,13 @@ specifications, version , using credit-based synchronization for
 continuous maintenance that adapts to varying system loads and
 communication delays.
 
+<<system-timer-octs-diagram>> shows how primary and secondary timers exchange
+synchronization information.
+
+[[system-timer-octs-diagram]]
+.System Timer OCTS primary and secondary synchronization
+image::SMC_SystemTimerOCTS_FIG022.png[alt="System Timer OCTS primary and secondary synchronization",width=100%,pdfwidth=100%]
+
 === Timer Core Processing
 
 The timer core implements 64-bit counter management supporting both
@@ -98,13 +105,18 @@ accuracy through periodic resynchronization.
 
 The credit management system operates differently in PRIMARY and SECONDARY modes:
 
+<<octs-credit-management-table>> compares credit generation and consumption in primary
+and secondary modes.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS credit management" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[octs-credit-management-table]]
 [cols="32,68",options="header",role="port-reference"]
+.OCTS credit management
 |======================================================================
 |Feature |Description
 |PRIMARY Credit Counter |8-bit counter (0 to CREDIT_VAL-1) that increments each cycle when enabled. When it reaches CREDIT_VAL-1, it resets to 0 and generates a credit pulse output.
@@ -145,13 +157,17 @@ coordination.
 
 === Pulse State Machine
 
+<<octs-pulse-states-table>> describes the pulse-generation state machine.
+
 ifdef::backend-html5[]
 ++++
 <div class="port-reference-scroll" role="region" aria-label="OCTS pulse states" tabindex="0">
 ++++
 endif::backend-html5[]
 
+[[octs-pulse-states-table]]
 [cols="30,70",options="header",role="port-reference"]
+.OCTS pulse states
 |=======================================================================
 |State |Description
 |PULSE_IDLE |Normal operation, monitors for synchronization events

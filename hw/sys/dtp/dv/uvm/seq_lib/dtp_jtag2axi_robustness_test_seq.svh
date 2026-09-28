@@ -32,10 +32,10 @@
 //     Credits are armed direction-exact so every armed DECERR is consumed
 //     by a real bus response (CHK-AXI-NONVAC + the scoreboard's
 //     check_phase drain);
-//   * series_corner_all_bridges — series reset, a pipeline_depth=1 write
-//     stream, two with-status increment beats with responder
-//     burst-completion waits before the memory compares, and the settled
-//     SERIES_CTRL address/status capture.
+//   * series_corner_all_bridges — incrementing and fixed-address write
+//     series with their SERIES_CTRL address captures, one faulted beat whose
+//     status holds until SERIES_CTRL.reset, and the three bridges' beats
+//     interleaved.
 //
 // Every random choice draws from the per-pass seeded stream and is logged
 // with its loop context for replay. The test plumbs the per-target handle
@@ -108,9 +108,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // One status-poll scan's duration in system-clock cycles: the DR shift
   // plus the ~8 TCK the VIP spends navigating RTI -> Shift-DR -> RTI per
   // poll. An overestimate silently pushes the settle point past the
-  // MaxStatusPolls completion bound.
+  // MaxStatusPolls completion bound. The TCK and system periods are drawn
+  // independently, so the scan is rounded up once: rounding each TCK up to
+  // whole system cycles inflates the scan by up to 2x when the TCK period
+  // is just above a multiple of the system period.
   protected function int unsigned poll_scan_sys_cycles(dtp_j2a_target_t t);
-    return (single_op_len(t) + 8) * tck_sys_ratio();
+    return ((single_op_len(t) + 8) * test_cfg.tck_period_ns + tb_vif.clk_period_ns - 1) /
+        tb_vif.clk_period_ns;
   endfunction
 
   // READY stall sized in status-poll units, so the operation stays
@@ -296,18 +300,17 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     return ok;
   endfunction
 
-  // The READY stall seen from the DUT: the bridge FSM has left IDLE onto the
-  // stalled path (CHK-J2A-STALL-FSM) and the first status poll reads
-  // BUSY_OR_FULL (CHK-J2A-STALL-BUSY). Both need the stall to outlast the
-  // poll, so callers size it with stall_beyond_polls().
+  // The READY stall seen from the DUT: the bridge's state machine has left
+  // idle onto the stalled path (CHK-J2A-STALL-FSM) and the first status poll
+  // reads BUSY_OR_FULL (CHK-J2A-STALL-BUSY). Both need the stall to outlast
+  // the poll, so callers size it with stall_beyond_polls().
   protected task observe_stall(dtp_j2a_target_t t, bit is_read, string context_s);
-    dtp_j2a_fsm_state_e state;
+    bit idle;
     dtp_j2a_status_e first;
     bit [63:0] rdata;
     bit on_path;
-    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, state);
-    on_path = is_read ? (state inside {DTP_J2A_FSM_SEND_ADDR_R, DTP_J2A_FSM_WAIT_RDATA}) :
-        (state inside {DTP_J2A_FSM_SEND_ADDR_W, DTP_J2A_FSM_SEND_DATA_W, DTP_J2A_FSM_WAIT_BRESP});
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    on_path = bridge_fsm_on_path(t, is_read);
     void'(record_abort_check(
         DtpJ2aStallFsmCheckId,
         {
@@ -316,7 +319,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         64'(on_path),
         64'd1,
         $sformatf(
-            "fsm=%s under the %s READY stall", state.name(), is_read ? "read" : "write")
+            "idle=%0d under the %s READY stall", idle, is_read ? "read" : "write")
     ));
     single_status_once(t, first, rdata);
     void'(record_abort_check(
@@ -340,14 +343,14 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     bit [63:0] addr = robust_addr(t, addr_idx);
     bit [63:0] data = rand_data(t) & data_mask(size);
     bit [63:0] prior_word = read_target_mem_int(t, addr, size);
-    dtp_j2a_fsm_state_e state;
+    bit idle;
     dtp_j2a_status_e st;
     bit [63:0] rdata;
     bit mid_flight;
     configure_target_backpressure(t, '{channel}, AbortHoldCycles);
     issue_single(t, DTP_J2A_OP_WRITE, addr, data, full_wstrb(size), size, 1'b0);
-    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, state);
-    mid_flight = (state != DTP_J2A_FSM_IDLE) && bridge_op_pending(t);
+    wait_bridge_fsm(t, 1'b0, AbortMidFlightTck, idle);
+    mid_flight = !idle && bridge_op_pending(t);
     void'(record_abort_check(
         DtpJ2aAbortMidFlightCheckId,
         {
@@ -356,21 +359,20 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
         64'(mid_flight),
         64'd1,
         $sformatf(
-            "fsm=%s", state.name())
+            "idle=%0d write_path=%0d", idle, bridge_fsm_on_path(t, 1'b0))
     ));
     clear_cdc_clear_seen();
     pulse_system_reset(reset_cycles);
     clear_target_backpressure(t);
-    wait_bridge_fsm(t, 1'b1, AbortSettleTck, state);
+    wait_bridge_fsm(t, 1'b1, AbortSettleTck, idle);
     void'(record_abort_check(
         DtpJ2aAbortFsmCheckId,
         {
           context_s, ".fsm_idle"
         },
-        64'(state),
-        64'(DTP_J2A_FSM_IDLE),
-        $sformatf(
-            "fsm=%s after the mid-flight reset", state.name())
+        64'(idle),
+        64'd1,
+        "after the mid-flight reset"
     ));
     void'(record_abort_check(
         DtpJ2aCdcClearCheckId,
@@ -519,67 +521,204 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
       bit [63:0]   good_data = rand_data(t);
       write_target_single_and_check(t, good_addr, good_data, op_status, size, full_wstrb(size),
                                     $sformatf("mixed.good_write.%s", t.name));
-      // Read-only DECERR arming at the unmapped slot: injection and
-      // expectation stay direction-exact so no armed credit dangles
-      // (the write side of that slot is never accessed).
+      // One DECERR arming per direction at the faulted slot, each consumed
+      // by the access that follows it, so no armed credit dangles.
       arm_target_error(t, bad_addr, OCAH_AXI_RESP_DECERR, 1'b1, 1'b0);
       read_target_single_expect_status(t, bad_addr, DTP_J2A_DECERR, op_status, rdata, size,
                                        $sformatf("mixed.bad_read.%s", t.name));
+      arm_target_error(t, bad_addr, OCAH_AXI_RESP_DECERR, 1'b0, 1'b1);
+      write_target_single_expect_status(t, bad_addr, rand_data(t), DTP_J2A_DECERR, op_status, size,
+                                        full_wstrb(size), $sformatf("mixed.bad_write.%s", t.name));
       read_target_single_and_check(t, good_addr, good_data, op_status, size, $sformatf(
                                    "mixed.good_read.%s", t.name));
       operation_count++;
     end
   endtask
 
-  protected task run_series_corner_all_bridges();
+  // --- series corner legs ---------------------------------------------------
+  // Aligned base of one series leg's window: one 0x400 window per bridge,
+  // one 0x100 leg per series.
+  protected function bit [63:0] series_corner_base(int unsigned idx, int unsigned leg);
+    return SeriesBase + (idx + 1) * 64'h400 + leg * 64'h100;
+  endfunction
+
+  // CHK-J2A-FAULT-STATUS on a SERIES_CTRL capture, recorded and checked.
+  protected function void record_series_status(dtp_j2a_target_t t, dtp_j2a_status_e observed,
+                                               dtp_j2a_status_e expected, string context_s);
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_equal(
+          DtpJ2aFaultStatusCheckId,
+          64'(observed),
+          64'(expected),
+          $sformatf(
+              "%s target=%s", context_s, t.name)
+      ));
+    check_status(context_s, observed, expected);
+  endfunction
+
+  // Land one write beat of a programmed series and compare the word it wrote.
+  protected task series_corner_beat(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
+                                    int unsigned size, bit increment, string context_s);
+    int unsigned aw0, w0, ar0, wb0;
+    bit [63:0] observed;
+    sample_activity(t, aw0, w0, ar0);
+    wb0 = write_bursts_now(t);
+    if (increment) series_data_incr(t, data, size);
+    else series_data_no_incr(t, data, size);
+    wait_for_target_activity(t, aw0, w0, ar0, 1'b0, context_s);
+    wait_for_write_completion(t, wb0, context_s);
+    observed = read_target_mem_int(t, addr, size);
+    if (observed !== data)
+      `uvm_error(
+          "jtag2axi_data_chk", $sformatf(
+          "%s.mem: memory 0x%0h != written 0x%0h (addr=0x%0h)", context_s, observed, data, addr))
+    operation_count++;
+  endtask
+
+  // An incrementing then a fixed-address series: the captured address follows
+  // the mode.
+  protected task series_corner_progressions(int unsigned idx, int unsigned beats);
+    dtp_j2a_target_t t = select_target(idx);
+    int unsigned size = t.default_size;
+    bit [63:0] base = series_corner_base(idx, 0);
+    bit [63:0] addr = series_corner_base(idx, 1);
+    dtp_j2a_status_e sstatus;
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, base, size);
+    for (int unsigned beat = 0; beat < beats; beat++)
+      series_corner_beat(t, base + beat * t.beat_bytes, rand_data(t) & data_mask(size), size, 1'b1,
+                         $sformatf("series_corner.incr.%s.%0d", t.name, beat));
+    check_series_addr(t, base + beats * t.beat_bytes, size, $sformatf(
+                      "series_corner.incr.%s", t.name), sstatus);
+    record_series_status(t, sstatus, DTP_J2A_SUCCESS, $sformatf("series_corner.incr.%s", t.name));
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, addr, size);
+    for (int unsigned beat = 0; beat < beats; beat++)
+      series_corner_beat(t, addr, rand_data(t) & data_mask(size), size, 1'b0, $sformatf(
+                         "series_corner.fixed.%s.%0d", t.name, beat));
+    check_series_addr(t, addr, size, $sformatf("series_corner.fixed.%s", t.name), sstatus);
+    record_series_status(t, sstatus, DTP_J2A_SUCCESS, $sformatf("series_corner.fixed.%s", t.name));
+    status = sstatus;
+  endtask
+
+  // One faulted beat sets the series status, which holds across the clean
+  // beats after it until SERIES_CTRL.reset starts a fresh series.
+  protected task series_corner_sticky_status(int unsigned idx, int unsigned beats);
+    dtp_j2a_target_t t = select_target(idx);
+    int unsigned size = t.default_size;
+    bit [63:0] base = series_corner_base(idx, 2);
+    // At least one clean beat follows the fault, so the held status is
+    // observed after a beat the responder accepted.
+    int unsigned fault_beat = $urandom_range(beats - 2);
+    ocah_axi_resp_e resp = $urandom_range(1) ? OCAH_AXI_RESP_DECERR : OCAH_AXI_RESP_SLVERR;
+    dtp_j2a_status_e expected = (resp == OCAH_AXI_RESP_DECERR) ? DTP_J2A_DECERR : DTP_J2A_SLVERR;
+    bit [63:0] fault_addr = base + fault_beat * t.beat_bytes;
+    bit [63:0] fault_before, clear_addr;
+    dtp_j2a_status_e sstatus;
+    arm_target_error(t, fault_addr, resp, 1'b0, 1'b1);
+    fault_before = read_target_mem_int(t, fault_addr, size);
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, base, size);
+    for (int unsigned beat = 0; beat < beats; beat++) begin
+      bit [63:0] addr = base + beat * t.beat_bytes;
+      bit [63:0] data = rand_data(t) & data_mask(size);
+      bit [63:0] observed, expected_word;
+      int unsigned aw0, w0, ar0, wb0;
+      string context_s = $sformatf("series_corner.sticky.%s.%0d", t.name, beat);
+      sample_activity(t, aw0, w0, ar0);
+      wb0 = write_bursts_now(t);
+      series_data_incr(t, data, size);
+      wait_for_target_activity(t, aw0, w0, ar0, 1'b0, context_s);
+      wait_for_write_completion(t, wb0, context_s);
+      observed = read_target_mem_int(t, addr, size);
+      expected_word = (beat == fault_beat) ? fault_before : data;
+      if (observed !== expected_word)
+        `uvm_error("jtag2axi_data_chk", $sformatf(
+                   "%s.%s: memory 0x%0h != expected 0x%0h (addr=0x%0h)",
+                   context_s,
+                   (beat == fault_beat) ? "mem_dropped" : "mem",
+                   observed,
+                   expected_word,
+                   addr
+                   ))
+      // The capture right after the faulted beat carries the code.
+      if (beat == fault_beat) begin
+        check_series_addr(t, addr + t.beat_bytes, size, {context_s, ".faulted"}, sstatus);
+        record_series_status(t, sstatus, expected, {context_s, ".faulted"});
+      end
+      operation_count++;
+    end
+    // The code holds across the clean beats that followed the fault.
+    check_series_addr(t, base + beats * t.beat_bytes, size, $sformatf(
+                      "series_corner.sticky.%s", t.name), sstatus);
+    record_series_status(t, sstatus, expected, $sformatf("series_corner.sticky.%s.held", t.name));
+    clear_target_error(t);
+    series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
+    clear_addr = base + (beats + 1) * t.beat_bytes;
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, clear_addr, size);
+    series_corner_beat(t, clear_addr, rand_data(t) & data_mask(size), size, 1'b1, $sformatf(
+                       "series_corner.sticky.%s.cleared", t.name));
+    check_series_addr(t, clear_addr + t.beat_bytes, size, $sformatf(
+                      "series_corner.sticky.%s.cleared", t.name), sstatus);
+    record_series_status(t, sstatus, DTP_J2A_SUCCESS, $sformatf(
+                         "series_corner.sticky.%s.cleared", t.name));
+    status = sstatus;
+  endtask
+
+  // Beats of the three bridges' series landed in seeded interleaved order
+  // leave every bridge's address progression and every word exact.
+  protected task series_corner_interleaved(int unsigned beats);
+    bit [63:0] bases[NumTargets];
+    bit [63:0] words[NumTargets][];
+    dtp_j2a_status_e sstatus;
+    for (int unsigned i = 0; i < NumTargets; i++) begin
+      dtp_j2a_target_t t = select_target(i);
+      bases[i] = series_corner_base(i, 3);
+      words[i] = new[beats];
+      foreach (words[i][b]) words[i][b] = rand_data(t) & data_mask(t.default_size);
+      series_ctrl_op(t, DTP_J2A_OP_NOP, '0, t.default_size, 0, 1'b1);
+      series_ctrl_op(t, DTP_J2A_OP_WRITE, bases[i], t.default_size);
+    end
+    for (int unsigned beat = 0; beat < beats; beat++) begin
+      int unsigned order[$];
+      for (int unsigned i = 0; i < NumTargets; i++) order.push_back(i);
+      order.shuffle();
+      foreach (order[k]) begin
+        dtp_j2a_target_t t = select_target(order[k]);
+        series_corner_beat(t, bases[order[k]] + beat * t.beat_bytes, words[order[k]][beat],
+                           t.default_size, 1'b1, $sformatf(
+                           "series_corner.interleaved.%s.%0d", t.name, beat));
+      end
+    end
     for (int unsigned i = 0; i < NumTargets; i++) begin
       dtp_j2a_target_t t = select_target(i);
       int unsigned size = t.default_size;
-      bit [63:0]   base = SeriesBase + (i + 1) * 64'h100;
-      bit          sreset;
-      bit [63:0]   addr_after;
-      int unsigned pl_depth, size_rd;
-      dtp_j2a_status_e sstatus;
-      `uvm_info(get_type_name(), $sformatf(
-                "[%0d/%0d] target=%s series reset/pipeline/status", i + 1, NumTargets, t.name),
-                UVM_LOW)
-      series_ctrl_op(t, DTP_J2A_OP_NOP, '0, size, 0, 1'b1);
-      series_ctrl_op(t, DTP_J2A_OP_WRITE, base, size, 1, 1'b0);
-      for (int unsigned beat = 0; beat < 2; beat++) begin
-        bit [63:0] data = rand_data(t) & data_mask(size);
-        bit [63:0] rdata, observed;
-        bit status_bit;
-        int unsigned aw0, w0, ar0, wb0;
-        sample_activity(t, aw0, w0, ar0);
-        wb0 = write_bursts_now(t);
-        series_data_with_status(t, data, size, 1'b1, rdata, status_bit);
-        wait_for_target_activity(t, aw0, w0, ar0, 1'b0, $sformatf(
-                                 "series_corner.write.%s.%0d", t.name, beat));
-        // Burst-completion wait: the memory compare below must not
-        // race the W-beat commit.
-        wait_for_write_completion(t, wb0, $sformatf("series_corner.write.%s.%0d", t.name, beat));
-        observed = read_target_mem_int(t, base + beat * t.beat_bytes, size);
-        if (observed !== data)
+      check_series_addr(t, bases[i] + beats * t.beat_bytes, size, $sformatf(
+                        "series_corner.interleaved.%s", t.name), sstatus);
+      record_series_status(t, sstatus, DTP_J2A_SUCCESS, $sformatf(
+                           "series_corner.interleaved.%s", t.name));
+      for (int unsigned beat = 0; beat < beats; beat++) begin
+        bit [63:0] addr = bases[i] + beat * t.beat_bytes;
+        bit [63:0] observed = read_target_mem_int(t, addr, size);
+        if (observed !== words[i][beat])
           `uvm_error("jtag2axi_data_chk", $sformatf(
-                     "series_corner.mem.%s.%0d: memory 0x%0h != written 0x%0h (addr=0x%0h)",
+                     "series_corner.interleaved.%s.final#%0d: memory 0x%0h != written 0x%0h (addr=0x%0h)",
                      t.name,
                      beat,
                      observed,
-                     data,
-                     base + beat * t.beat_bytes
+                     words[i][beat],
+                     addr
                      ))
       end
-      read_series_ctrl(t, size, sreset, addr_after, pl_depth, size_rd, sstatus);
-      check_status($sformatf("series_corner.status.%s", t.name), sstatus, DTP_J2A_SUCCESS);
-      if (addr_after !== base + 2 * t.beat_bytes)
-        `uvm_error("jtag2axi_series_chk", $sformatf(
-                   "series_corner.addr_after.%s: 0x%0h != expected 0x%0h",
-                   t.name,
-                   addr_after,
-                   base + 2 * t.beat_bytes
-                   ))
-      operation_count++;
+      status = sstatus;
     end
+  endtask
+
+  protected task run_series_corner_all_bridges();
+    // Seeded per-pass beat count, above the two beats a progression needs.
+    int unsigned beats = $urandom_range(6, 3);
+    `uvm_info(get_type_name(), $sformatf("Series corner: %0d beats per series", beats), UVM_LOW)
+    for (int unsigned i = 0; i < NumTargets; i++) series_corner_progressions(i, beats);
+    for (int unsigned i = 0; i < NumTargets; i++) series_corner_sticky_status(i, beats);
+    series_corner_interleaved(beats);
   endtask
 
   // CHK-AXI-NONVAC on every bridge: that bridge's responder completed at

@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: entropy_source</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-entropy_source">Entropy Source Address Map</h2>
+<p>Entropy-source configuration, status, and data registers.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Identifies the entropy-source register interface.</td></tr>
@@ -80,7 +81,7 @@
 <tr><td>0x174</td><td><a href="#NOISE_OBS_STATUS">NOISE_OBS_STATUS</a></td><td>R</td><td>Reports raw-noise observe FIFO occupancy and pointers.</td></tr>
 <tr><td>0x178</td><td><a href="#NOISE_OBS_RDATA">NOISE_OBS_RDATA</a></td><td>R</td><td>Provides the next packed raw-noise observe word.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="COMPONENT_ID">COMPONENT_ID</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

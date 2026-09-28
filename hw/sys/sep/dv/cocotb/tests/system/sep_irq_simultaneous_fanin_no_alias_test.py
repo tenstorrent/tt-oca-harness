@@ -50,23 +50,21 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
     """
 
     async def _sample_agg(self) -> int:
-        """Sample the whole aggregate vector once (one clock edge + ReadOnly).
+        """Sample the [8:33] region of the aggregate once (one clock edge + ReadOnly).
 
-        Goes through self.rd(), which resolves unknown bits to zero per bit, so a
-        zero here means "zero or unresolved". _assert_region_resolved is what
-        separates the two.
+        self.rd() raises on an X/Z bit inside REGION_MASK, so a zero here is a
+        driven zero. Bits outside the region are not read and return as 0.
         """
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
-        return self.rd(cocotb.top.sep_internal_interrupts_probe_o)
+        return self.rd(cocotb.top.sep_internal_interrupts_probe_o, mask=REGION_MASK)
 
     async def _assert_region_resolved(self, where: str) -> int:
-        """Sample the probe RAW and require every [8:33] bit to be 0 or 1.
+        """Sample the probe once more and require every [8:33] bit to be 0 or 1.
 
-        The polls in this test read through self.rd(), which maps X to 0, so a
-        floating aggregator leg is indistinguishable from a quiet source there.
-        This reads the signal without that mapping and returns the resolved
-        region value.
+        Names the check point in the failure message, so an undriven aggregator
+        leg is reported against the step where it was seen. Returns the region
+        value.
         """
         await RisingEdge(cocotb.top.clk_i)
         await ReadOnly()
@@ -150,11 +148,9 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
         )
 
         # CHK-ANTI-ALIAS: the set of driven bits is already pinned by the
-        # exact-equality poll above, which a smear onto a neighbour breaks. What
-        # that poll cannot see is an UNDRIVEN leg: it reads through self.rd(),
-        # which maps X to 0, so a floating aggregator input reads as a quiet
-        # source. Re-sample the probe raw and require the whole region to be
-        # resolved, then require the resolved value to be exactly the driven set.
+        # exact-equality poll above, which a smear onto a neighbour breaks. This step
+        # adds a fresh sample that names this step if a leg is UNDRIVEN:
+        # the whole region must be resolved and equal exactly the driven set.
         raw_region = await self._assert_region_resolved("simultaneous fan-in")
         assert raw_region == (want & REGION_MASK), (
             f"raw [{REGION_LO}:{REGION_HI}]=0x{raw_region:010x}, expected "
@@ -184,9 +180,8 @@ class sep_irq_simultaneous_fanin_no_alias_test(sep_base_test):
             await self._drive(src, on=False)
         ok, vec = await self._poll_region(0)
         assert ok, f"[8:33] not clear after W1C (vec=0x{vec:010x})"
-        # The poll reads through self.rd(), so "clear" there also covers "X". This
-        # leg's passing branch is zero, so re-sample raw and require the region to
-        # be resolved -- a leg that stopped being driven must not read as cleared.
+        # This leg's passing value is zero, so re-sample and require the region to
+        # be resolved: a leg that stopped being driven must not read as cleared.
         cleared = await self._assert_region_resolved("after W1C")
         assert cleared == 0, f"[8:33] resolved to 0x{cleared:010x} after W1C, expected 0"
         for src in sources:

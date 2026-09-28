@@ -60,12 +60,17 @@ from env.sep_lcc_golden import (
     lc_state_name,
 )
 from sep_base_test import sep_base_test
-from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, EFUSE_MMR, sym
+from seq_lib.sep_efuse_rma_token_seq import (
+    EOP_RMA_CHIPLET,
+    EOP_RMA_SIP,
+    TOKEN_MATCH,
+)
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# KM-secret fields named in periphs.adoc (Key Manager subset). The
+# KM-secret fields named in otp_fuse_controller.adoc (Key Manager subset). The
 # SECURE_TM block list is LOCK / LC_STATE / SIP_DIS / SYS_DIS; these four
 # are the secrets the stitch grades for disconnect.
 _SECRET_FIELDS = spec_secret_regs()
@@ -80,6 +85,7 @@ _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 # Block bases from the generated map.
 _EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_PG_ADDR = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
 _PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
 _PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
 _PG_READ_BACK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_read_back")
@@ -91,11 +97,14 @@ _RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
 _TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
 _RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
 _RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
-_TOKEN_MATCH = 0x15
+# Match-status encoding is a periphs.adoc value the RDL does not express; take the
+# shared DV-owned constant rather than a second copy of it. The field it lands in
+# is generated, so the mask comes from the export.
+_TOKEN_MATCH_STATUS = EFUSE_MMR.field_mask("TOKEN_MATCH", "token_match_status")
 
 _RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
 _RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
-# periphs.adoc: LC_STATE starts at bit 96. efuse_guard gates program addresses BASE+1
+# otp_fuse_controller.adoc: LC_STATE starts at bit 96. efuse_guard gates program addresses BASE+1
 # (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match.
 # LC_WORD_IDX * 32 so the program address tracks the generated LC_STATE word.
 _LC_STATE_BIT_BASE = LC_WORD_IDX * 32
@@ -172,13 +181,13 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         if self.token_kind == _TOKEN_RMA_SIP:
             digest_base = _RMA_SIP_TOKEN_DIGEST
             token_base = _RMA_SIP_TOKEN_I
-            eop_value = 0x0000_0001
+            eop_value = EOP_RMA_SIP
             match_addr = _RMA_SIP_TOKEN_MATCH
             token_name = "RMA_SIP"
         else:
             digest_base = _RMA_CHIPLET_TOKEN_DIGEST
             token_base = _RMA_CHIPLET_TOKEN_I
-            eop_value = 0x0000_0100
+            eop_value = EOP_RMA_CHIPLET
             match_addr = _RMA_CHIPLET_TOKEN_MATCH
             token_name = "RMA_CHIPLET"
 
@@ -188,8 +197,8 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
         for _ in range(200):
             await ClockCycles(cocotb.top.clk_i, 1)
-            result = await self._read(match_addr, "token_match") & 0x3F
-            if result == _TOKEN_MATCH:
+            result = await self._read(match_addr, "token_match") & _TOKEN_MATCH_STATUS
+            if result == TOKEN_MATCH:
                 cocotb.log.info("[lcc] %s token matched", token_name)
                 return
         raise AssertionError(f"{token_name} token did not match")
@@ -200,7 +209,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
 
         # Field masks from the generated export, like the register address above,
         # so a field move in the RDL moves the programming word with it.
-        wdata = (self.bit_addr & 0xFFFF) | _PG_DATA | _PG_GO | _PG_READ_BACK | _PG_ENABLE
+        wdata = (self.bit_addr & _PG_ADDR) | _PG_DATA | _PG_GO | _PG_READ_BACK | _PG_ENABLE
         saw_retry = False
         for attempt in range(1, self.max_attempts + 1):
             await self._write(_EFUSE_PROGRAM_CTRL, wdata, "program_ctrl")
@@ -338,7 +347,10 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             sec_dis=0,
             sigint_err=sigint_err,
         )
+        mark = self.sb_mark()
         await self.start_seq(seq)
+        tag = f"{lc_state_name(raw)} tm={secure_tm} sigint={sigint_err}"
+        self.assert_sb_judged(mark, f"CHK-GOLDEN {tag}")
         assert seq.observed_feat is not None, "sequence did not publish AXI FEAT_CTRL"
         feat = seq.observed_feat
         self._last_observed_feat = feat
@@ -346,6 +358,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             self._feat_by_state[raw] = feat
 
         if raw == LC_TEST_DEV and not sigint_err:
+            self._test_dev_feat_by_tm[secure_tm] = feat
             if secure_tm:
                 self.logger.info(
                     "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL=0x%016x "
@@ -414,6 +427,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         self._total_program_retries = 0
         self._secure_tm_prog_blocked = False
         self._feat_by_state: dict[int, int] = {}
+        self._test_dev_feat_by_tm: dict[int, int] = {}
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
@@ -455,7 +469,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     prev_raw=prev_raw,
                 )
                 # Second half: the same image, every KM-secret field, strap high.
-                # periphs.adoc names the four fields and the TEST_EN disconnect
+                # otp_fuse_controller.adoc names the four fields and the TEST_EN disconnect
                 # of fuse-bank outputs; it does not require a zero readback.
                 for name in _SECRET_FIELDS:
                     blanked = self._sensed_secret(image, name)
@@ -475,9 +489,10 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 # empties the fuse command request and the program interface
                 # completes with PROGRAM_DONE+ERR because secure_tm_blocked_i
                 # is set. That is a failed completion, not a starved DONE.
-                # The status word is the evidence — not fail-injection credit,
-                # which re-arms on the resense that must follow to drop the
-                # latched strap.
+                # The one-shot injection (percent 0) can fail only the first
+                # bank write after the resense. Two failed attempts therefore
+                # cannot both be that injection: a guard that let the command
+                # through would complete the second attempt.
                 blocked = _lcc_otp_program_seq(_LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
@@ -491,11 +506,20 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                             "(secure_tm_blocked completes the program FSM with "
                             f"error); status=0x{status:08x} ({exc})"
                         ) from exc
+                    if blocked.retry_count < 1:
+                        raise AssertionError(
+                            "CHK-SECURE-TM-PROG-BLOCK: one PROGRAM_DONE+ERR is "
+                            "the one-shot program-fail injection; the guard "
+                            f"must fail a second attempt (retry_count="
+                            f"{blocked.retry_count})"
+                        )
                     self._secure_tm_prog_blocked = True
                     self.logger.info(
-                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] "
-                        "PROGRAM_DONE+ERR (status=0x%08x) while secure_tm=1",
+                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] failed "
+                        "%d attempt(s) with PROGRAM_DONE+ERR (status=0x%08x) "
+                        "while secure_tm=1; one injection cannot cover both",
                         _LC_STATE_BIT_BASE,
+                        blocked.retry_count + 1,
                         status,
                     )
                 else:
@@ -571,7 +595,20 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             "CHK-NONVAC PASS: four FEAT_CTRL words are mutually distinct (%s)",
             ", ".join(f"{lc_state_name(r)}=0x{self._feat_by_state[r]:016x}" for r in _LC_CHAIN),
         )
-        self.logger.info("CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL identical at secure_tm=0 and 1")
+        assert set(self._test_dev_feat_by_tm) == {0, 1}, (
+            "CHK-SECURE-TM FAIL: TEST_DEV FEAT_CTRL was not observed at both secure_tm "
+            f"values (seen {sorted(self._test_dev_feat_by_tm)})"
+        )
+        feat_tm0 = self._test_dev_feat_by_tm[0]
+        feat_tm1 = self._test_dev_feat_by_tm[1]
+        assert feat_tm0 == feat_tm1, (
+            f"CHK-SECURE-TM FAIL: TEST_DEV FEAT_CTRL 0x{feat_tm0:016x} at secure_tm=0 "
+            f"!= 0x{feat_tm1:016x} at secure_tm=1"
+        )
+        self.logger.info(
+            "CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL 0x%016x identical at secure_tm=0 and 1",
+            feat_tm0,
+        )
         self.logger.info(
             "LCC stitch: walked %d states (%s); FEAT_CTRL matched golden at each; "
             "secure_tm off/on and lc_sigint inject proven; "

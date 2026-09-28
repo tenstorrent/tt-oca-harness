@@ -1,18 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-gpio_intf]
+== GPIO Interface Address Map
+
+GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | DATA_CTRL | RW a| -
-| 0x4 | DATA_CTRL_ENABLE | RW a| -
-| 0x8 | ACCESS_FILTER | RW a| GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
+| 0x0 | <<reg-{regmap-instance}-gpio_intf-DATA_CTRL,DATA_CTRL>> | RW a| -
+| 0x4 | <<reg-{regmap-instance}-gpio_intf-DATA_CTRL_ENABLE,DATA_CTRL_ENABLE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-gpio_intf-ACCESS_FILTER,ACCESS_FILTER>> | RW a| GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.
 |===
 
+[#reg-{regmap-instance}-gpio_intf-DATA_CTRL]
+=== DATA_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.DATA_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `pad2core` | R | 0x0 a| PAD2SOC Value
@@ -37,8 +45,10 @@ outranks interface_enable. Use lsio_disable to gate both.
 | 0 | `core2pad` | RW | 0x0 a| Register-driven data to send to the pad.
 |===
 
+[#reg-{regmap-instance}-gpio_intf-DATA_CTRL_ENABLE]
+=== DATA_CTRL_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.DATA_CTRL_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
@@ -48,8 +58,10 @@ outranks interface_enable. Use lsio_disable to gate both.
 | 0 | `use_reg_core2pad` | RW | 0x0 a| Per-field register override. When set, core2pad is register-driven. OR'd with interface_enable.
 |===
 
+[#reg-{regmap-instance}-gpio_intf-ACCESS_FILTER]
+=== ACCESS_FILTER
+
 [cols="1,3,1,1,6", options="header"]
-.ACCESS_FILTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:19 | `Reserved` | - | - a| Reserved
@@ -61,10 +73,10 @@ the filter may not update before your next transaction, causing unexpected behav
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.
 | 7:2 | `Reserved` | - | - a| Reserved
-| 1 | `read_filter_enable` | RW | 0x0 a| Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.
+| 1 | `read_filter_enable` | RW | 0x0 a| Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.
-| 0 | `write_filter_enable` | RW | 0x0 a| Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.
+| 0 | `write_filter_enable` | RW | 0x0 a| Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.
 WARNING: please read back this register to ensure the filter was written correctly. If you do not do so
 the filter may not update before your next transaction, causing unexpected behavior.
 |===

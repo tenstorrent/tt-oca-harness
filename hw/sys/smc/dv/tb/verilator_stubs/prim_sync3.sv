@@ -2,15 +2,14 @@
 //
 // Compatibility stub for prim_sync3 during public Verilator builds.
 //
-// Mirrors tb/verilator_stubs/prim_sync2.sv: three-stage flop with explicit
-// initial zeros so the synchronizer resolves without an external reset.
+// Three-stage flop with explicit initial zeros so the synchronizer resolves
+// without an external reset (the wrapper port does not expose ``rst_ni``).
 // SMC peripherals CDC uses SYNC_STAGES=3 (prim_sync3) for i2c_enable into
 // the LSIO mux; an unresolved X/0 on that path forces i2c_scl_i/sda_i to 0
 // and deadlocks the OpenTitan I2C host (HOSTIDLE never asserts).
 
 module prim_sync3 #(
-  parameter int unsigned WIDTH                  = 1,
-  parameter bit          RANDOM_DELAY_GRAY_CODE = 1'b0
+  parameter int unsigned WIDTH = 1
 ) (
   input  logic             clk_i,
   input  logic [WIDTH-1:0] d_i,

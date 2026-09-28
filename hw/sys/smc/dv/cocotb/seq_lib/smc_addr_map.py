@@ -30,6 +30,7 @@ _DMA_CTRL_ADDR_H = (
     / "c"
     / "dma_ctrl_addr.h"
 )
+_ALIAS_REMAP_H = _REPO / "hw" / "ip" / "axi_alias_remap" / "regs" / "gen" / "c" / "alias_remap.h"
 _DMA_CTRL_H = (
     _REPO / "vendor" / "pulp-platform" / "idma" / "overlay" / "rdl" / "gen" / "c" / "dma_ctrl.h"
 )
@@ -162,42 +163,6 @@ def _field_mask(path: Path, symbol: str) -> int:
 # --- Absolute addresses used by SMC clock-gating / DMA activity tests ---
 CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
-# --- Local-alias aperture fold ---------------------------------------------
-# Every request entering the SMC local fabric is folded into the local-alias
-# aperture, which is `LOCAL_BASE`-aligned and `REGION_SIZE` bytes long: the
-# fabric keeps the low address bits under `REGION_SIZE - 1` and prefixes
-# `LOCAL_BASE` above them. Authority: the `SMC_BASE_CONFIG.REGION_SIZE` field
-# description in the RDL (the mask is `(size - 1)`, so the size must be a
-# non-zero power of two and both bases aligned to it) and
-# hw/sys/smc/doc/fabric.adoc "Local and Remote Resource Access". Both operands
-# are the generated RDL resets, so the model moves with the register map
-# ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
-LOCAL_BASE_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
-_REGION_SIZE_FIELD_RESET = _field_mask(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG__REGION_SIZE__SIZE_reset")
-
-
-def local_fabric_keep_mask(region_size: int = _REGION_SIZE_FIELD_RESET) -> int:
-    """Address bits that survive the local-alias fold for ``region_size``."""
-    assert region_size > 0 and region_size & (region_size - 1) == 0, (
-        f"REGION_SIZE 0x{region_size:x} is not a non-zero power of two; the RDL forbids "
-        "it because the fabric mask is (size - 1)"
-    )
-    return region_size - 1
-
-
-LOCAL_FABRIC_KEEP_MASK = local_fabric_keep_mask()
-LOCAL_FABRIC_REPLACE_MASK = 0xFFFF_FFFF & ~LOCAL_FABRIC_KEEP_MASK
-
-
-def local_fabric_masked_addr(
-    addr: int, local_base: int | None = None, region_size: int | None = None
-) -> int:
-    """Address a SEP_IN/system/local request arrives at after the fold above."""
-    base = LOCAL_BASE_RESET if local_base is None else local_base
-    keep = local_fabric_keep_mask(_REGION_SIZE_FIELD_RESET if region_size is None else region_size)
-    assert base & keep == 0, f"LOCAL_BASE 0x{base:x} is not aligned to REGION_SIZE 0x{keep + 1:x}"
-    return (base & 0xFFFF_FFFF) | (addr & keep)
-
 
 def reg_reset_word(header: Path, block: str, reg: str) -> int:
     """Compose a register's reset word from its generated ``_reset``/``_bp`` fields.
@@ -224,6 +189,85 @@ def reg_reset_word(header: Path, block: str, reg: str) -> int:
 
 # SMC_BASE_CONFIG reset words used as goldens by the fabric/decode testcases.
 GLOBAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "GLOBAL_BASE")
+LOCAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "LOCAL_BASE")
+
+# The window table the register generator writes from the RDL address map and
+# `doc/memmap.adoc` includes: one row per unit, `|BASE + <lo> - BASE + <hi> |...`.
+# Rows are keyed by their ``BASE + <lo>`` offset, not the trailing label column:
+# that column shows the addrmap's RDL `name` where one is set and its instance
+# name otherwise, so it is not a stable key.
+_MEMORY_MAP_ADOC = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "adoc" / "memory_map.adoc"
+_WINDOW_ROW = re.compile(
+    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|[^|]*\|[^|]+\|"
+)
+
+
+def _unit_base_offset(unit: str) -> int:
+    """Offset from the map's ``BASE`` (``LOCAL_BASE``) at which ``unit``'s window starts.
+
+    The adoc keys each row by ``BASE + <offset>``; the C header gives the same
+    window as an absolute ``SMC_TOP_<unit>_BASE_ADDR``. Both derive from the one
+    RDL address map, so the offset is the absolute address minus ``LOCAL_BASE``.
+    A unit with instances has an indexed ``SMC_TOP_<unit>_BASE_ADDR(idx)`` macro
+    and one row for the whole array, so it is keyed by instance 0.
+    """
+    symbol = f"SMC_TOP_{unit.upper()}_BASE_ADDR"
+    try:
+        return smc_addr(symbol) - LOCAL_BASE_RESET
+    except KeyError:
+        pass
+    try:
+        return smc_indexed_addr(symbol, 0) - LOCAL_BASE_RESET
+    except KeyError as exc:
+        raise KeyError(
+            f"{unit} has neither SMC_TOP_*_BASE_ADDR nor SMC_TOP_*_BASE_ADDR(idx) in {_SMC_ADDR_H}"
+        ) from exc
+
+
+def generated_window(unit: str) -> tuple[int, int]:
+    """Return ``(first, last)`` offsets of the window the generated memory map gives ``unit``."""
+    want = _unit_base_offset(unit)
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _WINDOW_ROW.match(line)
+        if m and int(m.group(1), 16) == want:
+            return int(m.group(1), 16), int(m.group(2), 16)
+    raise KeyError(f"{unit} (BASE + {want:#x}) has no window row in {_MEMORY_MAP_ADOC}")
+
+
+# Component rows carry the decoded extent too:
+# `|BASE + <lo> - BASE + <hi> |<size> |<decoded extent> |<unit> |...`. The
+# fabric refuses an offset past the decoded extent (memmap.adoc), so the
+# decoded extent, not the aperture, bounds the addresses a unit answers.
+_COMPONENT_ROW = re.compile(
+    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|([^|]*)\|([^|]+)\|"
+)
+_EXTENT_UNIT_BYTES = {"B": 1, "KiB": 1 << 10, "MiB": 1 << 20, "GiB": 1 << 30}
+
+
+def generated_decoded_extent(unit: str) -> int:
+    """Return the byte count of the ``Decoded Extent`` the generated memory map gives ``unit``."""
+    want = _unit_base_offset(unit)
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _COMPONENT_ROW.match(line)
+        if m and int(m.group(1), 16) == want:
+            count, suffix = m.group(3).split()
+            return int(count) * _EXTENT_UNIT_BYTES[suffix]
+    raise KeyError(f"{unit} (BASE + {want:#x}) has no component row in {_MEMORY_MAP_ADOC}")
+
+
+def generated_unit_at(offset: int) -> str | None:
+    """Unit whose decoded extent contains ``offset`` (from BASE), or None if the fabric refuses it."""
+    for line in _MEMORY_MAP_ADOC.read_text().splitlines():
+        m = _COMPONENT_ROW.match(line)
+        if not m:
+            continue
+        first = int(m.group(1), 16)
+        count, suffix = m.group(3).split()
+        if first <= offset < first + int(count) * _EXTENT_UNIT_BYTES[suffix]:
+            return m.group(4).strip()
+    return None
+
+
 REGION_SIZE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "REGION_SIZE")
 CLOCK_GATE_CONTROL_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "CLOCK_GATE_CONTROL")
 
@@ -269,6 +313,18 @@ CG_HYST_SHIFT = _field_mask(
     _SMC_BASE_CFG_H, "SMC_BASE_CONFIG__CLOCK_GATE_CONTROL__CG_HYSTERESIS_bp"
 )
 DMA_CONFIG_ENABLED_ND = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__ENABLED_ND_bm")
+DMA_CONFIG_DECOUPLE_RW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_RW_bm")
+DMA_CONFIG_DECOUPLE_AW = _field_mask(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DECOUPLE_AW_bm")
+
+ALIAS_REMAP_ATTRS_CACHEABLE = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm"
+)
+ALIAS_REMAP_ATTRS_VALID = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm"
+)
+ALIAS_REMAP_ATTRS_OFFSET = _field_mask(
+    _ALIAS_REMAP_H, "ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bm"
+)
 
 # Zeroer CSR absolute addresses (generated smc_addr.h).
 ZEROER_CTRL_DEST_ADDR = smc_addr("SMC_TOP_ZEROER_CTRL_DEST_ADDR_BASE_ADDR")
@@ -293,6 +349,72 @@ _GPIO_INTF_H = _REPO / "hw" / "ip" / "gpio" / "regs" / "gen" / "c" / "gpio_intf.
 def gpio_intf_u32(symbol: str) -> int:
     """Field mask/position from generated ``gpio_intf.h``."""
     return _field_mask(_GPIO_INTF_H, symbol)
+
+
+_UART_16550_DL_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl.h"
+)
+_UART_16550_DL_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_dl_addr.h"
+)
+
+
+_UART_16550_MAIN_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main.h"
+)
+_UART_16550_WO_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
+)
+_UART_16550_WO_ADDR_H = (
+    _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo_addr.h"
+)
+_LOG_ENGINE_H = _REPO / "hw" / "ip" / "uart" / "log_engine" / "regs" / "gen" / "c" / "log_engine.h"
+_UART_LOG_ENGINE_CTRL_H = (
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
+    / "uart_log_engine_ctrl.h"
+)
+
+
+def uart_16550_main_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main.h``."""
+    return _field_mask(_UART_16550_MAIN_H, symbol)
+
+
+def uart_16550_wo_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_main_wo.h``."""
+    return _field_mask(_UART_16550_WO_H, symbol)
+
+
+def uart_16550_wo_offset(symbol: str) -> int:
+    """Register offset inside the write-only window from ``uart_16550_main_wo_addr.h``."""
+    return _field_mask(_UART_16550_WO_ADDR_H, symbol)
+
+
+def log_engine_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``log_engine.h``."""
+    return _field_mask(_LOG_ENGINE_H, symbol)
+
+
+def uart_log_engine_ctrl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_log_engine_ctrl.h``."""
+    return _field_mask(_UART_LOG_ENGINE_CTRL_H, symbol)
+
+
+def uart_16550_dl_u32(symbol: str) -> int:
+    """Field mask/position/reset from generated ``uart_16550_dl.h``."""
+    return _field_mask(_UART_16550_DL_H, symbol)
+
+
+def uart_16550_dl_offset(symbol: str) -> int:
+    """Register offset inside the divisor-latch window from ``uart_16550_dl_addr.h``."""
+    return _field_mask(_UART_16550_DL_ADDR_H, symbol)
 
 
 _GPIO_POC_H = (
@@ -467,9 +589,12 @@ def smc_rdl_windows() -> tuple[tuple[int, int], ...]:
     """Merged, ascending ``[base, end)`` ranges of every RDL-declared SMC block.
 
     Built from every ``SMC_TOP_*_BASE_ADDR`` / ``_SIZE`` pair and every indexed
-    ``_BASE_ADDR(idx)`` macro with its ``_TOTAL_SIZE`` (or ``_NUM`` and stride)
-    in ``smc_addr.h``. The root addrmap's own extent is excluded: it spans the
-    holes this function exists to expose.
+    ``_BASE_ADDR(idx)`` block array with its ``_TOTAL_SIZE`` (or ``_NUM`` and
+    ``_SIZE``) in ``smc_addr.h``. These are the sizes the crossbars decode. An
+    indexed macro with neither ``_TOTAL_SIZE`` nor ``_SIZE`` names a register
+    inside an array, whose extent is not its stride, and is skipped: the
+    enclosing block's own span covers it. The root addrmap's own extent is
+    excluded: it spans the holes this function exists to expose.
     """
     defs = _parse_simple_defines(_SMC_ADDR_H)
     spans: list[tuple[int, int]] = []
@@ -483,8 +608,10 @@ def smc_rdl_windows() -> tuple[tuple[int, int], ...]:
         prefix = name[: -len("_BASE_ADDR")]
         total = defs.get(f"{prefix}_TOTAL_SIZE")
         if total is None:
-            num = defs[f"{prefix}_NUM"]
-            total = (num - 1) * stride + defs.get(f"{prefix}_SIZE", stride)
+            size = defs.get(f"{prefix}_SIZE")
+            if size is None:
+                continue
+            total = (defs[f"{prefix}_NUM"] - 1) * stride + size
         spans.append((base, base + total))
     if not spans:
         raise RuntimeError(f"no block windows parsed from {_SMC_ADDR_H}")

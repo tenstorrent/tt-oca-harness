@@ -34,10 +34,14 @@ START_SYM = "_start"
 class SmuSepBootHealthSeq:
     """Prove the real SEP DV firmware boots and reaches its pass loop."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_REAL_FW_BOOT_OK", "SEP_REAL_FW_PASS_LOOP_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     async def run(self) -> None:
         max_cycles = int(os.environ.get("SMU_SEP_BOOT_MAX_CYCLES", "300000"), 0)
@@ -190,7 +194,7 @@ class SmuSepBootHealthSeq:
             traces,
             len(pcs),
         )
-        for token in ("SEP_REAL_FW_BOOT_OK", "SEP_REAL_FW_PASS_LOOP_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

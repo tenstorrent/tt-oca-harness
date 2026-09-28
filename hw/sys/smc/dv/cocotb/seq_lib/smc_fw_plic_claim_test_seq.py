@@ -39,7 +39,11 @@ Ordering is what makes it a measurement rather than a coincidence:
    must still hold the arm word at the end of it. Without this the PASS could
    have come from any interrupt already pending, and the whole testcase would
    be satisfied by a DUT that traps on something else.
-3. Only then does the pin rise.
+3. Only then do the pins rise. Source 1 is claimed, completed and re-delivered
+   alone; the firmware then enables sources 2-17 against the pins already high
+   and raises I2C0 (source 280) through INTR_TEST, requires every one of them
+   to arrive once under its own ID in priority order, then claims each source
+   alone at thresholds 1-6 and reads an idle claim at every threshold.
 """
 
 from __future__ import annotations
@@ -100,11 +104,21 @@ class smc_fw_plic_claim_test_seq(SmcCsrSeq):
             QUIET_CYCLES,
         )
 
+        # Every pin the firmware registers rises together: source 1 first
+        # (the only enabled one, so the claim and re-delivery legs see it
+        # alone), then sources 2-17 are enabled by the firmware against pins
+        # already high, and the I2C0 source is raised by the firmware itself.
         dut.tb_ext_interrupt_0_i.value = 1
-        cocotb.log.info("CHK-FW-PLIC-STIMULUS: ext_interrupts_i[0] driven high; PLIC source 1")
+        dut.tb_temp_interrupt_i.value = 1
+        dut.tb_ext_interrupts_hi_i.value = (1 << 15) - 1
+        cocotb.log.info(
+            "CHK-FW-PLIC-STIMULUS: ext_interrupts_i[16:0] driven high; PLIC sources 1-17"
+        )
 
     async def body(self) -> None:
         cocotb.top.tb_ext_interrupt_0_i.value = 0
+        cocotb.top.tb_temp_interrupt_i.value = 0
+        cocotb.top.tb_ext_interrupts_hi_i.value = 0
         self.boot = await check_cpu_firmware_boot_contract(
             self,
             require_image=True,

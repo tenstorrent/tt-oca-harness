@@ -1,43 +1,57 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-km_mailbox_sep]
+== Key Manager Mailbox SEP Side
+
+Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | SEP_WRITE_DATA | W a| Write data to inbound FIFO (SEP→KM messages)
-| 0x4 | SEP_WRITE_SEPARATOR | RW a| Write 1 to set message separator on next inbound (SEP→KM) write. Cleared by hardware when that write completes.
-| 0x8 | SEP_READ_DATA | R a| Read data from outbound FIFO (KM→SEP messages)
-| 0xC | SEP_STATUS | RW a| FIFO status information
-| 0x10 | SEP_IRQ_STATUS | RW a| Interrupt status register
-| 0x14 | SEP_IRQ_ENABLE | RW a| Interrupt enable register for SEP host
-| 0x18 | SEP_CTRL | RW a| Control register for mailbox behavior configuration
+| 0x0 | <<reg-{regmap-instance}-km_mailbox_sep-SEP_WRITE_DATA,SEP_WRITE_DATA>> | W a| Write data to inbound FIFO (SEP→KM messages)
+| 0x4 | <<reg-{regmap-instance}-km_mailbox_sep-SEP_WRITE_SEPARATOR,SEP_WRITE_SEPARATOR>> | RW a| Write 1 to set message separator on next inbound (SEP→KM) write. Cleared by hardware when that write completes.
+| 0x8 | <<reg-{regmap-instance}-km_mailbox_sep-SEP_READ_DATA,SEP_READ_DATA>> | R a| Read data from outbound FIFO (KM→SEP messages)
+| 0xC | <<reg-{regmap-instance}-km_mailbox_sep-SEP_STATUS,SEP_STATUS>> | RW a| FIFO status information
+| 0x10 | <<reg-{regmap-instance}-km_mailbox_sep-SEP_IRQ_STATUS,SEP_IRQ_STATUS>> | RW a| Interrupt status register
+| 0x14 | <<reg-{regmap-instance}-km_mailbox_sep-SEP_IRQ_ENABLE,SEP_IRQ_ENABLE>> | RW a| Interrupt enable register for SEP host
+| 0x18 | <<reg-{regmap-instance}-km_mailbox_sep-SEP_CTRL,SEP_CTRL>> | RW a| Control register for mailbox behavior configuration
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_WRITE_DATA]
+=== SEP_WRITE_DATA
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_WRITE_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | 0x0 a| 32-bit data word to write to inbound FIFO
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_WRITE_SEPARATOR]
+=== SEP_WRITE_SEPARATOR
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_WRITE_SEPARATOR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
 | 0 | `set` | RW | 0x0 a| Write 1 to set message separator on next inbound write. Cleared by hardware when that write completes.
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_READ_DATA]
+=== SEP_READ_DATA
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_READ_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | R | 0x0 a| 32-bit data word read from outbound FIFO
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_STATUS]
+=== SEP_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:26 | `rsvd` | R | 0x0 a| Reserved
@@ -55,8 +69,10 @@
 | 0 | `inbound_empty` | R | 0x1 a| Inbound FIFO is empty (no data available for KM to read)
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_IRQ_STATUS]
+=== SEP_IRQ_STATUS
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_IRQ_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `rsvd` | R | 0x0 a| Reserved
@@ -67,8 +83,10 @@
 | 0 | `outbound_read_data_avail` | R | 0x0 a| Outbound FIFO has data available for SEP to read (level-sensitive). 1 = data available, 0 = empty.
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_IRQ_ENABLE]
+=== SEP_IRQ_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_IRQ_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `rsvd` | R | 0x0 a| Reserved
@@ -79,8 +97,10 @@
 | 0 | `outbound_read_data_avail_en` | RW | 0x0 a| Enable interrupt to SEP when outbound FIFO has data available (KM->SEP messages)
 |===
 
+[#reg-{regmap-instance}-km_mailbox_sep-SEP_CTRL]
+=== SEP_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.SEP_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `rsvd` | R | 0x0 a| Reserved
