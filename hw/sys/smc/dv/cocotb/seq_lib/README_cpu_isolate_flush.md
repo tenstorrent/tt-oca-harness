@@ -77,7 +77,7 @@ isolate.
 | MMIO | Fabric returns B/R after the timeout reset | **Recovers when the response arrives.** The recovery window absorbs the late response and releases its routing state. |
 | MMIO | Fabric never returns B/R | **Partially recovers.** The isolate and reset handshake complete, but fabric routing toward the dead endpoint remains occupied because no response clears it. |
 | MMIO | Fabric never accepts a presented AW/AR | **Does not recover.** The channel remains in `Hold`; clearing it would retract an AXI request that is already presented. |
-| L2 | Fabric-side master stops accepting B/R | **Partially recovers.** The isolate and reset handshake complete, but the issuing master must discard or otherwise resolve its stale transaction. |
+| L2 | Fabric-side master stops accepting B/R | **Partially recovers, with one AXI violation.** The isolate and reset handshake complete, but the B/R beat the CPU was presenting is withdrawn without `ready`, and the issuing master must discard or otherwise resolve its stale transaction. |
 | L2 | CPU accepts a request but never produces B/R | **Partially recovers.** The isolate clears its count, but the issuing master and fabric can remain blocked waiting for the missing response. |
 | L2 | CPU does not accept a presented AW/AR/W | **Does not recover if the beat is never accepted.** The flush remains pending to avoid retracting the request; it applies automatically if the CPU later accepts the beat. |
 | L2 | A W burst stops before its last beat | **Partially recovers if reset is already requested.** The reset can complete, but upstream W routing remains occupied until the remaining beats, including `last`, arrive. |
@@ -92,6 +92,24 @@ and fabric state can clear this residual.
 For a request held valid without `ready`, recovery is intentionally deferred.
 There is no protocol-safe way for the isolate to make the receiving endpoint
 accept the request.
+
+A B/R response that the CPU presents toward live fabric cannot be preserved.
+The force-mode reset reaches the CPU about a cycle after the flush starts, so
+the beat is withdrawn without `ready` with or without the flush. The flush
+masks it immediately instead of letting the reset drop it a cycle later.
+Before this change, the same withdrawal also left the affected L2 read or
+write channel in `Drain` permanently. That blocked later fabric reads or
+writes into the CPU, and every later drain handshake, until a primary reset.
+Holding the presented beat would not make the outcome AXI-clean: the rest of
+the burst is lost with the CPU, and a master that never accepts would keep the
+shared response path blocked. Arbiters that check request stability, such as
+`rr_arb_tree` in the front-port demux, flag this withdrawal (issue #2449).
+
+In practice, this requires the fabric side to stop accepting L2 responses for
+the whole reset timeout, which means a hung or severely stalled fabric-side
+master or response path. Resetting the CPU does not recover that master, so
+the system already needs a wider reset, such as a cold reset, to recover it.
+
 
 ## Harness tests
 
