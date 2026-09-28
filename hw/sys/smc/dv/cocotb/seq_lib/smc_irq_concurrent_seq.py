@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Two unrelated interrupt sources asserted at once, then both released.
+"""Three unrelated interrupt sources asserted together, then released one at a time.
 
-The software sync interrupt (``SYNC_REG.sync``, ``reset_unit.rdl``) and the
-UART0 transmitter-holding interrupt (``IER.ETBEI`` with ``ITR.TTBEI``, the
-16550 interrupt test register) come from different blocks on different clock
-domains and reach separate wrapper outputs. The sequence raises the sync source
-and holds it while it raises the UART source, requires both outputs at 1 in
-the same ``clk_smc_i`` sample, releases the UART source and requires the sync
-output still 1, then releases the sync source and requires both at 0. A shared
-or cross-wired output fails one of those samples. The UART clock gate and both
-registers are restored.
+The software sync interrupt (``SYNC_REG.sync``, ``reset_unit.rdl``), the UART0
+transmitter-holding interrupt (``IER.ETBEI`` with ``ITR.TTBEI``, the 16550
+interrupt test register) and the GPIO0 active-low level interrupt (GPIO0 as an
+input with its interrupt enabled, its pad driven from the top-level pad pins)
+come from different blocks and reach separate wrapper outputs. The sequence
+raises them in turn and requires each output to rise while the earlier ones
+stay up, so all three read 1 in one ``clk_smc_i`` sample, then releases them in
+reverse order and requires each release to drop only its own output. A shared
+or cross-wired output fails one of those samples. The UART clock gate, both
+UART registers and GPIO0's DATA_CTRL are restored and the pad drive released.
 """
 
 from __future__ import annotations
@@ -21,6 +22,8 @@ from cocotb.triggers import ClockCycles
 from .smc_addr_map import CLOCK_GATE_CONTROL, UART_CG_EN
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_probe_positive_control import (
+    GPIO0_DATA_CTRL,
+    GPIO0_INPUT_ACTIVE_LOW_IRQ,
     IER_ETBEI,
     ITR_TTBEI,
     SYNC_REG,
@@ -32,23 +35,25 @@ from .smc_probe_positive_control import (
     UART_EN,
 )
 
-# clk_smc_i cycles within which an output must reach a level after the CSR
-# write that sets it has completed, and cycles it must then hold that level.
+# clk_smc_i cycles within which the outputs must reach a level after the
+# stimulus that sets it, and cycles they must then hold that level.
 LEVEL_BOUND_CYCLES = 128
 LEVEL_HOLD_CYCLES = 4
 
+_PROBES = ("tb_sync_irq", "tb_uart_irq_any", "tb_gpio_irq_any")
 
-def _outputs() -> tuple[int, int]:
+
+def _outputs() -> tuple[int, ...]:
     dut = cocotb.top
-    sync, uart = dut.tb_sync_irq.value, dut.tb_uart_irq_any.value
-    assert sync.is_resolvable and uart.is_resolvable, (
-        f"tb_sync_irq={sync} tb_uart_irq_any={uart} is X/Z"
+    values = [getattr(dut, name).value for name in _PROBES]
+    assert all(v.is_resolvable for v in values), (
+        f"{dict(zip(_PROBES, map(str, values), strict=True))} has X/Z"
     )
-    return int(sync), int(uart)
+    return tuple(int(v) for v in values)
 
 
-async def _await_outputs(want: tuple[int, int], label: str) -> int:
-    """Poll every clk_smc_i cycle until both outputs read ``want``, then hold-verify."""
+async def _await_outputs(want: tuple[int, ...], label: str) -> int:
+    """Poll every clk_smc_i cycle until the outputs read ``want``, then hold-verify."""
     clk = cocotb.top.clk_smc_i
     last = None
     for cycle in range(1, LEVEL_BOUND_CYCLES + 1):
@@ -59,54 +64,70 @@ async def _await_outputs(want: tuple[int, int], label: str) -> int:
                 await ClockCycles(clk, 1)
                 held = _outputs()
                 assert held == want, (
-                    f"{label}: (sync, uart) reached {want} and then read {held} within "
+                    f"{label}: (sync, uart, gpio) reached {want} and then read {held} within "
                     f"{LEVEL_HOLD_CYCLES} cycles"
                 )
             return cycle
     raise AssertionError(
-        f"{label}: (tb_sync_irq, tb_uart_irq_any) never read {want} within "
+        f"{label}: (tb_sync_irq, tb_uart_irq_any, tb_gpio_irq_any) never read {want} within "
         f"{LEVEL_BOUND_CYCLES} clk_smc_i cycles; last {last}"
     )
 
 
 class smc_irq_concurrent_seq(SmcCsrSeq):
-    """Sync and UART0 interrupt outputs asserted together and released one at a time."""
+    """Sync, UART0 and GPIO0 interrupt outputs asserted together and released in turn."""
 
     def __init__(self, name: str = "smc_irq_concurrent_seq") -> None:
         super().__init__(name)
         self.cycles: dict[str, int] = {}
 
     async def body(self) -> None:
+        dut = cocotb.top
         await self.wait_fuse_sense_done()
-        assert _outputs() == (0, 0), (
-            f"(tb_sync_irq, tb_uart_irq_any) is {_outputs()} before any stimulus"
-        )
+        assert _outputs() == (0, 0, 0), f"interrupt outputs are {_outputs()} before any stimulus"
         cg = await self.csr_read("UART_CG_SAVE", CLOCK_GATE_CONTROL)
+        gpio_saved = await self.csr_read("GPIO0_DATA_CTRL_SAVE", GPIO0_DATA_CTRL)
         await self.csr_write("UART_UNGATE", CLOCK_GATE_CONTROL, cg & ~UART_CG_EN)
         await self.csr_write("UART0_EN", UART0_CTRL, UART_EN)
+        dut.tb_gpio_ext_drive_en.value = 0x1
+        dut.tb_gpio_ext_drive_value.value = 0x1
+        await self.csr_write(
+            "GPIO0_INPUT_ACTIVE_LOW_IRQ", GPIO0_DATA_CTRL, GPIO0_INPUT_ACTIVE_LOW_IRQ
+        )
+        await _await_outputs((0, 0, 0), "GPIO0 armed with its pad high")
 
         await self.csr_write("SYNC_REG_SET", SYNC_REG, SYNC_REG_SYNC_BM)
-        self.cycles["sync_only"] = await _await_outputs((1, 0), "sync raised")
+        self.cycles["sync"] = await _await_outputs((1, 0, 0), "sync raised")
         await self.csr_write("UART0_IER_ETBEI", UART0_IER, IER_ETBEI)
         await self.csr_write("UART0_ITR_TTBEI", UART0_ITR, ITR_TTBEI)
-        self.cycles["both"] = await _await_outputs((1, 1), "sync held, UART raised")
+        self.cycles["uart"] = await _await_outputs((1, 1, 0), "UART raised")
+        dut.tb_gpio_ext_drive_value.value = 0x0
+        self.cycles["gpio"] = await _await_outputs((1, 1, 1), "GPIO0 raised")
 
+        dut.tb_gpio_ext_drive_value.value = 0x1
+        self.cycles["gpio_released"] = await _await_outputs((1, 1, 0), "GPIO0 released")
         await self.csr_write("UART0_ITR_CLR", UART0_ITR, 0)
         await self.csr_write("UART0_IER_CLR", UART0_IER, 0)
-        self.cycles["uart_released"] = await _await_outputs((1, 0), "UART released")
+        self.cycles["uart_released"] = await _await_outputs((1, 0, 0), "UART released")
         await self.csr_write("SYNC_REG_CLR", SYNC_REG, SYNC_REG_SYNC_RESET)
         await self.csr_read("SYNC_REG_CLR_RB", SYNC_REG, expected=SYNC_REG_SYNC_RESET)
-        self.cycles["both_released"] = await _await_outputs((0, 0), "both released")
+        self.cycles["sync_released"] = await _await_outputs((0, 0, 0), "sync released")
+
+        dut.tb_gpio_ext_drive_en.value = 0x0
+        await self.csr_write("GPIO0_DATA_CTRL_RESTORE", GPIO0_DATA_CTRL, gpio_saved)
         await self.csr_write("UART_CG_RESTORE", CLOCK_GATE_CONTROL, cg)
 
         cocotb.log.info(
-            "CHK-IRQ-CONCURRENT-SOURCES: SYNC_REG.sync raised tb_sync_irq alone after %d "
-            "cycle(s); UART0 ETBEI+TTBEI then raised tb_uart_irq_any with tb_sync_irq still 1 "
-            "after %d; clearing the UART source dropped only it after %d; clearing SYNC_REG "
-            "returned both to 0 after %d (clk_smc_i cycles, each level held %d)",
-            self.cycles["sync_only"],
-            self.cycles["both"],
+            "CHK-IRQ-CONCURRENT-SOURCES: SYNC_REG.sync, then UART0 ETBEI+TTBEI, then the GPIO0 "
+            "pad going low raised tb_sync_irq, tb_uart_irq_any and tb_gpio_irq_any in turn "
+            "with the earlier outputs still 1 (after %d, %d, %d cycles), and releasing them in "
+            "reverse dropped only each one's own output (after %d, %d, %d cycles; clk_smc_i, "
+            "each level held %d)",
+            self.cycles["sync"],
+            self.cycles["uart"],
+            self.cycles["gpio"],
+            self.cycles["gpio_released"],
             self.cycles["uart_released"],
-            self.cycles["both_released"],
+            self.cycles["sync_released"],
             LEVEL_HOLD_CYCLES,
         )

@@ -20,6 +20,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_isolate_pin_utils import await_skip_mem_repair, drive_isolate_pin, skip_mem_repair
 
 SMC_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMC_REG_BASE_ADDR")
+ISO_REG = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_REG_BASE_ADDR")
 SMCEN = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR")
 FLR_DELAY = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR")
 FLR_HOLD = smc_addr("SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR")
@@ -37,6 +38,8 @@ _CDC_REF = 64
 _RECOVERY_REF = 50_000
 _NO_COOL_BOUND = 32
 _WARM_PAT = 0xA5A55A5A
+# One subsystem isolated by software while the FLR request is latched.
+_SW_ISO_BIT = 1 << 5
 
 
 class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
@@ -156,6 +159,24 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
 
         smc2 = await self.csr_read("SMC_REG_POST", SMC_REG)
         assert smc2 & SMC_BIT, f"SMC_REG dropped across cool: 0x{smc2:x}"
+        # clk_rst.adoc (Isolation Control Architecture): each subsystem's
+        # isolation is the OR of the software, pin and FLR terms. With the FLR
+        # request latched but ISOLATE_REQ_SMCEN_REG still 0, a software request
+        # for one subsystem must isolate that subsystem alone.
+        await self.csr_write("ISO_REG_ONE", ISO_REG, _SW_ISO_BIT)
+        await self._await_smc_clk(
+            lambda: self._int(dut.tb_isolate_req_o),
+            _SW_ISO_BIT,
+            _PIN_BOUND,
+            "software isolate with FLR latched",
+        )
+        await self.csr_write("ISO_REG_CLR", ISO_REG, 0)
+        await self._await_smc_clk(
+            lambda: self._int(dut.tb_isolate_req_o),
+            0,
+            _PIN_BOUND,
+            "software isolate cleared",
+        )
         await self.csr_write("SMCEN_ALL", SMCEN, 0xFFFFFFFF)
         await self._await_smc_clk(
             lambda: self._int(dut.tb_isolate_req_o),
@@ -174,7 +195,12 @@ class smc_cool_reset_from_pcie_test_seq(SmcCsrSeq):
             "SW-CLR isolate_req_o",
         )
         self.iso_ok = True
-        cocotb.log.info("CHK-FLR-ISO: isolate_req_o 0→0xffffffff→0 after SMCEN")
+        cocotb.log.info(
+            "CHK-FLR-ISO: with the FLR request latched and SMCEN 0, ISOLATE_REQ_REG=0x%x drove "
+            "isolate_req_o to 0x%x alone and back to 0; isolate_req_o 0→0xffffffff→0 after SMCEN",
+            _SW_ISO_BIT,
+            _SW_ISO_BIT,
+        )
         # Neither isolation source is asserted any more: the bypass must drop.
         skip_cleared_cycles = await await_skip_mem_repair(dut, 0, "isolation cleared")
         self.skip_ok = True
