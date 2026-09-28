@@ -356,7 +356,7 @@ class smu_axi_out_addr_len_size_test_seq:
         finally:
             self.cfg.axi_out_mem.disable_backpressure()
         dst = self.cfg.axi_out_mem.read(DMA_STALLED_DST, DMA_LENGTH)
-        # Reads unstalled and writes stalled longer, so the write addresses the
+        # Reads run freely and writes stall longer, so the write addresses the
         # iDMA issues as read data returns queue at the boundary.
         self.cfg.axi_out_mem.enable_backpressure(channels=("aw", "w"), stall_cycles=WRITE_STALL)
         try:
