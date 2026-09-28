@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // OCAH SEP Top-Level Address Map
-// This file defines the complete address map for the OCH SEP subsystem
+// This file defines the complete address map for the OCAH SEP subsystem
 // Base addresses are derived from hw/sep/sep_crypto_pkg.sv and hw/sep/sep_pkg.sv
 
 // Include all peripheral RDL files

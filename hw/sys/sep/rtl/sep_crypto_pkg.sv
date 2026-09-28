@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP Crypto submodule typedefs and parameters
+// Define typedefs and parameters for the SEP cryptographic subsystem.
+//
+// Covers the sep_crypto_axi_interconnect address rules and port enum, ABR memory structs,
+// external TRNG AXI-Stream types, OTBN IMEM and DMEM structs, and EDN endpoint and client
+// counts.
 
 package sep_crypto_pkg;
 
@@ -39,7 +43,7 @@ package sep_crypto_pkg;
       end_addr:
       sep_top_addrmap_pkg::SEP_TOP_AES_BASE_ADDR
       +
-      sep_top_addrmap_pkg::SEP_TOP_AES_SIZE  // 256 bytes for AES
+      sep_top_addrmap_pkg::SEP_TOP_AES_SIZE  // 256 bytes for AES.
   };
 
   parameter axi_pkg::xbar_rule_32_t kmac_rule = '{
@@ -145,13 +149,13 @@ package sep_crypto_pkg;
   localparam int unsigned SEP_CRYPTO_NUM_AXI_MST = 13;
   localparam int unsigned SEP_CRYPTO_NUM_AXI_MST_SEL = $clog2(SEP_CRYPTO_NUM_AXI_MST);
 
-  /** @brief AXI-Stream endpoints on u_drbg_s3c_scan edn_axis_o, one per ext-TRNG mux leg:
-      *        [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy-pool adapter (mux2) */
+  // AXI-Stream endpoints on u_drbg_s3c_scan edn_axis_o, one per ext-TRNG mux leg:
+  // [0]=Key Manager (mux0), [1]=crypto adapter (mux1), [2]=entropy-pool adapter (mux2)
   localparam int unsigned SEP_CRYPTO_EDN_ENDPOINT_COUNT = 3;
-  /** @brief Native EDN clients downstream of u_axis_edn_crypto_s3c_scan:
-      *        AES, KMAC, OTBN RND, OTBN URND */
+  // Native EDN clients downstream of u_axis_edn_crypto_s3c_scan:
+  // AES, KMAC, OTBN RND, OTBN URND
   localparam int unsigned SEP_CRYPTO_AXIS_EDN_CLIENT_COUNT = 4;
-  /** @brief Native EDN client downstream of u_axis_edn_pool_s3c_scan: the SEP entropy-pool FIFO */
+  // Native EDN client downstream of u_axis_edn_pool_s3c_scan: the SEP entropy-pool FIFO
   localparam int unsigned SEP_CRYPTO_POOL_EDN_CLIENT_COUNT = 1;
 
   //////////
@@ -166,16 +170,16 @@ package sep_crypto_pkg;
   //////////
 
   // OTBN IMEM: 16 KB instruction memory with 39-bit words (32-bit data + 7-bit ECC)
-  parameter int unsigned SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH = 12;  // 4096 words (16KB)
+  parameter int unsigned SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH = 12;  // 4096 words (16KB).
   parameter int unsigned SEP_CRYPTO_PKA_IMEM_WORD_WIDTH = 39;
 
   typedef struct packed {
-    logic         clk;      // Clock for external RAM
-    logic         enable;   // RAM request enable
-    logic         write;    // Write enable
-    logic [SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH-1:0]  addr;     // Address (32-bit default, parameterizable)
-    logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0]  wdata;    // Write data (32-bit default, parameterizable)
-    logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0]  wmask;    // Write mask (32-bit default, parameterizable)
+    logic         clk;      // Clock for external RAM.
+    logic         enable;   // RAM request enable.
+    logic         write;    // Write enable.
+    logic [SEP_CRYPTO_PKA_IMEM_ADDR_WIDTH-1:0]  addr;     // Address (32-bit default, parameterizable).
+    logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0]  wdata;    // Write data (32-bit default, parameterizable).
+    logic [SEP_CRYPTO_PKA_IMEM_WORD_WIDTH-1:0]  wmask;    // Write mask (32-bit default, parameterizable).
   } sep_crypto_pka_imem_sram_req_t;
 
   typedef struct packed {
@@ -185,16 +189,16 @@ package sep_crypto_pkg;
 
   // OTBN DMEM: 32 KB data memory with 312-bit words (32-bit data + 7-bit ECC) * 8
   // Total = OTBN_DMEM_SIZE (16KB bus-accessible) + DmemScratchSizeByte (16KB scratch)
-  parameter int unsigned SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH = 10;  // 1024 words (32KB)
+  parameter int unsigned SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH = 10;  // 1024 words (32KB).
   parameter int unsigned SEP_CRYPTO_PKA_DMEM_WORD_WIDTH = 39 * 8;
 
   typedef struct packed {
-    logic         clk;      // Clock for external RAM
-    logic         enable;   // RAM request enable
-    logic         write;    // Write enable
-    logic [SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH-1:0]  addr;     // Address
-    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0]  wdata;    // Write data
-    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0]  wmask;    // Write mask
+    logic         clk;      // Clock for external RAM.
+    logic         enable;   // RAM request enable.
+    logic         write;    // Write enable.
+    logic [SEP_CRYPTO_PKA_DMEM_ADDR_WIDTH-1:0]  addr;     // Address.
+    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0]  wdata;    // Write data.
+    logic [SEP_CRYPTO_PKA_DMEM_WORD_WIDTH-1:0]  wmask;    // Write mask.
   } sep_crypto_pka_dmem_sram_req_t;
 
   typedef struct packed {

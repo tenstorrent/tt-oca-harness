@@ -41,7 +41,7 @@ int sep_entropy_init(void);
 // able to switch without touching the boot flow.
 //
 // Both hooks below are WEAK, so a build that carries an external-TRNG driver
-// overrides them at link time through the Makefile's NONFREE_BOOTCODE_SOURCES
+// overrides them at link time through the Makefile's OCAH_FW_OVERLAY_SOURCES_sep
 // hook -- the same weak-stub/strong-override pattern src/sep_spi.c uses for the
 // SPI controller. Overriding these two functions is the whole switch: neither
 // sep_entropy_init()'s callers nor any other part of the ROM changes.

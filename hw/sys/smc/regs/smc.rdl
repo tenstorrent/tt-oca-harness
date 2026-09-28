@@ -40,8 +40,8 @@
 addrmap smc_top #(
     longint unsigned BASE_ADDR = 0xC000_0000
 ) {
-    name = "OCAH SMC Top-Level Address Map";
-    desc = "Complete address map for OCAH System Management Controller subsystem";
+    name = "SMC Top-Level Address Map";
+    desc = "Top-level SMC address map exposing the resources accessible to external agents.";
 
     wdt                            smc_cluster_core0_wdt      @BASE_ADDR + 0x000_0000;
     wdt                            smc_cluster_core1_wdt      @BASE_ADDR + 0x000_0400;

@@ -150,7 +150,12 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
             sec_dis=0,
         )
         ctl = SepLccFeatCtrlCheckSeq(feat)
+        mark = self.sb_mark()
         await self.start_seq(ctl)
+        self.assert_sb_judged(mark, f"CHK-FEAT-CTRL {tag}")
+        assert ctl.feat_ctrl == feat, (
+            f"CHK-FEAT-CTRL FAIL: {tag} FEAT_CTRL=0x{ctl.feat_ctrl:016x} != golden 0x{feat:016x}"
+        )
         assert ctl.sep_debug == (feat & 1), (
             f"{tag}: sep_debug={ctl.sep_debug} != FEAT_CTRL[0] of 0x{feat:016x}"
         )

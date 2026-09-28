@@ -43,12 +43,17 @@ from seq_lib.smu_addr_map import c_header_u32
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 _SEP_ADDR_H = _REPO_ROOT / "hw" / "sys" / "sep" / "regs" / "gen" / "c" / "sep_addr.h"
 
-#: Raw LC_STATE encodings. RMA_CHIPLET is 4'b011X; the DV image uses 0x6.
+#: Raw LC_STATE encodings. RMA_SiP is 4'b001X and RMA_CHIPLET 4'b011X; bit 0
+#: of each pair is the second code of the same state, so both codes of each
+#: pair are carried under the encoding table's own names.
 LC_RAW: dict[str, int] = {
     "TEST_DEV": 0x0,
     "PROD": 0x1,
-    "PROD_END": 0x8,
+    "RMA_SIP_0": 0x2,
+    "RMA_SIP_1": 0x3,
     "RMA_CHIPLET": 0x6,
+    "RMA_CHIP_1": 0x7,
+    "PROD_END": 0x8,
 }
 LC_INVALID_RAW = 0xF
 
@@ -104,7 +109,10 @@ def posture(state: str, *, demoted: bool = False) -> DebugPosture:
         debug_open = demoted
     elif state == "PROD_END":
         debug_open = False
-    elif state == "RMA_CHIPLET":
+    elif state in ("RMA_SIP_0", "RMA_SIP_1"):
+        # feat_ctrl is ~SIP_DIS in RMA_SiP: fully open for a blank vector.
+        debug_open = True
+    elif state in ("RMA_CHIPLET", "RMA_CHIP_1"):
         debug_open = True
     else:
         raise AssertionError(f"no posture row for {state}")

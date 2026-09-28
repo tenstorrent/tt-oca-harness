@@ -12,6 +12,8 @@
       <ipxact:name>smc_cla_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>smc_cla</ipxact:name>
+        <ipxact:displayName>SMC DFD MMR Aperture Address Map</ipxact:displayName>
+        <ipxact:description>Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST blocks that smc_dfd_wrap instantiates.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h4000</ipxact:range>
         <ipxact:width>64</ipxact:width>

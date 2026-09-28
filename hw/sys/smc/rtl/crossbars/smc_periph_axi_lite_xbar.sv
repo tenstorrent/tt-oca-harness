@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC peripheral AXI-Lite crossbar.
-// Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions
-// the external window between the eFuse shim and external target.
+// Route the SMC peripheral AXI-Lite CSR crossbar.
+//
+// Steers one AXI-Lite initiator to peripheral CSR targets including the eFuse shim
+// window.
+// Address rules derive from smc_top_addrmap_pkg; EFUSE_SHIM_SIZE partitions the external
+// window between the eFuse shim and the external target.
+// EFUSE_SHIM_SIZE is the vendor eFuse shim CSR block carved off the base of the
+// smc_external window and is threaded from smc_peripherals.sv. The shim bytes route to the
+// efuse target, which also serves the SMC eFuse map and the eFuse interface control
+// registers. Addresses outside every rule receive DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -12,73 +19,61 @@ module smc_periph_axi_lite_xbar
   import axi_pkg::*;
   import smc_periph_axi_lite_xbar_pkg::*;
 #(
-  // Vendor eFuse shim CSR block carved off the base of the smc_external window;
-  // Threaded from smc_peripherals.sv.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h44
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
+                                                 // the base of the smc_external window, in
+                                                 // bytes; those addresses route to the
+                                                 // efuse target.
 )
 (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Crossbar reset, active-low, synchronized to
+                                        // clk_i.
+  input  logic test_i,                  // DFT test-mode enable, passed to the crossbar.
 
-  // ===========================================================================
-  // Initiator Ports
-  // ===========================================================================
-  // periph_in (AXI4_LITE, 32-bit)
-  input  axi_lite32_req_t  periph_in_req_i,
-  output axi_lite32_resp_t periph_in_resp_o,
+  input  axi_lite32_req_t  periph_in_req_i,  // Request from the SMC local crossbar.
+  output axi_lite32_resp_t periph_in_resp_o,  // Response to the SMC local crossbar.
 
-  // ===========================================================================
-  // Target Ports
-  // ===========================================================================
-  // reset_unit (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  reset_unit_req_o,
-  input  axi_lite32_resp_t reset_unit_resp_i,
+  output axi_lite32_req_t  reset_unit_req_o,  // Request for the reset-unit register window.
+  input  axi_lite32_resp_t reset_unit_resp_i,  // Response from the reset-unit registers.
 
-  // misc (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  misc_req_o,
-  input  axi_lite32_resp_t misc_resp_i,
+  output axi_lite32_req_t  misc_req_o,  // Request for the smc_misc_wrap register window.
+  input  axi_lite32_resp_t misc_resp_i,  // Response from smc_misc_wrap.
 
-  // gpio (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  gpio_req_o,
-  input  axi_lite32_resp_t gpio_resp_i,
+  output axi_lite32_req_t  gpio_req_o,  // Request for the GPIO interface windows of all
+                                        // pads.
+  input  axi_lite32_resp_t gpio_resp_i,  // Response from the padring GPIO interfaces.
 
-  // apb2avsbus (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  apb2avsbus_req_o,
-  input  axi_lite32_resp_t apb2avsbus_resp_i,
+  output axi_lite32_req_t  apb2avsbus_req_o,  // Request for the AVSBus controller window.
+  input  axi_lite32_resp_t apb2avsbus_resp_i,  // Response from the AVSBus controller.
 
-  // i2c (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  i2c_req_o,
-  input  axi_lite32_resp_t i2c_resp_i,
+  output axi_lite32_req_t  i2c_req_o,   // Request for the I2C wrapper window.
+  input  axi_lite32_resp_t i2c_resp_i,  // Response from the I2C wrapper.
 
-  // uart (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  uart_req_o,
-  input  axi_lite32_resp_t uart_resp_i,
+  output axi_lite32_req_t  uart_req_o,  // Request for the UART wrapper window.
+  input  axi_lite32_resp_t uart_resp_i,  // Response from the UART wrapper.
 
-  // efuse (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  efuse_req_o,
-  input  axi_lite32_resp_t efuse_resp_i,
+  output axi_lite32_req_t  efuse_req_o,  // Request for the SMC eFuse map, the eFuse
+                                         // interface control registers and the eFuse
+                                         // shim window.
+  input  axi_lite32_resp_t efuse_resp_i,  // Response from the eFuse target.
 
-  // telemetry (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  telemetry_req_o,
-  input  axi_lite32_resp_t telemetry_resp_i,
+  output axi_lite32_req_t  telemetry_req_o,  // Request for the telemetry receiver window.
+  input  axi_lite32_resp_t telemetry_resp_i,  // Response from the telemetry receivers.
 
-  // system_timer_octs (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  system_timer_octs_req_o,
-  input  axi_lite32_resp_t system_timer_octs_resp_i,
+  output axi_lite32_req_t  system_timer_octs_req_o,  // Request for the system timer
+                                                     // window.
+  input  axi_lite32_resp_t system_timer_octs_resp_i,  // Response from the system timer.
 
-  // dtp_csr (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  dtp_csr_req_o,
-  input  axi_lite32_resp_t dtp_csr_resp_i,
+  output axi_lite32_req_t  dtp_csr_req_o,  // Request for the DTP control register
+                                           // window, with the full system address.
+  input  axi_lite32_resp_t dtp_csr_resp_i,  // Response from the DTP control registers.
 
-  // i3c (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  i3c_req_o,
-  input  axi_lite32_resp_t i3c_resp_i,
+  output axi_lite32_req_t  i3c_req_o,   // Request for the I3C wrapper window.
+  input  axi_lite32_resp_t i3c_resp_i,  // Response from the I3C wrapper.
 
-  // external (AXI4_LITE, 32-bit)
-  output axi_lite32_req_t  external_req_o,
-  input  axi_lite32_resp_t external_resp_i
-
+  output axi_lite32_req_t  external_req_o,  // Request for the smc_external window above
+                                            // the eFuse shim carve-out.
+  input  axi_lite32_resp_t external_resp_i  // Response from the smc_external target.
 );
 
   // ===========================================================================

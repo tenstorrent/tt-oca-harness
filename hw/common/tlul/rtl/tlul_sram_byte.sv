@@ -2,51 +2,56 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
+// Handle TL-UL byte writes with integrity-aware read-modify-write.
+//
+// When a write with a partial mask arrives and EnableIntg is set, read the full word
+// first, merge the written bytes, regenerate data integrity, and write the full word back.
+// When RMW is not required, mux the incoming transaction straight through.
+// compound_txn_in_progress_o is high while this module drives its own RMW write or
+// readback request downstream.
+//
+// If error_i is set on an incoming transaction, do not attempt byte-write handling. Feed
+// the transaction through and allow the system to error back, and feed the error
+// indication through on error_o.
+//
+// EnableReadback enables readback checks on all transactions while readback_en_i is
+// MuBi4True, and requires EnableIntg == 1. alert_o reports readback mismatches and invalid
+// FSM states. When EnableIntg is clear, every signal passes straight through and alert_o
+// and compound_txn_in_progress_o are 0.
 
-/**
- * Tile-Link UL adapter for SRAM-like devices
- *
- * This module handles byte writes for tlul integrity.
- * When a byte write is received, the downstream data is read first
- * to correctly create the integrity constant.
- *
- * A tlul transaction goes through this module.  If required, a
- * tlul read transaction is generated out first.  If not required, the
- * incoming tlul transaction is directly muxed out.
- */
 module tlul_sram_byte
   import tlul_pkg::*;
 #(
-  parameter bit EnableIntg     = 0, // Enable integrity handling at byte level,
-  parameter int Outstanding    = 1,
-  parameter bit EnableReadback = 0  // Enable readback checks on all transactions must have
-                                    // EnableIntg == 1 to enable
+  parameter bit EnableIntg     = 0,  // Handle partial-mask writes with integrity RMW.
+  parameter int Outstanding    = 1,  // Maximum outstanding transactions tracked.
+  parameter bit EnableReadback = 0   // Readback-check transactions; needs EnableIntg.
 ) (
-  input clk_i,
-  input rst_ni,
+  input clk_i,                                          // System clock.
+  input rst_ni,                                         // Active-low reset.
 
-  input tl_h2d_t tl_i,
-  output tl_d2h_t tl_o,
+  input tl_h2d_t tl_i,                                  // Upstream TL-UL request.
+  output tl_d2h_t tl_o,                                 // Upstream TL-UL response.
 
-  output tl_h2d_t tl_sram_o,
-  input tl_d2h_t tl_sram_i,
+  output tl_h2d_t tl_sram_o,                            // Downstream request toward the memory.
+  input tl_d2h_t tl_sram_i,                             // Downstream response from the memory.
 
-  // if incoming transaction already has an error, do not
-  // attempt to handle the byte-write access.  Instead treat as
-  // feedthrough and allow the system to directly error back.
-  // The error indication is also fed through
-  input error_i,
-  output logic error_o,
-  output logic alert_o,
+  input error_i,                                        // Error detected on the incoming request;
+                                                        // it passes through without RMW.
+  output logic error_o,                                 // error_i, masked while the host is
+                                                        // stalled.
+  output logic alert_o,                                 // Readback mismatch or invalid FSM state.
 
-  output logic compound_txn_in_progress_o,
+  output logic compound_txn_in_progress_o,              // High while an RMW write or readback
+                                                        // request is driven downstream.
 
-  input prim_mubi_pkg::mubi4_t readback_en_i,
+  input prim_mubi_pkg::mubi4_t readback_en_i,           // MuBi4 readback enable; sampled while the
+                                                        // bus is idle.
 
-  input logic wr_collision_i,
-  input logic write_pending_i
+  input logic wr_collision_i,                           // SRAM write collision; used only by
+                                                        // assertions.
+  input logic write_pending_i                           // SRAM write pending; used only by
+                                                        // assertions.
 );
-
   `include "prim_assert.sv"
 
   import prim_mubi_pkg::mubi4_t;

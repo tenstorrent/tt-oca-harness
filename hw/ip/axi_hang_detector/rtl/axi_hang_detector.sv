@@ -1,53 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-
-//-----------------------------------------------------------------------------
-// AXI Hang Detector
-//
-// Monitors an AXI bus via an internally instantiated prim_axi_snoop. Counts
-// cycles during which transactions are outstanding without seeing any
-// completion; when the counter reaches a SW-programmable threshold, asserts
-// irq_o. The interrupt is a direct combinational level (no status latch) gated
-// by the enable and irq_en config bits. irq_test forces irq_o high for firmware
-// bring-up without needing a real bus stall.
-//
 // Copyright 2026 Tenstorrent Inc.
-//-----------------------------------------------------------------------------
+
+// Detect stalled AXI traffic and raise a level interrupt when a hang persists.
+//
+// Monitors an AXI bus via an internally instantiated prim_axi_snoop.
+// Counts cycles with outstanding transactions and no completion; when the counter reaches
+// the SW-programmable threshold, asserts irq_o. The threshold is loaded whenever the
+// detector is disabled, the bus is idle or a transaction completes, so a new value takes
+// effect at the next stall window, and a threshold of zero disables detection.
+// irq_o is a direct combinational level with no status latch, gated by enable_i and
+// irq_en_i.
+// irq_test_i forces irq_o high for firmware bring-up without a real bus stall, while enable_i
+// and irq_en_i are set.
+// Configuration inputs are in the clk_i domain; in smc_base they come from the
+// smc_base_config register block.
 
 `include "prim_assert.sv"
 
 module axi_hang_detector #(
-  parameter int unsigned OutstandingTx = 6
+  parameter int unsigned OutstandingTx = 6  // Max outstanding tracked by the snoop.
 ) (
-  // Global interface
-  input  logic           clk_i,
-  input  logic           rst_ni,
+  input  logic           clk_i,                             // System clock.
+  input  logic           rst_ni,                            // Async reset, active-low.
 
-  // AXI snoop inputs (same as prim_axi_snoop)
-  input  logic           snoop_aw_valid_i,
-  input  logic           snoop_aw_ready_i,
-  input  logic           snoop_w_valid_i,
-  input  logic           snoop_b_valid_i,
-  input  logic           snoop_b_ready_i,
-  input  logic           snoop_ar_valid_i,
-  input  logic           snoop_ar_ready_i,
-  input  logic           snoop_r_valid_i,
-  input  logic           snoop_r_ready_i,
-  input  logic           snoop_r_last_i,
+  input  logic           snoop_aw_valid_i,                  // Snooped AW valid (same as
+                                                            // prim_axi_snoop).
+  input  logic           snoop_aw_ready_i,                  // Snooped AW ready.
+  input  logic           snoop_w_valid_i,                   // Snooped W valid.
+  input  logic           snoop_b_valid_i,                   // Snooped B valid.
+  input  logic           snoop_b_ready_i,                   // Snooped B ready.
+  input  logic           snoop_ar_valid_i,                  // Snooped AR valid.
+  input  logic           snoop_ar_ready_i,                  // Snooped AR ready.
+  input  logic           snoop_r_valid_i,                   // Snooped R valid.
+  input  logic           snoop_r_ready_i,                   // Snooped R ready.
+  input  logic           snoop_r_last_i,                    // Snooped R last.
 
-  // Configuration (from cpu_ctrl register block, clk_i domain)
-  input  logic           enable_i,      // CTRL.enable
-  input  logic           irq_en_i,      // CTRL.irq_en
-  input  logic           irq_test_i,    // CTRL.irq_test
-  input  logic [19:0]    threshold_i,   // TIMEOUT_THRESHOLD.value
+  input  logic           enable_i,                          // CTRL.enable; detector enable. Low
+                                                            // reloads the counter and holds irq_o
+                                                            // low.
+  input  logic           irq_en_i,                          // CTRL.irq_en; interrupt enable.
+  input  logic           irq_test_i,                        // CTRL.irq_test; forces irq_o while
+                                                            // enable_i and irq_en_i are set.
+  input  logic [19:0]    threshold_i,                       // TIMEOUT_THRESHOLD.value; stalled
+                                                            // clk_i cycles before irq_o asserts;
+                                                            // zero disables detection.
 
-  // Pass-through bus_active from snoop
-  output logic           bus_active_o,
+  output logic           bus_active_o,                      // Pass-through bus_active from the
+                                                            // snoop.
 
-  // Interrupt output: direct combinational level.
-  // Asserts when enable & irq_en are set and the stall counter reaches
-  // threshold, or when irq_test is set for verification.
-  output logic           irq_o
+  output logic           irq_o                              // Hang interrupt as a direct
+                                                            // combinational level. Asserts when
+                                                            // enable_i and irq_en_i are set and
+                                                            // either the stall counter reaches
+                                                            // threshold_i or irq_test_i is set.
 );
 
   /////////////////////////////

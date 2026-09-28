@@ -614,9 +614,9 @@ assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
 
 Bender supplies the product SMC RTL to the simulator flows. Verilator and the
 commercial simulators therefore compile the same subsystem source graph, with
-one difference: `tb/verilator_stubs/` replaces the `och_prim` `prim_sync2` /
-`prim_sync3` cells with behavioural stand-ins on Verilator and Xcelium, and the
-runner drops those stubs on VCS only, where the product cells elaborate. What
+one difference: `tb/verilator_stubs/` replaces the `ocah_prim` `prim_sync3`
+cell with a behavioural stand-in on Verilator and Xcelium, and the runner drops
+that stub on VCS only, where the product cell elaborates. What
 that directory may hold is stated in its own `tb/verilator_stubs/README.md`.
 
 PeakRDL nested hwif structs stay compilable with `disable_public_flat_rw` plus

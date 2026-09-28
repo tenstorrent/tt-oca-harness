@@ -1,47 +1,52 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_fifo.sv
- * @brief Fault-attack hardened entropy FIFO.
- *
- * @details Depth-parameterised 32-bit FIFO with fault-attack hardening via
- *          per-byte odd parity on all stored words and hardened read/write
- *          pointers. The pointer/level engine is delegated to OpenTitan's
- *          prim_fifo_sync_cnt (Secure=1), which duplicates each pointer in a
- *          prim_count and raises err_o on any mismatch. entropy_fifo remains a
- *          "smart wrapper": it keeps its own mem[] storage because the parity
- *          check and the entropy-churn read both need random access into the
- *          stored words, which a black-box FIFO cannot expose.
- *
- *          Entropy churning mode XORs incoming data with the existing entry at
- *          address (wptr + DEPTH/2) % DEPTH before storing. A security alert is
- *          raised on any parity or pointer error.
- *
- * @param DEPTH FIFO depth in words (default: 64)
- */
+// Buffer 32-bit entropy words in a fault-hardened synchronous FIFO.
+//
+// Depth is DEPTH words with per-byte even parity on stored data and hardened read/write
+// pointers via prim_fifo_sync_cnt Secure=1. Local mem[] storage supports parity checks
+// and entropy-churn reads that need random access.
+//
+// When entropy_churn_enable_i is set, pushes XOR with the existing entry at
+// (wptr + DEPTH/2) % DEPTH before store. clr_i synchronously flushes pointers and level
+// to empty.
+//
+// security_alert_o rises on any parity or pointer error. Each fault class has its own
+// output:
+//
+// - overflow_o
+// - underflow_o
+// - parity_error_o
+// - pointer_error_o
 
 module entropy_fifo #(
-  parameter int unsigned DEPTH = 64,
-  localparam type ptr_t   = logic [$clog2(DEPTH)-1:0],
-  localparam type level_t = logic [$clog2(DEPTH):0]
+  parameter int unsigned DEPTH = 64,    // FIFO depth in words.
+  localparam type ptr_t   = logic [$clog2(DEPTH)-1:0],  // FIFO pointer type.
+  localparam type level_t = logic [$clog2(DEPTH):0]  // FIFO fill-level type.
 ) (
-  input       logic        clk_i,
-  input       logic        rst_ni,
-  input       logic        push_i,
-  input       logic        pop_i,
-  input       logic        clr_i,   // Synchronous flush: reset pointers/level to empty
-  input       logic [31:0] wdata_i,
-  input       logic        entropy_churn_enable_i,
-  output      logic [31:0] rdata_o,
-  output      level_t      level_o,
-  output      ptr_t        wptr_o,
-  output      ptr_t        rptr_o,
-  output      logic        overflow_o,
-  output      logic        underflow_o,
-  output      logic        parity_error_o,
-  output      logic        pointer_error_o,
-  output      logic        security_alert_o
+  input       logic        clk_i,       // System clock.
+  input       logic        rst_ni,      // Active-low asynchronous reset of the pointers; the
+                                        // storage is not reset.
+  input       logic        push_i,      // Write request; ignored when full, on a pointer error
+                                        // or during clr_i.
+  input       logic        pop_i,       // Read acknowledge that advances the read pointer;
+                                        // ignored when empty, on a pointer error or during clr_i.
+  input       logic        clr_i,       // Synchronous flush: reset pointers/level to empty.
+  input       logic [31:0] wdata_i,     // Entropy word stored on an accepted push.
+  input       logic        entropy_churn_enable_i,  // High XORs each pushed word with the entry
+                                                    // half the FIFO depth ahead of the write
+                                                    // pointer.
+  output      logic [31:0] rdata_o,     // Head-of-FIFO word; zero while empty.
+  output      level_t      level_o,     // Number of stored words.
+  output      ptr_t        wptr_o,      // Storage index of the next write.
+  output      ptr_t        rptr_o,      // Storage index of the head entry.
+  output      logic        overflow_o,  // Push requested while full; the word is dropped.
+  output      logic        underflow_o,  // Pop requested while empty.
+  output      logic        parity_error_o,  // Head entry of a non-empty FIFO fails its per-byte
+                                            // even-parity check.
+  output      logic        pointer_error_o,  // Duplicated pointer counters disagree; pushes and
+                                             // pops are blocked while set.
+  output      logic        security_alert_o  // OR of parity_error_o and pointer_error_o.
 );
 
   /////////////////////

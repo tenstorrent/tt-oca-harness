@@ -51,12 +51,11 @@ Isolation proof (both directions, then the remaining isolated bits):
                     Manager path -- report isolated. Both isolate bits start
                     at 0 when the request is issued, so neither term is a
                     pre-settled idle 1.
-  * CHK-HOST-DRAIN  host reads accepted before the reset request resolve OKAY
-                    or SLVERR, never DECERR and never a hang, and at least one
-                    drains OKAY -- so accepted traffic completed rather than
-                    being dropped. The count still unretired as the isolate
-                    closes is asserted non-zero, so the leg grades traffic the
-                    isolate actually had to drain.
+  * CHK-HOST-DRAIN  host reads issued before the isolate closes resolve OKAY
+                    or SLVERR, never DECERR and never a hang. The exact events
+                    still unretired as the isolate closes are recorded, and at
+                    least one of those events must drain OKAY -- so an earlier
+                    completed read cannot satisfy the verdict.
   * CHK-DRAIN-ARRIVAL  a further read issued WHILE isolation is draining also
                     resolves; it may drain or terminate, but it
                     may not hang. That the path is not left wedged is the
@@ -68,11 +67,10 @@ Isolation proof (both directions, then the remaining isolated bits):
                     a design that raises it only for a Key Manager reset never
                     releases the sequencer and fails here. Both isolate bits
                     start at 0 when the request is issued.
-  * CHK-ABR-HOST-DRAIN  host reads accepted before the ABR reset request resolve
-                    OKAY or SLVERR, never DECERR and never a hang, and at least
-                    one drains OKAY. The count still unretired as the isolate
-                    closes is asserted non-zero, so the leg grades traffic the
-                    isolate actually had to drain.
+  * CHK-ABR-HOST-DRAIN  host reads issued before the ABR reset request resolve
+                    OKAY or SLVERR, never DECERR and never a hang. The exact
+                    events still unretired when isolation closes are recorded,
+                    and at least one of those events must drain OKAY.
   * CHK-ABR-DRAIN-ARRIVAL  a read issued WHILE the ABR isolate drains resolves
                     too; it may drain or terminate, but it may not hang.
   * CHK-ABR-JTAG-OVERRIDE  the JTAG IC_RESET override holds the Adams Bridge
@@ -102,8 +100,12 @@ Isolation proof (both directions, then the remaining isolated bits):
                     in-request sample is CHK-EDN-JTAG.
   * CHK-EDN-JTAG  the same walk, driven by the JTAG KMAC override instead of
                     ``SW_RESET_N``. The override holds the gated reset while
-                    ``SW_RESET_N`` still shows KMAC released, and one edge
-                    lands while KMAC ``edn_req`` is still high.
+                    ``SW_RESET_N`` still shows KMAC released. The pin is
+                    synchronized into ``clk_i``: the gated reset is still
+                    released a picosecond after the pin rises, KMAC ``edn_req``
+                    is outstanding at that rise. On the later gated-reset
+                    edge, and on every cycle of the quiet window after it,
+                    KMAC ``edn_req``, ``edn_ack`` and ``edn_bus`` are 0.
   * CHK-EDN-HOLD / CHK-EDN-HOLD-KEEP  a KMAC reset must leave a URND word
                     unchanged when the previous cycle had not already
                     acknowledged it, and that word is the one URND is
@@ -111,12 +113,10 @@ Isolation proof (both directions, then the remaining isolated bits):
                     shows the word while the acknowledge state machine pops
                     the endpoint FIFO; the empty read on the next cycle is
                     that pop, so it is not the arm.
-  * EDN-GLITCH-OBS  a JTAG pulse narrower than one ``clk_i`` period holds
-                    the KMAC gated reset low. KMAC ``edn_ack`` and ``edn_bus``
-                    are 0 inside the pulse, and URND's staged word is
-                    unchanged. Zero-delay simulation does not show whether
-                    that pulse resets KMAC flops, so this line is an
-                    observation and stays outside ``CHK-``.
+  * EDN-GLITCH-OBS  a JTAG pulse narrower than one ``clk_i`` period leaves
+                    the KMAC gated reset released inside the pulse. URND's
+                    staged word is unchanged on the next ``clk_i`` edge.
+                    This line is an observation and stays outside ``CHK-``.
 
 Reference: sep_clock_uvm_sw_reset_per_ip_test --
 the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
@@ -196,9 +196,6 @@ _ZERO_DIGEST = [0] * 8
 _EDN_AES = 0
 _EDN_KMAC = 1
 _EDN_URND = 3
-# Outstanding-KMAC-request attempts. The software reset is an AXI write, so
-# one shot can land after KMAC has already taken its seed. A miss retries.
-_EDN_SUPPRESS_ATTEMPTS = 8
 # Cold OTBN raises URND edn_req and holds it until an ack. Bound the wait;
 # a client that never requests fails here rather than spinning.
 _EDN_PEND_CYCLES = 50_000
@@ -439,9 +436,18 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"in {cycles} cycles (req=0x{self._edn_req():x} ack=0x{self._edn_ack():x})"
         )
 
-    async def _sample_edn(self, bit: int, *, req_high: bool, cycles: int, what: str) -> None:
+    async def _sample_edn(
+        self,
+        bit: int,
+        *,
+        req_high: bool,
+        cycles: int,
+        what: str,
+        check_bus: bool = False,
+    ) -> None:
         """Every cycle of the window: this client's ack stays low, and its req
-        stays at the level the reset is required to leave."""
+        stays at the level the reset is required to leave. With ``check_bus``,
+        this client's ``edn_bus`` word is also 0 on every cycle."""
         for _ in range(cycles):
             req = self._edn_req()
             ack = self._edn_ack()
@@ -454,6 +460,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     f"{what}: edn_req bit {bit} is {'low' if req_high else 'high'} "
                     f"(req=0x{req:x} ack=0x{ack:x})"
                 )
+            if check_bus:
+                bus = self._edn_bus_word(bit)
+                if bus:
+                    raise AssertionError(
+                        f"{what}: edn_bus word {bit} is 0x{bus:08x}, not 0 "
+                        f"(req=0x{req:x} ack=0x{ack:x})"
+                    )
             await RisingEdge(cocotb.top.clk_i)
 
     async def _prove_edn_cancel_before_grant(self) -> None:
@@ -681,11 +694,14 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         walks one measured acknowledge period. On the falling edge of the
         KMAC gated reset the KMAC response is 0, and URND may acknowledge
         its own word. ``jtag`` drives the override pin and leaves
-        ``SW_RESET_N`` showing KMAC released. The pin drops in the same
-        cycle the request is seen, so that leg also resets KMAC while
-        ``edn_req`` is still high. The software-reset write is an AXI
-        transaction and outlasts one KMAC seed, so that leg checks the
-        response is clear and leaves the in-request sample to the pin.
+        ``SW_RESET_N`` showing KMAC released. The pin is synchronized into
+        ``clk_i``, so the gated reset stays released for a picosecond after
+        the pin rises and falls on a later edge. KMAC ``edn_req`` is
+        outstanding when the pin rises. After that edge, KMAC ``edn_req``,
+        ``edn_ack`` and ``edn_bus`` stay 0 on every cycle of the quiet window.
+        The software-reset write is an AXI transaction and outlasts one KMAC
+        seed, so that leg checks the response is clear and leaves the
+        pin-time request sample to the override.
         """
         clk = cocotb.top.clk_i
         acks: list[int] = []
@@ -736,6 +752,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         async def take_edge(where: str) -> dict:
             edge.clear()
             await self._drop_kmac(jtag)
+            if jtag:
+                await Timer(1, units="ps")
+                if self._edn_level(cocotb.top.kmac_gated_rst_n_probe_o) == 0:
+                    raise AssertionError(
+                        f"{tag} FAIL: the JTAG override asserted the KMAC gated "
+                        "reset before clk_i sampled it"
+                    )
             for _ in range(_EDN_DROP_CYCLES):
                 if edge:
                     break
@@ -809,60 +832,69 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                     "sibling beat completing"
                 )
             suppressed = None
-            attempts = 1 if not jtag else _EDN_SUPPRESS_ATTEMPTS
-            for attempt in range(attempts):
-                await self._lift_kmac(jtag)
-                await self._arm_kmac_edn(tag)
-                snap = await take_edge(f"while KMAC edn_req is outstanding (attempt {attempt})")
-                pre_k = snap["kmac_pre"]
-                outstanding = bool(pre_k and pre_k["req"] and not pre_k["ack"])
-                self.logger.info(
-                    "%s suppress attempt %d: KMAC pre req=%d ack=%d bus=0x%08x; "
-                    "on the edge req=%d ack=%d bus=0x%08x",
-                    tag,
-                    attempt,
-                    int(pre_k["req"]) if pre_k else 0,
-                    int(pre_k["ack"]) if pre_k else 0,
-                    pre_k["bus"] if pre_k else 0,
-                    int(snap["kmac"]["req"]),
-                    int(snap["kmac"]["ack"]),
-                    snap["kmac"]["bus"],
-                )
-                if outstanding:
-                    if snap["kmac"]["req"]:
-                        raise AssertionError(
-                            f"{tag} FAIL: KMAC edn_req stayed high on the reset "
-                            f"edge (bus=0x{snap['kmac']['bus']:08x})"
-                        )
-                    await self._sample_edn(
-                        _EDN_KMAC,
-                        req_high=False,
-                        cycles=_EDN_QUIET_CYCLES,
-                        what=f"{tag} KMAC suppressed",
+            pin_k = None
+            await self._lift_kmac(jtag)
+            await self._arm_kmac_edn(tag)
+            if jtag:
+                pin_k = self._edn_snap(_EDN_KMAC)
+                if not (pin_k["req"] and not pin_k["ack"]):
+                    raise AssertionError(
+                        f"{tag} FAIL: KMAC edn_req was not outstanding when the "
+                        f"JTAG override rose (req={int(pin_k['req'])} "
+                        f"ack={int(pin_k['ack'])} bus=0x{pin_k['bus']:08x})"
                     )
-                    suppressed = snap
-                    break
-                if not jtag:
-                    break
-                await self._lift_kmac(jtag)
-            if jtag and suppressed is None:
-                raise AssertionError(
-                    f"{tag} FAIL: no JTAG KMAC reset edge landed while KMAC "
-                    f"edn_req was high ({_EDN_SUPPRESS_ATTEMPTS} attempts), so "
-                    "the suppressed response was never an outstanding request"
+            snap = await take_edge("while KMAC edn_req is outstanding")
+            pre_k = snap["kmac_pre"]
+            outstanding = bool(pre_k and pre_k["req"] and not pre_k["ack"])
+            self.logger.info(
+                "%s suppress: KMAC at the pin req=%d ack=%d bus=0x%08x; "
+                "pre-edge req=%d ack=%d bus=0x%08x; on the edge req=%d ack=%d "
+                "bus=0x%08x",
+                tag,
+                int(pin_k["req"]) if pin_k else 0,
+                int(pin_k["ack"]) if pin_k else 0,
+                pin_k["bus"] if pin_k else 0,
+                int(pre_k["req"]) if pre_k else 0,
+                int(pre_k["ack"]) if pre_k else 0,
+                pre_k["bus"] if pre_k else 0,
+                int(snap["kmac"]["req"]),
+                int(snap["kmac"]["ack"]),
+                snap["kmac"]["bus"],
+            )
+            if jtag or outstanding:
+                if snap["kmac"]["req"]:
+                    raise AssertionError(
+                        f"{tag} FAIL: KMAC edn_req stayed high on the reset "
+                        f"edge (bus=0x{snap['kmac']['bus']:08x})"
+                    )
+                await self._sample_edn(
+                    _EDN_KMAC,
+                    req_high=False,
+                    cycles=_EDN_QUIET_CYCLES,
+                    what=f"{tag} KMAC suppressed",
+                    check_bus=True,
                 )
+                suppressed = snap
             sw_note = await sw_note_for_jtag()
             if suppressed is not None:
-                pre_k = suppressed["kmac_pre"]
+                if jtag:
+                    shown_bus = pin_k["bus"]
+                    when = "when the override rose"
+                else:
+                    shown_bus = suppressed["kmac_pre"]["bus"]
+                    when = "on the cycle before the edge"
                 self.logger.info(
                     "%s PASS: KMAC edn_ack and edn_bus stayed 0 on all %d reset "
                     "edges; URND acknowledged its own beat on %d of them; an "
-                    "outstanding KMAC edn_req (pre bus=0x%08x) fell with edn_ack "
-                    "staying 0%s",
+                    "outstanding KMAC edn_req (%s, bus=0x%08x) was quiet on the "
+                    "edge, and KMAC edn_req, edn_ack and edn_bus stayed 0 on "
+                    "every cycle of the %d-cycle quiet window%s",
                     tag,
                     steady,
                     urnd_completions,
-                    pre_k["bus"],
+                    when,
+                    shown_bus,
+                    _EDN_QUIET_CYCLES,
                     sw_note,
                 )
             else:
@@ -1074,29 +1106,21 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             await self._lift_kmac(jtag)
 
     async def _prove_edn_reset_glitch(self, tag: str) -> None:
-        """A sub-cycle JTAG pulse clears only the KMAC EDN endpoint.
+        """A sub-cycle JTAG pulse does not move the KMAC gated reset.
 
-        ``gated_rst_ni.kmac`` is the endpoint reset, and the JTAG override
-        mux is combinational, so a pulse narrower than one ``clk_i`` period
-        still forces that endpoint's ``edn_ack`` and ``edn_bus`` to 0. URND
-        is a different endpoint and keeps the word it had staged.
+        The override is synchronized into ``clk_i``. Inside a pulse narrower
+        than one period the gated reset stays released, and URND keeps the
+        word it had staged through the next edge.
 
-        This is an OBSERVATION, not a graded checker, and it stays outside
-        the ``CHK-`` namespace. A zero-delay simulation does not show
-        whether a pulse that narrow resets KMAC's own flops, and it does
-        not model metastability. It does show the adapter output gate and
-        the sibling word.
+        This is an observation, not a graded checker, and it stays outside
+        the ``CHK-`` namespace.
         """
         clk = cocotb.top.clk_i
         period = self.cfg.sys_clk_period_ns
-        reached = 0
-        held = 0
+        sampled = 0
         for attempt in range(_EDN_GLITCH_ATTEMPTS):
             if not (self._edn_req() & (1 << _EDN_URND)):
                 await self._arm_urnd(tag)
-            # Arm on a staged, unacknowledged beat -- the same condition
-            # CHK-EDN-HOLD uses. Without a word on the bus there is nothing
-            # for a sibling clear to destroy.
             staged = 0
             for _ in range(_EDN_ACK_CYCLES):
                 req = bool(self._edn_req() & (1 << _EDN_URND))
@@ -1111,49 +1135,41 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             await Timer(period * (attempt + 1) / (_EDN_GLITCH_ATTEMPTS + 1), units="ns")
             cocotb.top.jtag_kmac_rst_hold_i.value = 1
             await Timer(period / (2 * (_EDN_GLITCH_ATTEMPTS + 1)), units="ns")
-            # Sampled inside the pulse. This is the only place a sub-cycle
-            # reset is visible. If the gated reset never goes low here, the
-            # stimulus never reached the DUT.
             in_pulse = self._edn_level(cocotb.top.kmac_gated_rst_n_probe_o)
-            kmac = self._edn_snap(_EDN_KMAC) if in_pulse == 0 else None
             await Timer(period / (2 * (_EDN_GLITCH_ATTEMPTS + 1)), units="ns")
             cocotb.top.jtag_kmac_rst_hold_i.value = 0
+            if in_pulse == 0:
+                raise AssertionError(
+                    f"{tag} FAIL: a JTAG pulse narrower than one clk_i period "
+                    f"asserted the KMAC gated reset on attempt {attempt}"
+                )
             await RisingEdge(clk)
             await ReadOnly()
             bus_after = self._edn_bus_word(_EDN_URND)
-            if in_pulse == 0:
-                reached += 1
-                self._require_kmac_suppressed(tag, f"inside glitch attempt {attempt}", kmac)
-                if bus_after != staged:
-                    raise AssertionError(
-                        f"{tag} FAIL: sub-cycle KMAC reset rewrote URND bus "
-                        f"0x{staged:08x}->0x{bus_after:08x} on attempt {attempt}"
-                    )
-                held += 1
+            if bus_after != staged:
+                raise AssertionError(
+                    f"{tag} FAIL: sub-cycle KMAC override rewrote URND bus "
+                    f"0x{staged:08x}->0x{bus_after:08x} on attempt {attempt}"
+                )
+            sampled += 1
             self.logger.info(
-                "%s attempt %d: gated_rst_n in-pulse=%d, KMAC ack=%s bus=%s, "
-                "URND staged 0x%08x -> 0x%08x",
+                "%s attempt %d: gated_rst_n in-pulse=%d, URND staged 0x%08x -> 0x%08x",
                 tag,
                 attempt,
                 in_pulse,
-                "n/a" if kmac is None else str(int(kmac["ack"])),
-                "n/a" if kmac is None else f"0x{kmac['bus']:08x}",
                 staged,
                 bus_after,
             )
-        if reached == 0:
+        if sampled == 0:
             raise AssertionError(
-                f"{tag} FAIL: no sub-cycle JTAG pulse drove kmac_gated_rst_n "
-                "low, so the endpoint clear was never sampled"
+                f"{tag} FAIL: no staged URND word, so the sub-cycle JTAG pulse "
+                "was not observed against a live sibling beat"
             )
         self.logger.info(
-            "%s PASS: %d of %d sub-cycle JTAG pulses held kmac_gated_rst_n low "
-            "with KMAC edn_ack and edn_bus at 0, and all %d left URND's staged "
-            "word unchanged",
+            "%s PASS: %d sub-cycle JTAG pulses left kmac_gated_rst_n released "
+            "inside the pulse and left URND's staged word unchanged",
             tag,
-            reached,
-            _EDN_GLITCH_ATTEMPTS,
-            held,
+            sampled,
         )
         await self.rst.release_resets()
 
@@ -1289,6 +1305,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # released. Both isolate bits were 0 when the request went out.
         arrival_read = None
         host_outstanding = 0
+        host_outstanding_events: set[int] = set()
         arrival_iso = None
         for _ in range(1_000):
             host_iso = self.rd_known(cocotb.top.hmac_host_isolated_probe_o)
@@ -1315,7 +1332,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 # the SW_RESET_N write share one master, so ordering alone does
                 # not put them in the window. This is the guard whose absence
                 # made the KMAC drain leg vacuous.
-                host_outstanding = sum(1 for e in drain_reads if not e.is_set())
+                host_outstanding_events = {id(e) for e in drain_reads if not e.is_set()}
+                host_outstanding = len(host_outstanding_events)
                 arrival_read = axi_driver.axi.init_read(address=HMAC_DIGEST_0, length=4, size=2)
                 arrival_iso = (host_iso, km_iso)
                 self.logger.info(
@@ -1330,16 +1348,21 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
 
         await reset_task
 
-        drain_codes = []
+        drain_results = []
         for event in drain_reads:
             await with_timeout(event.wait(), 10_000, "ns")
-            drain_codes.append(worst_resp(getattr(event.data, "resp", None)))
+            drain_results.append((id(event), worst_resp(getattr(event.data, "resp", None))))
+        drain_codes = [code for _event_id, code in drain_results]
+        host_outstanding_codes = [
+            code for event_id, code in drain_results if event_id in host_outstanding_events
+        ]
         assert all(code in (RESP_OKAY, RESP_SLVERR) for code in drain_codes), (
             f"in-flight HMAC host reads returned unexpected responses {drain_codes}"
         )
-        assert RESP_OKAY in drain_codes, (
-            "no pre-reset HMAC host read drained successfully, so this run does "
-            "not show that accepted traffic completes rather than being dropped"
+        assert RESP_OKAY in host_outstanding_codes, (
+            "no HMAC host read that was still outstanding when isolation closed "
+            "drained with OKAY; "
+            f"outstanding responses were {host_outstanding_codes}"
         )
         assert host_outstanding, (
             f"0 of the {len(drain_reads)} pre-request HMAC reads were still "
@@ -1353,7 +1376,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "DECERR); at least one drained OKAY",
             host_outstanding,
             len(drain_reads),
-            drain_codes,
+            host_outstanding_codes,
         )
 
         assert arrival_read is not None, (
@@ -1586,6 +1609,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         abr_task = cocotb.start_soon(abr_rst.assert_reset(RST_ABR))
         abr_arrival = None
         abr_outstanding = None
+        abr_outstanding_events: set[int] = set()
         abr_saw_window = False
         for _ in range(1_000):
             host_iso = self.rd_known(cocotb.top.abr_host_isolated_probe_o)
@@ -1609,7 +1633,8 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
                 # completed before the reset request went out -- the reads and
                 # the SW_RESET_N write share one master, so ordering alone does
                 # not put them in the window.
-                abr_outstanding = sum(1 for e in abr_drain_reads if not e.is_set())
+                abr_outstanding_events = {id(e) for e in abr_drain_reads if not e.is_set()}
+                abr_outstanding = len(abr_outstanding_events)
                 abr_arrival = abr_axi.axi.init_read(address=MLKEM_STATUS, length=4, size=2)
                 self.logger.info(
                     "ABR drain window open (host_abr=%d km_abr=%d, gated reset still released)",
@@ -1624,17 +1649,21 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             )
         await abr_task
 
-        abr_codes = []
+        abr_results = []
         for event in abr_drain_reads:
             await with_timeout(event.wait(), 10_000, "ns")
-            abr_codes.append(worst_resp(getattr(event.data, "resp", None)))
+            abr_results.append((id(event), worst_resp(getattr(event.data, "resp", None))))
+        abr_codes = [code for _event_id, code in abr_results]
+        abr_outstanding_codes = [
+            code for event_id, code in abr_results if event_id in abr_outstanding_events
+        ]
         assert all(code in (RESP_OKAY, RESP_SLVERR) for code in abr_codes), (
             f"in-flight ABR host reads returned unexpected responses {abr_codes}"
         )
-        assert RESP_OKAY in abr_codes, (
-            "no pre-reset ABR host read drained successfully, so this run does not "
-            "show that the full-AXI isolate completes accepted traffic rather than "
-            "dropping it"
+        assert RESP_OKAY in abr_outstanding_codes, (
+            "no ABR host read that was still outstanding when isolation closed "
+            "drained with OKAY; "
+            f"outstanding responses were {abr_outstanding_codes}"
         )
         assert abr_outstanding, (
             f"{abr_outstanding} of the {len(abr_drain_reads)} pre-request ABR reads "
@@ -1648,7 +1677,7 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             "DECERR); at least one drained OKAY",
             abr_outstanding,
             len(abr_drain_reads),
-            abr_codes,
+            abr_outstanding_codes,
         )
 
         assert abr_arrival is not None, (

@@ -454,6 +454,9 @@ def emit_composite(params: dict) -> str:
             f"    longint unsigned NUM_CLA_INST = {params['NUM_CLA_INST']},",
             f"    longint unsigned NUM_DST_INST = {params['NUM_DST_INST']}",
             ") {",
+            '    name = "SMC DFD MMR Aperture Address Map";',
+            '    desc = "Composite debug (DFD) MMR aperture mapping the DST sink, funnel, '
+            'CLA, and DST blocks that smc_dfd_wrap instantiates.";',
             "    dfd_dst_sink dst_sink @ 0x0;",
             "    dfd_funnel   funnel   @ 0x1000;",
             "    dfd_cla      cla[NUM_CLA_INST] @ 0x2000 += 0x1000;",

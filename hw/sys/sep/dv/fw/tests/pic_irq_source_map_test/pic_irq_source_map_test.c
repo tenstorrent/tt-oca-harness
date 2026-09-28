@@ -112,6 +112,10 @@ static int g_n_src = 0;
 static volatile uint32_t g_count[PIC_SRC_MAX];
 static volatile uint32_t g_claim[PIC_SRC_MAX];
 static volatile uint32_t g_mbox_irqs_after = 0;
+// Value read in the ISR just before its W1C, so the clear is bracketed:
+// the bit was seen set, then seen clear, with nothing else in between.
+static volatile uint32_t g_mbox_irqs_before = 0;
+static volatile uint32_t g_state_before[PIC_SRC_MAX];
 static volatile uint32_t g_unexpected_id = 0;
 static volatile uint32_t g_unexpected_claims = 0;
 static int g_mbox_idx = -1;
@@ -166,6 +170,7 @@ void __attribute__((interrupt("machine"))) mbox_isr(void) {
     int idx = g_mbox_idx;
     if (idx >= 0) {
         g_claim[idx] = claim_id();
+        g_mbox_irqs_before = sep_axil_mbox_rd(SEP_AXIL_MBOX0_IRQS);
         sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu);
         sep_axil_mbox_wr(SEP_AXIL_MBOX0_IRQS, SEP_AXIL_MBOX_IRQ_ALL);
         g_mbox_irqs_after = sep_axil_mbox_rd(SEP_AXIL_MBOX0_IRQS);
@@ -197,6 +202,7 @@ void __attribute__((interrupt("machine"))) pic_intr_isr(void) {
             silence_and_bound(id);
         } else {
             g_claim[idx] = id;
+            g_state_before[idx] = rd32(g_sel[idx].state);
             clear_ip_intr(&g_sel[idx]);
             g_count[idx]++;
         }
@@ -334,13 +340,18 @@ static int run_mbox(void) {
         sep_mbx_puts("CHK-ONEHOT PASS: only the mailbox ISR fired among the "
                      "PIC-enabled sources\n");
     }
-    if (g_mbox_irqs_after & SEP_AXIL_MBOX_IRQ_ALL) {
+    if ((g_mbox_irqs_before & SEP_AXIL_MBOX_IRQ_ALL) == 0u) {
+        sep_mbx_puts("FAIL: mailbox IRQS was not set before the ISR W1C ");
+        sep_mbx_puthex(g_mbox_irqs_before);
+        sep_mbx_putc('\n');
+        errors++;
+    } else if (g_mbox_irqs_after & SEP_AXIL_MBOX_IRQ_ALL) {
         sep_mbx_puts("FAIL: mailbox IRQS did not clear via W1C ");
         sep_mbx_puthex(g_mbox_irqs_after);
         sep_mbx_putc('\n');
         errors++;
     } else {
-        sep_mbx_puts("CHK-IP-RW1C PASS: mailbox IRQS read back 0 after W1C\n");
+        sep_mbx_puts("CHK-IP-RW1C PASS: mailbox IRQS read set before and 0 after W1C\n");
     }
     sep_axil_mbox_wr(SEP_AXIL_MBOX0_WIRQT, 0xFFu);
     return errors;
@@ -379,7 +390,12 @@ static int run_intr(int s) {
         sep_mbx_puts(d->name);
         sep_mbx_puts(" fired alone among the PIC-enabled sources\n");
     }
-    if (rd32(d->state) & d->bit) {
+    if ((g_state_before[s] & d->bit) == 0u) {
+        sep_mbx_puts("FAIL: ");
+        sep_mbx_puts(d->name);
+        sep_mbx_puts(" INTR_STATE bit was not set before the ISR clear\n");
+        errors++;
+    } else if (rd32(d->state) & d->bit) {
         sep_mbx_puts("FAIL: ");
         sep_mbx_puts(d->name);
         sep_mbx_puts(" INTR_STATE did not clear via W1C\n");
@@ -387,7 +403,7 @@ static int run_intr(int s) {
     } else {
         sep_mbx_puts("CHK-IP-RW1C PASS: ");
         sep_mbx_puts(d->name);
-        sep_mbx_puts(" INTR_STATE reads back 0 after W1C\n");
+        sep_mbx_puts(" INTR_STATE read set before and 0 after the ISR clear\n");
     }
     return errors;
 }

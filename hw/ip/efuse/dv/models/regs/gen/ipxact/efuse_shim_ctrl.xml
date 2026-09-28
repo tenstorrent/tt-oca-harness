@@ -12,6 +12,8 @@
       <ipxact:name>efuse_shim_ctrl_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>efuse_shim_ctrl</ipxact:name>
+        <ipxact:displayName>eFuse SHIM Control Model Address Map</ipxact:displayName>
+        <ipxact:description>DV model of the eFuse SHIM control interface.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h4</ipxact:range>
         <ipxact:width>32</ipxact:width>

@@ -43,7 +43,18 @@ _EFUSE_PROGRAM_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL"
 _EFUSE_PROGRAM_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_done")
 _EFUSE_PROGRAM_ERR_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_status")
 
+_EFUSE_ADDR_MASK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_addr")
+_EFUSE_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_PROGRAM_CTRL", "efuse_addr")
+
 _POLL_CYCLES = 200
+
+
+def _place_addr(bit_addr: int) -> int:
+    """Place a fuse bit address in EFUSE_PROGRAM_CTRL.efuse_addr."""
+    placed = bit_addr << _EFUSE_ADDR_LSB
+    if bit_addr < 0 or placed & ~_EFUSE_ADDR_MASK:
+        raise ValueError(f"bit address {bit_addr:#x} does not fit efuse_addr")
+    return placed
 
 
 class sep_efuse_otp_program_seq(uvm_sequence):
@@ -76,7 +87,7 @@ class sep_efuse_otp_program_seq(uvm_sequence):
 
     async def body(self) -> None:
         wdata = (
-            (self.bit_addr & 0xFFFF)
+            _place_addr(self.bit_addr)
             | _EFUSE_DATA_BIT
             | _EFUSE_PROGRAM_GO_BIT
             | _EFUSE_PROGRAM_READ_BACK_BIT

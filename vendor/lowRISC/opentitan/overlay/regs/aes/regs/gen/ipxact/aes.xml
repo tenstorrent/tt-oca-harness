@@ -12,6 +12,8 @@
       <ipxact:name>aes_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>aes</ipxact:name>
+        <ipxact:displayName>AES Accelerator</ipxact:displayName>
+        <ipxact:description>AES encryption and decryption engine with SCA and FI countermeasures</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h8c</ipxact:range>
         <ipxact:width>32</ipxact:width>

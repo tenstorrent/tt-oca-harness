@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from env.dtp_tap_device import DTP_IC_RESET_LEN
-from env.dtp_types import DtpTapState
+from env.dtp_types import DtpTapState, ic_reset_after_tlr
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 
@@ -105,10 +105,11 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_ic_reset("Held pattern before TLR", held_pattern)
         await self.expect_slices(held_enable, held_control, context="reset_hold=0 directed pattern")
         await self.drive_tlr_without_trst()
-        held_observed = await self.read_ic_reset(shift_value=held_pattern)
+        expected = ic_reset_after_tlr(0, held_pattern, default_value)
+        held_observed = await self.read_ic_reset(shift_value=expected)
         self.log_ic_reset("Held pattern after TLR", held_observed)
         self.family_check(
-            "CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", held_observed, held_pattern
+            "CHK-DBG-TDR", "IC_RESET reset_hold=0 TLR preserve", held_observed, expected
         )
 
         self.log_step(4, "Run seeded random reset_hold=0 preservation patterns")
@@ -136,13 +137,14 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
                 reset_enable, reset_control, context=f"reset_hold=0 iteration={idx}"
             )
             await self.drive_tlr_without_trst()
-            observed_random = await self.read_ic_reset(shift_value=pattern)
+            expected = ic_reset_after_tlr(0, pattern, default_value)
+            observed_random = await self.read_ic_reset(shift_value=expected)
             self.log_ic_reset("Random held pattern after TLR", observed_random)
             self.family_check(
                 "CHK-DBG-TDR",
                 "IC_RESET random reset_hold=0 preserve",
                 observed_random,
-                pattern,
+                expected,
                 context=f"iteration={idx}",
             )
 
@@ -155,9 +157,10 @@ class dtp_jtag_ic_reset_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_ic_reset("Clearable pattern before TLR", clearable_pattern)
         assert clearable_pattern != default_value
         await self.drive_tlr_without_trst()
-        cleared = await self.read_ic_reset(shift_value=default_value)
+        expected = ic_reset_after_tlr(1, clearable_pattern, default_value)
+        cleared = await self.read_ic_reset(shift_value=expected)
         self.log_ic_reset("After reset_hold=1 TLR", cleared)
-        self.family_check("CHK-DBG-TDR", "IC_RESET reset_hold=1 TLR clear", cleared, default_value)
+        self.family_check("CHK-DBG-TDR", "IC_RESET reset_hold=1 TLR clear", cleared, expected)
         await self.expect_default_outputs(context="after reset_hold=1 TLR")
 
         self.log_step(6, "Verify TRST always restores reset_hold and enable/control defaults")

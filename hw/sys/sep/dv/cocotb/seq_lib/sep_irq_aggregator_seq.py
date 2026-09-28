@@ -147,15 +147,6 @@ class PeriphHole:
     clear_bit: int
 
 
-def hmac_misaligned_addr() -> int:
-    """A misaligned offset inside a mapped HMAC register.
-
-    ``CFG`` is a live 32-bit register, so byte offset +2 lies inside the HMAC
-    extent but is not word-aligned.
-    """
-    return HMAC.addr("CFG") + 2
-
-
 def periph_holes() -> tuple[PeriphHole, ...]:
     """HMAC / KMAC / OTBN holes that still reach an adapter ``err_o``."""
     return (

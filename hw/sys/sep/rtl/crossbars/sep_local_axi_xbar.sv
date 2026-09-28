@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP local AXI crossbar.
-// DMA and watchdog bounds come from sep_top_addrmap_pkg; the remaining
-// address rules are explicit integration apertures in AddrMap below.
+// Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.
+//
+// DMA and watchdog address bounds come from sep_top_addrmap_pkg; the remaining address
+// rules are explicit integration apertures in AddrMap below.
+// Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
+// than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
+// get DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -12,76 +16,77 @@ module sep_local_axi_xbar
   import axi_pkg::*;
   import sep_local_axi_xbar_pkg::*;
 (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,                         // System clock.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic test_i,                        // DFT test mode to axi_xbar.
 
-  // ===========================================================================
-  // Initiator Ports
-  // ===========================================================================
-  // ifu_sram (AXI4, 64-bit)
-  input  axi64_req_t  ifu_sram_req_i,
-  output axi64_resp_t ifu_sram_resp_o,
+  input  axi64_req_t  ifu_sram_req_i,         // IFU fetch request for SEP SRAM addresses from
+                                              // sep_cpu; reaches only the sram target.
+  output axi64_resp_t ifu_sram_resp_o,        // Response to ifu_sram; unmapped or unconnected
+                                              // addresses get DECERR.
 
-  // lsu (AXI4, 64-bit)
-  input  axi64_req_t  lsu_req_i,
-  output axi64_resp_t lsu_resp_o,
+  input  axi64_req_t  lsu_req_i,              // LSU request from sep_cpu for addresses outside the
+                                              // boot ROM; reaches every target except cpu_tcm.
+  output axi64_resp_t lsu_resp_o,             // Response to lsu; unmapped or unconnected addresses
+                                              // get DECERR.
 
-  // dbg (AXI4, 64-bit)
-  input  axi64_req_t  dbg_req_i,
-  output axi64_resp_t dbg_resp_o,
+  input  axi64_req_t  dbg_req_i,              // Debug-module system-bus request from sep_cpu;
+                                              // reaches every target except cpu_tcm.
+  output axi64_resp_t dbg_resp_o,             // Response to dbg; unmapped or unconnected addresses
+                                              // get DECERR.
 
-  // dma (AXI4, 64-bit)
-  input  axi64_req_t  dma_req_i,
-  output axi64_resp_t dma_resp_o,
+  input  axi64_req_t  dma_req_i,              // Secure DMA master request; reaches every target
+                                              // except dma_csr and entropy_fifo.
+  output axi64_resp_t dma_resp_o,             // Response to dma; unmapped or unconnected addresses
+                                              // get DECERR.
 
-  // ext (AXI4, 64-bit)
-  input  axi64_req_t  ext_req_i,
-  output axi64_resp_t ext_resp_o,
+  input  axi64_req_t  ext_req_i,              // Request forwarded by sep_system_peripherals;
+                                              // reaches sram, dma_csr, sep_wdt, sep_crypto, sep_io,
+                                              // entropy_fifo and sep_external.
+  output axi64_resp_t ext_resp_o,             // Response to ext; unmapped or unconnected addresses
+                                              // get DECERR.
 
-  // ===========================================================================
-  // Target Ports
-  // ===========================================================================
-  // cpu_tcm (AXI4, 64-bit)
-  output axi_out_req_t  cpu_tcm_req_o,
-  input  axi_out_resp_t cpu_tcm_resp_i,
+  output axi_out_req_t  cpu_tcm_req_o,        // Request for the ICCM (0xC000_0000-0xC003_FFFF) or
+                                              // DCCM (0xC004_0000-0xC005_FFFF), to the core DMA
+                                              // slave port.
+  input  axi_out_resp_t cpu_tcm_resp_i,       // Response from the core DMA slave port.
 
-  // sram (AXI4, 64-bit)
-  output axi_out_req_t  sram_req_o,
-  input  axi_out_resp_t sram_resp_i,
+  output axi_out_req_t  sram_req_o,           // Request for the SEP SRAM, 0x1000_0000-0x1003_FFFF.
+  input  axi_out_resp_t sram_resp_i,          // Response from the SEP SRAM.
 
-  // dma_csr (AXI4, 64-bit)
-  output axi_out_req_t  dma_csr_req_o,
-  input  axi_out_resp_t dma_csr_resp_i,
+  output axi_out_req_t  dma_csr_req_o,        // Request for the secure DMA register extent from
+                                              // sep_top_addrmap_pkg.
+  input  axi_out_resp_t dma_csr_resp_i,       // Response from the secure DMA registers.
 
-  // sep_wdt (AXI4, 64-bit)
-  output axi_out_req_t  sep_wdt_req_o,
-  input  axi_out_resp_t sep_wdt_resp_i,
+  output axi_out_req_t  sep_wdt_req_o,        // Request for the watchdog timer register extent from
+                                              // sep_top_addrmap_pkg.
+  input  axi_out_resp_t sep_wdt_resp_i,       // Response from the watchdog timer.
 
-  // sep_reset_ctrl (AXI4, 64-bit)
-  output axi_out_req_t  sep_reset_ctrl_req_o,
-  input  axi_out_resp_t sep_reset_ctrl_resp_i,
+  output axi_out_req_t  sep_reset_ctrl_req_o,  // Request for sep_reset_ctrl,
+                                               // 0x1080_3000-0x1080_3007.
+  input  axi_out_resp_t sep_reset_ctrl_resp_i,  // Response from sep_reset_ctrl.
 
-  // sep_crypto (AXI4, 64-bit)
-  output axi_out_req_t  sep_crypto_req_o,
-  input  axi_out_resp_t sep_crypto_resp_i,
+  output axi_out_req_t  sep_crypto_req_o,     // Request for sep_crypto, 0x1090_0000-0x1094_FFFF.
+  input  axi_out_resp_t sep_crypto_resp_i,    // Response from sep_crypto.
 
-  // sep_system_peripherals (AXI4, 64-bit)
-  output axi_out_req_t  sep_system_peripherals_req_o,
-  input  axi_out_resp_t sep_system_peripherals_resp_i,
+  output axi_out_req_t  sep_system_peripherals_req_o,  // Request for sep_system_peripherals:
+                                                       // scratch 0x1080_2000-0x1080_20FF, CSRs
+                                                       // 0x10A0_0000-0x10A5_FFFF, remap window
+                                                       // 0x1100_0000-0x11FF_FFFF, external chiplet
+                                                       // 0x0000_0000-0x0FFF_FFFF, and SMU
+                                                       // 0x4000_0000-0xBFFF_FFFF.
+  input  axi_out_resp_t sep_system_peripherals_resp_i,  // Response from sep_system_peripherals.
 
-  // sep_io (AXI4, 64-bit)
-  output axi_out_req_t  sep_io_req_o,
-  input  axi_out_resp_t sep_io_resp_i,
+  output axi_out_req_t  sep_io_req_o,         // Request for sep_io, 0x10B0_0000-0x10BF_FFFE.
+  input  axi_out_resp_t sep_io_resp_i,        // Response from sep_io.
 
-  // entropy_fifo (AXI4, 64-bit)
-  output axi_out_req_t  entropy_fifo_req_o,
-  input  axi_out_resp_t entropy_fifo_resp_i,
+  output axi_out_req_t  entropy_fifo_req_o,   // Request for the entropy pool,
+                                              // 0x1095_0000-0x1095_FFFF.
+  input  axi_out_resp_t entropy_fifo_resp_i,  // Response from the entropy pool.
 
-  // sep_external (AXI4, 64-bit)
-  output axi_out_req_t  sep_external_req_o,
-  input  axi_out_resp_t sep_external_resp_i
-
+  output axi_out_req_t  sep_external_req_o,   // Request for the external aperture
+                                              // 0x2000_0000-0x3FFF_FFFF, to sep.
+  input  axi_out_resp_t sep_external_resp_i   // Response from the external aperture.
 );
 
   // ===========================================================================

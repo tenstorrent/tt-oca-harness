@@ -1,58 +1,56 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMU AXI crossbar connecting SEP, SMC, and the external system port.
-// SEP and SMC apertures are runtime inputs; unmatched outbound traffic uses
-// the external output.
+// Route AXI traffic among SEP, SMC, and the external system port.
+//
+// Connect sep_out, smc_out, and ext_in initiators to sep_in, smc_in, and ext_out targets. sep_out
+// reaches smc_in and ext_out, smc_out reaches sep_in and ext_out, and ext_in reaches sep_in and
+// smc_in. Each aperture covers [base, base + size) bytes; a zero base with zero size matches every
+// address. SEP and SMC apertures are runtime CSR inputs, synchronous to clk_i (SEP, SMC, and this
+// xbar all run on clk_smu_i in the SMU). sep_out and smc_out traffic matching neither aperture goes
+// to ext_out; unmatched ext_in traffic gets a decode error. Output ports carry wider IDs than the
+// inputs so responses route back to their initiator.
 
 module smu_axi_xbar
   import axi_pkg::*;
   import smu_axi_xbar_pkg::*;
 (
-  input  wire logic clk_i,
-  input  wire logic rst_ni,
-  input  wire logic test_i,
+  input  wire logic clk_i,                      // SMU fabric clock.
+  input  wire logic rst_ni,                     // Active-low reset.
+  input  wire logic test_i,                     // DFT test enable for the crossbar.
 
-  // =========================================================================
-  // Programmable Address Map Inputs
-  // =========================================================================
-  // SEP and SMC apertures driven from the respective CSRs. All are
-  // synchronous to clk_i (SEP, SMC, and this xbar all run on clk_smu_i
-  // in the SMU).
-  input  wire logic [55:0] sep_global_base_addr_i,
-  input  wire logic [31:0] sep_region_size_i,
-  input  wire logic [55:0] smc_global_base_addr_i,
-  input  wire logic [31:0] smc_region_size_i,
+  input  wire logic [55:0] sep_global_base_addr_i,  // SEP aperture base address; synchronous to
+                                                    // clk_i. In smu, driven from the SEP CSRs.
+  input  wire logic [31:0] sep_region_size_i,   // SEP aperture size in bytes.
+                                                // Synchronous to clk_i. In smu, driven from
+                                                // the SEP CSRs.
+  input  wire logic [55:0] smc_global_base_addr_i,  // SMC aperture base address; synchronous to
+                                                    // clk_i. In smu, driven from the SMC CSRs.
+  input  wire logic [31:0] smc_region_size_i,   // SMC aperture size in bytes.
+                                                // Synchronous to clk_i. In smu, driven from
+                                                // the SMC CSRs.
 
-  // =========================================================================
-  // Initiator Ports
-  // =========================================================================
-  // sep_out (AXI4, 64-bit)
-  input  axi_56_64_req_t  sep_out_req_i,
-  output axi_56_64_resp_t sep_out_resp_o,
+  input  axi_56_64_req_t  sep_out_req_i,        // SEP initiator AXI4 request (64-bit) into the
+                                                // crossbar.
+  output axi_56_64_resp_t sep_out_resp_o,       // SEP initiator AXI4 response from the crossbar.
 
-  // smc_out (AXI4, 64-bit)
-  input  axi_56_64_req_t  smc_out_req_i,
-  output axi_56_64_resp_t smc_out_resp_o,
+  input  axi_56_64_req_t  smc_out_req_i,        // SMC initiator AXI4 request (64-bit) into the
+                                                // crossbar.
+  output axi_56_64_resp_t smc_out_resp_o,       // SMC initiator AXI4 response from the crossbar.
 
-  // ext_in (AXI4, 64-bit)
-  input  axi_56_64_req_t  ext_in_req_i,
-  output axi_56_64_resp_t ext_in_resp_o,
+  input  axi_56_64_req_t  ext_in_req_i,         // External initiator AXI4 request (64-bit) into the
+                                                // crossbar.
+  output axi_56_64_resp_t ext_in_resp_o,        // External initiator AXI4 response from the
+                                                // crossbar.
 
-  // =========================================================================
-  // Target Ports
-  // =========================================================================
-  // sep_in (AXI4, 64-bit)
-  output axi_out_req_t  sep_in_req_o,
-  input  axi_out_resp_t sep_in_resp_i,
+  output axi_out_req_t  sep_in_req_o,           // AXI4 request toward the SEP target port.
+  input  axi_out_resp_t sep_in_resp_i,          // AXI4 response from the SEP target port.
 
-  // smc_in (AXI4, 64-bit)
-  output axi_out_req_t  smc_in_req_o,
-  input  axi_out_resp_t smc_in_resp_i,
+  output axi_out_req_t  smc_in_req_o,           // AXI4 request toward the SMC target port.
+  input  axi_out_resp_t smc_in_resp_i,          // AXI4 response from the SMC target port.
 
-  // ext_out (AXI4, 64-bit)
-  output axi_out_req_t  ext_out_req_o,
-  input  axi_out_resp_t ext_out_resp_i
+  output axi_out_req_t  ext_out_req_o,          // AXI4 request toward the external target port.
+  input  axi_out_resp_t ext_out_resp_i          // AXI4 response from the external target port.
 );
 
   // =========================================================================

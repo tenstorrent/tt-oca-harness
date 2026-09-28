@@ -161,8 +161,8 @@ static uint8_t flash_read_status(void) {
     if (spi_wait_ready(TIMEOUT)) return 0xFFu;
     spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
     if (spi_wait_idle(TIMEOUT)) return 0xFFu;
-    if (((spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) >> SPI_CONTROLLER__STATUS__RXQD_bp) &
-         0xFFu) < 1u)
+    if (((spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__RXQD_bm) >>
+         SPI_CONTROLLER__STATUS__RXQD_bp) < 1u)
         return 0xFFu;
     return (uint8_t)(spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFFu);
 }
@@ -274,20 +274,20 @@ static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
 static void dma_arm_tx(uint32_t src, uint32_t total_bytes) {
     sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    sep_dma_wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, SECURE_DMA__RANGE_VALID__RANGE_VALID_bm);
     sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
     sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
                SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0));
     sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     sep_dma_wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
-               SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset |
-                   (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << 4));
+               SEP_DMA_ASID_PAIR(SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset,
+                                 SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset));
     sep_dma_wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
     sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR,
                SECURE_DMA__SRC_CONFIG__INCREMENT_bm); // walk SRAM
     sep_dma_wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR,
-               SECURE_DMA__SRC_CONFIG__WRAP_bm); // fixed TXDATA register
+               SECURE_DMA__DST_CONFIG__WRAP_bm); // fixed TXDATA register
     sep_dma_wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, total_bytes);
     sep_dma_wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, DMA_CHUNK);
     sep_dma_wr(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
@@ -345,10 +345,10 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
     dma_arm_tx(SRC_BASE, total_bytes);
 
     // --- CHK-DMA-DONE: run the handshake transfer to completion ---
-    // STATUS.chunk_done is raised only when hardware handshake is *off*
-    // (secure_dma.sv: chunk_done = !cfg_handshake_en). This path is handshake
-    // mode, so the checker is DONE + clean error + RW1C. Firmware-paced
-    // CHUNK_DONE is `dma_basic_test`.
+    // The RDL (integration/rdl/sep/secure_dma.rdl, STATUS.CHUNK_DONE) raises
+    // CHUNK_DONE "only ... for multi-chunk memory-to-memory transfers". This path
+    // is a hardware-handshake transfer, so the checker is DONE + clean error +
+    // RW1C. Firmware-paced CHUNK_DONE is `dma_basic_test`.
     uint32_t st = 0;
     int t = DMA_POLL_LIM;
     while (t-- > 0) {
@@ -443,14 +443,20 @@ static int run_case(uint32_t case_idx, uint32_t addr, volatile uint32_t *data, u
 }
 
 // CHK-ERR-OVERFLOW: firmware pushing TXDATA past the TX FIFO capacity.
-// spi_host.sv: error_overflow = tx_valid & ~tx_ready, i.e. a TXDATA write
-// the FIFO cannot accept. Nothing else in this test can reach that edge -- the
-// DMA is paced by the TX watermark precisely so it never does -- so the flow
-// control the whole DMA-TX path depends on is otherwise never proven to exist.
+// The register specification
+// (vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson) gives
+// ERROR_STATUS.OVERFLOW as "firmware has overflowed the TX FIFO", so one TXDATA
+// write with STATUS.TXFULL set must latch that bit and no other. Nothing else in
+// this test can reach that edge -- the DMA is paced by the TX watermark
+// precisely so it never does -- so the flow control the whole DMA-TX path
+// depends on is otherwise never proven to exist.
 //
-// The host keeps its core disabled while any ERROR_STATUS bit is latched
-// (en = en_sw & ~enb_error), so the injection is last and is followed by a
-// CTRL.SW_RST flush + W1C, then a real bus transfer to prove the release.
+// The same specification makes ERROR_STATUS rw1c and says a latched bit "must
+// be cleared here before issuing any further commands"; hw/sys/sep/doc/spi.adoc
+// states the host is the unmodified OpenTitan SPI Host, whose documentation is
+// the authority for that behaviour. The injection is therefore last and is
+// followed by a CONTROL.SW_RST flush + W1C, then a real bus transfer to prove
+// the release.
 #define TXFULL_WRITE_LIM 256
 
 static int chk_err_overflow(void) {
@@ -488,8 +494,26 @@ static int chk_err_overflow(void) {
     }
 
     // Recovery: SW_RST drains the FIFOs and the command queue, then W1C the latch.
+    // CONTROL.SW_RST in vendor/lowRISC/opentitan/upstream/hw/ip/spi_host/data/spi_host.hjson
+    // says "software must confirm that both FIFO's empty before releasing the IP
+    // from reset", so SW_RST stays set until STATUS.TXEMPTY and STATUS.RXEMPTY
+    // both read 1.
+    const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
     uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    uint32_t rst_st = 0;
+    int rst_t = TIMEOUT;
+    while (rst_t-- > 0) {
+        rst_st = spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        if ((rst_st & empty) == empty) break;
+    }
+    if ((rst_st & empty) != empty) {
+        sep_mbx_puts("FAIL: CHK-ERR-OVERFLOW SW_RST held but STATUS.TXEMPTY/RXEMPTY "
+                     "never both set, STATUS=");
+        sep_mbx_puthex(rst_st);
+        sep_mbx_putc('\n');
+        err++;
+    }
     spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
     spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
     uint32_t residual = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);

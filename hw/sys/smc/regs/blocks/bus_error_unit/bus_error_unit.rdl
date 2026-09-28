@@ -5,8 +5,9 @@
 `define BUS_ERROR_UNIT_REG_RDL
 
 addrmap bus_error_unit {
-    desc = "";
-
+    name = "Bus Error Unit Address Map";
+    desc = "Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

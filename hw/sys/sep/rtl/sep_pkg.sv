@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Define top-level SEP AXI, IRQ, and subsystem typedefs.
+//
+// Shared widths, mailbox counts, lockstep structs, and SMN AXI types used across SEP RTL.
+
 package sep_pkg;
 
   `include "axi/typedef.svh"
@@ -227,8 +231,8 @@ package sep_pkg;
   parameter int unsigned CPU_ADDR_WIDTH = 32;
   parameter int unsigned CPU_DATA_WIDTH = 64;
   parameter int unsigned CPU_USER_WIDTH = 12;
-  parameter int unsigned CPU_MST_ID_WIDTH = SEP_32_64_3_12_ID_WIDTH;  // 3-bit
-  parameter int unsigned CPU_SLV_ID_WIDTH = SEP_32_64_6_12_ID_WIDTH;  // 6-bit
+  parameter int unsigned CPU_MST_ID_WIDTH = SEP_32_64_3_12_ID_WIDTH;  // 3-bit.
+  parameter int unsigned CPU_SLV_ID_WIDTH = SEP_32_64_6_12_ID_WIDTH;  // 6-bit.
 
   // Misc parameters
   localparam int unsigned LC_STATE_BIT_POSITION = 96;
@@ -278,7 +282,7 @@ OUTBOUND_FILTER_MUX_PORTS
   // Mailbox
   localparam int unsigned NUM_MAILBOXES = 8;
   localparam int unsigned MAILBOX_DEPTH = 8;
-  localparam int unsigned MAILBOX_SIZE = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb
+  localparam int unsigned MAILBOX_SIZE = sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR - sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR; // 0x800 -> 2kb.
 
   // System CSRs
   localparam int unsigned SYSTEM_CSR_DEMUX_PORTS = 9;
@@ -303,7 +307,7 @@ SYSTEM_CSR_DEMUX_PORTS
 
   parameter int unsigned AXILITE_XBAR_EXTERNAL_SLV_IDX = 0;
 
-  parameter int unsigned AXILITE_XBAR_N_MST = 32'd4;  // Crypto/security + IO + SEP system peripherals + external master
+  parameter int unsigned AXILITE_XBAR_N_MST = 32'd4;  // Crypto/security + IO + SEP system peripherals + external master.
 
   typedef logic [CPU_ADDR_WIDTH  -1:0] sep_axilite_xbar_addr_t;
   typedef logic [CPU_DATA_WIDTH  -1:0] sep_axilite_xbar_data_t;
@@ -471,16 +475,16 @@ SEP_ROM_MUX_NUM_PORTS
   parameter int unsigned AP_REMAP_SEL_W = $clog2(NUM_AP_OUTPUT_REMAP_REGIONS);
   parameter int unsigned NUM_STEE_OUTPUT_REMAP_REGIONS = 16;
   parameter int unsigned STEE_REMAP_SEL_W = $clog2(NUM_STEE_OUTPUT_REMAP_REGIONS);
-  parameter int unsigned ALIAS_REMAP_IDX_START = 12;  // 4KB region granularity
-  parameter int unsigned AP_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
-  parameter int unsigned STEE_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity
+  parameter int unsigned ALIAS_REMAP_IDX_START = 12;  // 4KB region granularity.
+  parameter int unsigned AP_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity.
+  parameter int unsigned STEE_OUTPUT_REMAP_IDX_START = 19;  // 512KB region granularity.
 
   // Fixed size of the SEP local alias remap window. This is decoupled from the
   // SMU-programmable SEP_REGION_SIZE CSR (exported as sep_region_size_o to size the
   // SMU-visible aperture); the local alias window is a fixed architectural constant.
-  localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_SIZE = 56'h3000_0000;  // 768 MiB
-  localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_BASE = 56'h1000_0000;  // 0x1000_0000 - 0x3FFF_FFFF
-  localparam logic [55:0] SEP_GLOBAL_REGION_SIZE = 56'h4000_0000;  // 1 GiB
+  localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_SIZE = 56'h3000_0000;  // 768 MiB.
+  localparam logic [55:0] SEP_LOCAL_ALIAS_REGION_BASE = 56'h1000_0000;  // 0x1000_0000 - 0x3FFF_FFFF.
+  localparam logic [55:0] SEP_GLOBAL_REGION_SIZE = 56'h4000_0000;  // 1 GiB.
 
   localparam logic [3:0] SEP_SOURCE_ID = 4'b1111;
   localparam logic [3:0] MMODE_SOURCE_ID = 4'b1100;

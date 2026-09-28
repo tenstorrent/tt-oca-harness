@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-scratch]
-== Address Map: scratch
+== Scratch Address Map
+
+General-purpose scratch register bank.
 
 [NOTE]
 ======

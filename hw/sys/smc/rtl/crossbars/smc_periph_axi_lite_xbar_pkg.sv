@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC peripheral AXI-Lite crossbar types and configuration.
+// Declare SMC peripheral AXI-Lite crossbar types and configuration.
+//
+// Defines initiator/target counts and AXI-Lite typedefs for the peripheral CSR xbar: one
+// 32-bit initiator, 12 targets and 14 address rules, with four outstanding transactions
+// per port, every port cut and full connectivity. The rule type carries a 33-bit end
+// address so a window can end at 2^32; apb_addr_rule_t is declared but unused.
 // Address rules are defined by smc_periph_axi_lite_xbar.
 
 `include "axi/typedef.svh"
@@ -110,7 +115,7 @@ package smc_periph_axi_lite_xbar_pkg;
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-    0: 12'b111111111111  // periph_in
+    0: 12'b111111111111  // periph_in.
   };
 
 endpackage : smc_periph_axi_lite_xbar_pkg

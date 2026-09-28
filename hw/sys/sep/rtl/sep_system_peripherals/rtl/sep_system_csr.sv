@@ -1,63 +1,82 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP System CSRs
+// Publish SEP system CSRs for remap, filters, straps, and bridge-fault status.
+//
+// Exposes alias and output remap register hwifs, inbound and outbound filter ctrl/status,
+// aperture address/size outputs, NMI vector, external TRNG source select, Key Manager
+// wipe, and DMA/peripheral bus-error status/clear.
+//
+// An AXI-Lite demux decodes the local-master alias remap, AP and STEE output remap, outbound
+// and inbound filter, sep_cpu_ctrl, and cold and warm scratch windows; any other address
+// reaches a DECERR slave. The cold scratch registers reset on rst_ni and the warm ones on
+// rst_warm_ni; everything else resets on rst_ni. REFERENCE_COUNTER counts clk_ref_i and is
+// read through a CDC into clk_i; a software write loads it.
 
 module sep_system_csr (
-  input  logic clk_i,
-  input  logic clk_ref_i,
-  input  logic rst_ni,
-  input  logic rst_warm_ni,
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic clk_i,                         // System clock.
+  input  logic clk_ref_i,                     // Free-running reference clock for REFERENCE_COUNTER.
+  input  logic rst_ni,                        // Active-low reset.
+  input  logic rst_warm_ni,                   // Active-low warm reset of the warm scratch registers
+                                              // only.
+  input  logic test_en_i,                     // DFT test-enable (scan-enable) to the AXI-Lite
+                                              // demuxes.
+  input  logic scan_rst_ni,                   // DFT scan reset, active-low; unused.
 
-  input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  sep_system_csr_axil_req_i,
-  output sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t sep_system_csr_axil_resp_o,
+  input  sep_pkg::sep_system_peripherals_system_csr_axi_lite_req_t  sep_system_csr_axil_req_i,  // AXI-Lite request from sep_system_peripherals_xbar, with absolute addresses.
+  output sep_pkg::sep_system_peripherals_system_csr_axi_lite_resp_t sep_system_csr_axil_resp_o,  // AXI-Lite response to sep_system_peripherals_xbar.
 
-  // Alias Remap Register Interface
-  output alias_remap_reg_pkg::alias_remap__out_t   local_masters_alias_remap_reg_ctrl_o [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0],
-  output output_remap_reg_pkg::output_remap__out_t ap_output_remap_reg_ctrl_o [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0],
-  output output_remap_reg_pkg::output_remap__out_t stee_output_remap_reg_ctrl_o [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0],
+  output alias_remap_reg_pkg::alias_remap__out_t   local_masters_alias_remap_reg_ctrl_o [sep_pkg::NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS-1:0],  // Per-region alias-remap register outputs for local-master requests.
+  output output_remap_reg_pkg::output_remap__out_t ap_output_remap_reg_ctrl_o [sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS-1:0],  // Per-region output-remap register outputs for the AP region window.
+  output output_remap_reg_pkg::output_remap__out_t stee_output_remap_reg_ctrl_o [sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS-1:0],  // Per-region output-remap register outputs for the STEE region window.
 
-  // Outbound Filter Register Interface
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter control register outputs for the outbound (SEP to SMN) AXI filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [sep_pkg::OUTBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter status written back by the outbound AXI filter.
 
-  // Inbound Filter Register Interface
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter control register outputs for the inbound (SMN to SEP) AXI filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [sep_pkg::INBOUND_FILTER_NUM_FILTERS-1:0],  // Per-filter status written back by the inbound AXI filter.
 
-  // Address/Size outputs
-  output logic [55:0] sep_global_base_addr_o,
-  output logic [55:0] sep_local_base_addr_o,
-  output logic [55:0] sep_region_size_o,
+  output logic [55:0] sep_global_base_addr_o,  // SEP_GLOBAL_BASE_ADDR register value: base of the
+                                               // SEP aperture in the global address map.
+  output logic [55:0] sep_local_base_addr_o,  // SEP_LOCAL_BASE_ADDR register value: base of the SEP
+                                              // local alias window.
+  output logic [55:0] sep_region_size_o,      // SEP_REGION_SIZE register value, zero-extended: size
+                                              // of the SEP aperture in bytes.
 
-  output logic [55:0] smu_global_base_addr_o,
-  output logic [55:0] smu_region_size_o,
+  output logic [55:0] smu_global_base_addr_o,  // SMU_GLOBAL_BASE_ADDR register value: base of the
+                                               // SMU aperture in the global address map.
+  output logic [55:0] smu_region_size_o,      // SMU_REGION_SIZE register value, zero-extended: size
+                                              // of the SMU aperture in bytes.
 
-  // SMC Status inputs
-  input  logic smc_fuse_sense_done_i,
-  input  logic sep_fuse_sense_done_i,
+  input  logic smc_fuse_sense_done_i,         // SMC fuse sense completion, reflected in
+                                              // SMC_FUSE_SENSE_STATUS; requests to the SMC hang
+                                              // while it is low.
+  input  logic sep_fuse_sense_done_i,         // SEP fuse sense completion, reflected in
+                                              // SEP_FUSE_SENSE_STATUS.
 
-  // SEP Straps inputs
+  output logic [31:1] nmi_vec_o,              // SEP_NMI_VEC register value: the address the CPU
+                                              // jumps to on a non-maskable interrupt. Writable only
+                                              // while SEP_NMI_VEC_LOCK.lock is 0.
 
-  // SEP NMI VEC output
-  output logic [31:1] nmi_vec_o,
+  output logic [2:0] ext_trng_src_sel_o,      // EXT_TRNG_SRC_SEL register value: bit i selects
+                                              // external TRNG (1) or internal DRBG (0) for stream
+                                              // i. Writable only while EXT_TRNG_SRC_SEL_LOCK.lock
+                                              // is 0.
 
-  // External TRNG source selection (from sep_cpu_ctrl EXT_TRNG_SRC_SEL register)
-  output logic [2:0] ext_trng_src_sel_o,
+  output logic km_wipe_state_o,               // KM_WIPE_CTRL.wipe_state register value; a rising
+                                              // edge wipes the Key Manager.
 
-  // Key Manager emergency wipe control (from sep_cpu_ctrl KM_WIPE_CTRL register)
-  output logic km_wipe_state_o,
+  input  logic dma_reg_bus_err_i,             // Secure DMA register-path fault, reflected in
+                                              // DMA_BUS_ERR_STATUS.reg_path_err.
+  input  logic dma_host_intg_err_i,           // DMA-master-path fault, latched into
+                                              // DMA_BUS_ERR_STATUS.host_path_err.
+  output logic dma_err_clr_o,                 // Single-cycle clear pulse from DMA_BUS_ERR_CLEAR to
+                                              // both DMA bridge-fault latches.
 
-  // Secure DMA bridge fault status/clear (sep_cpu_ctrl DMA_BUS_ERR_* registers)
-  input  logic dma_reg_bus_err_i,
-  input  logic dma_host_intg_err_i,
-  output logic dma_err_clr_o,
-
-  // Peripheral bridge fault status/clear (sep_cpu_ctrl PERIPH_BUS_ERR_* registers)
-  input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_i,
-  output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr_o
+  input  logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_i,  // Per-block peripheral register-bridge faults, reflected in PERIPH_BUS_ERR_STATUS, in
+                                                                     // sep_pkg::periph_bus_err_e bit order.
+  output logic [sep_pkg::NUM_PERIPH_BUS_ERRS-1:0] periph_bus_err_clr_o  // Per-block single-cycle clear pulses from PERIPH_BUS_ERR_CLEAR, in
+                                                                        // sep_pkg::periph_bus_err_e bit order.
 );
 
   ////////////////////////////////////////////////////////////////////////////
@@ -893,7 +912,7 @@ module sep_system_csr (
 
   sep_scratch_reg u_sep_scratch_reg_warm (
     .clk            (clk_i),
-    .arst_n         (rst_ni && rst_warm_ni),
+    .arst_n         (rst_warm_ni),
 
     .s_axil_awready (sep_system_csr_axil_resps[sep_pkg::SEP_SCRATCH_WARM].aw_ready),
     .s_axil_awvalid (sep_system_csr_axil_reqs[sep_pkg::SEP_SCRATCH_WARM].aw_valid),

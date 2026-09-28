@@ -185,6 +185,29 @@ static void clear_dst_words(uint32_t n, uint32_t sentinel) {
 }
 
 // ---- CHK-RESET: read the documented reset values (call FIRST, before any write) ----
+
+// One field's generated RDL reset, placed at its generated bit position.
+#define DMA_FRST(reg, fld) \
+    ((uint32_t)SECURE_DMA__##reg##__##fld##_reset << SECURE_DMA__##reg##__##fld##_bp)
+
+// Whole-register reset of the multi-field registers: the OR of every field's
+// generated reset (secure_dma.h), so a changed RDL field reset moves the
+// expectation with it.
+#define DMA_CONTROL_RESET \
+    (DMA_FRST(CONTROL, OPCODE) | DMA_FRST(CONTROL, HARDWARE_HANDSHAKE_ENABLE) | \
+     DMA_FRST(CONTROL, DIGEST_SWAP) | DMA_FRST(CONTROL, INITIAL_TRANSFER) | \
+     DMA_FRST(CONTROL, ABORT) | DMA_FRST(CONTROL, GO))
+#define DMA_SRC_CONFIG_RESET (DMA_FRST(SRC_CONFIG, INCREMENT) | DMA_FRST(SRC_CONFIG, WRAP))
+#define DMA_DST_CONFIG_RESET (DMA_FRST(DST_CONFIG, INCREMENT) | DMA_FRST(DST_CONFIG, WRAP))
+#define DMA_STATUS_RESET \
+    (DMA_FRST(STATUS, BUSY) | DMA_FRST(STATUS, DONE) | DMA_FRST(STATUS, ABORTED) | \
+     DMA_FRST(STATUS, ERROR) | DMA_FRST(STATUS, SHA2_DIGEST_VALID) | DMA_FRST(STATUS, CHUNK_DONE))
+#define DMA_ERROR_CODE_RESET \
+    (DMA_FRST(ERROR_CODE, SRC_ADDR_ERROR) | DMA_FRST(ERROR_CODE, DST_ADDR_ERROR) | \
+     DMA_FRST(ERROR_CODE, OPCODE_ERROR) | DMA_FRST(ERROR_CODE, SIZE_ERROR) | \
+     DMA_FRST(ERROR_CODE, BUS_ERROR) | DMA_FRST(ERROR_CODE, BASE_LIMIT_ERROR) | \
+     DMA_FRST(ERROR_CODE, RANGE_VALID_ERROR) | DMA_FRST(ERROR_CODE, ASID_ERROR))
+
 static int chk_reset(void) {
     int e = 0;
     struct {
@@ -194,19 +217,19 @@ static int chk_reset(void) {
     } regs[] = {
         // Single-field registers use the generated field reset. Multi-field
         // CONTROL / SRC_CONFIG / DST_CONFIG / STATUS / ERROR_CODE have only
-        // per-field resets, so the whole-register expectation is the OR of
-        // those zeros.
+        // per-field resets, so the whole-register expectation is their OR
+        // (DMA_*_RESET above).
         {"TRANSFER_WIDTH", SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
          SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset},
-        {"CONTROL", SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u},
-        {"SRC_CONFIG", SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x0u},
-        {"DST_CONFIG", SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x0u},
+        {"CONTROL", SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, DMA_CONTROL_RESET},
+        {"SRC_CONFIG", SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, DMA_SRC_CONFIG_RESET},
+        {"DST_CONFIG", SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, DMA_DST_CONFIG_RESET},
         {"CFG_REGWEN", SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
         {"RANGE_REGWEN", SEP_TOP_SECURE_DMA_RANGE_REGWEN_BASE_ADDR, SEP_DMA_REGWEN_UNLOCKED},
         {"RANGE_VALID", SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR,
          SECURE_DMA__RANGE_VALID__RANGE_VALID_reset},
-        {"STATUS", SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, 0x0u},
-        {"ERROR_CODE", SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR, 0x0u},
+        {"STATUS", SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, DMA_STATUS_RESET},
+        {"ERROR_CODE", SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR, DMA_ERROR_CODE_RESET},
         {"SRC_ADDR_LO", SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
          SECURE_DMA__SRC_ADDR_LO__SRC_ADDR_LO_reset},
         {"DST_ADDR_LO", SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,

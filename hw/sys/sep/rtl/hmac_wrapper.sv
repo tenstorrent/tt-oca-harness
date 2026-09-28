@@ -2,38 +2,50 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2024 TT
 
-// HMAC Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
+// Wrap the OpenTitan HMAC core with an AXI-Lite CSR bridge and a Key Manager key CSR block.
+//
+// axi_lite_to_tlul bridges the 32-bit AXI-Lite CSR interface onto the HMAC TL-UL port.
+// CSR addresses are rebased by the low 13 bits of the SEP HMAC base address and masked to
+// the 13-bit HMAC window before the bridge. The AXI4-Lite key interface from the Key
+// Manager private bus terminates in the generated hmac_wrapper_key_reg block, whose two key
+// shares and valid bit drive the HMAC keymgr_key_i sideload port.
+// One fatal alert (fatal_fault) leaves the block. bus_err_o sticks on a TL-UL error
+// response until bus_err_clr_i. idle_o reports HMAC idle.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module hmac_wrapper (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset.
 
-  // 32-bit AXI-Lite CSR interface
-  input  sep_pkg::sep_32_32_axil_req_t  hmac_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t hmac_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  hmac_axil_req_i,  // HMAC CSR request at system addresses;
+                                                          // rebased and masked to 13 bits before
+                                                          // the TL-UL bridge.
+  output sep_pkg::sep_32_32_axil_resp_t hmac_axil_resp_o,  // HMAC CSR response from the TL-UL
+                                                           // bridge.
 
-  // AXI4-Lite key interface (32-bit from Key Manager private bus)
-  input  sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  hmac_key_axil_req_i,  // Key Manager private-bus request to
+                                                              // the HMAC key CSR block.
+  output sep_pkg::sep_32_32_axil_resp_t hmac_key_axil_resp_o,  // Response from the HMAC key CSR
+                                                               // block to the Key Manager.
 
-  // Interrupt outputs
-  output logic intr_hmac_done_o,
-  output logic intr_fifo_empty_o,
-  output logic intr_hmac_err_o,
+  output logic intr_hmac_done_o,              // HMAC done interrupt.
+  output logic intr_fifo_empty_o,             // HMAC message FIFO empty interrupt.
+  output logic intr_hmac_err_o,               // HMAC error interrupt.
 
-  // Alert interface (1 alert: fatal)
-  input  prim_alert_pkg::alert_rx_t [0:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [0:0] alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [0:0] alert_rx_i,  // Alert receiver handshake for the single
+                                                       // fatal alert (fatal_fault).
+  output prim_alert_pkg::alert_tx_t [0:0] alert_tx_o,  // Differential alert sender for the single
+                                                       // fatal alert (fatal_fault).
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic bus_err_o,
-  input  logic bus_err_clr_i,
+  output logic bus_err_o,                     // Set by a TL-UL error response on the CSR bridge;
+                                              // sticky until bus_err_clr_i.
+  input  logic bus_err_clr_i,                 // Clears bus_err_o; a fault in the same cycle still
+                                              // sets it.
 
-  // Idle output
-  output logic idle_o
+  output logic idle_o                         // High when the HMAC core reports idle (mubi4
+                                              // strictly true).
 );
 
   // 32-bit AXI-Lite signals with address masking applied

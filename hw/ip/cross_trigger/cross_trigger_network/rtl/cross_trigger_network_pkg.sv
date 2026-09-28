@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Cross Trigger Network Package
+// Define defaults and AXI-Lite typedefs for the cross-trigger network.
 //
-// Description:
-// Package containing types, parameters, and constants for the Cross Trigger Network
+// DEFAULT_NUM_CTP, DEFAULT_NUM_INT_CT, and DEFAULT_NUM_CLK_STOP_REQ size the network.
+// ctn_axil_req_t and ctn_axil_resp_t type the CSR subordinate port.
 
 `ifndef CROSS_TRIGGER_NETWORK_PKG_SV
 `define CROSS_TRIGGER_NETWORK_PKG_SV
@@ -16,9 +16,9 @@ package cross_trigger_network_pkg;
   `include "axi/typedef.svh"
 
   // Default parameters; keep in step with dtp_pkg when used inside the DTP
-  localparam int unsigned DEFAULT_NUM_CTP = 16;  // Number of external CTPs
-  localparam int unsigned DEFAULT_NUM_INT_CT = 10;  // Number of internal CTPs
-  localparam int unsigned DEFAULT_NUM_CLK_STOP_REQ = 9;  // Number of clock stop requests
+  localparam int unsigned DEFAULT_NUM_CTP = 16;  // Number of external CTPs.
+  localparam int unsigned DEFAULT_NUM_INT_CT = 10;  // Number of internal CTPs.
+  localparam int unsigned DEFAULT_NUM_CLK_STOP_REQ = 9;  // Number of clock stop requests.
 
   // Parameter constraints
   localparam int unsigned MIN_NUM_CTP = 1;
@@ -53,7 +53,7 @@ package cross_trigger_network_pkg;
   // Function to calculate the number of master ports for the AXI-Lite crossbar
   // NUM_CTP external CTPs + 1 CTM
   function automatic int unsigned calc_num_xbar_mst_ports(int unsigned num_ctp);
-    return num_ctp + 1;  // External CTPs + CTM
+    return num_ctp + 1;  // External CTPs + CTM.
   endfunction
 
   // Function to calculate the total number of CTM ports

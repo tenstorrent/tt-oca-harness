@@ -27,6 +27,9 @@
 #      OCAH_DOCKER_CACHE_DIR   optional shared tarball cache dir for the nix
 #                               container image; unset disables the cache
 #                               (site CI sets this, e.g. in its env setup)
+#      OCAH_CONTAINER_REGISTRY_IMAGE
+#                               optional registry repository, without a tag;
+#                               e.g. ghcr.io/tenstorrent/ocah-container
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
 #                               run as the image's own default user)
@@ -52,14 +55,14 @@ NIXOS_IMAGE="${OCAH_NIXOS_IMAGE:-docker.io/nixos/nix:latest}"
 IMAGE_WITH_UV="${OCAH_IMAGE_WITH_UV:-false}"
 NETWORK="${OCAH_NETWORK:-ocah-docs-net}"
 MANIFEST_SUBMODULE="hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
+REGISTRY_IMAGE="${OCAH_CONTAINER_REGISTRY_IMAGE:-}"
 
 NIX_IMAGE_NAME=$([[ "${IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
 
-# The nix container image is built locally and published to no registry. A built
-# image can be cached as a tarball on shared storage, keyed by the flake output
-# hash: hosts reuse a matching local image, else load the tarball, else build.
-# The cache is only active when OCAH_DOCKER_CACHE_DIR is set (site-specific;
-# e.g. exported by the adopter's CI environment setup).
+# A built image can be cached as a tarball on shared storage, keyed by the flake
+# output hash. When a registry repository is configured, ensure can pull that
+# same content-addressed tag before falling back to the existing cache/build
+# paths. Registry acquisition remains opt-in while the package is private.
 DOCKER_CACHE_DIR="${OCAH_DOCKER_CACHE_DIR:-}"
 
 # Will this invocation actually need a container engine? run/run-here/verify/shell
@@ -301,17 +304,28 @@ build_image() {
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$image_location"
 }
 
-# Ensure $IMAGE is available locally: reuse a matching local image (verified by
-# the flake hash), else load the shared tarball cache, else build. Use `build`
-# to force a rebuild regardless of what is already present.
+# Ensure $IMAGE is available locally. The default auto policy reuses an exact
+# local image, optionally pulls the same content tag from a configured registry,
+# then retains the existing tarball-cache and local-build fallbacks.
 ensure_image() {
-  local flake_hash
+  local flake_hash registry_ref
   flake_hash=$(image_hash)
   IMAGE="${NIX_IMAGE_NAME}:${flake_hash}"
-  # Test for loaded image in podman
+  # Test for an exact image already loaded in the selected engine.
   if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
     return 0
   fi
+
+  if [[ -n "$REGISTRY_IMAGE" ]]; then
+    registry_ref="${REGISTRY_IMAGE%/}:${flake_hash}"
+    echo "docker-run: pulling $registry_ref" >&2
+    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} pull "$registry_ref"; then
+      "$ENGINE" ${PODMAN_STORAGE_FLAGS} tag "$registry_ref" "$IMAGE"
+      return 0
+    fi
+    echo "docker-run: registry pull failed; trying local cache/build sources" >&2
+  fi
+
   # Check Cache or local image file
   if [[ -n "$DOCKER_CACHE_DIR" ]]; then
     local tar
@@ -519,6 +533,26 @@ doc_stage_dashboard_data() {
   OCAH_ROOT="$ROOT" bash "${ROOT}/tools/doc/stage_dashboard_data.sh" "$1"
 }
 
+# Write the TRM RTL Modules Reference into the tree doc_setup just staged.
+# The container that runs setup does not have svdoc, and the PDF build does
+# not include these pages. The host python that can import svdoc does.
+rtl_modules_reference() {
+  local py="${ROOT}/.venv/bin/python3"
+  if [ ! -x "$py" ] || ! "$py" -c 'import svdoc' >/dev/null 2>&1; then
+    py=python3
+  fi
+  if ! "$py" -c 'import svdoc' >/dev/null 2>&1; then
+    echo "error: python3 cannot import svdoc." >&2
+    echo "install it (uv sync, or pip install svdoc) in the python that runs the doc build." >&2
+    exit 1
+  fi
+  "$py" "${ROOT}/tools/doc/rtl_modules_reference.py" \
+    --root "${ROOT}" \
+    --pages "${ROOT}/doc/trm/modules/ROOT/pages" \
+    --partials "${ROOT}/doc/trm/modules/ROOT/partials/rtl-modules" \
+    --nav "${ROOT}/doc/trm/modules/ROOT/nav.adoc"
+}
+
 doc_html() {
   local product="${1:-trm}" basedir playbook setup_target pdf_target companion
   local release_args=() kroki_args=()
@@ -532,6 +566,7 @@ doc_html() {
     for companion in home integrator programmer appnotes starting; do
       doc_setup "$companion"
     done
+    rtl_modules_reference
   fi
   doc_release_enabled && release_args=(--attribute release)
   [[ "${OCAH_ANTORA_KROKI_OFFLINE:-}" == true ]] && kroki_args=(--attribute "kroki-server-url=http://kroki:8001")
@@ -557,6 +592,7 @@ doc_html_all() {
   doc_setup appnotes
   doc_setup home
   doc_setup starting
+  rtl_modules_reference
   run "${net_args[@]}" env \
     SITE_SEARCH_PROVIDER=lunr \
     antora --cache-dir /tmp/antora "${release_args[@]}" "${kroki_args[@]}" antora-playbook.yml
