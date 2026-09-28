@@ -1564,9 +1564,16 @@ module smu_wrapper_uvm_top (
   sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
+  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
+  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
+  // token stands in for the metal value so a frontdoor token can take the match.
+  localparam bit [255:0] SEC_DIS_TB_DIGEST =
+      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+
   smu_wrapper #(
-    .Cfg (SMU_CFG),
-    .SEP (SEP_ENABLED[0])
+    .Cfg                   (SMU_CFG),
+    .SEP                   (SEP_ENABLED[0]),
+    .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
   ) u_dut (
     .clk_smu_i,
     .clk_ref_i,
