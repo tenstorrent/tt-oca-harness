@@ -805,7 +805,12 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "IC_RESET_EXT_RELEASE_STAGED",
             "EXT control staged high reaches ctrl_n while the override stays on",
         ),
-        ("CHK-IC-DOMAIN", "IC_RESET_DOMAIN_EXCL", "single domain override exclusive"),
+        (
+            "CHK-IC-DOMAIN",
+            "IC_RESET_DOMAIN_EXCL",
+            "an applied EXT or SMC cold override is the only bit set across the EXT override "
+            "and the whole SMC and SEP override halves",
+        ),
         (
             "CHK-IC-SS-SEP-WALK",
             "IC_RESET_SS_SEP_WALK",

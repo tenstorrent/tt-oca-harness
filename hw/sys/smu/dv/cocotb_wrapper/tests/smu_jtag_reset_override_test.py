@@ -65,6 +65,20 @@ def _sample(signal, name: str) -> int:
     return int(val)
 
 
+def _override_slices(dut) -> tuple[int, int, int, int]:
+    """(smc ovrd half, smc val half, sep ovrd half, sep val half) of the IC_RESET slices."""
+    smu = smu_scope(dut)
+    smc_slice = hier(smu, "jtag_smc_reset_ctrl")
+    sep_slice = hier(smu, "jtag_sep_reset_ctrl")
+    n_smc, n_sep = SMU_IC_RESET_NUM_SMC_PORTS, SMU_IC_RESET_NUM_SEP_PORTS
+    widths = (len(smc_slice), len(sep_slice))
+    if widths != (2 * n_smc, 2 * n_sep):
+        raise AssertionError(f"IC_RESET slice widths {widths} do not match the TDR geometry")
+    smc = _sample(smc_slice, "jtag_smc_reset_ctrl")
+    sep = _sample(sep_slice, "jtag_sep_reset_ctrl")
+    return (smc >> n_smc, smc & ((1 << n_smc) - 1), sep >> n_sep, sep & ((1 << n_sep) - 1))
+
+
 @pyuvm.test()
 class smu_jtag_reset_override_test(smu_base_test):
     """IC_RESET override/release on EXT and SMC cold-reset slices."""
@@ -133,10 +147,12 @@ class smu_jtag_reset_override_test(smu_base_test):
             _sample(dut.jtag_ic_reset_ext_ctrl_n, "jtag_ic_reset_ext_ctrl_n"),
             0,
         )
+        smc_ovrd, _, sep_ovrd, _ = _override_slices(dut)
         sb.expect_eq(
-            "smc idle while ext asserted",
-            _sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd"),
-            0,
+            "only the ext override is set while ext is asserted (ext ovrd, whole smc ovrd half, "
+            "whole sep ovrd half)",
+            (_sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"), smc_ovrd, sep_ovrd),
+            (1, 0, 0),
             evidence="IC_RESET_DOMAIN_EXCL",
         )
         rb = await jtag.read("IC_RESET", shift_value=ext_assert)
@@ -181,10 +197,12 @@ class smu_jtag_reset_override_test(smu_base_test):
             _sample(dut.jtag_ic_reset_smc_ctrl_n, "jtag_ic_reset_smc_ctrl_n"),
             0,
         )
+        smc_ovrd, _, sep_ovrd, _ = _override_slices(dut)
         sb.expect_eq(
-            "ext ovrd released while smc asserted",
-            _sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"),
-            0,
+            "only the smc cold override is set while smc cold is asserted (ext ovrd, whole smc "
+            "ovrd half, whole sep ovrd half)",
+            (_sample(dut.jtag_ic_reset_ext_ovrd, "jtag_ic_reset_ext_ovrd"), smc_ovrd, sep_ovrd),
+            (0, 1 << (SMU_IC_RESET_SMC_COLD_PORT - SMU_IC_RESET_SMC_FUSE_PORT), 0),
             evidence="IC_RESET_DOMAIN_EXCL",
         )
 
@@ -227,19 +245,6 @@ class smu_jtag_reset_override_test(smu_base_test):
         # Port EXT_PORT + 1 + i is the SEP field i places from TDO, which is
         # bit i of each half.
         sep_mask = sep_all & ~(1 << (km_port - SMU_IC_RESET_EXT_PORT - 1))
-        smu = smu_scope(dut)
-        smc_slice = hier(smu, "jtag_smc_reset_ctrl")
-        sep_slice = hier(smu, "jtag_sep_reset_ctrl")
-        widths = (len(smc_slice), len(sep_slice))
-        if widths != (2 * SMU_IC_RESET_NUM_SMC_PORTS, 2 * SMU_IC_RESET_NUM_SEP_PORTS):
-            raise AssertionError(f"IC_RESET slice widths {widths} do not match the TDR geometry")
-
-        def slices() -> tuple[int, int, int, int]:
-            smc = _sample(smc_slice, "jtag_smc_reset_ctrl")
-            sep = _sample(sep_slice, "jtag_sep_reset_ctrl")
-            n_smc, n_sep = SMU_IC_RESET_NUM_SMC_PORTS, SMU_IC_RESET_NUM_SEP_PORTS
-            return (smc >> n_smc, smc & smc_all, sep >> n_sep, sep & sep_all)
-
         observed = []
         for enable, control in ((1, 0), (0, 0), (0, 1)):
             port_enable = dict.fromkeys(ports, enable)
@@ -257,12 +262,20 @@ class smu_jtag_reset_override_test(smu_base_test):
                 (
                     int(readback) == word,
                     _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
-                    *slices(),
+                    *_override_slices(dut),
                 )
             )
         await jtag.write("IC_RESET", SMU_IC_RESET_DEFAULT)
         await ClockCycles(dut.clk_smu_i, 16)
-        observed.append((True, _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"), *slices()))
+        readback = await jtag.read("IC_RESET", shift_value=SMU_IC_RESET_DEFAULT)
+        require_jtag_tdo_resolved("IC_RESET SS/SEP walk clear readback")
+        observed.append(
+            (
+                int(readback) == SMU_IC_RESET_DEFAULT,
+                _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
+                *_override_slices(dut),
+            )
+        )
         # (readback, smc ovrd pin, smc ovrd, smc val, sep ovrd, sep val)
         want = [
             (True, 0, 0, smc_all & ~ss_mask, 0, 0),
