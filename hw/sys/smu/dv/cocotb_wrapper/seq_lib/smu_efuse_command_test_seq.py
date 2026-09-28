@@ -23,6 +23,11 @@ S5: programs of bits of the fuse word at the middle of the array, with and
     interface (``efuse_interface_controller.sv``).
 S6: a read and a program one bit past the array complete with an error, set
     the sticky address errors, and the clear strobes clear them.
+S7 (before S5): the bank model fails the first program after reset
+    (``+*_efuse_prog_fail_count=1``); a program with read-back of a fresh bit
+    reports the error and the bit reads clear.
+S8 (before S6): every bit of one more word is programmed; the word reads back
+    all ones and the unprogrammed word after it all zeros.
 """
 
 from __future__ import annotations
@@ -75,6 +80,7 @@ SMC_EFUSE_CTRL = c_header_u32(_SMC_ADDR_H, "SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_AD
 SMC_FUSE_BITS = 8 * c_header_u32(_SMC_ADDR_H, "SMC_TOP_SMC_EFUSE_MAP_SIZE")
 
 PROGRAM_BITS = (0, 7, 18, 31)
+WORD_BITS = 32
 COMMAND_POLLS = 64
 
 
@@ -128,6 +134,21 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             evidence="CHK-EFUSE-CMD-READ",
         )
 
+        # The bank model fails the first program after reset (the testlist's
+        # +*_efuse_prog_fail_count=1): the bit stays clear, so only a program
+        # with read-back reports it (efuse_bank_model.sv, efuse_interface_shim.sv).
+        failed_bit = word + WORD_BITS + 1
+        fail_err = await self._program(jtag, ctrl, failed_bit, read_back=True)
+        await self._sb_ok(jtag, ctrl + PROGRAM_CTRL, 2, 0)
+        _, failed_word = await self._read(jtag, ctrl, failed_bit - 1)
+        self._log(f"CHK-EFUSE-CMD-PROGRAM-FAIL {name} error={fail_err} word=0x{failed_word:08x}")
+        sb.expect_eq(
+            f"CHK-EFUSE-CMD-PROGRAM-FAIL {name}",
+            (fail_err, failed_word),
+            (1, 0),
+            evidence="CHK-EFUSE-CMD-PROGRAM-FAIL",
+        )
+
         _, before = await self._read(jtag, ctrl, word)
         programs = {
             bit: await self._program(jtag, ctrl, word + bit, read_back=bool(i & 1))
@@ -148,6 +169,24 @@ class smu_efuse_command_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             (programs, err, after),
             ({bit: 0 for bit in PROGRAM_BITS}, 0, before | mask),
             evidence="CHK-EFUSE-CMD-PROGRAM",
+        )
+
+        # Every bit of one more word, so the read data carries each bit set
+        # and, on the next read of an unprogrammed word, clear.
+        ones = word + 2 * WORD_BITS
+        ones_errs = [await self._program(jtag, ctrl, ones + bit) for bit in range(WORD_BITS)]
+        await self._sb_ok(jtag, ctrl + PROGRAM_CTRL, 2, 0)
+        _, ones_word = await self._read(jtag, ctrl, ones)
+        _, zero_word = await self._read(jtag, ctrl, ones + WORD_BITS)
+        self._log(
+            f"CHK-EFUSE-CMD-WORD {name} errors={sum(ones_errs)} word=0x{ones_word:08x} "
+            f"next=0x{zero_word:08x}"
+        )
+        sb.expect_eq(
+            f"CHK-EFUSE-CMD-WORD {name}",
+            (sum(ones_errs), ones_word, zero_word),
+            (0, (1 << WORD_BITS) - 1, 0),
+            evidence="CHK-EFUSE-CMD-WORD",
         )
 
         read_err, _ = await self._read(jtag, ctrl, fuse_bits)

@@ -28,5 +28,5 @@ class smu_axi_out_addr_len_size_test(smu_base_test):
         self.logger.info("DUT_TAG=WRAPPER smu_axi_out_addr_len_size_test AXI-OUT")
         seq = smu_axi_out_addr_len_size_test_seq(self)
         await seq.run()
-        steps = (seq.s1_ok, seq.s2_ok, seq.s3_ok, seq.s4_ok)
-        assert all(steps), f"outbound sweep incomplete s1..s4={steps}"
+        steps = (seq.s1_ok, seq.s2_ok, seq.s3_ok, seq.s4_ok, seq.s5_ok, seq.s6_ok)
+        assert all(steps), f"outbound sweep incomplete s1..s6={steps}"

@@ -25,6 +25,18 @@ S2: the iDMA copies a 2 KiB block between two addresses outside both
 S3: the same copy while the bench responder stalls every AW, W and AR
     handshake. The copy still completes with the destination holding the
     source bytes, so the boundary READY stalls lose nothing.
+S3 uses single-beat bursts (CONFIG reduce_len, max_llen 0), so the iDMA keeps
+    many transfers in flight against the stalling responder. A second copy
+    stalls only the write handshakes, and longer, so the write addresses the
+    iDMA issues as read data returns queue at the boundary; it completes too.
+S5: the zeroer (``zeroer_ctrl`` register description) writes zeros over a
+    block outside both apertures; the boundary carries writes covering it and
+    the responder holds zeros there.
+S6: the M-mode and Xvisor output remaps (``output_remap`` register
+    description, 1 MiB regions) put region 0 of their windows at a programmed
+    target; a JTAG2AXI write and read of region 0 cross the boundary once each
+    at the target and read back, and a write and read outside both windows
+    then leave by the default path at their own address.
 S4: a one-shot SLVERR and DECERR from the responder on a JTAG2AXI read and
     write each reach the bridge as that response (``jtag2axi.sv`` reports the
     AXI response in its status), and the next access at the address succeeds.
@@ -36,7 +48,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr
+from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
 from seq_lib.smu_filter_helpers import program_outbound0_pass_all
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -74,6 +86,8 @@ DMA_DST = 0x0300_0000
 DMA_STALLED_SRC = 0x0400_0000
 DMA_STALLED_DST = 0x0500_0000
 BACKPRESSURE_STALL = 6
+WRITE_STALL = 24
+WRITE_STALL_OFFSET = 0x10000
 AXI_RESP_SLVERR = 2
 AXI_RESP_DECERR = 3
 DMA_DST_STRIDE_LO = smc_addr("SMC_TOP_DMA_CTRL_DST_STRIDE_LO_BASE_ADDR")
@@ -85,6 +99,23 @@ DMA_REPS_HI = smc_addr("SMC_TOP_DMA_CTRL_NUM_REPETITIONS_HI_BASE_ADDR")
 # CONFIG.enable_nd (reg_wdata[10] in the generated iDMA register top): the
 # frontend takes the strides and repetitions below.
 DMA_CONFIG_ENABLE_ND = 1 << 10
+# CONFIG src/dst_reduce_len (bits 2, 3) with src/dst_max_llen 0 (bits 6:4, 9:7):
+# every burst is one beat (idma_reg.hjson.tpl conf).
+DMA_CONFIG_SINGLE_BEAT = DMA_CONFIG_ENABLE_ND | (1 << 2) | (1 << 3)
+ZEROER_DEST = smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR")
+ZEROER_SIZE = ZEROER_DEST + 0x8
+ZEROER_CTRL = ZEROER_DEST + 0x10
+ZEROER_BUSY = 1 << 32
+ZEROER_TARGET = 0x0600_0000
+ZEROER_LENGTH = 0x200
+MMODE_WINDOW = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR")
+XVISOR_WINDOW = smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR")
+MMODE_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR", 0)
+XVISOR_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_BASE_ADDR", 0)
+# Output remap targets: 1 MiB aligned (the SMC region granularity in the
+# output_remap description), outside both apertures.
+MMODE_TARGET = 0x0700_0000
+XVISOR_TARGET = 0x0710_0000
 DMA_LENGTH = 0x800
 DMA_DONE_POLLS = 400
 DMA_POLL_CYCLES = 64
@@ -140,6 +171,8 @@ class smu_axi_out_addr_len_size_test_seq:
         self.s2_ok = False
         self.s3_ok = False
         self.s4_ok = False
+        self.s5_ok = False
+        self.s6_ok = False
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -245,12 +278,14 @@ class smu_axi_out_addr_len_size_test_seq:
         sb.expect_eq("CHK-AXIOUT-SIZE every read returns the bytes written", readback, want_rb)
         self.s1_ok = True
 
-    async def _dma_copy(self, jtag, sb, tap, src: int, dst: int, seed: int):
+    async def _dma_copy(
+        self, jtag, sb, tap, src: int, dst: int, seed: int, config: int = DMA_CONFIG_ENABLE_ND
+    ):
         """Copy DMA_LENGTH bytes src->dst with the iDMA; return (done, id, payload, aw, ar)."""
         payload = bytes((i * 37 + seed) & 0xFF for i in range(DMA_LENGTH))
         self.cfg.axi_out_mem.write(src, payload)
         self.cfg.axi_out_mem.write(dst, bytes(DMA_LENGTH))
-        await self._j2a_wr32(jtag, DMA_CONFIG, DMA_CONFIG_ENABLE_ND, "DMA_CONFIG")
+        await self._j2a_wr32(jtag, DMA_CONFIG, config, "DMA_CONFIG")
         for addr, value, name in (
             (DMA_DST_LO, dst & 0xFFFF_FFFF, "DMA_DST_LO"),
             (DMA_DST_HI, dst >> 32, "DMA_DST_HI"),
@@ -316,18 +351,42 @@ class smu_axi_out_addr_len_size_test_seq:
         )
         try:
             done, start_id, payload, aw, ar = await self._dma_copy(
-                jtag, sb, tap, DMA_STALLED_SRC, DMA_STALLED_DST, 23
+                jtag, sb, tap, DMA_STALLED_SRC, DMA_STALLED_DST, 23, DMA_CONFIG_SINGLE_BEAT
             )
         finally:
             self.cfg.axi_out_mem.disable_backpressure()
         dst = self.cfg.axi_out_mem.read(DMA_STALLED_DST, DMA_LENGTH)
+        # Reads unstalled and writes stalled longer, so the write addresses the
+        # iDMA issues as read data returns queue at the boundary.
+        self.cfg.axi_out_mem.enable_backpressure(channels=("aw", "w"), stall_cycles=WRITE_STALL)
+        try:
+            done_w, start_w, payload_w, aw_w, ar_w = await self._dma_copy(
+                jtag,
+                sb,
+                tap,
+                DMA_STALLED_SRC + WRITE_STALL_OFFSET,
+                DMA_STALLED_DST + WRITE_STALL_OFFSET,
+                29,
+                DMA_CONFIG_SINGLE_BEAT,
+            )
+        finally:
+            self.cfg.axi_out_mem.disable_backpressure()
+        dst_w = self.cfg.axi_out_mem.read(DMA_STALLED_DST + WRITE_STALL_OFFSET, DMA_LENGTH)
+        beats = DMA_LENGTH // 8
         self._log(
-            f"CHK-AXIOUT-BACKPRESSURE: start_id={start_id} done={done} aw={len(aw)} ar={len(ar)}"
+            f"CHK-AXIOUT-BACKPRESSURE: start_id={start_id} done={done} aw={len(aw)} ar={len(ar)} "
+            f"write-stalled start_id={start_w} done={done_w} aw={len(aw_w)} ar={len(ar_w)}"
         )
         sb.expect_eq(
             "CHK-AXIOUT-BACKPRESSURE",
-            (done, dst.hex()),
-            (start_id, payload.hex()),
+            (
+                (done, dst.hex(), len(ar), len(aw), {p[1] for p in ar + aw}),
+                (done_w, dst_w.hex(), len(ar_w), len(aw_w)),
+            ),
+            (
+                (start_id, payload.hex(), beats, beats, {0}),
+                (start_w, payload_w.hex(), beats, beats),
+            ),
             evidence="CHK-AXIOUT-BACKPRESSURE",
         )
         self.s3_ok = True
@@ -356,6 +415,65 @@ class smu_axi_out_addr_len_size_test_seq:
         sb.expect_eq("CHK-AXIOUT-ERROR-RESP", observed, want, evidence="CHK-AXIOUT-ERROR-RESP")
         self.s4_ok = True
 
+    async def _step_zeroer(self, jtag, sb, tap) -> None:
+        """S5: the zeroer writes zeros to an address outside both apertures."""
+        mem = self.cfg.axi_out_mem
+        mem.write(ZEROER_TARGET, bytes([0xA5]) * ZEROER_LENGTH)
+        mark = tap.mark()
+        await self._j2a_wr(jtag, ZEROER_DEST, ZEROER_TARGET, "ZEROER_DEST")
+        await self._j2a_wr(jtag, ZEROER_SIZE, ZEROER_LENGTH, "ZEROER_SIZE")
+        await self._j2a_wr(jtag, ZEROER_CTRL, 0, "ZEROER_CTRL")
+        busy = ZEROER_BUSY
+        for _ in range(DMA_DONE_POLLS):
+            await ClockCycles(self.dut.clk_smu_i, DMA_POLL_CYCLES)
+            busy = await self._j2a_rd(jtag, ZEROER_CTRL, "ZEROER_STATUS") & ZEROER_BUSY
+            if not busy:
+                break
+        aw, _ = tap.since(mark)
+        written = sum(
+            (p[1] + 1) << p[2] for p in aw if ZEROER_TARGET <= p[0] < ZEROER_TARGET + ZEROER_LENGTH
+        )
+        self._log(f"CHK-AXIOUT-ZEROER busy={busy} bytes={written} aw={len(aw)}")
+        sb.expect_eq(
+            "CHK-AXIOUT-ZEROER",
+            (busy, written, mem.read(ZEROER_TARGET, ZEROER_LENGTH)),
+            (0, ZEROER_LENGTH, bytes(ZEROER_LENGTH)),
+            evidence="CHK-AXIOUT-ZEROER",
+        )
+        self.s5_ok = True
+
+    async def _step_output_remap(self, jtag, sb, tap) -> None:
+        """S6: M-mode and Xvisor output remap region 0 put the window at a programmed target."""
+        mem = self.cfg.axi_out_mem
+        observed, want = {}, {}
+        for name, csr, window, target in (
+            ("MMODE", MMODE_REMAP_0, MMODE_WINDOW, MMODE_TARGET),
+            ("XVISOR", XVISOR_REMAP_0, XVISOR_WINDOW, XVISOR_TARGET),
+        ):
+            await self._j2a_wr(jtag, csr, target, f"{name}_REMAP_0")
+            value = (PATTERN ^ target) & ((1 << 64) - 1)
+            mark = tap.mark()
+            await self._j2a_wr(jtag, window + 8, value, f"{name}_WR")
+            rdata = await self._j2a_rd(jtag, window + 8, f"{name}_RD")
+            aw, ar = tap.since(mark)
+            await self._j2a_wr(jtag, csr, 0, f"{name}_REMAP_0_CLEAR")
+            observed[name] = (
+                [p[0] for p in aw],
+                [p[0] for p in ar],
+                mem.read_int(target + 8, 8),
+                rdata,
+            )
+            want[name] = ([target + 8], [target + 8], value, value)
+        mark = tap.mark()
+        await self._j2a_wr(jtag, OUT_A, PATTERN, "DEFAULT_WR")
+        rdata = await self._j2a_rd(jtag, OUT_A, "DEFAULT_RD")
+        aw, ar = tap.since(mark)
+        observed["DEFAULT"] = ([p[0] for p in aw], [p[0] for p in ar], rdata)
+        want["DEFAULT"] = ([OUT_A], [OUT_A], PATTERN)
+        self._log(f"CHK-AXIOUT-OUTPUT-REMAP {observed}")
+        sb.expect_eq("CHK-AXIOUT-OUTPUT-REMAP", observed, want, evidence="CHK-AXIOUT-OUTPUT-REMAP")
+        self.s6_ok = True
+
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
@@ -368,5 +486,7 @@ class smu_axi_out_addr_len_size_test_seq:
             await self._step_dma(jtag, sb, tap)
             await self._step_backpressure(jtag, sb, tap)
             await self._step_errors(jtag, sb)
+            await self._step_zeroer(jtag, sb, tap)
+            await self._step_output_remap(jtag, sb, tap)
         finally:
             tap.stop()

@@ -37,7 +37,7 @@ S5  Every receiver. The same message, framed with a probe id of the
 
 S6  The flush handshake of S4 on receivers 1 and 2.
 
-S7  Backpressure. The leaf runs ``clk_telemetry_i`` faster than the receiver
+S7  Backpressure, on every receiver. The leaf runs ``clk_telemetry_i`` faster than the receiver
     clock (``clk_smu_i``), so ATB beats offered back to back on every clock
     outrun the crossing FIFO's drain and ``telemetry_atready_o`` must fall
     (``doc/interface.adoc``, "Back-pressure"); dropping ``telemetry_atvalid_i``
@@ -450,39 +450,34 @@ class smu_telemetry_atb_capture_seq:
         )
 
     async def _backpressure(self) -> None:
+        observed, want = {}, {}
+        for receiver in range(NUM_RECEIVERS):
+            observed[receiver] = await self._backpressure_lane(receiver)
+            want[receiver] = (True, True, STATUS_EMPTY_BM)
+        self.log.info("CHK-SMU-TEL-BACKPRESSURE %s", observed)
+        self.sb.expect_eq(
+            "CHK-SMU-TEL-BACKPRESSURE", observed, want, evidence="CHK-SMU-TEL-BACKPRESSURE"
+        )
+
+    async def _backpressure_lane(self, receiver: int) -> tuple[bool, bool, int]:
         dut = self.dut
-        self._set_lane("tb_telemetry_atdata", 0, ATB_BEAT_BITS, 0)
-        self._set_lane("tb_telemetry_atvalid", 0, 1, 1)
-        accepted = 0
+        self._set_lane("tb_telemetry_atdata", receiver, ATB_BEAT_BITS, 0)
+        self._set_lane("tb_telemetry_atvalid", receiver, 1, 1)
         stalled = False
         for _ in range(BACKPRESSURE_BEATS):
             await RisingEdge(dut.clk_ref_i)
-            if self._bit("tb_telemetry_atready"):
-                accepted += 1
-            else:
+            if not self._bit("tb_telemetry_atready", receiver):
                 stalled = True
                 break
-        self._set_lane("tb_telemetry_atvalid", 0, 1, 0)
+        self._set_lane("tb_telemetry_atvalid", receiver, 1, 0)
         resumed = False
         for _ in range(ATB_READY_BOUND):
             await RisingEdge(dut.clk_ref_i)
-            if self._bit("tb_telemetry_atready"):
+            if self._bit("tb_telemetry_atready", receiver):
                 resumed = True
                 break
         await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
-        await self._wr32(TEL_CTRL, RX_FLUSH_BM, "TELEMETRY CTRL")
+        await self._wr32(_tel("CTRL", receiver), RX_FLUSH_BM, f"TELEMETRY{receiver} CTRL")
         await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
-        status = await self._rd32(TEL_STATUS, "TELEMETRY STATUS")
-        self.log.info(
-            "CHK-SMU-TEL-BACKPRESSURE accepted=%d stalled=%s resumed=%s status=0x%x",
-            accepted,
-            stalled,
-            resumed,
-            status,
-        )
-        self.sb.expect_eq(
-            "CHK-SMU-TEL-BACKPRESSURE",
-            (stalled, resumed, status & STATUS_EMPTY_BM),
-            (True, True, STATUS_EMPTY_BM),
-            evidence="CHK-SMU-TEL-BACKPRESSURE",
-        )
+        status = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
+        return (stalled, resumed, status & STATUS_EMPTY_BM)

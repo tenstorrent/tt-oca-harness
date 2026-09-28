@@ -35,8 +35,8 @@ S7: the SMC aperture. A SEP address in the SMC window goes straight to the
     SMC unfiltered, and the SMC takes a SEP request inside its window
     (``smc_input_fabric``). Every access size at every aligned offset of one
     SPM doubleword and a write and read at every SPM address bit read back
-    through the SEP view of the SMC window; a read in the ECAM region, whose
-    target the SMC decodes, completes.
+    through the SEP view of the SMC window; a read and a write in the ECAM
+    region, whose target the SMC decodes, complete.
 S8: the external aperture. ``0x2000_0000``-``0x3FFF_FFFF`` outside the eFuse
     shim word leaves the SEP on ``sep_external`` (``sep.sv``), which this
     integration terminates in a DECERR slave (``sep_ip_integration.sv``), and
@@ -407,7 +407,10 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         observed, want = await self._round_trips(jtag, cells, backdoor=False)
         ecam = self._smc_view(SMC_ECAM_BASE + SMC_ECAM_SIZE // 2)
         ecam_err, _ = await self._sb(jtag, ecam, 2)
-        self._log(f"CHK-SEP-SBA-SMC-WINDOW {observed} ecam=0x{ecam:08x} err={ecam_err}")
+        ecam_werr, _ = await self._sb(jtag, ecam, 2, 0)
+        self._log(
+            f"CHK-SEP-SBA-SMC-WINDOW {observed} ecam=0x{ecam:08x} err=({ecam_err},{ecam_werr})"
+        )
         sb.expect_eq(
             "CHK-SEP-SBA-SMC-WINDOW",
             observed,

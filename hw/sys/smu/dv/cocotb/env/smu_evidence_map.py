@@ -140,12 +140,104 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIOUT-BACKPRESSURE",
             "CHK-AXIOUT-BACKPRESSURE",
-            "the iDMA copy completes intact while the responder stalls every AW, W and AR",
+            "the iDMA copy completes intact while the responder stalls every AW, W and AR, "
+            "and in single-beat mode it crosses as 256 reads and 256 writes at AxLEN 0, "
+            "also with only the write handshakes stalled",
         ),
         (
             "CHK-AXIOUT-ERROR-RESP",
             "CHK-AXIOUT-ERROR-RESP",
             "responder SLVERR and DECERR on a read and a write reach JTAG2AXI as that status",
+        ),
+        (
+            "CHK-AXIOUT-ZEROER",
+            "CHK-AXIOUT-ZEROER",
+            "the SMC zeroer clears 512 bytes at the responder and its busy bit returns low",
+        ),
+        (
+            "CHK-AXIOUT-OUTPUT-REMAP",
+            "CHK-AXIOUT-OUTPUT-REMAP",
+            "M-mode and Xvisor output-remap region 0 accesses reach the responder at the "
+            "programmed target, and a following access leaves by the default path",
+        ),
+    ],
+    "smu_smc_inbound_window_sweep_test": [
+        (
+            "CHK-SMC-WINDOW-PROT",
+            "CHK-SMC-WINDOW-PROT",
+            "under every AxPROT the SMC external window's base word and a DTP port CONFIG "
+            "word read and write back OKAY unchanged, and the external target and eFuse "
+            "SPARE[0] accesses complete",
+        ),
+        (
+            "CHK-SMC-WINDOW-EXTERNAL-SIZE",
+            "CHK-SMC-WINDOW-EXTERNAL-SIZE",
+            "every AxSIZE with each of address bits [6:0] set and cleared completes at the "
+            "SMC external target",
+        ),
+        (
+            "CHK-SMC-WINDOW-AWID-TRAIN",
+            "CHK-SMC-WINDOW-AWID-TRAIN",
+            "sixteen SPM writes under distinct AWIDs in flight with BREADY held are OKAY "
+            "and read back",
+        ),
+        (
+            "CHK-SMC-WINDOW-HELD-TRAIN",
+            "CHK-SMC-WINDOW-HELD-TRAIN",
+            "twelve reads and twelve writes under distinct IDs held in flight at the external "
+            "target and at the DTP CONFIG word all complete, and the DTP word is unchanged",
+        ),
+        (
+            "CHK-SMC-WINDOW-COOL-RESET",
+            "CHK-SMC-WINDOW-COOL-RESET",
+            "the held cool reset pin holds the SMC primary reset asserted and its release "
+            "releases it",
+        ),
+    ],
+    "smu_cla_action_test": [
+        (
+            "CHK-CLA-CUSTOM-ACTION",
+            "CHK-CLA-CUSTOM-ACTION",
+            "each CLA custom action programmed alone drives exactly its bit of the custom "
+            "action bus, and a pair with no custom enable clears it",
+        ),
+        (
+            "CHK-CLA-XTRIGGER",
+            "CHK-CLA-XTRIGGER",
+            "XTRIGGER0_OUT and XTRIGGER1_OUT under the halt mask raise both SMC cross-trigger "
+            "lanes into the DTP, and the lanes fall once the actions are cleared",
+        ),
+        (
+            "CHK-CLA-CLOCK-HALT",
+            "CHK-CLA-CLOCK-HALT",
+            "CLOCK_HALT with the clock-stop enable set raises clocks_stopped_by_cla and DTP "
+            "clock-stop lane 0, and clearing the enable drops both",
+        ),
+    ],
+    "smu_otp_prod_error_resp_test": [
+        (
+            "CHK-OTP-PROD-SMC-REFUSED",
+            "CHK-OTP-PROD-SMC-REFUSED",
+            "under PROD an SMC OTP read and write of MAP SPARE[0] return DECERR, the read "
+            "with 0xBADCAB1E, and a JTAG_PUBLIC_IDENTITY read returns SUCCESS",
+        ),
+        (
+            "CHK-OTP-PROD-SEP-REFUSED",
+            "CHK-OTP-PROD-SEP-REFUSED",
+            "under PROD a SEP OTP read and write of MAP SPARE0 return DECERR, the read with "
+            "0xBADCAB1E, and a write and read in the eFuse MMR window return SUCCESS",
+        ),
+        (
+            "CHK-OTP-PROD-SMC-RESET",
+            "CHK-OTP-PROD-SMC-RESET",
+            "after a cool reset of the SMC a JTAG_PUBLIC_IDENTITY read over the SMC OTP "
+            "bridge returns SUCCESS",
+        ),
+        (
+            "CHK-OTP-PROD-SMC-SERIES",
+            "CHK-OTP-PROD-SMC-SERIES",
+            "an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3 completes "
+            "with SUCCESS",
         ),
     ],
     "smu_axi_in_burst_outstanding_test": [
@@ -404,7 +496,15 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-SEP-SMC-DMA",
             "CHK-AXIIN-SEP-SMC-DMA",
-            "an SMC iDMA copy from SEP SRAM to ext_out lands, and a SEP egress follows",
+            "an ext_in read of the SMC returns VERSION_LO, an SMC iDMA copy from SEP SRAM to "
+            "ext_out lands, a copy back into SEP SRAM reads back, and a SEP egress follows",
+        ),
+        (
+            "CHK-AXIIN-SEP-SHIM",
+            "CHK-AXIIN-SEP-SHIM",
+            "the eFuse shim word reads and writes back OKAY under every AxPROT and in held "
+            "trains of distinct IDs, and a system-bus read and write of a closed window return "
+            "sberror",
         ),
     ],
     "smu_efuse_command_test": [
@@ -427,6 +527,17 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-EFUSE-CMD-OOB",
             "CHK-EFUSE-CMD-OOB",
             "an out-of-range read and program fail, set the sticky address errors, and clear",
+        ),
+        (
+            "CHK-EFUSE-CMD-PROGRAM-FAIL",
+            "CHK-EFUSE-CMD-PROGRAM-FAIL",
+            "with the bank failing one program, a program with read-back reports error "
+            "status 1 and the word reads 0",
+        ),
+        (
+            "CHK-EFUSE-CMD-WORD",
+            "CHK-EFUSE-CMD-WORD",
+            "programming all 32 bits of a word reads back 0xFFFFFFFF and the next word reads 0",
         ),
     ],
     "smu_sep_lsu_fabric_test": [
@@ -511,6 +622,45 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "CHK-SEP-SBA-EXTERNAL-DECERR",
             "every external-aperture and TRNG-window access returns a system-bus error",
+        ),
+    ],
+    "smu_sep_sba_peripheral_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SEP-MBOX-IRQ",
+            "CHK-SEP-MBOX-IRQ",
+            "a write into each outbound mailbox raises only its own interrupt lane, and "
+            "flush, acknowledge and disable return every lane low",
+        ),
+        (
+            "CHK-SEP-SPI-QUAD",
+            "CHK-SEP-SPI-QUAD",
+            "quad-mode transmits drive all four data lanes and their enables, a quad receive "
+            "releases every enable, the TX watermark trigger is high with the FIFO empty, and "
+            "the idle interrupt rises and clears, and values driven on the data pads return "
+            "on the receive lanes",
+        ),
+        (
+            "CHK-SEP-SECURITY-DISABLE",
+            "CHK-SEP-SECURITY-DISABLE",
+            "a token matching the digest reports a match and raises the disable level, and a "
+            "token one bit off reports a mismatch and drops it",
+        ),
+        (
+            "CHK-SEP-WDT-BITE",
+            "CHK-SEP-WDT-BITE",
+            "the SEP watchdog bite raises the timer reset request, and the cool reset "
+            "that resets the SEP drops it",
+        ),
+        (
+            "CHK-SEP-SPI-UNUSED-LANES",
+            "CHK-SEP-SPI-UNUSED-LANES",
+            "SPI lanes 4..7, DQS and the rebar loopback read 0 with their pads driven high "
+            "while the chip runs, read the pads in cold reset, and read 0 after it",
         ),
     ],
     "smu_dtp_sep_dm_sba_test": [
