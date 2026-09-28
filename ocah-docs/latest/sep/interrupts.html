@@ -933,7 +933,7 @@ handler re-enters.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA register-path bus error</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">A CPU access to a Secure DMA register returned a TL-UL error response
-(unmapped or misaligned offset, or a RACL denial). The faulting access also
+(unmapped or misaligned offset). The faulting access also
 received SLVERR synchronously. Latched and held until firmware writes
 <code>DMA_BUS_ERR_CLEAR.clr</code>; unlike PIC source 40 this source is clearable, so
 firmware acknowledges it rather than masking it.</p></td>
