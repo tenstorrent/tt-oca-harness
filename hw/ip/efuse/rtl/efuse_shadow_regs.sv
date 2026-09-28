@@ -52,7 +52,7 @@ module efuse_shadow_regs
 
     parameter type efuse_map_t = logic,  // Shadow eFuse map type.
 
-    parameter int unsigned LC_STATE_WIDTH = 4,  // Lifecycle-state field width.
+    localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width; fixed by the encoding in efuse_pkg.
 
     localparam int unsigned NumShadowWords = SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH,  // Shadow file word count.
     localparam int unsigned ShadowEfuseWidth = $clog2(NumShadowWords)  // Shadow word index width.
