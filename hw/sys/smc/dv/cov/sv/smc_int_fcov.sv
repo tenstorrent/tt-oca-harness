@@ -73,13 +73,18 @@ module smc_int_fcov #(
   // bit N is asserted is the relationship the chapter states.
   // ------------------------------------------------------------------
   // The zeroer completion is a one-cycle pulse on the raw vector and the PLIC
-  // gateway latches it on the following edge, so the raw half is held until
-  // the pending bit is claimed away.
-  logic zeroer_bit_seen_q;
+  // gateway latches it some cycles later, so the raw half is held from the
+  // pulse until the pending bit it raised falls again.
+  logic zeroer_bit_seen_q, pending_324_q;
   always_ff @(posedge clk_smc_i) begin
-    if (in_reset) zeroer_bit_seen_q <= 1'b0;
-    else if (cpu_interrupts_i[ZeroerBit] === 1'b1) zeroer_bit_seen_q <= 1'b1;
-    else if (plic_pending_324_i === 1'b0) zeroer_bit_seen_q <= 1'b0;
+    if (in_reset) begin
+      zeroer_bit_seen_q <= 1'b0;
+      pending_324_q <= 1'b0;
+    end else begin
+      pending_324_q <= (plic_pending_324_i === 1'b1);
+      if (cpu_interrupts_i[ZeroerBit] === 1'b1) zeroer_bit_seen_q <= 1'b1;
+      else if (pending_324_q && (plic_pending_324_i === 1'b0)) zeroer_bit_seen_q <= 1'b0;
+    end
   end
 
   wire bit0_source1_e = (cpu_interrupts_i[0] === 1'b1) && (plic_pending_low_i[0] === 1'b1);
