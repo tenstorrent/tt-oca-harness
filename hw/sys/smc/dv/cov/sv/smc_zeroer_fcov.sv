@@ -121,13 +121,17 @@ module smc_zeroer_fcov (
   `OCAH_FCOV_COVER(c_idle_state_no_axi_activity, idle_no_axi_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_address_phase_issues_aw, addr_phase_issues_aw_e, clk_smc_i, in_reset)
 
-  // Beat count against address count over one operation. Both counters clear
-  // on the trigger, so the comparison spans exactly one programmed operation.
+  // Beat count against address count over one operation. Both counters
+  // restart in the trigger sample, which is also the sample of the first
+  // address beat, so the comparison spans exactly one programmed operation.
   logic [15:0] aw_count_q, wlast_count_q;
   always_ff @(posedge clk_smc_i) begin
-    if (in_reset || trigger_starts_e) begin
+    if (in_reset) begin
       aw_count_q <= '0;
       wlast_count_q <= '0;
+    end else if (trigger_starts_e) begin
+      aw_count_q <= 16'(aw_acc);
+      wlast_count_q <= 16'(w_last_acc);
     end else begin
       if (aw_acc) aw_count_q <= aw_count_q + 16'd1;
       if (w_last_acc) wlast_count_q <= wlast_count_q + 16'd1;
@@ -175,7 +179,8 @@ module smc_zeroer_fcov (
 
   // The first address of an operation equalling the programmed destination,
   // and a burst longer than one beat: the two shapes the FSM emits.
-  wire first_aw_at_dest_e = aw_acc && (aw_count_q === 16'd0) && (awaddr_i === 56'(dest_addr_i))
+  wire first_aw_of_op = trigger_starts_e || (aw_count_q === 16'd0);
+  wire first_aw_at_dest_e = aw_acc && first_aw_of_op && (awaddr_i === 56'(dest_addr_i))
       && (dest_addr_i !== 64'd0);
   wire multi_beat_burst_e = aw_acc && (awlen_i !== 8'd0) && (^awlen_i !== 1'bx);
   `OCAH_FCOV_COVER(c_zeroer_first_aw_at_dest, first_aw_at_dest_e, clk_smc_i, in_reset)
@@ -186,6 +191,14 @@ module smc_zeroer_fcov (
   // disable_cg | busy | ~rst_ni; the register clock is kicked by disable_cg
   // alone and otherwise follows the AXI-Lite snoop.
   // ------------------------------------------------------------------
+  // A gated clock is observed through a flop it toggles itself. Sampling the
+  // clock net on the edge of the clock it is gated from reads the same level
+  // every cycle whether it runs or not; the flop changes between two samples
+  // exactly when the gated clock had an edge.
+  logic axi_clk_div_q, reg_clk_div_q;
+  always_ff @(posedge gated_axi_clk_i) axi_clk_div_q <= (axi_clk_div_q !== 1'b1);
+  always_ff @(posedge gated_reg_clk_i) reg_clk_div_q <= (reg_clk_div_q !== 1'b1);
+
   logic axi_clk_q, reg_clk_q;
   logic axi_clk_moved_q, reg_clk_moved_q;
   always_ff @(posedge clk_smc_i) begin
@@ -195,15 +208,15 @@ module smc_zeroer_fcov (
       axi_clk_moved_q <= 1'b0;
       reg_clk_moved_q <= 1'b0;
     end else begin
-      axi_clk_q <= gated_axi_clk_i;
-      reg_clk_q <= gated_reg_clk_i;
-      if (gated_axi_clk_i !== axi_clk_q) axi_clk_moved_q <= 1'b1;
-      if (gated_reg_clk_i !== reg_clk_q) reg_clk_moved_q <= 1'b1;
+      axi_clk_q <= axi_clk_div_q;
+      reg_clk_q <= reg_clk_div_q;
+      if (axi_clk_div_q !== axi_clk_q) axi_clk_moved_q <= 1'b1;
+      if (reg_clk_div_q !== reg_clk_q) reg_clk_moved_q <= 1'b1;
     end
   end
 
-  wire axi_clk_toggling = (gated_axi_clk_i !== axi_clk_q);
-  wire reg_clk_toggling = (gated_reg_clk_i !== reg_clk_q);
+  wire axi_clk_toggling = (axi_clk_div_q !== axi_clk_q);
+  wire reg_clk_toggling = (reg_clk_div_q !== reg_clk_q);
   wire zeroer_in_reset = (rst_primary_smc_clk_ni === 1'b0);
   wire disable_cg = (disable_cg_i === 1'b1);
   wire busy = (busy_i === 1'b1);
@@ -275,24 +288,49 @@ module smc_zeroer_fcov (
       logic dis_cg, logic busy_s, logic rst_s, logic bus_act, logic axi_moving, logic reg_moving
   );
     option.per_instance = 1;
-    cp_dis_cg: coverpoint dis_cg;
-    cp_busy: coverpoint busy_s;
+    cp_dis_cg: coverpoint dis_cg {bins gating = {1'b0}; bins disabled = {1'b1};}
+    cp_busy: coverpoint busy_s {bins idle = {1'b0}; bins busy = {1'b1};}
     cp_rst: coverpoint rst_s;
-    cp_bus: coverpoint bus_act;
-    cp_axi_clk: coverpoint axi_moving;
-    cp_reg_clk: coverpoint reg_moving;
-    x_axi_terms: cross cp_dis_cg, cp_busy, cp_axi_clk;
-    x_reg_terms: cross cp_dis_cg, cp_bus, cp_reg_clk;
+    cp_bus: coverpoint bus_act {bins idle = {1'b0}; bins active = {1'b1};}
+    cp_axi_clk: coverpoint axi_moving {bins held = {1'b0}; bins running = {1'b1};}
+    cp_reg_clk: coverpoint reg_moving {bins held = {1'b0}; bins running = {1'b1};}
+    // zeroer.adoc (Clock Gating): axi_clk_enable = disable_cg | zeroer_busy_o
+    // | ~rst_ni and reg_clk_enable = disable_cg | register_activity | ~rst_ni,
+    // so neither clock is held while one of its terms is set.
+    // With disable_cg and busy both clear only the reset term is left, and the
+    // primary reset also clears CLOCK_GATE_CONTROL.ZEROER_CG_EN (reset 0),
+    // which sets disable_cg, so the AXI clock never runs on that term alone.
+    x_axi_terms: cross cp_dis_cg, cp_busy, cp_axi_clk{
+      ignore_bins held_while_disabled = binsof (cp_dis_cg.disabled) && binsof (cp_axi_clk.held);
+      ignore_bins held_while_busy = binsof (cp_busy.busy) && binsof (cp_axi_clk.held);
+      ignore_bins running_on_reset_alone = binsof (cp_dis_cg.gating) && binsof (cp_busy.idle) &&
+          binsof (cp_axi_clk.running);
+    }
+    x_reg_terms: cross cp_dis_cg, cp_bus, cp_reg_clk{
+      ignore_bins held_while_disabled = binsof (cp_dis_cg.disabled) && binsof (cp_reg_clk.held);
+      ignore_bins held_while_active = binsof (cp_bus.active) && binsof (cp_reg_clk.held);
+    }
   endgroup
 
   cg_zeroer_fsm u_cg_zeroer_fsm = new();
   cg_zeroer_gates u_cg_zeroer_gates = new();
 
+  // A clock movement seen at one sample is the gated edge of the previous
+  // cycle, which the gate enabled from the terms of that cycle, so the terms
+  // are crossed one sample late.
+  logic gate_dis_cg_q, gate_busy_q, gate_rst_q, gate_bus_q;
+  always_ff @(posedge clk_smc_i) begin
+    gate_dis_cg_q <= disable_cg_i;
+    gate_busy_q <= busy_i;
+    gate_rst_q <= zeroer_in_reset;
+    gate_bus_q <= bus_active_i;
+  end
+
   always_ff @(posedge clk_smc_i) begin
     if (!in_reset) begin
       u_cg_zeroer_fsm.sample(state_q, state_i);
-      u_cg_zeroer_gates.sample(disable_cg_i, busy_i, zeroer_in_reset, bus_active_i,
-                               axi_clk_toggling, reg_clk_toggling);
+      u_cg_zeroer_gates.sample(gate_dis_cg_q, gate_busy_q, gate_rst_q, gate_bus_q, axi_clk_toggling,
+                               reg_clk_toggling);
     end
   end
 `endif

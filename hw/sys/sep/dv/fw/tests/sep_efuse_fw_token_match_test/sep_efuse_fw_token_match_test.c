@@ -28,17 +28,17 @@ int main(void) {
     }
 
     printf("Checking SEC_DISABLE zero-token match\n");
-    efuse_write_8_words(OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), zero_token);
+    efuse_write_8_words(SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), zero_token);
     if (efuse_token_trigger_and_poll(EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm,
-                                     OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR,
+                                     SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR,
                                      EFUSE_TOKEN_MATCH) != 0) {
         test_fail(1);
     }
 
     printf("Checking SEC_DISABLE non-zero token mismatch\n");
-    efuse_write_8_words(OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), mismatch_token);
+    efuse_write_8_words(SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), mismatch_token);
     if (efuse_token_trigger_and_poll(EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm,
-                                     OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR,
+                                     SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR,
                                      EFUSE_TOKEN_MISMATCH) != 0) {
         test_fail(1);
     }

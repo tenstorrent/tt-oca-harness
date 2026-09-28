@@ -1,0 +1,453 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# The rom-only OCCP family, ported from the reference `Main_SMC_BL0_Regression_Small`.
+#
+# Every entry runs one shared driver, `smc_occp_rom_only_test`: the controller runs a
+# rom-mode DV image from hw/sys/smc/dv/fw/tests and drives OCCP at the target, whose
+# production boot ROM answers. Nothing is transferred and nothing JUMPs, which is what
+# separates this family from smc_occp_dual_unsecure_boot_test. Members differ only in
+# +bfm_rom_hex and +rom_test_timeout, so `name` differs from `module` throughout.
+#
+# smc_occp_sanity_test is the fourth member and stays in dual.toml, where it also serves
+# as a dual bring-up scenario. The `occp_rom_only` group below lists it.
+#
+# +rom_test_timeout carries the reference environment's value: the per-test override from
+# `run_args` when it names one, otherwise the 200 ms baseline that smc_rom_test_template
+# puts in `run_flags`. It is an upper bound on the driver's poll loop, not a target -- the
+# loop breaks as soon as either instance reports. timeout_sec = 7200 mirrors the reference
+# template's wall-clock bound, which is what actually stops a hung exchange.
+#
+# No strap is readable in this bench: the block that drives them is not instantiated, so
+# every strap reads as not-set and the branch behind it is unreachable. That is why the
+# reference's strap plusargs are NOT carried here:
+#   +FORCE_HW_AUTO_ZERO          strap 26
+#   +FORCE_STATUS_REPORTING      forces STATUS_RPT_DISABLE to 0. It already reads 0 here,
+#                                so status reporting is on and the reverse case is absent
+#   +PLL_DISABLE_HACK            sets the controller's BL0_PLLCLK strap. It reads 0 here,
+#                                so both instances run without PLL configuration
+#   +DISABLE_AXI_SYSTEM_MONITOR  a reference-TB monitor this bench does not have
+#   +random_sram                 a reference-TB SRAM preload this bench does not have
+#
+# +BOOT_I3C is carried to mirror the reference, but selects nothing here: I3C is what the
+# firmware takes when the BOOT_I2C strap does not read as set, so every entry in this file
+# runs I3C. The two interface-latch members reach I2C a different way -- their firmware
+# calls I2C_GetDriverInstance() directly instead of going through initialize_interface().
+#
+# The reference also randomizes the ROM image itself (+rom_bin64=rom_randomized.bin64);
+# this bench loads prod_rom.bin64 unmodified.
+
+[[tests]]
+name = "smc_occp_random_command_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_random_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_random_test.rom.hex",
+    "+occp_case=smc_occp_random_command_test",
+    "+rom_test_timeout=1000000000",
+]
+
+[[tests]]
+name = "smc_occp_mem_boundary_access_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_mem_boundary_access_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_mem_boundary_access_test.rom.hex",
+    "+occp_case=smc_occp_mem_boundary_access_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_invalid_cmd_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_invalid_cmd_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_invalid_cmd_test.rom.hex",
+    "+occp_case=smc_occp_invalid_cmd_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_invalid_length_field_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_invalid_length_field_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_invalid_length_field_test.rom.hex",
+    "+occp_case=smc_occp_invalid_length_field_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_undersize_header_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_undersize_header_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_undersize_header_test.rom.hex",
+    "+occp_case=smc_occp_undersize_header_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_unaligned_access_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_unaligned_access_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_unaligned_access_test.rom.hex",
+    "+occp_case=smc_occp_unaligned_access_test",
+    "+rom_test_timeout=1000000000",
+]
+
+[[tests]]
+name = "smc_occp_zero_length_rw_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_zero_length_rw_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_zero_length_rw_test.rom.hex",
+    "+occp_case=smc_occp_zero_length_rw_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_max_size_transfer_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_max_size_transfer_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_max_size_transfer_test.rom.hex",
+    "+occp_case=smc_occp_max_size_transfer_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_min_size_transfer_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_min_size_transfer_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_min_size_transfer_test.rom.hex",
+    "+occp_case=smc_occp_min_size_transfer_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_jump_invalid_region_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_jump_invalid_region_test", mode = "occp_rom_only" }
+# The reference passes +SECURE_MODE=0 here. TEST_DEV is this bench's default
+# lifecycle, which is the unsecure posture, so no plusarg is needed; +lc_state
+# would select a different one.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_jump_invalid_region_test.rom.hex",
+    "+occp_case=smc_occp_jump_invalid_region_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_register_access_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_register_access_test", mode = "occp_rom_only" }
+# Same +SECURE_MODE=0 note as smc_occp_jump_invalid_region_test above.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_register_access_test.rom.hex",
+    "+occp_case=smc_occp_register_access_test",
+    "+rom_test_timeout=1000000000",
+]
+
+[[tests]]
+name = "smc_occp_validate_boot_invalid_region_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_validate_boot_invalid_region_test", mode = "occp_rom_only" }
+# The reference also passes +SEP_RING_BUFFER_RANDOM_DISABLE, which turns OFF its
+# random SEP ring-buffer injection. This bench has no such injection, so the
+# knob has nothing to disable -- and the random coverage it suppresses is absent
+# here too.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_validate_boot_invalid_region_test.rom.hex",
+    "+occp_case=smc_occp_validate_boot_invalid_region_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_secure_access_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_secure_access_test", mode = "occp_rom_only" }
+# The reference names no +SECURE_MODE, so its lifecycle posture is whatever
+# smc_api defaults to; this entry takes the TEST_DEV default. If the firmware
+# needs a secure lifecycle to reach its checks, add +lc_state=1 as
+# smc_occp_jump_rejection_test does.
+# Same +SEP_RING_BUFFER_RANDOM_DISABLE note as the entry above.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_secure_access_test.rom.hex",
+    "+occp_case=smc_occp_secure_access_test",
+    "+rom_test_timeout=200000000",
+]
+
+# The status-reporting members below. The reference runs them on the same smc_rom_only
+# driver as the entries above -- no status monitor participates in its gate, and the
+# firmware images self-report through scratch 0 exactly as the rest of the family does.
+
+[[tests]]
+name = "smc_occp_boot_sequence_status_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_boot_sequence_status_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_boot_sequence_status_test.rom.hex",
+    "+occp_case=smc_occp_boot_sequence_status_test",
+    "+rom_test_timeout=1000000000",
+]
+
+[[tests]]
+name = "smc_occp_crc_err_injection_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_crc_err_injection_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_crc_err_injection_test.rom.hex",
+    "+occp_case=smc_occp_crc_err_injection_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_undersize_body_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_undersize_body_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_undersize_body_test.rom.hex",
+    "+occp_case=smc_occp_undersize_body_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_oversize_body_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_oversize_body_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_oversize_body_test.rom.hex",
+    "+occp_case=smc_occp_oversize_body_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_unsupported_status_id_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_unsupported_status_id_test", mode = "occp_rom_only" }
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_unsupported_status_id_test.rom.hex",
+    "+occp_case=smc_occp_unsupported_status_id_test",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_interface_latch_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+timeout_sec = 7200
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_interface_latch_test", mode = "occp_rom_only" }
+# +fuse_i2c_ids is what makes this test mean anything: it programs the target's
+# two OCCP I2C channels with different addresses instead of leaving both on the
+# ROM's 0x55 fallback. With both on 0x55 the two interfaces are
+# indistinguishable on a shared bus, so "the ROM latched to the first one"
+# cannot be told from "the ROM answered on both".
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_interface_latch_test.rom.hex",
+    "+occp_case=smc_occp_interface_latch_test",
+    "+fuse_i2c_ids",
+    "+rom_test_timeout=200000000",
+]
+
+[[tests]]
+name = "smc_occp_interface_unlatch_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+# Verilator reaches about 4% of +rom_test_timeout in 7200 s, so this family's default
+# wall-clock bound kills the run while the exchange is still advancing.
+timeout_sec = 21600
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_interface_unlatch_test", mode = "occp_rom_only" }
+# Same +fuse_i2c_ids reason as smc_occp_interface_latch_test above.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_interface_unlatch_test.rom.hex",
+    "+occp_case=smc_occp_interface_unlatch_test",
+    "+fuse_i2c_ids",
+    "+rom_test_timeout=1000000000",
+]
+
+[[tests]]
+name = "smc_occp_ring_buffer_stress_test"
+module = "smc_occp_rom_only_test"
+target = "dual"
+seed = 1
+# Same wall-clock reason as smc_occp_interface_unlatch_test above.
+timeout_sec = 21600
+tags = ["dual", "occp_boot", "bl0_small"]
+run_modes = ["dual"]
+firmware = { name = "occp_ring_buffer_stress_test", mode = "occp_rom_only" }
+# The controller drives the ROM's own status ring buffer here. This is not the SEP ring
+# buffer family, which needs an AXI driver this bench does not have yet.
+args = [
+    "+BOOT_I3C",
+    "+rom_bin64=prod_rom.bin64",
+    "+bfm_rom_hex=occp_ring_buffer_stress_test.rom.hex",
+    "+occp_case=smc_occp_ring_buffer_stress_test",
+    "+rom_test_timeout=1000000000",
+]
+
+[[groups]]
+name = "occp_rom_only"
+tests = [
+    "smc_occp_sanity_test",
+    "smc_occp_random_command_test",
+    "smc_occp_mem_boundary_access_test",
+    "smc_occp_invalid_cmd_test",
+    "smc_occp_invalid_length_field_test",
+    "smc_occp_undersize_header_test",
+    "smc_occp_unaligned_access_test",
+    "smc_occp_zero_length_rw_test",
+    "smc_occp_max_size_transfer_test",
+    "smc_occp_min_size_transfer_test",
+    "smc_occp_jump_invalid_region_test",
+    "smc_occp_register_access_test",
+    "smc_occp_validate_boot_invalid_region_test",
+    "smc_occp_secure_access_test",
+    "smc_occp_boot_sequence_status_test",
+    "smc_occp_crc_err_injection_test",
+    "smc_occp_undersize_body_test",
+    "smc_occp_oversize_body_test",
+    "smc_occp_unsupported_status_id_test",
+    "smc_occp_interface_latch_test",
+    "smc_occp_interface_unlatch_test",
+    "smc_occp_ring_buffer_stress_test",
+]

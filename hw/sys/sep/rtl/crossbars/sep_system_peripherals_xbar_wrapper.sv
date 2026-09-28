@@ -7,6 +7,8 @@
 // Output ports use 7-bit ID and 56-bit address, except mailbox and system_csr which are
 // AXI4-Lite.
 
+`include "ocah_assert.svh"
+
 module sep_system_peripherals_xbar_wrapper
 
     `include "axi/assign.svh"
@@ -105,7 +107,7 @@ module sep_system_peripherals_xbar_wrapper
     // Verify sep_pkg types match sep_system_peripherals_xbar_pkg types
     // =========================================================================
 
-`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
+`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
     // Input ports
     initial begin : gen_input_type_assertions
         // sep_local_from_remap (3-bit ID input, xbar uses 5-bit - zero-extension is OK)
@@ -165,6 +167,6 @@ module sep_system_peripherals_xbar_wrapper
         assert ($bits(smn_inbound_from_xbar_axi_resp_i.r.user)  == $bits(smn_inbound_from_xbar_axi_resp.r.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR R USER width mismatch");
         assert ($bits(smn_inbound_from_xbar_axi_resp_i.b.user)  == $bits(smn_inbound_from_xbar_axi_resp.b.user))  else $fatal(1, "SMN_INBOUND_FROM_XBAR B USER width mismatch");
     end
-`endif  // SYNTHESIS
+`endif  // OCAH_DEBUG_LIVE
 
 endmodule : sep_system_peripherals_xbar_wrapper

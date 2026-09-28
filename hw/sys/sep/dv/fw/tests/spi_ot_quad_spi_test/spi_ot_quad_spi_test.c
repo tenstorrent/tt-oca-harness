@@ -38,7 +38,7 @@ static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
 static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
         timeout--;
     }
@@ -49,7 +49,7 @@ static int wait_for_ready(int timeout) {
 static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
         timeout--;
     }
@@ -75,7 +75,7 @@ int main(void) {
     ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure: freq-robust 25 MHz SCLK (spi_clkdiv), SPI Mode 0, standard CS timing */
     cfg.w = 0;
@@ -85,9 +85,9 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Step 1: Quad TX (SPEED=2, DIRECTION=2)                              */
@@ -99,21 +99,21 @@ int main(void) {
     }
 
     /* Load TX FIFO: 4 bytes = 1 word (Quad fast-read command pattern) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xEB000000);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xEB000000);
 
     cmd.w = 0;
     cmd.f.LEN = 3;       /* 4 bytes (LEN+1 bytes total) */
     cmd.f.CSAAT = 1;     /* keep CS# low for next segment */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 2; /* TX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
            err_status.f.CMDINVAL, err_status.f.CSIDINVAL);
     if (err_status.f.CMDINVAL || err_status.f.CSIDINVAL) {
@@ -122,7 +122,7 @@ int main(void) {
     } else {
         printf("  PASS: Quad TX accepted (no CMDINVAL)\n");
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Step 2: Quad Dummy cycles (SPEED=2, DIRECTION=0)                    */
@@ -138,14 +138,14 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 0; /* Dummy */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u)\n", err_status.w, err_status.f.CMDINVAL);
     if (err_status.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL for valid Quad Dummy command\n");
@@ -153,7 +153,7 @@ int main(void) {
     } else {
         printf("  PASS: Quad Dummy accepted (no CMDINVAL)\n");
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* ------------------------------------------------------------------ */
     /* Step 3: Quad RX (SPEED=2, DIRECTION=1)                              */
@@ -169,7 +169,7 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 1; /* RX */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         printf("  FAIL: transaction did not complete (ACTIVE stuck)\n");
@@ -177,8 +177,8 @@ int main(void) {
         goto done;
     }
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  STATUS: RXQD=%u, RXEMPTY=%u, ACTIVE=%u\n", status.f.RXQD, status.f.RXEMPTY,
            status.f.ACTIVE);
     printf("  ERROR_STATUS=0x%08x (CMDINVAL=%u CSIDINVAL=%u)\n", err_status.w,
@@ -192,26 +192,26 @@ int main(void) {
                status.f.RXEMPTY);
         pass = 0;
     } else {
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+        uint32_t rxdata = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         printf("  RXDATA[0]: 0x%08x (4-byte Quad RX packed)\n", rxdata);
         printf("  PASS: Quad RX accepted (RXQD>=1, no CMDINVAL/CSIDINVAL)\n");
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* SW_RST to drain the RX FIFO. The field is a level: confirm the drain while
      * it is held, then release, or the core stays in reset. */
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
     int drained = wait_for_ready(TIMEOUT_LIMIT);
     ctrl.f.SW_RST = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
     if (drained) {
         printf("  FAIL: READY not restored after SW_RST drain\n");
         pass = 0;
         goto done;
     }
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     if (!status.f.RXEMPTY) {
         printf("  FAIL: RX FIFO not empty after SW_RST (RXQD=%u)\n", status.f.RXQD);
         pass = 0;
@@ -223,26 +223,26 @@ int main(void) {
     /* Bidirectional is only valid at Standard (SPEED=0) speed.            */
     /* ------------------------------------------------------------------ */
     printf("\nStep 4: CMDINVAL test (SPEED=Quad + DIRECTION=Bidirectional)\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 2;     /* Quad */
     cmd.f.DIRECTION = 3; /* Bidirectional — invalid at Quad speed */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     /* Poll until CMDINVAL sticks (or timeout) — not a blind spin */
     {
         int t = TIMEOUT_LIMIT;
         while (t-- > 0) {
-            err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+            err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
             if (err_status.f.CMDINVAL) break;
         }
         if (t < 0) {

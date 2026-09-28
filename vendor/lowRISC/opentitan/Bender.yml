@@ -378,10 +378,10 @@ sources:
       - upstream/hw/ip/otbn/rtl/otbn_vec_shifter.sv
       - upstream/hw/ip/otbn/rtl/otbn_vec_transposer.sv
       - upstream/hw/ip/otbn/rtl/otbn_reg_top.sv
-      # sep_addrmap_pkg.sv (och_sep_top_addrmap_pkg) is referenced here, ahead of its
+      # sep_addrmap_pkg.sv (sep_top_addrmap_pkg) is referenced here, ahead of its
       # position in the top package's own `all(not(dv), not(fv))` files list, purely
       # for compile ordering: sep_crypto_pkg.sv below needs its address-map
-      # localparams (OCH_SEP_TOP_OTBN_BASE_ADDR etc.) and packages must be defined
+      # localparams (SEP_TOP_OTBN_BASE_ADDR etc.) and packages must be defined
       # before use. It is NOT also listed in the top package's files for this
       # target combination, to avoid compiling it twice.
       - ../../../hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv

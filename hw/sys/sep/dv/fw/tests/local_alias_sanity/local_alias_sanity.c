@@ -31,9 +31,9 @@
     0xC0000000UL // = LOCAL_ALIAS_BASE - target_base (0xD000_0000 - 0x1000_0000)
 
 // Direct peripheral addresses (physical addresses at 0x1000_0000 region)
-#define SCRATCH_COLD_DIRECT_BASE OCH_SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR // 0x1080_2000
-#define SCRATCH_WARM_DIRECT_BASE OCH_SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR // 0x1080_2080
-#define SRAM_DIRECT_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR                 // 0x1000_0000
+#define SCRATCH_COLD_DIRECT_BASE SEP_TOP_SEP_SCRATCH_COLD_BASE_ADDR // 0x1080_2000
+#define SCRATCH_WARM_DIRECT_BASE SEP_TOP_SEP_SCRATCH_WARM_BASE_ADDR // 0x1080_2080
+#define SRAM_DIRECT_BASE SEP_TOP_SEP_SRAM_BASE_ADDR                 // 0x1000_0000
 
 // Aliased peripheral addresses (accessed via local alias at 0xD000_0000 region)
 #define SCRATCH_COLD_ALIAS_BASE (SCRATCH_COLD_DIRECT_BASE + LOCAL_ALIAS_OFFSET) // 0xD080_2000
@@ -41,8 +41,8 @@
 #define SRAM_ALIAS_BASE (SRAM_DIRECT_BASE + LOCAL_ALIAS_OFFSET)                 // 0xD000_0000
 
 // SEP CPU Control registers for configuring local alias
-#define SEP_LOCAL_BASE_ADDR_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR // 0x10A300C8
-#define SEP_REGION_SIZE_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR         // 0x10A300D0
+#define SEP_LOCAL_BASE_ADDR_REG SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR // 0x10A300C8
+#define SEP_REGION_SIZE_REG SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR         // 0x10A300D0
 
 //-----------------------------------------------------------------------------
 // Test State
@@ -151,10 +151,9 @@ static int test_scratch_alias(void) {
 
     // Step 1: Write via DIRECT path, read via ALIAS path
     printf("  Test 1: Write direct (0x%08X) -> Read alias (0x%08lX)\n",
-           OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0),
-           (unsigned long)SCRATCH_COLD_ALIAS_BASE);
+           SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (unsigned long)SCRATCH_COLD_ALIAS_BASE);
 
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), test_pattern);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), test_pattern);
     read_alias = READ_REG(SCRATCH_COLD_ALIAS_BASE);
 
     printf("    Wrote: 0x%08X, Read via alias: 0x%08X\n", test_pattern, read_alias);
@@ -167,11 +166,10 @@ static int test_scratch_alias(void) {
     // Step 2: Write via ALIAS path, read via DIRECT path
     test_pattern = 0xCAFEBABE;
     printf("  Test 2: Write alias (0x%08lX) -> Read direct (0x%08X)\n",
-           (unsigned long)SCRATCH_COLD_ALIAS_BASE,
-           OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
+           (unsigned long)SCRATCH_COLD_ALIAS_BASE, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
 
     WRITE_REG(SCRATCH_COLD_ALIAS_BASE, test_pattern);
-    read_direct = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
+    read_direct = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0));
 
     printf("    Wrote: 0x%08X, Read via direct: 0x%08X\n", test_pattern, read_direct);
 
@@ -184,7 +182,7 @@ static int test_scratch_alias(void) {
     printf("  Test 3: Multiple scratch register test\n");
     for (int i = 0; i < 4; i++) {
         uint32_t pattern = 0xA5A5A5A5 ^ (i << 24);
-        uint32_t direct_addr = OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) + (i * 8);
+        uint32_t direct_addr = SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0) + (i * 8);
         uint32_t alias_addr = SCRATCH_COLD_ALIAS_BASE + (i * 8);
 
         // Write via alias
@@ -340,9 +338,9 @@ static int test_dma_alias(void) {
     // DMA must target physical addresses.
 
     // Use different SRAM regions to avoid overlap
-    uint32_t src_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000; // 0x1000_2000
-    uint32_t dst_direct_addr = OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x3000; // 0x1000_3000 (physical)
-    uint32_t transfer_size = 0x100;                                     // 256 bytes
+    uint32_t src_direct_addr = SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000; // 0x1000_2000
+    uint32_t dst_direct_addr = SEP_TOP_SEP_SRAM_BASE_ADDR + 0x3000; // 0x1000_3000 (physical)
+    uint32_t transfer_size = 0x100;                                 // 256 bytes
 
     volatile uint32_t *src_ptr = (volatile uint32_t *)src_direct_addr;
     volatile uint32_t *dst_ptr = (volatile uint32_t *)dst_direct_addr;
@@ -355,48 +353,48 @@ static int test_dma_alias(void) {
     }
 
     // Configure DMA memory range
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
 
     // Set source (direct address)
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src_direct_addr);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src_direct_addr);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
 
     // Set destination (physical address - DMA cannot use local alias)
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_direct_addr);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst_direct_addr);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
 
     printf("  DMA: 0x%08X -> 0x%08X (physical SRAM)\n", src_direct_addr, dst_direct_addr);
 
     // Configure DMA transfer. ASID 0 is not a valid address space and makes the
     // DMA report ASID_ERROR, so both ASIDs must carry the OT internal bus default.
     WRITE_REG(
-        OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
+        SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR,
         (SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_bp) |
             (SECURE_DMA__ADDR_SPACE_ID__DST_ASID_reset << SECURE_DMA__ADDR_SPACE_ID__DST_ASID_bp));
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
+    WRITE_REG(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR,
               SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_reset
                   << SECURE_DMA__TRANSFER_WIDTH__TRANSACTION_WIDTH_bp);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, transfer_size);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, transfer_size);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, transfer_size);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, transfer_size);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
 
     // Start transfer
     printf("  Starting DMA transfer...\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+    WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
               SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm);
 
     // Poll for completion
     int timeout = 100000;
     uint32_t status;
     while (timeout-- > 0) {
-        status = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        status = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (status & SECURE_DMA__STATUS__DONE_bm) break;
         if (status & SECURE_DMA__STATUS__ERROR_bm) {
             printf("  ERROR: DMA failed! ERROR_CODE=0x%x\n",
-                   READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+                   READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
             return 0;
         }
     }

@@ -881,8 +881,10 @@ module avsbus_controller #(
             next_state = AVS_RETRY_SHIFT_XMIT_SUBFRAME;
             data_for_crc_calc = {avs_mdata_prev_transmit_frame[31:3], 3'b000};
             push_avs_readback_en = 1'b0;
+          end else if (fifos_ready_to_launch_frame_rb_en) begin
+            next_state = AVS_SHIFT_1ST_SUBFRAME;
+            data_for_crc_calc = {MasterSubframePreamble, avs_cmd_from_fifo[29:3], 3'b000};
           end else begin
-            // No retries allowed - got to idle:
             next_state = AVS_IDLE;
           end
         end else if (fifos_ready_to_launch_frame_rb_en) begin

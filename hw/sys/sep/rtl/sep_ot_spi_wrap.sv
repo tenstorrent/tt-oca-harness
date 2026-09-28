@@ -75,7 +75,7 @@ module sep_ot_spi_wrap #(
   localparam logic [sep_io_pkg::ADDR_WIDTH-1:0] SpiAddrMask =
       sep_io_pkg::ADDR_WIDTH'((1 << SpiBlockAw) - 1);
   localparam logic [sep_io_pkg::ADDR_WIDTH-1:0] SpiBaseLower =
-      sep_io_pkg::ADDR_WIDTH'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SPI_CONTROLLER_BASE_ADDR)
+      sep_io_pkg::ADDR_WIDTH'(sep_top_addrmap_pkg::SEP_TOP_SPI_CONTROLLER_BASE_ADDR)
       & SpiAddrMask;
 
   sep_io_pkg::axil_req_t axil_req_masked;
