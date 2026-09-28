@@ -35,7 +35,7 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63</td><td>valid</td><td>RW</td><td>0x0</td><td>If set, this remap will be active</td></tr>
 <tr><td>62:60</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>59:56</td><td>cacheable</td><td>RW</td><td>0x0</td><td>Set to change the value of the axcache field of the transaction. One bit for each of the cache field</td></tr>
+<tr><td>59:56</td><td>cacheable</td><td>RW</td><td>0x0</td><td>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</td></tr>
 <tr><td>55:12</td><td>offset</td><td>RW</td><td>0x0</td><td>The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.</td></tr>
 <tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
