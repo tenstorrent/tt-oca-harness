@@ -91,20 +91,18 @@ def first_addrmap_name(root) -> str:
     )
 
 
-def addrmap_intro(root) -> tuple[str | None, str | None]:
-    """The map's friendly ``name`` and ``desc`` for the per-block heading intro.
+def addrmap_desc(root) -> str | None:
+    """The map's ``desc`` for the per-block heading intro.
 
-    ``name`` defaults to the instance identifier, so it is only surfaced when it
-    was authored to something more descriptive. The heading keeps its
-    identifier form (``Address Map: <inst>``) that the block catalog and
-    coverage tooling parse; the friendly name and description are additive.
+    The heading keeps its identifier form (``Address Map: <inst>``) that the
+    block catalog and coverage tooling parse. The map's ``name`` is surfaced in
+    the IP-XACT ``displayName``; on this page it would only echo the heading, so
+    only the description is added here.
     """
     node = next(iter(root.children()), None)
     if node is None:
-        return None, None
-    name = node.get_property("name")
-    friendly = name if name and name != node.inst_name else None
-    return friendly, node.get_property("desc")
+        return None
+    return node.get_property("desc")
 
 
 def sw_access(node) -> str:
@@ -290,12 +288,8 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
         f"== Address Map: {title}",
         "",
     ]
-    friendly, desc = addrmap_intro(root)
-    if friendly and desc:
-        lines += [f"*{friendly}* — {desc_adoc(desc)}", ""]
-    elif friendly:
-        lines += [f"*{friendly}*", ""]
-    elif desc:
+    desc = addrmap_desc(root)
+    if desc:
         lines += [desc_adoc(desc), ""]
     if data.arrays:
         lines += [
@@ -349,12 +343,8 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         "</style>",
         f"<h2>Address Map: {escape(title)}</h2>",
     ]
-    friendly, desc = addrmap_intro(root)
-    if friendly and desc:
-        lines.append(f"<p><strong>{escape(friendly)}</strong> — {desc_html_text(desc)}</p>")
-    elif friendly:
-        lines.append(f"<p><strong>{escape(friendly)}</strong></p>")
-    elif desc:
+    desc = addrmap_desc(root)
+    if desc:
         lines.append(f"<p>{desc_html_text(desc)}</p>")
     if data.arrays:
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
