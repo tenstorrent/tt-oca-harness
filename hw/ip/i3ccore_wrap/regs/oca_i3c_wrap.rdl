@@ -9,8 +9,9 @@
 addrmap oca_i3c_wrap #(
     longint unsigned NUM_I3CS = 6
 ) {
-    desc = "OCA I3C Controller wrapper";
-
+    name = "OCA I3C Controller Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-controller I3C CSR blocks.";
+    
     /////////////////
     // Address Map //
     /////////////////

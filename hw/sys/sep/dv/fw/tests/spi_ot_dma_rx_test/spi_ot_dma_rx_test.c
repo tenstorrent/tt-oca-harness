@@ -10,8 +10,10 @@
 //
 //   spi_host.lsio_trigger_o -> sep.lsio_trigger[0] -> secure_dma.lsio_trigger_i[0]
 //
-// This whole datapath is internal to bare `sep`
-// (`hw/sys/sep/rtl/sep.sv`: `lsio_trigger[0] = sep_io_spi_req_o.lsio_trigger`).
+// This whole datapath is internal to bare `sep`; hw/sys/sep/doc/spi.adoc names
+// the SPI host DMA trigger (`lsio_trigger_o`). Handshake index 0 is the
+// stimulus: on any other index the DMA gets no trigger, never reaches DONE, and
+// the test fails.
 // Exercises SPI-FIFO -> DMA on the OpenTitan SPI line.
 //
 // Beyond the reference suite: the reference test only checks "DMA done + no SPI error"
@@ -91,7 +93,8 @@ int main(void) {
     // is tied off in bare sep and would hang).
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR,
+               SECURE_DMA__RANGE_VALID__RANGE_VALID_bm);
     sep_mbx_puts("STEP DMA armed: RXDATA(WRAP) -> SRAM(INCR), hardware handshake\n");
     sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR,
                OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));

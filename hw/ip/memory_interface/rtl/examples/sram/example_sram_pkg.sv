@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------
-// Example SRAM Package
+// Hold example SRAM parameters for memory_interface bring-up.
 //
-//------------------------------------------------
-
+// Supplies the 32-bit address, 64-bit data and 1-bit ID and user widths, the mem_req_t and
+// mem_rsp_t memory-port structs, and the AXI4, AXI4-Lite and APB4 typedefs used by the SRAM
+// example binding.
 
 package example_sram_pkg;
 
@@ -16,7 +16,7 @@ package example_sram_pkg;
   // User Specified Parameters //
   ///////////////////////////////
   localparam int unsigned MEM_ADDR_WIDTH = 32;
-  localparam int unsigned MEM_DATA_WIDTH = 64;  // 64-bit to match SEP AXI bus
+  localparam int unsigned MEM_DATA_WIDTH = 64;  // 64-bit to match SEP AXI bus.
   localparam int unsigned MEM_ID_WIDTH = 1;
 
   localparam int unsigned AXI_USER_WIDTH = 1;

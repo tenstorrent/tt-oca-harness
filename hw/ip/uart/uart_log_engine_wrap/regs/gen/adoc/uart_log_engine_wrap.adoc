@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-uart_log_engine_wrap]
-== Address Map: uart_log_engine_wrap
+== UART Log Engine Wrapper Address Map
+
+Composes the UART 16550 core, log engine, and their control registers for one UART instance.
 
 [NOTE]
 ======

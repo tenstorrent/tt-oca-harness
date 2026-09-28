@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= RTL Modules Reference
+
+Module, parameter, and port lists generated from the RTL.
+
+[#ip]
+== IP
+
+[#subsystems]
+== Subsystems
+
+[#common]
+== Common

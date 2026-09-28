@@ -22,7 +22,14 @@ belong to a different request.
 Register roles, all resolved from the vendored ``abr_reg.rdl``:
 
 * Identity words (``MLDSA_NAME`` / ``MLDSA_VERSION`` / ``MLKEM_NAME`` /
-  ``MLKEM_VERSION``): ``sw = r``, fixed values, the read goldens.
+  ``MLKEM_VERSION``): ``sw = r`` with no reset, the read targets. Neither the
+  RDL nor any SEP document gives their values, so DV does not claim one.
+  ``SepAbrBus.capture_identity`` reads each word alone at the start of a test
+  (``CHK-ABR-ID-REF``) and that capture is the reference every later read of
+  the word is compared against. The capture requires each word to answer
+  OKAY, to read the same twice, to be nonzero, and to differ from the other
+  word of its 8-byte granule, so a response for the wrong half of a granule
+  is a mismatch rather than a coincidence.
 * ``intr_block_rf`` interrupt enables: ``sw = rw``, one to two bits, and the
   only adjacent RW pair in one 8-byte granule (``global_intr_en_r`` /
   ``error_intr_en_r``), so a 64-bit access covers two registers.
@@ -54,16 +61,8 @@ from seq_lib.sep_abr_keygen_seq import (
     ABR_NOTIF_INTR_EN,
     ABR_VERSION0,
     ABR_VERSION1,
-    NAME0_EXP,
-    NAME1_EXP,
-    VER0_EXP,
-    VER1_EXP,
 )
 from seq_lib.sep_abr_mlkem_seq import (
-    KEM_NAME0_EXP,
-    KEM_NAME1_EXP,
-    KEM_VER0_EXP,
-    KEM_VER1_EXP,
     MLKEM_NAME0,
     MLKEM_NAME1,
     MLKEM_VERSION0,
@@ -113,6 +112,10 @@ def _intr_count_offsets() -> dict[str, int]:
 
 _COUNTERS = _intr_count_offsets()
 
+# Identity reference: address -> the value CHK-ABR-ID-REF read from the DUT.
+# Empty until SepAbrBus.capture_identity() has passed in this test.
+_ID_REF: dict[int, int] = {}
+
 
 @dataclass(frozen=True)
 class AbrWord:
@@ -121,20 +124,29 @@ class AbrWord:
     name: str
     addr: int
     mask: int = 0xFFFF_FFFF
-    value: int | None = None  # fixed value of a read-only identity word
+
+    @property
+    def value(self) -> int | None:
+        """The captured reference of an identity word; None for any other word,
+        and for an identity word before ``capture_identity`` has passed."""
+        return _ID_REF.get(self.addr)
 
 
 IDENTITY_WORDS: tuple[AbrWord, ...] = (
-    AbrWord("MLDSA_NAME0", ABR_NAME0, value=NAME0_EXP),
-    AbrWord("MLDSA_NAME1", ABR_NAME1, value=NAME1_EXP),
-    AbrWord("MLDSA_VERSION0", ABR_VERSION0, value=VER0_EXP),
-    AbrWord("MLDSA_VERSION1", ABR_VERSION1, value=VER1_EXP),
-    AbrWord("MLKEM_NAME0", MLKEM_NAME0, value=KEM_NAME0_EXP),
-    AbrWord("MLKEM_NAME1", MLKEM_NAME1, value=KEM_NAME1_EXP),
-    AbrWord("MLKEM_VERSION0", MLKEM_VERSION0, value=KEM_VER0_EXP),
-    AbrWord("MLKEM_VERSION1", MLKEM_VERSION1, value=KEM_VER1_EXP),
+    AbrWord("MLDSA_NAME0", ABR_NAME0),
+    AbrWord("MLDSA_NAME1", ABR_NAME1),
+    AbrWord("MLDSA_VERSION0", ABR_VERSION0),
+    AbrWord("MLDSA_VERSION1", ABR_VERSION1),
+    AbrWord("MLKEM_NAME0", MLKEM_NAME0),
+    AbrWord("MLKEM_NAME1", MLKEM_NAME1),
+    AbrWord("MLKEM_VERSION0", MLKEM_VERSION0),
+    AbrWord("MLKEM_VERSION1", MLKEM_VERSION1),
 )
 IDENTITY = {w.addr: w for w in IDENTITY_WORDS}
+# Low word first: the two identity words of each 8-byte granule.
+IDENTITY_PAIRS: tuple[tuple[AbrWord, AbrWord], ...] = tuple(
+    zip(IDENTITY_WORDS[::2], IDENTITY_WORDS[1::2])
+)
 
 GLOBAL_INTR_EN = AbrWord(
     "global_intr_en_r",
@@ -169,7 +181,8 @@ def lane_value(addr: int, nbytes: int, beat: int) -> int:
 
 
 def identity_bytes(addr: int, nbytes: int) -> int | None:
-    """The golden for a read of ``nbytes`` at ``addr`` over identity words only."""
+    """The expected value of a read of ``nbytes`` at ``addr`` over identity
+    words only, from the captured reference; None where no reference exists."""
     out = 0
     for i in range(nbytes):
         a = addr + i
@@ -357,7 +370,7 @@ class SepAbrBus:
 
     @property
     def timeout_ns(self) -> int:
-        return ACCESS_TIMEOUT_CYCLES * int(self.test.cfg.sys_clk_period_ns)
+        return int(ACCESS_TIMEOUT_CYCLES * self.test.cfg.sys_clk_period_ns)
 
     async def open_m_axi_window(self, *, write: bool) -> None:
         """Allow m_axi onto the whole ABR aperture through the inbound filter.
@@ -411,11 +424,12 @@ class SepAbrBus:
         return acc
 
     async def one(self, acc: AbrAccess, *, refused: bool = False) -> AbrAccess:
-        """One access through the bus's SEP AXI sequencer.
+        """One access through the bus's AXI sequencer.
 
-        The sequencer path puts the access in front of the SEP scoreboard as
-        well, which fails any non-OKAY response unless ``refused`` marks it as
-        an access that must be answered with an error.
+        On ``s_axi`` the SEP scoreboard also grades the access: it fails any
+        non-OKAY response unless ``refused`` marks it as an access that must be
+        answered with an error. No scoreboard grades ``m_axi``; there the
+        caller must check ``acc.resp`` and the data itself.
         """
         seq = SepAxiAccessSeq(
             f"abr_{acc.op}",
@@ -436,6 +450,63 @@ class SepAbrBus:
         if acc.op == "rd":
             acc.data = seq.rdata
         return acc
+
+    async def capture_identity(self, bus: str = "s_axi") -> None:
+        """CHK-ABR-ID-REF: read every identity word alone and keep it as the reference.
+
+        Every test that grades an identity word calls this first. Each word is
+        read twice, one 32-bit access at a time (AxSIZE=2) through the bus's
+        SEP AXI sequencer. Each read must answer OKAY, the two reads must
+        agree, the value must be nonzero, and each word must differ from the
+        other word of its 8-byte granule. The bus monitor fails an OKAY beat
+        that carries X/Z in the lanes read. The reference stays empty unless
+        every word meets all four conditions, so no later compare runs against
+        a partial capture.
+        """
+        _ID_REF.clear()
+        got: dict[int, int] = {}
+        problems: list[str] = []
+        for w in IDENTITY_WORDS:
+            reads = [
+                await self.one(AbrAccess(bus, "rd", w.addr, 4, 2, tag="id_ref")) for _ in range(2)
+            ]
+            for acc in reads:
+                self.log.info("ABR-ID-REF %s %s", w.name, acc.describe())
+            bad = [a for a in reads if a.timed_out or a.resp != RESP_OKAY]
+            if bad:
+                problems.append(
+                    f"{w.name} (0x{w.addr:08x}) read alone answered "
+                    f"{'TIMEOUT' if bad[0].timed_out else bad[0].resp_name}, expected OKAY"
+                )
+                continue
+            first, second = reads[0].data, reads[1].data
+            if first != second:
+                problems.append(
+                    f"{w.name} (0x{w.addr:08x}) read 0x{first:08x} then 0x{second:08x}; "
+                    "a read-only word must hold one value"
+                )
+            elif first == 0:
+                problems.append(
+                    f"{w.name} (0x{w.addr:08x}) reads zero, which a dead decode also returns"
+                )
+            else:
+                got[w.addr] = first
+        for lo, hi in IDENTITY_PAIRS:
+            if lo.addr in got and hi.addr in got and got[lo.addr] == got[hi.addr]:
+                problems.append(
+                    f"{lo.name} and {hi.name} both read 0x{got[lo.addr]:08x}; a response "
+                    "for the wrong half of that granule would compare equal"
+                )
+        if problems:
+            raise AssertionError("CHK-ABR-ID-REF FAIL: " + "; ".join(problems))
+        _ID_REF.update(got)
+        self.log.info(
+            "CHK-ABR-ID-REF PASS: %d identity words each read twice alone at AxSIZE=2 on "
+            "%s, OKAY, stable, nonzero and different from their granule partner: %s",
+            len(IDENTITY_WORDS),
+            bus,
+            " ".join(f"{w.name}=0x{got[w.addr]:08x}" for w in IDENTITY_WORDS),
+        )
 
     async def read(
         self, bus: str, addr: int, *, nbytes: int = 4, size: int = 2, axi_id: int = 0
@@ -504,14 +575,26 @@ def _selftest() -> None:
     # reads start on an 8-byte boundary.
     assert ERROR_COUNT.addr % 8 == 0 and NOTIF_COUNT.addr % 8 == 0
     assert all(w.addr % 8 == 0 for w in IDENTITY_WORDS[::2])
+    assert all(hi.addr == lo.addr + 4 for lo, hi in IDENTITY_PAIRS)
     assert ABR_VERSION1 - base == abr_off("MLDSA_VERSION") + 4 == 0xC
-    assert identity_bytes(ABR_NAME0, 8) == (NAME1_EXP << 32) | NAME0_EXP
-    assert identity_bytes(ABR_VERSION1 + 1, 2) == (VER1_EXP >> 8) & 0xFFFF
     assert lane_value(0x4, 4, 0x1122_3344_5566_7788) == 0x1122_3344
-    # Every identity word differs from its pair partner, so a response for the
-    # wrong half of a granule is a mismatch rather than a coincidence.
-    for lo, hi in zip(IDENTITY_WORDS[::2], IDENTITY_WORDS[1::2]):
-        assert lo.value != hi.value, (lo.name, hi.name)
+    # No reference exists before a capture, so nothing can be graded.
+    assert not _ID_REF and IDENTITY_WORDS[0].value is None
+    assert identity_bytes(ABR_NAME0, 4) is None
+    # identity_bytes arithmetic on synthetic reference values, with a distinct
+    # byte in every lane.
+    synthetic = {w.addr: 0x0403_0201 + 0x1010_1010 * i for i, w in enumerate(IDENTITY_WORDS)}
+    try:
+        _ID_REF.update(synthetic)
+        assert IDENTITY_WORDS[1].value == 0x1413_1211
+        assert GLOBAL_INTR_EN.value is None
+        assert identity_bytes(ABR_NAME0, 8) == 0x1413_1211_0403_0201
+        assert identity_bytes(ABR_VERSION1 + 1, 2) == 0x3332
+        assert identity_bytes(ABR_NAME1 + 3, 2) == 0x2114
+        # The word after MLDSA_VERSION1 is not an identity word.
+        assert identity_bytes(ABR_VERSION1 + 3, 2) is None
+    finally:
+        _ID_REF.clear()
 
 
 _selftest()

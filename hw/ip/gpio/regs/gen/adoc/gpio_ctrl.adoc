@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-gpio_ctrl]
-== Address Map: gpio_ctrl
+== GPIO Control Address Map
+
+Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.
 
 [cols="1,4,1,6", options="header"]
 |===

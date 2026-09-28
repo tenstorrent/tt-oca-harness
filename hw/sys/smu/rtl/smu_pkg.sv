@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMU Configuration Package
+// Hold System Management Unit configuration types and defaults.
+//
+// Define smu_cfg_t and DefaultCfg for JTAG feature enables, cross-trigger counts,
+// pipeline depths, and SEP/Adams-Bridge options consumed by smu; the JTAG, cross-trigger
+// and pipeline fields configure its DTP instance. XTRIG_NUM_INT_CT and
+// XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts; smu adds the SMC-reserved lanes
+// (XTRIG_SMC_INT_CT_LANES, XTRIG_SMC_CLK_STOP_LANES) before passing them to DTP.
+// NoSepCfg holds the same values as DefaultCfg, and SmuConfigs lists both.
 
 package smu_pkg;
 
@@ -37,7 +44,7 @@ package smu_pkg;
     logic [7:0]  JTAG_OCH_VER;
 
     // Cross-trigger configuration. XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ
-    // are the SMU-exposed counts; DTP adds the SMC-reserved lanes.
+    // are the SMU-exposed counts; smu adds the SMC-reserved lanes for DTP.
     int unsigned XTRIG_NUM_CTP;
     int unsigned XTRIG_NUM_INT_CT;
     int unsigned XTRIG_NUM_CLK_STOP_REQ;
@@ -58,7 +65,7 @@ package smu_pkg;
   } smu_cfg_t;
 
   localparam smu_cfg_t DefaultCfg = '{
-      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
+      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
       JTAG_BSR_ENABLE: 1'b1,
       JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
       JTAG_EXTEST_PULSE_ENABLE: 1'b1,
@@ -89,7 +96,7 @@ package smu_pkg;
   };
 
   localparam smu_cfg_t NoSepCfg = '{
-      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
+      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
       JTAG_BSR_ENABLE: 1'b1,
       JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
       JTAG_EXTEST_PULSE_ENABLE: 1'b1,
@@ -121,8 +128,8 @@ package smu_pkg;
 
   localparam int unsigned NumSmuConfigs = 2;
   localparam smu_cfg_t [NumSmuConfigs-1:0] SmuConfigs = {
-    NoSepCfg,  // [1] SMC + DTP only
-    DefaultCfg  // [0] Full SMU (SMC + SEP + DTP)
+    NoSepCfg,  // [1] SMC + DTP only.
+    DefaultCfg  // [0] Full SMU (SMC + SEP + DTP).
   };
 
 endpackage : smu_pkg

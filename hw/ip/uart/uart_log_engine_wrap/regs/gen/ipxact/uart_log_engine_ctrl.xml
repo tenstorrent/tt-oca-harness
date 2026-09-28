@@ -12,6 +12,8 @@
       <ipxact:name>uart_log_engine_ctrl_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>uart_log_engine_ctrl</ipxact:name>
+        <ipxact:displayName>UART Log Engine Control Address Map</ipxact:displayName>
+        <ipxact:description>Top-level enable register for the UART log-engine block.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h4</ipxact:range>
         <ipxact:width>32</ipxact:width>

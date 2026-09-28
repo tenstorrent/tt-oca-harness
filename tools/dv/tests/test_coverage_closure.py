@@ -6,7 +6,7 @@ The coverage run under test is built here: a Verilator coverage database over on
 register, its lcov report, the merge manifest the `cov_merge` stage writes, and the DUT's
 coverage policy. `finish_run` drives the report stage through `run_stage` and writes the
 run-level `result.json` and `regression.json` with the runner's own payload builders, so the
-`--waive` and policy-expiry tests re-grade a run the runner produced.
+`--waive` tests re-grade a run the runner produced.
 
 Run from the repository root:
 
@@ -106,7 +106,6 @@ confidence = "high"
 rationale = "capture_en is tied low in this configuration."
 owner = "fixture-dv"
 reviewer = "fixture-dv"
-date = "2026-09-01"
 [[holes.native]]
 tool = "verilator"
 metric_family = "toggle"
@@ -122,7 +121,6 @@ confidence = "medium"
 rationale = "No test drives the TAP through Run-Test/Idle."
 owner = "fixture-dv"
 reviewer = "fixture-dv"
-date = "2026-09-01"
 issues = ["https://github.com/example/fixture/issues/1"]
 [[holes.native]]
 tool = "verilator"
@@ -130,7 +128,7 @@ metric_family = "toggle"
 native_locator = "*|o=scan_ctrl_i.run_test_idle:0->1|*"
 """
 
-SOURCE = "hw/common/och_prim/rtl/prim_jtag_scan_reg.sv"
+SOURCE = "hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv"
 HIERARCHY = "fixture_top.u_dut.u_jtag_intf_unit.*_scan_reg"
 # Verilator coverage points as (line, column, type, comment, statement span, count); the page
 # is derived from the type. Six toggles, three lines, two branches, three expressions.

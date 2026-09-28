@@ -6,8 +6,9 @@
 
 
 addrmap sep_efuse_map {
-    desc = "";
-
+    name = "SEP eFuse Map Address Map";
+    desc = "Per-field write-lock and read-lock registers for the SEP eFuse map.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

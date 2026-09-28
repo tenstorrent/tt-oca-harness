@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-aes]
-== Address Map: aes
+== AES Accelerator
+
+AES encryption and decryption engine with SCA and FI countermeasures
 
 [NOTE]
 ======

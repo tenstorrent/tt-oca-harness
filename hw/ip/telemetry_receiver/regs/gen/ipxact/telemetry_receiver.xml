@@ -12,7 +12,8 @@
       <ipxact:name>telemetry_receiver_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>telemetry_receiver</ipxact:name>
-        <ipxact:description>Telemetry Receiver</ipxact:description>
+        <ipxact:displayName>Telemetry Receiver Address Map</ipxact:displayName>
+        <ipxact:description>Configuration, status, and data-buffer registers for a single telemetry receiver channel.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h100</ipxact:range>
         <ipxact:width>32</ipxact:width>

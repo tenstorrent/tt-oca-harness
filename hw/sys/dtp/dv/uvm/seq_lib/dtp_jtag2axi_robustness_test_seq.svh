@@ -108,9 +108,13 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // One status-poll scan's duration in system-clock cycles: the DR shift
   // plus the ~8 TCK the VIP spends navigating RTI -> Shift-DR -> RTI per
   // poll. An overestimate silently pushes the settle point past the
-  // MaxStatusPolls completion bound.
+  // MaxStatusPolls completion bound. The TCK and system periods are drawn
+  // independently, so the scan is rounded up once: rounding each TCK up to
+  // whole system cycles inflates the scan by up to 2x when the TCK period
+  // is just above a multiple of the system period.
   protected function int unsigned poll_scan_sys_cycles(dtp_j2a_target_t t);
-    return (single_op_len(t) + 8) * tck_sys_ratio();
+    return ((single_op_len(t) + 8) * test_cfg.tck_period_ns + tb_vif.clk_period_ns - 1) /
+        tb_vif.clk_period_ns;
   endfunction
 
   // READY stall sized in status-poll units, so the operation stays

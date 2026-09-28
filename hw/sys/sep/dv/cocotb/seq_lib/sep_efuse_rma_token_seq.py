@@ -48,6 +48,8 @@ FAULT_SEC_DISABLE = EFUSE_MMR.field_mask("TOKEN_MATCH_FAULT", "secure_disable_to
 EOP_RMA_SIP = EFUSE_MMR.field_mask("TOKEN_EOP", "rma_sip_token_go")
 EOP_RMA_CHIPLET = EFUSE_MMR.field_mask("TOKEN_EOP", "rma_chiplet_token_go")
 EOP_SEC_DISABLE = EFUSE_MMR.field_mask("TOKEN_EOP", "secure_disable_token_go")
+_MATCH_STATUS_MASK = EFUSE_MMR.field_mask("TOKEN_MATCH", "token_match_status")
+_MATCH_STATUS_LSB = EFUSE_MMR.field_lsb("TOKEN_MATCH", "token_match_status")
 TOKEN_CMP_INJECT_OFF = 0
 TOKEN_CMP_INJECT_COLLAPSE = 1
 TOKEN_CMP_INJECT_DISAGREE = 2
@@ -129,7 +131,8 @@ class SepRmaTokenMatchSeq(uvm_sequence):
 
         for _ in range(_POLL_CYCLES):
             await ClockCycles(cocotb.top.clk_i, 1)
-            result = await self._read(match_addr, "token_match") & 0x3F
+            raw = await self._read(match_addr, "token_match")
+            result = (raw & _MATCH_STATUS_MASK) >> _MATCH_STATUS_LSB
             self.match_code = result
             if result in _TOKEN_CODES:
                 self.matched = result == _TOKEN_MATCH
@@ -150,6 +153,28 @@ class SepRmaTokenMatchSeq(uvm_sequence):
             f"match 0x{_TOKEN_MATCH:02x}, mismatch 0x{_TOKEN_MISMATCH:02x}, "
             f"error 0x{_TOKEN_ERROR:02x})"
         )
+
+
+_MATCH_ADDR = {
+    TOKEN_RMA_SIP: _RMA_SIP_TOKEN_MATCH,
+    TOKEN_RMA_CHIPLET: _RMA_CHIPLET_TOKEN_MATCH,
+    TOKEN_SEC_DISABLE: _SEC_DISABLE_TOKEN_MATCH,
+}
+
+
+class SepRmaTokenStatusSeq(SepRmaTokenMatchSeq):
+    """Read one token's match status once, without presenting a token.
+
+    Publishes ``match_code`` (the ``token_match_status`` field) and ``matched``.
+    """
+
+    def __init__(self, kind: int, *, name: str = "sep_rma_token_status_seq") -> None:
+        super().__init__(kind, 0, name=name)
+
+    async def body(self) -> None:
+        raw = await self._read(_MATCH_ADDR[self.kind], "token_match")
+        self.match_code = (raw & _MATCH_STATUS_MASK) >> _MATCH_STATUS_LSB
+        self.matched = self.match_code == _TOKEN_MATCH
 
 
 def rma_lc_bit(kind: int) -> int:

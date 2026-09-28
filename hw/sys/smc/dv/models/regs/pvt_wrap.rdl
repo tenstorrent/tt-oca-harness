@@ -25,6 +25,8 @@ mem pvt_wrap_placeholder_mem #(
 };
 
 addrmap pvt_wrap {
+    name = "PVT Wrapper Placeholder Address Map";
+    desc = "Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.";
     external pvt_wrap_placeholder_mem footprint @0x0;
 };
 

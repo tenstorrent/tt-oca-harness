@@ -35,6 +35,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 [[tests]]
 name = "sep_esrc_e2e_smoke_test"
 module = "system.sep_esrc_e2e_smoke_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "entropy", "crypto"]
@@ -90,6 +91,7 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # assume one open command.
 name = "sep_drbg_gen_segmentation_test"
 module = "crypto.sep_drbg_gen_segmentation_test"
+firmware = { name = "km_rom_entropy", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["drbg", "entropy", "crypto", "subsystem"]

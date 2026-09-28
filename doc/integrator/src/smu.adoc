@@ -372,8 +372,8 @@ in the GPIO table.
 
 Configuration straps are captured separately from the GPIO table. Establish
 them before cold reset deassertion and keep them stable during capture. The
-generated reset-unit `STRAPS_LO` and `STRAPS_HI` register descriptions define
-the decoded bit assignments, including `BYPASS_SRAM_REPAIR` at
+`STRAPS_LO` and `STRAPS_HI` registers in the adopter peripheral window (see
+<<smc-external-supplementary>>) define the decoded bit assignments, including `BYPASS_SRAM_REPAIR` at
 `STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
 
 [[smc-peripheral-connections]]
@@ -399,11 +399,67 @@ For example, runtime reconfiguration of pin directions, pull settings, and perip
 multiplexing is expected to be reachable here. The SMC decodes the aperture and
 forwards the transaction; what lives behind it is entirely adopter-defined.
 
-The window is split into a mandatory region, whose contents and placement the
-SMC memory map fixes and every integration must implement, and a supplementary
-region for anything else the adopter chooses to expose. For placement and the
-full register layout, refer to the SMC Memory Map documentation
-(`hw/sys/smc/doc/memmap.adoc`).
+The window occupies `BASE + 0x040_0000` to `BASE + 0x07F_FFFF` (4 MiB; with
+`LOCAL_BASE`, `0xC040_0000` to `0xC07F_FFFF`). The SMC forwards every access
+in this range to `smc_external_req_o` except the eFuse SHIM range at its base
+(see <<smc-external-mandatory>>); the adopter decodes everything else. The
+generated SMC memory map reports the window as one opaque aperture.
+
+The window is split into two regions. Hardware treats both identically -- the
+split is organizational only:
+
+* *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
+  OCAH specifications dictate their function, but their implementation, register
+  layout and placement within the region are technology- and vendor-specific.
+* *Supplementary* (`BASE + 0x040_4000`): additional memory-mapped devices the
+  adopter chooses to expose, plus the captured strap registers.
+
+[[smc-external-mandatory]]
+===== Mandatory Region
+
+[cols="2,5",options="header"]
+|=======================================================================
+|Block |Purpose
+|eFuse SHIM control |Technology-specific eFuse bank control, such as the time
+the OTP macro needs to initialize before sensing
+|PLL clock-observation pad interface |Register-driven pad data and direction,
+per-field override enables, and an AXI PROT access filter
+|PLL clock-observation pad control |Drive strength, pull enable and select, and
+Schmitt select
+|PVT clock-observation pad interface |As the PLL clock-observation pad interface
+|PVT clock-observation pad control |As the PLL clock-observation pad control
+|POC/PBIAS pad control |Pad supply-voltage level selection and retention
+enable, with an access filter
+|Reference-clock pad control |Drive strength, pull and Schmitt settings for the
+reference-clock pad
+|Per-pad GPIO control |One control block per pad: pad electrical settings, the
+value captured at reset deassertion, and the secondary hardware function
+override
+|PLL wrapper |Control and status of the adopter's clock-generation block
+|PVT wrapper |Control and status of the adopter's process, voltage and
+temperature sensors
+|=======================================================================
+
+The eFuse SHIM control block sits at the base of the window and does not travel
+the external port. The SMC diverts the first `SMC_EFUSE_SHIM_SIZE` bytes of the
+window to the eFuse controller, which reaches the SHIM on
+`efuse_bank_ctrl_req_o` (see <<smc-efuse-connection>>).
+
+[[smc-external-supplementary]]
+===== Supplementary Region
+
+[cols="2,5",options="header"]
+|=======================================================================
+|Block |Purpose
+|Adopter devices |Optional memory-mapped devices. The reference integration
+places its vendor I3C controllers here
+|Captured straps |Pad values latched at cold reset, one bit per GPIO, read by
+boot firmware
+|=======================================================================
+
+[[smc-external-straps]]
+The captured straps are read-only. The generated `straps` register
+descriptions define the decoded bit assignments.
 
 [[smc-efuse-connection]]
 ==== eFuse Interface
@@ -641,7 +697,7 @@ completion.
 **Bypass Configuration:**
 
 The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) is captured into
-the reset-unit strap registers. Keep these three mechanisms distinct:
+the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:
 
 * No RTL path drives `skip_mem_repair_o` from this strap directly.
   `skip_mem_repair_o` is driven from the isolation request path.
@@ -761,6 +817,9 @@ connections, and control signals. Refer to the detailed SMC documentation for in
 signal descriptions and timing requirements.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/smc/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -774,8 +833,8 @@ The SMC provides GPIO functionality with multiplexed peripheral functions and
 test interfaces. The following table lists the signal and bump location,
 assigned function, recommended pull, and GPIO-specific notes. It does not define
 default direction or decode configuration straps; use
-`smc_padring_pkg::DefaultDirectionMap` and the generated reset-unit `STRAPS_LO`
-and `STRAPS_HI` register descriptions for those.
+`smc_padring_pkg::DefaultDirectionMap` and the `STRAPS_LO` and `STRAPS_HI`
+register descriptions (see <<smc-external-supplementary>>) for those.
 
 ifdef::backend-html5[]
 include::meta/ocah_gpio_table.adoc[]
@@ -903,6 +962,9 @@ CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
 the dedicated DTP documentation in `hw/sys/dtp/doc/` for internal design details.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/dtp/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -1099,6 +1161,9 @@ macros, AXI bus connections, cryptographic subsystem, eFuse, lifecycle,
 SPI host, and mailbox. The following table defines all SEP top-level ports.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/sep/doc/port_table.adoc[]
 endif::backend-html5[]
 
@@ -1252,41 +1317,16 @@ endif::backend-pdf[]
 
 === SMU Default Parameters
 
-The SMU exposes a set of configurable parameters that control DTP JTAG features,
-identification, cross trigger, and pipeline depths. The table below lists each
-parameter with its default value.
+The DTP JTAG features, identification, cross trigger, and pipeline depths are
+fields of the `Cfg` parameter, of type `smu_pkg::smu_cfg_t` with default
+`smu_pkg::DefaultCfg`.
 
-[cols="<30%,<15%,<55%",options="header"]
-|===
-|Parameter |Value |Description
-
-|`JTAG_BSR_ENABLE` |1 |Boundary scan enabled
-|`JTAG_EXTEST_TRAIN_ENABLE` |1 |EXTEST_TRAIN instruction enabled
-|`JTAG_EXTEST_PULSE_ENABLE` |1 |EXTEST_PULSE instruction enabled
-|`JTAG_INTEST_ENABLE` |1 |INTEST instruction enabled
-|`JTAG_CLAMP_ENABLE` |1 |CLAMP instruction enabled
-|`JTAG_HIGHZ_ENABLE` |1 |HIGHZ instruction enabled
-|`JTAG_RUNBIST_ENABLE` |1 |RUNBIST instruction enabled
-|`JTAG_TMP_ENABLE` |1 |TMP controller enabled
-|`JTAG_IC_RESET_ENABLE` |1 |Enables the external IC_RESET TDR slice (SMU drives this into the DTP's `JTAG_IC_RESET_EXT_ENABLE`). SMC and SEP slices are enabled unconditionally by the SMU.
-|`JTAG_SMC_DBG_ENABLE` |1 |SMC debug interface enabled
-|`JTAG_STAP_IO_ENABLE` |1 |I/O STAP enabled
-|`JTAG_NUM_EXTRA_STAPS` |1 |Number of additional STAPs
-|`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
-|`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
-|`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
-|`XTRIG_NUM_CTP` |16 |External cross-trigger ports
-|`XTRIG_NUM_INT_CT` |8 |SMU-exposed internal CT lanes (DTP count adds the SMC reservation)
-|`XTRIG_NUM_CLK_STOP_REQ` |8 |SMU-exposed clock-stop requests (DTP count adds the SMC reservation)
-|`XTRIG_INT_CT_MODE` |`32'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack); low `XTRIG_NUM_INT_CT` bits are consumed
-|`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
-|`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
-|`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
-|`SMC_WR_PL_DEPTH` |`2'h3` |SMC fabric write pipeline depth
-|`SEP_ABR_SRAM_LATENCY` |`1` |ABR 1R1W registered-read latency, in clocks
-|`SEP_ABR_MASKING_EN` |`1` |Adams Bridge 2-share DOM masking
-|===
+ifdef::backend-html5[]
+The parameters of `smu` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/sys/smu/smu.adoc[smu].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `smu` are listed in the HTML edition of the Technical Reference Manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 SEP-related DTP configuration is not exposed as an SMU config-struct field.
 The SMU derives SEP debug/STAP enablement from the module parameter `SEP` and
@@ -1409,7 +1449,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
+|`JTAG_OCH_VER` |`8'h00` |Yes |DTP IP major version
 |===
 
 ==== Cross Trigger Parameters
@@ -1418,7 +1458,7 @@ Type parameters are set internally based on SMC package types.
 |===
 |Parameter |SMU Default |DTP Internal |Pass-through |Notes
 
-|`XTRIG_NUM_CTP` |16 |16 |Yes |External CTP count
+|`XTRIG_NUM_CTP` |16 |Cfg |Yes |External CTP count
 |`XTRIG_NUM_INT_CT` |8 |Cfg + `XTRIG_SMC_INT_CT_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lanes
 |`XTRIG_NUM_CLK_STOP_REQ` |8 |Cfg + `XTRIG_SMC_CLK_STOP_LANES` |Yes |SMU-exposed count; DTP adds the SMC-reserved lane
 |`XTRIG_INT_CT_MODE` |32 bits, low 8 consumed |DTP width |Yes |SMC-reserved DTP mode bits are 0 (pulse-sync)
@@ -1455,10 +1495,12 @@ for integrator configuration.
 |`jtag_scan_ctrl_t` |`prim_jtag_pkg::jtag_scan_ctrl_t` |JTAG scan control struct
 |`smc_jtag_axi_req_t` |`smc_pkg::smc_jtag_56_64_2_12_axi_req_t` |SMC debug AXI request
 |`smc_jtag_axi_resp_t` |`smc_pkg::smc_jtag_56_64_2_12_axi_resp_t` |SMC debug AXI response
-|`smc_otp_axil_req_t` |`smc_efuse_pkg::efuse_axil_req_t` |SMC OTP AXI-Lite request
-|`smc_otp_axil_resp_t` |`smc_efuse_pkg::efuse_axil_resp_t` |SMC OTP AXI-Lite response
-|`sep_otp_axil_req_t` |`smc_efuse_pkg::efuse_axil_req_t` |SEP OTP AXI-Lite request (error slave when `SEP=0`)
-|`sep_otp_axil_resp_t` |`smc_efuse_pkg::efuse_axil_resp_t` |SEP OTP AXI-Lite response (error slave when `SEP=0`)
+|`ic_reset_smc_t` |`smc_pkg::jtag_smc_reset_ctrl_t` |SMC IC_RESET TDR slice
+|`ic_reset_sep_t` |`sep_pkg::jtag_sep_reset_ctrl_t` |SEP IC_RESET TDR slice
+|`smc_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SMC OTP AXI-Lite request
+|`smc_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SMC OTP AXI-Lite response
+|`sep_otp_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |SEP OTP AXI-Lite request (error slave when `SEP=0`)
+|`sep_otp_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |SEP OTP AXI-Lite response (error slave when `SEP=0`)
 |`xtrig_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |Cross trigger CSR request
 |`xtrig_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |Cross trigger CSR response
 |===
@@ -2134,6 +2176,9 @@ ports including clock, reset, JTAG, cross trigger, SMC-originated interfaces
 with `sep_` are only active when the module parameter `SEP=1`.
 
 ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::partial$hw/smu/doc/port_table.adoc[]
 endif::backend-html5[]
 

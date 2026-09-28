@@ -1,57 +1,85 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// DMA Frontend
+// Accept AXI control traffic in an iDMA register frontend and emit 1-D iDMA requests.
 //
-//-----------------------------------------------------------------------------
-
+// Each control interface has its own chain: an axi_cut, an axi_to_reg_v2 bridge to a 32-bit
+// register interface, the idma_reg64_2d register frontend, a stream_fifo that buffers 2-D
+// requests between the register frontend and the 2-D midend, and an idma_nd_midend that splits
+// each 2-D request into 1-D requests. An idma_transfer_id_gen per interface issues transfer IDs
+// and retires one on each midend completion. NUM_CTRL_INTERFACES and NUM_CTRL_STREAMS must be
+// >= 1. F2M_FIFO_DEPTH is passed unchanged to the stream_fifo DEPTH and is the FIFO depth in
+// requests; fifo_v3 asserts DEPTH > 0.
 
 module idma_frontend_wrapper #(
-  parameter int unsigned NUM_CTRL_INTERFACES = 1,  // must be >= 1
-  parameter int unsigned NUM_CTRL_STREAMS = 1, // must be >= 1
+  parameter int unsigned NUM_CTRL_INTERFACES = 1,           // Independent control ports, each with
+                                                            // its own frontend, FIFO and midend;
+                                                            // must be >= 1.
+  parameter int unsigned NUM_CTRL_STREAMS = 1,              // Register-frontend streams per control
+                                                            // port; must be >= 1. The stream index
+                                                            // is unconnected, so all streams share
+                                                            // one FIFO and midend.
 
-  parameter int unsigned F2M_FIFO_DEPTH = 4,    // minimum depth of 1, any value set here will create a depth of 1 + val
+  parameter int unsigned F2M_FIFO_DEPTH = 4,                // Depth in requests of the FIFO between
+                                                            // the register frontend and the 2-D
+                                                            // midend; passed unchanged to
+                                                            // stream_fifo DEPTH and must be > 0.
 
-  parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,
+  parameter bit BYPASS_DMA_CTRL_FLOPS = 1'b0,               // When set, the control-port axi_cut is
+                                                            // a pass-through with no registers.
 
-  parameter int unsigned NumDim = 2,
-  parameter int unsigned RepWidth = 32,
+  parameter int unsigned NumDim = 2,                        // Transfer dimension count of the
+                                                            // midend; the 2-D register frontend and
+                                                            // two-entry RepWidths match only 2.
+  parameter int unsigned RepWidth = 32,                     // Width of each midend repetition
+                                                            // counter.
 
-  parameter type idma_req_t = logic,
-  parameter type idma_resp_t = logic,
-  parameter type idma_nd_req_t = logic,
-  parameter type dma_mst_addr_t = logic,
+  parameter type idma_req_t = logic,                        // 1-D iDMA request type emitted by the
+                                                            // midend.
+  parameter type idma_resp_t = logic,                       // iDMA response type returned by the
+                                                            // backend.
+  parameter type idma_nd_req_t = logic,                     // 2-D request type produced by the
+                                                            // register frontend.
+  parameter type dma_mst_addr_t = logic,                    // Transfer address type used by the
+                                                            // midend.
 
-  // AXI ctrl interface types
-  parameter type dma_ctrl_req_t  = logic,
-  parameter type dma_ctrl_resp_t = logic,
+  parameter type dma_ctrl_req_t  = logic,                   // AXI ctrl request type.
+  parameter type dma_ctrl_resp_t = logic,                   // AXI ctrl response type.
 
-  // Width params for internal AXI typedef + axi_to_reg_v2
-  parameter int unsigned CTRL_ADDR_WIDTH = 9,
-  parameter int unsigned CTRL_DATA_WIDTH = 64,
-  parameter int unsigned CTRL_ID_WIDTH   = 8,
-  parameter int unsigned CTRL_USER_WIDTH = 12
+  parameter int unsigned CTRL_ADDR_WIDTH = 9,               // Ctrl AXI address width.
+  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width; axi_to_reg_v2
+                                                            // converts it to the 32-bit register
+                                                            // interface.
+  parameter int unsigned CTRL_ID_WIDTH   = 8,               // Ctrl AXI ID width.
+  parameter int unsigned CTRL_USER_WIDTH = 12               // Ctrl AXI user width.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                                       // Frontend clock; the gated frontend
+                                                            // clock in idma_wrapper.
+  input  logic rst_ni,                                      // Async reset, active-low.
+  input  logic test_en_i,                                   // Test mode, driven to the request FIFO
+                                                            // testmode input.
 
-  output logic dma_frontend_wakeup_o,
-  output logic dma_frontend_busy_o,
+  output logic dma_frontend_wakeup_o,                       // High while any interface has an AXI
+                                                            // control command in flight, a queued
+                                                            // request, or a busy midend.
+  output logic dma_frontend_busy_o,                         // High while any request FIFO is
+                                                            // non-empty or any midend is busy;
+                                                            // in-flight AXI control commands are
+                                                            // excluded.
 
-  // AXI interface to DMA control registers
-  input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i,
-  output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o,
+  input  dma_ctrl_req_t  [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_req_i, // AXI control subordinate request per interface.
+  output dma_ctrl_resp_t [NUM_CTRL_INTERFACES-1:0] dma_ctrl_axi_resp_o, // AXI control subordinate response per interface.
 
-  // iDMA request/response interface
-  output idma_req_t  [NUM_CTRL_INTERFACES-1:0] req_o,
-  output logic       [NUM_CTRL_INTERFACES-1:0] req_valid_o,
-  input  logic       [NUM_CTRL_INTERFACES-1:0] req_ready_i,
+  output idma_req_t  [NUM_CTRL_INTERFACES-1:0] req_o,       // 1-D request from each midend.
+  output logic       [NUM_CTRL_INTERFACES-1:0] req_valid_o, // Outbound request valid.
+  input  logic       [NUM_CTRL_INTERFACES-1:0] req_ready_i, // Outbound request ready.
 
-  input  idma_resp_t [NUM_CTRL_INTERFACES-1:0] resp_i,
-  input  logic       [NUM_CTRL_INTERFACES-1:0] resp_valid_i,
-  output logic       [NUM_CTRL_INTERFACES-1:0] resp_ready_o
+  input  idma_resp_t [NUM_CTRL_INTERFACES-1:0] resp_i,      // 1-D response to each midend.
+  input  logic       [NUM_CTRL_INTERFACES-1:0] resp_valid_i, // Response valid; a response with last
+                                                             // set completes the 2-D transfer and
+                                                             // retires its ID.
+  output logic       [NUM_CTRL_INTERFACES-1:0] resp_ready_o // Midend ready for the backend
+                                                            // response.
 );
 
   `include "axi/typedef.svh"

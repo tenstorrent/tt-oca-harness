@@ -30,6 +30,8 @@ from pathlib import Path
 
 import cocotb
 import pyuvm
+from cocotb.triggers import Edge, First, ReadOnly
+from cocotb.utils import get_sim_time
 from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_spec_tables import pic
 from sep_base_test import sep_base_test
@@ -71,12 +73,36 @@ class sep_mailbox_plic_test(sep_base_test):
         # time 0: under a four-state simulator the port is X before reset, and
         # a compare there would raise on a healthy run.
         smc_irq = cocotb.top.smc_mailbox_interrupt_o
+        irq_vec = cocotb.top.sep_internal_interrupts_probe_o
+        inbound_mask = (1 << _MBOX_N) - 1
+        # Inbound channel ch drives sep_internal_interrupts[ch] (PIC source ch+1,
+        # interrupts.adoc). Every change of that vector or of the SMC-facing
+        # line is sampled, so each inbound pending window is seen while it is
+        # open, not after the firmware has cleared it.
+        inbound_seen = [False] * _MBOX_N
+        leaks: list[str] = []
+
+        async def _watch_inbound_vs_smc_line() -> None:
+            while True:
+                await First(Edge(irq_vec), Edge(smc_irq))
+                await ReadOnly()
+                inbound = self.rd_known(irq_vec, inbound_mask) & inbound_mask
+                smc_now = self.rd_known(smc_irq) & inbound_mask
+                for ch in range(_MBOX_N):
+                    if (inbound >> ch) & 1:
+                        inbound_seen[ch] = True
+                        if (smc_now >> ch) & 1:
+                            leaks.append(
+                                f"inbound ch{ch} pending and smc_mailbox_interrupt_o[{ch}]=1 "
+                                f"at {get_sim_time('ns')} ns"
+                            )
 
         async def _smc_line_idle() -> None:
             assert self.rd_known(smc_irq) == 0, (
                 "smc_mailbox_interrupt_o is already asserted after reset; the "
                 "end-of-run check below could not attribute it to the outbound push"
             )
+            cocotb.start_soon(_watch_inbound_vs_smc_line())
 
         await self.boot_firmware(
             self.sb,
@@ -106,24 +132,35 @@ class sep_mailbox_plic_test(sep_base_test):
             _MBOX_N,
         )
 
-        # Direction, observed rather than reported: sep.sv routes
-        # outbound_interrupt_o to smc_mailbox_interrupt_o and inbound_interrupt_o
-        # to the CPU PIC. The firmware left its outbound channel-0 entry pending
-        # and cleared every inbound one, so bit 0 must be set and the rest clear.
-        # Before #2054 reversed the connection this read 0, because the outbound
-        # push went to the PIC instead.
+        # Direction, observed rather than reported. The spec gives PIC sources
+        # 1-8 to the SMC-to-SEP (inbound) mailbox channels
+        # (hw/sys/sep/doc/interrupts.adoc) and gives smc_mailbox_interrupt_o to
+        # the mailbox interrupts toward the SMC (hw/sys/sep/doc/port_table.adoc).
+        # The firmware left its outbound channel-0 entry pending and cleared
+        # every inbound one, so bit 0 must be set and the rest clear. An
+        # outbound push routed to the PIC instead leaves this line at 0.
         assert "CHK-DIRECTION PASS:" in console, (
             "firmware console has no CHK-DIRECTION line, so the outbound push "
             f"never ran or reached the CPU. Console was:\n{console}"
         )
+        # Positive control: every inbound interrupt was observed pending, so the
+        # leak check below ran inside each window rather than on an idle line.
+        missing = [ch for ch in range(_MBOX_N) if not inbound_seen[ch]]
+        assert not missing, (
+            f"CHK-SMC-LINE FAIL: inbound mailbox interrupt(s) {missing} were never seen "
+            "pending on sep_internal_interrupts; the per-window check did not run"
+        )
+        assert not leaks, "CHK-SMC-LINE FAIL: " + "; ".join(leaks)
         smc_bits = self.rd_known(smc_irq)
         assert smc_bits == 0b1, (
             f"smc_mailbox_interrupt_o = 0b{smc_bits:08b}, expected 0b00000001: "
-            "bit 0 is the pending outbound push, and the seven inbound pushes "
+            "bit 0 is the pending outbound push, and the inbound pushes "
             "that reached the CPU must not appear on this line at all"
         )
         self.logger.info(
-            "CHK-SMC-LINE PASS: outbound push asserted smc_mailbox_interrupt_o[0] "
-            "and the inbound deliveries left the line otherwise clear (%s)",
-            f"0b{smc_bits:08b}",
+            "CHK-SMC-LINE PASS: all %d inbound interrupts were seen pending with "
+            "smc_mailbox_interrupt_o clear of each, and the outbound push left "
+            "0b%s at the end",
+            _MBOX_N,
+            f"{smc_bits:08b}",
         )
