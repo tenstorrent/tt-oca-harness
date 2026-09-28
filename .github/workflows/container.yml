@@ -219,19 +219,28 @@ jobs:
             bender --version
           '
 
-      # Move the consumed :main tag onto the verified content only on main. The
-      # image is already local from the verify pull, so this is a re-tag + push
-      # of layers the registry already has.
+      # Move the consumed :main tag onto the verified content only on main. This is
+      # a registry-side manifest copy pinned to the exact digest build-and-publish
+      # pushed, so it needs no local image: docker-run.sh's verify pull auto-selects
+      # podman when present, whose image store the docker daemon cannot see, so a
+      # `docker` re-tag of that pull finds nothing. skopeo talks to the registry
+      # directly and sidesteps the engine entirely.
+      - name: Ensure skopeo
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: command -v skopeo >/dev/null || { sudo apt-get update && sudo apt-get install -y skopeo; }
+
       - name: Promote verified image to :main
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          hash="${{ needs.build-and-publish.outputs.image_hash }}"
+          echo "$GHCR_TOKEN" | skopeo login ghcr.io -u "${{ github.actor }}" --password-stdin
           digest="${{ needs.build-and-publish.outputs.image_digest }}"
-          docker tag "${REGISTRY_IMAGE}:${hash}" "${REGISTRY_IMAGE}:main"
-          docker push "${REGISTRY_IMAGE}:main"
+          skopeo copy --insecure-policy \
+            "docker://${REGISTRY_IMAGE}@${digest}" \
+            "docker://${REGISTRY_IMAGE}:main"
           {
             echo "### Promoted to :main"
             echo
-            echo "- \`${REGISTRY_IMAGE}:${hash}\` -> \`${REGISTRY_IMAGE}:main\`"
-            echo "- digest: \`${digest}\`"
+            echo "- \`${REGISTRY_IMAGE}@${digest}\` -> \`${REGISTRY_IMAGE}:main\`"
           } >> "$GITHUB_STEP_SUMMARY"
