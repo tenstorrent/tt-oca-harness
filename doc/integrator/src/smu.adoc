@@ -435,8 +435,8 @@ boundary carries two independent copies of the interface, one with an `smc_`
 prefix and one with a `sep_` prefix. The adopter places *two separate SHIM and
 macro instances*, one per controller, each fronting its own 8 Kbit bank. The
 banks are never shared. Each controller also drives its own sense-done output
-to the `smu.sv` boundary: `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`.
-Inside the SMU, both done signals are also readable from the SEP system CSRs.
+to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
+and holds the sensed bank in its own shadow registers.
 <<efuse-smu-instances-fig>> shows these connections. When the SMU is built with
 `SEP = 0`, only the SMC instance is needed.
 
@@ -509,14 +509,17 @@ last strobe; do not treat that still-asserted request as a second read. The
 controller also withdraws `valid` without waiting for a response in these
 cases, and the SHIM must abandon the command it had started:
 ** a firmware read or program timeout expires{asterisk}
-** secure test mode asserts{asterisk}
 ** firmware changes the read or program enable, where program takes priority
 over read{asterisk}
 * *Errors.* Setting `status` ends a firmware read or program command with an
 error. The sense FSM counts only `valid` strobes, so a sensing error must still
 be followed by the remaining strobes.
-* *No access control.* The eFuse guard zeroes requests to locked fields and
-all requests in secure test mode before they reach the SHIM.
+* *No access control.* The eFuse guard zeroes requests to locked fields, and
+every request while the SEP is in secure test mode, in the same cycle the
+request is issued. A blocked request therefore never reaches the SHIM:
+`valid` does not rise, and no response is expected. Secure test mode is
+latched once per cold boot, before any firmware command can be issued, so it
+cannot begin in the middle of a command. The SMC controller has no secure test mode.
 
 {asterisk} These scenarios will be fixed in a future release so that the
 controller never withdraws `valid` before the response.
