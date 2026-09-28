@@ -7,9 +7,10 @@
 // Captured GPIO strap values, presented to firmware as two read-only words.
 
 addrmap straps {
-
+    name = "Straps Address Map";
     desc = "Captured GPIO strap values (adopter padring capture)";
 
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

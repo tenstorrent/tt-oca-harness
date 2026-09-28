@@ -10,10 +10,12 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>axil_mailbox_sep_wrap</ipxact:name>
-      <ipxact:description></ipxact:description>
+      <ipxact:displayName>SEP AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
+      <ipxact:description>SEP-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_0</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -363,7 +365,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_0</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -713,7 +716,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_1</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h1000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -1063,7 +1067,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_1</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h1800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -1413,7 +1418,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_2</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h2000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -1763,7 +1769,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_2</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h2800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -2113,7 +2120,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_3</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h3000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -2463,7 +2471,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_3</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h3800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -2813,7 +2822,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_4</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h4000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -3163,7 +3173,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_4</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h4800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -3513,7 +3524,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_5</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h5000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -3863,7 +3875,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_5</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h5800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -4213,7 +4226,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_6</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h6000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -4563,7 +4577,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_6</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h6800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -4913,7 +4928,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_7</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h7000</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>
@@ -5263,7 +5279,8 @@ On write:
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>inbound_mailbox_7</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>
+        <ipxact:description>Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.</ipxact:description>
         <ipxact:baseAddress>'h7800</ipxact:baseAddress>
         <ipxact:range>'h50</ipxact:range>
         <ipxact:width>64</ipxact:width>

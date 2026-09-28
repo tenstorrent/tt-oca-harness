@@ -210,7 +210,7 @@ compile (a model in the product composition, not a testbench component). Shadow
 registers are preloaded under `+skip_fuse_sense`
 |BSR / STAP / DFD host scan chains |testbench loopback of `scan_out` to `scan_in`
 (`tb/tb_wrapper_top.sv`, all five host chains and the I/O and extra STAP TDO-to-TDI returns)
-|CDC synchronisers on Verilator |`prim_sync2` / `prim_sync3` stand-ins from
+|CDC synchronisers on Verilator |`prim_sync3` stand-in from
 `hw/sys/smc/dv/tb/verilator_stubs/`, listed in `[build].stubs`
 |===
 

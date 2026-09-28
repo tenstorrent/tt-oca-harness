@@ -36,10 +36,21 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
+from ocah_axi_vip import AxiTimingProfile
 
 from ._one_shot import _OneShot
 from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_axi_port_watch import SmcAxiPortWatch
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_jtag_axi_shape_test_seq import (
+    ARPROT_PRIV,
+    AWPROT_PRIV,
+    FILTER_LOCK,
+    FILTER_RESET,
+    GPIO0_FILTER,
+    PROT_UNPRIV,
+)
+from .smc_mailbox_data_error_test_seq import CLOCK_GATE_CONTROL, INBOUND_READ_DATA, MAILBOX_CG_EN
 from .smc_output_fabric_vip_utils import (
     INBOUND0_END,
     INBOUND0_FILTER_CONFIG,
@@ -90,6 +101,20 @@ def burst_payload(beats: int) -> int:
 UNIMPLEMENTED_ADDR = (
     smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
 )
+# Backpressure phase: three passes over the eight scratch registers in one
+# outstanding write group and one outstanding read group, while the manager
+# holds BREADY and RREADY low for this many cycles. Three passes are enough
+# outstanding addresses for the fabric to hold AWREADY and ARREADY low.
+BACKPRESSURE_COUNT = 8
+BACKPRESSURE_PASSES = 3
+READY_HOLD_CYCLES = 64
+AXI_RESP_SLVERR = 2
+
+
+def backpressure_pattern(index: int, write_pass: int = BACKPRESSURE_PASSES - 1) -> int:
+    return 0xBAC0_0000 | (write_pass << 16) | (index << 8) | (0xFF ^ index)
+
+
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR", None: "none"}
 
 # Concurrent-direction phase: two registers written and two read per pass.
@@ -110,13 +135,20 @@ def duplex_pattern(index: int, pass_index: int = DUPLEX_PASSES - 1) -> int:
 
 # SEP_IN accesses: 3 admit writes + config readback, scratch readback, scratch
 # restore + readback, 2 duplex seeds, 2 duplex readbacks, 4 duplex restores,
-# 3 restore writes + config readback.
-EXPECTED_SEP_ACCESSES = 19
+# 3 restore writes + config readback, filter arm, two filter readbacks and
+# its restore, mailbox clock read, enable and readback, restore and readback,
+# 8 scratch restores after the backpressure groups.
+EXPECTED_SEP_ACCESSES = 36
 # SYS_IN accesses the scoreboard must have completed: pre-admit read,
 # VERSION_LO read, scratch write, scratch read, the concurrent group, two
-# burst writes with their two burst reads, and the unimplemented-region read.
+# burst writes with their two burst reads, the unimplemented-region read and
+# write, the refused filter write and read, the empty-mailbox read, and the
+# backpressure groups.
 EXPECTED_SYS_IN_ACCESSES = (
-    4 + DUPLEX_PASSES * (len(DUPLEX_WRITE_INDICES) + len(DUPLEX_READ_INDICES)) + 5
+    4
+    + DUPLEX_PASSES * (len(DUPLEX_WRITE_INDICES) + len(DUPLEX_READ_INDICES))
+    + 9
+    + 2 * BACKPRESSURE_PASSES * BACKPRESSURE_COUNT
 )
 
 
@@ -164,6 +196,10 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         self.sys_scratch_word: int | None = None
         self.duplex_admitted: int | None = None
         self.unimplemented_resp: int | None = None
+        self.unimplemented_write_resp: int | None = None
+        self.denied_write_resp: int | None = None
+        self.empty_mailbox_resp: int | None = None
+        self.stalls: dict[str, int] | None = None
 
     async def _sys_in(
         self,
@@ -176,6 +212,7 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         allow_error: bool = False,
         length: int = 4,
         beats: int = 1,
+        prot: int = PROT_UNPRIV,
     ) -> SmcSysAxiItem:
         item = SmcSysAxiItem(f"sys_in_{label}")
         item.op = op
@@ -185,6 +222,7 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         item.wdata = wdata
         item.expected = expected
         item.allow_error = allow_error
+        item.prot = prot
         await _OneShot(item, f"sys_in_{label}_os").start(self.env.sys_in_axi_agent.sequencer)
         return item
 
@@ -316,6 +354,130 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         await RisingEdge(cocotb.top.clk_smc_i)
         await watcher
 
+        # The write channel of the same region answers DECERR as the read did.
+        dead_wr = await self._sys_in(
+            "UNIMPLEMENTED_WR",
+            SmcSysAxiOp.WRITE,
+            UNIMPLEMENTED_ADDR,
+            wdata=0xDEAD_0000,
+            allow_error=True,
+        )
+        self.unimplemented_write_resp = dead_wr.resp_code
+        assert dead_wr.resp_code == AXI_RESP_DECERR, (
+            f"sys_axi_in write to unimplemented 0x{UNIMPLEMENTED_ADDR:08x} answered "
+            f"{_RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code)}, expected DECERR"
+        )
+
+        # The GPIO access filter refuses an unprivileged sys_axi_in access the
+        # way it refuses one from SEP_IN: the read with DECERR and the
+        # error-slave signature, the write with an error response whose code
+        # is reported, and the armed filter is unchanged afterwards.
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(GPIO0_FILTER)
+        await self.csr_write("GPIO0_FILTER_LOCK", GPIO0_FILTER, FILTER_LOCK, prot=AWPROT_PRIV)
+        denied_wr = await self._sys_in(
+            "FILTER_DENIED_WR",
+            SmcSysAxiOp.WRITE,
+            GPIO0_FILTER,
+            wdata=FILTER_RESET,
+            allow_error=True,
+        )
+        self.denied_write_resp = denied_wr.resp_code
+        assert denied_wr.resp_code is not None and denied_wr.resp_code > 1, (
+            f"unprivileged sys_axi_in write to the armed filter answered "
+            f"{_RESP_NAME.get(denied_wr.resp_code, denied_wr.resp_code)}, expected an error"
+        )
+        denied_rd = await self._sys_in(
+            "FILTER_DENIED_RD", SmcSysAxiOp.READ, GPIO0_FILTER, allow_error=True
+        )
+        assert denied_rd.resp_code == AXI_RESP_DECERR, (
+            f"unprivileged sys_axi_in read of the armed filter answered "
+            f"{_RESP_NAME.get(denied_rd.resp_code, denied_rd.resp_code)}, expected DECERR"
+        )
+        assert (denied_rd.rdata & 0xFFFF_FFFF) == (self.ERR_SLAVE_SIGNATURE & 0xFFFF_FFFF), (
+            f"refused sys_axi_in read returned 0x{denied_rd.rdata & 0xFFFF_FFFF:08x}, "
+            f"expected the error-slave signature 0x{self.ERR_SLAVE_SIGNATURE:08x}"
+        )
+        await self.csr_read(
+            "GPIO0_FILTER_STILL_LOCKED", GPIO0_FILTER, expected=FILTER_LOCK, prot=ARPROT_PRIV
+        )
+        await self.csr_write("GPIO0_FILTER_RESTORE", GPIO0_FILTER, FILTER_RESET, prot=AWPROT_PRIV)
+        await self.csr_read("GPIO0_FILTER_RESTORED", GPIO0_FILTER, expected=FILTER_RESET)
+
+        # A read of an empty mailbox is the register-level SLVERR the mailbox
+        # error test proves over SEP_IN; here it is taken over sys_axi_in.
+        clock_gate = await self.csr_read("CLOCK_GATE_CONTROL", CLOCK_GATE_CONTROL, length=8)
+        await self.csr_write(
+            "CLOCK_GATE_CONTROL_ENABLE_MAILBOX",
+            CLOCK_GATE_CONTROL,
+            clock_gate | MAILBOX_CG_EN,
+            length=8,
+        )
+        await self.csr_read(
+            "CLOCK_GATE_CONTROL_ENABLED",
+            CLOCK_GATE_CONTROL,
+            expected=clock_gate | MAILBOX_CG_EN,
+            length=8,
+        )
+        empty = await self._sys_in(
+            "MAILBOX_EMPTY_RD", SmcSysAxiOp.READ, INBOUND_READ_DATA, length=8, allow_error=True
+        )
+        self.empty_mailbox_resp = empty.resp_code
+        assert empty.resp_code == AXI_RESP_SLVERR, (
+            f"sys_axi_in read of the empty inbound mailbox answered "
+            f"{_RESP_NAME.get(empty.resp_code, empty.resp_code)}, expected SLVERR"
+        )
+        await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", CLOCK_GATE_CONTROL, clock_gate, length=8)
+        await self.csr_read(
+            "CLOCK_GATE_CONTROL_RESTORED", CLOCK_GATE_CONTROL, expected=clock_gate, length=8
+        )
+
+        # Outstanding writes, then outstanding reads, over the eight scratch
+        # registers while the manager holds BREADY and RREADY low, so the port
+        # carries stalls on its response channels and, as far as the fabric
+        # queues fill, on its address channels. The read group starts after
+        # the write group has drained: AXI orders nothing between the two
+        # channels, so a read pipelined behind its write may return the old
+        # word.
+        port = SmcAxiPortWatch(cocotb.top, "sys_axi")
+        port_task = cocotb.start_soon(port.run())
+        hold = AxiTimingProfile(b_ready_delay=READY_HOLD_CYCLES, r_ready_delay=READY_HOLD_CYCLES)
+        writes = [
+            self._duplex_member(
+                f"BACKPRESSURE_WR{index}_P{write_pass}",
+                SmcSysAxiOp.WRITE,
+                scratch_cold(index),
+                wdata=backpressure_pattern(index, write_pass),
+            )
+            for write_pass in range(BACKPRESSURE_PASSES)
+            for index in range(BACKPRESSURE_COUNT)
+        ]
+        reads = [
+            self._duplex_member(
+                f"BACKPRESSURE_RD{index}_P{read_pass}",
+                SmcSysAxiOp.READ,
+                scratch_cold(index),
+                expected=backpressure_pattern(index),
+            )
+            for read_pass in range(BACKPRESSURE_PASSES)
+            for index in range(BACKPRESSURE_COUNT)
+        ]
+        for name, members in (
+            ("sys_in_backpressure_wr", writes),
+            ("sys_in_backpressure_rd", reads),
+        ):
+            group = SmcSysAxiGroupItem(name, members, timing=hold)
+            await _OneShot(group, f"{name}_os").start(self.env.sys_in_axi_agent.sequencer)
+        port.stop = True
+        await RisingEdge(cocotb.top.clk_smc_i)
+        await port_task
+        self.stalls = dict(port.stalls)
+        assert self.stalls["b"] > 0 and self.stalls["r"] > 0, (
+            f"the backpressure profile never stalled the response channels: {self.stalls}"
+        )
+        for index in range(BACKPRESSURE_COUNT):
+            await self.csr_write(f"BACKPRESSURE_RESTORE_{index}", scratch_cold(index), 0)
+
         await self.csr_write(
             "INBOUND0_CONFIG_RESTORE",
             INBOUND0_FILTER_CONFIG,
@@ -371,6 +533,28 @@ class smc_sys_axi_in_port_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-SYS-AXI-IN-NOT-CLOSED: unused-port-tied-idle -- every inbound port of this bench "
             "carries an agent, none is tied to zero"
+        )
+        cocotb.log.info(
+            "CHK-SYS-AXI-IN-ERRORS: sys_axi_in write to the unimplemented ecam_region page "
+            "0x%08x answered %s; with GPIO0 ACCESS_FILTER armed, the unprivileged sys_axi_in "
+            "write was refused with %s and took no effect, the unprivileged read answered "
+            "DECERR with the error-slave signature, and the read of the empty inbound mailbox "
+            "answered %s",
+            UNIMPLEMENTED_ADDR,
+            _RESP_NAME.get(self.unimplemented_write_resp, str(self.unimplemented_write_resp)),
+            _RESP_NAME.get(self.denied_write_resp, str(self.denied_write_resp)),
+            _RESP_NAME.get(self.empty_mailbox_resp, str(self.empty_mailbox_resp)),
+        )
+        cocotb.log.info(
+            "CHK-SYS-AXI-IN-BACKPRESSURE: %d outstanding sys_axi_in accesses under a %d-cycle "
+            "BREADY/RREADY hold stalled aw=%d ar=%d b=%d r=%d cycles; every read returned the "
+            "word its last write carried",
+            2 * BACKPRESSURE_PASSES * BACKPRESSURE_COUNT,
+            READY_HOLD_CYCLES,
+            self.stalls["aw"],
+            self.stalls["ar"],
+            self.stalls["b"],
+            self.stalls["r"],
         )
         cocotb.log.info(
             "CHK-SYS-AXI-IN-BURST: AxLEN=%d and AxLEN=%d INCR bursts of %d-byte beats written "

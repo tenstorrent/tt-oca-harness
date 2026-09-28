@@ -23,7 +23,7 @@ from env.sep_axi_decode_map import (
     spec_regions,
 )
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -36,6 +36,7 @@ RESP_OKAY = 0
 # expected value come from the generated SystemRDL export.
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
+ROM_ONE_PAST = sym("SEP_BOOT_ROM_MEM_BASE_ADDR") + sym("SEP_BOOT_ROM_MEM_SIZE")
 
 # Reserved spans that must not be probed, each with the reason. These are
 # excluded from stimulus, not from the contract: the map still says reserved.
@@ -82,11 +83,12 @@ SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the exclude list. A drop here does not move
 # short_regions, so the count is held on its own.
-ANCHOR_KEPT = 6
+ANCHOR_KEPT = 7
 
 # Reserved gaps walked on every seed: one address just past the end of a live
-# block. Four sit in unnamed-refuse spans and are dropped, so six survive.
+# block. Four sit in unnamed-refuse spans and are dropped, so seven survive.
 _ANCHORS: tuple[tuple[int, str], ...] = (
+    (ROM_ONE_PAST, "r"),
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
     (0x1091_4000, "r"),  # KMAC/DRBG gap

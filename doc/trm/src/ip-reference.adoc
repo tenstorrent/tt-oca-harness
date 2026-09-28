@@ -15,6 +15,7 @@ ifdef::backend-html5[]
 * xref:ip:axi_lite_mailbox_unit/doc/index.adoc[AXI-Lite Mailbox Unit]
 * xref:ip:gpio/doc/index.adoc[GPIO]
 * xref:ip:i2c/doc/index.adoc[I2C]
+* xref:ip:i3ccore_wrap/doc/index.adoc[I3C Controller]
 * xref:ip:log_engine/doc/index.adoc[Log Engine]
 * xref:ip:system_timer_octs/doc/index.adoc[System Timer OCTS]
 * xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
@@ -25,6 +26,7 @@ ifdef::backend-pdf[]
 * <<mailbox-unit,AXI-Lite Mailbox Unit>>
 * <<gpio-peripheral,GPIO>>
 * <<i2c-controller,I2C>>
+* <<i3c-controller,I3C Controller>>
 * <<log-engine,Log Engine>>
 * <<system-timer-octs,System Timer OCTS>>
 * <<telemetry-receiver,Telemetry Receiver>>

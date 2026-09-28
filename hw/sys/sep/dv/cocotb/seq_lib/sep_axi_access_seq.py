@@ -27,6 +27,7 @@ class SepAxiAccessSeq(uvm_sequence):
         length: int = 4,
         size: int | None = None,
         allow_unverified_write_resp: bool = False,
+        allow_ungraded_read_resp: bool = False,
         expect_error: bool = False,
         user: int = 0,
         burst: int | None = None,
@@ -42,6 +43,11 @@ class SepAxiAccessSeq(uvm_sequence):
         # e.g. for a write-once-set bit whose clear-attempt is actively rejected
         # (SLVERR) once locked -- the proof is the read-back value, not the resp.
         self._allow_unverified_write_resp = allow_unverified_write_resp
+        # Tolerate a non-OKAY read response on a read the specification refuses
+        # without naming the code (the caller grades the data). Read-only.
+        if allow_ungraded_read_resp and op is not SepAxiOp.READ:
+            raise ValueError("allow_ungraded_read_resp applies to a read only")
+        self._allow_ungraded_read_resp = allow_ungraded_read_resp
         # Negative-path probe: a non-OKAY response is the EXPECTED outcome (the caller
         # asserts the exact resp_code). The scoreboard then tolerates it instead of
         # failing, and fails a probe that wrongly returns OKAY (e.g. a read from an
@@ -67,6 +73,7 @@ class SepAxiAccessSeq(uvm_sequence):
         item.wdata = self._wdata
         item.size = self._size
         item.allow_unverified_write_resp = self._allow_unverified_write_resp
+        item.allow_ungraded_read_resp = self._allow_ungraded_read_resp
         item.expect_error = self._expect_error
         item.user = self._user
         item.burst = self._burst

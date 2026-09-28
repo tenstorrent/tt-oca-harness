@@ -10,6 +10,8 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>pll_wrap</ipxact:name>
+      <ipxact:displayName>PLL Wrapper Placeholder Address Map</ipxact:displayName>
+      <ipxact:description>Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>footprint</ipxact:name>
         <ipxact:description>Placeholder footprint (adopter clock-control block; no CSRs modeled)</ipxact:description>

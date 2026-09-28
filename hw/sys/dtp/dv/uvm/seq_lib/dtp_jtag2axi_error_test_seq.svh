@@ -332,7 +332,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     reset_to_rti();
     arm_target_error(t, base + fault_idx * stride, resp, 1'b1, 1'b0);
     foreach (preload[idx]) begin
-      preload[idx] = rand_data(t) & data_mask(size);
+      preload[idx] = rand_nonzero_data(t) & data_mask(size);
       write_target_mem_int(t, base + idx * stride, preload[idx], size);
     end
     if (with_status) begin
@@ -360,7 +360,10 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         wait_for_target_activity(t, aw0, w0, ar0, 1'b1, $sformatf("series_read_error.axi#%0d", idx
                                  ));
         series_plain_read_shift(t, size, increment, rdata);
-        if (idx != fault_idx && rdata !== mem_expected)
+        if (idx == fault_idx)
+          check_error_rdata(t, addr, rdata, resp, mem_expected, size, $sformatf(
+                            "series_read_error.fault#%0d", idx));
+        else if (rdata !== mem_expected)
           `uvm_error("jtag2axi_data_chk", $sformatf(
                      "series_read_error.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
                      idx,

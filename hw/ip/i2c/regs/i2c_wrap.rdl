@@ -10,6 +10,8 @@
 addrmap i2c_wrap #(
     longint unsigned NUM_I2CS = 3
 ) {
+    name = "I2C Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-controller I2C register blocks and shared control.";
 
     /////////////////
     // Address Map //

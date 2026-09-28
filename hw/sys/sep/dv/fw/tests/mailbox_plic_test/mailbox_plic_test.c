@@ -204,12 +204,13 @@ static int run_channel(uint32_t ch) {
     return errors;
 }
 
-// Direction leg for the reversed mailbox wiring (sep.sv: inbound_interrupt_o ->
-// the SEP CPU PIC, outbound_interrupt_o -> smc_mailbox_interrupt_o). Arm the
-// OUTBOUND channel-0 aperture with PIC source 1 enabled and push one word. The
-// ISR must stay silent: if outbound still reached the PIC this would fire, which
-// is exactly the pre-#2054 wiring. The entry is left pending on purpose so the
-// testbench can read smc_mailbox_interrupt_o[0] asserted at end of run.
+// Direction leg. PIC sources 1-8 are the SMC-to-SEP (inbound) mailbox channel
+// interrupts (hw/sys/sep/doc/interrupts.adoc); the interrupts toward the SMC
+// leave on smc_mailbox_interrupt_o (hw/sys/sep/doc/port_table.adoc). Arm the
+// OUTBOUND channel-0 aperture with every mailbox PIC source enabled and push one
+// word. The ISR must stay silent: an outbound interrupt routed to the PIC makes
+// it fire. The entry is left pending on purpose so the testbench can read
+// smc_mailbox_interrupt_o[0] asserted at end of run.
 static int run_outbound_no_cpu_delivery(void) {
     uint32_t pic_src = SEP_AXIL_MBOX0_PIC_SRC;
 

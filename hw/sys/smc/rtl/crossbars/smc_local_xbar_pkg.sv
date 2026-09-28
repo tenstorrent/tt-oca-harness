@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC local AXI crossbar types and configuration.
+// Declare SMC local AXI crossbar types and configuration.
+//
+// Defines initiator/target counts and AXI typedefs for the local SMC xbar: three
+// initiators with 6-bit IDs, five targets whose IDs widen to 8 bits, and 20 address
+// rules on a 32-bit address and 64-bit data bus, with eight outstanding transactions per
+// port, every port cut and full connectivity. It also declares the AXI-Lite and APB
+// types of the converted CSR ports.
 // Address rules are defined by smc_local_xbar.
 
 `include "axi/typedef.svh"
@@ -294,9 +300,9 @@ package smc_local_xbar_pkg;
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-    0: 5'b11111,  // system
-    1: 5'b11111,  // sep_in
-    2: 5'b11111  // local_in
+    0: 5'b11111,  // system.
+    1: 5'b11111,  // sep_in.
+    2: 5'b11111  // local_in.
   };
 
 endpackage : smc_local_xbar_pkg

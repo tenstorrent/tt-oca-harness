@@ -6,9 +6,11 @@ The DTP instantiates one JTAG Interface Unit as its primary debug access point
 (`hw/sys/dtp/doc/jtag.adoc`, "DTP JTAG Topology"). The instruction, TAP-state and
 JTAG2AXI tables below are transcriptions of that unit's and its PTAP's
 documentation; each names the document and section it copies. The three
-JTAG2AXI bridge geometries are the values each bridge publishes in its
-`*_JTAG2AXI_CAPS` TDR, compared with the DUT every pass by the geometry gate,
-and every TDR field width derives from them.
+JTAG2AXI bridge geometries are part of the bench configuration `tb_top`
+elaborates the DUT with: `dtp_dv_cfg` republishes them for the parity check
+against the SystemVerilog package, the geometry gate compares each bridge's
+`*_JTAG2AXI_CAPS` publication with them every pass, and every TDR field width
+derives from them.
 """
 
 from __future__ import annotations
@@ -320,6 +322,35 @@ FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
 MEM_IMAGE_CHECK_ID = "CHK-J2A-MEM-IMAGE"
 
 
+def ic_reset_after_tlr(reset_hold: int, written: int, reset_image: int) -> int:
+    """IC_RESET after a Test-Logic-Reset (PTAP document, "PTAP IC_RESET fields").
+
+    With ``reset_hold`` 0 a TLR keeps every reset_enable and reset_control bit,
+    and reset_hold with them; with ``reset_hold`` 1 a TLR restores the reset
+    image. TRST and POR restore every bit.
+    """
+    return reset_image if reset_hold else written
+
+
+# JTAG2AXI bridge geometry. The SMC fabric bridge drives SMC
+# `jtag_axi_in_req_i`, whose row in the SMC port table states a 56-bit address
+# and 64-bit data. The OTP bridges' AXI-Lite widths and every bridge's read and
+# write pipeline depth are the bench's choice, published by each bridge through
+# its `*_JTAG2AXI_CAPS` TDR ("PTAP JTAG2AXI capability fields" table). The
+# depths differ per bridge and per direction, so a CAPS field wired to the
+# wrong parameter reads back a value the bench does not expect.
+DTP_SMC_AXI_ADDR_WIDTH = 56
+DTP_SMC_AXI_DATA_WIDTH = 64
+DTP_OTP_AXIL_ADDR_WIDTH = 32
+DTP_OTP_AXIL_DATA_WIDTH = 32
+DTP_SMC_OTP_RD_PL_DEPTH = 2
+DTP_SMC_OTP_WR_PL_DEPTH = 1
+DTP_SEP_OTP_RD_PL_DEPTH = 3
+DTP_SEP_OTP_WR_PL_DEPTH = 2
+DTP_SMC_RD_PL_DEPTH = 3
+DTP_SMC_WR_PL_DEPTH = 0
+
+
 def size_field_bits(data_width: int) -> int:
     """Width of the JTAG2AXI ``size`` field for a bridge data width.
 
@@ -335,18 +366,21 @@ def size_field_bits(data_width: int) -> int:
 class DtpJtag2AxiTargetCfg:
     """Geometry and TDR register names for one DTP JTAG2AXI bridge target.
 
-    ``bus_type`` (0 AXI4, 1 AXI4-Lite), ``addr_width``, and ``data_width`` are
-    the values the bridge publishes in its ``*_JTAG2AXI_CAPS`` TDR
-    (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, "*_JTAG2AXI_CAPS"); the
-    geometry gate compares them with the DUT every pass. Every other width
-    derives from them by the ``*_AXI_SINGLE_OP`` and ``*_AXI_SERIES_CTRL``
-    tables in the same document.
+    ``bus_type`` (0 AXI4, 1 AXI4-Lite), ``addr_width``, ``data_width``, and the
+    two pipeline depths come from the bench configuration ``tb_top`` elaborates
+    the DUT with (``dtp_dv_cfg``); the geometry gate compares the bridge's
+    ``*_JTAG2AXI_CAPS`` publication (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``,
+    "*_JTAG2AXI_CAPS") with them every pass. Every other width derives from
+    them by the ``*_AXI_SINGLE_OP`` and ``*_AXI_SERIES_CTRL`` tables in the same
+    document.
     """
 
     name: str
     bus_type: int
     addr_width: int
     data_width: int
+    rd_pl_depth: int
+    wr_pl_depth: int
     caps_reg: str
     single_op_reg: str
     series_ctrl_reg: str
@@ -397,8 +431,10 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "smc_axi": DtpJtag2AxiTargetCfg(
         name="smc_axi",
         bus_type=0,
-        addr_width=56,
-        data_width=64,
+        addr_width=DTP_SMC_AXI_ADDR_WIDTH,
+        data_width=DTP_SMC_AXI_DATA_WIDTH,
+        rd_pl_depth=DTP_SMC_RD_PL_DEPTH,
+        wr_pl_depth=DTP_SMC_WR_PL_DEPTH,
         caps_reg="SMC_JTAG2AXI_CAPS",
         single_op_reg="SMC_AXI_SINGLE_OP",
         series_ctrl_reg="SMC_AXI_SERIES_CTRL",
@@ -412,8 +448,10 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "smc_otp": DtpJtag2AxiTargetCfg(
         name="smc_otp",
         bus_type=1,
-        addr_width=32,
-        data_width=32,
+        addr_width=DTP_OTP_AXIL_ADDR_WIDTH,
+        data_width=DTP_OTP_AXIL_DATA_WIDTH,
+        rd_pl_depth=DTP_SMC_OTP_RD_PL_DEPTH,
+        wr_pl_depth=DTP_SMC_OTP_WR_PL_DEPTH,
         caps_reg="SMC_OTP_JTAG2AXI_CAPS",
         single_op_reg="SMC_OTP_AXI_SINGLE_OP",
         series_ctrl_reg="SMC_OTP_AXI_SERIES_CTRL",
@@ -427,8 +465,10 @@ JTAG2AXI_TARGETS: dict[str, DtpJtag2AxiTargetCfg] = {
     "sep_otp": DtpJtag2AxiTargetCfg(
         name="sep_otp",
         bus_type=1,
-        addr_width=32,
-        data_width=32,
+        addr_width=DTP_OTP_AXIL_ADDR_WIDTH,
+        data_width=DTP_OTP_AXIL_DATA_WIDTH,
+        rd_pl_depth=DTP_SEP_OTP_RD_PL_DEPTH,
+        wr_pl_depth=DTP_SEP_OTP_WR_PL_DEPTH,
         caps_reg="SEP_OTP_JTAG2AXI_CAPS",
         single_op_reg="SEP_OTP_AXI_SINGLE_OP",
         series_ctrl_reg="SEP_OTP_AXI_SERIES_CTRL",

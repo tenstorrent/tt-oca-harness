@@ -12,7 +12,8 @@
       <ipxact:name>gpio_intf_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>gpio_intf</ipxact:name>
-        <ipxact:description>GPIO Interface CSR</ipxact:description>
+        <ipxact:displayName>GPIO Interface Address Map</ipxact:displayName>
+        <ipxact:description>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'hc</ipxact:range>
         <ipxact:width>32</ipxact:width>

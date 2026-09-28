@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP system-peripherals AXI crossbar types and configuration.
-// Address rules are defined by sep_system_peripherals_xbar.
+// Define types and configuration for the SEP system-peripherals AXI crossbar.
+//
+// Address decode rules live in sep_system_peripherals_xbar rather than this package; the
+// named address-range constants here mirror them and are not referenced by the crossbar.
+// Both initiators connect to all three targets.
 
 `include "axi/typedef.svh"
 
@@ -225,8 +228,8 @@ package sep_system_peripherals_xbar_pkg;
   // Connectivity Matrix
   // ===========================================================================
   localparam bit [NumInputs-1:0][NumOutputs-1:0] Connectivity = '{
-    0: 3'b111,  // sep_local_from_remap
-    1: 3'b111  // smn_inbound
+    0: 3'b111,  // sep_local_from_remap.
+    1: 3'b111  // smn_inbound.
   };
 
 endpackage : sep_system_peripherals_xbar_pkg

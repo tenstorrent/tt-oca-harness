@@ -347,7 +347,10 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             sec_dis=0,
             sigint_err=sigint_err,
         )
+        mark = self.sb_mark()
         await self.start_seq(seq)
+        tag = f"{lc_state_name(raw)} tm={secure_tm} sigint={sigint_err}"
+        self.assert_sb_judged(mark, f"CHK-GOLDEN {tag}")
         assert seq.observed_feat is not None, "sequence did not publish AXI FEAT_CTRL"
         feat = seq.observed_feat
         self._last_observed_feat = feat
@@ -355,6 +358,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             self._feat_by_state[raw] = feat
 
         if raw == LC_TEST_DEV and not sigint_err:
+            self._test_dev_feat_by_tm[secure_tm] = feat
             if secure_tm:
                 self.logger.info(
                     "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL=0x%016x "
@@ -423,6 +427,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         self._total_program_retries = 0
         self._secure_tm_prog_blocked = False
         self._feat_by_state: dict[int, int] = {}
+        self._test_dev_feat_by_tm: dict[int, int] = {}
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
@@ -590,7 +595,20 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             "CHK-NONVAC PASS: four FEAT_CTRL words are mutually distinct (%s)",
             ", ".join(f"{lc_state_name(r)}=0x{self._feat_by_state[r]:016x}" for r in _LC_CHAIN),
         )
-        self.logger.info("CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL identical at secure_tm=0 and 1")
+        assert set(self._test_dev_feat_by_tm) == {0, 1}, (
+            "CHK-SECURE-TM FAIL: TEST_DEV FEAT_CTRL was not observed at both secure_tm "
+            f"values (seen {sorted(self._test_dev_feat_by_tm)})"
+        )
+        feat_tm0 = self._test_dev_feat_by_tm[0]
+        feat_tm1 = self._test_dev_feat_by_tm[1]
+        assert feat_tm0 == feat_tm1, (
+            f"CHK-SECURE-TM FAIL: TEST_DEV FEAT_CTRL 0x{feat_tm0:016x} at secure_tm=0 "
+            f"!= 0x{feat_tm1:016x} at secure_tm=1"
+        )
+        self.logger.info(
+            "CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL 0x%016x identical at secure_tm=0 and 1",
+            feat_tm0,
+        )
         self.logger.info(
             "LCC stitch: walked %d states (%s); FEAT_CTRL matched golden at each; "
             "secure_tm off/on and lc_sigint inject proven; "

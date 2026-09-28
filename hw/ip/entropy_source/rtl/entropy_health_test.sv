@@ -1,49 +1,73 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_health_test.sv
- * @brief OpenTitan entropy health test integration with unified status port.
- *
- * @details Wraps OpenTitan's division-free health test implementations
- *          (Repetition Count Test, Adaptive Proportion Test, Markov Test) to
- *          validate entropy quality. Provides current test counts, separate APT
- *          failure pulses, and a unified status byte. Status bit allocation:
- *          [0]=Repetition failure, [3]=APT
- *          (high/low), [4]=Markov (>threshold), [5]=Markov (<threshold),
- *          [1,2,6,7]=reserved.
- *
- * @param DATA_WIDTH    Width of entropy input bus (default 32 bits).
- */
+// Run OpenTitan Repetition, Adaptive Proportion, and Markov health tests with a unified status
+// byte.
+//
+// enable_i selects which tests run; window_wrap_pulse_i closes each window. The block
+// exposes raw repetition/APT/Markov counts and apt_fail_hi_o/apt_fail_lo_o pulses.
+//
+// status_o bits:
+//
+// - [0] Repetition failure
+// - [3] APT high/low
+// - [4] Markov above threshold
+// - [5] Markov below threshold
+// - [1,2,6,7] reserved
+//
+// count_err_o sets when a health-test counter's duplicate copies disagree (prim_count
+// fault detection), independent of threshold trips; callers must route it to the alert
+// path because a glitched counter can stop reporting real failures.
 
 module entropy_health_test #(
-  parameter int unsigned DATA_WIDTH = 32
+  parameter int unsigned DATA_WIDTH = 32  // Number of parallel entropy bit streams tested, one
+                                          // counter set per bit.
 ) (
-  input       logic                  clk_i,
-  input       logic                  rst_ni,
-  input       logic [DATA_WIDTH-1:0] entropy_i,
-  input       logic                  entropy_valid_i,
-  input       logic [2:0]            enable_i,
-  input       logic [7:0]            repetition_limit_i,
-  input       logic [15:0]           proportion_limit_1bit_i,
-  input       logic [15:0]           proportion_limit_lo_i,
-  input       logic [15:0]           markov_prob_01_threshold_i,
-  input       logic [15:0]           markov_prob_10_threshold_i,
-  input       logic                  window_wrap_pulse_i,
+  input       logic                  clk_i,  // System clock.
+  input       logic                  rst_ni,  // Active-low reset.
+  input       logic [DATA_WIDTH-1:0] entropy_i,  // Entropy word; each bit is tested as its own
+                                                 // stream.
+  input       logic                  entropy_valid_i,  // Qualifies entropy_i for one sample.
+  input       logic [2:0]            enable_i,  // Per-test enables: bit 0 repetition, bit 1 APT,
+                                                // bit 2 Markov; a clear bit holds that test's
+                                                // counters cleared.
+  input       logic [7:0]            repetition_limit_i,  // Repetition-count failure threshold: a
+                                                          // bit repeating this many consecutive
+                                                          // samples fails.
+  input       logic [15:0]           proportion_limit_1bit_i,  // APT high threshold; fails when the
+                                                               // largest per-bit ones count in a
+                                                               // window exceeds it.
+  input       logic [15:0]           proportion_limit_lo_i,  // APT low threshold; fails when the
+                                                             // smallest per-bit ones count in a
+                                                             // window falls below it.
+  input       logic [15:0]           markov_prob_01_threshold_i,  // Markov high threshold; fails
+                                                                  // when the largest per-bit 01/10
+                                                                  // pair count exceeds it.
+  input       logic [15:0]           markov_prob_10_threshold_i,  // Markov low threshold; fails
+                                                                  // when the smallest per-bit 01/10
+                                                                  // pair count falls below it.
+  input       logic                  window_wrap_pulse_i,  // End-of-window strobe that evaluates
+                                                           // and restarts the APT and Markov
+                                                           // counts.
 
-  output      logic [15:0]           ctr_repetition_o,
-  output      logic [15:0]           apt_pattern_count_1bit_o,
-  output      logic [15:0]           apt_pattern_count_2bit_o,
-  output      logic [15:0]           count_01_o,
-  output      logic [15:0]           count_10_o,
-  output      logic                  apt_fail_hi_o,
-  output      logic                  apt_fail_lo_o,
-  output      logic [7:0]            status_o,
-  // Set when a health-test counter's duplicate copies disagree
-  // (prim_count's own fault detection), independent of a test threshold
-  // trip. Every caller must route this to the alert path: a glitched
-  // counter can silently stop reporting real threshold failures.
-  output      logic                  count_err_o
+  output      logic [15:0]           ctr_repetition_o,  // Longest current run of identical samples
+                                                        // across all bit streams.
+  output      logic [15:0]           apt_pattern_count_1bit_o,  // Largest per-bit ones count in the
+                                                                // current APT window.
+  output      logic [15:0]           apt_pattern_count_2bit_o,  // Smallest per-bit ones count in
+                                                                // the current APT window.
+  output      logic [15:0]           count_01_o,  // Largest per-bit Markov 01/10 pair count in the
+                                                  // current window.
+  output      logic [15:0]           count_10_o,  // Smallest per-bit Markov 01/10 pair count in the
+                                                  // current window.
+  output      logic                  apt_fail_hi_o,  // Single-cycle pulse at a window end where the
+                                                     // APT high threshold is exceeded.
+  output      logic                  apt_fail_lo_o,  // Single-cycle pulse at a window end where the
+                                                     // APT low threshold is undershot.
+  output      logic [7:0]            status_o,  // Health-test failure pulses, encoded as listed
+                                                // above.
+  output      logic                  count_err_o  // Redundant-counter disagreement in any of the
+                                                  // three tests.
 );
 
   /////////////////////

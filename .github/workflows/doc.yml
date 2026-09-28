@@ -9,6 +9,7 @@ on:
     paths:
       - 'doc/**'
       - 'hw/**/*.adoc'
+      - 'hw/**/*.sv'
       - 'hw/**/*.md'
       - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
@@ -21,6 +22,7 @@ on:
     paths:
       - 'doc/**'
       - 'hw/**/*.adoc'
+      - 'hw/**/*.sv'
       - 'hw/**/*.md'
       - 'antora-playbook.yml'
       - 'antora-*-playbook.yml'
