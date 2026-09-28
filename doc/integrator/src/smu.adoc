@@ -440,14 +440,12 @@ override
 temperature sensors
 |=======================================================================
 
-The eFuse SHIM control CSRs must live in the mandatory region, at its base.
-Unlike every other block in the region, they do not travel the external port.
-The SMC peripheral crossbar routes the first `SMC_EFUSE_SHIM_SIZE` bytes of
-the window into the eFuse controller, so the controller's lifecycle access
-control applies to them. They then emerge on the dedicated eFuse bank port,
-`efuse_bank_ctrl_req_o`, rather than on `smc_external_req_o`. SEP does the
-same for the base of `sep_external`, routing it through its crypto block into
-the SEP eFuse controller. See <<efuse-bank-ctrl-window>>.
+The eFuse SHIM control CSRs must sit at the base of the mandatory region.
+In each subsystem, the internal fabric routes the first `*_EFUSE_SHIM_SIZE`
+bytes of the window into the eFuse controller, so the controller's lifecycle
+access control applies to them. The accesses then leave on the dedicated eFuse
+bank port, `smc_efuse_bank_ctrl_req_o` or `sep_efuse_bank_ctrl_req_o`, instead
+of `smc_external_req_o` or `sep_external_req_o`. See <<efuse-bank-ctrl-window>>.
 
 [[smc-external-supplementary]]
 ===== Supplementary Region
@@ -663,10 +661,14 @@ adopter's SHIM FSM is responsible for producing a clean one-cycle `valid`
 strobe per `WORD_WIDTH` access.
 ====
 
-The `shadow_regs_o` output provides read-only access to the sensed fuse
-values. During cold boot the SMC and SEP each sense their own bank and
-propagate it through their shadow registers; `smc_fuse_sense_done_o` and
-`sep_fuse_sense_done_o` indicate completion of each sensing operation.
+During cold boot the SMC and SEP each sense their own bank into their own
+shadow registers. `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o` indicate
+when each sensing operation completes.
+
+The `smc_shadow_regs_o` output gives adopter read-only access to the
+sensed SMC bank. The SMU has no equivalent SEP output: the SEP bank holds
+secrets such as the class key and device UIDs, so its shadow registers stay
+inside SEP.
 
 === Memory Subsystem Integration
 
