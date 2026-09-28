@@ -224,9 +224,6 @@ isolate.
 . `isolate_req_i` stays high until every reset bit is released and every pulse
 completes. The boundary then reconnects.
 
-A watchdog warm reset does not use this handshake. It asserts the core and
-uncore resets directly, and the boundary isolates as they assert.
-
 === Timeout Recovery
 
 `CPU_CTRL.RESET_TIMEOUT` limits how long a software-requested reset waits for
