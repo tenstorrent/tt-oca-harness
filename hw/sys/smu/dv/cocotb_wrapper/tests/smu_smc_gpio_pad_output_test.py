@@ -7,16 +7,22 @@ the SMC aperture routed to its local alias and SYS_IN entry 0 opened over the
 GPIO_INTF block, so the 65-pad walk costs AXI transfers rather than JTAG scans.
 
 With the bench's pad drivers off, each pad's DATA_CTRL takes the pad from its
-LSIO owner (INTERFACE_ENABLE, LSIO_DISABLE) with both ENABLE_RX_TX enables,
-INTERRUPT_ENABLE at its reset type (active-high level) and CORE2PAD at 1, then
-at 0 (hw/ip/gpio register description). Every pad follows CORE2PAD and loops
-the value back to the receiver, so every lane of gpio_interrupt_o rises and
-then falls. With ENABLE_RX_TX at 2'b01, "TX enabled" alone, and CORE2PAD at 1,
-every pad is driven high while every interrupt lane stays low, so the receive
-enable crosses the SMU apart from the transmit enable. The DATA_CTRL reset
-value is written back last; the pads it leaves are recorded, since which LSIO
-function owns each pad then is not a register fact. The interrupt vector is
-read on the wrapper pin rather than through DATA_CTRL, whose 32-bit read
+LSIO owner (INTERFACE_ENABLE, LSIO_DISABLE) with INTERRUPT_ENABLE at its reset
+type (active-high level) (hw/ip/gpio register description). The walk gives
+every pad a code of its own: in phase k a pad's field is set when bit k of
+(pad index + 1) is 1, which over seven phases is a distinct, nonzero,
+not-all-ones word for each of the 65 pads. In the seven receive phases each
+pad has both ENABLE_RX_TX enables and CORE2PAD from its code, so the pads and
+gpio_interrupt_o must both equal the phase mask bit for bit: a pad answering
+another pad's DATA_CTRL, or an interrupt lane taken from another pad, reads a
+different code. In the seven transmit phases every pad has CORE2PAD at 1 and
+ENABLE_RX_TX at 2'b01, "TX enabled" alone, where its code bit is set and
+2'b11 elsewhere, so every pad is driven high while exactly the lanes outside
+the mask raise their interrupt: the receive enable of each pad crosses the SMU
+apart from its transmit enable and apart from every other pad's. The DATA_CTRL
+reset value is written back last; the pads it leaves are recorded, since which
+LSIO function owns each pad then is not a register fact. The interrupt vector
+is read on the wrapper pin rather than through DATA_CTRL, whose 32-bit read
 returns an undriven upper lane on the 64-bit inbound port; the pads are read
 on the bench's pad nets, which a pulldown holds low when nothing drives them.
 """
@@ -61,6 +67,8 @@ RESET = sum(
 RX_TX = 0b11 << BP
 TX_ONLY = 0b01 << BP
 SYNC_CYCLES = 32
+# Bits of (pad index + 1) give each pad a code no other pad has.
+CODE_BITS = LANES.bit_length()
 
 
 @pyuvm.test()
@@ -86,21 +94,49 @@ class smu_smc_gpio_pad_output_test(smu_base_test):
         dut.tb_gpio_drive_en.value = 0
 
         bad = []
+        written: dict[int, int] = {}
 
-        async def write_all(value: int) -> None:
-            for pin in range(LANES):
+        async def write_lanes(values: list[int]) -> None:
+            for pin, value in enumerate(values):
+                if written.get(pin) == value:
+                    continue
                 addr = smc_indexed_addr(DATA_CTRL_SYM, pin)
                 resp = await axi_write32_resp_bounded(master, addr, value, label=f"gpio{pin}")
                 if resp != RESP_OKAY:
                     bad.append((pin, "wr", resp))
+                written[pin] = value
 
+        full = (1 << LANES) - 1
+        masks = [
+            sum(1 << pin for pin in range(LANES) if ((pin + 1) >> k) & 1) for k in range(CODE_BITS)
+        ]
+        phases = [
+            (
+                f"rx{k}",
+                [
+                    BASE | RX_TX | INTERRUPT_ENABLE | (CORE2PAD if (mask >> pin) & 1 else 0)
+                    for pin in range(LANES)
+                ],
+                (mask, mask),
+            )
+            for k, mask in enumerate(masks)
+        ] + [
+            (
+                f"tx{k}",
+                [
+                    BASE | INTERRUPT_ENABLE | CORE2PAD | (TX_ONLY if (mask >> pin) & 1 else RX_TX)
+                    for pin in range(LANES)
+                ],
+                (full, full & ~mask),
+            )
+            for k, mask in enumerate(masks)
+        ]
+        if len(set(masks)) != CODE_BITS or any(m in (0, full) for m in masks):
+            raise AssertionError(f"pad codes are not distinct per phase: {[hex(m) for m in masks]}")
         observed = []
-        for value in (
-            BASE | RX_TX | INTERRUPT_ENABLE | CORE2PAD,
-            BASE | RX_TX | INTERRUPT_ENABLE,
-            BASE | TX_ONLY | INTERRUPT_ENABLE | CORE2PAD,
-        ):
-            await write_all(value)
+        want = []
+        for _name, values, expect in phases:
+            await write_lanes(values)
             await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
             observed.append(
                 (
@@ -108,21 +144,21 @@ class smu_smc_gpio_pad_output_test(smu_base_test):
                     sample(dut.tb_gpio_interrupt, "tb_gpio_interrupt"),
                 )
             )
-        await write_all(RESET)
+            want.append(expect)
+        await write_lanes([RESET] * LANES)
         await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
         self.logger.info(
             f"OBSERVATION pads after the DATA_CTRL reset value "
             f"{sample(dut.gpio_pad_io, 'gpio_pad_io'):#x}"
         )
-        full = (1 << LANES) - 1
         self.logger.info(
-            "CHK-SMU-LANE-GPIO-OUT (pads, gpio_interrupt)="
-            f"{[(hex(p), hex(i)) for p, i in observed]} errors={bad}"
+            "pad walk (phase, pads, gpio_interrupt)="
+            f"{[(p[0], hex(o[0]), hex(o[1])) for p, o in zip(phases, observed)]} errors={bad}"
         )
         sb.expect_eq(
-            f"CORE2PAD drives and loops back at 1 then 0 on all {LANES} pads, and transmit "
-            "alone drives the pads with every interrupt lane low",
+            f"each of the {LANES} pads follows its own DATA_CTRL.CORE2PAD and loops back to its "
+            "own interrupt lane, and transmit alone on a pad drives it with that lane low",
             (observed, bad),
-            ([(full, full), (0, 0), (full, 0)], []),
+            (want, []),
             evidence="CHK-SMU-LANE-GPIO-OUT",
         )

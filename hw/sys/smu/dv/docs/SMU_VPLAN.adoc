@@ -235,7 +235,7 @@ one-line intent.
 |`smu_composition_parameter_test` |smu |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |A 28-`clk_ref` pulse on `rst_cool_n_from_pin_i` is filtered and a hold past that pulse asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
-|`smu_smc_gpio_pad_output_test` |smu |Every GPIO pad driven from its own DATA_CTRL follows CORE2PAD and loops it back to its interrupt lane, and transmit alone drives the pad with the interrupt lane low
+|`smu_smc_gpio_pad_output_test` |smu |Every GPIO pad driven from its own DATA_CTRL, with a code no other pad shares, follows CORE2PAD and loops it back to its own interrupt lane, and transmit alone drives the pad with its interrupt lane low
 |`smu_smc_boundary_lane_sweep_test` |smu |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
 |`smu_smc_efuse_shadow_sense_reset_test` |smu |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
 |`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by each receiver and read back, the ATB flush handshake completes at the pins, and the port applies backpressure when its receiver stops.
@@ -4755,16 +4755,17 @@ Two things are worth reading before the entries:
 *Test Coverage*:
 
 * `smu_smc_boundary_lane_sweep_test` drives the pads from the bench and reads them in; this leaf drives them from the SMC and reads them back.
-* With the bench's pad drivers off, each pad's `DATA_CTRL` takes the pad from its LSIO owner (`INTERFACE_ENABLE`, `LSIO_DISABLE`) with both `ENABLE_RX_TX` enables, `INTERRUPT_ENABLE` at the reset interrupt type (active-high level) and `CORE2PAD` at 1, then at 0 (`hw/ip/gpio` register description). Every pad follows `CORE2PAD` and loops the value back to its receiver, so all 65 pads and all 65 lanes of `gpio_interrupt_o` rise and then fall. The vector is read on the wrapper pin: a 32-bit `DATA_CTRL` read returns an undriven upper lane on the 64-bit inbound port. The pads are read on the bench's pad nets, which a pulldown holds low when nothing drives them.
-* `ENABLE_RX_TX` at 2'b01 is "TX enabled" alone (`gpio_intf.rdl`): with `CORE2PAD` at 1 every pad is driven high while every interrupt lane stays low, so `pad2core_en_o` crosses apart from `core2pad_en_o`.
+* With the bench's pad drivers off, each pad's `DATA_CTRL` takes the pad from its LSIO owner (`INTERFACE_ENABLE`, `LSIO_DISABLE`) with `INTERRUPT_ENABLE` at the reset interrupt type (active-high level) (`hw/ip/gpio` register description). Each pad carries a code of its own: in phase `k` its field is set when bit `k` of (pad index + 1) is 1, which over seven phases is a distinct word for each of the 65 pads, never all zeros and never all ones, so every pad is high in some phase and low in another. A pad answering another pad's `DATA_CTRL`, an interrupt lane taken from another pad, or one pad's enable fanned out to others reads a different code on some phase.
+* In the seven receive phases each pad has both `ENABLE_RX_TX` enables and `CORE2PAD` from its code; every pad follows its own `CORE2PAD` and loops the value back to its own receiver, so the 65 pads and the 65 lanes of `gpio_interrupt_o` both equal the phase mask bit for bit. The vector is read on the wrapper pin: a 32-bit `DATA_CTRL` read returns an undriven upper lane on the 64-bit inbound port. The pads are read on the bench's pad nets, which a pulldown holds low when nothing drives them.
+* `ENABLE_RX_TX` at 2'b01 is "TX enabled" alone (`gpio_intf.rdl`). In the seven transmit phases every pad has `CORE2PAD` at 1, with 2'b01 where its code bit is set and 2'b11 elsewhere: every pad is driven high while exactly the lanes outside the phase mask raise their interrupt, so each pad's `pad2core_en_o` crosses apart from its `core2pad_en_o` and apart from every other pad's.
 * The `DATA_CTRL` reset value is written back last and the pads it leaves are recorded; which LSIO function owns each pad then is not a register fact, so it is not compared.
 
 *Test Procedure*:
 
 [arabic]
 . Route the SMC aperture to its local alias and open SYS_IN entry 0 over the GPIO_INTF block over JTAG2AXI, so the CSR walk runs on the inbound SMN port.
-. Write every pad's DATA_CTRL with both enables, the level interrupt and CORE2PAD at 1, sample the pads and `gpio_interrupt_o`; repeat with CORE2PAD at 0.
-. Write every pad's DATA_CTRL to transmit alone with the level interrupt and CORE2PAD at 1, and sample the pads and `gpio_interrupt_o`.
+. For each of the seven code bits, write every pad's DATA_CTRL with both enables, the level interrupt and CORE2PAD from its code bit, and sample the pads and `gpio_interrupt_o`; a register whose value does not change between phases is not rewritten.
+. For each of the seven code bits, write every pad's DATA_CTRL with the level interrupt, CORE2PAD at 1 and transmit alone where its code bit is set, both enables elsewhere, and sample the pads and `gpio_interrupt_o`.
 . Write every pad's DATA_CTRL to its reset value and record the pads.
 
 *Checkers*:
@@ -4772,7 +4773,7 @@ Two things are worth reading before the entries:
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMU-LANE-GPIO-OUT` |every pad and its `gpio_interrupt_o` lane follow CORE2PAD at 1 and then at 0, with transmit alone every pad is high and every lane low, and every CSR write is OKAY
+|`CHK-SMU-LANE-GPIO-OUT` |on every receive phase the pads and `gpio_interrupt_o` equal the phase's per-pad code mask bit for bit, on every transmit phase every pad is high and exactly the lanes outside the mask are high, and every CSR write is OKAY
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.

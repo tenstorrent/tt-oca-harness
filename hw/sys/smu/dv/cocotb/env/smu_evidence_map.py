@@ -1064,8 +1064,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-LANE-GPIO-OUT",
             "CHK-SMU-LANE-GPIO-OUT",
-            "every pad driven from its own DATA_CTRL follows CORE2PAD and loops it back to "
-            "gpio_interrupt_o at 1 and 0, and transmit alone drives the pad with the lane low",
+            "every pad driven from its own DATA_CTRL with a per-pad code follows CORE2PAD and "
+            "loops it back to its own gpio_interrupt_o lane, and transmit alone drives the pad "
+            "with that lane low",
         ),
     ],
     "smu_smc_boundary_lane_sweep_test": [
