@@ -25,8 +25,9 @@ gap between OCAH core interfaces and adopter-specific IP:
 
 * `smu_wrapper.sv` wraps `smu.sv` with pad-level signal handling for clocks,
   resets, GPIO, eFuse, and JTAG interfaces. It internally instantiates
-  `smc_ip_integration.sv` for SMC-related vendor IP and (when `SEP=1`)
-  `sep_ip_integration.sv` for SEP-related vendor IP.
+  `smc_ip_integration.sv` for SMC-related vendor IP and
+  `sep_ip_integration.sv` for SEP-related vendor IP. Each integration module
+  holds its own eFuse interface shim and eFuse bank.
 * `smc_wrapper.sv` provides an equivalent reference wrapping `smc.sv` alone,
   useful when integrating the SMC without the DTP/SEP subsystems.
 
@@ -41,7 +42,7 @@ The figure below illustrates the relationship between the OCAH core modules, the
 wrapper layer, and the IP integration modules.
 
 .SMU Integration Components
-image::smu_integration_components.png[SMU Integration Components,scaledwidth=90.0%]
+image::smu-integration-components.svg[SMU Integration Components,scaledwidth=100.0%]
 
 === IP Integration Modules
 
