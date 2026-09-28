@@ -106,12 +106,11 @@ static int test_config_ap_output_remap(void) {
         ap_remap_ctrl.f.offset = generate_random_64bit();
 
         // Write the remap configuration
-        WRITE_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
-                    ap_remap_ctrl.w);
+        WRITE_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i), ap_remap_ctrl.w);
 
         // Read back to verify
         uint64_t readback =
-            READ_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
+            READ_REG64(SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
 
         // TODO: READ_REG64() returns only the lower 32 bits
     }
@@ -134,12 +133,12 @@ static int test_config_stee_output_remap(void) {
         stee_remap_ctrl.f.offset = generate_random_64bit();
 
         // Write the remap configuration
-        WRITE_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
+        WRITE_REG64(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i),
                     stee_remap_ctrl.w);
 
         // Read back to verify
         uint64_t readback =
-            READ_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
+            READ_REG64(SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
 
         // TODO: READ_REG64() returns only the lower 32 bits
     }
@@ -155,7 +154,7 @@ static int test_ap_segment_traffic(void) {
     printf("\n--- Test: Generate Traffic for All AP Segments ---\n");
 
     for (int segment = 0; segment < NUM_AP_REMAPS; segment++) {
-        uint64_t segment_base = OCH_SEP_TOP_AP_REGION_BASE_ADDR + (segment * SEGMENT_SIZE);
+        uint64_t segment_base = SEP_TOP_AP_REGION_BASE_ADDR + (segment * SEGMENT_SIZE);
 
         printf("  Generating traffic for AP segment %d (base: 0x%016llX)...\n", segment,
                (unsigned long long)segment_base);
@@ -182,7 +181,7 @@ static int test_stee_segment_traffic(void) {
     printf("\n--- Test: Generate Traffic for All STEE Segments ---\n");
 
     for (int segment = 0; segment < NUM_STEE_REMAPS; segment++) {
-        uint64_t segment_base = OCH_SEP_TOP_STEE_REGION_BASE_ADDR + (segment * SEGMENT_SIZE);
+        uint64_t segment_base = SEP_TOP_STEE_REGION_BASE_ADDR + (segment * SEGMENT_SIZE);
 
         printf("  Generating traffic for STEE segment %d (base: 0x%08llX)...\n", segment,
                (unsigned long long)segment_base);
@@ -219,14 +218,14 @@ int main(void) {
     open_filter_config.f.allow_ns = 0;
     open_filter_config.f.allow_burst = 1;
     open_filter_config.f.locked = 0;
-    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(1), open_filter_config.w);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(1), open_filter_config.w);
 
     // Write END_ADDR register (must be configured before enabling filter)
-    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(1), 0x0);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(1), 0x0);
 
     // Write FILTER_CONFIG register (enables filter atomically)
     // This must be written LAST to ensure address range is configured first
-    WRITE_REG64(OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(1), 0xFFFFFFFFFFFFFF);
+    WRITE_REG64(SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(1), 0xFFFFFFFFFFFFFF);
 
     srand(815);
 
@@ -237,11 +236,11 @@ int main(void) {
     printf("\n");
     printf("Output Remap Configuration:\n");
     printf("  AP Remap Ctrl 0:    0x%08X\n",
-           OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
+           SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
     printf("  STEE Remap Ctrl 0:  0x%08X\n",
-           OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
-    printf("  AP Remap Region:    0x%08lX\n", (unsigned long)OCH_SEP_TOP_AP_REGION_BASE_ADDR);
-    printf("  STEE Remap Region:  0x%08lX\n", (unsigned long)OCH_SEP_TOP_STEE_REGION_BASE_ADDR);
+           SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(0));
+    printf("  AP Remap Region:    0x%08lX\n", (unsigned long)SEP_TOP_AP_REGION_BASE_ADDR);
+    printf("  STEE Remap Region:  0x%08lX\n", (unsigned long)SEP_TOP_STEE_REGION_BASE_ADDR);
     printf("\n");
 
     // Step 1: Configure AP output remap
@@ -252,10 +251,10 @@ int main(void) {
 
     // Step 3: Wait for CocoTB setup
     uint64_t cocotb_flag = 0x0;
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4), 0x815);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(4), 0x815);
 
     do {
-        cocotb_flag = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5));
+        cocotb_flag = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(5));
         printf("still waiting...");
     } while (cocotb_flag != 0x777);
 

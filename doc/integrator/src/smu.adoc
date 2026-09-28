@@ -372,8 +372,8 @@ in the GPIO table.
 
 Configuration straps are captured separately from the GPIO table. Establish
 them before cold reset deassertion and keep them stable during capture. The
-generated reset-unit `STRAPS_LO` and `STRAPS_HI` register descriptions define
-the decoded bit assignments, including `BYPASS_SRAM_REPAIR` at
+`STRAPS_LO` and `STRAPS_HI` registers in the adopter peripheral window (see
+<<smc-external-supplementary>>) define the decoded bit assignments, including `BYPASS_SRAM_REPAIR` at
 `STRAPS_LO[13]` and `TEST_EN` at `STRAPS_LO[14]`.
 
 [[smc-peripheral-connections]]
@@ -399,11 +399,67 @@ For example, runtime reconfiguration of pin directions, pull settings, and perip
 multiplexing is expected to be reachable here. The SMC decodes the aperture and
 forwards the transaction; what lives behind it is entirely adopter-defined.
 
-The window is split into a mandatory region, whose contents and placement the
-SMC memory map fixes and every integration must implement, and a supplementary
-region for anything else the adopter chooses to expose. For placement and the
-full register layout, refer to the SMC Memory Map documentation
-(`hw/sys/smc/doc/memmap.adoc`).
+The window occupies `BASE + 0x040_0000` to `BASE + 0x07F_FFFF` (4 MiB; with
+`LOCAL_BASE`, `0xC040_0000` to `0xC07F_FFFF`). The SMC forwards every access
+in this range to `smc_external_req_o` except the eFuse SHIM range at its base
+(see <<smc-external-mandatory>>); the adopter decodes everything else. The
+generated SMC memory map reports the window as one opaque aperture.
+
+The window is split into two regions. Hardware treats both identically -- the
+split is organizational only:
+
+* *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
+  OCAH specifications dictate their function, but their implementation, register
+  layout and placement within the region are technology- and vendor-specific.
+* *Supplementary* (`BASE + 0x040_4000`): additional memory-mapped devices the
+  adopter chooses to expose, plus the captured strap registers.
+
+[[smc-external-mandatory]]
+===== Mandatory Region
+
+[cols="2,5",options="header"]
+|=======================================================================
+|Block |Purpose
+|eFuse SHIM control |Technology-specific eFuse bank control, such as the time
+the OTP macro needs to initialize before sensing
+|PLL clock-observation pad interface |Register-driven pad data and direction,
+per-field override enables, and an AXI PROT access filter
+|PLL clock-observation pad control |Drive strength, pull enable and select, and
+Schmitt select
+|PVT clock-observation pad interface |As the PLL clock-observation pad interface
+|PVT clock-observation pad control |As the PLL clock-observation pad control
+|POC/PBIAS pad control |Pad supply-voltage level selection and retention
+enable, with an access filter
+|Reference-clock pad control |Drive strength, pull and Schmitt settings for the
+reference-clock pad
+|Per-pad GPIO control |One control block per pad: pad electrical settings, the
+value captured at reset deassertion, and the secondary hardware function
+override
+|PLL wrapper |Control and status of the adopter's clock-generation block
+|PVT wrapper |Control and status of the adopter's process, voltage and
+temperature sensors
+|=======================================================================
+
+The eFuse SHIM control block sits at the base of the window and does not travel
+the external port. The SMC diverts the first `SMC_EFUSE_SHIM_SIZE` bytes of the
+window to the eFuse controller, which reaches the SHIM on
+`efuse_bank_ctrl_req_o` (see <<smc-efuse-connection>>).
+
+[[smc-external-supplementary]]
+===== Supplementary Region
+
+[cols="2,5",options="header"]
+|=======================================================================
+|Block |Purpose
+|Adopter devices |Optional memory-mapped devices. The reference integration
+places its vendor I3C controllers here
+|Captured straps |Pad values latched at cold reset, one bit per GPIO, read by
+boot firmware
+|=======================================================================
+
+[[smc-external-straps]]
+The captured straps are read-only. The generated `straps` register
+descriptions define the decoded bit assignments.
 
 [[smc-efuse-connection]]
 ==== eFuse Interface
@@ -543,7 +599,7 @@ completion.
 **Bypass Configuration:**
 
 The `BYPASS_SRAM_REPAIR` configuration strap (`STRAPS_LO[13]`) is captured into
-the reset-unit strap registers. Keep these three mechanisms distinct:
+the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:
 
 * No RTL path drives `skip_mem_repair_o` from this strap directly.
   `skip_mem_repair_o` is driven from the isolation request path.
@@ -679,8 +735,8 @@ The SMC provides GPIO functionality with multiplexed peripheral functions and
 test interfaces. The following table lists the signal and bump location,
 assigned function, recommended pull, and GPIO-specific notes. It does not define
 default direction or decode configuration straps; use
-`smc_padring_pkg::DefaultDirectionMap` and the generated reset-unit `STRAPS_LO`
-and `STRAPS_HI` register descriptions for those.
+`smc_padring_pkg::DefaultDirectionMap` and the `STRAPS_LO` and `STRAPS_HI`
+register descriptions (see <<smc-external-supplementary>>) for those.
 
 ifdef::backend-html5[]
 include::meta/ocah_gpio_table.adoc[]

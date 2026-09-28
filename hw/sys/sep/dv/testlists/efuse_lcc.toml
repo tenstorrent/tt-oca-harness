@@ -173,6 +173,22 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# KM public-ID OTP readout. RANDCFG: the three SEP_*_ID values and which one
+# carries its eFuse read lock. Real fuse sense, LC_PROD. The KM ROM image copies
+# the KMCSR OTP_SEP_*_ID words to KM SRAM, sets the KM-side OTP_READ_LOCK bits
+# and copies them again. no_cpu.
+name = "sep_efuse_km_public_id_test"
+module = "efuse.sep_efuse_km_public_id_test"
+firmware = { name = "km_rom_otp_id", mode = "km_rom_blob" }
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["efuse", "km", "lock", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+km_rom_hex=km_rom_otp_id.parhex"]
+
+[[tests]]
 # SECURE_TM shadow-write lock. The field map marks LOCKS/LOCKS_SPARE, LC_STATE,
 # SIP_DIS and SYS_DIS SECURE_TM_LOCK, so a shadow write to them is refused while
 # the latched TEST_EN strap is high. Each field takes the same seeded payload

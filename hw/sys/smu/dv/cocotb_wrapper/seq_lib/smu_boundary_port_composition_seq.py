@@ -4,8 +4,10 @@
 
 Reads the elaborated SEP=1 `smu` boundary passively: port presence, the widths
 the specifications state, the idle values the specifications state, and the
-inertness of the cross-trigger CTP channels whose data inputs the wrapper ties
-to zero.
+inertness of the cross-trigger CTP channels while their data inputs rest: the
+wrapper ties the req_in, ack_in and ack_out data inputs to zero, and the
+req_out data input sits on the bench's wire-OR board, resting at the pull-up
+the reset-default CONFIG.INVERT=0 implies with no chiplet pulling.
 
 Every width that carries an evidence token is a specification value:
 `hw/sys/smu/doc/port_table.adoc` for the port rows, `doc/integrator/src/smu.adoc`
@@ -28,6 +30,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.smu_addr_map import reset_unit_u32
+from seq_lib.smu_boundary_regs import cross_trigger_u32
 from seq_lib.smu_compose_helpers import (
     LC_STATE_O_WIDTH,
     LCC_DEMOTE_WIDTH,
@@ -50,6 +53,11 @@ from seq_lib.smu_tb_pins import smu_scope
 CTP_GROUPS = ("req_out", "req_in", "ack_in", "ack_out")
 CTP_LEGS = ("dout_o", "dout_en_o", "din_i", "din_en_o")
 INERT_WINDOW_CYCLES = 64
+# CT_Req_out is a wire-OR wire; the generated cross-trigger header's
+# CONFIG.INVERT reset selects its sense, and INVERT=0 makes it active-low, so
+# with no chiplet pulling every req_out lane rests high. The other three
+# groups are tied to zero by the wrapper.
+CONFIG_INVERT_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__INVERT_reset")
 
 # hw/sys/smc/regs/gen/c/blocks/reset_unit.h: the SS_CONFIG field the port
 # presents, its width and its reset value.
@@ -136,20 +144,28 @@ class smu_boundary_port_composition_seq:
             for leg in CTP_LEGS:
                 self._width(smu, f"xtrig_ctp_{group}_{leg}", XTRIG_NUM_CTP, "CHK-SMU-XTRIG-CTP-S1")
 
-        # SMU-XTRIG-CTP.S6: tied-zero data inputs, observed at the DTP consumer,
-        # leave every CTP output and the CTM boundary static at zero.
-        din_names = [f"xtrig_ctp_{g}_din_i" for g in CTP_GROUPS]
-        for name in din_names:
+        # SMU-XTRIG-CTP.S6: resting data inputs, observed at the SMU boundary and
+        # at the DTP consumer, leave every CTP output and the CTM boundary static
+        # at zero.
+        assert CONFIG_INVERT_RESET == 0, (
+            f"CONFIG.INVERT reset {CONFIG_INVERT_RESET} in the generated header: the req_out "
+            f"resting level below assumes the active-low wire INVERT=0 selects"
+        )
+        rest = {g: 0 for g in CTP_GROUPS}
+        rest["req_out"] = (1 << XTRIG_NUM_CTP) - 1
+        for group in CTP_GROUPS:
+            name = f"xtrig_ctp_{group}_din_i"
+            label = "wire-OR rest" if group == "req_out" else "tie-off"
             sb.expect_eq(
-                f"{name} tie-off at the SMU boundary",
+                f"{name} {label} at the SMU boundary",
                 sample(hier(smu, name), name),
-                0,
+                rest[group],
                 evidence="CHK-SMU-XTRIG-CTP-S6",
             )
             sb.expect_eq(
-                f"{name} tie-off at the DTP consumer",
+                f"{name} {label} at the DTP consumer",
                 sample(hier(smu, f"u_dtp.{name}"), f"u_dtp.{name}"),
-                0,
+                rest[group],
                 evidence="CHK-SMU-XTRIG-CTP-S6",
             )
         watched = {f"xtrig_ctp_{g}_dout_o": hier(smu, f"xtrig_ctp_{g}_dout_o") for g in CTP_GROUPS}
@@ -175,7 +191,7 @@ class smu_boundary_port_composition_seq:
             evidence="CHK-SMU-XTRIG-CTP-S6",
         )
         sb.expect_eq(
-            "CTP outputs and CTM boundary idle at zero under tied-zero inputs",
+            "CTP outputs and CTM boundary idle at zero under resting inputs",
             sum(first.values()),
             0,
             evidence="CHK-SMU-XTRIG-CTP-S6",

@@ -16,8 +16,8 @@
 #include "sep_efuse.h"
 #include "sep_smu_otp_status_protocol.h"
 
-#define OTP_STATUS_SCRATCH6 OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
-#define OTP_STATUS_SCRATCH7 OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
+#define OTP_STATUS_SCRATCH6 SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
+#define OTP_STATUS_SCRATCH7 SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
 #define OTP_STATUS_SENSE_LIMIT 2000000u
 
 __attribute__((used, noinline, noreturn)) void sep_smu_otp_status_pass_loop(void) {

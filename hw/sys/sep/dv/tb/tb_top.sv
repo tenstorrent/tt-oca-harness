@@ -1098,31 +1098,31 @@ module sep_uvm_top
     assign cpu_lsu_sram_aw_pending =
         `SEP_CORE.lsu_xbar_axi_req.aw_valid &&
         (`SEP_CORE.lsu_xbar_axi_req.aw.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.lsu_xbar_axi_req.aw.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign cpu_lsu_sram_ar_pending =
         `SEP_CORE.lsu_xbar_axi_req.ar_valid &&
         (`SEP_CORE.lsu_xbar_axi_req.ar.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.lsu_xbar_axi_req.ar.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign dma_sram_aw_pending =
         `SEP_CORE.dma_axi_req.aw_valid &&
         (`SEP_CORE.dma_axi_req.aw.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.dma_axi_req.aw.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign dma_sram_ar_pending =
         `SEP_CORE.dma_axi_req.ar_valid &&
         (`SEP_CORE.dma_axi_req.ar.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.dma_axi_req.ar.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign dma_cpu_sram_overlap =
         (cpu_lsu_sram_aw_pending && dma_sram_aw_pending) ||
         (cpu_lsu_sram_ar_pending && dma_sram_ar_pending);
@@ -1195,6 +1195,13 @@ module sep_uvm_top
     // top-level probe port; word i occupies bits [32*i +: 32], matching values[i].
     assign efuse_shadow_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
+
+    assign km_otp_sep_chiplet_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_chiplet_id;
+    assign km_otp_sep_sip_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sip_id;
+    assign km_otp_sep_sys_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sys_id;
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
@@ -1828,6 +1835,12 @@ module sep_uvm_top
     // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
+
+    localparam int unsigned KmSramProbeWords = $bits(km_sram_probe_o) / 32;
+    for (genvar i = 0; i < KmSramProbeWords; i++) begin : g_km_sram_probe
+        assign km_sram_probe_o[32*i +: 32] =
+            u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
+    end
 
     // Outbound mailbox responder + firmware-console/PASS-magic monitor.
     sep_outbound_mbx u_mbx (

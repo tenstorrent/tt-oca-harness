@@ -218,6 +218,10 @@ endif
 # SOURCE FILES
 # =============================================================================
 
+# Ignore ambient environment values; explicit make command-line values still win.
+OCAH_FW_OVERLAY_SOURCES_smc :=
+SMC_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_smc)
+
 MAIN_SOURCES   := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.cpp)
 MAIN_ASM       := $(wildcard $(SRC_DIR)/*.S)
 LIB_SOURCES    := $(wildcard $(LIB_DIR)/src/*.c)
@@ -236,18 +240,19 @@ DRIVER_OBJS    := $(patsubst $(DRIVERS_DIR)/src/%.c,$(OBJ_DIR)/drivers/%.o,$(DRI
 
 ALL_OBJS := $(MAIN_OBJS) $(MAIN_ASM_OBJS) $(LIB_OBJS) $(BOOT_ASM_OBJS) $(DRIVER_OBJS)
 
-# Nonfree driver sources hook.
-NONFREE_DRIVER_SOURCES ?=
-NONFREE_DRIVER_OBJS   := $(patsubst %.c,$(OBJ_DIR)/drivers/%.o, \
-                            $(notdir $(NONFREE_DRIVER_SOURCES)))
-ALL_OBJS += $(NONFREE_DRIVER_OBJS)
+SMC_FW_OVERLAY_OBJS := $(patsubst %.c,$(OBJ_DIR)/drivers/%.o, \
+                           $(notdir $(SMC_FW_OVERLAY_SOURCES)))
+ALL_OBJS += $(SMC_FW_OVERLAY_OBJS)
+
+BUILD_FLAGS := SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_smc)
+FLAGS_STAMP := $(OUT_DIR)/.build_flags
 
 # An object carries no record of the flags that produced it, and Make compares
 # only timestamps, so changing ENABLE_RELEASE_PRINTS, EXTRA_DEFINES or the
-# injected nonfree sources over a populated build directory relinks objects from
+# injected overlay sources over a populated build directory relinks objects from
 # the previous configuration and reports success. Every object depends on this
 # stamp, whose content is that configuration.
-BUILD_CONFIG_SIG := $(strip $(DEFINES)) | $(strip $(notdir $(NONFREE_DRIVER_SOURCES)))
+BUILD_CONFIG_SIG := $(strip $(DEFINES)) | $(strip $(notdir $(SMC_FW_OVERLAY_SOURCES)))
 CONFIG_STAMP     := $(OUT_DIR)/.config.stamp
 $(shell mkdir -p $(OUT_DIR) && \
     { [ "$$(cat $(CONFIG_STAMP) 2>/dev/null)" = '$(BUILD_CONFIG_SIG)' ] || \
@@ -284,7 +289,7 @@ toolchain-images:
 	    ENABLE_RELEASE_PRINTS="$(ENABLE_RELEASE_PRINTS)" \
 	    ROM_PADDING_SELFTEST="$(ROM_PADDING_SELFTEST)" I3C_CORE="$(I3C_CORE)" \
 	    EXTRA_DEFINES="$(EXTRA_DEFINES)" \
-	    NONFREE_DRIVER_SOURCES="$(NONFREE_DRIVER_SOURCES)" \
+	    OCAH_FW_OVERLAY_SOURCES_smc="$(OCAH_FW_OVERLAY_SOURCES_smc)" \
 	    RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build; \
 	else \
 	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
@@ -321,11 +326,25 @@ info:
 	@echo "Output:     $(OUT_DIR)"
 	@echo "=========================================="
 
-$(OBJ_DIR)/src $(OBJ_DIR)/lib $(OBJ_DIR)/boot $(OBJ_DIR)/drivers:
+$(OBJ_DIR) $(OBJ_DIR)/src $(OBJ_DIR)/lib $(OBJ_DIR)/boot $(OBJ_DIR)/drivers:
 	@mkdir -p $@
 
 $(BIN_DIR) $(HEX_DIR) $(DISASM_DIR):
 	@mkdir -p $@
+
+.PHONY: FORCE
+FORCE:
+
+$(FLAGS_STAMP): FORCE | $(OBJ_DIR)
+	@echo '$(BUILD_FLAGS)' > "$@.tmp"
+	@if ! cmp -s "$@.tmp" "$@" 2>/dev/null; then \
+	  echo "  [build flags changed -> rebuilding objects]"; \
+	  mv "$@.tmp" "$@"; \
+	else \
+	  rm "$@.tmp"; \
+	fi
+
+$(ALL_OBJS): $(FLAGS_STAMP)
 
 # Header dependency tracking. Without it an incremental build keeps objects whose
 # headers have since changed, so editing an address in smc_rom_defs.h leaves the
@@ -358,16 +377,16 @@ $(OBJ_DIR)/drivers/%.o: $(DRIVERS_DIR)/src/%.c $(CONFIG_STAMP) | $(OBJ_DIR)/driv
 	@echo "CC  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-# Compile rules for NONFREE_DRIVER_SOURCES, one per source so each object names
+# Compile rules for SMC_FW_OVERLAY_SOURCES, one per source so each object names
 # its own path as a prerequisite. A single pattern rule cannot, and an object
 # with no source prerequisite is compiled once and then never again, however the
 # source changes.
-define NONFREE_DRIVER_RULE
+define SMC_FW_OVERLAY_RULE
 $(OBJ_DIR)/drivers/$(notdir $(basename $(1))).o: $(1) $(CONFIG_STAMP) | $(OBJ_DIR)/drivers
 	@echo "CC (extra) $(1)"
 	@$$(GCC) $$(CFLAGS) $$(DEPFLAGS) $$(INCLUDES) $$(DEFINES) -c $(1) -o $$@
 endef
-$(foreach src,$(NONFREE_DRIVER_SOURCES),$(eval $(call NONFREE_DRIVER_RULE,$(src))))
+$(foreach src,$(SMC_FW_OVERLAY_SOURCES),$(eval $(call SMC_FW_OVERLAY_RULE,$(src))))
 
 -include $(ALL_OBJS:.o=.d)
 

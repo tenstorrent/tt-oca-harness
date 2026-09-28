@@ -64,12 +64,13 @@ from .coverage_policy import (
     native_policy_manifest,
 )
 from .duts import (
-    FormalView,
+    ConfigView,
     discover_formal_views,
     list_dut_names,
     load_duts,
     load_formal_views,
     resolve_dut,
+    unavailable_sim_views,
 )
 from .executors import (
     ClusterError,
@@ -127,6 +128,7 @@ from .site import (
     site_summary,
     tool_launch,
     tool_source,
+    validate_site_dut_tools,
     validate_site_duts,
 )
 from .stages import (
@@ -865,10 +867,12 @@ def load_registries(root: Path) -> Registries:
     executors = load_executors(root)
     policies = validate_parser_registry(root)
     site = load_site_layer(root)
+    merged = merged_simulators(simulators, site)
     if site is not None:
         validate_site_duts(site, list_dut_names(root))
+        validate_site_dut_tools(site, merged)
     return Registries(
-        simulators=merged_simulators(simulators, site),
+        simulators=merged,
         executors=merged_executors(executors, site),
         policies=policies,
         site=site,
@@ -876,14 +880,14 @@ def load_registries(root: Path) -> Registries:
     )
 
 
-def validate_all(root: Path) -> tuple[dict[str, Flow], Registries, dict[str, FormalView]]:
+def validate_all(root: Path) -> tuple[dict[str, Flow], Registries, dict[str, ConfigView]]:
     """Load and validate every selectable DUT and every available formal view.
 
-    A formal view whose site-named file is absent stays unavailable and is not an error here;
-    selecting it with --mode formal is.
+    A simulation or formal view whose site-named file is absent stays unavailable and is not
+    an error here; selecting its DUT in that mode is.
     """
     registries = load_registries(root)
-    duts = load_duts(root)
+    duts = load_duts(root, registries.site)
     for flow in duts.values():
         validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
     formal_views = load_formal_views(root, registries.site)
@@ -940,7 +944,8 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
         print(f"  site layer       OK ({registries.site_summary()})")
 
     try:
-        duts = load_duts(root)
+        duts = load_duts(root, registries.site)
+        absent_sim = unavailable_sim_views(root, registries.site)
     except ConfigError as exc:
         print(f"  DUT discovery    FAIL: {exc}")
         print("\nResult: could not load the DUT set")
@@ -979,7 +984,13 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
             failures += 1
             print(f"  {label:<16} FAIL: {exc}")
 
-    for name in sorted(duts):
+    for name in sorted(set(duts) | set(absent_sim)):
+        if name in absent_sim:
+            # The checkout the site layer points into may be absent on this machine.
+            rows += 1
+            unavailable += 1
+            print(f"  {name:<16} UNAVAILABLE: {absent_sim[name].reason}")
+            continue
         flow = duts[name]
         # Validate every framework view a DUT implements, not only its default: the default row
         # keeps the bare DUT name; additional frameworks get their own `name (fw)` row.
@@ -1002,7 +1013,7 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
             failures += 1
             print(f"  {label:<16} FAIL: {formal.reason}")
 
-    total = len(duts)
+    total = len(set(duts) | set(absent_sim))
     tail = f", {unavailable} unavailable" if unavailable else ""
     print(
         f"\nResult: {total} DUT(s), {rows} view(s): "
@@ -1594,10 +1605,10 @@ def _aliases_by_dut(flows: dict[str, Flow]) -> dict[str, list[str]]:
 
 
 def _listed_formal_views(
-    flows: dict[str, Flow], formal_views: dict[str, FormalView]
-) -> dict[str, FormalView]:
+    flows: dict[str, Flow], formal_views: dict[str, ConfigView]
+) -> dict[str, ConfigView]:
     """The formal views to list: an alias's view is omitted when it is its canonical DUT's view."""
-    listed: dict[str, FormalView] = {}
+    listed: dict[str, ConfigView] = {}
     for name, view in formal_views.items():
         canonical = _alias_of(name, flows)
         canonical_view = formal_views.get(canonical) if canonical is not None else None
@@ -1610,11 +1621,16 @@ def _listed_formal_views(
 def list_flows(
     flows: dict[str, Flow],
     simulators: dict[str, Any],
-    formal_views: dict[str, FormalView] | None = None,
+    formal_views: dict[str, ConfigView] | None = None,
+    unavailable_sim: dict[str, ConfigView] | None = None,
+    root: Path | None = None,
+    site: SiteLayer | None = None,
 ) -> None:
     """The DUT table: one row per simulation framework view, then the DUT's `fv` row.
 
-    An alias gets a single row naming the DUT it selects.
+    An alias gets a single row naming the DUT it selects. A simulation view whose site-named
+    config is absent gets one row giving the reason. With ``root``, each framework row lists
+    the tools of that framework's own view; without it, the tools of the DUT's default view.
     """
     BOLD = "\033[1m"
     NORMAL = "\033[0m"
@@ -1674,11 +1690,14 @@ def list_flows(
         )
 
     formal_views = _listed_formal_views(flows, formal_views or {})
-    for name in sorted(set(flows) | set(formal_views)):
+    unavailable_sim = unavailable_sim or {}
+    for name in sorted(set(flows) | set(formal_views) | set(unavailable_sim)):
         flow = flows.get(name)
         canonical = _alias_of(name, flows)
         if canonical is not None:
             print(f"{name:<{widths[0]}} alias of {canonical}")
+        elif name in unavailable_sim:
+            row(name, "-", "-", "-", f"unavailable: {unavailable_sim[name].reason}")
         elif flow is not None:
             spill = False
             frameworks = {
@@ -1694,11 +1713,16 @@ def list_flows(
                 )
             } or {"": "-"}
             for framework, label in frameworks.items():
+                view = (
+                    resolve_dut(root, name, framework=framework, site=site)
+                    if root is not None and framework and framework != flow.framework
+                    else flow
+                )
                 row(
                     flow.name if not spill else "",
                     flow.kind if not spill else " " + chr(8627),
                     label,
-                    tools_column(flow, framework),
+                    tools_column(view, framework),
                     flow.description if not spill else "",
                 )
                 spill = True
@@ -1810,7 +1834,9 @@ def _flow_view_dict(flow: Flow) -> dict[str, Any]:
 def list_flows_json(
     root: Path,
     flows: dict[str, Flow],
-    formal_views: dict[str, FormalView] | None = None,
+    formal_views: dict[str, ConfigView] | None = None,
+    unavailable_sim: dict[str, ConfigView] | None = None,
+    site: SiteLayer | None = None,
 ) -> None:
     """Machine-readable enumeration: one entry per (DUT, framework) view plus one per formal view.
 
@@ -1818,7 +1844,9 @@ def list_flows_json(
     `.duts[] | select(.framework == "uvm")` and gets the per-view tool set and license need;
     a formal job selects `.duts[] | select(.mode == "formal" and .available)`.
     An alias adds no entry of its own, so a matrix never runs one DUT twice; every entry
-    lists the names that select the same DUT under `aliases`.
+    lists the names that select the same DUT under `aliases`. A simulation view whose
+    site-named config is absent is one entry with `available` false; its kind and frameworks
+    live in the absent file, so it carries neither.
     """
     views: list[dict[str, Any]] = []
     for name in sorted(flows):
@@ -1828,7 +1856,17 @@ def list_flows_json(
         views.append(_flow_view_dict(flow))
         for fw in flow.frameworks:
             if fw != flow.framework:
-                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw)))
+                views.append(_flow_view_dict(resolve_dut(root, name, framework=fw, site=site)))
+    for name, view in sorted((unavailable_sim or {}).items()):
+        views.append(
+            {
+                "name": name,
+                "mode": "sim",
+                "available": False,
+                "path": repo_rel(root, view.path),
+                "reason": view.reason,
+            }
+        )
     for name, view in sorted(_listed_formal_views(flows, formal_views or {}).items()):
         if view.flow is not None:
             views.append({**_flow_view_dict(view.flow), "name": name})
@@ -2352,6 +2390,7 @@ def cmd_waive(
     policies: dict[str, Any],
     executors: dict[str, Any],
     args: argparse.Namespace,
+    site: SiteLayer | None = None,
 ) -> int:
     """`--waive`: exit 0 when the re-graded coverage meets its thresholds, 1 when it does
     not, 2 when nothing was written."""
@@ -2364,6 +2403,7 @@ def cmd_waive(
             mode=args.mode,
             framework=framework,
             adopter_overlay=adopter_overlay_path(args),
+            site=site,
         )
         validate_flow(flow, root, simulators, policies, executors)
         return waive_run(
@@ -4439,6 +4479,7 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_doctor(root, args)
 
         duts, registries, formal_views = validate_all(root)
+        absent_sim = unavailable_sim_views(root, registries.site)
         simulators, executors, policies = (
             registries.simulators,
             registries.executors,
@@ -4461,9 +4502,9 @@ def main(argv: list[str] | None = None) -> int:
                 else:
                     list_flow_detail(flow, root)
             elif args.json:
-                list_flows_json(root, duts, formal_views)
+                list_flows_json(root, duts, formal_views, absent_sim, registries.site)
             else:
-                list_flows(duts, simulators, formal_views)
+                list_flows(duts, simulators, formal_views, absent_sim, root, registries.site)
             return 0
 
         if not args.dut:
@@ -4471,10 +4512,10 @@ def main(argv: list[str] | None = None) -> int:
                 "--dut is required unless --list, --validate-configs, or --doctor is used "
                 "(start with --list to see the selectable DUTs)"
             )
-        if args.dut not in duts:
+        if args.dut not in duts and args.dut not in absent_sim:
             raise ConfigError(f"unknown DUT `{args.dut}`")
         if args.waive is not None:
-            return cmd_waive(root, simulators, policies, executors, args)
+            return cmd_waive(root, simulators, policies, executors, args, site=registries.site)
         if args.cov_combine:
             return cmd_cov_combine(root, registries, args)
         flow = resolve_dut(

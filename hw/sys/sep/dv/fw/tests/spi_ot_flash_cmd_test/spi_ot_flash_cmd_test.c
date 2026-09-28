@@ -100,35 +100,35 @@ static uint32_t pack_hdr(uint32_t opcode, uint32_t addr) {
 // No pad-mux step: this DUT drives the OT SPI host onto the pads directly.
 
 static void spi_init(void) {
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
            SPI_CONTROLLER__CONTROL__SPIEN_bm | SPI_CONTROLLER__CONTROL__OUTPUT_EN_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, SPI_CFG_CLKDIV9_CSN);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
 }
 
 static int flash_wren(void) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WREN);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WREN);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
 static int flash_wrdi(void) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WRDI);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_WRDI);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
 static int flash_jedec(uint32_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_JEDEC);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_JEDEC);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1));
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 3, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 3, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
-    *out = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+    *out = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     return 0;
 }
 
@@ -136,14 +136,13 @@ static int flash_jedec(uint32_t *out) {
 // A timeout is not encoded as 0xFF: WEL is bit 1, so 0xFF would look like WEL set.
 static int flash_rdsr_checked(uint8_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_RX, 1, 0)); // RX 1 byte, release CS
     if (spi_wait_idle(TIMEOUT)) return -1;
-    *out = (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
+    *out = (uint8_t)(spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
     return 0;
 }
 
@@ -153,13 +152,12 @@ static int flash_rdsr_checked(uint8_t *out) {
 // the byte, or -1 if the controller never responded.
 static int flash_rdsr2(uint8_t *out) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR2);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_RDSR2);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 1)); // CSAAT held
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, 1, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
-    *out = (uint8_t)(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
+    *out = (uint8_t)(spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)) & 0xFF);
     return 0;
 }
 
@@ -171,50 +169,49 @@ static int flash_page_program(uint32_t addr, const uint32_t *data, uint32_t nwor
     // command_ready low under tx_stall mid-segment); the dma_rx path also
     // uses a single TX segment.
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0),
            pack_hdr(FLASH_CMD_PP, addr)); // opcode + 24-bit addr
     for (uint32_t i = 0; i < nwords; i++) {
-        spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), data[i]); // data words, LSB-first
+        spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), data[i]); // data words, LSB-first
     }
     // total TX bytes = 4 (cmd+addr) + nwords*4
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 4 + nwords * 4, 0));
     return spi_wait_idle(TIMEOUT);
 }
 
 static int flash_sector_erase(uint32_t addr) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_ERASE, addr));
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_ERASE, addr));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_TX, 4, 0)); // cmd+addr, release CS
     return spi_wait_idle(TIMEOUT);
 }
 
 static int flash_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_READ, addr));
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_READ, addr));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_TX, 4, 1)); // cmd+addr, CSAAT held
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0)); // RX data, release CS
     if (spi_wait_idle(TIMEOUT)) return -1;
     for (uint32_t i = 0; i < nwords; i++) {
-        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+        out[i] = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     }
     return 0;
 }
 
 static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_FAST, addr));
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0); // dummy byte
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 5, 1));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), pack_hdr(FLASH_CMD_FAST, addr));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0); // dummy byte
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 5, 1));
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
     for (uint32_t i = 0; i < nwords; i++) {
-        out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+        out[i] = spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     }
     return 0;
 }
@@ -234,12 +231,12 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
 static int spi_err_recover(uint32_t *residual) {
     int err = 0;
     const uint32_t empty = SPI_CONTROLLER__STATUS__TXEMPTY_bm | SPI_CONTROLLER__STATUS__RXEMPTY_bm;
-    uint32_t ctrl = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    uint32_t ctrl = spi_rd(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl | SPI_CONTROLLER__CONTROL__SW_RST_bm);
     uint32_t st = 0;
     int t = TIMEOUT;
     while (t-- > 0) {
-        st = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        st = spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if ((st & empty) == empty) break;
     }
     if ((st & empty) != empty) {
@@ -248,10 +245,9 @@ static int spi_err_recover(uint32_t *residual) {
         sep_mbx_putc('\n');
         err++;
     }
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR,
-           ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
-    *residual = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl & ~SPI_CONTROLLER__CONTROL__SW_RST_bm);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFFu);
+    *residual = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     return err;
 }
 
@@ -262,7 +258,7 @@ static int spi_err_recover(uint32_t *residual) {
 // come from the injection.
 static int spi_err_expect(uint32_t expect_bm) {
     int err = 0;
-    uint32_t es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    uint32_t es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (es != expect_bm) {
         sep_mbx_puts("FAIL: ERROR_STATUS=");
         sep_mbx_puthex(es);
@@ -568,7 +564,7 @@ int main(void) {
     }
 
     // --- CHK-NO-ERROR: the OT SPI host saw no error across the whole sequence ---
-    uint32_t err = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    uint32_t err = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     if (err != 0) {
         sep_mbx_puts("FAIL: CHK-NO-ERROR ERROR_STATUS=");
         sep_mbx_puthex(err);
@@ -588,16 +584,16 @@ int main(void) {
     // specification gives ERROR_STATUS.UNDERFLOW as "firmware has attempted to
     // read from RXDATA when the RX FIFO is empty".
     int rx_drain = TIMEOUT;
-    while (rx_drain-- > 0 && (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+    while (rx_drain-- > 0 && (spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
                               SPI_CONTROLLER__STATUS__RXQD_bm) != 0) {
-        (void)spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+        (void)spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
     }
-    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__RXQD_bm) {
+    if (spi_rd(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__RXQD_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-UNDERFLOW RX FIFO would not drain; the empty-read "
                      "injection cannot be set up\n");
         return errors + 1;
     }
-    (void)spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); // the empty read
+    (void)spi_rd(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); // the empty read
     int uf_err = spi_err_expect(SPI_CONTROLLER__ERROR_STATUS__UNDERFLOW_bm);
     errors += uf_err;
     if (uf_err == 0) {
@@ -607,7 +603,7 @@ int main(void) {
 
     // CHK-ERR-CMDINVAL: a COMMAND segment with the reserved SPEED encoding
     // (see SPI_CMD_SPEED_RESERVED).
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR,
            cmd_word(SPI_CMD_DIR_TX, 1, 0) |
                (SPI_CMD_SPEED_RESERVED << SPI_CONTROLLER__COMMAND__SPEED_bp));
     int ci_err = spi_err_expect(SPI_CONTROLLER__ERROR_STATUS__CMDINVAL_bm);
@@ -620,10 +616,10 @@ int main(void) {
     // CHK-ERR-CSIDINVAL: an otherwise legal segment issued with CSID at the
     // top of the 32-bit field. The host compares the whole field, so the
     // stimulus does not assume how many chip-selects the instance decodes.
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0xFFFFFFFFu);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
-    uint32_t csid_es = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u); // restore before recovery
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0xFFFFFFFFu);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 1, 0));
+    uint32_t csid_es = spi_rd(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    spi_wr(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0u); // restore before recovery
     int cs_err = 0;
     if (csid_es != SPI_CONTROLLER__ERROR_STATUS__CSIDINVAL_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-CSIDINVAL ERROR_STATUS=");

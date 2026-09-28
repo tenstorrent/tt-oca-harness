@@ -472,7 +472,7 @@ module sep #(
   // Added demux to reroute eFuse shim traffic from xbar external to efuse_wrapper
 
   localparam logic [31:0] EFUSE_SHIM_BASE =
-        32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
+        32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR);
 
   localparam int unsigned NUM_EXT_DEMUX_PORTS = 2;
   typedef enum logic [$clog2(
@@ -714,7 +714,7 @@ NUM_EXT_DEMUX_PORTS
     .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
     .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
     .CSR_BASE_ADDR    (32'h0),
-    .MEM_BASE_ADDR    (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)),
+    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)),
     .NUM_BANKS        (1)
   ) u_sram_memory_interface (
     .clk_i                (clk_i),
@@ -785,7 +785,7 @@ NUM_EXT_DEMUX_PORTS
     .csr_axil_req_t   (sep_pkg::sep_axilite_xbar_req_t),
     .csr_axil_resp_t  (sep_pkg::sep_axilite_xbar_resp_t),
     .CSR_BASE_ADDR    (32'h0),
-    .MEM_BASE_ADDR    (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)),
+    .MEM_BASE_ADDR    (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)),
     .NUM_BANKS        (1)
   ) u_boot_rom_memory_interface (
     .clk_i                (clk_i),
@@ -1106,7 +1106,7 @@ NUM_EXT_DEMUX_PORTS
   assign lsio_trigger[$bits(lsio_trigger)-1:1] = '0;
 
   sep_dma_wrap #(
-    .SECURE_DMA_REG_MAP_BASE_ADDR (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR)),
+    .SECURE_DMA_REG_MAP_BASE_ADDR (32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR)),
     .AlertAsyncOn           ({secure_dma_reg_pkg::NumAlerts{1'b0}}),
     .AlertSkewCycles        (1'b0),
     .EnableDataIntgGen      (1'b1),  // ENABLE integrity generation (was 1'b0)

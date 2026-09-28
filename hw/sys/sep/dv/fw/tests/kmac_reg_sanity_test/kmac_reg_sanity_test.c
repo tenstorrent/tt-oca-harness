@@ -61,13 +61,13 @@ static void check_wo_read_zero(const char *name, uint32_t addr, uint32_t write_v
 static int test_register_defaults(void) {
     printf("\n=== Test 1: Register Default Values ===\n");
 
-    check_reg("STATUS", OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR, KMAC_STATUS_RESET_VAL);
-    check_reg("CFG_REGWEN", OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR, KMAC_CFG_REGWEN_RESET_VAL);
-    check_reg("CFG_SHADOWED", OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, KMAC_CFG_SHADOWED_RESET_VAL);
-    check_reg("ERR_CODE", OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR, KMAC__ERR_CODE__ERR_CODE_reset);
-    check_reg("INTR_ENABLE", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0u);
-    check_reg("INTR_STATE", OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0u);
-    check_reg("ENTROPY_PERIOD", OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0u);
+    check_reg("STATUS", SEP_TOP_KMAC_STATUS_BASE_ADDR, KMAC_STATUS_RESET_VAL);
+    check_reg("CFG_REGWEN", SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR, KMAC_CFG_REGWEN_RESET_VAL);
+    check_reg("CFG_SHADOWED", SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, KMAC_CFG_SHADOWED_RESET_VAL);
+    check_reg("ERR_CODE", SEP_TOP_KMAC_ERR_CODE_BASE_ADDR, KMAC__ERR_CODE__ERR_CODE_reset);
+    check_reg("INTR_ENABLE", SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0u);
+    check_reg("INTR_STATE", SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, 0u);
+    check_reg("ENTROPY_PERIOD", SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0u);
 
     return 0;
 }
@@ -77,8 +77,8 @@ static int test_intr_enable_rw(void) {
 
     uint32_t all_intr = KMAC__INTR_ENABLE__KMAC_DONE_bm | KMAC__INTR_ENABLE__FIFO_EMPTY_bm |
                         KMAC__INTR_ENABLE__KMAC_ERR_bm;
-    check_rw("INTR_ENABLE all", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, all_intr, all_intr);
-    check_rw("INTR_ENABLE clear", OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0, 0x0);
+    check_rw("INTR_ENABLE all", SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, all_intr, all_intr);
+    check_rw("INTR_ENABLE clear", SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0, 0x0);
 
     return 0;
 }
@@ -86,22 +86,22 @@ static int test_intr_enable_rw(void) {
 static int test_intr_test_w1s(void) {
     printf("\n=== Test 3: INTR_TEST -> INTR_STATE W1C (all 3 bits) ===\n");
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x0);
 
     /* --- bit 0: kmac_done --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-              KMAC__INTR_STATE__KMAC_DONE_bm | KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                  KMAC__INTR_STATE__KMAC_ERR_bm); /* clear all */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_DONE_bm);
-    uint32_t state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm); /* clear all */
+    WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_DONE_bm);
+    uint32_t state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__KMAC_DONE_bm) {
         printf("PASS: INTR_TEST.kmac_done set INTR_STATE.kmac_done\n");
     } else {
         printf("FAIL: INTR_TEST.kmac_done did not set INTR_STATE state=0x%08x\n", state);
         test_errors++;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
-    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
+    state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (!(state & KMAC__INTR_STATE__KMAC_DONE_bm)) {
         printf("PASS: INTR_STATE.kmac_done cleared by W1C\n");
     } else {
@@ -114,11 +114,11 @@ static int test_intr_test_w1s(void) {
      * only claim the set-leg here (INTR_TEST forces the bit). Clear polarity is
      * proven in kmac_interrupt_test with a non-empty FIFO.
      */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__FIFO_EMPTY_bm);
-    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__FIFO_EMPTY_bm);
+    state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__FIFO_EMPTY_bm) {
         printf("PASS: INTR_TEST.fifo_empty set INTR_STATE.fifo_empty\n");
     } else {
@@ -126,25 +126,25 @@ static int test_intr_test_w1s(void) {
         test_errors++;
     }
     /* Drop vacuous W1C clear claim at idle (level re-assert cannot fail). */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 
     /* --- bit 2: kmac_err --- */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_ERR_bm);
-    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_TEST_BASE_ADDR, KMAC__INTR_TEST__KMAC_ERR_bm);
+    state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (state & KMAC__INTR_STATE__KMAC_ERR_bm) {
         printf("PASS: INTR_TEST.kmac_err set INTR_STATE.kmac_err\n");
     } else {
         printf("FAIL: INTR_TEST.kmac_err did not set INTR_STATE state=0x%08x\n", state);
         test_errors++;
     }
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_ERR_bm);
-    state = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_ERR_bm);
+    state = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
     if (!(state & KMAC__INTR_STATE__KMAC_ERR_bm)) {
         printf("PASS: INTR_STATE.kmac_err cleared by W1C\n");
     } else {
@@ -153,9 +153,9 @@ static int test_intr_test_w1s(void) {
     }
 
     /* Clear all remaining */
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 
     return 0;
 }
@@ -164,10 +164,10 @@ static int test_prefix_rw(void) {
     printf("\n=== Test 4: PREFIX Register Read/Write ===\n");
 
     uint32_t test_val = 0x12345678;
-    check_rw("PREFIX_0", OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), test_val, test_val);
+    check_rw("PREFIX_0", SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), test_val, test_val);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x0);
-    uint32_t readback = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0));
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x0);
+    uint32_t readback = READ_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(0));
     if (readback == 0x0) {
         printf("PASS: PREFIX_0 restored to 0\n");
     } else {
@@ -182,8 +182,8 @@ static int test_entropy_period_rw(void) {
     printf("\n=== Test 5: ENTROPY_PERIOD Read/Write ===\n");
 
     uint32_t test_val = 0xFFFF03FF;
-    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, test_val);
-    kmac__ENTROPY_PERIOD_t ep = {.w = READ_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
+    WRITE_REG(SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, test_val);
+    kmac__ENTROPY_PERIOD_t ep = {.w = READ_REG(SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR)};
     printf("  ENTROPY_PERIOD readback=0x%08x prescaler=%u wait_timer=%u\n", ep.w, ep.f.prescaler,
            ep.f.wait_timer);
 
@@ -194,7 +194,7 @@ static int test_entropy_period_rw(void) {
         test_errors++;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_KMAC_ENTROPY_PERIOD_BASE_ADDR, 0x0);
 
     return 0;
 }
@@ -202,15 +202,15 @@ static int test_entropy_period_rw(void) {
 static int test_key_share_wo_read_zero(void) {
     printf("\n=== Test 6: KEY_SHARE Write-Only Read-As-Zero ===\n");
 
-    for (uint32_t i = 0; i < OCH_SEP_TOP_KMAC_KEY_SHARE0_NUM; i++) {
+    for (uint32_t i = 0; i < SEP_TOP_KMAC_KEY_SHARE0_NUM; i++) {
         char name[32];
 
         snprintf(name, sizeof(name), "KEY_SHARE0_%u", i);
-        check_wo_read_zero(name, OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i),
+        check_wo_read_zero(name, SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i),
                            0xa5a50000u | (i * 0x0101u) | i);
 
         snprintf(name, sizeof(name), "KEY_SHARE1_%u", i);
-        check_wo_read_zero(name, OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i),
+        check_wo_read_zero(name, SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i),
                            0x5a5a0000u | (i * 0x0101u) | i);
     }
 

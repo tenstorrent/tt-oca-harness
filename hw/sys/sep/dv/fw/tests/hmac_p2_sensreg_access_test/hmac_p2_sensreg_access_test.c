@@ -31,9 +31,9 @@ static int test_mmio_positive_control(void) {
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t rb = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     printf("  CFG wrote=0x%08x read=0x%08x\n", cfg.w, rb.w);
 
     int ok = 1;
@@ -43,7 +43,7 @@ static int test_mmio_positive_control(void) {
     }
 
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     return ok ? 0 : -1;
 }
 
@@ -52,7 +52,7 @@ static int test_key_read_protection(void) {
 
     int pass = 1;
     for (uint32_t i = 0; i < 8; i++) {
-        uint32_t addr = OCH_SEP_TOP_HMAC_KEY_BASE_ADDR(i);
+        uint32_t addr = SEP_TOP_HMAC_KEY_BASE_ADDR(i);
         uint32_t pattern = 0xa5a50000u | (i * 0x1111u) | i;
 
         WRITE_REG(addr, pattern);
@@ -82,7 +82,7 @@ static int test_digest_write_context_restore(void) {
 
     int pass = 1;
     for (uint32_t i = 0; i < 8; i++) {
-        uint32_t addr = OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i);
+        uint32_t addr = SEP_TOP_HMAC_DIGEST_BASE_ADDR(i);
         uint32_t pattern = 0x5a5a0000u | (i * 0x0101u) | i;
 
         WRITE_REG(addr, pattern);
@@ -107,9 +107,9 @@ static int test_cfg_regwen_absent(void) {
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
-    hmac__CFG_t rb = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t rb = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     printf("  CFG write/readback without regwen: wrote=0x%08x read=0x%08x\n", cfg.w, rb.w);
 
     /* Compare programmed fields only — key_length may retain reset Key_None. */
@@ -117,7 +117,7 @@ static int test_cfg_regwen_absent(void) {
                   rb.f.digest_size == SEP_HMAC_DIGEST_SIZE_SHA2_256);
 
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     return check_true("CFG remains writable because no regwen register exists", cmp_ok);
 }
@@ -144,8 +144,8 @@ int main(void) {
         pass = 0;
     }
 
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     printf("\n========================================\n");
     if (pass) {

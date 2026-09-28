@@ -20,7 +20,7 @@
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for idle\n");
@@ -30,7 +30,7 @@ static int wait_for_idle(void) {
 static int wait_for_squeeze(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_squeeze) return 0;
     }
     printf("Timeout waiting for squeeze\n");
@@ -38,14 +38,14 @@ static int wait_for_squeeze(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static void read_state(uint32_t *out, int words) {
     for (int i = 0; i < words; i++) {
-        uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
+        uint32_t s0 = READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
         uint32_t s1 =
-            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+            READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         out[i] = s0 ^ s1;
     }
 }
@@ -62,25 +62,25 @@ static int test_shake128_xof(void) {
     cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
     cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     setup_entropy();
 
     printf("=== Step 2: START ===\n");
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     printf("=== Step 3: Write message 'test' ===\n");
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
+    WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
     printf("=== Step 4: PROCESS ===\n");
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_squeeze() != 0) return -1;
 
@@ -108,7 +108,7 @@ static int test_shake128_xof(void) {
 
     printf("=== Step 6: Issue MANUAL_RUN for second squeeze ===\n");
     cmd.f.cmd = SEP_KMAC_CMD_MANUAL_RUN;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_squeeze() != 0) {
         printf("FAIL: timeout waiting for second squeeze\n");
@@ -148,7 +148,7 @@ static int test_shake128_xof(void) {
 
     printf("=== Step 9: DONE ===\n");
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return errors;
 }

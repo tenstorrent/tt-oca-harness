@@ -276,6 +276,11 @@
 // pattern as every other observable above. Default backdoor data-compare
 // path; one eFuse test uses the AXI front door instead.
 `SEP_TB_OUT(logic [sep_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
+// The three public-ID fields of the Key Manager's OTP input, taken at the KM
+// instance's otp_data_i port. Each is the 512-bit dual-rail word {~id, id}.
+`SEP_TB_OUT(logic [511:0], km_otp_sep_chiplet_id_o)
+`SEP_TB_OUT(logic [511:0], km_otp_sep_sip_id_o)
+`SEP_TB_OUT(logic [511:0], km_otp_sep_sys_id_o)
 // SEP scratch-cold CSR array (8 words x 32b), surfaced as a top-level probe so
 // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
 // summary (host loop count + KM-contention error counters) with no AXI master
@@ -300,6 +305,9 @@
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_word0_o)
+// KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
+// for km_rom_otp_id.S, which writes its results to those words.
+`SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)

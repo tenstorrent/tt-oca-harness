@@ -20,11 +20,11 @@
  * @return 0 on success, -1 if the bit did not stick (bus routing issue).
  */
 static inline int sep_aes_sw_reset_release(void) {
-    uint32_t val = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t val = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     val |= (uint32_t)SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm;
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, val);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, val);
     __asm__ volatile("fence" ::: "memory");
-    if ((READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
+    if ((READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR) &
          SEP_RESET_CTRL__SW_RESET_N__AES_SW_RST_N_bm) == 0) {
         printf("ERROR: cannot release AES sw reset\n");
         return -1;

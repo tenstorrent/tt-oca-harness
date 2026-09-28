@@ -1234,7 +1234,7 @@ module smc_uvm_top
         .axil_dtp_csr_req_o         (axil_dtp_csr_req),
         .axil_dtp_csr_resp_i        (axil_dtp_csr_resp),
         .shadow_regs_o              (shadow_regs),
-        .lsio_interface_select_o    (),
+        .lsio_interface_select_o    (tb_lsio_interface_select),
         .gpio_pad_io                (gpio_pad_io),
         .rst_cool_n_from_pin_i      (rst_cool_n_int),
         // SPI octal-flash pads (U2-1). Cocotb drives tb_spi_*; idle default is
@@ -1415,6 +1415,8 @@ module smc_uvm_top
     assign tb_efuse_read_done = `SMC_EFUSE_READ.read_done_o;
     assign tb_efuse_read_error = `SMC_EFUSE_READ.read_error_o;
     assign tb_efuse_readback = `SMC_EFUSE_READ.read_back_data_o;
+    assign tb_efuse_read_addr = 16'(`SMC_EFUSE_IFC.reg_interface_read_addr_csr);
+    assign tb_efuse_program_addr = 16'(`SMC_EFUSE_IFC.reg_interface_program_addr_csr);
     always @(posedge clk_smc_i) begin
         if (tb_efuse_program_state_inject_en === 1'b1) begin
             force `SMC_EFUSE_PROGRAM.program_state_q[1:0] = tb_efuse_program_state_inject;
@@ -1488,6 +1490,10 @@ module smc_uvm_top
     assign tb_axil_external_active   = u_dut.u_smc.smc_external_req_o.aw_valid
                                      | u_dut.u_smc.smc_external_req_o.w_valid
                                      | u_dut.u_smc.smc_external_req_o.ar_valid;
+    assign tb_axil_external_arvalid  = u_dut.u_smc.smc_external_req_o.ar_valid;
+    assign tb_axil_external_araddr   = u_dut.u_smc.smc_external_req_o.ar.addr;
+    assign tb_axil_external_awvalid  = u_dut.u_smc.smc_external_req_o.aw_valid;
+    assign tb_axil_external_awaddr   = u_dut.u_smc.smc_external_req_o.aw.addr;
     assign tb_axil_efuse_bank_active = u_dut.u_smc.efuse_bank_ctrl_req_o.aw_valid | u_dut.u_smc.efuse_bank_ctrl_req_o.w_valid |
                                        u_dut.u_smc.efuse_bank_ctrl_req_o.ar_valid;
     assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_external_active | tb_axil_efuse_bank_active;
@@ -1605,12 +1611,14 @@ module smc_uvm_top
     assign tb_plic_claim0       = `SMC_PLIC.claimer_0;
     assign tb_plic_complete0    = `SMC_PLIC.completer_0;
     assign tb_plic_completer_dev = `SMC_PLIC.completerDev;
-    assign tb_plic_pending_low  = {`SMC_PLIC.pending_3, `SMC_PLIC.pending_2,
-                                   `SMC_PLIC.pending_1};
-    assign tb_plic_priority_low = {`SMC_PLIC.priority_3[0], `SMC_PLIC.priority_2[0],
-                                   `SMC_PLIC.priority_1[0]};
-    assign tb_plic_pending_331  = `SMC_PLIC.pending_331;
-    assign tb_plic_pending_324  = `SMC_PLIC.pending_324;
+    // The PLIC's pending_N and priority_N registers hold source N + 1, since
+    // source 0 is reserved.
+    assign tb_plic_pending_low  = {`SMC_PLIC.pending_2, `SMC_PLIC.pending_1,
+                                   `SMC_PLIC.pending_0};
+    assign tb_plic_priority_low = {`SMC_PLIC.priority_2[0], `SMC_PLIC.priority_1[0],
+                                   `SMC_PLIC.priority_0[0]};
+    assign tb_plic_pending_331  = `SMC_PLIC.pending_330;
+    assign tb_plic_pending_324  = `SMC_PLIC.pending_323;
 
     assign tb_clint_mtime      = `SMC_CLINT.time_0;
     assign tb_clint_mtimecmp0  = `SMC_CLINT.pad;
@@ -1886,6 +1894,7 @@ module smc_uvm_top
         .gpio_pad2core_en_any_i      (tb_gpio_pad2core_en_any),
         .core2pad_i                  (tb_core2pad_o),
         .core2pad_en_i               (tb_core2pad_en_o),
+        .lsio_select_i               (tb_lsio_interface_select),
         .gpio_pad57_i                (tb_gpio_pad57),
         .sync_irq_i                  (tb_sync_irq),
         .gpio_irq_any_i              (tb_gpio_irq_any),
@@ -2180,6 +2189,14 @@ module smc_uvm_top
         .sys_rvalid_i   (sys_axi_rvalid),
         .sys_rready_i   (sys_axi_rready),
         .sys_rlast_i    (sys_axi_rlast),
+        .jtag_awvalid_i (jtag_axi_awvalid),
+        .jtag_awready_i (jtag_axi_awready),
+        .jtag_awaddr_i  (jtag_axi_awaddr),
+        .jtag_arvalid_i (jtag_axi_arvalid),
+        .jtag_arready_i (jtag_axi_arready),
+        .jtag_araddr_i  (jtag_axi_araddr),
+        .jtag_bresp_i   (jtag_axi_bresp),
+        .jtag_rresp_i   (jtag_axi_rresp),
         .jtag_bvalid_i  (jtag_axi_bvalid),
         .jtag_bready_i  (jtag_axi_bready),
         .jtag_rvalid_i  (jtag_axi_rvalid),
@@ -2271,7 +2288,8 @@ module smc_uvm_top
         .core2pad_i              (tb_core2pad_o),
         .core2pad_en_i           (tb_core2pad_en_o),
         .pad2core_en_i           (tb_pad2core_en_o),
-        .pad_i                   (gpio_pad_io)
+        .pad_i                   (gpio_pad_io),
+        .lsio_select_i           (tb_lsio_interface_select)
     );
 
     smc_efuse_fcov #(
@@ -2305,7 +2323,10 @@ module smc_uvm_top
         .read_done_i        (tb_efuse_read_done),
         .readback_i         (tb_efuse_readback),
         .program_done_i     (tb_efuse_program_done),
-        .programmed_word0_i (tb_efuse_programmed_word0)
+        .read_error_i       (tb_efuse_read_error),
+        .program_error_i    (tb_efuse_program_error),
+        .read_addr_i        (tb_efuse_read_addr),
+        .program_addr_i     (tb_efuse_program_addr)
     );
 
 `else  // SMC_DUAL

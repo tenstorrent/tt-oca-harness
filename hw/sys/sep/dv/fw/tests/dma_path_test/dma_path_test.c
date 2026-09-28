@@ -34,13 +34,13 @@
 #define TEST_WORDS (TEST_SIZE / 4)
 
 /* SRAM regions */
-#define SRAM_SRC (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)           /* 0x10000000 */
-#define SRAM_DST1 (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000) /* 0x10001000 */
-#define SRAM_DST2 (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000) /* 0x10002000 - for ICCM readback */
+#define SRAM_SRC (SEP_TOP_SEP_SRAM_BASE_ADDR)           /* 0x10000000 */
+#define SRAM_DST1 (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000) /* 0x10001000 */
+#define SRAM_DST2 (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x2000) /* 0x10002000 - for ICCM readback */
 
 /* ICCM targets: offset to avoid overwriting test code */
-#define ICCM_DST (OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + 0x20000)  /* 0xC0020000 - Phase 2 data */
-#define ICCM_CODE (OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + 0x30000) /* 0xC0030000 - Phase 3 code */
+#define ICCM_DST (SEP_TOP_SEP_ICCM_BASE_ADDR + 0x20000)  /* 0xC0020000 - Phase 2 data */
+#define ICCM_CODE (SEP_TOP_SEP_ICCM_BASE_ADDR + 0x30000) /* 0xC0030000 - Phase 3 code */
 
 /* Test patterns */
 #define PATTERN_SRAM 0xAA550000u
@@ -83,55 +83,55 @@ static const uint32_t phase3_code[] = {
  *==========================================================================*/
 
 static void dma_init(void) {
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x00000001u);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x00000000u);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x00000001u);
 }
 
 static int dma_copy(uint32_t dst, uint32_t src, uint32_t size) {
     /* Check if destination or source is ICCM - need to disable axi_local_alias_remap */
-    int iccm_dest = (dst >= OCH_SEP_TOP_SEP_ICCM_BASE_ADDR &&
-                     dst < OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE);
-    int iccm_src = (src >= OCH_SEP_TOP_SEP_ICCM_BASE_ADDR &&
-                    src < OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE);
+    int iccm_dest = (dst >= SEP_TOP_SEP_ICCM_BASE_ADDR &&
+                     dst < SEP_TOP_SEP_ICCM_BASE_ADDR + SEP_TOP_SEP_ICCM_SIZE);
+    int iccm_src = (src >= SEP_TOP_SEP_ICCM_BASE_ADDR &&
+                    src < SEP_TOP_SEP_ICCM_BASE_ADDR + SEP_TOP_SEP_ICCM_SIZE);
     uint32_t saved_region_size = 0;
 
     if (iccm_dest || iccm_src) {
-        saved_region_size = READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR);
+        saved_region_size = READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR);
         printf("  [remap] old SEP_REGION_SIZE=0x%08x\n", saved_region_size);
-        WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, 0u);
+        WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, 0u);
         __asm__ volatile("fence ow, ow" ::: "memory");
         printf("  [remap] new SEP_REGION_SIZE=0x%08x\n",
-               READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR));
+               READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR));
     }
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0x77u);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u); /* 4 bytes */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x1u);     /* increment */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x1u);     /* increment */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, size);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, size);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0u);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0u);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, 0x77u);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, 0x2u); /* 4 bytes */
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, 0x1u);     /* increment */
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, 0x1u);     /* increment */
+    WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, size);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, size);
 
     /* GO */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x80000100u);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x80000100u);
 
     /* Poll for completion */
     int timeout = 200000;
     while (timeout-- > 0) {
-        uint32_t status = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         if (status & BIT(1)) { /* DONE */
             break;
         }
         if (status & BIT(3)) { /* ERROR */
-            uint32_t ecode = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+            uint32_t ecode = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
             printf("  DMA ERROR: status=0x%08x error_code=0x%08x\n", status, ecode);
             printf("  src=0x%08x dst=0x%08x len=0x%x\n", src, dst, size);
             if (iccm_dest || iccm_src)
-                WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
+                WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
             return -1;
         }
     }
@@ -139,15 +139,15 @@ static int dma_copy(uint32_t dst, uint32_t src, uint32_t size) {
     if (timeout <= 0) {
         printf("  DMA TIMEOUT: src=0x%08x dst=0x%08x len=0x%x\n", src, dst, size);
         if (iccm_dest || iccm_src)
-            WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
+            WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
         return -2;
     }
 
     /* Restore remap */
     if (iccm_dest || iccm_src) {
-        WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
+        WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, saved_region_size);
         printf("  [remap] restored SEP_REGION_SIZE=0x%08x\n",
-               READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR));
+               READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR));
     }
 
     return 0;
