@@ -10,7 +10,9 @@ is read back from the DUT to form them.
 
 While ``GLOBAL_BASE`` holds its pattern, ``LOCAL_BASE`` is also read at its
 global address: ``fabric.adoc`` lets a local resource be addressed "using
-either their global address or a local alias address".
+either their global address or a local alias address". The same address is
+read first with ``GLOBAL_BASE`` at its reset and must answer DECERR, so the
+later read shows the decode follows the programmed ``GLOBAL_BASE``.
 
 The write-has-no-effect leg is given a positive control in the same block:
 ``GLOBAL_BASE`` takes and returns a pattern through the identical write path,
@@ -52,7 +54,7 @@ LOCAL_BASE_WRITE_ATTEMPT = 0xC200_0000
 # Reads carrying an expectation: REGION_SIZE, LOCAL_BASE three times (once
 # through the global window), GLOBAL_BASE pattern and restore readbacks.
 EXPECTED_VALUE_CHECKS = 6
-EXPECTED_ACCESSES = 10
+EXPECTED_ACCESSES = 11
 
 
 class smc_dual_base_addressing_test_seq(SmcDecodeProbeSeq):
@@ -79,18 +81,28 @@ class smc_dual_base_addressing_test_seq(SmcDecodeProbeSeq):
         assert self.global_base_reset != GLOBAL_BASE_PATTERN, (
             "GLOBAL_BASE already holds the probe pattern; the write control would prove nothing"
         )
+        # Negative control for the global-window read below: while GLOBAL_BASE
+        # still holds its reset value, the same address lies in neither the
+        # local nor the global aperture, and the fabric's error slave answers
+        # it (fabric.adoc, Traffic Subordinates). Only the GLOBAL_BASE write can
+        # turn it into LOCAL_BASE.
+        via_global = GLOBAL_BASE_PATTERN + (LOCAL_BASE - SPEC_LOCAL_BASE)
+        monitor = getattr(self.env, "axi_monitor", None)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(via_global)
+        await self.read_decerr("LOCAL_BASE_VIA_GLOBAL_BEFORE", via_global, length=8)
         await self.csr_write("GLOBAL_BASE_PATTERN", GLOBAL_BASE, GLOBAL_BASE_PATTERN, length=8)
         await self.csr_read(
             "GLOBAL_BASE_PATTERN_RB", GLOBAL_BASE, expected=GLOBAL_BASE_PATTERN, length=8
         )
         # fabric.adoc (Local and Remote Resource Access): "Local resources can be
         # addressed using either their global address or a local alias address."
-        via_global = GLOBAL_BASE_PATTERN + (LOCAL_BASE - SPEC_LOCAL_BASE)
         await self.read_reset("LOCAL_BASE_VIA_GLOBAL", via_global, SPEC_LOCAL_BASE, length=8)
         self.close_cell(
             "local-resource-via-global-address",
-            f"with GLOBAL_BASE at 0x{GLOBAL_BASE_PATTERN:x}, LOCAL_BASE read "
-            f"0x{SPEC_LOCAL_BASE:08x} at its global address 0x{via_global:x}",
+            f"0x{via_global:x} answered DECERR while GLOBAL_BASE held its reset "
+            f"0x{self.global_base_reset:x}, and with GLOBAL_BASE at 0x{GLOBAL_BASE_PATTERN:x} "
+            f"read LOCAL_BASE's 0x{SPEC_LOCAL_BASE:08x}",
         )
         await self.csr_write("GLOBAL_BASE_RESTORE", GLOBAL_BASE, self.global_base_reset, length=8)
         await self.csr_read(
