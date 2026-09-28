@@ -21,10 +21,19 @@
  * Register Address Definitions
  * These are extracted from registers/smc_top_regs.h to avoid complex includes in assembly
  */
-/* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR */
-#define SMC_STRAPS_LO_REG_ADDR 0xC0405800
-/* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR */
-#define SMC_STRAPS_HI_REG_ADDR 0xC0405804
+/* SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR in regs/gen/c/smc_addr.h */
+#define SMC_STRAPS_LO_REG_ADDR 0xC0404800
+/* SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_BASE_ADDR in regs/gen/c/smc_addr.h */
+#define SMC_STRAPS_HI_REG_ADDR 0xC0404804
+
+/*
+ * Base of the per-pad gpio_ctrl array in the external window, one pad every 0x20. The
+ * registers/smc_top_regs.h base is stale.
+ *
+ * Mirror of the generated regs/gen/c/smc_addr.h symbol
+ * SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_BASE_ADDR.
+ */
+#define SMC_GPIO_CTRL_BASE_ADDR 0xC0401000
 
 /*
  * eFuse map addresses that registers/smc_top_regs.h gets wrong. That header still describes the
@@ -256,8 +265,8 @@
  */
 #ifdef __ASSEMBLER__
 /* Pre-calculated values for expressions that can't be evaluated by assembler */
-#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0405800
-#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0405804
+#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0404800
+#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0404804
 /* Literal addresses for assembly, which cannot include the generated headers because their C
  * typedefs do not assemble. Nothing cross-checks these against the register map, so keep them in
  * step with regs/gen/c/smc_addr.h by hand:

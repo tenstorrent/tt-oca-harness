@@ -60,9 +60,9 @@ the wrong word or loses the write.
 
 Three blocks need their own handling, and the card records each:
 
-* `straps` is not in the SMC register map; `memmap.adoc` places `STRAPS_LO` at
-  the adopter external window plus `0x5800`, and `straps.rdl` makes it
-  `sw = r`, so it is a read-only probe reached by address.
+* `straps` sits in the supplementary region of the adopter external window,
+  and `straps.rdl` makes it `sw = r`, so it is a read-only probe reached by
+  address.
 * `uart_16550_dl` shares its address window with the main UART registers and
   is only decoded while `LCR.DLAB` is set, so its leg sets DLAB, probes `DLL`,
   and restores `LCR`.
@@ -120,10 +120,6 @@ _PROBES: tuple[tuple[str, str], ...] = (
 
 # The two blocks behind the AXI-to-AXI-Lite converter, which also take AW ahead of W.
 _AW_FIRST_BLOCKS = frozenset({"cpu_ctrl", "zeroer_ctrl"})
-
-# memmap.adoc, "Captured GPIO Straps": STRAPS_LO at the adopter external window
-# plus 0x5800. straps.rdl makes it `sw = r`.
-_STRAPS_OFFSET = 0x5800
 
 # Cycles each profiled channel is held back. Enough for the front end to
 # register the leading channel before the trailing one arrives, and for the
@@ -276,7 +272,7 @@ class smc_cpuif_handshake_test_seq(SmcCsrSeq):
     # -- the special blocks ----------------------------------------------
 
     async def _straps_legs(self) -> None:
-        addr = smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR") + _STRAPS_OFFSET
+        addr = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR")
         await self._legs("straps", addr, 4)
 
     async def _uart_dl_legs(self) -> None:

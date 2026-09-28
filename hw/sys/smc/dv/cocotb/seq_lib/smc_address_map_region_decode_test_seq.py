@@ -34,7 +34,6 @@ from .smc_addr_map import (
     SPM_MEMORY_BASE,
     SPM_MEMORY_SIZE,
     smc_addr,
-    smc_bootrom_addr,
     smc_indexed_addr,
 )
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
@@ -169,14 +168,13 @@ CLA_DST_SINK_SCRATCHLO = smc_addr("SMC_TOP_SMC_CLA_DST_SINK_SCRATCHLO_BASE_ADDR"
 CLA_FUNNEL_SCRATCHLO = smc_addr("SMC_TOP_SMC_CLA_FUNNEL_SCRATCHLO_BASE_ADDR")
 
 # --- adopter external window ------------------------------------------------------------------------
-EXTERNAL_MANDATORY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
-EXTERNAL_SUPPLEMENTARY_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
+EXTERNAL_MANDATORY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_BASE_ADDR")
+EXTERNAL_SUPPLEMENTARY_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_BASE_ADDR")
 assert EXTERNAL_MANDATORY_BASE == smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR")
 assert EFUSE_SHIM_CTRL_WINDOW == EXTERNAL_MANDATORY_BASE
-# memmap.adoc, "Captured GPIO Straps": STRAPS_LO at the adopter external window
-# plus 0x5800, STRAPS_HI after it. The block's size is the generated straps
-# header's; the first word past it is claimed by nothing in the window.
-_STRAPS_OFFSET = 0x5800
+# The captured straps sit in the supplementary region, STRAPS_HI after STRAPS_LO.
+# The block's size is the generated straps header's; the first word past it is
+# claimed by nothing in the window.
 _STRAPS_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "straps.h"
 
 
@@ -187,7 +185,7 @@ def _straps_block_size() -> int:
     raise AssertionError(f"{_STRAPS_H} declares no straps_t size")
 
 
-STRAPS_LO = EXTERNAL_MANDATORY_BASE + _STRAPS_OFFSET
+STRAPS_LO = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_BASE_ADDR")
 STRAPS_HI = STRAPS_LO + 4
 STRAPS_BEYOND = STRAPS_LO + _straps_block_size()
 

@@ -31,7 +31,6 @@ from .smc_addr_map import (
     DFX_STATUS_IDLE,
     gpio_intf_u32,
     smc_addr,
-    smc_bootrom_addr,
     smc_indexed_addr,
 )
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
@@ -141,7 +140,7 @@ RESET_UNIT_SS_WARM = smc_addr("SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR"
 MISC_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 CLA_DST_SINK_SCRATCHLO = smc_addr("SMC_TOP_SMC_CLA_DST_SINK_SCRATCHLO_BASE_ADDR")
 CLA_FUNNEL_SCRATCHLO = smc_addr("SMC_TOP_SMC_CLA_FUNNEL_SCRATCHLO_BASE_ADDR")
-PVT_WRAP_BASE = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_SMC_PVT_WRAP_BASE_ADDR")
+PVT_WRAP_BASE = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_SMC_PVT_WRAP_BASE_ADDR")
 # The bench PVT model (hw/sys/smc/dv/models/pvt_wrap.sv) answers every access
 # OKAY with all-zero data; the decode proof is the external-port activity.
 PVT_MODEL_RDATA = 0

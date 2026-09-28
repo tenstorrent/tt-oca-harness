@@ -185,15 +185,12 @@ _MUTEX_HELD = 0
 # loads it, and the counter resumes from the loaded value.
 _REF_COUNTER_SETTLE = 64
 
-# The straps block belongs to the open integration, not to smc.sv, so it is not
-# in the SMC register map. hw/sys/smc/doc/memmap.adoc ("Captured GPIO Straps")
-# places STRAPS_LO at BASE + 0x040_5800 and STRAPS_HI at BASE + 0x040_5804,
-# inside the adopter external window that starts at BASE + 0x040_0000, and
+# The straps block belongs to the open integration, not to smc.sv; the SMC map
+# places it in the supplementary region of the adopter external window, and
 # straps.rdl makes both `sw = r; hw = w`: STRAPS_LO @0x0 straps[31:0],
 # STRAPS_HI @0x4 straps[28:0]. What they hold is whatever the integration
 # latched from the bonded pads at cold reset, so the value is read once and
 # held against the write, not predicted.
-_STRAPS_WINDOW_OFFSET = 0x5800
 _STRAPS_REGS = (
     ("STRAPS_LO", 0x0, 0xFFFF_FFFF),
     ("STRAPS_HI", 0x4, 0x1FFF_FFFF),
@@ -209,12 +206,7 @@ _REF_COUNTER_LOAD_POLLS = 16
 
 
 def _straps_base() -> int:
-    window = smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE")
-    assert _STRAPS_WINDOW_OFFSET + 8 <= window, (
-        f"strap window offset 0x{_STRAPS_WINDOW_OFFSET:x} + 8 falls outside the "
-        f"0x{window:x}-byte adopter window"
-    )
-    return smc_addr("SMC_TOP_SMC_EXTERNAL_BASE_ADDR") + _STRAPS_WINDOW_OFFSET
+    return smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_BASE_ADDR")
 
 
 def _assert_partition() -> None:

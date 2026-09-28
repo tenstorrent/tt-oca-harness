@@ -1,0 +1,32 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef SMC_EXTERNAL_MANDATORY_RDL
+`define SMC_EXTERNAL_MANDATORY_RDL
+
+`include "ext_memory.rdl"
+`include "efuse_shim_ctrl.rdl"
+
+// Mandatory region of the smc_external adopter window.
+// Adopters MUST implement these blocks. Hardware treats this region identically
+// to the supplementary region; the split exists purely for readability/documentation.
+// EXCEPTION: efuse_shim_ctrl at offset 0x0 is diverted by the periph crossbar to the
+// eFuse target and does not travel through the external port like the other blocks here.
+//
+addrmap smc_external_mandatory {
+    name = "SMC External Mandatory Region Address Map";
+    desc = "Mandatory adopter blocks in the external window: eFuse shim, per-pad GPIO control, and PLL.";
+
+    /////////////////
+    // Address Map //
+    /////////////////
+
+    efuse_shim_ctrl                efuse_shim_ctrl                 @0x0000;
+
+    external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_ctrl[65]   @0x1000 += 0x20;
+
+    external ext_memory #(.NUM_ENTRIES(954), .WIDTH(32)) smc_pll_wrap    @0x2000;
+
+};
+
+`endif

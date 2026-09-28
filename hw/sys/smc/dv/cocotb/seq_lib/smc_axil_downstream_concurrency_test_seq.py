@@ -31,15 +31,13 @@ import cocotb
 from cocotb.triggers import ReadOnly, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiGroupItem, SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_bootrom_addr
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WINDOW
 
-# One mandatory external-window control block; any of them reaches the same
-# manager port, and this one carries no side effects.
-EXTERNAL_WINDOW = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_POC_PBIAS_CTRL_CONTROL_BASE_ADDR"
-)
+# One external-window control block; any of them reaches the same manager
+# port, and this one carries no side effects.
+EXTERNAL_WINDOW = smc_addr("SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_POC_PBIAS_CTRL_BASE_ADDR")
 AXI_RESP_DECERR = 3
 # The reference integration terminates the adopter window with an error slave
 # that answers with zero data.

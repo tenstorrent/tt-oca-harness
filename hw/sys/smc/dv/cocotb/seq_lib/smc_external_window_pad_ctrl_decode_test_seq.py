@@ -1,13 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Mandatory external-window control apertures route to the adopter AXI-Lite port.
+"""External-window control apertures route to the adopter AXI-Lite port.
 
-``memmap.adoc`` (AXI-Lite External Window - Mandatory Region) lists the clock
+``memmap.adoc`` (AXI-Lite External Window) lists the clock
 observation GPIO interface/control pairs for the PLL and PVT clocks, the
 power-on/pad-bias control block, the reference-clock GPIO control block and
 65 per-pad control blocks at a fixed stride. Their addresses come from the
-generated bootrom register header (``smc_top_regs.h``), the same map the boot
-ROM is built against.
+generated SMC map (``smc_addr.h``).
 
 The adopter implementation of these blocks is out of this repository, so
 nothing behind the window is specified here and nothing behind it is credited.
@@ -27,7 +26,7 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import external_gpio_ctrl_addr, external_gpio_ctrl_indices, smc_bootrom_addr
+from .smc_addr_map import external_gpio_ctrl_addr, external_gpio_ctrl_indices, smc_addr
 from .smc_decode_probe_utils import SmcDecodeProbeSeq
 
 # memmap.adoc: "Per-Pad GPIO Control | BASE + ... + (N x 0x20) | 65 instances".
@@ -39,23 +38,24 @@ SPEC_PER_PAD_INSTANCES = 65
 TERMINATOR_RDATA = 0
 
 _CONTROL_BLOCKS = (
-    ("pll-obs-intf-decode", "GPIO_PLL_CLK_OBS_INTF_DATA_CTRL"),
-    ("pll-obs-ctrl-decode", "GPIO_PLL_CLK_OBS_CTRL_CONTROL"),
-    ("pvt-obs-intf-decode", "GPIO_PVT_CLK_OBS_INTF_DATA_CTRL"),
-    ("pvt-obs-ctrl-decode", "GPIO_PVT_CLK_OBS_CTRL_CONTROL"),
-    ("gpio-poc-pbias-decode", "GPIO_POC_PBIAS_CTRL_CONTROL"),
-    ("gpio-refclk-ctrl-decode", "GPIO_REFCLK_CTRL_CONTROL"),
+    ("pll-obs-intf-decode", "GPIO_PLL_CLK_OBS_INTF"),
+    ("pll-obs-ctrl-decode", "GPIO_PLL_CLK_OBS_CTRL"),
+    ("pvt-obs-intf-decode", "GPIO_PVT_CLK_OBS_INTF"),
+    ("pvt-obs-ctrl-decode", "GPIO_PVT_CLK_OBS_CTRL"),
+    ("gpio-poc-pbias-decode", "GPIO_POC_PBIAS_CTRL"),
+    ("gpio-refclk-ctrl-decode", "GPIO_REFCLK_CTRL"),
 )
 
 EXPECTED_ACCESSES = len(_CONTROL_BLOCKS) + 3
 
 
-def _ext(symbol: str) -> int:
-    return smc_bootrom_addr(f"SMC_TOP_SMC_EXTERNAL_MANDATORY_{symbol}_BASE_ADDR")
+def _ext(block: str) -> int:
+    # The probed register (DATA_CTRL or CONTROL) sits at offset 0 of each block.
+    return smc_addr(f"SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_{block}_BASE_ADDR")
 
 
 class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
-    """Route every mandatory control block and the per-pad first/last instance."""
+    """Route every external-window control block and the per-pad first/last instance."""
 
     def __init__(self, name: str = "smc_external_window_pad_ctrl_decode_test_seq") -> None:
         super().__init__(name)
