@@ -51,7 +51,7 @@
 |BASE + 0x15000 – BASE + 0x15FFF |4 KiB |504 B |AXI Filter Control Address Map |16 instances |32 B |Per-filter access-control registers defining permitted address ranges and transaction attributes.
 |BASE + 0x16000 – BASE + 0x16FFF |4 KiB |504 B |AXI Filter Control Address Map |16 instances |32 B |Per-filter access-control registers defining permitted address ranges and transaction attributes.
 |BASE + 0x18000 – BASE + 0x37FFF |128 KiB |129104 B |SMC AXI-Lite Mailbox Wrapper Address Map |1 instance |- |Thirty-two bidirectional mailbox pairs.
-|BASE + 0x38000 – BASE + 0x381FF |512 B |312 B |dma_ctrl |1 instance |- |Direct-memory-access controller.
+|BASE + 0x38000 – BASE + 0x381FF |512 B |312 B |iDMA Controller Address Map |1 instance |- |Direct-memory-access controller.
 |BASE + 0x38200 – BASE + 0x382FF |256 B |24 B |Zeroer Control Address Map |1 instance |- |Control and status registers for the AXI memory-zeroing engine.
 |BASE + 0x39000 – BASE + 0x39FFF |4 KiB |704 B |CPU Control Address Map |1 instance |- |SMC CPU-cluster control.
 |BASE + 0x3A000 – BASE + 0x3FFFF |24 KiB |24 KiB |OCA I3C Controller Wrapper Address Map |1 instance |- |Wrapper address map instantiating the per-controller I3C CSR blocks.

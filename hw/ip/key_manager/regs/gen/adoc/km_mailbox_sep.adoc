@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-km_mailbox_sep]
-== Address Map: km_mailbox_sep
+== Key Manager Mailbox SEP Side
 
 Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)
 

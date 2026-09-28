@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-gpio_wrap]
-== Address Map: gpio_wrap
+== GPIO Wrapper Address Map
 
 Top-level GPIO address map composing the interface and control register blocks.
 

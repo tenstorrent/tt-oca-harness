@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-el2_pic]
-== Address Map: el2_pic
+== EL2_PIC
 
 VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.
 Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.

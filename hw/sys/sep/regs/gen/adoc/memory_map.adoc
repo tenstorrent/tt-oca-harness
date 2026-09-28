@@ -39,7 +39,7 @@
 |0x10000000 |0x1003FFFF |256 KiB |256 KiB |sep_sram |SEP scratch SRAM.
 |0x10040000 |0x1004FFFF |64 KiB |64 KiB |sep_boot_rom |BL0 immutable instruction memory.
 |0x10050000 |0x107FFFFF |7872 KiB |7872 KiB |Reserved |Reserved
-|0x10800000 |0x10800FFF |4 KiB |336 B |secure_dma |Secure DMA control and status registers.
+|0x10800000 |0x10800FFF |4 KiB |336 B |DMA Controller |Secure DMA control and status registers.
 |0x10801000 |0x10801FFF |4 KiB |56 B |Always-On Timer |Wakeup and watchdog timers running on a low-power, always-on clock
 |0x10802000 |0x1080203F |64 B |64 B |SEP Scratch Address Map |Cold-reset scratch register bank.
 |0x10802040 |0x1080207F |64 B |64 B |Reserved |Reserved
@@ -48,11 +48,11 @@
 |0x10803000 |0x10803FFF |4 KiB |8 B |SEP Reset Control Address Map |Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.
 |0x10804000 |0x108FFFFF |1008 KiB |1008 KiB |Reserved |Reserved
 |0x10900000 |0x1090FFFF |64 KiB |48 KiB |OpenTitan Big Number Accelerator |Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
-|0x10910000 |0x10910FFF |4 KiB |140 B |aes |AES block-cipher accelerator.
+|0x10910000 |0x10910FFF |4 KiB |140 B |AES Accelerator |AES block-cipher accelerator.
 |0x10911000 |0x10912FFF |8 KiB |8 KiB |HMAC Accelerator |Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function
 |0x10913000 |0x10913FFF |4 KiB |4 KiB |KMAC Accelerator |Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures
 |0x10914000 |0x10914FFF |4 KiB |4 KiB |Reserved |Reserved
-|0x10915000 |0x109157FF |2 KiB |96 B |csrng |-
+|0x10915000 |0x109157FF |2 KiB |96 B |Cryptographically Secure Random Number Generator |Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software
 |0x10915800 |0x10915FFF |2 KiB |72 B |Entropy Distribution Network |Distributes random numbers produced by CSRNG to hardware blocks
 |0x10916000 |0x10916FFF |4 KiB |380 B |Entropy Source Address Map |Entropy-source configuration, status, and data registers.
 |0x10917000 |0x10917FFF |4 KiB |4 KiB |External TRNG |External TRNG register passthrough; the register layout is adopter-defined
@@ -79,7 +79,7 @@
 |0x10A21200 |0x10A2FFFF |60928 B |60928 B |Reserved |Reserved
 |0x10A30000 |0x10A31FFF |8 KiB |4104 B |SEP CPU Control Address Map |SEP CPU control and interrupt registers.
 |0x10A32000 |0x10AFFFFF |824 KiB |824 KiB |Reserved |Reserved
-|0x10B00000 |0x10BFFFFF |1 MiB |56 B |spi_controller |External I/O SPI controller bridge.
+|0x10B00000 |0x10BFFFFF |1 MiB |56 B |SPI Host |External I/O SPI controller bridge.
 |0x10C00000 |0x10FFFFFF |4 MiB |4 MiB |Reserved |Reserved
 |0x11000000 |0x117FFFFF |8 MiB |8 MiB |ap_region |Remapped regions, either ECAM, M-Mode or XVisor
 |0x11800000 |0x11FFFFFF |8 MiB |8 MiB |stee_region |Remapped regions, either ECAM, M-Mode or XVisor

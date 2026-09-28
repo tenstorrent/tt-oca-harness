@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-straps]
-== Address Map: straps
+== Straps Address Map
 
 Captured GPIO strap values (adopter padring capture)
 

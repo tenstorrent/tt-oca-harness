@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-otbn]
-== Address Map: otbn
+== OpenTitan Big Number Accelerator
 
 Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
 

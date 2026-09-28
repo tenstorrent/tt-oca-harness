@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-uart_16550_main_wo]
-== Address Map: uart_16550_main_wo
+== UART 16550 Main Write-Only Address Map
 
 Contains the write-only registers accessible only when `LCR.DLAB = 0`.
 
