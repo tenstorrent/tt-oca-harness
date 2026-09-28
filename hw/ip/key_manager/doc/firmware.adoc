@@ -4,6 +4,7 @@
 [[key-manager-km-firmware]]
 = Firmware
 
+[[key-manager-rom-code]]
 This section is the developer reference for the KM ROM firmware that runs
 on the PicoRV32 and services SEP requests. It documents the SEP-facing
 command/response API in detail, along with the firmware-internal
@@ -1444,12 +1445,13 @@ python3 scripts/km_stack_analyze.py build/tests/rom_main/rom_main.rom.elf \
 Raise the budget only if the analyzer reports a worst case that exceeds it.
 
 [[km-firmware-bootloader]]
-== Bootloader
+== ROM Initialization
 
 [[km-boot-sequence]]
 === Boot Sequence
 
-The ROM bootloader will perform the following sequence of steps:
+The ROM initializes the subsystem in the following order, then remains in
+the runtime message-processing loop:
 
 . Sample whether this is a cold or a warm boot by reading `COLD_BOOT_DONE`
 before the final step sets it.
@@ -1493,6 +1495,16 @@ message to the SEP. These two steps are adjacent and last by design:
 `RESP_KM_READY` is the boot-complete barrier, so anything sampling
 `BOOT_STATUS` on seeing it must already observe `COLD_BOOT_DONE`.
 . Finally, enter the main event loop.
+
+[[memory-scrambler-provisioning]]
+=== Memory Scrambler Provisioning
+
+ROM provisions and locks the SRAM and KPV scramblers during
+<<km-boot-sequence>>. The SRAM scrambler key and enable/lock state survive
+warm reset, so ROM retains an already enabled SRAM scrambler. Cold reset
+requires fresh provisioning. The boot sequence above defines the ordering;
+the hardware behavior is described in <<kpv-scrambling>> and the SRAM
+scrambler reference.
 
 [[km-firmware-message-buffers]]
 == Message Buffers
@@ -1595,6 +1607,7 @@ insufficient bits remain. Bits are consumed from LSB to MSB.
 [[km-firmware-interrupt-handlers]]
 == Interrupt Handlers
 
+[[basic-interrupt-service-handler]]
 The PicoRV32 has a very basic interrupt controller that does not support
 hardware interrupt priority or nested interrupts. Due to these
 limitations, interrupt priority must be managed by firmware and all
@@ -1879,6 +1892,7 @@ sources.
 [[km-firmware-incoming-message-handler]]
 == Incoming Message Handler
 
+[[mailbox-message-handler]]
 The incoming message handler parses incoming message frames from the
 message receive buffer in SRAM, checks their properties, and calls the
 associated command handler. The incoming message handler is called as part
@@ -2227,6 +2241,11 @@ acknowledgement rather than toggling the enable per event.
 
 [[km-firmware-kdf-library]]
 == Key Derivation Function Library
+
+[[hmac-kdf]]
+The library is distinct from the SEP-facing command set: the current ROM
+dispatcher exposes random key generation, not the proposed deterministic
+UID-derived key-hierarchy service.
 
 The `rom_kdf` library implements the NIST SP 800-108r1 counter-mode key
 derivation function (KDF) with HMAC-SHA-256 as its pseudorandom function.

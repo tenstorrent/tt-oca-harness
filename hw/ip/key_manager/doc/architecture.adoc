@@ -14,7 +14,8 @@ The firmware in this tree implements random key generation from the DRBG,
 key loading, KPV storage, explicit revocation, transfer to engines, and engine
 shredding. Software explicitly manages key lifetime and revocation.
 
-The Key Manager register map is reported in the SEP detailed register map.
+The final <<km-memory-register-reference,Memory Map and Register Reference>>
+contains the KM address map and complete generated register definitions.
 The firmware command reference describes the implemented mailbox interface.
 
 The SEP cryptographic subsystem physically separates key and data
@@ -70,25 +71,6 @@ parameters.
 |`MAILBOX_DEPTH` |`int unsigned` |16 |Minimum FIFO depth for each mailbox direction (must be a power of two).
 |`LATCHED_MEM_RDATA` |`bit` |`1'b0` |When set, the PicoRV32 core treats memory read data as latched (hold until next request).
 |===
-
-[[key-manager-memory-map]]
-== Memory Map
-
-The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.
-
-Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.
-
-The OTP/eFuse window is the exception: hardware preserves its lower 12 address
-bits and replaces the upper bits with the integration parameter
-`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP.
-
-ifdef::backend-html5[]
-include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]
-endif::backend-html5[]
-
-ifdef::backend-pdf[]
-include::../regs/gen/adoc/memory_map.adoc[]
-endif::backend-pdf[]
 
 == Reset Conditioning
 
@@ -676,7 +658,11 @@ Any differentially encoded register fields are checked for validity. An
 error will be triggered if the encoding is violated on any of those
 fields and will be forwarded to the interrupt status register.
 
-The KMCSR is implemented in `km_csr` using a PeakRDL-generated register block (`km_csr_reg`). The register set contains the following functional groups.
+The KMCSR is implemented in `km_csr` using the generated `km_csr_reg` block.
+This section explains operating behavior; it is not a complete field reference.
+See <<km-control-register-reference>> for every register, offset, access type
+and field. The DRBG sampler has a separate register bank; OTP shadow readout
+and read-lock fields are part of KMCSR.
 
 The `VERSION` register (offset `0x000`) is a read-only register that reports
 the Key Manager hardware revision using semantic versioning. It uses the
@@ -927,7 +913,7 @@ sends a firmware command to the KM to clear it (KM firmware clears the
 register bit in response to that command).
 
 [[drbg-sampler]]
-*DRBG Sampler*
+== DRBG Sampler
 
 There are four DRBG Sampler registers: a DRBG data register, a
 configuration register, a status register, and a prefetch data register.
@@ -1059,7 +1045,7 @@ The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. Th
 |===
 
 [[otp]]
-*OTP*
+== OTP Inputs and Readout
 
 The KM consumes OTP-derived material over a private hardwired bundle so the
 values cannot be spoofed by software. SEP dual-rail-encodes each 256-bit field
@@ -1179,12 +1165,22 @@ to establish read-locks that persist across warm resets for the entire duration
 of a power cycle, independently of the warm-reset lock applied by ROM firmware.
 
 [[root-keys-and-hierarchy]]
-*Root keys and the key hierarchy (design target)*
+== Root Keys and Key Hierarchy (Design Target)
 
 The remainder of this design description, through ECC signing metadata,
 requires firmware and PCR integration beyond <<km-implemented-services>>.
 It specifies intended behavior, including automatic revocation, without
 providing a current software guarantee.
+
+The proposed deterministic service uses HMAC-SHA256 with UID/root material
+and a fixed context; it does not mix fresh DRBG entropy into UID-derived
+hierarchy keys. Requester-supplied randomness can be carried in `user_input`
+without changing reproducibility for the same inputs. The proposal collects
+arguments from management CSRs and root storage, writes the derived key to a
+KPV slot or crypto-engine sideload, and optionally repeats the computation
+to detect faults and report a mismatch through interrupt status. These are
+design targets, not services of the current ROM command dispatcher. Current
+random-key generation instead draws new material from the DRBG sampler.
 
 The proposed ROM service derives two domain-separated root keys from each UID.
 The current life-cycle state is an input to both derivations:
@@ -1424,81 +1420,6 @@ preserved. The feature introduces no new top-level KM ports or CSRs, and
 the PicoRV32 built-in multiply/divide support remains enabled and
 unchanged.
 
-[[key-manager-rom-code]]
-== Key Manager ROM Code
-
-The KM ROM will be as minimal as possible and support just a few
-functions described next. Any other functions will be loaded dynamically
-into the Instruction/Data SRAM by BL1 software or higher via the SEP
-CPU.
-
-[[memory-scrambler-provisioning]]
-Memory Scrambler Provisioning
-
-Instruction and data SRAM contents are protected by a simple, key based
-scrambler.
-
-* Provision the key by reading the DRBG register and moving the data
-into the scrambler key slot
-* Set the write-lock bit to prevent any updates on this key slot until
-the next cold reset (the scrambler key and its lock are non-volatile,
-cold-domain state preserved across warm resets)
-* Enable data content _and_ address scrambling on write and descrambling
-on read operations
-
-[[basic-interrupt-service-handler]]
-*Basic Interrupt Service Handler*
-
-Support inbound mailbox message handling.
-
-[[mailbox-message-handler]]
-*Mailbox Message Handler*
-
-This utility is triggered by the ISR and will support handling all
-inbound mailbox message processing tasks. The most important message
-task type is supporting the ability for the SEP host CPU to load KM CPU
-program images into SRAM. This is the method by which we bootstrap more
-KM functionality. Below are _some_ of the tasks the message handler must
-support.
-
-* Respond to interrupt, and determine it comes from the inbound
-mailbox
-* Retrieve inbound mailbox data from the mailbox by copying it to a
-segment of local SRAM
-* Check validity of the data and command encapsulated in the message and
-unlock data or perform action if message is deemed to be valid and legal
-
-[[hmac-kdf]]
-*Key derivation function (HMAC-SHA256 design target)*
-
-HMAC-SHA256 is the proposed deterministic derivation primitive. This KDF
-service is not implemented by the current ROM command dispatcher. Random
-key generation is implemented separately by filling the key buffer from the DRBG:
-
-*Deterministic derivation (root keys and the key hierarchy).* Root keys and
-all UID-derived hierarchy keys are derived deterministically: the inputs are
-the UID / root-key material plus a fixed context (domain-separation label,
-life-cycle state, demotion, PCR, user input, ...), and *no* fresh DRBG
-entropy is mixed in. Determinism is required so the same inputs always
-reproduce the same key — it lets ROM re-derive keys after a warm reset and
-binds each key to its selected configuration. When a derived key must
-incorporate randomness, the requester supplies it as `user_input`, which
-keeps derivation deterministic; the KM mixes DRBG entropy into a derivation
-only in rare cases. The derivation:
-
-* Collects the input arguments from the management CSRs and root-key
-storage into dedicated KDF argument locations.
-* Computes the HMAC-SHA256 digest and writes the result to its destination
-(a KPV slot, or a side-load to a crypto engine).
-* Optionally repeats the computation and compares the two digests to detect
-a fault attack, reporting pass/fail as an interrupt-status error event.
-
-*Random key generation.* When a fresh, non-reproducible key is required
-(rather than a derived one), the KM instead draws DRBG entropy (via the DRBG
-sampler) as the key material. Such keys are random, not re-derivable, and are
-not tied to a configuration; they are used where a unique secret — not a
-deterministic derivation — is needed.
-
 [[rom-and-sram-error-detection]]
 == ROM and SRAM Error Detection
 
@@ -1510,7 +1431,7 @@ external error event signal output.
 [[parity-error-protection]]
 == Parity Error Protection
 
-Parity bits will be ``out-of-band'' from the data and hence not part of
+Parity bits are stored out-of-band from the data and are not part of
 the scrambled word. The motivation for this is to minimize any data path
 extra latency on top of what is already added by scrambling and
 descrambling. Parity is on a byte-wise basis so will add an additional 4
