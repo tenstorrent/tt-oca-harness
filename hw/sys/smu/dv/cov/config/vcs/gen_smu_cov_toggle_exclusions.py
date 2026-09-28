@@ -71,6 +71,13 @@ writes, and each class below states that fact and what would retire it:
   buffering keeps high; the SMC eFuse shim readies, which the bench's JTAG
   pacing keeps high; and the SMC cluster DED output, which this bench has no
   way to raise.
+* TRNG-B-ACCEPT: BREADY on the external TRNG port, which falls only with two
+  responses held and the port's responder admits one write at a time.
+* BENCH-SMC-EXTERNAL-DEPTH: bench scope: AWREADY of the SMC external window,
+  which falls only with two writes queued behind a held response, a depth the
+  bench's inbound traffic does not reach through the SMC crossbars.
+* KM-RESET-OVERRIDE-X: the Key Manager reset override, which no leaf applies
+  because lifting it leaves the Key Manager ROM request X.
 * XBAR-CONNECTIVITY: the input-port bits of the crossbar's output ID that the
   connectivity matrix never sets on a given output.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
@@ -768,6 +775,68 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "an ECC injection path on this bench, as the SMC bench's tb_cpu_ecc_poke_* "
         "(hw/sys/smc/dv/tb/tb_top.sv 1087-1088)",
         ("smu", "smu_wrapper"),
+        None,
+    ),
+    (
+        "TRNG-B-ACCEPT",
+        re.compile(r"^ext_trng_axil_req(_o)?\.b_ready$"),
+        "BREADY on the external TRNG port, the ready of the B slots of the cut in front "
+        "of it (sep_crypto_axi_interconnect.sv 1042-1058), which falls only while both "
+        "slots hold a response (spill_register_flushable.sv 90). The port's responder "
+        "admits one write at a time: hw/top/sep_ip_integration.sv (761-771) builds it "
+        "with prim_axi_lite_err_slv's default MAX_TRANS of 1 (prim_axi_lite_err_slv.sv "
+        "21, 88-97), and its axi_err_slv holds the next write's data until the previous "
+        "response has been taken (axi_err_slv.sv 48, 86-100), so a second response exists only after "
+        "the first entered the cut and a whole write crossed the cut behind it. Above "
+        "the cut the AXI-Lite and width converters pass B through (axi_dw_downsizer.sv "
+        "742-754), the crypto demux parks it only while another crypto target's response "
+        "wins its arbiter, into a spilled slave port (sep_crypto_axi_interconnect.sv "
+        "268-295, SpillB 1), and every SEP initiator takes write responses as they "
+        "arrive (el2_lsu_bus_buffer.sv 906, el2_dbg.sv 772, tlul_to_axi_lite.sv 245).",
+        "a TRNG responder that admits more than one write, or an initiator of the TRNG "
+        "window that holds write responses back",
+        None,
+        None,
+    ),
+    (
+        "BENCH-SMC-EXTERNAL-DEPTH",
+        re.compile(r"^smc_external_resp(_i)?\.aw_ready$"),
+        "bench scope: AWREADY of the SMC external window, the AW spill-register ready of "
+        "the window demux in the adopter IP integration (hw/top/smc_ip_integration.sv "
+        "214-240: MaxTrans 1, SpillAw 1), which falls only with two write requests "
+        "queued behind the one the demux is serving (spill_register_flushable.sv 90; "
+        "axi_lite_demux.sv 250-285, 308-327: a request waits for the previous one's "
+        "data, and that data for the previous response). The window's responders, the "
+        "PLL and PVT models, the straps register block and the error slave, take each "
+        "request as it comes, so the queue forms only behind a held response. The one "
+        "initiator on this bench that keeps writes in flight toward the window is "
+        "ext_in, and with its responses held (smu_smc_inbound_window_sweep_test S4) the "
+        "SMC local crossbar admits eight writes to its peripheral port "
+        "(smc_local_xbar_pkg.sv 285-288), whose own cut and the peripheral crossbar's "
+        "two port cuts (smc_periph_axi_lite_xbar_pkg.sv 100-103) hold six of their "
+        "responses, leaving two writes at the window: one response waiting and one "
+        "request waiting for its data slot.",
+        "an adopter responder in the window that holds a request or a response, or an "
+        "initiator that reaches the window with more writes in flight than the SMC "
+        "local crossbar admits",
+        ("smu", "smu_wrapper"),
+        None,
+    ),
+    (
+        "KM-RESET-OVERRIDE-X",
+        re.compile(r"^jtag_sep_reset_ctrl\.ovrd\.km_jtag_rst_n_ovrd$"),
+        "the Key Manager port's override in the IC_RESET SEP slice. "
+        "smu_jtag_reset_override_test applies every other SEP port's override. Applying "
+        "and lifting this one leaves the Key Manager's ROM request "
+        "(hw/top/sep_ip_integration.sv 273, u_km_rom.req_i) X on a four-state simulator "
+        "from the release on, and prim_rom's noXOnCsI assertion (prim_rom.sv 40), which "
+        "the bench re-arms once the SMC primary reset has released "
+        "(tb_wrapper_top.sv 878-886), fails the run. The X is a design question about "
+        "the Key Manager's reset through the SEP reset controller (sep_reset_ctrl.sv "
+        "280-297), not a limit of the bench.",
+        "a Key Manager whose ROM request is defined after a JTAG override reset, when the "
+        "leaf applies the port like every other SEP port",
+        ("smu",),
         None,
     ),
     (
