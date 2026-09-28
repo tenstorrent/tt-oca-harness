@@ -125,14 +125,24 @@ exclude = '''(?x)^(
 #   why the literal token is described rather than quoted here: quoting it
 #   makes this file itself a finding.
 # - tools/tt-oca-manifest is a submodule: another repo's sources, fixable only
-#   by a PR there, so a finding in it cannot gate this repo.
+#   by a PR there, so a finding in it cannot gate this repo. The same goes for
+#   virtual_platform/tt-oca-harness-model
+#
+# - The below is in four blocks - vendor, generated, submodules, artifacts/binaries
 skip = """\
-vendor,nonfree,.git,*/tools/tt-oca-manifest,\
+\
+*/vendor/*,*/nonfree/*,.git,\
+*/dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
+*/local/pdks/*,\
+\
 */integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
-*/dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
+*/doc/*/modules/*,*/_build/*,\
+\
+*/tools/tt-oca-manifest,*/virtual_platform/tt-oca-harness-model/*,\
+\
 *.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock,\
-*.dis\
+*.dis,*.il,*.log\
 """
 # interruptor(s): the RISC-V CLINT spec spells out the acronym as
 # "Core-Local INTerruptor", matching every other occurrence in doc/; not the
