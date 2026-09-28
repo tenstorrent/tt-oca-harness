@@ -1759,7 +1759,7 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-SMU-LC-DEMOTE-S1` |both lcc_demote_state outputs are 2 bits
 |`CHK-SMU-EFUSE-SHIM-SMC-S3` |smc_shadow_regs reaches the boundary at full width and value
 |`CHK-SMU-FUSE-SENSE-S4` |skip_mem_repair_o is one bit and clear with no isolation request pending
-|`CHK-SMU-SSRESET-S2` |ss_reset_ctrl_o has 32 elements that share one width
+|`CHK-SMU-SSRESET-S2` |ss_reset_ctrl_o has 32 elements
 |`CHK-SMU-SSRESET-S4` |ss_config_o is 32 bits and presents the SS_CONFIG reset value
 |===
 

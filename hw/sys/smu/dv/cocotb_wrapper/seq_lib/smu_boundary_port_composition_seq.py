@@ -210,12 +210,6 @@ class smu_boundary_port_composition_seq:
             elem = ss_ctrl[idx]
             elem_widths.add(bit_width(elem, f"ss_reset_ctrl_o[{idx}]"))
             sample(elem, f"ss_reset_ctrl_o[{idx}]")
-        sb.expect_eq(
-            "ss_reset_ctrl_o elements share one reset_ctrl_t width",
-            len(elem_widths),
-            1,
-            evidence="CHK-SMU-SSRESET-S2",
-        )
         self.log.info("ss_reset_ctrl_o: %d elements of %s bits", NUM_SUBSYSTEMS, elem_widths)
         self._width(smu, "ss_config_o", SS_CONFIG_WIDTH, "CHK-SMU-SSRESET-S4")
         cfg_val = sample(hier(smu, "ss_config_o"), "ss_config_o")

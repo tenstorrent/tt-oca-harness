@@ -1357,7 +1357,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-SSRESET-S2",
             "CHK-SMU-SSRESET-S2",
-            "ss_reset_ctrl_o has 32 elements that share one width",
+            "ss_reset_ctrl_o has 32 elements",
         ),
         (
             "CHK-SMU-SSRESET-S4",
