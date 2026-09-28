@@ -51,12 +51,13 @@ endif::backend-pdf[]
 
 [[smu-composition-diagram]]
 .SMU composition with the optional SEP subsystem
-image::SMU_TopLevel_FIG001.drawio.png[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
+image::smu-composition.svg[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
 
 The SMU composition is shown in <<smu-composition-diagram>>.
 The dashed SEP boundary denotes the optional subsystem controlled by the
 `SEP` integration parameter. Memory capacities in the diagram describe the
-illustrated configuration.
+illustrated configuration. Hatched blocks are future: the safety bus and the
+safety monitor, whose connections to the SEP and SMC are drawn dashed.
 
 [[smu-axi-crossbar]]
 == AXI Crossbar
@@ -69,7 +70,7 @@ but never its own inbound port.
 
 [[smu-crossbar-connectivity-diagram]]
 .SMU AXI crossbar connectivity
-image::SMU_AxiXbar_Connectivity_FIG002.1.drawio.png[alt="SMU AXI crossbar connectivity",width=100%,pdfwidth=100%]
+image::smu-crossbar-connectivity.svg[alt="SMU AXI crossbar connectivity",width=640,pdfwidth=62%]
 
 <<smu-axi-crossbar-ports-table>> lists the permitted initiator-to-subordinate paths and
 their purposes.
