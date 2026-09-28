@@ -33,14 +33,14 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0x2108 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter1Cfg,CDbgClaCounter1Cfg>> | RW a| Configure CLA counter1. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 | 0x2110 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter2Cfg,CDbgClaCounter2Cfg>> | RW a| Configure CLA counter2. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
 | 0x2118 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgClaCounter3Cfg,CDbgClaCounter3Cfg>> | RW a| Configure CLA counter3. One of the 4 counters used for counting cycles after a event match, and trigger a action on match.
-| 0x2120 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap0,CDbgNode0Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2128 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap1,CDbgNode0Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2130 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap0,CDbgNode1Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2138 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap1,CDbgNode1Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2140 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap0,CDbgNode2Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2148 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap1,CDbgNode2Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2150 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap0,CDbgNode3Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2158 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap1,CDbgNode3Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2120 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap0,CDbgNode0Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2128 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap1,CDbgNode0Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2130 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap0,CDbgNode1Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2138 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap1,CDbgNode1Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2140 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap0,CDbgNode2Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2148 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap1,CDbgNode2Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2150 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap0,CDbgNode3Eap0>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2158 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap1,CDbgNode3Eap1>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
 | 0x2160 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask0Lo,CDbgSignalMask0Lo>> | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
 | 0x2168 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch0Lo,CDbgSignalMatch0Lo>> | RW a| Used to define debug bus match event. Match event (0x2) is triggered when debug_bus & mask = match.
 | 0x2170 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask1Lo,CDbgSignalMask1Lo>> | RW a| Used to define debug bus match event. Match event (0x4) is triggered when debug_bus & mask = match.
@@ -70,14 +70,14 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 0x2230 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch2Lo,CDbgSignalMatch2Lo>> | RW a| Used to define debug bus match event. Match event (0x1C) is triggered when debug_bus & mask = match.
 | 0x2238 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMask3Lo,CDbgSignalMask3Lo>> | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
 | 0x2240 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalMatch3Lo,CDbgSignalMatch3Lo>> | RW a| Used to define debug bus match event. Match event (0x1D) is triggered when debug_bus & mask = match.
-| 0x2248 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap2,CDbgNode0Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2250 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap3,CDbgNode0Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2258 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap2,CDbgNode1Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2260 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap3,CDbgNode1Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2268 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap2,CDbgNode2Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2270 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap3,CDbgNode2Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2278 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap2,CDbgNode3Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
-| 0x2280 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap3,CDbgNode3Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of he 8 EAPs (4 EAPs per Node).
+| 0x2248 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap2,CDbgNode0Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2250 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode0Eap3,CDbgNode0Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2258 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap2,CDbgNode1Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2260 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode1Eap3,CDbgNode1Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2268 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap2,CDbgNode2Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2270 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode2Eap3,CDbgNode2Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2278 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap2,CDbgNode3Eap2>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
+| 0x2280 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgNode3Eap3,CDbgNode3Eap3>> | RW a| CLA Action(s) are tied to events(s) using "event-action pairing" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
 | 0x2288 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap2Lo,CDbgSignalSnapshotNode0Eap2Lo>> | R a| debug Bus Value when Node0 Eap2 Trigger is met.
 | 0x2290 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode0Eap3Lo,CDbgSignalSnapshotNode0Eap3Lo>> | R a| debug Bus Value when Node0 Eap3 Trigger is met.
 | 0x2298 | <<reg-{regmap-instance}-smc_cla-cla-0-CDbgSignalSnapshotNode1Eap2Lo,CDbgSignalSnapshotNode1Eap2Lo>> | R a| debug Bus Value when Node1 Eap2 Trigger is met.
@@ -362,7 +362,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 63 | `Rsvd` | RW | 0x0 a| -
 | 62:48 | `UpperTarget` | RW | 0x0 a| -
 | 47:33 | `UpperCounter` | RW | 0x0 a| -
-| 32 | `ResetOnTarget` | RW | 0x0 a| When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
+| 32 | `ResetOnTarget` | RW | 0x0 a| When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.
 | 31:16 | `Target` | RW | 0x0 a| -
 | 15:0 | `Counter` | RW | 0x0 a| -
 |===
@@ -407,8 +407,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -429,8 +429,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -451,8 +451,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -473,8 +473,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -495,8 +495,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -517,8 +517,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -539,8 +539,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -561,8 +561,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -668,7 +668,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `ClaLock` | RW | 0x0 a| If this bit is set, then CLA is locked and the enbale_cla is latched forever
+| 63 | `ClaLock` | RW | 0x0 a| If this bit is set, then CLA is locked and the enable_cla is latched forever
 | 62:16 | `Rsvd6216` | RW | 0x0 a| reserved fields
 | 15 | `DisableLocalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to local clocks
 | 14 | `DisableGlobalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to global clocks
@@ -900,8 +900,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -922,8 +922,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -944,8 +944,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -966,8 +966,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -988,8 +988,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -1010,8 +1010,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -1032,8 +1032,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions
@@ -1054,8 +1054,8 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 43:38 | `EventType2` | RW | 0x0 a| Select a trigger event
 | 37 | `CustomAction1Enable` | RW | 0x0 a| custom_action1 is valid only if custom_action1_enable is set
 | 36 | `CustomAction0Enable` | RW | 0x0 a| custom_action0 is valid only if custom_action0_enable is set
-| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
-| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.
+| 35:32 | `CustomAction1` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
+| 31:28 | `CustomAction0` | RW | 0x0 a| Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.
 | 27:22 | `EventType1` | RW | 0x0 a| Select a trigger event
 | 21:16 | `EventType0` | RW | 0x0 a| Select a trigger event
 | 15:14 | `LogicalOp` | RW | 0x0 a| Relation to be satisfied among events to activate the actions

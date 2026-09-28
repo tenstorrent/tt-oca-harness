@@ -637,7 +637,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ResetOnTarget</ipxact:name>
-              <ipxact:description>When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</ipxact:description>
+              <ipxact:description>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -834,7 +834,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode0Eap0</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h120</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -911,7 +911,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -923,7 +923,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1008,7 +1008,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode0Eap1</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h128</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -1085,7 +1085,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1097,7 +1097,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1182,7 +1182,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode1Eap0</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h130</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -1259,7 +1259,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1271,7 +1271,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1356,7 +1356,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode1Eap1</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h138</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -1433,7 +1433,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1445,7 +1445,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1530,7 +1530,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode2Eap0</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h140</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -1607,7 +1607,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1619,7 +1619,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1704,7 +1704,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode2Eap1</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h148</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -1781,7 +1781,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1793,7 +1793,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1878,7 +1878,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode3Eap0</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h150</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -1955,7 +1955,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -1967,7 +1967,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2052,7 +2052,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode3Eap1</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h158</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -2129,7 +2129,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2141,7 +2141,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -2844,7 +2844,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ClaLock</ipxact:name>
-              <ipxact:description>If this bit is set, then CLA is locked and the enbale_cla is latched forever</ipxact:description>
+              <ipxact:description>If this bit is set, then CLA is locked and the enable_cla is latched forever</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3372,7 +3372,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode0Eap2</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h248</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -3449,7 +3449,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3461,7 +3461,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3546,7 +3546,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode0Eap3</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h250</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -3623,7 +3623,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3635,7 +3635,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3720,7 +3720,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode1Eap2</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h258</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -3797,7 +3797,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3809,7 +3809,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3894,7 +3894,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode1Eap3</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h260</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -3971,7 +3971,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -3983,7 +3983,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4068,7 +4068,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode2Eap2</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h268</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -4145,7 +4145,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4157,7 +4157,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4242,7 +4242,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode2Eap3</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h270</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -4319,7 +4319,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4331,7 +4331,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4416,7 +4416,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode3Eap2</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h278</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -4493,7 +4493,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4505,7 +4505,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4590,7 +4590,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgNode3Eap3</ipxact:name>
-            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+            <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
             <ipxact:addressOffset>'h280</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
@@ -4667,7 +4667,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction0</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>28</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -4679,7 +4679,7 @@
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>CustomAction1</ipxact:name>
-              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+              <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
               <ipxact:bitOffset>32</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

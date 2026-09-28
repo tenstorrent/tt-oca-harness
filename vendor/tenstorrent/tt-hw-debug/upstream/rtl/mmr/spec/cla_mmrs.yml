@@ -158,7 +158,7 @@ c_dbg_cla_counter1_cfg:
     FIELDS_RANGE: '32:32'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: When Counter = {upper_targe,target}, reset to 0.  With this bit set,
+    DESCRIPTION: When Counter = {upper_target,target}, reset to 0.  With this bit set,
       counter will provide a periodic tick w/ frequency of (target +1) if the action
       is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or
       Clear Counter action.
@@ -346,7 +346,7 @@ c_dbg_node0_eap0:
     SUB_CATEGORY: ''
     ADDRESS: '0x000120'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -416,7 +416,7 @@ c_dbg_node0_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -428,7 +428,7 @@ c_dbg_node0_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -501,7 +501,7 @@ c_dbg_node0_eap1:
     SUB_CATEGORY: ''
     ADDRESS: '0x000128'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -571,7 +571,7 @@ c_dbg_node0_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -583,7 +583,7 @@ c_dbg_node0_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -656,7 +656,7 @@ c_dbg_node0_eap2:
     SUB_CATEGORY: ''
     ADDRESS: '0x000248'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -726,7 +726,7 @@ c_dbg_node0_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -738,7 +738,7 @@ c_dbg_node0_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -811,7 +811,7 @@ c_dbg_node0_eap3:
     SUB_CATEGORY: ''
     ADDRESS: '0x000250'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -881,7 +881,7 @@ c_dbg_node0_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -893,7 +893,7 @@ c_dbg_node0_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -966,7 +966,7 @@ c_dbg_node1_eap0:
     SUB_CATEGORY: ''
     ADDRESS: '0x000130'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1036,7 +1036,7 @@ c_dbg_node1_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1048,7 +1048,7 @@ c_dbg_node1_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1121,7 +1121,7 @@ c_dbg_node1_eap1:
     SUB_CATEGORY: ''
     ADDRESS: '0x000138'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1191,7 +1191,7 @@ c_dbg_node1_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1203,7 +1203,7 @@ c_dbg_node1_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1276,7 +1276,7 @@ c_dbg_node1_eap2:
     SUB_CATEGORY: ''
     ADDRESS: '0x000258'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1346,7 +1346,7 @@ c_dbg_node1_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1358,7 +1358,7 @@ c_dbg_node1_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1431,7 +1431,7 @@ c_dbg_node1_eap3:
     SUB_CATEGORY: ''
     ADDRESS: '0x000260'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1501,7 +1501,7 @@ c_dbg_node1_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1513,7 +1513,7 @@ c_dbg_node1_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1586,7 +1586,7 @@ c_dbg_node2_eap0:
     SUB_CATEGORY: ''
     ADDRESS: '0x000140'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1656,7 +1656,7 @@ c_dbg_node2_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1668,7 +1668,7 @@ c_dbg_node2_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1741,7 +1741,7 @@ c_dbg_node2_eap1:
     SUB_CATEGORY: ''
     ADDRESS: '0x000148'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1811,7 +1811,7 @@ c_dbg_node2_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1823,7 +1823,7 @@ c_dbg_node2_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1896,7 +1896,7 @@ c_dbg_node2_eap2:
     SUB_CATEGORY: ''
     ADDRESS: '0x000268'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -1966,7 +1966,7 @@ c_dbg_node2_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -1978,7 +1978,7 @@ c_dbg_node2_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2051,7 +2051,7 @@ c_dbg_node2_eap3:
     SUB_CATEGORY: ''
     ADDRESS: '0x000270'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2121,7 +2121,7 @@ c_dbg_node2_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2133,7 +2133,7 @@ c_dbg_node2_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2206,7 +2206,7 @@ c_dbg_node3_eap0:
     SUB_CATEGORY: ''
     ADDRESS: '0x000150'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2276,7 +2276,7 @@ c_dbg_node3_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2288,7 +2288,7 @@ c_dbg_node3_eap0:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2361,7 +2361,7 @@ c_dbg_node3_eap1:
     SUB_CATEGORY: ''
     ADDRESS: '0x000158'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2431,7 +2431,7 @@ c_dbg_node3_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2443,7 +2443,7 @@ c_dbg_node3_eap1:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2516,7 +2516,7 @@ c_dbg_node3_eap2:
     SUB_CATEGORY: ''
     ADDRESS: '0x000278'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2586,7 +2586,7 @@ c_dbg_node3_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2598,7 +2598,7 @@ c_dbg_node3_eap2:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2671,7 +2671,7 @@ c_dbg_node3_eap3:
     SUB_CATEGORY: ''
     ADDRESS: '0x000280'
     DESCRIPTION: CLA Action(s) are tied to events(s) using "event-action pairing"
-      registers. One of he 8 EAPs (4 EAPs per Node).
+      registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).
     RESET_PORT: reset_n_warm_ovrride
     HW_READ: CLA
     SW_TYPE: WARL
@@ -2741,7 +2741,7 @@ c_dbg_node3_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -2753,7 +2753,7 @@ c_dbg_node3_eap3:
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
     DESCRIPTION: Select the bit position of custom action bus to be set when EAP trigger
-      is met. External blocks can define and implement the specifc action for a given
+      is met. External blocks can define and implement the specific action for a given
       bit.
     RESET_PORT: ''
     SW_WRITE: W
@@ -3560,7 +3560,7 @@ c_dbg_cla_ctrl_status:
     FIELDS_RANGE: 63:63
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: If this bit is set, then CLA is locked and the enbale_cla is latched
+    DESCRIPTION: If this bit is set, then CLA is locked and the enable_cla is latched
       forever
     MASKED_BY: ~cla_lock
     MASK_WRITES_ONLY?: 'True'

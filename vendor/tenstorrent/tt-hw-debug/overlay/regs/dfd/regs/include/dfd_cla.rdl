@@ -56,7 +56,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.";
+            desc = "When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.";
         } ResetOnTarget[32:32] = 0x0;
         field {
             sw = rw;
@@ -132,7 +132,7 @@ addrmap dfd_cla {
         } Rsvd[63:63] = 0x0;
     } CDbgClaCounter3Cfg @ 0x118;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -168,12 +168,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -207,7 +207,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap0 @ 0x120;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -243,12 +243,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -282,7 +282,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap1 @ 0x128;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -318,12 +318,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -357,7 +357,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap0 @ 0x130;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -393,12 +393,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -432,7 +432,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap1 @ 0x138;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -468,12 +468,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -507,7 +507,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap0 @ 0x140;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -543,12 +543,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -582,7 +582,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap1 @ 0x148;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -618,12 +618,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -657,7 +657,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap0 @ 0x150;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -693,12 +693,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -975,7 +975,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "If this bit is set, then CLA is locked and the enbale_cla is latched forever";
+            desc = "If this bit is set, then CLA is locked and the enable_cla is latched forever";
         } ClaLock[63:63] = 0x0;
     } CDbgClaCtrlStatus @ 0x190;
     reg {
@@ -1233,7 +1233,7 @@ addrmap dfd_cla {
         } Value[63:0] = 0x0;
     } CDbgSignalMatch3Lo @ 0x240;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1269,12 +1269,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1308,7 +1308,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap2 @ 0x248;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1344,12 +1344,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1383,7 +1383,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode0Eap3 @ 0x250;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1419,12 +1419,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1458,7 +1458,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap2 @ 0x258;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1494,12 +1494,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1533,7 +1533,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode1Eap3 @ 0x260;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1569,12 +1569,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1608,7 +1608,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap2 @ 0x268;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1644,12 +1644,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1683,7 +1683,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode2Eap3 @ 0x270;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1719,12 +1719,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
@@ -1758,7 +1758,7 @@ addrmap dfd_cla {
         } Action3[63:58] = 0x0;
     } CDbgNode3Eap2 @ 0x278;
     reg {
-        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of he 8 EAPs (4 EAPs per Node).";
+        desc = "CLA Action(s) are tied to events(s) using \"event-action pairing\" registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).";
         regwidth = 64;
 
         field {
@@ -1794,12 +1794,12 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction0[31:28] = 0x0;
         field {
             sw = rw;
             hw = r;
-            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.";
+            desc = "Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.";
         } CustomAction1[35:32] = 0x0;
         field {
             sw = rw;
