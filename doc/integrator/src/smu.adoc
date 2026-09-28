@@ -405,8 +405,8 @@ in this range to `smc_external_req_o` except the eFuse SHIM range at its base
 (see <<smc-external-mandatory>>); the adopter decodes everything else. The
 generated SMC memory map reports the window as one opaque aperture.
 
-The window is split into two regions. Hardware treats both identically -- the
-split is organizational only:
+The window is split into two regions. Apart from the eFuse SHIM control block due to security reasons,
+hardware treats both identically -- the split is organizational only:
 
 * *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
   OCAH specifications dictate their function, but their implementation, register
@@ -440,10 +440,12 @@ override
 temperature sensors
 |=======================================================================
 
-The eFuse SHIM control block sits at the base of the window and does not travel
-the external port. The SMC diverts the first `SMC_EFUSE_SHIM_SIZE` bytes of the
-window to the eFuse controller, which reaches the SHIM on
-`efuse_bank_ctrl_req_o` (see <<smc-efuse-connection>>).
+The eFuse SHIM control CSRs must sit at the base of the mandatory region.
+In each subsystem, the internal fabric routes the first `*_EFUSE_SHIM_SIZE`
+bytes of the window into the eFuse controller, so the controller's lifecycle
+access control applies to them. The accesses then leave on the dedicated eFuse
+bank port, `smc_efuse_bank_ctrl_req_o` or `sep_efuse_bank_ctrl_req_o`, instead
+of `smc_external_req_o` or `sep_external_req_o`. See <<efuse-bank-ctrl-window>>.
 
 [[smc-external-supplementary]]
 ===== Supplementary Region
@@ -475,7 +477,9 @@ The eFuse interface consists of two parts:
 
 * `efuse_bank_ctrl` -- a 32-bit AXI-Lite interface used to access the SHIM
 control CSRs (for example, foundry-specific bank timing such as the
-initialization delay before sensing can begin).
+initialization delay before sensing can begin). Firmware reaches these CSRs
+through the base of the adopter external window; see
+<<efuse-bank-ctrl-window>>.
 * `efuse_shim_command` -- the custom fuse command interface used to issue
 read, program, and program/read-back operations to the eFuse bank.
 
@@ -485,6 +489,66 @@ that converts these generic commands into the hardware signals required by
 their OTP macro. The conversion is driven by the adopter's own read and
 program state machines inside the SHIM; OCAH only defines the command/response
 contract, not the macro-side signaling.
+
+The SMC and the SEP each contain their own eFuse controller, so the `smu.sv`
+boundary carries two independent copies of the interface, one with an `smc_`
+prefix and one with a `sep_` prefix. The adopter places *two separate SHIM and
+macro instances*, one per controller, each fronting its own 8 Kbit bank. The
+banks are never shared. Each controller also drives its own sense-done output
+to the `smu.sv` boundary, `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o`,
+and holds the sensed bank in its own shadow registers.
+<<efuse-smu-instances-fig>> shows these connections. When the SMU is built with
+`SEP = 0`, only the SMC instance is needed.
+
+[[efuse-smu-instances-fig]]
+.eFuse connections at the smu.sv boundary
+image::efuse_smu_instances.svg[eFuse connections at the smu.sv boundary,scaledwidth=95%]
+
+<<efuse-shim-contract-fig>> shows the contract for one of those instances.
+Everything above the dashed line is provided by OCAH; everything below it is
+the adopter's. Only the two interfaces that cross the line are fixed.
+
+[[efuse-shim-contract-fig]]
+.eFuse controller to Interface SHIM contract
+image::efuse_shim_contract.svg[eFuse controller to Interface SHIM contract,scaledwidth=95%]
+
+The reference SHIM, `hw/ip/efuse/rtl/efuse_interface_shim.sv`, drives an
+APB-based behavioral bank model. Use it as a worked example of the read and
+program state machines, not as a template for macro-side timing.
+
+[[efuse-bank-ctrl-window]]
+*SHIM control address window.* The SHIM control CSRs are defined by the
+adopter, but their addresses sit at the base of the subsystem's adopter
+external window. The fabric carves that block off the window and routes it
+to the eFuse controller instead of the external port. The controller does not
+decode it; it forwards every access outside its own register blocks to
+`efuse_bank_ctrl` unchanged. The rest of the external window leaves on the
+subsystem's external port as usual.
+
+.SHIM control address window
+[width="100%",cols="12%,30%,23%,35%",options="header"]
+|=======================================================================
+|Subsystem |Window base |Size parameter (SMU default) |Rest of the window
+|SMC |`smc_external` base, SMC-local `0xC040_0000` |`SMC_EFUSE_SHIM_SIZE` (`0x4`)
+|`smc_external_req_o` / `smc_external_resp_i`
+|SEP |`sep_external` base, SEP-local `0x2000_0000` |`SEP_EFUSE_SHIM_SIZE` (`0x4`)
+|`sep_external_req_o` / `sep_external_resp_i`
+|=======================================================================
+
+The SHIM must follow these rules for this window:
+
+* *Fit the window.* Size the parameter to cover every SHIM control register.
+Accesses past it go to the external port and never reach the SHIM.
+* *Describe the registers in the external map.* Place the SHIM control block
+at offset `0x0` of the adopter's `smc_external` and `sep_external` register
+maps. The open SMC map reserves the whole window as opaque memory. SEP takes
+the window base from the `efuse_shim_ctrl` instance in `sep_external`, so an
+adopter map that replaces it must keep an instance of that name at offset
+`0x0`.
+
+The reference register block is `efuse_shim_ctrl`
+(`hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl`), which holds a single
+`EFUSE_BANK_INIT_TIME` register.
 
 The command and response payloads are exchanged as packed structs:
 
@@ -507,13 +571,85 @@ typedef struct packed {
 } fuse_command_resp_t;
 ----
 
+`command` is `efuse_pkg::fuse_command_e`: `FUSE_COMMAND_READ` (`+2'b00+`),
+`FUSE_COMMAND_PROGRAM` (`+2'b01+`) and `FUSE_COMMAND_PROGRAM_READ_BACK`
+(`+2'b10+`).
+
+The SHIM implements two operations, reads and programs:
+
+* *Reads.* If a request has `command` set to `FUSE_COMMAND_READ` and
+`access_length_words` set to _N_, respond with _N_ `valid` strobes, each
+carrying one `WORD_WIDTH` word in `data`, reading consecutive words starting
+at `address`. Firmware reads set _N_ to one; fuse sensing sets it to the whole
+bank, as described below.
+* *Programs.* If a request has `command` set to `FUSE_COMMAND_PROGRAM`, program
+the single bit at `address` and respond with one `valid` strobe when the macro
+finishes. `program_data` is always 1 and `access_length_words` is always 1.
+For `FUSE_COMMAND_PROGRAM_READ_BACK`, also read the word back, return it in
+`data`, and set `status` if the programmed bit did not stick.
+
+Both operations follow these rules:
+
+* *Bit addressing.* `address` is a bit address. Convert it to whatever word or
+byte addressing the macro uses; the reference SHIM shifts it right by three.
+* *One command at a time.* `valid` is a level, not a strobe. The controller
+holds `valid` and the whole request payload stable from the cycle it issues a
+command until it has received the response, so the SHIM may sample the payload
+at any point while the command runs.
+* *When `valid` falls.* After a firmware read or program, `valid` falls in the
+cycle after the response strobe. After sensing it stays high until
+`fuse_sense_done` moves the arbiter to the firmware path, two cycles after the
+last strobe; do not treat that still-asserted request as a second read. The
+controller also withdraws `valid` without waiting for a response in these
+cases, and the SHIM must abandon the command it had started:
+** a firmware read or program timeout expires{asterisk}
+** firmware changes the read or program enable, where program takes priority
+over read{asterisk}
+* *Errors.* Setting `status` ends a firmware read or program command with an
+error. The sense FSM counts only `valid` strobes, so a sensing error must still
+be followed by the remaining strobes.
+* *No access control.* The eFuse guard zeroes requests to locked fields, and
+every request while the SEP is in secure test mode, in the same cycle the
+request is issued. A blocked request therefore never reaches the SHIM:
+`valid` does not rise, and no response is expected. Secure test mode is
+latched once per cold boot, before any firmware command can be issued, so it
+cannot begin in the middle of a command. The SMC controller has no secure test mode.
+
+{asterisk} These scenarios will be fixed in a future release so that the
+controller never withdraws `valid` before the response.
+
+[IMPORTANT]
+====
+Fuse sensing happens *once per cold boot*, when the eFuse controller's primary
+reset is released. It runs in *both* eFuse controller instances, SMC and SEP,
+each against its own bank. CPU and warm resets do not repeat it.
+
+The adopter must provide *8 Kbit of fuses (8192 bits, 256 32-bit words) for
+each instance*: one bank behind the SMC SHIM and a second, separate bank
+behind the SEP SHIM. For both, `NumShadowWords` is 256.
+====
+
 *Fuse sensing protocol.* During automatic sensing the controller issues a
-single read with `access_length_words` set to the entire bank (all
-`NUM_WORDS` words). The SHIM is expected to stream the bank back one
-`WORD_WIDTH` word at a time: for each OTP access it drives the read `data`
-onto `fuse_command_resp_o.data` and asserts `valid` for *exactly one cycle*.
-The controller consumes one word per cycle that `valid` is high, advancing to
-the next eFuse word on each assertion.
+single read with `access_length_words` set to the entire bank:
+`NumShadowWords`, which is `SHADOW_REG_BITS / WORD_WIDTH`. The SHIM is expected
+to stream the bank back one `WORD_WIDTH` word at a time: for each OTP access it
+drives the read `data` onto `efuse_shim_command_resp_i.data` and asserts
+`valid` for *exactly one cycle*. The controller consumes one word per cycle
+that `valid` is high, advancing to the next eFuse word on each assertion.
+
+<<efuse-sense-timing-fig>> shows the stream for the 256-word bank. The sense FSM
+leaves `StRead` after one cycle and waits in `StWait`. Each `valid` strobe
+stores `data` into shadow word `words_received_q` and increments the count one
+cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
+so are strobes on consecutive cycles, as in cycles 4 and 5, provided each
+cycle carries a new word. `data` is sampled only while `valid` is high. The
+strobe for word 255 (`NumShadowWords - 1`) stores the last word and moves the
+FSM to `StFinished` without incrementing. `fuse_sense_done` rises one cycle
+after that.
+
+[[efuse-sense-timing-fig]]
+.eFuse sensing response stream
+image::efuse_sense_timing.svg[eFuse sensing response stream,scaledwidth=95%]
 
 [WARNING]
 ====
@@ -525,10 +661,14 @@ adopter's SHIM FSM is responsible for producing a clean one-cycle `valid`
 strobe per `WORD_WIDTH` access.
 ====
 
-The `shadow_regs_o` output provides read-only access to the sensed fuse
-values. During bring-up the SMC automatically senses the fuse contents and
-propagates them through the shadow registers; the `smc_fuse_sense_done_o` signal
-indicates completion of this sensing operation.
+During cold boot the SMC and SEP each sense their own bank into their own
+shadow registers. `smc_fuse_sense_done_o` and `sep_fuse_sense_done_o` indicate
+when each sensing operation completes.
+
+The `smc_shadow_regs_o` output gives adopter read-only access to the
+sensed SMC bank. The SMU has no equivalent SEP output: the SEP bank holds
+secrets such as the class key and device UIDs, so its shadow registers stay
+inside SEP.
 
 === Memory Subsystem Integration
 
@@ -986,7 +1126,8 @@ SEP has its own eFuse bank. Instantiate a separate SHIM and physical
 eFuse bank; do not share the SMC's. The SHIM contract is
 <<smc-efuse-connection>>. On `sep.sv` connect `efuse_bank_ctrl_*` and
 `efuse_shim_command_*`. Through the SMU those ports appear as
-`sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`.
+`sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`. The SEP SHIM control
+CSRs sit at the base of `sep_external`; see <<efuse-bank-ctrl-window>>.
 
 SEP senses this bank after its own reset. Watch `sep_fuse_sense_done_o`.
 On `sep.sv`, drive `smc_fuse_sense_done_i` from the SMC so firmware can

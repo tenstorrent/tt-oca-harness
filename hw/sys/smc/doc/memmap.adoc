@@ -66,8 +66,9 @@ avoids a second list of addresses drifting from the implemented decode.
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
 technology- and vendor-specific implementations of memory-mapped blocks. The
-window is split into two regions (see `smc_external.rdl`); hardware treats
-both identically — the split is purely organizational:
+window is split into two regions (see `smc_external.rdl`). Apart from the
+eFuse SHIM control block described below, hardware treats both identically;
+the split is purely organizational:
 
 * *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
   Their function is dictated by the OCAH specifications, but their
@@ -87,8 +88,15 @@ include vendor I3C controllers and captured GPIO straps. Captured straps are
 read-only values latched from bonded pads at cold reset and consumed by boot
 firmware.
 
-The unallocated remainder of the window is passed through to the chip-level
-adopter external port.
+The eFuse SHIM control block is the exception. Its placement is fixed at the
+base of the window, `BASE + 0x040_0000`, and its size is the
+`EFUSE_SHIM_SIZE` parameter (`SMC_EFUSE_SHIM_SIZE` at the SMU). The peripheral 
+crossbar routes that range to the eFuse controller,
+which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
+never appears on the external port. The adopter defines the SHIM's control
+registers at offset `0x0` of its own `smc_external` map.
+
+The rest of the window, is passed through to the smu-level adopter external port.
 
 === External Window Reference Maps
 
