@@ -41,7 +41,6 @@ mode comes from the `is_primary_i` input.
 
 ifdef::backend-html5[]
 ++++
-<span id="detailed-register-map"></span>
 ++++
 endif::backend-html5[]
 

@@ -37,7 +37,6 @@ reset to zero. The generated map gives field access and side effects.
 
 ifdef::backend-html5[]
 ++++
-<span id="detailed-register-map"></span>
 ++++
 endif::backend-html5[]
 

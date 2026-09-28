@@ -73,16 +73,16 @@
   <path d="M1173 399.5 V408.5 M1173 404.0 H1183 M1180 401.0 l3 3 -3 3" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="980" y="410.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_ap_remap</text>
   <text x="980" y="423.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">output_remap · 0x1100_0000 + 8 MiB (AP)</text>
-  <text x="980" y="435.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">16 x 512 KiB regions · user ← 'others'</text>
+  <text x="980" y="435.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">16 x 512 KiB regions · user &lt;- 'others'</text>
   <polygon points="979,453 1181,453 1190,462 1190,498 1181,507 979,507 970,498 970,462" fill="#dbe6ff" stroke="#57606a" stroke-width="1.4"/>
   <path d="M1173 459.5 V468.5 M1173 464.0 H1183 M1180 461.0 l3 3 -3 3" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="980" y="470.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_stee_remap</text>
   <text x="980" y="483.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">output_remap · 0x1180_0000 + 8 MiB (STEE)</text>
-  <text x="980" y="495.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">16 x 512 KiB regions · user ← 'others'</text>
+  <text x="980" y="495.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">16 x 512 KiB regions · user &lt;- 'others'</text>
   <polygon points="1240,340 1240,500 1272,488 1272,352" fill="#dbe6ff" stroke="#1f2328" stroke-width="1.6"/>
   <text x="1256" y="332.0" text-anchor="middle" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_outbound_filter_mux</text>
   <text x="1256" y="514.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ID 6/8</text>
-  <text x="922" y="354.0" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">SMU aperture or ≥ 0x1_0000_0000 (beyond the chiplet)</text>
+  <text x="922" y="354.0" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">SMU aperture or &gt;= 0x1_0000_0000 (beyond the chiplet)</text>
   <rect x="1330" y="381" width="250" height="78" rx="2" fill="#dbe6ff" stroke="#57606a" stroke-width="2.8"/>
   <path d="M1562 387.0 H1574 L1569.5 392.5 V397.0 H1566.5 V392.5 Z" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="1340" y="398.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_outbound_filter</text>
@@ -120,7 +120,7 @@
   <text x="1720" y="609.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">remap, filter and aperture CSRs</text>
   <rect x="1710" y="639" width="290" height="42" rx="6" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
   <path d="M1982 647.5 H1994 M1991 645.0 l3 2.5 -3 2.5 M1994 652.5 H1982 M1985 650.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-  <text x="1720" y="656.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_inbound_filtered_downsized_addr_fixer …</text>
+  <text x="1720" y="656.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_inbound_filtered_downsized_addr_fixer ...</text>
   <text x="1720" y="669.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">return to the local fabric — see the input fabric</text>
   <text x="1680.0" y="532.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1a8a3c">56/64/–/–</text>
   <text x="1680.0" y="592.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1a8a3c">56/64/–/–</text>

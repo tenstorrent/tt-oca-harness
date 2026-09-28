@@ -46,13 +46,6 @@ pull, conditioning, configuration-enable and secondary-override controls
 to zero. The read-only strap fields reflect `INPUT_BY_DEFAULT` and the
 captured input, so the complete value is not a single fixed reset word.
 
-// Old section fragments remain valid in HTML.
-ifdef::backend-html5[]
-++++
-<span id="detailed-register-map"></span>
-++++
-endif::backend-html5[]
-
 === Detailed Register Map
 
 ifdef::backend-html5[]
