@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="972" viewBox="0 0 1040 972" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="988" viewBox="0 0 1040 988" role="img" aria-labelledby="title desc">
 <title id="title">OCAH clock domains</title>
-<desc id="desc">Colored zones overlay the OCAH top-level block diagram to mark its clock domains: the application clock of the user subsystem, the SMN clock clk_smn_i and the SMU clock clk_smu_i. Each zone boundary runs through the clock-domain crossings between them. The SMC also uses clk_ref_i and clk_periph_i. The OCA Harness sits beside the user subsystem. The user subsystem reaches peer chiplets through AXI over UCIe (AoU) bridges and their die-to-die transceiver macros, and reaches a future System Management Network (SMN) through a clock-domain crossing. The SMN connects to the OCAH SMU, whose AXI4 crossbar has three initiators and three targets (SEP, SMC and the SMN), with no self-directed paths. Proposed ports, drawn apart from the crossbar, would connect a future safety monitor. DTP bridges external JTAG to the SMC AXI port and to the SEP and SMC TAPs. The SEP extension port gives the SEP unfettered access to the SMC, and a future safety bus links the safety monitor to the SEP and SMC. Hatched blocks with dashed outlines are future.</desc>
+<desc id="desc">Colored zones overlay the OCAH top-level block diagram to mark its clock domains: the application clock of the user subsystem, the SMN clock clk_smn_i and the SMU clock clk_smu_i. Each zone boundary runs through the clock-domain crossings between them. Pills in the SEP and SMC list their clock inputs: both use clk_smu_i and clk_ref_i, the SMC also uses clk_periph_i for its peripherals and clk_telemetry_i for ATB telemetry, and the SEP also uses the entropy ring-oscillator sample clock and the watchdog clock clk_sep_wdt_i. The OCA Harness sits beside the user subsystem. The user subsystem reaches peer chiplets through AXI over UCIe (AoU) bridges and their die-to-die transceiver macros, and reaches a future System Management Network (SMN) through a clock-domain crossing. The SMN connects to the OCAH SMU, whose AXI4 crossbar has three initiators and three targets (SEP, SMC and the SMN), with no self-directed paths. Proposed ports, drawn apart from the crossbar, would connect a future safety monitor. DTP bridges external JTAG to the SMC AXI port and to the SEP and SMC TAPs. The SEP to SMC direct port gives the SEP unfettered access to the SMC, the SEP and SMC each have an external AXI manager port, and a future safety bus links the safety monitor to the SEP and SMC. Hatched blocks with dashed outlines are future; the SEP has a dashed outline without hatching because a parameter can leave it out.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -36,7 +36,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .zp-smn { fill: #3a73a8; }
 .zp-smu { fill: #2f7d4f; }
 .zlt { font-size: 14px; font-weight: bold; fill: #ffffff; }
-.zs { font-size: 12px; font-style: italic; fill: #2b6e45; }
+.ck-smu { fill: #2f7d4f; }
+.ck-ref { fill: #b8651b; }
+.ck-per { fill: #7a4fa0; }
+.ck-ros { fill: #8a7210; }
+.ck-wdt { fill: #a63d40; }
+.ck-tel { fill: #4d5b6b; }
+.ckt { font-size: 11px; font-weight: bold; fill: #ffffff; }
 .user { fill: #f0e8f8; stroke: #664488; stroke-width: 2; }
 .network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
 .fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
@@ -44,11 +50,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
 .nostroke { stroke: none; }
 .fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
 .hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
 .external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
 .axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
 .axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
 .sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigf { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-start: url(#gs); marker-end: url(#ge); }
 .sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
 .jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
 .jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
@@ -56,7 +64,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .clk { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
 </style>
 </defs>
-<rect width="1040" height="972" fill="#ffffff"/>
+<rect width="1040" height="988" fill="#ffffff"/>
 <path class="harness" d="M540,10 H700 V300 H1000 V768 H84 V300 H540 Z"/>
 <text class="h" x="986" y="752" text-anchor="end">OCA Harness</text>
 <rect class="user" x="84" y="16" width="386" height="250" rx="6"/>
@@ -131,14 +139,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="axi" d="M380,383 L380,419"/>
 <rect class="core" x="110" y="570" width="76" height="96" rx="6"/>
 <text class="b" x="120" y="592" text-anchor="start">DTP</text>
-<rect class="core" x="214" y="558" width="222" height="140" rx="6"/>
-<text class="b" x="339.0" y="622" text-anchor="middle">SEP</text>
-<text class="t" x="339.0" y="642" text-anchor="middle">Security processor</text>
+<rect class="core opt" x="214" y="558" width="222" height="140" rx="6"/>
+<text class="b" x="339.0" y="612" text-anchor="middle">SEP</text>
+<text class="t" x="339.0" y="632" text-anchor="middle">Security processor</text>
 <rect class="core" x="502" y="558" width="278" height="140" rx="6"/>
-<text class="b" x="647.0" y="622" text-anchor="middle">SMC</text>
-<text class="t" x="647.0" y="642" text-anchor="middle">System management</text>
-<text class="t" x="647.0" y="662" text-anchor="middle">controller</text>
-<text class="zs" x="647.0" y="686" text-anchor="middle">also clk_ref_i, clk_periph_i</text>
+<text class="b" x="647.0" y="602" text-anchor="middle">SMC</text>
+<text class="t" x="647.0" y="622" text-anchor="middle">System management</text>
+<text class="t" x="647.0" y="642" text-anchor="middle">controller</text>
 <path class="axi" d="M236,503 L236,545"/>
 <path class="axi" d="M276,503 L276,545"/>
 <path class="axi" d="M604,503 L604,545"/>
@@ -147,12 +154,12 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="jtag" d="M186,622 L200,622 L200,532 L456,532 L456,614 L498,614"/>
 <path class="jtag" d="M186,648 L210,648"/>
 <path class="axi" d="M451,680 L487,680"/>
-<text class="s" x="467" y="716" text-anchor="middle">SEP extension port</text>
+<text class="s" x="467" y="716" text-anchor="middle">SEP to SMC direct port</text>
 <text class="si" x="467" y="732" text-anchor="middle">(unfettered SMC access)</text>
 <path class="network nostroke" d="M830,566 L854,580 L854,644 L830,658 Z"/>
 <path class="hatch" d="M830.7,568.8 L830.7,568.8 M830.7,577.8 L836.4,572.1 M830.7,586.8 L842.1,575.4 M830.7,595.8 L847.8,578.7 M830.7,604.8 L853.3,582.2 M830.7,613.8 L853.3,591.2 M830.7,622.8 L853.3,600.2 M830.7,631.8 L853.3,609.2 M830.7,640.8 L853.3,618.2 M830.7,649.8 L853.3,627.2 M839.2,650.3 L853.3,636.2"/>
 <path class="network fut" d="M830,566 L854,580 L854,644 L830,658 Z"/>
-<text class="s" x="842.0" y="716" text-anchor="middle">Safety bus</text>
+<text class="s" x="850" y="556" text-anchor="middle">Safety bus</text>
 <path class="axio" d="M408,545 L408,516 L804,516 L804,584 L815,584"/>
 <path class="axio" d="M815,640 L795,640"/>
 <rect class="future nostroke" x="906" y="563" width="88" height="100" rx="6"/>
@@ -168,7 +175,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="t" x="14" y="608" text-anchor="start">JTAG</text>
 <path class="sig" d="M17,690 L211,690"/>
 <text class="t" x="14" y="680" text-anchor="start">QSPI</text>
-<path class="sig" d="M997,620 L1031,620"/>
+<path class="sigf" d="M997,620 L1031,620"/>
 <text class="t" x="1032" y="612" text-anchor="end">I3C</text>
 <path class="sig" d="M783,686 L1031,686"/>
 <text class="t" x="1032" y="678" text-anchor="end">I3C</text>
@@ -178,38 +185,44 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sig" d="M295,701 L295,797"/>
 <path class="sig" d="M325,701 L325,797"/>
 <path class="sig" d="M355,701 L355,797"/>
-<rect class="external" x="526.0" y="800" width="136" height="58" rx="6"/>
-<text class="s" x="594" y="825" text-anchor="middle">Technology-</text>
-<text class="s" x="594" y="842" text-anchor="middle">dependent macros</text>
-<path class="sig" d="M564,701 L564,797"/>
-<path class="sig" d="M594,701 L594,797"/>
-<path class="sig" d="M624,701 L624,797"/>
+<rect class="external" x="520" y="800" width="120" height="58" rx="6"/>
+<text class="s" x="580" y="825" text-anchor="middle">Technology-</text>
+<text class="s" x="580" y="842" text-anchor="middle">dependent macros</text>
+<path class="sig" d="M550,701 L550,797"/>
+<path class="sig" d="M580,701 L580,797"/>
+<path class="sig" d="M610,701 L610,797"/>
+<path class="axi" d="M240,711 L240,857"/>
+<text class="s" x="240" y="876" text-anchor="middle">SEP external AXI4</text>
+<path class="axi" d="M656,711 L656,857"/>
+<text class="s" x="656" y="876" text-anchor="middle">SMC external AXI-Lite</text>
 <path class="sig" d="M680,701 L680,855"/>
 <path class="sig" d="M708,701 L708,855"/>
 <path class="sig" d="M736,701 L736,855"/>
 <path class="sig" d="M764,701 L764,855"/>
 <text class="t" x="776" y="834" text-anchor="start">Peripheral I/O</text>
-<text class="s" x="42" y="899" text-anchor="start">Manager port</text>
-<text class="s" x="166" y="899" text-anchor="start">Subordinate port</text>
-<text class="s" x="328" y="899" text-anchor="start">Clock-domain crossing</text>
-<rect class="future nostroke" x="474" y="885" width="40" height="18" rx="4"/>
-<path class="hatch" d="M475.5,895.5 L484.5,886.5 M478.5,901.5 L493.5,886.5 M487.5,901.5 L502.5,886.5 M496.5,901.5 L511.2,886.8 M505.5,901.5 L512.5,894.5"/>
-<rect class="future fut" x="474" y="885" width="40" height="18" rx="4"/>
-<text class="s" x="522" y="899" text-anchor="start">Future block</text>
-<path class="axi" d="M17,920 L51,920"/>
-<text class="s" x="62" y="925" text-anchor="start">AXI4</text>
-<path class="axio" d="M113,920 L147,920"/>
-<text class="s" x="158" y="925" text-anchor="start">Replicated or future</text>
-<path class="jtag" d="M294,920 L331,920"/>
-<text class="s" x="342" y="925" text-anchor="start">JTAG</text>
-<path class="sig" d="M393,920 L427,920"/>
-<text class="s" x="438" y="925" text-anchor="start">Signals</text>
-<rect class="z-app" x="14" y="937" width="40" height="18" rx="4"/>
-<text class="s" x="62" y="951" text-anchor="start">Application clock</text>
-<rect class="z-smn" x="184" y="937" width="40" height="18" rx="4"/>
-<text class="s" x="232" y="951" text-anchor="start">clk_smn_i (SMN)</text>
-<rect class="z-smu" x="342" y="937" width="40" height="18" rx="4"/>
-<text class="s" x="390" y="951" text-anchor="start">clk_smu_i (SMU)</text>
+<text class="s" x="42" y="915" text-anchor="start">Manager port</text>
+<text class="s" x="166" y="915" text-anchor="start">Subordinate port</text>
+<text class="s" x="328" y="915" text-anchor="start">Clock-domain crossing</text>
+<rect class="future nostroke" x="474" y="901" width="40" height="18" rx="4"/>
+<path class="hatch" d="M475.5,911.5 L484.5,902.5 M478.5,917.5 L493.5,902.5 M487.5,917.5 L502.5,902.5 M496.5,917.5 L511.2,902.8 M505.5,917.5 L512.5,910.5"/>
+<rect class="future fut" x="474" y="901" width="40" height="18" rx="4"/>
+<text class="s" x="522" y="915" text-anchor="start">Future block</text>
+<rect class="core opt" x="640" y="901" width="40" height="18" rx="4"/>
+<text class="s" x="688" y="915" text-anchor="start">Optional (parameter)</text>
+<path class="axi" d="M17,936 L51,936"/>
+<text class="s" x="62" y="941" text-anchor="start">AXI4</text>
+<path class="axio" d="M113,936 L147,936"/>
+<text class="s" x="158" y="941" text-anchor="start">Replicated or future</text>
+<path class="jtag" d="M294,936 L331,936"/>
+<text class="s" x="342" y="941" text-anchor="start">JTAG</text>
+<path class="sig" d="M393,936 L427,936"/>
+<text class="s" x="438" y="941" text-anchor="start">Signals</text>
+<rect class="z-app" x="14" y="953" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="967" text-anchor="start">Application clock</text>
+<rect class="z-smn" x="184" y="953" width="40" height="18" rx="4"/>
+<text class="s" x="232" y="967" text-anchor="start">clk_smn_i (SMN)</text>
+<rect class="z-smu" x="342" y="953" width="40" height="18" rx="4"/>
+<text class="s" x="390" y="967" text-anchor="start">clk_smu_i (SMU)</text>
 <rect class="z-app" x="76" y="8" width="402" height="290.0" rx="10"/>
 <rect class="z-smn" x="76" y="298.0" width="816" height="103.0" rx="0"/>
 <rect class="z-smu" x="76" y="401.0" width="726" height="353.0" rx="10"/>
@@ -307,16 +320,36 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pst" x="784" y="480.5" text-anchor="middle">S</text>
 <rect class="pm" x="917.0" y="554.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="928" y="567.5" text-anchor="middle">M</text>
-<rect class="pm" x="14.0" y="885.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="25" y="898.5" text-anchor="middle">M</text>
-<rect class="ps" x="138.0" y="885.0" width="22" height="18" rx="4"/>
-<text class="pst" x="149" y="898.5" text-anchor="middle">S</text>
-<rect class="pc" x="280.0" y="885.0" width="42" height="18" rx="4"/>
-<text class="pct" x="301" y="898.5" text-anchor="middle">CDC</text>
+<rect class="pm" x="229.0" y="689.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="240" y="702.5" text-anchor="middle">M</text>
+<rect class="pm" x="645.0" y="689.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="656" y="702.5" text-anchor="middle">M</text>
+<rect class="pm" x="14.0" y="901" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="914.5" text-anchor="middle">M</text>
+<rect class="ps" x="138.0" y="901" width="22" height="18" rx="4"/>
+<text class="pst" x="149" y="914.5" text-anchor="middle">S</text>
+<rect class="pc" x="280.0" y="901" width="42" height="18" rx="4"/>
+<text class="pct" x="301" y="914.5" text-anchor="middle">CDC</text>
 <path class="zp-app" d="M76,30 V18 A10,10 0 0 1 86,8 H242.2 V21 A9,9 0 0 1 233.2,30 Z"/>
 <text class="zlt" x="159.1" y="24" text-anchor="middle">Application clock</text>
 <path class="zp-smn" d="M76,320.0 V298.0 H173.4 V311.0 A9,9 0 0 1 164.4,320.0 Z"/>
 <text class="zlt" x="124.7" y="314.0" text-anchor="middle">clk_smn_i</text>
 <path class="zp-smu" d="M76,423.0 V411.0 A10,10 0 0 1 86,401.0 H173.4 V414.0 A9,9 0 0 1 164.4,423.0 Z"/>
 <text class="zlt" x="124.7" y="417.0" text-anchor="middle">clk_smu_i</text>
+<rect class="ck-smu" x="267" y="650" width="69" height="15" rx="7.5"/>
+<text class="ckt" x="301.5" y="661" text-anchor="middle">clk_smu_i</text>
+<rect class="ck-ref" x="342" y="650" width="69" height="15" rx="7.5"/>
+<text class="ckt" x="376.5" y="661" text-anchor="middle">clk_ref_i</text>
+<rect class="ck-ros" x="226" y="669" width="88" height="15" rx="7.5"/>
+<text class="ckt" x="270" y="680" text-anchor="middle">entropy rosc</text>
+<rect class="ck-wdt" x="320" y="669" width="94" height="15" rx="7.5"/>
+<text class="ckt" x="367" y="680" text-anchor="middle">clk_sep_wdt_i</text>
+<rect class="ck-smu" x="575" y="650" width="69" height="15" rx="7.5"/>
+<text class="ckt" x="609.5" y="661" text-anchor="middle">clk_smu_i</text>
+<rect class="ck-ref" x="650" y="650" width="69" height="15" rx="7.5"/>
+<text class="ckt" x="684.5" y="661" text-anchor="middle">clk_ref_i</text>
+<rect class="ck-per" x="548" y="669" width="88" height="15" rx="7.5"/>
+<text class="ckt" x="592" y="680" text-anchor="middle">clk_periph_i</text>
+<rect class="ck-tel" x="642" y="669" width="104" height="15" rx="7.5"/>
+<text class="ckt" x="694" y="680" text-anchor="middle">clk_telemetry_i</text>
 </svg>
