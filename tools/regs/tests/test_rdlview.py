@@ -75,6 +75,54 @@ addrmap top {
             self.assertEqual(len(anchors), len(set(anchors)))
             self.assertEqual(anchors, links)
 
+    def test_addrmap_name_and_desc_render_below_the_identifier_heading(self):
+        with TemporaryDirectory() as temp:
+            source = Path(temp) / "named.rdl"
+            source.write_text("""
+addrmap plic {
+    name = "PLIC Address Map";
+    desc = "Platform-Level Interrupt Controller register interface.";
+    reg { field { sw = rw; hw = r; } value[31:0]; } control @0x0;
+};
+""")
+            root = compile_root(str(source), None, [])
+            adoc = Path(temp) / "named.adoc"
+            html = Path(temp) / "named.html"
+            write_adoc(root, str(adoc))
+            write_html(root, str(html))
+
+            # The heading keeps its identifier form so the block catalog and
+            # coverage tooling still parse "Address Map: <inst>".
+            self.assertIn("== Address Map: plic\n", adoc.read_text())
+            self.assertIn("<h2>Address Map: plic</h2>", html.read_text())
+            # The friendly name and description are additive, below the heading.
+            self.assertIn(
+                "*PLIC Address Map* — Platform-Level Interrupt Controller register interface.",
+                adoc.read_text(),
+            )
+            self.assertIn(
+                "<p><strong>PLIC Address Map</strong> — "
+                "Platform-Level Interrupt Controller register interface.</p>",
+                html.read_text(),
+            )
+
+    def test_unnamed_addrmap_keeps_the_bare_identifier_heading(self):
+        with TemporaryDirectory() as temp:
+            source = Path(temp) / "bare.rdl"
+            source.write_text("""
+addrmap bare { reg { field { sw = rw; hw = r; } value[31:0]; } control @0x0; };
+""")
+            root = compile_root(str(source), None, [])
+            adoc = Path(temp) / "bare.adoc"
+            html = Path(temp) / "bare.html"
+            write_adoc(root, str(adoc))
+            write_html(root, str(html))
+            # A map without an authored name/desc gets no intro paragraph: the
+            # name property defaults to the instance identifier.
+            self.assertIn("== Address Map: bare\n", adoc.read_text())
+            self.assertNotIn("*bare*", adoc.read_text())
+            self.assertNotIn("<p><strong>bare</strong>", html.read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

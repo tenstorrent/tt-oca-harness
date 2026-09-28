@@ -91,6 +91,22 @@ def first_addrmap_name(root) -> str:
     )
 
 
+def addrmap_intro(root) -> tuple[str | None, str | None]:
+    """The map's friendly ``name`` and ``desc`` for the per-block heading intro.
+
+    ``name`` defaults to the instance identifier, so it is only surfaced when it
+    was authored to something more descriptive. The heading keeps its
+    identifier form (``Address Map: <inst>``) that the block catalog and
+    coverage tooling parse; the friendly name and description are additive.
+    """
+    node = next(iter(root.children()), None)
+    if node is None:
+        return None, None
+    name = node.get_property("name")
+    friendly = name if name and name != node.inst_name else None
+    return friendly, node.get_property("desc")
+
+
 def sw_access(node) -> str:
     r = (
         "R"
@@ -274,6 +290,13 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
         f"== Address Map: {title}",
         "",
     ]
+    friendly, desc = addrmap_intro(root)
+    if friendly and desc:
+        lines += [f"*{friendly}* — {desc_adoc(desc)}", ""]
+    elif friendly:
+        lines += [f"*{friendly}*", ""]
+    elif desc:
+        lines += [desc_adoc(desc), ""]
     if data.arrays:
         lines += [
             "[NOTE]",
@@ -326,6 +349,13 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         "</style>",
         f"<h2>Address Map: {escape(title)}</h2>",
     ]
+    friendly, desc = addrmap_intro(root)
+    if friendly and desc:
+        lines.append(f"<p><strong>{escape(friendly)}</strong> — {desc_html_text(desc)}</p>")
+    elif friendly:
+        lines.append(f"<p><strong>{escape(friendly)}</strong></p>")
+    elif desc:
+        lines.append(f"<p>{desc_html_text(desc)}</p>")
     if data.arrays:
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
         for name, (count, base, stride) in data.arrays.items():
