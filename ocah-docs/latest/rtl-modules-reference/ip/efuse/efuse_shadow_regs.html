@@ -640,7 +640,7 @@
 <tr><td><code>CLASS1_SHADOW_RANGES</code></td><td><code>efuse_pkg::shadow_word_range_map_t</code></td><td><code>&#x27;0</code></td><td>Class-1 shadow word ranges, stored in the separately named *_n0_scan array; the lifecycle-state word is always written there, so it must be covered when HAS_LC_STATE is set.</td></tr>
 <tr><td><code>SECRET_SHADOW_RANGES</code></td><td><code>efuse_pkg::shadow_word_range_map_t</code></td><td><code>&#x27;0</code></td><td>Secret shadow ranges masked under secure_tm.</td></tr>
 <tr><td><code>TOKEN_MATCH_CODE</code></td><td><code>logic [5:0]</code></td><td><code>6&#x27;b010101</code></td><td>Token-match code that permits the RMA lifecycle-state transitions.</td></tr>
-<tr><td><code>LC_STATE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>4</code></td><td>Lifecycle-state field width.</td></tr>
+<tr><td><code>LC_STATE_WIDTH</code></td><td><code>int unsigned</code></td><td><code>efuse_pkg::LC_STATE_RAW_WIDTH</code></td><td>Lifecycle-state field width; fixed by the encoding in efuse_pkg.</td></tr>
 <tr><td><code>NumShadowWords</code></td><td><code>int unsigned</code></td><td><code>SHADOW_REG_BITS / SHADOW_REG_WORD_WIDTH</code></td><td>Shadow file word count.</td></tr>
 <tr><td><code>ShadowEfuseWidth</code></td><td><code>int unsigned</code></td><td><code>$clog2(NumShadowWords)</code></td><td>Shadow word index width.</td></tr>
 </table>

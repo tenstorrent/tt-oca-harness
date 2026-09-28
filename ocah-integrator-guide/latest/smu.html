@@ -531,7 +531,7 @@ wrappers demonstrate this integration.</p>
 <code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code>.</p>
 </div>
 <div class="sect2">
-<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">4.1. Clock and Reset</a></h3>
+<h3 id="smc-integration-clk-rst"><a class="anchor" href="#smc-integration-clk-rst"></a><a class="link" href="#smc-integration-clk-rst">4.1. Clock and Reset</a></h3>
 <div class="paragraph">
 <p>The SMC requires three external clock inputs: <code>clk_smc_i</code> (primary system clock
 driving the CPU cluster, fabric, and peripherals), <code>clk_periph_i</code> (peripheral clock
@@ -3105,7 +3105,7 @@ hierarchy and is not a complete DTP recipe.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="clock-and-reset-2"><a class="anchor" href="#clock-and-reset-2"></a><a class="link" href="#clock-and-reset-2">5.3. Clock and Reset</a></h3>
+<h3 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">5.3. Clock and Reset</a></h3>
 <div class="ulist">
 <ul>
 <li>
@@ -5652,7 +5652,7 @@ integrator connection. Ports marked with a subsystem name (e.g. SMC, SEP) are
 wired internally within the SMU.</p>
 </div>
 <div class="sect3">
-<h4 id="clock-and-reset-3"><a class="anchor" href="#clock-and-reset-3"></a><a class="link" href="#clock-and-reset-3">7.7.1. Clock and Reset</a></h4>
+<h4 id="clock-and-reset-2"><a class="anchor" href="#clock-and-reset-2"></a><a class="link" href="#clock-and-reset-2">7.7.1. Clock and Reset</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -6341,7 +6341,7 @@ with DECERR to all transactions.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="cross-trigger-matrix-interface"><a class="anchor" href="#cross-trigger-matrix-interface"></a><a class="link" href="#cross-trigger-matrix-interface">7.7.19. Cross Trigger Matrix Interface</a></h4>
+<h4 id="xtrig-matrix-interface"><a class="anchor" href="#xtrig-matrix-interface"></a><a class="link" href="#xtrig-matrix-interface">7.7.19. Cross Trigger Matrix Interface</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">
@@ -7243,7 +7243,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </table>
 </div>
 <div class="sect3">
-<h4 id="lifecycle-state"><a class="anchor" href="#lifecycle-state"></a><a class="link" href="#lifecycle-state">7.8.19. Lifecycle State</a></h4>
+<h4 id="smu-lc-state"><a class="anchor" href="#smu-lc-state"></a><a class="link" href="#smu-lc-state">7.8.19. Lifecycle State</a></h4>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 30%;">

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Initial SMU Integration :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="initial.html">Initial SMU Integration</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Initial SMU Integration</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The System Management Unit (SMU) is a central part of the Open Chiplet Atlas
+Harness (OCAH). It comprises three peer subsystems: the System Management
+Controller (SMC), the Debug and Test Ports (DTP), and the Security Processor
+(SEP).</p>
+</div>
+<div class="paragraph">
+<p>The <code>smu_wrapper</code> module gives an example structure for the integrator. This has
+ports that can be used to connect to the user subsystem and the outside of the
+chiplet. It also has internal "integration modules". These will need to be
+modified to use memories and fuses that are supplied by the integrator.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="ports-in-smu_wrapper"><a class="anchor" href="#ports-in-smu_wrapper"></a><a class="link" href="#ports-in-smu_wrapper">1. Ports in <code>smu_wrapper</code></a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>There are many groups of ports in <code>smu_wrapper</code>. The ports are all described in
+detail in <a href="smu.html" class="xref page">SMU Top-Level Integration</a>. The following port groups
+are good starting points in design bring-up: they will be required in any
+integration.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Clocks and reset</strong>
+The integrator needs to provide a primary system clock, together with a reference
+clock (for timing-sensitive operations) and a peripheral clock (used for the
+peripherals' interfaces). There is also a master reset for the chiplet. See
+<a href="smu.html#smc-integration-clk-rst" class="xref page">Clock and Reset</a>
+in the top-level integration guide.</p>
+</li>
+<li>
+<p><strong>AXI crossbar</strong>
+The SMU has an internal AXI crossbar. The
+<a href="smu.html#smu-axi-xbar-address-map" class="xref page">SMU AXI Crossbar Address Map</a>
+section in the top-level integration guide describes the crossbar&#8217;s address
+map. This crossbar should have two connections to the user subsystem: one as a
+manager and one as a subordinate.</p>
+</li>
+<li>
+<p><strong>GPIO pads</strong>
+The SMU expects direct connections to GPIO pads. These are exposed as inout
+ports. The detailed requirements for GPIO pad connections are described in the
+<a href="smu.html#gpio-pad-integration" class="xref page">GPIO Pad Integration</a>
+section in the top-level integration guide.</p>
+</li>
+<li>
+<p><strong>Cross-trigger</strong>
+The SMU has a cross-trigger interface, which can either be exposed as a
+<a href="smu.html#xtrig-matrix-interface" class="xref page">cross-trigger matrix interface</a>
+or as GPIO-style signals.</p>
+</li>
+<li>
+<p><strong>JTAG</strong>
+There is a group of JTAG interfaces, each connected to a TAP. These TAPs are
+exposed separately, to be connected and chained as appropriate by the
+integrator. Each TAP also exposes an output that shows whether its output is
+enabled. See
+<a href="smu.html#stap-scan-chain-topology" class="xref page">STAP Scan Chain Topology</a>
+for details of these interfaces.</p>
+</li>
+<li>
+<p><strong>Lifecycle</strong>
+The SMU has a lifecycle controller. Its current lifecycle state is exposed
+through the <code>lc_state_o</code> port. This port is described at
+<a href="smu.html#smu-lc-state" class="xref page">Lifecycle State</a>
+in the top-level integration guide.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="macros-needed-by-integration-modules"><a class="anchor" href="#macros-needed-by-integration-modules"></a><a class="link" href="#macros-needed-by-integration-modules">2. Macros needed by "integration modules"</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The <code>smu_wrapper</code> module instantiates two "integration modules"
+(<code>sep_ip_integration</code> and <code>smc_ip_integration</code>). These will need to be modified
+and completed for any integration.</p>
+</div>
+<div class="sect2">
+<h3 id="macros-needed-by-sep"><a class="anchor" href="#macros-needed-by-sep"></a><a class="link" href="#macros-needed-by-sep">2.1. Macros needed by SEP</a></h3>
+<div class="paragraph">
+<p>If the SEP is enabled, the macros that must be supplied and instantiated for it
+are the following. As with the top-level ports, there are also several
+connections that an integrator may wish to implement (but which are not
+necessary for the initial structure). The following macros are definitely
+required:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Fuses</strong>
+The SEP expects some fuses to exist. In <code>sep_ip_integration</code>, these are
+implemented with <code>efuse_bank_model</code>, which uses a model fuse instance in
+<code>efuse_bank_reg</code>. An integrator will need to implement either
+<code>efuse_bank_reg</code> (or the whole of <code>efuse_bank_model</code>) to perform an "APB to
+fuse" conversion.</p>
+</li>
+<li>
+<p><strong>ROM implementations</strong>
+The <code>sep_ip_integration</code> module contains two ROMs, which are both
+implemented with the <code>prim_rom</code> module. These ROMs are: the boot rom
+(in <code>u_sep_boot_rom</code>) and a key manager ROM (in <code>u_km_rom</code>).</p>
+</li>
+<li>
+<p><strong>SRAM implementations</strong>
+The SRAM implementations expected by the SEP can be split by the components
+using them as follows:</p>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Adams Bridge <code>1r1w</code> RAMs</strong>
+If <code>SEP_ABR_EN</code> is defined, the SEP contains a copy of the Adams Bridge
+module. This module needs access to either 9 or 13 <code>1r1w</code> RAMs (the larger
+number if masking is enabled). A <code>1r1w</code> RAM is a memory with one read and one
+write port. These memories are simpler than a general dual-port RAM. Such a
+memory is implemented in the example with the <code>prim_ram_1r1w</code> module.</p>
+</li>
+<li>
+<p><strong>The TCM</strong>
+The VeeR core expects instruction and data memories, split across multiple
+banks, and communicates with them using <code>sep_cpu_tcm_req_t</code> /
+<code>sep_cpu_tcm_rsp_t</code> signals. There is a parameterized example wrapper in
+<code>sep_tcm_wrapper</code>, and this will need to be supplied with single-port RAM
+instances of appropriate sizes.</p>
+</li>
+<li>
+<p><strong>Other single-port RAMs</strong>
+As well as the memories described above, there are four other single port RAM
+instances: the SEP scratch RAM (<code>u_sep_sram</code>); the key manager RAM
+(<code>u_km_sram</code>); and OTBN instruction and data memories (<code>u_otbn_imem_sram</code>,
+<code>u_otbn_dmem_sram</code>).</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="macros-needed-by-smc"><a class="anchor" href="#macros-needed-by-smc"></a><a class="link" href="#macros-needed-by-smc">2.2. Macros needed by SMC</a></h3>
+<div class="paragraph">
+<p>The macros that are needed for the SMC are the following:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Fuses</strong>
+Like the SEP, the SMC expects some fuses to exist. In <code>smc_ip_integration</code>,
+these are implemented with <code>efuse_bank_model</code>, which uses a model fuse
+instance in <code>efuse_bank_reg</code>. An integrator will need to implement either
+<code>efuse_bank_reg</code> (or the whole of <code>efuse_bank_model</code>) to perform an "APB to
+fuse" conversion.</p>
+</li>
+<li>
+<p><strong>Conversion between core and pad signals</strong>
+The SMC expects to be able to communicate with GPIO pads (which are exposed
+through an inout port in <code>smu_wrapper</code>). The integrator&#8217;s wrapper module must
+convert between the SMC&#8217;s binary representation of the pad state and the value
+in that inout port. In the example, this translation is made by a
+(non-synthesizable) <code>prim_pad_wrapper</code> module, which will need a synthesizable
+implementation.</p>
+</li>
+<li>
+<p><strong>ROM</strong>
+The four-core cluster in the SMC expects a ROM. In the example, this is
+implemented with a <code>prim_rom</code> instance.</p>
+</li>
+<li>
+<p><strong>SRAM implementations</strong>
+The SMC expects SRAM implementations for the following components.</p>
+<div class="ulist">
+<ul>
+<li>
+<p>The four-core cluster in the SMC expects several SRAMs. These back a scratch
+memory, together with tag and data memories for an I-cache and D-cache. In
+the example, these are all implemented with instances of <code>prim_ram_1p</code>.</p>
+</li>
+<li>
+<p>There are also several backing memories for each I3C instance. There is a
+single-port "DAT" and a "DCT" memory per I3C instance (implemented in the
+example by instances of <code>prim_ram_1p</code>). There is also a two-port RLT
+(Retransmission Limit Timer) memory, which is implemented in the example with
+an instance of <code>prim_ram_2p</code>.</p>
+</li>
+<li>
+<p>Finally, there are multiple trace RAM instances that can be used to capture
+debug data. In the example, these are implemented with instances of
+<code>prim_ram_1p_adv</code>.</p>
+</li>
+</ul>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>
