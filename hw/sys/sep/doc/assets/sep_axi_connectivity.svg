@@ -5,12 +5,12 @@
      role="img" aria-labelledby="title description">
   <title id="title">SEP AXI4 connectivity</title>
   <desc id="description">Columns are initiators and rows are targets. A filled
-    circle marks a connection; a dash marks no connection. CPU IFI reaches
+    circle marks a connection; a dash marks no connection. CPU IFU reaches
     Scratch SRAM and Boot ROM. CPU LSU reaches every target except CPU TCM.
     CPU DBG reaches every crossbar target except CPU TCM. DMA reaches every
     crossbar target except DMA CSR and Entropy Pool. System Interface reaches
     every crossbar target except CPU TCM, Reset Ctrl and System Periph.
-    Boot ROM connects only to CPU IFI and CPU LSU, outside the crossbar.</desc>
+    Boot ROM connects only to CPU IFU and CPU LSU, outside the crossbar.</desc>
   <rect width="720" height="710" rx="8" fill="#ffffff"/>
   <g font-family="sans-serif" font-size="18" fill="#263238">
     <text x="24" y="36" font-size="24" font-weight="bold">SEP AXI4 connectivity</text>
@@ -22,7 +22,7 @@
     <text x="465" y="109" font-size="16" font-weight="bold" text-anchor="middle">INITIATORS</text>
     <rect x="24" y="122" width="672" height="54" rx="4" fill="#e6eeeb"/>
     <g text-anchor="middle" font-weight="bold">
-      <text x="270" y="155">CPU IFI</text>
+      <text x="270" y="155">CPU IFU</text>
       <text x="366" y="155">CPU LSU</text>
       <text x="462" y="155">CPU DBG</text>
       <text x="558" y="155">DMA</text>

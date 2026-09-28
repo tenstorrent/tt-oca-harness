@@ -40,15 +40,15 @@ handle
 xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity implemented in
 `hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
-initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
+initiators (CPU IFU, CPU LSU, CPU DBG, DMA, and the System Interface)
 and ten targets.
 
 A few access paths are intentionally outside this crossbar:
 
-* *Boot ROM* is accessed by the CPU IFI and LSU through a dedicated
+* *Boot ROM* is accessed by the CPU IFU and LSU through a dedicated
 point-to-point path, not through this crossbar.
 * The CPU's own *ICCM/DCCM* are tightly coupled to the core and are not
-reached through this crossbar by the IFI/LSU. The *CPU TCM* target below
+reached through this crossbar by the IFU/LSU. The *CPU TCM* target below
 is a backdoor AXI path into the ICCM/DCCM, used by the DMA engine to
 preload code/data.
 * The _Alarm AGP is a feature deferred to the next generation_ and is
@@ -72,6 +72,31 @@ else back into this crossbar's System Interface initiator. The inbound filter
 controls which addresses the external master may reach; it is block-by-default
 after POR and configured by SEP firmware.
 
+[[sep-axi-terms]]
+.SEP AXI4 connectivity terms
+[cols="1,3",options="header"]
+|===
+|Label |Meaning
+|CPU IFU |CPU instruction-fetch unit; initiates instruction reads.
+|CPU LSU |CPU load/store unit; initiates data reads and writes.
+|CPU DBG |CPU debug access path.
+|DMA |Direct memory access engine; moves data without CPU load/store instructions.
+|CPU TCM |Tightly coupled memory backdoor: DMA access to the instruction
+closely coupled memory (ICCM) and data closely coupled memory (DCCM).
+|Scratch SRAM |Static random-access memory used for SEP working storage.
+|DMA CSR |DMA control and status registers.
+|WDT |Watchdog timer.
+|Reset Ctrl |SEP software reset controller.
+|Crypto Periph |Cryptographic accelerator and entropy-source register paths.
+|System Periph |System-peripheral routing, remapping, mailboxes and system registers.
+|IO Periph |Local input/output peripheral path, including SPI boot-flash access.
+|Entropy Pool |Read-only aperture for entropy supplied by the entropy distribution
+network (EDN).
+|AXI Extension |Outbound AXI4 port for resources outside the local crossbar.
+|System Interface |Filtered inbound path from the System Management Network (SMN).
+|Boot ROM |Read-only boot memory on the dedicated CPU fetch/load path.
+|===
+
 [[sep-axi-connectivity]]
 .SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
 image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
@@ -82,6 +107,13 @@ image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiator
 The input fabric admits external traffic through the inbound filter and
 system-peripheral decode. The local fabric connects SEP initiators to local
 resources, while the output fabric selects remapped or direct outbound paths.
+
+In the fabric diagrams, mux/demux labels `ID a/b` give the input and output
+AXI transaction-ID widths in bits; they do not count ports or data bits.
+The wider side of the symbol indicates the side with multiple ports.
+Bus tags give address/data/ID/user widths, in that order. The filter wrapper
+checks reads and writes independently, forwards permitted requests, and routes
+rejected requests to an AXI error responder.
 
 The input paths are shown in <<sep-input-fabric-diagram>>, the local resource
 connections in <<sep-local-fabric-diagram>>, and the outbound paths in
@@ -290,7 +322,15 @@ ifdef::backend-pdf[]
 See <<mailboxes,Mailboxes>> under Peripherals for host mailbox operation.
 endif::backend-pdf[]
 
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The Memory Map chapter lists the address windows. The common AXI Traffic
 Filter reference describes the filter register layout and programming rules.
@@ -301,3 +341,6 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<sep-memory-map,Memory Map>>; {axi-traffic-filter-ref}.
 endif::backend-pdf[]
+=== Detailed Register Map
+
+See the owning register references linked above.

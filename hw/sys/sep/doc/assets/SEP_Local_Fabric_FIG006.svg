@@ -49,7 +49,7 @@
   <rect x="2644" y="99" width="22" height="14" rx="2" fill="#f6f8fa" stroke="#c8ced6" stroke-width="0.8"/><line x1="2670" y1="106" x2="2694" y2="106" stroke="#8b949e" stroke-width="2" stroke-dasharray="6 4"/><text x="2700" y="110" font-size="11" fill="#1f2328">CSR control</text>
   <rect x="2644" y="115" width="22" height="14" rx="2" fill="url(#g-split)" stroke="#c8ced6" stroke-width="0.8"/><text x="2674" y="126" font-size="11" fill="#1f2328">split: in | out</text>
   <text x="2784" y="30" font-size="11" font-weight="700" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">READING THE DRAWING</text>
-  <polygon points="2784,36 2784,52 2802,47 2802,41" fill="#ffffff" stroke="#1f2328" stroke-width="1.5"/><text x="2793" y="62" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">3 → 4</text><text x="2820" y="42" font-size="11" fill="#1f2328">mux · demux: wide side = many ports</text><text x="2820" y="56" font-size="11" fill="#1f2328">ID width in → out beneath the symbol</text>
+  <polygon points="2784,36 2784,52 2802,47 2802,41" fill="#ffffff" stroke="#1f2328" stroke-width="1.5"/><text x="2793" y="62" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ID 3/4</text><text x="2820" y="42" font-size="11" fill="#1f2328">mux · demux: wide side = many ports</text><text x="2820" y="56" font-size="11" fill="#1f2328">ID a/b = input/output ID bits (not port count)</text>
   <path d="M2784 80 L2789 80 A5 5 0 0 1 2799 80 L2802 80" fill="none" stroke="#1f2328" stroke-width="2"/><line x1="2794" y1="73" x2="2794" y2="87" stroke="#1f2328" stroke-width="2"/><text x="2820" y="84" font-size="11" fill="#1f2328">crossing — no connection</text>
   <line x1="2784" y1="98" x2="2802" y2="98" stroke="#8b949e" stroke-width="1.4" stroke-dasharray="6 4"/><circle cx="2793" cy="98" r="3.5" fill="#8b949e"/><text x="2820" y="102" font-size="11" fill="#1f2328">junction — a wire branches off</text>
   <text x="2793" y="122" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">56/64/7/12</text><text x="2820" y="122" font-size="11" fill="#1f2328">width tag ADDR/DATA/ID/USER bits</text>
@@ -73,23 +73,23 @@
   <path d="M683 555.5 V564.5 M683 560.0 H693 M690 557.0 l3 3 -3 3" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="530" y="566.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_dbg_local_alias_remap</text>
   <text x="530" y="579.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">axi_window_remap</text>
-  <text x="500" y="336" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">→ [SEP_LOCAL_BASE_ADDR, + 768 MiB) ↦ 0x1000_0000</text>
+  <text x="500" y="336" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">-&gt; [SEP_LOCAL_BASE_ADDR, + 768 MiB) maps to 0x1000_0000</text>
   <polygon points="720,342 720,418 752,430 752,330" fill="#dbe6ff" stroke="#1f2328" stroke-width="1.6"/>
   <text x="736" y="322.0" text-anchor="middle" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_ifu_axi_demux</text>
-  <text x="736" y="444.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">3 → 3</text>
+  <text x="736" y="444.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ID 3/3</text>
   <polygon points="720,477 720,523 752,535 752,465" fill="#dbe6ff" stroke="#1f2328" stroke-width="1.6"/>
   <text x="736" y="457.0" text-anchor="middle" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_lsu_axi_demux</text>
-  <text x="736" y="549.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">3 → 3</text>
+  <text x="736" y="549.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ID 3/3</text>
   <rect x="850" y="397" width="140" height="26" rx="4" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2" stroke-dasharray="4 3"/>
   <path d="M978 402.5 a5.5 5.5 0 1 0 0.01 0 M978 405.0 V409.0 M978 411.0 V411.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="860" y="414.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_ifu_axi_err_slv</text>
   <polygon points="1040,230 1040,300 1072,288 1072,242" fill="#dbe6ff" stroke="#1f2328" stroke-width="1.6"/>
   <text x="1056" y="222.0" text-anchor="middle" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_boot_rom_axi_mux</text>
-  <text x="1056" y="314.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">3 → 4</text>
+  <text x="1056" y="314.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ID 3/4</text>
   <text x="845" y="244.0" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">boot ROM 0x1004_0000 – 0x1005_0000</text>
   <rect x="1130" y="244" width="200" height="42" rx="3" fill="url(#g1)" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1140" y="261.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_boot_rom_memory_interface</text>
-  <text x="1140" y="274.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">memory_interface: AXI4 → ROM macro</text>
+  <text x="1140" y="274.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">memory_interface: AXI4 -&gt; ROM macro</text>
   <text x="1101.0" y="257" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/4/12</text>
   <rect x="305" y="630" width="1150" height="100" rx="6" fill="#f6f8fa" stroke="#57606a" stroke-width="1.4"/>
   <text xml:space="preserve" x="317" y="652" font-size="12" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">u_sep_dma_wrap </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— master side</tspan></text>
@@ -99,15 +99,15 @@
   <rect x="540" y="659" width="180" height="42" rx="6" fill="url(#g2)" stroke="#57606a" stroke-width="1.2"/>
   <path d="M702 667.5 H714 M711 665.0 l3 2.5 -3 2.5 M714 672.5 H702 M705 670.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="550" y="676.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_tlul_to_axi_lite_dma</text>
-  <text x="550" y="689.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">TL-UL → AXI4-Lite</text>
+  <text x="550" y="689.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">TL-UL -&gt; AXI4-Lite</text>
   <rect x="780" y="659" width="180" height="42" rx="6" fill="url(#g3)" stroke="#57606a" stroke-width="1.2"/>
   <path d="M942 667.5 H954 M951 665.0 l3 2.5 -3 2.5 M954 672.5 H942 M945 670.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="790" y="676.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_axi_lite_to_axi_dma</text>
-  <text x="790" y="689.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4-Lite → AXI4</text>
+  <text x="790" y="689.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4-Lite -&gt; AXI4</text>
   <rect x="1020" y="659" width="180" height="42" rx="6" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
   <path d="M1182 667.5 H1194 M1191 665.0 l3 2.5 -3 2.5 M1194 672.5 H1182 M1185 670.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="1030" y="676.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_axi_dw_upsizer_dma</text>
-  <text x="1030" y="689.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">data 32 → 64</text>
+  <text x="1030" y="689.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">data 32 -&gt; 64</text>
   <polygon points="1269,659 1431,659 1440,668 1440,692 1431,701 1269,701 1260,692 1260,668" fill="#dbe6ff" stroke="#57606a" stroke-width="1.4"/>
   <path d="M1423 665.5 V674.5 M1423 670.0 H1433 M1430 667.0 l3 3 -3 3" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="1270" y="676.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_dma_local_alias_remap</text>
@@ -120,7 +120,7 @@
   <rect x="1463" y="273" width="334" height="849" rx="0" fill="none" stroke="#57606a" stroke-width="1.2"/>
   <path d="M1785 275 V287 M1791 275 V287 M1782 278 H1794 M1782 284 H1794" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="1470" y="287" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_sep_local_axi_xbar</text>
-  <text x="1470" y="300" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">axi_xbar · ID width 3 → 6 · 15 rules, 32-bit decode</text>
+  <text x="1470" y="300" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">axi_xbar · ID width 3 -&gt; 6 · 15 rules, 32-bit decode</text>
   <text x="1470" y="312" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">inside sep_local_axi_xbar_wrapper (type adaption only)</text>
   <text x="1468" y="383" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">ifu_sram</text>
   <text x="1468" y="518.0" font-size="9" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">lsu</text>
@@ -179,21 +179,21 @@
   <text x="1830.0" y="372" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1860" y="437" width="270" height="42" rx="3" fill="url(#g4)" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1870" y="454.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_sram_memory_interface</text>
-  <text x="1870" y="467.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">memory_interface: AXI4 → SRAM macro</text>
+  <text x="1870" y="467.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">memory_interface: AXI4 -&gt; SRAM macro</text>
   <text x="1830.0" y="450" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1860" y="509" width="190" height="54" rx="6" fill="#dbe6ff" stroke="#57606a" stroke-width="1.2"/>
   <path d="M2032 517.5 H2044 M2041 515.0 l3 2.5 -3 2.5 M2044 522.5 H2032 M2035 520.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="1870" y="526.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_axi_dw_downsizer_reg</text>
   <text x="1870" y="539.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">u_sep_dma_wrap CSR side</text>
-  <text x="1870" y="551.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">data 64 → 32</text>
+  <text x="1870" y="551.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">data 64 -&gt; 32</text>
   <rect x="2110" y="515" width="190" height="42" rx="6" fill="url(#g5)" stroke="#57606a" stroke-width="1.2"/>
   <path d="M2282 523.5 H2294 M2291 521.0 l3 2.5 -3 2.5 M2294 528.5 H2282 M2285 526.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="2120" y="532.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_axi_to_axi_lite_reg</text>
-  <text x="2120" y="545.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4 → AXI4-Lite</text>
+  <text x="2120" y="545.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4 -&gt; AXI4-Lite</text>
   <rect x="2360" y="515" width="190" height="42" rx="6" fill="url(#g6)" stroke="#57606a" stroke-width="1.2"/>
   <path d="M2532 523.5 H2544 M2541 521.0 l3 2.5 -3 2.5 M2544 528.5 H2532 M2535 526.0 l-3 2.5 3 2.5" class="glyph" fill="none" stroke="#1f2328" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
   <text x="2370" y="532.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_axi_lite_to_tlul_reg</text>
-  <text x="2370" y="545.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4-Lite → TL-UL</text>
+  <text x="2370" y="545.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4-Lite -&gt; TL-UL</text>
   <rect x="2610" y="515" width="130" height="42" rx="3" fill="#ffe0cc" stroke="#8b949e" stroke-width="1.0"/>
   <text x="2620" y="532.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_secure_dma</text>
   <text x="2620" y="545.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">CSRs</text>
@@ -203,7 +203,7 @@
   <text x="2580.0" y="528" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#d9480f">32/32/8/28</text>
   <rect x="1860" y="593" width="270" height="42" rx="3" fill="#dbe6ff" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1870" y="610.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_sep_wdt_wrap</text>
-  <text x="1870" y="623.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4 → AXI4-Lite → TL-UL bridges inside</text>
+  <text x="1870" y="623.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">AXI4 -&gt; AXI4-Lite -&gt; TL-UL bridges inside</text>
   <text x="1830.0" y="606" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1860" y="671" width="270" height="42" rx="3" fill="#dbe6ff" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1870" y="688.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_sep_reset_ctrl</text>
@@ -215,7 +215,7 @@
   <text x="1830.0" y="762" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1860" y="827" width="270" height="42" rx="3" fill="#dbe6ff" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1870" y="844.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_sep_system_peripherals</text>
-  <text x="1870" y="857.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">→ SEP output fabric (u_local_master_addr_fixer)</text>
+  <text x="1870" y="857.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">-&gt; SEP output fabric (u_local_master_addr_fixer)</text>
   <text x="1830.0" y="840" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1860" y="899" width="270" height="54" rx="3" fill="#dbe6ff" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1870" y="916.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">sep_io</text>
@@ -224,11 +224,11 @@
   <text x="1830.0" y="918" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1860" y="983" width="270" height="42" rx="3" fill="#dbe6ff" stroke="#8b949e" stroke-width="1.0"/>
   <text x="1870" y="1000.0" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_entropy_fifo</text>
-  <text x="1870" y="1013.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">u_axi_to_axi_lite → read-only entropy drain</text>
+  <text x="1870" y="1013.0" font-size="9" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">u_axi_to_axi_lite -&gt; read-only entropy drain</text>
   <text x="1830.0" y="996" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <polygon points="1900,1075 1900,1121 1932,1133 1932,1063" fill="#dbe6ff" stroke="#1f2328" stroke-width="1.6"/>
   <text x="1916" y="1055.0" text-anchor="middle" font-size="10" font-weight="600" font-family="Consolas, monospace" fill="#1f2328">u_efuse_shim_demux</text>
-  <text x="1916" y="1147.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">6 → 6</text>
+  <text x="1916" y="1147.0" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">ID 6/6</text>
   <text x="1835.0" y="1074" text-anchor="middle" font-size="8" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#1f4fd6">32/64/6/12</text>
   <rect x="1980" y="1100" width="240" height="26" rx="3" fill="#dbe6ff" stroke="#8b949e" stroke-width="1.0"/>
   <text xml:space="preserve" x="1990" y="1117.0" font-size="10" fill="#1f2328"><tspan font-weight="600" font-family="Consolas, monospace">sep_crypto </tspan><tspan font-weight="400" font-family="Segoe UI, Helvetica, Arial, sans-serif" fill="#57606a">— u_efuse_shim_axi_mux</tspan></text>
