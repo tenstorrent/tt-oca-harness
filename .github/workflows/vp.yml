@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-name: vp
+name: virtual platform
 
 # Label scheduled and manually dispatched runs in the Actions list; PR and push
 # runs yield an empty run-name, which falls back to the default event-specific
 # title (PR title / commit message).
-run-name: ${{ github.event_name == 'schedule' && 'vp nightly (scheduled)' || github.event_name == 'workflow_dispatch' && 'vp (manual dispatch)' || '' }}
+run-name: ${{ github.event_name == 'schedule' && 'virtual platform nightly (scheduled)' || github.event_name == 'workflow_dispatch' && 'virtual platform (manual dispatch)' || '' }}
 
 # Path-gated on PRs: a cold run builds SystemC and CCI from source, so it is far
 # too heavy to pay on every unrelated change. The nightly on main is what catches
