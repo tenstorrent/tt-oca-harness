@@ -670,7 +670,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SECURITY-DISABLE",
             "CHK-SEP-SECURITY-DISABLE",
             "a token matching the digest reports the match code and raises the disable level, "
-            "and a token one bit off reports the mismatch code",
+            "a token one bit off reports the mismatch code, and the security-disable net reads "
+            "0 before the token and 1 after the match at the SEP eFuse controller's output, "
+            "the smu wire and the SMC input",
         ),
         (
             "CHK-SEP-WDT-BITE",
@@ -1382,8 +1384,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "telemetry stays released and clocked while primary/periph fall",
         ),
     ],
-    # CHK-SMU-SEC-TOKEN-S1 and CHK-SMU-LC-SECDIS-S1 are logged by the body as
-    # observations the card does not claim, so they are not rows here.
+    # CHK-SMU-SEC-TOKEN-S1 is logged by the body as an observation the card does not
+    # claim, so it is not a row here.
     "smu_composition_parameter_test": [
         (
             "CHK-SMU-SEC-TOKEN-S2",

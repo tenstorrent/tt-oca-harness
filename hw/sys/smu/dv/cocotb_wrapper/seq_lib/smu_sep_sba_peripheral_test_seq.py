@@ -29,8 +29,12 @@ S6: the security-disable token (``hw/sys/sep/doc/security_disable.adoc``).
     reports the match code in SEC_DISABLE_TOKEN_MATCH and raises the SEP
     security-disable output; a token one bit off then reports the mismatch
     code (``efuse_mmr.rdl``: "Match = 6'b010101, Mismatch = 6'b101010"). The
-    security-disable level after the mismatch is recorded: no specification
-    states whether a mismatch withdraws an earlier match.
+    one security-disable net is read at the SEP eFuse controller that drives
+    it, the SMU wire and the SMC input before the token, where all three are 0, and after
+    the match, where all three are 1, so the net is shown to carry both values
+    from the SEP into the SMC. The security-disable level after the mismatch
+    is recorded: no specification states whether a mismatch withdraws an
+    earlier match.
 S7: the SEP watchdog (OpenTitan ``aon_timer``). With WDOG_CTRL.enable set and a
     small bite threshold, the watchdog bites and requests a reset ("A bite
     triggers a reset", ``aon_timer.hjson``). The request level after the cool
@@ -138,6 +142,10 @@ TOKEN_STATUS_MASK = c_header_u32(_MMR_H, "EFUSE_MMR__TOKEN_MATCH__TOKEN_MATCH_ST
 TOKEN_MATCH_CODE = 0b010101
 TOKEN_MISMATCH_CODE = 0b101010
 SECURITY_DISABLE_PATH = "sep_security_disable"
+SECURITY_DISABLE_SMC_PATH = "u_smc.sep_security_disable_i"
+SECURITY_DISABLE_SEP_PATH = (
+    "gen_sep.u_sep.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.security_disable_o"
+)
 
 WDOG_CTRL = _sep("WDT_TIMER_WDOG_CTRL_BASE_ADDR")
 WDOG_BARK = _sep("WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR")
@@ -348,8 +356,17 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             self._smu("sep_spi_mem_rebar_ipad"),
         )
 
+    def _security_disable_net(self) -> tuple[int, int, int]:
+        """(SMU wire, SMC input, SEP eFuse controller output) of the security-disable net."""
+        return (
+            self._smu(SECURITY_DISABLE_PATH),
+            self._smu(SECURITY_DISABLE_SMC_PATH),
+            self._smu(SECURITY_DISABLE_SEP_PATH),
+        )
+
     async def _security_disable(self, jtag, sb) -> None:
         observed, levels = [], []
+        net = [self._security_disable_net()]
         for token in ([0] * 8, [1] + [0] * 7):
             for addr, word in zip(TOKEN_WORDS, token):
                 await self._sb_ok(jtag, addr, 2, word)
@@ -361,12 +378,17 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
                     break
             levels.append(await self._settle(SECURITY_DISABLE_PATH, int(token == [0] * 8)))
             observed.append(status)
-        self._log(f"CHK-SEP-SECURITY-DISABLE status={observed} level_after_match={levels[0]}")
+            if len(net) == 1:
+                net.append(self._security_disable_net())
+        self._log(
+            f"security disable status={observed} level_after_match={levels[0]} "
+            f"net (wire, smc, sep) before/after the match={net}"
+        )
         self._log(f"OBSERVATION security disable level after the mismatch={levels[1]}")
         sb.expect_eq(
             "CHK-SEP-SECURITY-DISABLE",
-            (observed, levels[0]),
-            ([TOKEN_MATCH_CODE, TOKEN_MISMATCH_CODE], 1),
+            (observed, levels[0], net),
+            ([TOKEN_MATCH_CODE, TOKEN_MISMATCH_CODE], 1, [(0, 0, 0), (1, 1, 1)]),
             evidence="CHK-SEP-SECURITY-DISABLE",
         )
         self.steps["s6"] = True
