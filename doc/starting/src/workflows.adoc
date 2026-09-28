@@ -8,8 +8,7 @@
 ====
 This section is currently under development.
 
-- More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
-- DV FW sections reference source files frequently, how necessary is this?
+- More details on Yosys/Synthesis once finalised
 - Linters are still WIP on findings; the shared `flow.mk` path is the one to run
 ====
 
@@ -793,6 +792,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `format-c`
 | `format-c`
 | `make format-c-check`
+
+| `format-nix`
+| `format-nix`
+| `make format-nix-check`
 
 | `lint-tcl`
 | `lint-tcl`

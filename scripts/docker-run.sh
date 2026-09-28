@@ -683,10 +683,12 @@ case "${1:-}" in
 build) build_image ;;
 nixos-shell) nixos_shell ;;
 nix-fmt)
-  nixos_run "nix fmt"
+  shift
+  nixos_run "nix fmt -- $*"
   ;;
 nix-fmt-check)
-  nixos_run "nix fmt -- -f check"
+  shift
+  nixos_run "nix fmt -- -f check $*"
   ;;
 ensure) ensure_image ;;
 verify)
