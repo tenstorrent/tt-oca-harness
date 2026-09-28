@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-= Memory Map
+= Memory Map and Register Reference
 :description: SEP address regions and generated register tables.
 ifdef::backend-html5[]
 :sep-crypto-access-ref: xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]
@@ -94,7 +94,7 @@ include::../regs/gen/adoc/memory_map.adoc[tag=sep-components]
 endif::backend-pdf[]
 
 [[sep-detailed-register-map]]
-== Register References
+== Detailed Register Map
 
 The address tables above identify each aperture. Detailed registers are
 published with the owning block:
@@ -125,7 +125,7 @@ Controller, OTP Fuse Controller, Watchdog, Cryptographic Subsystem, DMA and SPI
 chapters. The shared eFuse IP chapter owns the eFuse MMR reference.
 endif::backend-pdf[]
 
-== External Window Reference Model
+=== External Window Reference Model
 
 The SEP external-window model supplies the eFuse SHIM control register below.
 Its execute-in-place region is a memory window rather than a register bank.
@@ -138,5 +138,5 @@ include::partial$sep/dv/models/regs/gen/html/sep_external.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../dv/models/regs/gen/adoc/sep_external.adoc[leveloffset=+1]
+include::../dv/models/regs/gen/adoc/sep_external.adoc[leveloffset=+2]
 endif::backend-pdf[]

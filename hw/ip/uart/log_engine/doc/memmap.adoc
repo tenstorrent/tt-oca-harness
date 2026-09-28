@@ -8,7 +8,15 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 [[log-engine-memory-map]]
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 Offsets below are relative to the Log Engine register bank. All registers
 reset to zero. The generated map gives field access and side effects.
@@ -33,7 +41,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-=== Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

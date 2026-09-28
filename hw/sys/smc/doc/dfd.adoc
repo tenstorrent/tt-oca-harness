@@ -123,7 +123,15 @@ endif::backend-pdf[]
 * *CLA clock stop* — asserted while the CLA has stopped clocks.
 * *CLA debug interrupt* — the debug interrupt raised by a CLA action.
 
-== Register Map
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The CLA counter values and timestamp fields are software-writable. Software
 writes take priority over simultaneous hardware updates; later hardware updates
@@ -140,6 +148,8 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 ).
 
+=== Detailed Register Map
+
 ifdef::backend-html5[]
 ++++
 include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
@@ -147,5 +157,5 @@ include::ip:partial$dfd/regs/gen/html/smc_cla.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[leveloffset=+1]
+include::../../../ip/dfd/regs/gen/adoc/smc_cla.adoc[leveloffset=+2]
 endif::backend-pdf[]

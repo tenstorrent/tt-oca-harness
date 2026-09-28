@@ -630,7 +630,14 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-fabric-detailed-register-maps]]
-== Register Reference
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -638,7 +645,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-fabric-alias-remap-registers]]
-=== Alias Remap Registers
+==== Alias Remap Registers
 
 The alias remap registers control local address aliasing and attribute
 mapping for SMC-initiated transactions. These registers configure how
@@ -651,7 +658,7 @@ include::ip:partial$axi_alias_remap/regs/gen/html/alias_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[leveloffset=+2]
+include::../../../ip/axi_alias_remap/regs/gen/adoc/alias_remap.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
@@ -660,7 +667,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-fabric-output-remap-registers]]
-=== Output Remap Registers
+==== Output Remap Registers
 
 The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
@@ -674,7 +681,7 @@ include::ip:partial$output_remap/regs/gen/html/output_remap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/output_remap/regs/gen/adoc/output_remap.adoc[leveloffset=+2]
+include::../../../ip/output_remap/regs/gen/adoc/output_remap.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
@@ -683,7 +690,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-fabric-inbound-traffic-filter-control-registers]]
-=== Inbound Traffic Filter Control Registers
+==== Inbound Traffic Filter Control Registers
 
 The inbound filter control registers protect SMC resources from
 unauthorized external access. Each of the 16 independent filter
@@ -697,7 +704,7 @@ include::ip:partial$axi_filter/regs/gen/html/filter_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc[leveloffset=+2]
+include::../../../ip/axi_filter/regs/gen/adoc/filter_ctrl.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
@@ -706,7 +713,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-fabric-outbound-traffic-filter-control-registers]]
-=== Outbound Traffic Filter Control Registers
+==== Outbound Traffic Filter Control Registers
 
 The outbound filter control registers determine which external resources
 the SMC can access, restricting SMC-initiated requests to defined system

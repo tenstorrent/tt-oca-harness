@@ -662,7 +662,14 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[smc-interrupts-register-interfaces]]
-== Register Reference
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -671,5 +678,5 @@ include::partial$smc/regs/gen/html/blocks/plic.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/plic.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/plic.adoc[leveloffset=+2]
 endif::backend-pdf[]

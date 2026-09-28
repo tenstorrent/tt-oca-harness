@@ -37,7 +37,7 @@ ifdef::backend-html5[]
 ** xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 * xref:dfd.adoc[Design-for-Debug and CLA]
 * xref:scan_protection.adoc[eFuse Scan Protection]
-* xref:memmap.adoc[Memory Map]
+* xref:memmap.adoc[Memory Map and Register Reference]
 endif::backend-html5[]
 
 ifdef::backend-html5[]

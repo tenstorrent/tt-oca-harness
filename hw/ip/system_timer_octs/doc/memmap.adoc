@@ -2,7 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-memory-map]]
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-map"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The register bank occupies `0x00`–`0x23` and uses 32-bit AXI4-Lite accesses.
 Use the enclosing subsystem's memory map for its base address.
@@ -37,7 +45,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-=== Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

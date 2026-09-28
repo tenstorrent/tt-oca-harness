@@ -369,7 +369,20 @@ here.
 
 For the canonical eFuse IP documentation covering the `efuse_interface_controller` internals, sensing FSM, and programming protocol, see `hw/ip/efuse/doc/index.adoc` (included in the SMC documentation via `hw/sys/smc/doc/periphs.adoc`).
 
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -378,5 +391,5 @@ include::partial$sep/regs/gen/html/blocks/sep_efuse_map.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/sep_efuse_map.adoc[leveloffset=+2]
 endif::backend-pdf[]

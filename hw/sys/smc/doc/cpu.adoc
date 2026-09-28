@@ -331,7 +331,14 @@ functional resets and allow override of reset vectors to support
 firmware development and diagnostics.
 
 [[detailed-register-map]]
-== Register Reference
+== Memory Map and Register Reference
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -343,8 +350,8 @@ include::partial$smc/regs/gen/html/blocks/bus_error_unit.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+1]
-include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/cpu_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/clint.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/debug_module.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/bus_error_unit.adoc[leveloffset=+2]
 endif::backend-pdf[]

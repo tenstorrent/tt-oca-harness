@@ -44,7 +44,7 @@ ifdef::backend-html5[]
 ** xref:sep:adams_bridge.adoc[Adams Bridge (ABR)]
 ** xref:sep:otbn.adoc[OTBN PKA Public Key Accelerator]
 ** xref:ip:key_manager/doc/index.adoc[Key Manager]
-* xref:memory_map.adoc[Memory Map]
+* xref:memory_map.adoc[Memory Map and Register Reference]
 endif::backend-html5[]
 
 ifdef::backend-html5[]

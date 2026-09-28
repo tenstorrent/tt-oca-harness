@@ -77,7 +77,20 @@ ifdef::backend-pdf[]
 register map follows below.
 endif::backend-pdf[]
 
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -86,5 +99,5 @@ include::ip:partial$spi_controller/regs/gen/html/spi_controller.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[leveloffset=+1]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/spi_controller/regs/gen/adoc/spi_controller.adoc[leveloffset=+2]
 endif::backend-pdf[]

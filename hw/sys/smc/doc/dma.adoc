@@ -390,12 +390,16 @@ length and stride widths (matching the address width) and 32-bit
 repetition counts. This enables efficient handling of both linear and 2D
 data movement patterns.
 
-== Detailed Register Map
+== Memory Map and Register Reference
+
+=== Memory Map
 
 NOTE: The register map below covers all 16 stream banks because the
 register file is generated at the maximum stream count. With
 `NUM_CTRL_STREAMS = 1`, only the `_0` bank of `NEXT_ID`, `STATUS`, and
 `DONE` has any effect; see <<dma-stream-support>>.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -404,5 +408,5 @@ include::ip:partial$dma_ctrl/regs/gen/html/dma_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc[leveloffset=+1]
+include::../../../../vendor/pulp-platform/idma/overlay/rdl/gen/adoc/dma_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]

@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Asciidoctor extension for Antora TRM pages that numbers and captions figures
-// and tables within each page, including generated register HTML tables. Adds
-// section-local references and records metadata for the lists of figures and
-// tables built by block-indexes.js.
+// and tables within each page, including generated register HTML tables.
+// Records metadata for the lists of figures and tables built by block-indexes.js.
 
 'use strict'
 
@@ -32,7 +31,6 @@ exports.register = function (registry, { file } = {}) {
       if (!doc.hasAttribute('ocah-trm')) return doc
       const counts = { image: 0, table: 0 }
       const entries = []
-      const owners = new Map()
       const refs = doc.getCatalog().refs
       const allocated = new Set()
       const uniqueId = (base) => {
@@ -89,16 +87,6 @@ exports.register = function (registry, { file } = {}) {
         block.setCaption(`${label}. `)
         block.setNumeral(counts[kind])
         doc.$register('refs', [id, block])
-        if (owner) {
-          if (!owners.has(owner)) owners.set(owner, [])
-          owners.get(owner).push(`<a href="#${encodeURIComponent(id)}">${label}</a>`)
-        }
-      }
-      for (const [owner, links] of owners) {
-        const blocks = owner.getBlocks()
-        const firstSection = blocks.findIndex((block) => block.getContext() === 'section')
-        const paragraph = this.createBlock(owner, 'pass', `<p class="block-references">Figures and tables: ${links.join('; ')}.</p>`)
-        blocks.splice(firstSection < 0 ? blocks.length : firstSection, 0, paragraph)
       }
       if (file) file.blockCatalog = entries
       return doc

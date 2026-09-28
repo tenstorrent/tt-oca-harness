@@ -82,7 +82,20 @@ described in this section.
 .Proposed SEP DMA extensions
 image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -91,5 +104,5 @@ include::ip:partial$secure_dma/regs/gen/html/secure_dma.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[leveloffset=+1]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/secure_dma/regs/gen/adoc/secure_dma.adoc[leveloffset=+2]
 endif::backend-pdf[]

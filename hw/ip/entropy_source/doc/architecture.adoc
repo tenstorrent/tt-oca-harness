@@ -119,7 +119,20 @@ the pin off-chip, for example muxed onto a GPIO, owns restricting `DEBUG_CTRL`
 to the lifecycle or debug-enable states in which observing pre-conditioning
 entropy is acceptable.
 
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -128,5 +141,5 @@ include::ip:partial$entropy_source/regs/gen/html/entropy_source.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/entropy_source.adoc[leveloffset=+1]
+include::../regs/gen/adoc/entropy_source.adoc[leveloffset=+2]
 endif::backend-pdf[]

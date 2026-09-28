@@ -9,7 +9,15 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 [[gpio-memory-map]]
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-maps"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The controller's interface bank contains `DATA_CTRL` at offset `0x0`,
 `DATA_CTRL_ENABLE` at `0x4`, and `ACCESS_FILTER` at `0x8`. The shim's
@@ -24,7 +32,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-=== Reset Values
+==== Reset Values
 
 `ACCESS_FILTER` resets to `0x00010100`: read and write filters are disabled,
 with each stored protection requirement set to `3'b001`. `DATA_CTRL` and
@@ -45,7 +53,7 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-=== Register Maps
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++

@@ -166,7 +166,23 @@ and its control interface.
 include::../../../ip/drbg/doc/architecture.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
-== CSRNG Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="csrng-register-reference"></span>
+<span id="edn-register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+CSRNG and EDN occupy separate apertures in the SEP memory map. Their register
+offsets and access rules are given in the generated maps below.
+
+=== Detailed Register Map
+
+==== CSRNG Registers
 
 ifdef::backend-html5[]
 ++++
@@ -175,10 +191,10 @@ include::ip:partial$csrng/regs/gen/html/csrng.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[leveloffset=+1]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/csrng/regs/gen/adoc/csrng.adoc[leveloffset=+3]
 endif::backend-pdf[]
 
-== EDN Register Reference
+==== EDN Registers
 
 ifdef::backend-html5[]
 ++++
@@ -187,5 +203,5 @@ include::ip:partial$edn/regs/gen/html/edn.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[leveloffset=+1]
+include::../../../../vendor/lowRISC/opentitan/overlay/regs/edn/regs/gen/adoc/edn.adoc[leveloffset=+3]
 endif::backend-pdf[]

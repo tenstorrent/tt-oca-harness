@@ -2,9 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-=== Address Space Organization
+ifdef::backend-html5[]
+++++
+<span id="address-space-organization"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
 The total address space is 0x20000 bytes supporting up to 64 mailbox
@@ -31,7 +37,7 @@ The two apertures of a pair are the two ends of the same pair of FIFOs:
 paired inbound aperture pops, and vice versa. Both ends are reachable from the
 same AXI4-Lite slave port.
 
-=== Per-Mailbox Register Map
+==== Per-Mailbox Register Map
 
 Within each 2KB mailbox aperture, registers are organized as follows.
 Offsets are spaced by `DATA_WIDTH`/8, so they are 8 bytes apart in the
@@ -42,7 +48,7 @@ OKAY response.
 
 Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.
 
-=== Address Examples
+==== Address Examples
 
 For mailbox pair `N`, the outbound aperture begins at
 `BASE + N * 0x1000`; the inbound aperture begins 0x800 bytes later. A
@@ -62,7 +68,7 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/axil_mailbox.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
-=== Subsystem Wrapper Maps
+==== Subsystem Wrapper Maps
 
 The wrapper maps describe the generated SMC and SEP mailbox compositions.
 Their offsets are relative to the corresponding wrapper aperture.
@@ -75,6 +81,6 @@ include::partial$axi_lite_mailbox_unit/regs/gen/html/axil_mailbox_sep_wrap.html[
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/axil_mailbox_smc_wrap.adoc[leveloffset=+2]
-include::../regs/gen/adoc/axil_mailbox_sep_wrap.adoc[leveloffset=+2]
+include::../regs/gen/adoc/axil_mailbox_smc_wrap.adoc[leveloffset=+3]
+include::../regs/gen/adoc/axil_mailbox_sep_wrap.adoc[leveloffset=+3]
 endif::backend-pdf[]

@@ -82,7 +82,7 @@ class Structure(unittest.TestCase):
                 "Controllers",
                 "Sources and Routing",
                 "Software Handling",
-                "Register Reference",
+                "Memory Map and Register Reference",
             ],
             "fabric": [
                 "Topology",
@@ -90,7 +90,7 @@ class Structure(unittest.TestCase):
                 "Address Remapping",
                 "Filtering and Protection",
                 "Routing",
-                "Register Reference",
+                "Memory Map and Register Reference",
             ],
         }
         for chapter, expected in outlines.items():
@@ -134,6 +134,25 @@ class Structure(unittest.TestCase):
             "otbn_wrapper_key",
         ]:
             self.assertIn(f"/{name}.html[", km)
+
+    def test_memory_and_register_reference_layout(self):
+        for relative in (
+            "uart/uart_16550", "uart/log_engine", "gpio", "system_timer_octs",
+            "avsbus_controller", "i2c", "i3ccore_wrap", "efuse",
+            "telemetry_receiver", "axi_lite_mailbox_unit",
+        ):
+            with self.subTest(block=relative):
+                text = (ROOT / f"hw/ip/{relative}/doc/memmap.adoc").read_text()
+                self.assertIn("== Memory Map and Register Reference", text)
+                headings = re.findall(r"^=== (.+)$", text, re.M)
+                self.assertEqual(headings, ["Memory Map", "Detailed Register Map"])
+        km = (ROOT / "hw/ip/key_manager/doc/index.adoc").read_text()
+        self.assertLess(km.index("include::firmware.adoc"),
+                        km.index("== Memory Map and Register Reference"))
+        self.assertEqual(re.findall(r"^=== (.+)$", km, re.M),
+                         ["Memory Map", "Detailed Register Map"])
+        periphs = (ROOT / "hw/sys/smc/doc/periphs.adoc").read_text()
+        self.assertIn("include::../../../ip/i3ccore_wrap/doc/index.adoc", periphs)
 
     def test_service_placement(self):
         nav = (ROOT / "doc/trm/modules/ROOT/nav.adoc").read_text()

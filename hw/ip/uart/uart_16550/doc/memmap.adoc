@@ -2,9 +2,15 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[uart-16550-memory-map]]
-== Memory Map
+== Memory Map and Register Reference
 
-=== Overview
+ifdef::backend-html5[]
+++++
+<span id="overview-3"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
 
 The UART 16550 register map follows the industry-standard 16550 UART
 layout with additional extended registers. The register space spans 64
