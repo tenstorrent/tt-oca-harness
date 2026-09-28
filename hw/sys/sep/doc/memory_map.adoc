@@ -63,18 +63,24 @@ endif::backend-pdf[]
 
 The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 
-Each row below is the address aperture reserved for a unit, not the
-extent that decodes.
+Each row below is the aperture reserved for a unit, and the Decoded Extent
+column gives the part of it that registers or memory back. The last two
+columns state how SEP answers a 32-bit access that no register or memory
+backs, as seen at its inbound AXI port. Each cell gives the read response and
+read data, then the write response. _Hole in Extent_ covers the unbacked
+offsets inside a unit's decoded extent, _Past Extent_ covers the rest of its
+aperture, and the `Reserved` rows are the addresses between unit apertures.
 
-The fabric refuses an address that falls between unit windows, or past
-the extent a unit allocates; such an access never reaches a unit.
+A write refused behind an AXI-to-AXI-Lite converter answers `SLVERR`, whatever
+response the refusing component returns. An error on the 64-bit fabric carries
+`0xCA11AB1E` instead of `0xBADCAB1E` when address bit 2 is set; a note below
+the table marks the cells this applies to.
 
-Inside a unit's allocated extent, an offset that owns no register is
-accepted by the unit: reads return zero and writes are discarded, both
-with an OKAY response. Software gets no indication that it addressed
-nothing. Such an offset cannot alias a live register, because register
-decode is an exact address match rather than a range -- not because the
-access is refused.
+In the response cells, `-` means the region does not exist: the unit is
+memory, its registers fill its extent, or its aperture ends at its extent.
+`Forwarded` means SEP does not decode the aperture and the target of the
+forwarded access answers, and `Adopter-defined` means the adopter's
+implementation answers.
 
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
 does not decode offsets inside that window, so every access reaches the TRNG
@@ -94,7 +100,7 @@ serves the mailbox and system CSR windows, and forwards all other addresses
 below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
 crossbar. Addresses above 0x4000_0000 and the units listed above are not
 reachable through this external path and receive error responses from the
-`smn_inbound` port.
+`smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
 
 ifdef::backend-html5[]
 include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]

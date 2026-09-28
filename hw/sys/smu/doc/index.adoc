@@ -110,7 +110,9 @@ address and excludes `base + size`; the addition uses 57 bits to preserve
 carry from the 56-bit address. A match selects the corresponding subordinate,
 subject to the connectivity in <<smu-crossbar-connectivity-diagram>>.
 An unmatched SEP or SMC request uses `ext_out`. An unmatched external request
-returns `DECERR`, because `ext_in` cannot loop back to `ext_out`.
+returns `DECERR`, because `ext_in` cannot loop back to `ext_out`. A SEP request
+to the SEP aperture, or an SMC request to the SMC aperture, also returns
+`DECERR`, because the connectivity gives neither subsystem a path to itself.
 
 [[smu-clocks-and-resets]]
 == Clocks and Resets
