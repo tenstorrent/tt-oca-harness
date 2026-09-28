@@ -7,8 +7,9 @@
 // out whenever OCAH_INC_ASSERT is undefined, which includes every Verilator
 // build. The macros here are live wherever SIMULATION is defined, which the
 // DV profiles set for every simulator, and wherever FORMAL is defined, which
-// every formal backend script sets (hw/common/dv/docs/formal-property-style.adoc);
-// lint and synthesis define neither, so they expand to nothing there. Verilator
+// every formal backend script sets (hw/common/dv/docs/formal-property-style.adoc),
+// and wherever EMULATION is defined; lint and synthesis define none of them, so
+// they expand to nothing there. Verilator
 // evaluates them when the build passes --assert and drops them otherwise. They
 // carry rules whose operands are two-state safe (value compares, implications,
 // $stable, $past, bounded repetition); a rule that needs four-state operands
@@ -39,6 +40,8 @@
 `ifdef SIMULATION
 `define OCAH_SVA_MACROS_LIVE
 `elsif FORMAL
+`define OCAH_SVA_MACROS_LIVE
+`elsif EMULATION
 `define OCAH_SVA_MACROS_LIVE
 `endif
 

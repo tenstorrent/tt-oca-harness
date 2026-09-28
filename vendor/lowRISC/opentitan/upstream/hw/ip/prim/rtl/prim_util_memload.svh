@@ -20,7 +20,9 @@
  * git grep) and adjusted appropriately.
  */
 
-`ifndef SYNTHESIS
+`ifdef EMULATION
+`elsif SYNTHESIS
+`else
   // Task for loading 'mem' with SystemVerilog system task $readmemh()
   export "DPI-C" task simutil_memload;
 
@@ -55,12 +57,19 @@
 `endif
 
 initial begin
-`ifndef SYNTHESIS
+`ifdef EMULATION
+`define OCAH_OT_MEMLOAD_SHOW_PATHS
+`elsif SYNTHESIS
+`else
+`define OCAH_OT_MEMLOAD_SHOW_PATHS
+`endif
+`ifdef OCAH_OT_MEMLOAD_SHOW_PATHS
   logic show_mem_paths;
 
   // Print the hierarchical path to the memory to help make formal connectivity checks easy.
   void'($value$plusargs("show_mem_paths=%0b", show_mem_paths));
   if (show_mem_paths) $display("%m");
+`undef OCAH_OT_MEMLOAD_SHOW_PATHS
 `endif
 
   if (MemInitFile != "") begin : gen_meminit

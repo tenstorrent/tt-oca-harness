@@ -103,9 +103,13 @@
  `include "prim_assert_yosys_macros.svh"
  `define OCAH_OT_INC_ASSERT
 `else
- // Enable assertions for every flow except synthesis and Verilator
+ // Enable assertions for every flow except synthesis and Verilator. EMULATION
+ // keeps them when SYNTHESIS is also set.
  `ifndef VERILATOR
- `ifndef SYNTHESIS
+ `ifdef EMULATION
+   `define OCAH_OT_INC_ASSERT
+ `elsif SYNTHESIS
+ `else
    `define OCAH_OT_INC_ASSERT
  `endif
  `endif

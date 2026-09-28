@@ -8,6 +8,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "ocah_assert.svh"
 
 module sep_local_axi_xbar_wrapper (
   input  logic                                clk_i,  // System clock.
@@ -243,7 +244,7 @@ module sep_local_axi_xbar_wrapper (
   // Verify sep_pkg types match sep_local_axi_xbar_pkg types
   // =========================================================================
 
-`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
+`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
   // Input ports (3-bit ID, 32-bit addr, 64-bit data, 12-bit user)
   initial begin : gen_input_type_assertions
     // IFU SRAM
@@ -673,6 +674,6 @@ module sep_local_axi_xbar_wrapper (
     assert ($bits(sep_external_axi_resp_i.b.user) == $bits(sep_external_resp.b.user))
     else $fatal(1, "SEP_EXTERNAL B USER width mismatch");
   end
-`endif  // SYNTHESIS
+`endif  // OCAH_DEBUG_LIVE
 
 endmodule : sep_local_axi_xbar_wrapper
