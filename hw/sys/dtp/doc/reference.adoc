@@ -24,6 +24,9 @@ section of the Cross-Trigger Network page.
 the Integrator Guide.
 
 ifdef::backend-html5[]
+The generated module and port pages are in RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
 include::ROOT:partial$hw/dtp/doc/port_table.adoc[]
 endif::backend-html5[]
 ifdef::backend-pdf[]

@@ -1,75 +1,62 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP OpenTitan SPI Host Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
+// Bridge AXI4-Lite onto the OpenTitan spi_host TL-UL register interface.
 //
-// Follows the crypto-accelerator pattern (see hmac_wrapper / kmac_wrapper):
-// the unmodified OpenTitan `spi_host` core is instantiated on its native
-// TL-UL register interface, and `axi_lite_to_tlul` bridges the 32-bit
-// AXI4-Lite bus that `sep_io` already presents. The register block is the
-// upstream REGGEN block, so the OpenTitan SPI Host documentation is
-// authoritative for the register map and interrupt semantics (INTR_STATE is
-// RW1C, INTR_ENABLE gates only the interrupt output, INTR_TEST is a
-// write pulse).
+// Follows the crypto-accelerator pattern: unmodified spi_host on native TL-UL, with
+// axi_lite_to_tlul presenting the 32-bit AXI4-Lite bus from sep_io.
+// Addresses are rebased by the SPI controller base and masked to the 6-bit spi_host window.
+// Writes with all byte strobes low complete locally with OKAY and never reach the core.
+// The bridge's sticky fault output is left unconnected.
 //
-// Status and interrupt ports:
-// - irq_o           : OR of the core's two interrupt lines (error, spi_event)
-// - lsio_trigger_o  : passed through
+// The upstream REGGEN block is authoritative for the register map:
 //
-// There is no busy output. The core keeps its activity state internal and
-// publishes it only as STATUS.ACTIVE, which software reads over this wrapper's
-// register interface.
+// - INTR_STATE is RW1C.
+// - INTR_ENABLE gates only the interrupt output.
+// - INTR_TEST is a write pulse.
 //
-// Tie-offs on the upstream core:
-// - RACL is compiled out (EnableRacl = 0); policies are driven inactive.
-// - The spi_device passthrough interface is held inactive.
-// - The single fatal alert (bus integrity) is terminated here; `sep_io` has no
-//   alert path.
+// irq_o is the OR of the core's error and spi_event lines. lsio_trigger_o is passed
+// through. There is no busy output; activity is STATUS.ACTIVE over the register interface.
 //
-// Features (from the upstream core):
-// - Configurable number of chip selects (default: 1)
-// - Up to Quad SPI (4-bit data width)
-// - Single Transfer Rate (STR) only (no DTR/DDR support)
-// - Software-driven command sequences; no memory-mapped (XIP) flash access
+// RACL is compiled out (EnableRacl = 0) with inactive policies. The spi_device passthrough
+// is held inactive. The single fatal alert (bus integrity) is terminated here because
+// sep_io has no alert path.
+//
+// Supports:
+//
+// - A configurable number of chip selects (default 1).
+// - Up to Quad SPI.
+// - Single transfer rate only (no DTR/DDR).
+// - Software-driven command sequences without memory-mapped XIP flash access.
 
 module sep_ot_spi_wrap #(
-  parameter int unsigned NUM_CS = 1  // Number of chip selects
+  parameter int unsigned NUM_CS = 1  // Number of SPI chip selects.
 ) (
-  // Global Interface
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                         // System clock.
+  input  logic rst_ni,                        // Active-low reset.
 
-  // Test/Scan Interface
-  input  logic test_en_i,
+  input  logic test_en_i,                     // DFT test-enable (scan-enable).
 
-  //=========================================================================
-  // AXI4-Lite Register Interface
-  // Address range: 0x10B0_0000 - 0x10B0_0037 (56 bytes)
-  //=========================================================================
-  input  sep_io_pkg::axil_req_t  axil_req_i,
-  output sep_io_pkg::axil_resp_t axil_resp_o,
+  input  sep_io_pkg::axil_req_t  axil_req_i,  // spi_host register request; 0x10B0_0000 -
+                                              // 0x10B0_0037 (56 bytes) in the SEP address map.
+  output sep_io_pkg::axil_resp_t axil_resp_o,  // spi_host register response from the TL-UL bridge.
 
-  //=========================================================================
-  // SPI Pad Interface (directly active signals)
-  //=========================================================================
-  // Clock
-  output logic              spi_sck_o,
-  output logic              spi_sck_oe_o,
+  output logic              spi_sck_o,        // SPI serial clock to the pad.
+  output logic              spi_sck_oe_o,     // Output enable for the SPI serial clock pad,
+                                              // active-high.
 
-  // Chip Select (directly active-low, directly active OE)
-  output logic [NUM_CS-1:0] spi_cs_no,     // Active-low chip select
-  output logic [NUM_CS-1:0] spi_cs_oe_o,   // Output enable (directly active)
+  output logic [NUM_CS-1:0] spi_cs_no,        // Active-low chip selects to the pads.
+  output logic [NUM_CS-1:0] spi_cs_oe_o,      // Output enables for the chip-select pads,
+                                              // active-high.
 
-  // Data (directly active signals, only 4 bits for OpenTitan)
-  output logic [3:0]        spi_sd_o,      // Data output (directly active)
-  output logic [3:0]        spi_sd_oe_o,   // Output enable (directly active)
-  input  logic [3:0]        spi_sd_i,      // Data input
+  output logic [3:0]        spi_sd_o,         // Output data on the four SPI data lanes.
+  output logic [3:0]        spi_sd_oe_o,      // Per-lane output enables for the SPI data pads,
+                                              // active-high.
+  input  logic [3:0]        spi_sd_i,         // Input data from the four SPI data lanes.
 
-  //=========================================================================
-  // Status and Interrupt Interface
-  //=========================================================================
-  output logic              irq_o,            // interrupt (error | spi_event)
-  output logic              lsio_trigger_o    // DMA trigger
+  output logic              irq_o,            // SPI interrupt: OR of the spi_host error and
+                                              // spi_event interrupts.
+  output logic              lsio_trigger_o    // spi_host DMA trigger, passed through.
 );
 
   logic unused_test_en;

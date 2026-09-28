@@ -9,6 +9,8 @@
 addrmap uart_wrap #(
     longint unsigned MAX_NUM_UARTS = 4
 ) {
+    name = "UART Wrapper Address Map";
+    desc = "Wrapper address map instantiating the per-UART log-engine blocks.";
 
     /////////////////
     // Address Map //

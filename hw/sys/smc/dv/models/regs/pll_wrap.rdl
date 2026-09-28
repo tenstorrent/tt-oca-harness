@@ -25,6 +25,8 @@ mem pll_wrap_placeholder_mem #(
 };
 
 addrmap pll_wrap {
+    name = "PLL Wrapper Placeholder Address Map";
+    desc = "Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.";
     external pll_wrap_placeholder_mem footprint @0x0;
 };
 

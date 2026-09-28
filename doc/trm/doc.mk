@@ -49,8 +49,24 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 			"$(OCAH_DOC_DIR)/_build/html_antora/ocah-docs/latest/aou-records-of-changes.html"; \
 	fi
 
+# RTL Modules Reference fragments are generated into the staged tree after
+# stage-docs.sh, and only for the HTML build. They are not committed.
+.PHONY: ocah-doc-rtl-modules
+ocah-doc-rtl-modules: ocah-doc-trm-setup
+	@py="$(OCAH_ROOT)/.venv/bin/python3"; \
+	if [ ! -x "$$py" ] || ! "$$py" -c 'import svdoc' >/dev/null 2>&1; then py=python3; fi; \
+	"$$py" -c 'import svdoc' >/dev/null 2>&1 || { \
+		echo "error: python3 cannot import svdoc."; \
+		echo "install it (uv sync, or pip install svdoc) in the python that runs the doc build."; \
+		exit 1; }; \
+	"$$py" "$(OCAH_ROOT)/tools/doc/rtl_modules_reference.py" \
+		--root "$(OCAH_ROOT)" \
+		--pages "$(OCAH_TRM_MODULES)/ROOT/pages" \
+		--partials "$(OCAH_TRM_MODULES)/ROOT/partials/rtl-modules" \
+		--nav "$(OCAH_TRM_MODULES)/ROOT/nav.adoc"
+
 .PHONY: ocah-doc-trm-html
-ocah-doc-trm-html: ocah-doc-all-setup
+ocah-doc-trm-html: ocah-doc-all-setup ocah-doc-rtl-modules
 	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { echo "error: node/npx is required to build the Antora site."; echo "install Node.js, or run:"; echo "  ./scripts/docker-run.sh doc-html trm"; exit 1; }
 	@echo "Building TRM HTML documentation (Antora) with node $$(node --version 2>/dev/null)"
 	@cd "$(OCAH_ROOT)" && $(OCAH_ANTORA) \
@@ -95,6 +111,7 @@ ocah-doc-trm-clean:
 OCAH_PHONY += \
   ocah-doc-trm-meta \
   ocah-doc-trm-setup \
+  ocah-doc-rtl-modules \
   ocah-doc-trm-html \
   ocah-doc-trm-pdf \
   ocah-doc-trm-serve \

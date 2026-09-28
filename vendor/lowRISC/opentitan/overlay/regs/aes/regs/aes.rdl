@@ -4,6 +4,8 @@
 `include "opentitan_udps.rdl"
 
 addrmap aes {
+    name = "AES Accelerator";
+    desc = "AES encryption and decryption engine with SCA and FI countermeasures";
     reg {
         field {
             sw = w;

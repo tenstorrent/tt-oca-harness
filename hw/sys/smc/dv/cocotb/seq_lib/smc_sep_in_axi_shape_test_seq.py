@@ -75,9 +75,16 @@ def long_beat(index: int) -> int:
 
 
 LONG_BURST_PAYLOAD = sum(long_beat(i) << (64 * i) for i in range(LONG_BURST_BEATS))
+# Last page of ecam_region: a generated-map region with no block behind it,
+# which the fabric error slave answers with DECERR on the write channel as on
+# the read channel the error-depth test proves.
+UNIMPLEMENTED_ADDR = (
+    smc_addr("SMC_TOP_ECAM_REGION_BASE_ADDR") + smc_addr("SMC_TOP_ECAM_REGION_SIZE") - 0x1000
+)
+AXI_RESP_DECERR = 3
 
 # Accesses this sequence issues over SEP_IN, counted for the reachability gate.
-EXPECTED_ACCESSES = 23
+EXPECTED_ACCESSES = 24
 # Scoreboard value compares the sequence must book: all thirteen reads carry
 # an expectation, so all thirteen are compared by the scoreboard.
 MIN_VALUE_CHECKS = 13
@@ -215,6 +222,22 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             expected=LONG_BURST_PAYLOAD,
         )
 
+        # The write channel of a region with no block behind it.
+        monitor = getattr(getattr(self, "env", None), "axi_monitor", None)
+        if monitor is not None:
+            monitor.expected_decerr_addrs.add(UNIMPLEMENTED_ADDR)
+        dead_wr = await self._axi(
+            "unimplemented_wr",
+            SmcSysAxiOp.WRITE,
+            UNIMPLEMENTED_ADDR,
+            wdata=0xDEAD_0000,
+            allow_error=True,
+        )
+        assert dead_wr.resp_code == AXI_RESP_DECERR, (
+            f"SEP_IN write to unimplemented 0x{UNIMPLEMENTED_ADDR:08x} answered "
+            f"resp={dead_wr.resp_code}, expected DECERR"
+        )
+
         await self._axi("restore0", SmcSysAxiOp.WRITE, SCRATCH_COLD_0, wdata=0)
         await self._axi("restore1", SmcSysAxiOp.WRITE, SCRATCH_COLD_1, wdata=0)
 
@@ -248,6 +271,11 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             wrap.resp_code,
             BURST_BEAT0,
             BURST_BEAT1,
+        )
+        cocotb.log.info(
+            "CHK-SEP-IN-DECERR-WRITE: SEP_IN write to the unimplemented ecam_region page 0x%08x "
+            "answered DECERR",
+            UNIMPLEMENTED_ADDR,
         )
         cocotb.log.info(
             "CHK-SEP-IN-BURST-LONG: AxLEN=%d INCR write of %d-byte beats at 0x%08x read back "

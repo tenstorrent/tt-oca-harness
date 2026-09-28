@@ -57,19 +57,15 @@ image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
 
 == Parameters
 
-<<key-manager-parameters-table>> lists the Key Manager memory dimensions and integration
-parameters.
+The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
+the read-data behaviour of its memories, and the address of the eFuse controller.
 
-[[key-manager-parameters-table]]
-[cols="<30%,<18%,<10%,<42%",options="header"]
-.Key Manager parameters
-|===
-|Parameter |Type |Default |Description
-|`ROM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM boot ROM in bytes (16 KB).
-|`SRAM_SIZE_BYTES` |`int unsigned` |32768 |Size of the KM data SRAM in bytes (32 KB).
-|`MAILBOX_DEPTH` |`int unsigned` |16 |Minimum FIFO depth for each mailbox direction (must be a power of two).
-|`LATCHED_MEM_RDATA` |`bit` |`1'b0` |When set, the PicoRV32 core treats memory read data as latched (hold until next request).
-|===
+ifdef::backend-html5[]
+The parameters of `key_manager` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `key_manager` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 [[key-manager-memory-map]]
 == Memory Map

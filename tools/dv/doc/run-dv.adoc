@@ -776,7 +776,7 @@ the file and the table or entry:
   every `{placeholder}` in a value is one the consuming stage defines.
 . `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
 . Each `[coverage.<tool>]` table is well formed and each coverage policy
-  file loads; a lapsed waiver is a warning, not a failure.
+  file loads.
 . The scheduler's default and allowed executors are registered.
 . No key from the rejected-key table is present (<<runner-rejected-keys>>).
 . The test catalog loads after include expansion: each test's `run_modes`
@@ -2137,16 +2137,16 @@ disposition and no GitHub issue, a duplicate id, a `minimum_percent` outside
 0 to 100, an `expected_matches` below 1, an entry without a
 `pass:[[[holes.native]]]` selector, a `pass:[[[native_files]]]` entry with a key
 outside its grammar or a `sha256` other than its file's, and a category,
-disposition, status, population, date, or selector key outside the grammar. A policy that
+disposition, status, population, hole key, or selector key outside the grammar. A policy that
 contradicts the report is refused by `cov_report` after the report command
 ran: a `pass:[[[holes]]]` entry that matches a number of points other than
 `expected_matches`, an accepted waiver or exclusion that matches a covered
 point, or two entries that claim one point. That record is `ERROR` with a
 `config_error` bucket, the run status is `ERROR`, and
-`coverage-details.raw.json` is the only report file written. An accepted
-waiver past its `expires` date grades its points as open and adds a warning
-to `policy-application.json`, so a lapsed waiver lowers the effective figure
-instead of hiding a hole.
+`coverage-details.raw.json` is the only report file written. The grade is
+a function of the design build and the policy file alone: an accepted waiver
+stays accepted until the policy changes, and the checks above refuse it as
+soon as the RTL, the bench or a test moves the points it names.
 
 In scheduler mode (a group, `--regress`, `--reseed`, `--retry`,
 `--max-failures`, or more than one item), the leaf stage never stops the
@@ -2171,8 +2171,10 @@ A hole reviewed after a regression is closed in the DUT's
   category, and status.
 . Add or edit a `pass:[[[holes]]]` entry. A waiver is an entry with
   `disposition = "waive"` (or `"exclude_scope"`), `status = "accepted"`,
-  `confidence` of `medium` or `high`, a `rationale`, `owner`, `reviewer`, and
-  `date`, plus one or more `pass:[[[holes.native]]]` selectors. `expected_matches`
+  `confidence` of `medium` or `high`, a `rationale`, an `owner` and a
+  `reviewer`, plus one or more `pass:[[[holes.native]]]` selectors. An entry
+  accepts no other keys besides `id`, `title`, `category`, `issues` and
+  `expected_matches`; git records when it was written. `expected_matches`
   is an exact count. An accepted waiver that matches a covered point, a
   low-confidence waiver, and a `dut` that differs from the run's are rejected.
 . Re-grade the finished run against the policy:
@@ -2234,14 +2236,6 @@ Carried values: the tool version and supported metrics come from the run's
 recorded, so a `--fail-under` the original run used has to be passed again.
 The compatibility threshold grades the tool's raw overall figure, so a waiver
 changes the verdict only through a `pass:[[[thresholds]]]` rule.
-
-An accepted waiver may carry `expires` (`YYYY-MM-DD`). Past that date the
-waiver is lapsed at grade time for its own DUT: the hole keeps its `policy_id`
-and disposition, its `status` becomes `open`, it counts as an open hole and no
-longer shrinks the effective denominator, and `warnings` in
-`coverage-details.json` and `policy-application.json` carry
-`<rule id> expired on <date>; treated as open`. `--validate-configs` reports
-the expiry as a warning and stays `OK`; extending the date restores the waiver.
 
 `pass:[[[native_files]]]` entries act inside the merge and report commands, which the
 re-grade does not run. When the policy's native files differ from the digests
@@ -2984,8 +2978,7 @@ policy applied.
 |`cov/report/policy-application.json`
 |none
 |The policy path and SHA-256, the native policy files applied, every
-`matched` entry with the observation ids it claimed, and the warnings, one
-per lapsed waiver.
+`matched` entry with the observation ids it claimed, and `warnings`.
 |===
 
 Three fingerprints decide whether two grades are comparable.
@@ -3168,8 +3161,7 @@ symlink.
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `cpu_stub` / `hosted`, plus the SMC `rtl_issue`
-row). Main protection
+regression group (`all` / `cpu_stub` / `hosted`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke

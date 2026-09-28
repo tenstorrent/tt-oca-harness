@@ -66,12 +66,12 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
             # Both numbers, because they differ and the smaller one is the real
             # coverage: readable is what the read-alias compare uses, armed is
-            # what the write-probe store compare can actually fail on. Printing
-            # only the first reads as more coverage than the store compare has.
+            # what the per-probe change compare can actually fail on. Printing
+            # only the first reads as more coverage than the change compare has.
             hw_updating = sum(1 for addr in snaps[win.name] if addr in win.hw_updating)
             self.logger.info(
                 "CHK-WINDOW-LIVE PASS: %s %d allocated register(s) readable, "
-                "%d armed for the store compare (%d hardware-updating)",
+                "%d armed for the change compare (%d hardware-updating)",
                 win.name,
                 len(snaps[win.name]),
                 len(snaps[win.name]) - hw_updating,

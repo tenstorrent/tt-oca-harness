@@ -277,8 +277,14 @@ def run_in_container(args: argparse.Namespace) -> int:
     """Re-run this invocation inside the OCAH toolchain container.
 
     docker-run.sh does not forward the caller's environment, but its bwrap
-    backend does, so RISCV_TOOLCHAIN/RISCV_PREFIX are dropped here: the
-    container path resolves the image's own tools from PATH.
+    backend does. RISCV_TOOLCHAIN and RISCV_PREFIX are dropped so the
+    container path resolves the image's own tools from PATH. UV and
+    VIRTUAL_ENV are dropped for the same reason: ``uv run`` exports UV as the
+    host binary, preamble.mk keeps that value, and the sandbox does not bind
+    it. With UV unset, ``uv`` resolves on PATH to the binary mounted at
+    /run/ocah/uv. The project environment, cache and managed interpreters stay
+    under local/ so ``uv run --locked`` does not replace the host .venv or
+    store interpreters under the shared /tmp the sandbox uses as HOME.
     """
     if not os.access(DOCKER_RUN, os.X_OK):
         print(
@@ -304,8 +310,20 @@ def run_in_container(args: argparse.Namespace) -> int:
     env = {
         key: value
         for key, value in os.environ.items()
-        if key not in {"RISCV_TOOLCHAIN", "RISCV_PREFIX", "MAKEFLAGS", "MFLAGS"}
+        if key
+        not in {
+            "RISCV_TOOLCHAIN",
+            "RISCV_PREFIX",
+            "MAKEFLAGS",
+            "MFLAGS",
+            "UV",
+            "VIRTUAL_ENV",
+        }
     }
+    sandbox = REPO_ROOT / "local"
+    env["UV_PROJECT_ENVIRONMENT"] = str(sandbox / "bwrap-venv")
+    env["UV_CACHE_DIR"] = str(sandbox / "bwrap-uv-cache")
+    env["UV_PYTHON_INSTALL_DIR"] = str(sandbox / "bwrap-uv-python")
     print("+", " ".join(argv), flush=True)
     return subprocess.run(argv, cwd=REPO_ROOT, env=env, check=False).returncode
 

@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Package
+// Define AXI-Lite typedefs and constants for the cross-trigger port.
 //
-// Description:
-// Package containing types, parameters, and constants for the Cross Trigger Port
-//------------------------------------------------------------------------------
+// ctp_axil_req_t and ctp_axil_resp_t type the CSR interface shared with the generated
+// register block.
 
 `ifndef CROSS_TRIGGER_PORT_PKG_SV
 `define CROSS_TRIGGER_PORT_PKG_SV
-
-// Import AXI package (required for typedef macros)
 import axi_pkg::*;
-// Include AXI typedef macros
-
 package cross_trigger_port_pkg;
 
   `include "axi/typedef.svh"

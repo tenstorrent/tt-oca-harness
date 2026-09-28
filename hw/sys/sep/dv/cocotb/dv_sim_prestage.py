@@ -37,6 +37,8 @@ to catch drift.
 from __future__ import annotations
 
 import importlib.util
+import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -128,7 +130,7 @@ _SIP_SYS_DIS_PINS_DBG_OPEN = {
 }
 
 # test name -> OTP image spec. mode "random" => randomize(seed+seed_offset, **kw);
-# mode "preload" => load(preload). Mirrors each test's select_efuse_image(...).
+# mode "preload" => load(preload); mode "blank" => SepEfuseImage() unchanged. Mirrors each test's select_efuse_image(...).
 EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     # Full-shadow proof + W1S persistence: seed-random with CHIPLET_UID pinned to 0
     # (the test programs one bit of it after the first sense). Must match the test's
@@ -243,6 +245,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x8,
         "fixed_from": "lc_transition",
     },
+    "sep_lcc_lc_state_w1s_prod_end_rma_test": {
+        "mode": "random",
+        "lc_raw": 0x8,
+        "fixed_from": "lc_transition",
+    },
     # The transient-RMA leaf senses TRANSIENT_RMA_EN=1, which the test re-pins in
     # its own select_efuse_image call.
     "sep_lcc_lc_state_w1s_transient_test": {
@@ -251,6 +258,8 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "fixed_from": "lc_transition",
         "fixed_extra": {"TRANSIENT_RMA_EN": 1},
     },
+    # Blank OTP image: the test stages SepEfuseImage() unchanged as its golden.
+    "sep_efuse_token_match_fault_pic_test": {"mode": "blank"},
     # Locked-field shadow IRQ. SPARE lock bits and patterns come from
     # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
     "sep_locked_field_access_irq_path_test": {
@@ -308,11 +317,56 @@ def _resolve_preload(path: str, cwd, root) -> Path:
     raise FileNotFoundError(f"+sep_efuse_preload={path} not found (tried: {tried})")
 
 
+# KM production ROM built by [c_build.km_rom_main] (sep_sim_cfg.toml). c_compile
+# builds it in <run_dir>/stages/c_compile/rom_main/<item>/, a directory private
+# to that run and test, and declares no output, so this hook stages it.
+_KM_ROM_MAIN = "rom_main.rom.parhex"
+_KM_ROM_MAIN_ARG = f"+km_rom_hex={_KM_ROM_MAIN}"
+
+
+def _stage_km_rom_main(item: str, cwd, sim_args) -> bool:
+    """Copy this run's KM rom_main image into the sim directory.
+
+    Applies to a leaf whose plusargs carry ``+km_rom_hex=rom_main.rom.parhex``.
+    The run directory is the nearest ancestor of ``cwd`` that holds this
+    item's c_compile build directory (``cwd`` is ``<run_dir>/<item>``, or
+    ``<run_dir>/<item>/seed_<n>/attempt_<m>`` in a regression). The copy is
+    written to a temporary name, then moved into place. A missing image raises, so a sim
+    never boots an image from another run or an earlier build.
+    """
+    if _KM_ROM_MAIN_ARG not in (sim_args or []):
+        return False
+    cwd = Path(cwd).resolve()
+    rel = Path("stages") / "c_compile" / "rom_main" / item / _KM_ROM_MAIN
+    for base in (cwd, *cwd.parents):
+        src = base / rel
+        if src.parent.is_dir():
+            break
+    else:
+        raise FileNotFoundError(
+            f"{item}: no c_compile build of {_KM_ROM_MAIN} for this run "
+            f"(looked for <run_dir>/{rel} above {cwd}); run c_compile first"
+        )
+    if not src.is_file() or src.stat().st_size == 0:
+        raise FileNotFoundError(f"{item}: c_compile left no {_KM_ROM_MAIN} at {src}")
+    dst = cwd / _KM_ROM_MAIN
+    tmp = cwd / f".{_KM_ROM_MAIN}.tmp.{os.getpid()}"
+    shutil.copyfile(src, tmp)
+    os.replace(tmp, dst)
+    print(f"[dv_sim_prestage] staged {item} KM ROM {src} -> {dst}", flush=True)
+    return True
+
+
 def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
-    """Write ``<cwd>/out/sep_efuse.hex`` for a registered efuse test OR any test that
-    passes ``+sep_efuse_preload`` (the plusarg overrides the registry, matching the
-    runtime ``select_efuse_image`` contract). Returns True if an image was staged,
-    False if the test is neither registered nor carrying a preload plusarg (no-op)."""
+    """Stage the pre-sim images a leaf loads at time 0.
+
+    Copies this run's KM rom_main image when the leaf boots it (see
+    ``_stage_km_rom_main``). Writes ``<cwd>/out/sep_efuse.hex`` for a registered
+    efuse test OR any test that passes ``+sep_efuse_preload`` (the plusarg
+    overrides the registry, matching the runtime ``select_efuse_image``
+    contract). Returns True if an eFuse image was staged, False if the test is
+    neither registered nor carrying a preload plusarg."""
+    _stage_km_rom_main(item, cwd, sim_args)
     preload_sel = _preload_from_args(sim_args)
     spec = EFUSE_IMAGE_REGISTRY.get(item)
     if preload_sel is None and spec is None:
@@ -334,6 +388,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
         image.load(path)
     elif spec.get("mode") == "preload":
         image.load(spec["preload"])
+    elif spec.get("mode") == "blank":
+        pass
     else:
         fixed = spec.get("fixed")
         if spec.get("fixed_from") == "rma_token":

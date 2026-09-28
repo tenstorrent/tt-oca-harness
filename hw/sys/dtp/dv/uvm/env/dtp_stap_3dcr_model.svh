@@ -54,10 +54,8 @@ class dtp_stap_3dcr_model;
 
   // Per-STAP gate state from the direct disables (1 = STAP gated).
   static function void gates(sep_lifecycle_ctrl_pkg::dbg_disable_t d, output bit g[DtpStapCount]);
-    g[ST_IO]     = d.stap_io;
-    g[ST_SMC]    = d.stap_smc;
-    g[ST_SEP]    = d.stap_sep;
-    g[ST_EXTRA0] = d.stap_extra;
+    for (int unsigned s = 0; s < DtpStapCount; s++)
+    g[s] = dtp_dbg_path_disabled(d, dtp_stap_dbg_path(s));
   endfunction
 
   // --- downstream TAPs -------------------------------------------------------

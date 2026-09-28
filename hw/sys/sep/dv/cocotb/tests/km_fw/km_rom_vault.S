@@ -27,8 +27,9 @@
 #     back FREE with CTRL all clear -- the mark is what makes a no-op erase
 #     fail rather than pass on the reset value
 #
-# Register addresses come from the generated map, included below. Field
-# masks come from km_fields.inc (lifted from km_csr.h / km_kpv.h).
+# Register addresses, array strides and word offsets come from the generated
+# map, included below. Field masks come from km_fields.inc (lifted from
+# km_csr.h / km_kpv.h / km_mailbox_km.h).
 #
 # CTRL[slot] bits: lock_write[0], lock_use[1], erase[2], seal[3]. Erase is
 # never gated by a lock or by the seal; the slot's seal state when the erase
@@ -59,6 +60,7 @@
 #define CTRL_SEALED        (CTRL_SEAL | CTRL_LOCK_WRITE)
 #define CTRL_RETIRED       (CTRL_LOCK_WRITE | CTRL_LOCK_USE)
 #define CTRL_ALL           (CTRL_LOCK_WRITE | CTRL_LOCK_USE | CTRL_ERASE | CTRL_SEAL)
+#define MBOX_INBOUND_EMPTY KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
 
     // Mailbox register offsets, derived from the generated map rather than
     // typed: the images hold the block base in a register and index off it.
@@ -66,6 +68,20 @@
     .equ MBOX_WRITE_SEP,   (KEY_MANAGER_MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+
+    // KPV array geometry from the generated map. The slot index scales by a
+    // shift, so each stride must be the power of two named here; a stride
+    // that moves at the next RDL regeneration fails the build.
+    .equ KEY_ENTRY_SHIFT,  6
+    .equ CTRL_SHIFT,       2
+    .if (1 << KEY_ENTRY_SHIFT) != KEY_MANAGER_KPV_KEY_ENTRY_STRIDE
+    .error "KEY_ENTRY stride is not 1 << KEY_ENTRY_SHIFT"
+    .endif
+    .if (1 << CTRL_SHIFT) != (KEY_MANAGER_KPV_CTRL_BASE_ADDR(1) - KEY_MANAGER_KPV_CTRL_BASE_ADDR(0))
+    .error "CTRL stride is not 1 << CTRL_SHIFT"
+    .endif
+    .equ CTRL_LAST_OFF,    (KEY_MANAGER_KPV_CTRL_BASE_ADDR((KEY_MANAGER_KPV_CTRL_NUM - 1)) - KEY_MANAGER_KPV_CTRL_BASE_ADDR(0))
+    .equ KEY_WORD_LAST_OFF, (KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, (KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM - 1)) - KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0))
 
     // The KM SRAM is a memory, not a register block, so the generated register
     // header carries no symbol for it. Base 0x8000 and 1 KB lock regions:
@@ -90,7 +106,7 @@ _start:
 
     # Wait for the host config word.
 1:  lw    x2, MBOX_STATUS(x1)
-    andi  x6, x2, 0x1           # inbound_empty
+    andi  x6, x2, MBOX_INBOUND_EMPTY
     bnez  x6, 1b
     lw    x2, MBOX_READ_DATA(x1)           # cfg
     andi  x3, x2, 0x3F          # slot
@@ -101,7 +117,7 @@ _start:
     # later reads this address; a never-written slot already returns 0, so
     # the zero-data refusal would pass whether or not the lock forced it.
     li    x12, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
-    slli  x13, x3, 6            # slot * 0x40
+    slli  x13, x3, KEY_ENTRY_SHIFT  # slot * KEY_ENTRY stride
     add   x12, x12, x13
     lui   x13, 0xA11CE
     sw    x13, 0(x12)
@@ -116,14 +132,14 @@ _start:
     andi  x7, x7, CTRL_LOCK_WRITE
     beqz  x7, slot_done
 
-    slli  x11, x3, 2
+    slli  x11, x3, CTRL_SHIFT
     add   x11, x8, x11          # CTRL[slot]
     sw    x6, 0(x11)
     lw    x7, 0(x11)
     andi  x7, x7, CTRL_LOCK_WRITE
     beqz  x7, slot_done
 
-    addi  x11, x8, 0xFC         # CTRL[63] = 0x000130FC
+    addi  x11, x8, CTRL_LAST_OFF  # CTRL[63]
     sw    x6, 0(x11)
     lw    x7, 0(x11)
     andi  x7, x7, CTRL_LOCK_WRITE
@@ -144,7 +160,7 @@ slot_done:
     bnez  x7, lockwr_done
 
     li    x12, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
-    slli  x13, x3, 6            # slot * 0x40
+    slli  x13, x3, KEY_ENTRY_SHIFT  # slot * KEY_ENTRY stride
     add   x12, x12, x13         # KEY_ENTRY[slot].word0
     lui   x13, 0xC0DE1
     sw    x13, 0(x12)           # refused: slot is write-locked
@@ -163,7 +179,7 @@ lockwr_done:
 
     # --- key-data read of a lock_use slot returns SLVERR and zero data ---
     addi  x7, x0, CTRL_LOCK_USE
-    slli  x11, x3, 2
+    slli  x11, x3, CTRL_SHIFT
     add   x11, x8, x11
     sw    x7, 0(x11)
     lw    x7, 0(x11)
@@ -270,15 +286,15 @@ lock_done:
     li    x8, KEY_MANAGER_KPV_CTRL_BASE_ADDR(0)
     srli  x6, x2, 16
     andi  x6, x6, 0x3F          # seal slot
-    slli  x6, x6, 2
+    slli  x6, x6, CTRL_SHIFT
     add   x6, x8, x6            # CTRL[seal_slot]
 
     addi  x7, x0, CTRL_SEAL
     sw    x7, 0(x6)
     lw    x7, 0(x6)
-    andi  x11, x7, CTRL_SEALED
+    andi  x11, x7, CTRL_ALL
     addi  x12, x0, CTRL_SEALED
-    bne   x11, x12, seal_done   # one write must seal AND write-lock
+    bne   x11, x12, seal_done   # one write seals AND write-locks, lock_use clear
     ori   x5, x5, 0x40          # CHK-SEAL
 
     addi  x7, x0, CTRL_ERASE
@@ -322,7 +338,7 @@ seal_done:
     # --- erase an unsealed slot: it must come back reusable ---
     srli  x6, x2, 24
     andi  x6, x6, 0x3F          # free slot
-    slli  x6, x6, 2
+    slli  x6, x6, CTRL_SHIFT
     add   x6, x8, x6            # CTRL[free_slot]
 
     # Preload key data BEFORE marking the slot, while writes are still allowed.
@@ -331,12 +347,12 @@ seal_done:
     li    x13, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
     srli  x14, x2, 24
     andi  x14, x14, 0x3F
-    slli  x14, x14, 6
+    slli  x14, x14, KEY_ENTRY_SHIFT
     add   x13, x13, x14         # KEY_ENTRY[free_slot]
     lui   x14, 0x5A5A5
     addi  x14, x14, 0x5A5
     sw    x14, 0(x13)           # word 0
-    sw    x14, 0x3C(x13)        # word 15
+    sw    x14, KEY_WORD_LAST_OFF(x13)  # word 15
 
     # Mark the slot first. Its reset value is already 0, so erasing an
     # untouched slot and finding CTRL clear would be satisfied by an erase that
@@ -367,7 +383,7 @@ free_erased:
     # words must have changed AND must now differ from each other. A stuck-at
     # fill, or a fill that never ran, fails.
     lw    x11, 0(x13)
-    lw    x12, 0x3C(x13)
+    lw    x12, KEY_WORD_LAST_OFF(x13)
     beq   x11, x14, free_done   # word 0 unchanged
     beq   x12, x14, free_done   # word 15 unchanged
     beq   x11, x12, free_done   # both words identical: not an advancing fill

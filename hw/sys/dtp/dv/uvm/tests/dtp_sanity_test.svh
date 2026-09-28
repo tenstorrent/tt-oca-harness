@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_sanity_test — VPLAN 0.1: runs
-// dtp_sanity_test_seq on the shared ocah_jtag_vip agent's sequencer, then
-// asserts full FSM state/edge closure via the env checker (this scenario's
-// closure obligation — the per-cycle legality check is always on). Also
-// arms the JTAG TAP-contract named evidence: required CHK-*
-// IDs finalize through env.m_jtag_checker in check_phase.
+// dtp_sanity_test — runs dtp_sanity_test_seq on the shared ocah_jtag_vip
+// agent's sequencer, then asserts full FSM state/edge closure via the env
+// checker (this scenario's closure obligation — the per-cycle legality check
+// is always on). Also arms the JTAG TAP-contract named evidence: required
+// CHK-* IDs finalize through env.m_jtag_checker in check_phase.
 
 class dtp_sanity_test extends dtp_base_test;
   `uvm_component_utils(dtp_sanity_test)
@@ -33,7 +32,7 @@ class dtp_sanity_test extends dtp_base_test;
     return "DTP_SANITY_TEST_LOOPS";
   endfunction
 
-  // VPLAN 0.1 closure gate: after the looped passes, every TAP state must
+  // Closure gate: after the looped passes, every TAP state must
   // have been visited and every legal edge taken (the deterministic walk
   // in each pass guarantees it; the checker proves it).
   task run_phase(uvm_phase phase);

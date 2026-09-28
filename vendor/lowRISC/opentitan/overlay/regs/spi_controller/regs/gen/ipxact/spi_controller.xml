@@ -12,6 +12,8 @@
       <ipxact:name>spi_controller_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>spi_controller</ipxact:name>
+        <ipxact:displayName>SPI Host</ipxact:displayName>
+        <ipxact:description>Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h38</ipxact:range>
         <ipxact:width>32</ipxact:width>

@@ -14,7 +14,8 @@ scope_epoch = "smc-vcs-cov-v1"
 # PeakRDL blocks, plus A3 NO-READ-CHANNEL, A4 READ-NEVER-ERRORS and A5
 # INPUT-UNCONNECTED, which belong to one block each, and A6 SINGLEPULSE-RETAIN,
 # the retain row of a field the RDL declares singlepulse, A7 SINGLEPULSE-LOADS,
-# the load-skipping path of such a field's flop, and C1 CONTRADICTORY-PATH, a
+# the load-skipping path of such a field's flop, A10 HW-WRITE-EVERY-CYCLE, the
+# same path of a hw = rw field without a write enable, and C1 CONTRADICTORY-PATH, a
 # branch path whose own decisions contradict. B1 PARTIAL-LANE-WRITE
 # joins them and is the bench's own: the AXI agent writes whole 32-bit words, so
 # on a block whose cpuif is no wider no write-branch row that needs a lane off
@@ -61,13 +62,26 @@ args = ["-elfile", "{path}"]
 # Features the integration leaves out (P1 NTRACE-OFF, P2 SKIP-TIED-OFF, P3
 # WREN-TIED, P4 SINGLE-SOURCE, P5 INSTR-TYPE-CONST, P6 LC-STATE-OFF, P7
 # NO-ERROR-CAP, P8 WREN-TIED-ZERO, P9 DEBUG-WIDTH-64, P10
-# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING, P13
-# CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16 SINK-ENABLE-CONST, P17
-# ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19 NTR-RAM-READ-TIED, P20
-# TCOUNT-SELECT-PAIRED, and F3
-# TIEOFF's branch paths; B6
-# SIM-ONLY-FUSE-BYPASS is the bench's and its policy's: no leaf passes the
-# simulation-only +skip_fuse_sense plusarg the DV policy forbids): the
+# PACKET-SHORTER-THAN-BANK, P11 UART-SELF-CHECK, P12 BREAK-IMPLIES-FRAMING,
+# P13 CLAMP-TIED, P14 JTAG-MMR-TIED, P15 SECURE-TM-TIED, P16
+# SINK-ENABLE-CONST, P17 ONE-TRACE-CORE, P18 TDR-OVERRIDE-TIED, P19
+# NTR-RAM-READ-TIED, P20 TCOUNT-SELECT-PAIRED, P22 DFD-CONTROL-TIED, P24
+# DIVIDER-INIT-NEVER-SET, P25 SINK-WRITEBACK-TIED, P26 OUTPUT-FLOP-PARAM, P27
+# PAGE-WIDTH-BOUND, P28 LOG-WRITE-OKAY, P29 FIELD-MAP-LOCKS, P30 CCG-HYST-OFF,
+# P31 OCTS-CREDIT-SPEC, C5 SIGNAL-IDENTITY, C6 EARLIER-ARM-TAKES, C7
+# ENUM-MEMBERS-ONLY, C8 APB-PHASE-ORDER, C9 W2C-PULSE, C10 VALID-WITH-COMMAND,
+# C11 AVS-IRQ-DETECT-REARM, C12 POP-ONLY-NONEMPTY, C13 COUNTER-VALID-PAIRED,
+# C14 STROBE-MASK-NONZERO, C15 UNSIGNED-WRAP-DECODE, A11
+# APB-ACK-FIRST-ACTIVE-CYCLE, D1 SINGLE-OUTSTANDING-DEMUX, D2 W-FOLLOWS-AW, A2
+# and C4 where a consumer reads a register block, and F3
+# TIEOFF's branch paths; B6 SIM-ONLY-FUSE-BYPASS is the bench's and its
+# policy's, as no leaf passes the simulation-only +skip_fuse_sense plusarg the
+# DV policy forbids, and B8 DFD-BENCH-INPUTS-TIED is the bench's, which ties the
+# CLA crosstrigger and TDR clock-stop inputs, as B9 SECURITY-DISABLE-TIED
+# is for the eFuse security-disable input, and B12 BANK-MODEL-NO-SLVERR for
+# the eFuse bank model that never returns SLVERR, and B13 LANE-ZERO-FILL for
+# the masters that never leave data on an unstrobed lane, and B14
+# STROBE-FOLLOWS-ADDRESS for masters that always strobe their start lane): the
 # DFD clamps, JTAG MMR requester, eFuse secure test mode and AVS TDR override
 # are tied off, the sink enables and trace
 # core count are fixed by parameters, and the
@@ -109,3 +123,849 @@ role = "exclude"
 path = "smc_group_exclusions.el"
 apply_phase = "report"
 args = ["-elfile", "{path}"]
+
+# The cover properties urg reports under `user`, classified the way the
+# Verilator policy classifies them so both signoff figures carry the same
+# holes; the runner grades the family by the tool's own figure. A generate
+# block is a plain hierarchy level here, and the three smc_axi_chan_fcov
+# instances are separate points, so a `u_*` row matches each of them.
+[[holes]]
+id = "fcov-smc-c_clk_periph_stalled_window"
+title = "c clk periph stalled window"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_clk_fcov.c_clk_periph_stalled_window"
+
+[[holes]]
+id = "fcov-smc-c_clk_ratio_periph_faster_than_smc"
+title = "c clk ratio periph faster than smc"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_clk_fcov.c_clk_ratio_periph_faster_than_smc"
+
+[[holes]]
+id = "fcov-smc-c_clk_ratio_smc_equal_ref"
+title = "c clk ratio smc equal ref"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_clk_fcov.c_clk_ratio_smc_equal_ref"
+
+[[holes]]
+id = "fcov-smc-c_clk_ratio_smc_slower_than_ref"
+title = "c clk ratio smc slower than ref"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_clk_fcov.c_clk_ratio_smc_slower_than_ref"
+
+[[holes]]
+id = "fcov-smc-c_clk_smc_stalled_window"
+title = "c clk smc stalled window"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_clk_fcov.c_clk_smc_stalled_window"
+
+[[holes]]
+id = "fcov-smc-c_custom_action_output_driven"
+title = "c custom action output driven"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-CLA-ACTION.S6:custom-action-output-driven)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_cpu_fcov.c_custom_action_output_driven"
+
+[[holes]]
+id = "fcov-smc-c_done0_cleared_after_read"
+title = "c done0 cleared after read"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the point model: DONE_0 reads the monotonic retired-transfer counter (idma_transfer_id_gen.sv resets completed_q to 1 and wraps to 1 or 2), so it never returns to 0 and a read does not clear it; the point requires the register to read 0 on a read strobe whose previous sample was non-zero, which no stimulus can produce (SMC-DMA-STREAM0.S3:done0-cleared-after-read)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_dma_fcov.c_done0_cleared_after_read"
+
+[[holes]]
+id = "fcov-smc-c_next_id_0_zero_on_invalid_setup"
+title = "c next id 0 zero on invalid setup"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the point model: NEXT_ID_0 reads the idma transfer-id generator directly (idma_transfer_id_gen.sv resets next_q to 2 and wraps to 1 or 2 on overflow) and the reg frontend presents it unconditionally for an implemented stream, so the register can never read 0 and the point cannot be satisfied by any stimulus (SMC-DMA-STREAM0.S2:next-id-0-zero-on-invalid-setup)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_dma_fcov.c_next_id_0_zero_on_invalid_setup"
+
+[[holes]]
+id = "fcov-smc-c_bank_ctrl_write"
+title = "c bank ctrl write"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the point model: a bank-control write is now driven (an EFUSE_SHIM_CTRL EFUSE_BANK_INIT_TIME write with an exact readback) and its B response is observed, but the point requires aw_valid and w_valid in one clk_smc_i sample and the upstream axi_lite_mux presents the two channels through separate spill registers, so the coincidence never occurs (SMC-EFUSE-IF.S2:bank-ctrl-write)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_bank_ctrl_write"
+
+[[holes]]
+id = "fcov-smc-c_write_unlocked_field_updated"
+title = "c write unlocked field updated"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half (SMC-EFUSE-LOCKS.S2:write-unlocked-field-updated)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_write_unlocked_field_updated"
+
+[[holes]]
+id = "fcov-smc-c_axil_dtp_csr_active"
+title = "c axil dtp csr active"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_axil_dtp_csr_active"
+
+[[holes]]
+id = "fcov-smc-c_internal_addr_low"
+title = "c internal addr low"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the address map: smc_input_fabric.sv routes the SEP_IN port straight into the 32-bit local fabric with no local/global window demux, and every generated SMC_TOP base address is at or above 0xC000_0000, so a SEP_IN transaction with internal address bit 31 clear can only target unmapped local space (SMC-FAB-WIDTHS.S2:internal-addr-low)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_internal_addr_low"
+
+[[holes]]
+id = "fcov-smc-c_sep_in_wstrb_none"
+title = "c sep in wstrb none"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "the bench AXI manager cannot present the beat: the cocotbext AXI4 master derives WSTRB from the byte range the payload covers, so a W beat exists only because it carries enabled bytes and an all-zero strobe is never driven, and ocah_axi_master_driver.py:354-362 rejects any partial strobe outright (the backend supports contiguous writes only). Driving one raw AW/W pair on the channel sources beside the engine is not available either: the engine's own B-response task asserts on a response whose ID it did not issue"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_sep_in_wstrb_none"
+
+[[holes]]
+id = "fcov-smc-c_bresp_exokay"
+title = "c bresp exokay"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "unreachable from this bench boundary: EXOKAY is an exclusive-access response, and every inbound manager reaches the local fabric through axi_to_axi_lite (smc_local_xbar.sv:214,285,358), whose AXI4-Lite master side has no lock and no exclusive monitor; nothing in the SMC hierarchy instantiates an exclusive-capable subordinate (axi_to_mem is used only in sep.sv). A SEP_IN write issued with AxLOCK=1 was answered OKAY, not EXOKAY"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 3
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_bresp_exokay"
+
+[[holes]]
+id = "fcov-smc-c_rresp_exokay"
+title = "c rresp exokay"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "unreachable from this bench boundary: EXOKAY is an exclusive-access response, and every inbound manager reaches the local fabric through axi_to_axi_lite (smc_local_xbar.sv:214,285,358), whose AXI4-Lite master side has no lock and no exclusive monitor; nothing in the SMC hierarchy instantiates an exclusive-capable subordinate (axi_to_mem is used only in sep.sv). A SEP_IN read issued with AxLOCK=1 was answered OKAY, not EXOKAY"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 3
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.u_*.c_rresp_exokay"
+
+[[holes]]
+id = "fcov-smc-c_per_instance_default_matches_map"
+title = "c per instance default matches map"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-PERIPH-PARAM.S5:per-instance-default-matches-map)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_gpio_fcov.c_per_instance_default_matches_map"
+
+[[holes]]
+id = "fcov-smc-c_straps_all_ones"
+title = "c straps all ones"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "no observable consequence to check: the strap capture latch lives in gpio_shim.sv, which is not instantiated in this hierarchy, and smc_reset_unit.sv leaves the STRAPS_LO/HI hwif fields at their zero default, so a strap pattern at primary-reset release cannot be read back anywhere (SMC-GPIO-STRAPS.S1:straps-all-ones)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_gpio_fcov.c_straps_all_ones"
+
+[[holes]]
+id = "fcov-smc-c_straps_all_zero"
+title = "c straps all zero"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "no observable consequence to check: the strap capture latch lives in gpio_shim.sv, which is not instantiated in this hierarchy, and smc_reset_unit.sv leaves the STRAPS_LO/HI hwif fields at their zero default, so a strap pattern at primary-reset release cannot be read back anywhere (SMC-GPIO-STRAPS.S1:straps-all-zero)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_gpio_fcov.c_straps_all_zero"
+
+[[holes]]
+id = "fcov-smc-c_bit323_source324"
+title = "c bit323 source324"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked with the PLIC claim points: the zeroer completion interrupt is armed and the operation completes, and PLIC pending_324 stays 0 for 512 clk_smc_i cycles afterwards, so the gateway side needs a firmware route; smc_fw_plic_claim_test is in the coverage set and does not raise this source (SMC-INT-PLICID.S1:bit323-source324)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_int_fcov.c_bit323_source324"
+
+[[holes]]
+id = "fcov-smc-c_cla_top_decodes"
+title = "c cla top decodes"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-055; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_cla_top_decodes"
+
+[[holes]]
+id = "fcov-smc-c_debug_region"
+title = "c debug region"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-055; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_debug_region"
+
+[[holes]]
+id = "fcov-smc-c_dfx_status_decode"
+title = "c dfx status decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-053; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_dfx_status_decode"
+
+[[holes]]
+id = "fcov-smc-c_dtp_ctrl_decode"
+title = "c dtp ctrl decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-053; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_dtp_ctrl_decode"
+
+[[holes]]
+id = "fcov-smc-c_gpio_poc_pbias_decode"
+title = "c gpio poc pbias decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_gpio_poc_pbias_decode"
+
+[[holes]]
+id = "fcov-smc-c_gpio_refclk_ctrl_decode"
+title = "c gpio refclk ctrl decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_gpio_refclk_ctrl_decode"
+
+[[holes]]
+id = "fcov-smc-c_i3c_count_6"
+title = "c i3c count 6"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-PERIPH-PARAM.S3:i3c-count-6)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_i3c_count_6"
+
+[[holes]]
+id = "fcov-smc-c_i3c_instance_5"
+title = "c i3c instance 5"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-053; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_i3c_instance_5"
+
+[[holes]]
+id = "fcov-smc-c_misc_wrap_top_decodes"
+title = "c misc wrap top decodes"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-055; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_misc_wrap_top_decodes"
+
+[[holes]]
+id = "fcov-smc-c_octs_aperture_decode"
+title = "c octs aperture decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-053; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_octs_aperture_decode"
+
+[[holes]]
+id = "fcov-smc-c_octs_decode"
+title = "c octs decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-053; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_octs_decode"
+
+[[holes]]
+id = "fcov-smc-c_per_pad_block_first"
+title = "c per pad block first"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_per_pad_block_first"
+
+[[holes]]
+id = "fcov-smc-c_per_pad_block_last"
+title = "c per pad block last"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_per_pad_block_last"
+
+[[holes]]
+id = "fcov-smc-c_per_pad_instance_0"
+title = "c per pad instance 0"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_per_pad_instance_0"
+
+[[holes]]
+id = "fcov-smc-c_per_pad_instance_64"
+title = "c per pad instance 64"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_per_pad_instance_64"
+
+[[holes]]
+id = "fcov-smc-c_per_pad_stride_0x20"
+title = "c per pad stride 0x20"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_per_pad_stride_0x20"
+
+[[holes]]
+id = "fcov-smc-c_pll_obs_ctrl_decode"
+title = "c pll obs ctrl decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pll_obs_ctrl_decode"
+
+[[holes]]
+id = "fcov-smc-c_pll_wrapper_decodes"
+title = "c pll wrapper decodes"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pll_wrapper_decodes"
+
+[[holes]]
+id = "fcov-smc-c_pvt_obs_ctrl_decode"
+title = "c pvt obs ctrl decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pvt_obs_ctrl_decode"
+
+[[holes]]
+id = "fcov-smc-c_pvt_obs_intf_decode"
+title = "c pvt obs intf decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pvt_obs_intf_decode"
+
+[[holes]]
+id = "fcov-smc-c_remap_region"
+title = "c remap region"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-055; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_remap_region"
+
+[[holes]]
+id = "fcov-smc-c_uart_instance_3"
+title = "c uart instance 3"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "credit withdrawn: blocked:SF-053; the point fires on the implemented block, not the spec-addressed one"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_uart_instance_3"
+
+[[holes]]
+id = "fcov-smc-c_gpio_single_pad_enabled"
+title = "c gpio single pad enabled"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_gpio_single_pad_enabled"
+
+[[holes]]
+id = "fcov-smc-c_i3c0_scl_driven_by_dut"
+title = "c i3c0 scl driven by dut"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-CLK-PERIPH.S1:i3c-on-clk-periph)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_i3c0_scl_driven_by_dut"
+
+[[holes]]
+id = "fcov-smc-c_i3c0_sda_driven_by_dut"
+title = "c i3c0 sda driven by dut"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_i3c0_sda_driven_by_dut"
+
+[[holes]]
+id = "fcov-smc-c_irq_multiple_concurrent"
+title = "c irq multiple concurrent"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_irq_multiple_concurrent"
+
+[[holes]]
+id = "fcov-smc-c_fabric_held_in_primary_reset"
+title = "c fabric held in primary reset"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "deferred: no enrolled test drives this condition - allocation unverified: allocated anchor did not reach this point in the coverage set (SMC-RST-PRIMARY.S2:fabric-held-in-primary-reset)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_rst_seq_fcov.c_fabric_held_in_primary_reset"
+
+[[holes]]
+id = "fcov-smc-c_data_phase_beat_count_matches_addresses"
+title = "c data phase beat count matches addresses"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the point model: the address and beat counters are cleared by trigger_starts_e in the same sample in which the zeroer asserts mst_awvalid in ST_ISSUE_ADDR, so the first accepted address beat is dropped and aw_count_q is 0 at the return to idle; measured with completed 1-beat and 256-beat operations, which reach c_return_to_idle but not this point (SMC-ZERO-FSM.S3:data-phase-beat-count-matches-addresses). SYS_OUT AW/W ready backpressure does not reach the zeroer: the shared accelerator axi_mux registers the address channel (smc_data_accelerator_wrap.sv SpillAw), and with a 4-cycle SYS_OUT AW/W stall the zeroer's own aw_ready stayed high for the whole operation (1 address beat accepted, 0 stalled). Counting the first address beat needs it to lose arbitration in that exact sample, which only a concurrent DMA address beat can cause"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_zeroer_fcov.c_data_phase_beat_count_matches_addresses"
+
+[[holes]]
+id = "fcov-smc-c_locks_cleared_access_permitted"
+title = "locks cleared access permitted"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero while a read or program completes, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half; the same image blocks c_write_unlocked_field_updated (SMC-EFUSE-LOCKS.S1:locks-cleared-access-permitted)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_locks_cleared_access_permitted"
+
+[[holes]]
+id = "fcov-smc-c_read_unlocked_field_returned"
+title = "read unlocked field returned"
+category = "missing_stimulus"
+disposition = "cover"
+status = "open"
+confidence = "medium"
+rationale = "blocked by the bench fuse image: the point requires the whole 64-bit LOCKS shadow word to be zero while a read completes with a non-zero word, and the bench-wide efuse asset sets JTAG_PUBLIC_IDENTITY_READ_LOCK, which smc_efuse_locked_access_interrupt_test depends on for its refused half; the same image blocks c_write_unlocked_field_updated (SMC-EFUSE-LOCKS.S3:read-unlocked-field-returned)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_efuse_fcov.c_read_unlocked_field_returned"
+
+[[holes]]
+id = "fcov-smc-c_efuse_jtag_bresp_slverr"
+title = "efuse jtag bresp slverr"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: smc_efuse_wrapper demuxes the eFuse JTAG AXI-Lite port between the eFuse interface controller and the lifecycle filter's error slave. The controller's PeakRDL regblock has no address or access check (efuse_interface_ctrl_reg.sv: decoded_err, cpuif_wr_err and readback_err hold zero), so it answers OKAY; the error slave answers DECERR, which c_efuse_jtag_bresp_decerr records. No responder on the port produces SLVERR (SMC-EFUSE-JTAG.S2:bresp-slverr)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_bresp_slverr"
+
+[[holes]]
+id = "fcov-smc-c_efuse_jtag_rresp_slverr"
+title = "efuse jtag rresp slverr"
+category = "unreachable"
+disposition = "waive"
+status = "accepted"
+confidence = "high"
+rationale = "unreachable from this bench boundary: smc_efuse_wrapper demuxes the eFuse JTAG AXI-Lite port between the eFuse interface controller and the lifecycle filter's error slave. The controller's PeakRDL regblock has no address or access check (efuse_interface_ctrl_reg.sv: decoded_err, cpuif_wr_err and readback_err hold zero), so it answers OKAY; the error slave answers DECERR, which c_efuse_jtag_rresp_decerr records. No responder on the port produces SLVERR (SMC-EFUSE-JTAG.S2:rresp-slverr)"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "vcs"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_fabric_fcov.c_efuse_jtag_rresp_slverr"

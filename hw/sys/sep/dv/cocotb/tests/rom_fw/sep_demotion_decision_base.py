@@ -90,7 +90,7 @@ PROD_END, so such an access must clear the inbound filter. The probes are
 deposit.
 
 ``state`` is differentially encoded ``{~demote, demote}``
-(``och_prim/rtl/prim_diff_encode_multi.sv``), so bit 0 is the demote bit and
+(``ocah_prim/rtl/prim_diff_encode_multi.sv``), so bit 0 is the demote bit and
 ``2'b00`` / ``2'b11`` are broken rails rather than verdicts.
 
 **An end-of-run read is sound because neither field can be walked back.** Both
@@ -173,7 +173,7 @@ def _decode_demote(state: int) -> int:
         raise AssertionError(
             f"demote rails read 0b{state:02b}, which is neither 0b10 (demote=0) nor "
             f"0b01 (demote=1). prim_diff_encode_multi drives {{~d, d}} "
-            f"(hw/common/och_prim/rtl/prim_diff_encode_multi.sv:41-49), so an equal "
+            f"(hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv:41-49), so an equal "
             f"pair is a broken encoder rather than a demotion verdict"
         )
     return state & 0x1

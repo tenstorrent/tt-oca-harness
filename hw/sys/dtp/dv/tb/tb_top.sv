@@ -169,43 +169,43 @@ module dtp_uvm_top
   logic [31:0] sep_otp_axil_arvalid_count;
 
   // SMC OTP AXI-Lite manager flattened for the shared ocah_axi_vip responder.
-  logic [31:0] smc_otp_axil_awaddr;
+  logic [dtp_dv_cfg_pkg::OtpAxilAddrWidth-1:0] smc_otp_axil_awaddr;
   logic [2:0] smc_otp_axil_awprot;
   logic smc_otp_axil_awvalid;
   logic smc_otp_axil_awready;
-  logic [31:0] smc_otp_axil_wdata;
-  logic [3:0] smc_otp_axil_wstrb;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] smc_otp_axil_wdata;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth/8-1:0] smc_otp_axil_wstrb;
   logic smc_otp_axil_wvalid;
   logic smc_otp_axil_wready;
   logic [1:0] smc_otp_axil_bresp;
   logic smc_otp_axil_bvalid;
   logic smc_otp_axil_bready;
-  logic [31:0] smc_otp_axil_araddr;
+  logic [dtp_dv_cfg_pkg::OtpAxilAddrWidth-1:0] smc_otp_axil_araddr;
   logic [2:0] smc_otp_axil_arprot;
   logic smc_otp_axil_arvalid;
   logic smc_otp_axil_arready;
-  logic [31:0] smc_otp_axil_rdata;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] smc_otp_axil_rdata;
   logic [1:0] smc_otp_axil_rresp;
   logic smc_otp_axil_rvalid;
   logic smc_otp_axil_rready;
 
   // SEP OTP AXI-Lite manager flattened for the TB responder.
-  logic [31:0] sep_otp_axil_awaddr;
+  logic [dtp_dv_cfg_pkg::OtpAxilAddrWidth-1:0] sep_otp_axil_awaddr;
   logic [2:0] sep_otp_axil_awprot;
   logic sep_otp_axil_awvalid;
   logic sep_otp_axil_awready;
-  logic [31:0] sep_otp_axil_wdata;
-  logic [3:0] sep_otp_axil_wstrb;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] sep_otp_axil_wdata;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth/8-1:0] sep_otp_axil_wstrb;
   logic sep_otp_axil_wvalid;
   logic sep_otp_axil_wready;
   logic [1:0] sep_otp_axil_bresp;
   logic sep_otp_axil_bvalid;
   logic sep_otp_axil_bready;
-  logic [31:0] sep_otp_axil_araddr;
+  logic [dtp_dv_cfg_pkg::OtpAxilAddrWidth-1:0] sep_otp_axil_araddr;
   logic [2:0] sep_otp_axil_arprot;
   logic sep_otp_axil_arvalid;
   logic sep_otp_axil_arready;
-  logic [31:0] sep_otp_axil_rdata;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] sep_otp_axil_rdata;
   logic [1:0] sep_otp_axil_rresp;
   logic sep_otp_axil_rvalid;
   logic sep_otp_axil_rready;
@@ -479,20 +479,23 @@ module dtp_uvm_top
 
   // ------------------------------------------------------------------
   // SMC fabric debug AXI4 manager: struct <-> flat-signal adapter so the
-  // JTAG2AXI bridge talks to the shared AXI responder on u_smc_axi_slave_if. Widths: ID=2, ADDR=56, DATA=64, STRB=8, USER=12 (dtp_pkg).
+  // JTAG2AXI bridge talks to the shared AXI responder on u_smc_axi_slave_if.
+  // The bridge types and widths are the bench configuration's.
   // ------------------------------------------------------------------
-  jtag_dbg_56_64_2_12_axi_req_t   axi_smc_dbg_req;
-  jtag_dbg_56_64_2_12_axi_resp_t  axi_smc_dbg_resp;
-  dtp_axil_32_32_req_t            axil_smc_otp_jtag_req;
-  dtp_axil_32_32_resp_t           axil_smc_otp_jtag_resp;
-  dtp_axil_32_32_req_t            axil_sep_otp_jtag_req;
-  dtp_axil_32_32_resp_t           axil_sep_otp_jtag_resp;
+  dtp_dv_cfg_pkg::smc_axi_req_t   axi_smc_dbg_req;
+  dtp_dv_cfg_pkg::smc_axi_resp_t  axi_smc_dbg_resp;
+  dtp_dv_cfg_pkg::otp_axil_req_t  axil_smc_otp_jtag_req;
+  dtp_dv_cfg_pkg::otp_axil_resp_t axil_smc_otp_jtag_resp;
+  dtp_dv_cfg_pkg::otp_axil_req_t  axil_sep_otp_jtag_req;
+  dtp_dv_cfg_pkg::otp_axil_resp_t axil_sep_otp_jtag_resp;
+  // AxSIZE of every OTP AXI-Lite beat: the full data width.
+  localparam logic [2:0] OtpAxilBeatSize = 3'($clog2(dtp_dv_cfg_pkg::OtpAxilDataWidth / 8));
   dtp_axil_32_32_req_t            axil_xtrig_req;
   dtp_axil_32_32_resp_t           axil_xtrig_resp;
 
   // Write address channel
-  logic [1:0]   m_axi_awid;
-  logic [55:0]  m_axi_awaddr;
+  logic [dtp_dv_cfg_pkg::SmcAxiIdWidth-1:0] m_axi_awid;
+  logic [dtp_dv_cfg_pkg::SmcAxiAddrWidth-1:0] m_axi_awaddr;
   logic [7:0]   m_axi_awlen;
   logic [2:0]   m_axi_awsize;
   logic [1:0]   m_axi_awburst;
@@ -501,25 +504,25 @@ module dtp_uvm_top
   logic [2:0]   m_axi_awprot;
   logic [3:0]   m_axi_awqos;
   logic [3:0]   m_axi_awregion;
-  logic [11:0]  m_axi_awuser;
+  logic [dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0] m_axi_awuser;
   logic         m_axi_awvalid;
   logic         m_axi_awready;
   // Write data channel
-  logic [63:0]  m_axi_wdata;
-  logic [7:0]   m_axi_wstrb;
+  logic [dtp_dv_cfg_pkg::SmcAxiDataWidth-1:0] m_axi_wdata;
+  logic [dtp_dv_cfg_pkg::SmcAxiDataWidth/8-1:0] m_axi_wstrb;
   logic         m_axi_wlast;
-  logic [11:0]  m_axi_wuser;
+  logic [dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0] m_axi_wuser;
   logic         m_axi_wvalid;
   logic         m_axi_wready;
   // Write response channel
-  logic [1:0]   m_axi_bid;
+  logic [dtp_dv_cfg_pkg::SmcAxiIdWidth-1:0] m_axi_bid;
   logic [1:0]   m_axi_bresp;
-  logic [11:0]  m_axi_buser;
+  logic [dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0] m_axi_buser;
   logic         m_axi_bvalid;
   logic         m_axi_bready;
   // Read address channel
-  logic [1:0]   m_axi_arid;
-  logic [55:0]  m_axi_araddr;
+  logic [dtp_dv_cfg_pkg::SmcAxiIdWidth-1:0] m_axi_arid;
+  logic [dtp_dv_cfg_pkg::SmcAxiAddrWidth-1:0] m_axi_araddr;
   logic [7:0]   m_axi_arlen;
   logic [2:0]   m_axi_arsize;
   logic [1:0]   m_axi_arburst;
@@ -528,15 +531,15 @@ module dtp_uvm_top
   logic [2:0]   m_axi_arprot;
   logic [3:0]   m_axi_arqos;
   logic [3:0]   m_axi_arregion;
-  logic [11:0]  m_axi_aruser;
+  logic [dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0] m_axi_aruser;
   logic         m_axi_arvalid;
   logic         m_axi_arready;
   // Read data channel
-  logic [1:0]   m_axi_rid;
-  logic [63:0]  m_axi_rdata;
+  logic [dtp_dv_cfg_pkg::SmcAxiIdWidth-1:0] m_axi_rid;
+  logic [dtp_dv_cfg_pkg::SmcAxiDataWidth-1:0] m_axi_rdata;
   logic [1:0]   m_axi_rresp;
   logic         m_axi_rlast;
-  logic [11:0]  m_axi_ruser;
+  logic [dtp_dv_cfg_pkg::SmcAxiUserWidth-1:0] m_axi_ruser;
   logic         m_axi_rvalid;
   logic         m_axi_rready;
 
@@ -757,7 +760,19 @@ module dtp_uvm_top
     .XTRIG_INT_CT_MODE        (dtp_dv_cfg_pkg::IntCtMode),
     .ic_reset_smc_t           (dtp_dv_cfg_pkg::ic_reset_smc_t),
     .ic_reset_sep_t           (dtp_dv_cfg_pkg::ic_reset_sep_t),
-    .ic_reset_ext_t           (dtp_dv_cfg_pkg::ic_reset_ext_t)
+    .ic_reset_ext_t           (dtp_dv_cfg_pkg::ic_reset_ext_t),
+    .smc_jtag_axi_req_t       (dtp_dv_cfg_pkg::smc_axi_req_t),
+    .smc_jtag_axi_resp_t      (dtp_dv_cfg_pkg::smc_axi_resp_t),
+    .smc_otp_axil_req_t       (dtp_dv_cfg_pkg::otp_axil_req_t),
+    .smc_otp_axil_resp_t      (dtp_dv_cfg_pkg::otp_axil_resp_t),
+    .sep_otp_axil_req_t       (dtp_dv_cfg_pkg::otp_axil_req_t),
+    .sep_otp_axil_resp_t      (dtp_dv_cfg_pkg::otp_axil_resp_t),
+    .SMC_OTP_RD_PL_DEPTH      (dtp_dv_cfg_pkg::SmcOtpRdPlDepth),
+    .SMC_OTP_WR_PL_DEPTH      (dtp_dv_cfg_pkg::SmcOtpWrPlDepth),
+    .SEP_OTP_RD_PL_DEPTH      (dtp_dv_cfg_pkg::SepOtpRdPlDepth),
+    .SEP_OTP_WR_PL_DEPTH      (dtp_dv_cfg_pkg::SepOtpWrPlDepth),
+    .SMC_RD_PL_DEPTH          (dtp_dv_cfg_pkg::SmcRdPlDepth),
+    .SMC_WR_PL_DEPTH          (dtp_dv_cfg_pkg::SmcWrPlDepth)
   ) u_dut (
     .clk_i                            (clk_i),
     .rst_n_i                          (rst_n_i),
@@ -1050,7 +1065,6 @@ module dtp_uvm_top
     .ctp_req_out_dout_en_i (xtrig_ctp_req_out_dout_en),
     .ctp_req_out_din_en_i  (xtrig_ctp_req_out_din_en),
     .ctp_ct_dst_i          (xtrig_ctp_ct_dst),
-    .ctp_req_in_din_i      (xtrig_ctp_req_in_din),
     .ctp_ack_in_din_i      (xtrig_ctp_ack_in_din)
   );
 
@@ -1192,7 +1206,7 @@ module dtp_uvm_top
   assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
   assign u_smc_otp_slave_if.awid     = '0;
   assign u_smc_otp_slave_if.awlen    = '0;
-  assign u_smc_otp_slave_if.awsize   = 3'd2;
+  assign u_smc_otp_slave_if.awsize   = OtpAxilBeatSize;
   assign u_smc_otp_slave_if.awburst  = 2'b01;
   assign u_smc_otp_slave_if.awlock   = 1'b0;
   assign u_smc_otp_slave_if.awcache  = '0;
@@ -1210,7 +1224,7 @@ module dtp_uvm_top
   assign u_smc_otp_slave_if.arvalid  = smc_otp_axil_arvalid;
   assign u_smc_otp_slave_if.arid     = '0;
   assign u_smc_otp_slave_if.arlen    = '0;
-  assign u_smc_otp_slave_if.arsize   = 3'd2;
+  assign u_smc_otp_slave_if.arsize   = OtpAxilBeatSize;
   assign u_smc_otp_slave_if.arburst  = 2'b01;
   assign u_smc_otp_slave_if.arlock   = 1'b0;
   assign u_smc_otp_slave_if.arcache  = '0;
@@ -1236,7 +1250,7 @@ module dtp_uvm_top
   assign u_sep_otp_slave_if.awvalid  = sep_otp_axil_awvalid;
   assign u_sep_otp_slave_if.awid     = '0;
   assign u_sep_otp_slave_if.awlen    = '0;
-  assign u_sep_otp_slave_if.awsize   = 3'd2;
+  assign u_sep_otp_slave_if.awsize   = OtpAxilBeatSize;
   assign u_sep_otp_slave_if.awburst  = 2'b01;
   assign u_sep_otp_slave_if.awlock   = 1'b0;
   assign u_sep_otp_slave_if.awcache  = '0;
@@ -1254,7 +1268,7 @@ module dtp_uvm_top
   assign u_sep_otp_slave_if.arvalid  = sep_otp_axil_arvalid;
   assign u_sep_otp_slave_if.arid     = '0;
   assign u_sep_otp_slave_if.arlen    = '0;
-  assign u_sep_otp_slave_if.arsize   = 3'd2;
+  assign u_sep_otp_slave_if.arsize   = OtpAxilBeatSize;
   assign u_sep_otp_slave_if.arburst  = 2'b01;
   assign u_sep_otp_slave_if.arlock   = 1'b0;
   assign u_sep_otp_slave_if.arcache  = '0;
@@ -1336,7 +1350,7 @@ module dtp_uvm_top
   assign u_smc_otp_axil_if.awready  = smc_otp_axil_awready;
   assign u_smc_otp_axil_if.awid     = '0;
   assign u_smc_otp_axil_if.awlen    = '0;
-  assign u_smc_otp_axil_if.awsize   = 3'd2;
+  assign u_smc_otp_axil_if.awsize   = OtpAxilBeatSize;
   assign u_smc_otp_axil_if.awburst  = 2'b01;
   assign u_smc_otp_axil_if.awlock   = 1'b0;
   assign u_smc_otp_axil_if.awcache  = '0;
@@ -1360,7 +1374,7 @@ module dtp_uvm_top
   assign u_smc_otp_axil_if.arready  = smc_otp_axil_arready;
   assign u_smc_otp_axil_if.arid     = '0;
   assign u_smc_otp_axil_if.arlen    = '0;
-  assign u_smc_otp_axil_if.arsize   = 3'd2;
+  assign u_smc_otp_axil_if.arsize   = OtpAxilBeatSize;
   assign u_smc_otp_axil_if.arburst  = 2'b01;
   assign u_smc_otp_axil_if.arlock   = 1'b0;
   assign u_smc_otp_axil_if.arcache  = '0;
@@ -1381,7 +1395,7 @@ module dtp_uvm_top
   assign u_sep_otp_axil_if.awready  = sep_otp_axil_awready;
   assign u_sep_otp_axil_if.awid     = '0;
   assign u_sep_otp_axil_if.awlen    = '0;
-  assign u_sep_otp_axil_if.awsize   = 3'd2;
+  assign u_sep_otp_axil_if.awsize   = OtpAxilBeatSize;
   assign u_sep_otp_axil_if.awburst  = 2'b01;
   assign u_sep_otp_axil_if.awlock   = 1'b0;
   assign u_sep_otp_axil_if.awcache  = '0;
@@ -1405,7 +1419,7 @@ module dtp_uvm_top
   assign u_sep_otp_axil_if.arready  = sep_otp_axil_arready;
   assign u_sep_otp_axil_if.arid     = '0;
   assign u_sep_otp_axil_if.arlen    = '0;
-  assign u_sep_otp_axil_if.arsize   = 3'd2;
+  assign u_sep_otp_axil_if.arsize   = OtpAxilBeatSize;
   assign u_sep_otp_axil_if.arburst  = 2'b01;
   assign u_sep_otp_axil_if.arlock   = 1'b0;
   assign u_sep_otp_axil_if.arcache  = '0;
@@ -1711,8 +1725,8 @@ module dtp_uvm_top
 
   ocah_axi_sva #(
     .IS_LITE    (1'b1),
-    .ADDR_WIDTH (32),
-    .DATA_WIDTH (32),
+    .ADDR_WIDTH (dtp_dv_cfg_pkg::OtpAxilAddrWidth),
+    .DATA_WIDTH (dtp_dv_cfg_pkg::OtpAxilDataWidth),
     .ID_WIDTH   (1)
   ) u_smc_otp_axil_sva (
     .aclk    (clk_i),
@@ -1721,7 +1735,7 @@ module dtp_uvm_top
     .awid    ('0),
     .awaddr  (smc_otp_axil_awaddr),
     .awlen   ('0),
-    .awsize  (3'd2),
+    .awsize  (OtpAxilBeatSize),
     .awburst (2'b01),
     .awlock  (1'b0),
     .awprot  (smc_otp_axil_awprot),
@@ -1739,7 +1753,7 @@ module dtp_uvm_top
     .arid    ('0),
     .araddr  (smc_otp_axil_araddr),
     .arlen   ('0),
-    .arsize  (3'd2),
+    .arsize  (OtpAxilBeatSize),
     .arburst (2'b01),
     .arlock  (1'b0),
     .arprot  (smc_otp_axil_arprot),
@@ -1755,8 +1769,8 @@ module dtp_uvm_top
 
   ocah_axi_sva #(
     .IS_LITE    (1'b1),
-    .ADDR_WIDTH (32),
-    .DATA_WIDTH (32),
+    .ADDR_WIDTH (dtp_dv_cfg_pkg::OtpAxilAddrWidth),
+    .DATA_WIDTH (dtp_dv_cfg_pkg::OtpAxilDataWidth),
     .ID_WIDTH   (1)
   ) u_sep_otp_axil_sva (
     .aclk    (clk_i),
@@ -1765,7 +1779,7 @@ module dtp_uvm_top
     .awid    ('0),
     .awaddr  (sep_otp_axil_awaddr),
     .awlen   ('0),
-    .awsize  (3'd2),
+    .awsize  (OtpAxilBeatSize),
     .awburst (2'b01),
     .awlock  (1'b0),
     .awprot  (sep_otp_axil_awprot),
@@ -1783,7 +1797,7 @@ module dtp_uvm_top
     .arid    ('0),
     .araddr  (sep_otp_axil_araddr),
     .arlen   ('0),
-    .arsize  (3'd2),
+    .arsize  (OtpAxilBeatSize),
     .arburst (2'b01),
     .arlock  (1'b0),
     .arprot  (sep_otp_axil_arprot),
@@ -1799,9 +1813,9 @@ module dtp_uvm_top
 
   ocah_axi_sva #(
     .IS_LITE    (1'b0),
-    .ADDR_WIDTH (56),
-    .DATA_WIDTH (64),
-    .ID_WIDTH   (2)
+    .ADDR_WIDTH (dtp_dv_cfg_pkg::SmcAxiAddrWidth),
+    .DATA_WIDTH (dtp_dv_cfg_pkg::SmcAxiDataWidth),
+    .ID_WIDTH   (dtp_dv_cfg_pkg::SmcAxiIdWidth)
   ) u_m_axi_sva (
     .aclk    (clk_i),
     .aresetn (rst_n_i),
