@@ -3,12 +3,6 @@
 
 = SEP Reset Controller
 :description: SEP software reset requests, AXI isolation, and Key Manager and TRNG reset sequencing.
-ifdef::backend-html5[]
-:km-reset-conditioning-ref: xref:ip:key_manager/doc/index.adoc#key-manager-reset-conditioning[Key Manager Reset Conditioning]
-endif::backend-html5[]
-ifdef::backend-pdf[]
-:km-reset-conditioning-ref: <<key-manager-reset-conditioning,Key Manager Reset Conditioning>>
-endif::backend-pdf[]
 
 ifdef::backend-html5[]
 :dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
@@ -54,50 +48,42 @@ reset.
 
 == Isolation and Reset Sequencing
 
-Each `SW_RESET_N` bit is a request to a per-domain sequencer. Before the domain
-enters reset, the sequencer isolates every AXI path into it, so that no
-transaction is in flight when reset asserts. <<sep-axi-isolation-diagram>>
-shows the isolated paths through the crypto interconnect.
+Each `SW_RESET_N` bit drives a per-domain sequencer that isolates the domain's
+AXI paths before asserting its reset, so no transaction is in flight when reset
+asserts. <<sep-axi-isolation-diagram>> shows the isolated paths.
 
 [[sep-axi-isolation-diagram]]
 .SEP crypto AXI isolation
 image::SEP_AXIIsolation_FIG030.png[alt="SEP crypto AXI isolation",width=100%,pdfwidth=100%]
 
-Each accelerator has two isolated paths: its host CSR path from the crypto
-demux and its key path from the Key Manager. The Key Manager also has an
-isolated path to the eFuse wrapper, and the TRNG has one host path each for
-ESRC, CSRNG, and EDN. The demux ports to the Key Manager mailbox, eFuse
-wrapper, lifecycle controller, and external TRNG are not isolated.
-
 A software reset proceeds as follows:
 
-. The SEP host firmware writes `0` to the domain's `SW_RESET_N` bit.
-. The sequencer requests isolation on each of the domain's paths. From then
-on, new transactions on those paths complete with SLVERR and read data
-`0x1501A7ED`.
-. Each isolate unit waits for the transactions it has already accepted to
-complete, then reports its path isolated.
-. Once every path in the domain reports isolated, the sequencer asserts the
-domain's reset. Isolation stays in place for as long as the reset is held.
-. The SEP host firmware writes `1` to the bit. Reset and isolation are
-released together.
+. Firmware writes `0` to the domain's `SW_RESET_N` bit.
+. The sequencer requests isolation on the domain's paths. New transactions on
+them complete with SLVERR and read data `0x1501A7ED`.
+. Each isolate unit drains its accepted transactions, then reports isolated.
+. Once all of the domain's paths report isolated, the domain's reset asserts.
+. Firmware writes `1`. Reset and isolation are released together.
 
-<<sep-isolation-paths-table>> lists the paths each domain waits on before its
-reset asserts.
+<<sep-isolation-paths-table>> lists the paths each domain isolates.
 
 [[sep-isolation-paths-table]]
 [cols="<30%,<70%",options="header"]
 .Paths isolated before each software reset
 |===
-|Domain |Paths that must report isolated
-|OTBN, AES, HMAC, KMAC, Adams Bridge |The accelerator's host path and its Key Manager key path
-|Key Manager |The key paths to all five accelerators, and the eFuse path
-|TRNG |The ESRC, CSRNG, and EDN host paths
+|Domain |Paths isolated
+|OTBN, AES, HMAC, KMAC, Adams Bridge |Host path and Key Manager key path
+|Key Manager |All five key paths and the eFuse path
+|TRNG |ESRC, CSRNG, and EDN host paths
 |===
 
-A key path isolates when either of its endpoints is being reset, so neither
-the Key Manager nor an accelerator can enter reset with a key transfer in
-flight between them.
+A key path isolates when either endpoint is reset, so neither end can enter
+reset mid-transfer.
+
+The Key Manager mailbox, eFuse wrapper, lifecycle controller, and external TRNG
+ports are not isolated. None of these targets has its own software reset
+domain; the mailbox's SEP-facing side is in the Key Manager's cold domain. No
+`SW_RESET_N` request can therefore reset one mid-transaction.
 
 The sequenced resets are ANDed with `sep_reset_n`, which holds every IP in reset
 until eFuse sensing completes during boot. JTAG can drive `sep_reset_n` in
@@ -109,20 +95,16 @@ applied last, allowing debug to force reset without waiting for isolation.
 [[sep-km-reset]]
 == Resetting the Key Manager
 
-The sequenced Key Manager reset drives the Key Manager's warm reset input, and
-`sep_reset_n` drives its cold reset input. A software reset therefore restarts
-the Key Manager CPU, its internal fabric, and its warm-domain state, but keeps
-cold-domain state such as the SRAM scrambler lock, the SEP-facing mailbox
-FIFOs, and the cold OTP read locks. {km-reset-conditioning-ref} shows how the
-Key Manager conditions both inputs and lists the state each one resets.
+The sequenced Key Manager reset drives the Key Manager's warm reset, which
+restarts its CPU and volatile state but leaves its cold domain intact. That
+domain includes the SEP-facing side of the mailbox, so the SEP host can still
+reach the mailbox during the reset.
 
-The mailbox port is not isolated. Its SEP-facing side is reset only by
-`sep_reset_n`, so the SEP host can still reach it while the Key Manager is in
-software reset.
-
-Key Manager firmware can also request a warm reset through its own
-`SOFT_RST_CODE` register. That reset does not pass through the SEP Reset
-Controller, so its key and eFuse paths are not isolated first.
+A soft reset requested through the Key Manager's `SOFT_RST_CODE` register
+takes the same warm path without isolation. None is needed: the Key Manager
+CPU is the only master on its key and eFuse paths and completes each access
+before issuing the next, so no transaction is in flight when it writes
+`SOFT_RST_CODE`.
 
 [[sep-trng-reset]]
 == Resetting the TRNG
@@ -138,7 +120,7 @@ responsive. While the TRNG reset is active, both post-mux EDN adapters and the
 pool synchronously clear their pending and buffered state, including the pool's
 half-packed word, FIFO contents, and fill-stall state.
 
-Consumers are not part of the TRNG reset sequence. Native EDN requests from AES,
+Consumers are not part of the reset coordinator. Native EDN requests from AES,
 KMAC, and OTBN receive no acknowledgement while the post-mux adapter is
 clearing, remain asserted, and are serviced with fresh entropy after the chain
 restarts. Software may wait for those consumers to become idle and hold them in
