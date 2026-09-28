@@ -348,7 +348,11 @@ formal config named by `[duts.<dut>] formal_cfg`
 |The shipped `ocah_<proto>_if` interfaces carry guarded include hooks behind
 `OCAH_<PROTO>_VENDOR_IF` defines. The tree ships no vendor header.
 |An adopter overlay adds the include directories, defines, tool flags,
-runtime arguments, and environment the vendor package needs.
+runtime arguments, and environment the vendor package needs. A site-layer
+`[duts.<dut>] sim_cfg` replaces the DUT's simulation view with a
+companion-owned one instead, and `[duts.<dut>] tools` adds a licensed
+simulator to the open views
+(xref:run-dv.adoc#runner-site-layer[Site-local override layer]).
 
 |Companion repository
 |`nonfree/` is ignored, not tracked. `ocah.mk` includes `nonfree/nonfree.mk`

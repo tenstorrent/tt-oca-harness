@@ -73,7 +73,7 @@ SITE_TOP_KEYS = {"schema_version", "description", "simulators", "executors", "du
 SITE_TOOL_KEYS = {"binary", "launcher", "argv", "license_env", "extra_env", "setup_hook"}
 # Every data key of an executor table; `kind` stays with the registry.
 SITE_EXECUTOR_KEYS = (CLUSTER_EXECUTOR_KEYS | CLUSTER_EXECUTOR_V1_KEYS) - {"kind"}
-SITE_DUT_KEYS = {"formal_cfg"}
+SITE_DUT_KEYS = {"formal_cfg", "sim_cfg", "tools"}
 SETUP_HOOK_TIMEOUT_SEC = 120
 # Shell bookkeeping a sourced hook changes without exporting anything.
 _HOOK_NOISE_VARS = {"_", "SHLVL", "PWD", "OLDPWD"}
@@ -99,13 +99,27 @@ class SiteLayer:
     def where(self) -> str:
         return f"site layer {self.label}"
 
-    def formal_cfg(self, names: Iterable[str]) -> str | None:
-        """The formal config the site names for the first DUT name in ``names`` it lists."""
+    def _dut_value(self, names: Iterable[str], key: str) -> Any:
+        """``key`` from the first ``[duts.<name>]`` entry, in ``names`` order, that sets it."""
         for name in names:
             entry = self.duts.get(name)
-            if entry is not None:
-                return str(entry["formal_cfg"])
+            if entry is not None and key in entry:
+                return entry[key]
         return None
+
+    def formal_cfg(self, names: Iterable[str]) -> str | None:
+        """The formal config the site names for the first DUT name in ``names`` that has one."""
+        value = self._dut_value(names, "formal_cfg")
+        return str(value) if value is not None else None
+
+    def sim_cfg(self, names: Iterable[str]) -> str | None:
+        """The simulation config the site names for the first DUT name in ``names`` that has one."""
+        value = self._dut_value(names, "sim_cfg")
+        return str(value) if value is not None else None
+
+    def dut_tools(self, names: Iterable[str]) -> list[str]:
+        """The tools the site adds to the first DUT name in ``names`` that lists any."""
+        return list(self._dut_value(names, "tools") or [])
 
 
 @dataclass(frozen=True)
@@ -220,9 +234,16 @@ def load_site_layer(root: Path, environ: Mapping[str, str] | None = None) -> Sit
     for name, entry in duts.items():
         entry_where = f"{where} [duts.{name}]"
         validate_allowed_keys(entry, SITE_DUT_KEYS, entry_where)
-        text = entry.get("formal_cfg")
-        if not isinstance(text, str) or not text:
-            raise ConfigError(f"{entry_where}.formal_cfg must be a non-empty path")
+        if not entry:
+            raise ConfigError(f"{entry_where} sets none of: {', '.join(sorted(SITE_DUT_KEYS))}")
+        for key in ("formal_cfg", "sim_cfg"):
+            text = entry.get(key, "")
+            if key in entry and (not isinstance(text, str) or not text):
+                raise ConfigError(f"{entry_where}.{key} must be a non-empty path")
+        if "tools" in entry:
+            tools = as_str_list(entry["tools"], f"{entry_where}.tools")
+            if not tools or not all(tools):
+                raise ConfigError(f"{entry_where}.tools must be a non-empty list of tool names")
     return SiteLayer(path=path, label=label, simulators=simulators, executors=executors, duts=duts)
 
 
@@ -235,6 +256,26 @@ def validate_site_duts(site: SiteLayer, known: Iterable[str]) -> None:
             f"{site.where}: [duts] names unknown DUT(s): {', '.join(unknown)} "
             f"(known: {', '.join(sorted(names)) or '<none>'})"
         )
+
+
+def validate_site_dut_tools(site: SiteLayer, simulators: Mapping[str, Any]) -> None:
+    """Every tool a ``[duts.<name>]`` entry adds is a simulation tool of the merged registry.
+
+    A formal view takes its tools from its formal config, so the list serves simulation only.
+    """
+    for name, entry in site.duts.items():
+        for tool in entry.get("tools", []):
+            table = simulators.get(tool)
+            if not isinstance(table, dict):
+                raise ConfigError(
+                    f"{site.where} [duts.{name}].tools names unknown tool `{tool}` "
+                    f"(known: {', '.join(sorted(simulators)) or '<none>'})"
+                )
+            if table.get("kind") != "simulation":
+                raise ConfigError(
+                    f"{site.where} [duts.{name}].tools names `{tool}`, a "
+                    f"{table.get('kind') or 'kindless'} tool; list simulation tools only"
+                )
 
 
 def merged_simulators(base: dict[str, Any], site: SiteLayer | None) -> dict[str, Any]:
@@ -296,7 +337,10 @@ def site_summary(site: SiteLayer, checked_in_tools: Iterable[str]) -> str:
     if site.executors:
         parts.append("executors: " + ", ".join(site.executors))
     if site.duts:
-        parts.append("duts: " + ", ".join(f"{name}(formal_cfg)" for name in site.duts))
+        parts.append(
+            "duts: "
+            + ", ".join(f"{name}({', '.join(sorted(entry))})" for name, entry in site.duts.items())
+        )
     return f"site={site.label} " + ("; ".join(parts) if parts else "(no overrides)")
 
 
@@ -459,5 +503,6 @@ __all__ = [
     "site_summary",
     "tool_launch",
     "tool_source",
+    "validate_site_dut_tools",
     "validate_site_duts",
 ]
