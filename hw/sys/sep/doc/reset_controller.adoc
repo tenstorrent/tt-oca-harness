@@ -30,7 +30,7 @@ values.
 |2 |aes_sw_rst_n |RW |1 |AES reset (0=assert, 1=release)
 |3 |hmac_sw_rst_n |RW |1 |HMAC reset (0=assert, 1=release)
 |4 |kmac_sw_rst_n |RW |1 |KMAC reset (0=assert, 1=release)
-|5 |trng_sw_rst_n |RW |1 |Shared ESRC + CSRNG + EDN reset request (0=assert, 1=release)
+|5 |trng_sw_rst_n |RW |1 |Shared entropy-source (ESRC), CSRNG, EDN and internal DRBG endpoint reset request (0=assert, 1=release); excludes the KM sampler
 |6 |abr_sw_rst_n |RW |1 |Adams Bridge reset (0=assert, 1=release)
 |=======================================================================
 
@@ -59,8 +59,9 @@ applied last, allowing debug to force reset without waiting for isolation.
 [[sep-trng-reset]]
 == Resetting the TRNG
 
-The TRNG reset bit controls one reset domain containing the entropy source,
-CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
+The TRNG reset bit controls one reset domain containing the entropy source
+(ESRC), CSRNG, EDN, and internal DRBG endpoint state. Because the entropy
+source, CSRNG, and EDN occupy three
 independent demux ports, a shared coordinator requests isolation on all three
 converted AXI4-Lite paths and does not assert the TRNG reset until all three
 report isolated. Reset and isolation are released together.
@@ -84,11 +85,24 @@ sampler can flag a stream error. The SEP host must keep the Key Manager idle
 before asserting the TRNG reset. Holding KM in software reset is sufficient;
 hardware does not enforce the ordering.
 
-Following reset release, software reprograms ESRC, waits for startup health
+Following reset release, software reprograms the entropy source, waits for startup health
 testing, locks the certified configuration, instantiates CSRNG, and enables EDN.
 Consumers are released only after fresh endpoint/pool progress is observed.
 
-== Register Reference
+== Memory Map and Register Reference
+
+ifdef::backend-html5[]
+++++
+<span id="register-reference"></span>
+++++
+endif::backend-html5[]
+
+=== Memory Map
+
+Register offsets are relative to the block base in the subsystem memory map.
+The detailed map below defines each register and its fields.
+
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -97,5 +111,5 @@ include::partial$sep/regs/gen/html/blocks/sep_reset_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/sep_reset_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]

@@ -399,9 +399,9 @@ data, so the core traps on the instruction that hit the error (<<sep-uncorrectab
 |=======================================================================
 
 `mcause` alone does not identify these as memory failures -- a bad pointer and a
-failing SRAM both raise a load access fault. `MSCAUSE` (`0x7FF`) is what
+failing SRAM both raise a load access fault. `mscause` (`0x7FF`) is what
 separates them: on an access fault, `mscause` = `1` means uncorrectable ECC.
-A handler that does not read `MSCAUSE` cannot distinguish a software bug from
+A handler that does not read `mscause` cannot distinguish a software bug from
 failing hardware.
 
 Firmware is expected to treat these as fatal for the affected context. The
@@ -456,7 +456,9 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 [[sep-pic-registers]]
-== Register Reference
+== Memory Map and Register Reference
+
+=== Memory Map
 
 The EL2 PIC register block (`meipl`, `meie`, `meigwctrl`, `meigwclr`, and
 related registers) is documented in the register reference below.
@@ -466,6 +468,8 @@ reserved entry described in <<sep-interrupts,Interrupts>>: it exists so the arra
 equals the interrupt source ID, and the first programmable source is index 1.
 
 
+=== Detailed Register Map
+
 ifdef::backend-html5[]
 ++++
 include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
@@ -473,5 +477,5 @@ include::partial$sep/regs/gen/html/blocks/el2_pic.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/el2_pic.adoc[leveloffset=+1]
+include::../regs/gen/adoc/blocks/el2_pic.adoc[leveloffset=+2]
 endif::backend-pdf[]

@@ -21,11 +21,16 @@ endif::backend-pdf[]
 .SEP host mailbox architecture and interrupt routing
 image::SEP_AXILmailbox_FIG008.png[alt="SEP host mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
 
-SEP uses mailboxes to communicate with the rest of the system such as AP
-cores for example. Each different agent has its own private mailbox in
-order to separate the contexts. Each mailbox resides in its own 4 kB
-address space. Each mailbox is configured according to the inbound
-traffic filter and has an inbox and outbox pair. When the inbox is
+SEP uses mailboxes to exchange service requests with system clients, such as
+software running on application-processor (AP) cores. A client is the requester
+whose communication context software wants to keep separate; it need not be
+an entire processor. The system's firmware policy assigns mailbox apertures
+to clients and configures the inbound traffic filter to control their access.
+The hardware does not establish a fixed one-client-per-core allocation.
+
+Each mailbox occupies a 4 KiB aperture and has an inbox/outbox pair.
+Its privacy depends on the programmed access policy, not on a distinct
+hardware mailbox type. When the inbox is
 written, an interrupt is sent to the SEP CPU to notify it of an incoming
 service request. Similarly, when the outbox is written by the SEP, an
 interrupt is sent out of the SMU to the system’s interrupt controller

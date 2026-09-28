@@ -56,10 +56,20 @@ separate from the following timer and CPU-debug clocks.
 The peripheral clock domain (clk_periph_i) provides a dedicated timing
 source for all peripheral controllers instantiated within the SMC
 peripheral wrapper (smc_external_peripheral_wrapper). This clock is
-supplied by the platform's clock generation infrastructure. A minimum
-frequency of 100 MHz applies; the upper limit is not fixed and is set by
-the integrator according to timing closure, peripheral IP limits, and
-system power and performance goals.
+supplied by the platform's clock generation infrastructure. Its frequency
+must satisfy every enabled peripheral's timing requirements; 100 MHz is not
+a sufficient general minimum when the CHIPS Alliance I3C target is enabled.
+
+The I3C target's worst-case internal SCL-to-SDA turnaround is four core-clock
+cycles. Meeting the 12 ns target turnaround limit therefore requires a clock
+period no greater than 3 ns (approximately 333.3 MHz or faster) before allowing
+for pad and routing delays. The integrator must include those delays in the
+timing budget and select a higher frequency where needed. See the
+https://chipsalliance.github.io/i3c-core/phy.html#i3c-timing-configuration[CHIPS
+Alliance I3C PHY timing requirements]. This is a target-mode requirement;
+controller-mode timing configuration does not establish target compliance.
+The upper frequency limit remains subject to implementation timing closure
+and the limits of every peripheral sharing the clock.
 
 The following peripherals operate within this clock domain:
 
