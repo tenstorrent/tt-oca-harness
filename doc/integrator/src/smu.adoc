@@ -531,9 +531,9 @@ subsystem's external port as usual.
 [width="100%",cols="12%,30%,23%,35%",options="header"]
 |=======================================================================
 |Subsystem |Window base |Size parameter (SMU default) |Rest of the window
-|SMC |`smc_external` base, SMC-local `0xC040_0000` |`SMC_EFUSE_SHIM_SIZE` (`0x44`)
+|SMC |`smc_external` base, SMC-local `0xC040_0000` |`SMC_EFUSE_SHIM_SIZE` (`0x4`)
 |`smc_external_req_o` / `smc_external_resp_i`
-|SEP |`sep_external.efuse_shim_ctrl`, SEP-local `0x2000_0000` |`SEP_EFUSE_SHIM_SIZE` (`0x4`)
+|SEP |`sep_external` base, SEP-local `0x2000_0000` |`SEP_EFUSE_SHIM_SIZE` (`0x4`)
 |`sep_external_req_o` / `sep_external_resp_i`
 |=======================================================================
 
@@ -541,8 +541,6 @@ The SHIM must follow these rules for this window:
 
 * *Fit the window.* Size the parameter to cover every SHIM control register.
 Accesses past it go to the external port and never reach the SHIM.
-* *Decode the low address bits.* Requests on `efuse_bank_ctrl` carry the full
-subsystem-local address. The reference SHIM decodes only `addr[2:0]`.
 * *Describe the registers in the external map.* Place the SHIM control block
 at offset `0x0` of the adopter's `smc_external` and `sep_external` register
 maps. The open SMC map reserves the whole window as opaque memory. SEP takes
