@@ -69,7 +69,7 @@ _AON_H = _OT_REGS / "aon_timer" / "regs" / "gen" / "c" / "aon_timer.h"
 
 
 def _sep(symbol: str) -> int:
-    return c_header_u32(_SEP_ADDR_H, f"OCH_SEP_TOP_{symbol}")
+    return c_header_u32(_SEP_ADDR_H, f"SEP_TOP_{symbol}")
 
 
 def _spi(symbol: str) -> int:
@@ -105,7 +105,7 @@ SPI_CONFIGOPTS = _sep("SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR")
 SPI_CSID = _sep("SPI_CONTROLLER_CSID_BASE_ADDR")
 SPI_COMMAND = _sep("SPI_CONTROLLER_COMMAND_BASE_ADDR")
 SPI_EVENT_ENABLE = _sep("SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR")
-SPI_TXDATA = _indexed_addr("OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR", 0)
+SPI_TXDATA = _indexed_addr("SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR", 0)
 SPI_SPIEN = _spi("CONTROL__SPIEN_bm")
 SPI_OUTPUT_EN = _spi("CONTROL__OUTPUT_EN_bm")
 SPI_TX_WATERMARK = 4 << _spi("CONTROL__TX_WATERMARK_bp")
@@ -132,7 +132,7 @@ COLD_RELEASE_POLLS = 2000
 SPI_POLLS = 64
 
 TOKEN_WORDS = [
-    _indexed_addr("OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR", i) for i in range(8)
+    _indexed_addr("SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR", i) for i in range(8)
 ]
 TOKEN_EOP = _sep("EFUSE_MMR_TOKEN_EOP_BASE_ADDR")
 TOKEN_MATCH = _sep("EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR")

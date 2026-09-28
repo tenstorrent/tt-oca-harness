@@ -74,7 +74,7 @@ _REPO = Path(__file__).resolve().parents[6]
 _SEP_ADDR_H = _REPO / "hw/sys/sep/regs/gen/c/sep_addr.h"
 _SEP_CPU_CTRL_H = _REPO / "hw/sys/sep/regs/gen/c/blocks/sep_cpu_ctrl.h"
 _NMI_VEC = "SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__NMI_VEC"
-ICCM_BASE = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_ICCM_BASE_ADDR")
+ICCM_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_ICCM_BASE_ADDR")
 TRAP_VECTOR = c_header_u32(_SEP_CPU_CTRL_H, f"{_NMI_VEC}_reset") << c_header_u32(
     _SEP_CPU_CTRL_H, f"{_NMI_VEC}_bp"
 )
