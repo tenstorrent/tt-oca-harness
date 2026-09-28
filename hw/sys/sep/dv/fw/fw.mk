@@ -12,8 +12,8 @@ SEP_BOOTROM_DIR := $(abspath $(FW_DIR)/../../bootrom/prod)
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # Runtime sources. Tests supply their own main() and link against libsep.a.
-# fw_build_id.c is outside drivers/. The nonfree SEP firmware build compiles
-# every drivers/*.c and does not generate fw_build_id.h.
+# fw_build_id.c is outside drivers/. Keep it explicit so the same source
+# inventory works with the companion checkout.
 FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c) $(FW_DIR)/fw_build_id.c
 FW_ASM_SRCS := $(wildcard $(FW_DIR)/startup/*.s $(FW_DIR)/startup/*.S $(FW_DIR)/drivers/*.S)
 FW_INCLUDES := -I$(FW_DIR)/include
