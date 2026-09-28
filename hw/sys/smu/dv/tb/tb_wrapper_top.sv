@@ -1330,15 +1330,20 @@ module smu_wrapper_uvm_top (
   // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
   // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
   // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
-  // four-state simulator without contending with a core output; Verilator
-  // ignores the primitive and reads an undriven pad as 0, so both simulators
-  // see the same idle bus. A pull-up would stall boot: pad 57 is the
+  // four-state simulator without contending with a core output, which the
+  // pad drives at pull strength at its default drive setting. Verilator
+  // accepts no strength on the primitive, ignores it and reads an undriven
+  // pad as 0, so both simulators see the same idle bus. A pull-up would stall boot: pad 57 is the
   // active-high boot-stall input (smc_padring: boot_stall_o =
   // lsio_pad2core_data[57]).
   for (
       genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++
   ) begin : gen_gpio_pad_pull
+`ifdef VERILATOR
     pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
+`else
+    pulldown (weak0) u_pad_pulldown (gpio_pad_io[gpio_idx]);
+`endif
   end
 
   // One testbench driver per pad: the pin-0 and boot-stall straps merge into
