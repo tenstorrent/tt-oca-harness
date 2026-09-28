@@ -382,7 +382,7 @@ feature rows.
 |`smc_dfd_trace_sink_readout_test` |The captured trace read back out of the sink RAM, with both sink modes and the deactivation edge.
 |`smc_dfd_sink_mmr_sweep_test` |Every register of the DST, sink and funnel MMR sub-blocks written against its generated RDL contract and restored.
 |`smc_dfd_ro_mmr_write_test` |Every read-only DFD MMR written, with the write required to be ignored.
-|`smc_dfd_mmr_lane_test` |Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the DFD port accessed past the RDL window.
+|`smc_dfd_mmr_lane_test` |Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the addresses past the SMC_CLA window refused with DECERR.
 |`smc_dfd_cla_live_bus_test` |The CLA's signal event generators, counters and actions driven on a debug bus that moves between two measured states.
 |`smc_dfd_trace_flush_corner_test` |The DST's trace control driven through stream lengths, start/stop action loops, timestamp phases and memory-mode sink flushes.
 |`smc_dfd_trace_reset_test` |A cool reset taken while the DST is tracing, with the DFD required back at its RDL reset state.
@@ -1941,17 +1941,14 @@ Drive `smc_xvisor_remap_test_seq`. Each checker below is a named compare the DUT
 * The co-resident shape writes several addresses before any of them is read back, so a decode that collapses two windows onto one physical register returns a neighbour's pattern and fails the exact compare -- which a per-address write-then-read cannot see.
 * Three addresses no generated-map block declares and no crossbar rule covers (past the watchdog cluster, past the DFX block, past the fabric-control block) are declared expected-error to the SEP_IN monitor and required to answer DECERR from the fabric error slave.
 * The first word past the straps block in the external window (window base plus `0x5800` from `memmap.adoc`, plus the block size from the generated `straps.h`) is claimed by no target of the window's demux. It must reach the external port and be answered DECERR there, and `STRAPS_LO`/`STRAPS_HI` must read the same on both sides of it.
-* **Past the last block, inside a crossbar window.** The peripheral crossbar gives GPIO a 4 KB window and misc_wrap 2 KB, but the generated blocks end at `GPIO_INTF_TOTAL_SIZE` and misc_wrap's `SIZE`. A read and a write at the first word past `GPIO_INTF[64]`, and a write past misc_wrap, must each be refused with an error response, and the last register before each must read the same afterwards.
-* **Design observation: the data-accelerator window aliases past the zeroer block.**
-** The local crossbar gives the data-accelerator control path a 4 KB window (`smc_local_xbar_pkg.sv:296-298`). The zeroer control block ends at `SMC_TOP_ZEROER_CTRL_BASE_ADDR + SIZE`.
-** A write past it matches neither the DMA nor the zeroer range in `smc_data_accelerator_wrap.sv:57-68`, so it takes the default select, DMA (`:58-59`). The DMA register block answers OKAY and stores it at the aliased offset. A probe write of `0x5A5A1234` to `0xC0038318` read back from DMA `LENGTH_LO` at `0xC0038118`.
-** No generated block declares the address, so by the rule the beyond-region probes apply it should be refused. The leaf writes 0 there, which is taken where every aliased DMA descriptor register already holds 0, and it requires those registers and the zeroer's `DEST_ADDR` to still read 0. It does not grade the response.
+* **Past a block's generated extent.** The crossbars decode each block to its generated `SIZE` or `TOTAL_SIZE` and send every other address to the error slave. A read and a write at the first word past `GPIO_INTF[64]` (`GPIO_INTF_TOTAL_SIZE`), and a write past misc_wrap (`SIZE`), must each be refused with an error response, and the last register before each must read the same afterwards.
+* **Data-accelerator range.** The crossbar decodes the DMA block to `SMC_TOP_DMA_CTRL_SIZE` and the zeroer block to `SMC_TOP_ZEROER_CTRL_SIZE`, both cross-checked against the Decoded Extent column of the generated memory map. The first word past the DMA block (the gap below the zeroer, `0xC0038138` in the current map) and the first word past the zeroer block (`0xC0038218`) each take a read and an all-ones write, and each access must answer DECERR. Every DMA descriptor register and the zeroer's `DEST_ADDR` read 0 before and after, so a write that reached either block at any offset fails the readback.
 * The APB4-fronted blocks are read at their 32-bit generated-map addresses, and 32-bit reads are required to return values with bits above 16 set, so the APB4 data path is exercised beyond a 16-bit window.
 * The regions SEP_IN cannot reach in this bench are named in the log and left open rather than claimed: the PLIC and CLINT/BEU windows lie outside the local and global apertures at the reset `REGION_SIZE` and answer DECERR (`smc_region_size_plic_clint_beu_decode_test` reaches them after widening it), the generated map declares no register in the debug-module region, and the M-mode/Xvisor remap regions are outbound apertures with no inbound decode pinned by the specification.
 
 *Test Procedure*:
 
-Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The sequence sweeps every reachable region at its base side and at the top of its extent, probes the three beyond-region addresses, routes one access into the external window and one past its straps block, requires the scoreboard's exact-value compare count to have advanced by its floor, and prints the cell ledger. The leaf then re-checks the scoreboard compare count and books a protocol-VIP record with the sequence's measured access count against a stimulus floor.
+Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The sequence sweeps every reachable region at its base side and at the top of its extent, probes the three beyond-region addresses and the four past-extent addresses, routes one access into the external window and one past its straps block, requires the scoreboard's exact-value compare count to have advanced by its floor, and prints the cell ledger. The leaf then re-checks the scoreboard compare count and books a protocol-VIP record with the sequence's measured access count against a stimulus floor.
 
 *Checkers*:
 
@@ -1963,7 +1960,7 @@ Drive `smc_address_map_region_decode_test_seq` on the SEP_IN AXI sequencer. The 
 |`CHK-ADDRESS-MAP-REGION-FLOOR` |The leaf requires the scoreboard's `sys_axi_value_checks_seen` to have reached `EXPECTED_VALUE_CHECKS` before this token is logged, so a run whose stimulus stopped reaching the DUT fails instead of passing with a short sweep
 |===
 
-*Pass Criteria*: every region's generated-reset compare or co-resident readback holds, the three beyond-region addresses each answer DECERR, the external window accesses drive `smc_external_req_o` and the one past the straps block answers DECERR with the straps unchanged, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` exact-value compares. The cells named NOT closed are not part of the claim. Enrolled in: `all`, `hosted`.
+*Pass Criteria*: every region's generated-reset compare or co-resident readback holds, the three beyond-region addresses each answer DECERR, the external window accesses drive `smc_external_req_o` and the one past the straps block answers DECERR with the straps unchanged, the past-extent probes are refused (DECERR in the data-accelerator range) with their neighbouring registers unchanged, and the scoreboard books at least `EXPECTED_VALUE_CHECKS` exact-value compares. The cells named NOT closed are not part of the claim. Enrolled in: `all`, `hosted`.
 
 '''''
 
@@ -3664,8 +3661,8 @@ Drive `smc_cluster_beu_test_seq`. Each checker below is a named compare the DUT 
 * Every row of :data:`CPU_MAP_READS` addresses a **real register that exists in the generated map**, by its own generated `SMC_TOP_SMC_BASE_CONFIG_*_BASE_ADDR` symbol, and expects that register's **generated RDL reset constant**, imported by symbol from `hw/sys/smc/regs/gen/c/blocks/smc_base_config.h` -- never a hand literal and never an address computed as `BASE_ADDR + <offset>`.
 * So every read verifies decode *and* spec-defined reset content.
 * No row addresses `0xC001_0050`.
-* It is not "reserved/open-bus space within the block window": `SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR` is `0xC0010000` and `SMC_TOP_SMC_BASE_CONFIG_SIZE` is `0x0000004C` (`hw/sys/smc/regs/gen/c/smc_addr.h:108-109`), so the window ends at `0xC001004B` and `0xC0010050` is outside it.
-* Undecoded space reads back `0x00000000`, which is exactly what the row expected, so it could not fail on any RTL while logging a register-shaped name that names no register (`[ADDRESS-FROM-AUTHORITATIVE-MAP]`).
+* It is not "reserved/open-bus space within the block window": `SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR` is `0xC0010000` and `SMC_TOP_SMC_BASE_CONFIG_SIZE` is `0x0000004C` (generated `smc_addr.h`), so the block ends at `0xC001004B` and `0xC0010050` is outside it, where the fabric refuses the access.
+* A row there would log a register-shaped name that names no register (`[ADDRESS-FROM-AUTHORITATIVE-MAP]`).
 * `LOCAL_BASE` (`sw=r` in the RDL) is written with a non-reset word and read back: the write completes and the readback still carries the generated reset, so the base-config alias the CPU uses cannot be moved from the bus.
 * The sweep reads `REGION_SIZE` instead: a real register of the same block with a non-zero generated reset, so the row fails if the fabric ever stops decoding it.
 
@@ -4792,14 +4789,14 @@ Drive `smc_dfd_ro_mmr_write_test_seq`. Each checker below is a named compare the
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the DFD port accessed past the RDL window.
+*Objective*: Every DST, DST-sink and funnel MMR written one byte at a time, unmapped offsets of each block read and written, and the addresses past the SMC_CLA window refused with DECERR.
 
 *Test Coverage*:
 
 * The other DFD MMR leaves write whole registers. Here every register of the `dst`, `dst_sink` and `funnel` sub-blocks other than the sink's RAM data port (23 in the current map, derived on every run) takes a one-byte store of its low byte's complement, which covers only part of the register's 4-byte lane. The register may ignore the store or take it in its software-writable bits; no other byte may move. It is then written back whole and read back.
 * Offsets inside each block's register hole are read and written: offset 0x40 of the DST block, which is also the sink's RAM data port offset in its own block, so the read has to be decoded as an ordinary register access; offset 0x8 of the sink block; and offsets 0x10, 0x14, 0x18 and 0x1C of the funnel block, the offsets the sink block gives its window start and limit registers. Each access has to complete, a read that completes without error has to return 0 in every bit, as any bit no field occupies does, and the registers on either side of the hole have to hold their values across an all-ones write.
 
-* The SMC local crossbar forwards 0xC0160000 up to 0xC0260000 to the DFD port, 1 MB, while the RDL's SMC_CLA window and the four MMR blocks cover 0x4000. A read and an all-ones write go to the first word past the RDL window (the window's base plus its size from the generated header, 0xC0164000) and to the last word of the forwarded range (0xC025FFFC, an integration fact the map does not describe). Each has to complete, a read that completes OKAY has to return 0, and none of the swept registers may move across them. The RDL says nothing about the response; the DFD MMR bridge completes these accesses with SLVERR.
+* The SMC local crossbar decodes the DFD port to the SMC_CLA window, the base and size the generated header gives it (16 KiB, cross-checked against the Decoded Extent column of the generated memory map), and sends every address above it to the error slave. A read and an all-ones write go to the first word past the window (`0xC0164000` in the current map) and to the last word of the unmapped gap above it, which ends where the next generated window starts (`0xC03FFFFC`). Each access has to answer DECERR, and none of the swept registers may move across them.
 
 *Test Procedure*:
 
@@ -4812,11 +4809,11 @@ Drive `smc_dfd_mmr_lane_test_seq`. Each checker below is a named compare the DUT
 |===
 |Checker |Description
 |`CHK-DFD-MMR-BYTE` |Every swept register took a one-byte store of the low byte's complement, no other byte moved, the writable bits in the low byte took either their old or their new value, and the whole write-back read back exactly; a moved byte, a partial or corrupted low byte, or a failed write-back fails it
-|`CHK-DFD-MMR-PAST-WINDOW` |The reads and writes past the RDL window completed, a read that completed OKAY returned 0, and every swept register read the same value before and after; a hang, a non-zero OKAY read or a moved register fails it
+|`CHK-DFD-MMR-PAST-WINDOW` |The reads and writes past the SMC_CLA window each answered DECERR, and every swept register read the same value before and after; a hang, any other response or a moved register fails it
 |`CHK-DFD-MMR-UNMAPPED` |The read and the write to each unmapped offset completed, the read returned 0 when it completed without error, and the neighbouring registers held their values; a hang, a non-zero read or a moved neighbour fails it
 |===
 
-*Measured*: every one of the 23 byte stores was ignored, every unmapped access inside a block completed with an OKAY response, and every access past the RDL window completed with SLVERR.
+*Measured*: every one of the 23 byte stores was ignored, every unmapped access inside a block completed with an OKAY response, and every access past the SMC_CLA window answered DECERR.
 
 *Design note*: with no N-trace sink block, the MMR fabric's window-limit legality check for that block decodes on the block index the funnel occupies, so it acts on writes to the funnel's unmapped offsets 0x10 to 0x1C. Those offsets hold no funnel register, so the observable effect is nil; the funnel accesses above are what exercise that check.
 
@@ -11387,32 +11384,33 @@ Drive `smc_cpu_reset_pulse_test_seq`. Each checker below is a named compare the 
 
 *Source Module*: `smc_decode_hole_test`
 
-*BFM / Model*: none; system AXI accesses with their responses recorded
+*BFM / Model*: none; system AXI accesses with their responses checked
 
-*Objective*: Write and read past the last mapped register of three block windows. The misc block and the GPIO padring get 2 KB and 4 KB windows from the peripheral crossbar, and the data accelerator gets 4 KB from the local crossbar. Each block decodes its window again, and no other enrolled leaf reaches the unmapped tail, where that decode falls to its default.
+*Objective*: Write and read the unmapped tail of three block apertures. The generated memory map gives misc_wrap a 2 KiB aperture, the GPIO interfaces 4 KiB and the DMA controller 512 B, each with a smaller decoded extent. The crossbars decode each block to its extent, so an address in the tail reaches no block and the fabric's error slave answers it (`memmap.adoc`: the fabric refuses an address past a unit's decoded extent).
 
 *Test Coverage*:
 
-* Misc: 0xC000_2C00, past `NDM_RESET` ending at 0xC000_2A0C. The live register is `SCRATCH_COLD` 0.
-* GPIO padring: 0xC000_3800, past the 65th GPIO interface ending at 0xC000_3410. The live register is `DATA_CTRL` of GPIO 64.
-* Data accelerator: 0xC003_8338, past the zeroer registers ending at 0xC003_8218. The data accelerator sends every address outside its zeroer registers to the DMA (`smc_data_accelerator_wrap.sv:60`), whose register port keeps nine address bits (`:111-116`), so a tail address lands on the DMA register at its offset modulo 0x200; 0xC003_8400 and 0xC003_8800 write the DMA's `CONFIG`. This address lands at offset 0x138, past the DMA's last register. The live register is the DMA's `DST_ADDRESS_LO`.
-* For each, the live register is seeded and read back first, so a stray write can show. The unmapped write must leave the seed in place, and the unmapped read must not return it. The responses are recorded but not asserted, because no document fixes which error an unmapped offset inside a block window returns.
+* Each probe is the word halfway between the end of the block's decoded extent (`SIZE` or `TOTAL_SIZE` from the generated `smc_addr.h`) and the end of its aperture (the generated memory map's window row), and is checked to lie in no unit's decoded extent.
+* Misc: 0xC000_2D04, past `NDM_RESET` ending at 0xC000_2A0C, inside the aperture ending 0xC000_3000. The live register is `SCRATCH_COLD` 0.
+* GPIO: 0xC000_3A08, past the 65th GPIO interface ending at 0xC000_3410, inside the aperture ending 0xC000_4000. The live register is `DATA_CTRL` of GPIO 64.
+* DMA: 0xC003_819C, past the DMA's 312 B decoded extent ending at 0xC003_8138, inside the aperture ending 0xC003_8200. The live register is the DMA's `DST_ADDRESS_LO`.
+* For each, the live register is seeded and read back first, so a stray write can show. The unmapped read must answer DECERR and the unmapped write must be refused with an error response (the AXI-Lite peripheral and internal crossbars answer SLVERR to a write, the local crossbar DECERR); the write must leave the seed in place, and the read must not return it.
 
 *Test Procedure*:
 
 [arabic]
-. For each window: read the live register, seed it, and read the seed back.
+. For each aperture: read the live register, seed it, and read the seed back.
 . Write a payload to the unmapped address, then read it back.
-. Require the live register to still hold the seed and the unmapped read not to return it, then restore the live register.
+. Require the unmapped read to answer DECERR and the write to be refused, the live register to still hold the seed and the unmapped read not to return it, then restore the live register.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-DECODE-HOLE-MISC` |An unmapped write and read in the misc window's tail left `SCRATCH_COLD` 0 holding its seed and did not read it back
-|`CHK-DECODE-HOLE-GPIO` |An unmapped write and read past the last GPIO interface left `DATA_CTRL` of GPIO 64 holding its seed and did not read it back
-|`CHK-DECODE-HOLE-DATA_ACCEL` |An unmapped write and read past the zeroer registers left the DMA's `DST_ADDRESS_LO` holding its seed and did not read it back
+|`CHK-DECODE-HOLE-MISC` |An unmapped write and read in the misc aperture's tail were refused (the read with DECERR), left `SCRATCH_COLD` 0 holding its seed and did not read it back
+|`CHK-DECODE-HOLE-GPIO` |An unmapped write and read past the last GPIO interface were refused (the read with DECERR), left `DATA_CTRL` of GPIO 64 holding its seed and did not read it back
+|`CHK-DECODE-HOLE-DATA_ACCEL` |An unmapped write and read past the DMA's decoded extent were refused (the read with DECERR), left the DMA's `DST_ADDRESS_LO` holding its seed and did not read it back
 |===
 
 *Pass Criteria*: every checker holds after its compares and every sequence assert holds. Enrolled in: `all`, `hosted`.

@@ -14,12 +14,11 @@ literal and never an address computed as ``BASE_ADDR + <offset>``. So every read
 verifies decode *and* spec-defined reset content.
 
 ``SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR`` is ``0xC0010000`` and
-``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C``
-(``hw/sys/smc/regs/gen/c/smc_addr.h:108-109``), so the window ends at
-``0xC001004B``. Undecoded space above it reads back ``0x00000000``, so a row
-that expected 0 there could not fail on any RTL while logging a register-shaped
-name that names no register (``[ADDRESS-FROM-AUTHORITATIVE-MAP]``); every row
-therefore addresses a register inside the window, and ``REGION_SIZE`` -- a real
+``SMC_TOP_SMC_BASE_CONFIG_SIZE`` is ``0x0000004C`` (generated ``smc_addr.h``),
+so the block ends at ``0xC001004B`` and the fabric refuses the space above it.
+A row that named an address there would log a register-shaped name that names
+no register (``[ADDRESS-FROM-AUTHORITATIVE-MAP]``); every row therefore
+addresses a register inside the block, and ``REGION_SIZE`` -- a real
 register of the same block with a non-zero generated reset -- fails if the
 fabric ever stops decoding it.
 """
