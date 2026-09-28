@@ -115,7 +115,8 @@ leaves uncovered is uncovered in `hosted` too, so the file holds for both.
 An entry names only what the raw report marks uncovered: a toggle field wholly
 uncovered is excluded whole, otherwise each uncovered range in the direction
 the report marks missing, clipped to the bits a class names; a partly
-uncovered multi-dimensional range stays graded; a condition row or branch arm
+uncovered multi-dimensional range is written index by index, and a class that
+names a bit window leaves such a range graded; a condition row or branch arm
 is taken only where the report says Not Covered. Fields
 `smu_wrapper_toggle_exclusions.el` already names are skipped.
 

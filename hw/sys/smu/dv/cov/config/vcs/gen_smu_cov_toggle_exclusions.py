@@ -56,9 +56,9 @@ and a hole in one is a stimulus gap.
 
 An entry names only what the raw report marks uncovered. A field every bit of
 which is uncovered in both directions is excluded whole; otherwise each
-uncovered range is excluded, in the direction the report marks missing. A
-multi-dimensional range that is only partly uncovered stays graded, because
-the exclusion format addresses one dimension.
+uncovered range is excluded, in the direction the report marks missing, with
+every index of a multi-dimensional range written out. A class that names a
+bit window applies it to one-dimensional ranges only.
 
 A condition row or branch arm is taken only where the raw report marks it
 Not Covered.
@@ -437,7 +437,7 @@ def entries(field: str, sig: str, rows: list[tuple[str, str, str]], bits=None) -
         if t10 == "Yes" and t01 == "Yes":
             continue
         rng = name[len(field) :]
-        if rng.count("[") > 1:
+        if rng.count("[") > 1 and bits is not None:
             continue
         if bits is None:
             sels = [f" {rng}" if rng else ""]
