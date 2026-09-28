@@ -1771,7 +1771,7 @@ row's EXPECT sentence is worth, read the check.
 
 *Source Module*: `smu_composition_parameter_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode, `+expected_sep=1`, `+xtrig_int_ct_mode=0x80`
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode, `+expected_sep=1`, `+xtrig_int_ct_mode=0x80`; the bench overrides `SEP_SEC_DISABLE_TOKEN` with the SHA-256 of the all-zero 32-byte token (`tb_wrapper_top.sv`), standing in for the metal digest so that a frontdoor token can take the match
 
 *Objective*: The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 
@@ -1779,7 +1779,7 @@ row's EXPECT sentence is worth, read the check.
 
 * The goldens are specification values. `doc/integrator/src/smu.adoc` "SMU Default Parameters" and "Cross Trigger Parameters": 16 external CTPs, 8 exposed internal CT lanes and 8 exposed clock-stop requests, with the DTP carrying 10 and 9 once the SMC reservation is added ("Debug & Test Ports (DTP) Integration"); `SMC_OTP_*_PL_DEPTH` `2'h3`; `JTAG_NUM_EXTRA_STAPS` 1 with the port array as wide as the parameter. "Pipeline Depth Parameters": `SEP_OTP_*_PL_DEPTH` fixed to `2'h3`. `hw/sys/smc/doc/port_table.adoc`: 256 external interrupts. `hw/sys/sep/doc/security_disable.adoc`: the 256-bit token. `+xtrig_int_ct_mode` is the bench's declared elaboration input; the DTP is required to present it above zeroed SMC-reserved bits ("SMC-reserved DTP mode bits are 0 (pulse-sync)").
 * Plumbing compares read one parameter at the wrapper and at the instance that consumes it: `Cfg` at the wrapper and at `smu`; the token at the wrapper, at `smu` and at the SEP eFuse controller.
-* No specification in this tree states the packed layout of the build configuration struct or the token parameter's default. The per-field `Cfg` decode compares and the token-is-zero compare are untokened drift checks; `SEP_KM_LATCHED_MEM_RDATA` has no specified default and is decoded and logged only. No checker row rests on these.
+* The token the wrapper carries is compared against the SHA-256 of the all-zero 32-byte token, computed in the sequence, which is the value the bench binds in place of the metal digest; the product default is not what this composition elaborates. No specification in this tree states the packed layout of the build configuration struct. The per-field `Cfg` decode compares are untokened drift checks; `SEP_KM_LATCHED_MEM_RDATA` has no specified default and is decoded and logged only. No checker row rests on these.
 * The security_disable leg reads nodes that are constant zero on this composition; it proves the wire, not the function, and says so.
 
 *Test Procedure*:
