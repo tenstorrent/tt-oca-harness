@@ -746,13 +746,15 @@ both identically — the split is purely organizational:</p>
 <li>
 <p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
 Their function is dictated by the OCAH specifications, but their
-implementation is inherently technology- and vendor-specific — the GPIO pad
-controls, the PLL macro, the PVT sensors, and the eFuse SHIM.</p>
+implementation is inherently technology- and vendor-specific — the eFuse
+SHIM, PLL and PVT clock observation, the POC/PBIAS and reference-clock pad
+controls, the per-pad GPIO controls, the PLL macro, and the PVT sensors.</p>
 </li>
 <li>
-<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): optional region for any additional
-memory-mapped devices the adopter wants to expose. The reference
-integration places its vendor I3C controllers (nonfree overlay) here.</p>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): any additional memory-mapped devices
+the adopter wants to expose, plus the captured strap registers at
+<code>BASE + 0x040_5800</code>. The reference integration places its vendor I3C
+controllers (nonfree overlay) here.</p>
 </li>
 </ul>
 </div>

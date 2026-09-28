@@ -705,8 +705,8 @@ in the GPIO table.</p>
 <div class="paragraph">
 <p>Configuration straps are captured separately from the GPIO table. Establish
 them before cold reset deassertion and keep them stable during capture. The
-generated reset-unit <code>STRAPS_LO</code> and <code>STRAPS_HI</code> register descriptions define
-the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
+<code>STRAPS_LO</code> and <code>STRAPS_HI</code> registers in the adopter peripheral window (see
+<a href="#smc-external-supplementary">Supplementary Region</a>) define the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
 <code>STRAPS_LO[13]</code> and <code>TEST_EN</code> at <code>STRAPS_LO[14]</code>.</p>
 </div>
 </div>
@@ -735,11 +735,130 @@ multiplexing is expected to be reachable here. The SMC decodes the aperture and
 forwards the transaction; what lives behind it is entirely adopter-defined.</p>
 </div>
 <div class="paragraph">
-<p>The window is split into a mandatory region, whose contents and placement the
-SMC memory map fixes and every integration must implement, and a supplementary
-region for anything else the adopter chooses to expose. For placement and the
-full register layout, refer to the SMC Memory Map documentation
-(<code>hw/sys/smc/doc/memmap.adoc</code>).</p>
+<p>The window occupies <code>BASE + 0x040_0000</code> to <code>BASE + 0x07F_FFFF</code> (4 MiB; with
+<code>LOCAL_BASE</code>, <code>0xC040_0000</code> to <code>0xC07F_FFFF</code>). The SMC forwards every access
+in this range to <code>smc_external_req_o</code> except the eFuse SHIM range at its base
+(see <a href="#smc-external-mandatory">Mandatory Region</a>); the adopter decodes everything else. The
+generated SMC memory map reports the window as one opaque aperture.</p>
+</div>
+<div class="paragraph">
+<p>The window is split into two regions. Hardware treats both identically&#8201;&#8212;&#8201;the
+split is organizational only:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
+OCAH specifications dictate their function, but their implementation, register
+layout and placement within the region are technology- and vendor-specific.</p>
+</li>
+<li>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): additional memory-mapped devices the
+adopter chooses to expose, plus the captured strap registers.</p>
+</li>
+</ul>
+</div>
+<div class="sect4">
+<h5 id="smc-external-mandatory"><a class="anchor" href="#smc-external-mandatory"></a><a class="link" href="#smc-external-mandatory">Mandatory Region</a></h5>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Technology-specific eFuse bank control, such as the time
+the OTP macro needs to initialize before sensing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock-observation pad interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register-driven pad data and direction,
+per-field override enables, and an AXI PROT access filter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock-observation pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drive strength, pull enable and select, and
+Schmitt select</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock-observation pad interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As the PLL clock-observation pad interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock-observation pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As the PLL clock-observation pad control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POC/PBIAS pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pad supply-voltage level selection and retention
+enable, with an access filter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference-clock pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drive strength, pull and Schmitt settings for the
+reference-clock pad</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-pad GPIO control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One control block per pad: pad electrical settings, the
+value captured at reset deassertion, and the secondary hardware function
+override</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status of the adopter&#8217;s clock-generation block</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status of the adopter&#8217;s process, voltage and
+temperature sensors</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The eFuse SHIM control block sits at the base of the window and does not travel
+the external port. The SMC diverts the first <code>SMC_EFUSE_SHIM_SIZE</code> bytes of the
+window to the eFuse controller, which reaches the SHIM on
+<code>efuse_bank_ctrl_req_o</code> (see <a href="#smc-efuse-connection">eFuse Interface</a>).</p>
+</div>
+</div>
+<div class="sect4">
+<h5 id="smc-external-supplementary"><a class="anchor" href="#smc-external-supplementary"></a><a class="link" href="#smc-external-supplementary">Supplementary Region</a></h5>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter devices</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional memory-mapped devices. The reference integration
+places its vendor I3C controllers here</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Captured straps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pad values latched at cold reset, one bit per GPIO, read by
+boot firmware</p></td>
+</tr>
+</tbody>
+</table>
+<div id="smc-external-straps" class="paragraph">
+<p>The captured straps are read-only. The generated <code>straps</code> register
+descriptions define the decoded bit assignments.</p>
+</div>
 </div>
 </div>
 <div class="sect3">
@@ -931,7 +1050,7 @@ completion.</p>
 </div>
 <div class="paragraph">
 <p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (<code>STRAPS_LO[13]</code>) is captured into
-the reset-unit strap registers. Keep these three mechanisms distinct:</p>
+the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1942,8 +2061,8 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 test interfaces. The following table lists the signal and bump location,
 assigned function, recommended pull, and GPIO-specific notes. It does not define
 default direction or decode configuration straps; use
-<code>smc_padring_pkg::DefaultDirectionMap</code> and the generated reset-unit <code>STRAPS_LO</code>
-and <code>STRAPS_HI</code> register descriptions for those.</p>
+<code>smc_padring_pkg::DefaultDirectionMap</code> and the <code>STRAPS_LO</code> and <code>STRAPS_HI</code>
+register descriptions (see <a href="#smc-external-supplementary">Supplementary Region</a>) for those.</p>
 </div>
 <table class="tableblock frame-all grid-all fit-content small">
 <caption class="title">Table 7. OCAH GPIO Requirements</caption>

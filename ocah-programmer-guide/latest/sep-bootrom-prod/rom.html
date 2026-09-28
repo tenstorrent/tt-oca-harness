@@ -846,8 +846,8 @@ SEP↔SMC interface contract (<code>sep_smc_interface.h</code>).</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reset-unit straps <code>STRAPS_LO</code> / <code>STRAPS_HI</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x2090</code> / <code>0x2094</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Captured straps <code>STRAPS_LO</code> / <code>STRAPS_HI</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x40_5800</code> / <code>0x40_5804</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Latched hardware straps
 (<a href="#sec:straps">Primary / Secondary Strap Handling</a>).</p></td>
 </tr>
@@ -2281,8 +2281,9 @@ from then on follows the same validation path as a SPI-loaded manifest
 <h4 id="sec:straps"><a class="anchor" href="#sec:straps"></a><a class="link" href="#sec:straps">1.11. Primary / Secondary Strap Handling</a></h4>
 <div class="paragraph">
 <p>An OCAH chiplet is either <strong>primary</strong> or <strong>secondary</strong>, selected by a hardware strap. Straps are
-sensed and latched by the SMC reset unit; the SEP reads the latched values over the SMC
-window (<code>STRAPS_LO</code> @ <code>0x2090</code>, <code>STRAPS_HI</code> @ <code>0x2094</code>). The strap bit positions are part of
+latched at cold reset and exposed in the supplementary region of the SMC adopter external
+window; the SEP reads them over the SMC window (<code>STRAPS_LO</code> @ <code>0x40_5800</code>, <code>STRAPS_HI</code> @
+<code>0x40_5804</code>). The strap bit positions are part of
 the SEP↔SMC interface contract.</p>
 </div>
 <table id="tbl:straps" class="tableblock frame-ends grid-rows stretch">
