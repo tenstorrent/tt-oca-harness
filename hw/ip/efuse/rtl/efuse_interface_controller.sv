@@ -83,7 +83,7 @@ module efuse_interface_controller #(
                                                                            // separately named storage for scan
                                                                            // exclusion.
   parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,  // Secret shadow ranges masked under secure_tm.
-  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width; fixed by the encoding in efuse_pkg.
+  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width.
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
   parameter type efuse_map_t = logic    // Shadow eFuse map type.
