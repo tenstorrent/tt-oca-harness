@@ -208,6 +208,10 @@ endif
 # SOURCE FILES
 # =============================================================================
 
+# Ignore ambient environment values; explicit make command-line values still win.
+OCAH_FW_OVERLAY_SOURCES_smc :=
+SMC_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_smc)
+
 MAIN_SOURCES   := $(wildcard $(SRC_DIR)/*.c) $(wildcard $(SRC_DIR)/*.cpp)
 MAIN_ASM       := $(wildcard $(SRC_DIR)/*.S)
 LIB_SOURCES    := $(wildcard $(LIB_DIR)/src/*.c)
@@ -226,11 +230,12 @@ DRIVER_OBJS    := $(patsubst $(DRIVERS_DIR)/src/%.c,$(OBJ_DIR)/drivers/%.o,$(DRI
 
 ALL_OBJS := $(MAIN_OBJS) $(MAIN_ASM_OBJS) $(LIB_OBJS) $(BOOT_ASM_OBJS) $(DRIVER_OBJS)
 
-# Nonfree driver sources hook.
-NONFREE_DRIVER_SOURCES ?=
-NONFREE_DRIVER_OBJS   := $(patsubst %.c,$(OBJ_DIR)/drivers/%.o, \
-                            $(notdir $(NONFREE_DRIVER_SOURCES)))
-ALL_OBJS += $(NONFREE_DRIVER_OBJS)
+SMC_FW_OVERLAY_OBJS := $(patsubst %.c,$(OBJ_DIR)/drivers/%.o, \
+                           $(notdir $(SMC_FW_OVERLAY_SOURCES)))
+ALL_OBJS += $(SMC_FW_OVERLAY_OBJS)
+
+BUILD_FLAGS := SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_smc)
+FLAGS_STAMP := $(OUT_DIR)/.build_flags
 
 ELF_FILE         := $(BIN_DIR)/$(TARGET).elf
 BIN_FILE         := $(BIN_DIR)/$(TARGET).bin
@@ -263,7 +268,7 @@ toolchain-images:
 	    ENABLE_RELEASE_PRINTS="$(ENABLE_RELEASE_PRINTS)" \
 	    ROM_PADDING_SELFTEST="$(ROM_PADDING_SELFTEST)" I3C_CORE="$(I3C_CORE)" \
 	    EXTRA_DEFINES="$(EXTRA_DEFINES)" \
-	    NONFREE_DRIVER_SOURCES="$(NONFREE_DRIVER_SOURCES)" \
+	    OCAH_FW_OVERLAY_SOURCES_smc="$(OCAH_FW_OVERLAY_SOURCES_smc)" \
 	    RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build; \
 	else \
 	  echo "error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset" >&2; \
@@ -300,11 +305,25 @@ info:
 	@echo "Output:     $(OUT_DIR)"
 	@echo "=========================================="
 
-$(OBJ_DIR)/src $(OBJ_DIR)/lib $(OBJ_DIR)/boot $(OBJ_DIR)/drivers:
+$(OBJ_DIR) $(OBJ_DIR)/src $(OBJ_DIR)/lib $(OBJ_DIR)/boot $(OBJ_DIR)/drivers:
 	@mkdir -p $@
 
 $(BIN_DIR) $(HEX_DIR) $(DISASM_DIR):
 	@mkdir -p $@
+
+.PHONY: FORCE
+FORCE:
+
+$(FLAGS_STAMP): FORCE | $(OBJ_DIR)
+	@echo '$(BUILD_FLAGS)' > "$@.tmp"
+	@if ! cmp -s "$@.tmp" "$@" 2>/dev/null; then \
+	  echo "  [build flags changed -> rebuilding objects]"; \
+	  mv "$@.tmp" "$@"; \
+	else \
+	  rm "$@.tmp"; \
+	fi
+
+$(ALL_OBJS): $(FLAGS_STAMP)
 
 # Header dependency tracking. Without it an incremental build keeps objects whose
 # headers have since changed, so editing an address in smc_rom_defs.h leaves the
@@ -337,12 +356,12 @@ $(OBJ_DIR)/drivers/%.o: $(DRIVERS_DIR)/src/%.c | $(OBJ_DIR)/drivers
 	@echo "CC  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-# Compile rule for NONFREE_DRIVER_SOURCES.  Uses a static pattern rule so Make
-# knows the prerequisite source path for each extra object without a VPATH.
-$(NONFREE_DRIVER_OBJS): $(OBJ_DIR)/drivers/%.o: | $(OBJ_DIR)/drivers
-	@echo "CC (extra) $(filter %/$*.c,$(NONFREE_DRIVER_SOURCES))"
+# Compile overlay sources with a static pattern rule so Make knows each
+# prerequisite source path without a VPATH.
+$(SMC_FW_OVERLAY_OBJS): $(OBJ_DIR)/drivers/%.o: | $(OBJ_DIR)/drivers
+	@echo "CC (extra) $(filter %/$*.c,$(SMC_FW_OVERLAY_SOURCES))"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) \
-	    -c $(filter %/$*.c,$(NONFREE_DRIVER_SOURCES)) -o $@
+	    -c $(filter %/$*.c,$(SMC_FW_OVERLAY_SOURCES)) -o $@
 
 -include $(ALL_OBJS:.o=.d)
 
