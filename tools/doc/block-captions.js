@@ -42,9 +42,13 @@ exports.register = function (registry, { file } = {}) {
         if (kind === 'pass' && block.getSource().includes('class="ocah-reg-html"')) {
           let heading = section
           let addressMap = ''
-          block.lines = [block.getSource().replace(/<h[23]\b[^>]*>(.*?)<\/h[23]>|<table\b[^>]*>[\s\S]*?<\/table>/g, (html, title) => {
+          block.lines = [block.getSource().replace(/<h[23]\b([^>]*)>(.*?)<\/h[23]>|<table\b[^>]*>[\s\S]*?<\/table>/g, (html, attrs, title) => {
             if (title !== undefined) {
-              if (title.startsWith('Address Map: ')) {
+              const regmap = attrs && attrs.match(/\bid="regmap-([^"]*)"/)
+              if (regmap) {
+                addressMap = regmap[1]
+                heading = title
+              } else if (title.startsWith('Address Map: ')) {
                 addressMap = title.slice('Address Map: '.length)
                 heading = title
               } else {

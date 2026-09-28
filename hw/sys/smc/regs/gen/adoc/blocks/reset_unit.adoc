@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-reset_unit]
-== Address Map: reset_unit
+== Reset Unit Address Map
 
 Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.
 

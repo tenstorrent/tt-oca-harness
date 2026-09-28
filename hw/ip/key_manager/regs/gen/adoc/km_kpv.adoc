@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-km_kpv]
-== Address Map: km_kpv
+== Key and Policy Vault (KM Port)
 
 Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.
 

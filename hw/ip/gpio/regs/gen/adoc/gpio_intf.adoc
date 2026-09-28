@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-gpio_intf]
-== Address Map: gpio_intf
+== GPIO Interface Address Map
 
 GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.
 

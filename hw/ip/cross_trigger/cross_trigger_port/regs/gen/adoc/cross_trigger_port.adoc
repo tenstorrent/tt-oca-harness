@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-cross_trigger_port]
-== Address Map: cross_trigger_port
+== Cross Trigger Port Address Map
 
 Configuration and status registers for the cross trigger port
 

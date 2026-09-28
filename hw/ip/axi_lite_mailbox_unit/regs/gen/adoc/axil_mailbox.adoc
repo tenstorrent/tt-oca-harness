@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-axil_mailbox]
-== Address Map: axil_mailbox
+== AXI-Lite Mailbox Address Map
 
 Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.
 

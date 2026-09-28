@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-uart_log_engine_ctrl]
-== Address Map: uart_log_engine_ctrl
+== UART Log Engine Control Address Map
 
 Top-level enable register for the UART log-engine block.
 

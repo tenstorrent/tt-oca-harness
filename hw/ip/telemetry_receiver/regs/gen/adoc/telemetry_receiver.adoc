@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-telemetry_receiver]
-== Address Map: telemetry_receiver
+== Telemetry Receiver Address Map
 
 Configuration, status, and data-buffer registers for a single telemetry receiver channel.
 

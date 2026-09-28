@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-uart_16550_main]
-== Address Map: uart_16550_main
+== UART 16550 Main Address Map
 
 Contains the mode-independent registers and the read-only registers accessible only
 when `DLAB = 0`.

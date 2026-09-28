@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-misc_wrap]
-== Address Map: misc_wrap
+== SMC Miscellaneous Wrapper Address Map
 
 Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 

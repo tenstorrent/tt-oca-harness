@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-avsbus_controller]
-== Address Map: avsbus_controller
+== AVSBus Controller Address Map
 
 Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.
 

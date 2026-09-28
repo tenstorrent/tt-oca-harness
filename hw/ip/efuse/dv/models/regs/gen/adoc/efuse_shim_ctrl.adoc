@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-efuse_shim_ctrl]
-== Address Map: efuse_shim_ctrl
+== eFuse SHIM Control Model Address Map
 
 DV model of the eFuse SHIM control interface.
 

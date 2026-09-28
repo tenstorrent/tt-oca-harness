@@ -31556,6 +31556,8 @@ On write:
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>dma_ctrl</ipxact:name>
+          <ipxact:displayName>iDMA Controller Address Map</ipxact:displayName>
+          <ipxact:description>Source, destination, length, and control registers for the iDMA data-mover engine.</ipxact:description>
           <ipxact:addressOffset>'hc0038000</ipxact:addressOffset>
           <ipxact:range>'h138</ipxact:range>
           <ipxact:register>

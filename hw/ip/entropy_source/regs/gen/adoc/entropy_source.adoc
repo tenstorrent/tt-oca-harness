@@ -4,7 +4,7 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-entropy_source]
-== Address Map: entropy_source
+== Entropy Source Address Map
 
 Entropy-source configuration, status, and data registers.
 
