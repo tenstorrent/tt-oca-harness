@@ -17,13 +17,19 @@ The `clk_smn_i` input is architecturally independent of `clk_smu_i`; when they
 are asynchronous, CDCs at this boundary are an integration responsibility.
 OCAH does not supply synchronizer cells at the SMN interface.
 
-The boundary is shown in the
+<<ocah-clock-domain-diagram>> overlays the clock domains on the
 ifdef::backend-html5[]
 xref:overview.adoc#ocah-top-block-diagram[OCAH top-level block diagram].
 endif::backend-html5[]
 ifdef::backend-pdf[]
 <<ocah-top-block-diagram,OCAH top-level block diagram>>.
 endif::backend-pdf[]
+Each zone boundary runs through the CDCs that separate the domains. The AoU
+bridges, the D2D macros and the future safety monitor are not assigned a zone.
+
+[[ocah-clock-domain-diagram]]
+.OCAH Clock-Domain Zones
+image::ocah_top_clocks.svg[OCAH Clock-Domain Zones,scaledwidth=100.0%]
 
 <<ocah-clock-domain-table>> summarises the clock domains present in OCAH.
 
