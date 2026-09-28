@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-reset_unit]
 == Address Map: reset_unit
 
+Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

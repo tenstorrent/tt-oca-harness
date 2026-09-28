@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-filter_ctrl]
 == Address Map: filter_ctrl
 
+Per-filter access-control registers defining permitted address ranges and transaction attributes.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

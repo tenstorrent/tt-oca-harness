@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-km_kpv]
 == Address Map: km_kpv
 
+Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.
+
 [NOTE]
 ======
 *Register Arrays:*

@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-efuse_shim_ctrl]
 == Address Map: efuse_shim_ctrl
 
+DV model of the eFuse SHIM control interface.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

@@ -4,6 +4,8 @@
 `ifndef SEP_CPU_CTRL_RDL_DEFINED
 `define SEP_CPU_CTRL_RDL_DEFINED
 addrmap sep_cpu_ctrl {
+    name = "SEP CPU Control Address Map";
+    desc = "SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.";
 
     reg REFERENCE_COUNTER {
         regwidth = 64;

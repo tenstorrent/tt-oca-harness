@@ -4,8 +4,9 @@
 `ifndef SEP_RESET_CTRL_RDL_DEFINED
 `define SEP_RESET_CTRL_RDL_DEFINED
 addrmap sep_reset_ctrl {
+    name = "SEP Reset Control Address Map";
     desc = "Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.";
-
+    
     reg SW_RESET_N {
         regwidth = 64;
         accesswidth = 64;

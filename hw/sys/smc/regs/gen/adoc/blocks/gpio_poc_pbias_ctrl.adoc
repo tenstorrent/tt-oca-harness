@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-gpio_poc_pbias_ctrl]
 == Address Map: gpio_poc_pbias_ctrl
 
+GPIO POC and PBIAS Control Register Interface
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

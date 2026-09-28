@@ -6,6 +6,9 @@
 [#regmap-{regmap-instance}-abr_wrapper_key]
 == Address Map: abr_wrapper_key
 
+Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.
+Contains four dual-share secret-seed inputs and one shared-key output.
+
 [NOTE]
 ======
 *Register Arrays:*

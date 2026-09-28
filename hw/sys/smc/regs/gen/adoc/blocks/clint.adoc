@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-clint]
 == Address Map: clint
 
+Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.
+
 [NOTE]
 ======
 *Register Arrays:*

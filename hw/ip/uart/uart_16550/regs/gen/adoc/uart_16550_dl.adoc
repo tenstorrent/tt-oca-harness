@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-uart_16550_dl]
 == Address Map: uart_16550_dl
 
+Contains the registers accessible only when `LCR.DLAB = 1`.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

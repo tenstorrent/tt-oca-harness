@@ -5,9 +5,10 @@
 `define GPIO_INTF_RDL_DEFINED
 
 addrmap gpio_intf {
+    name = "GPIO Interface Address Map";
+    desc = "GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.";
 
-    desc = "GPIO Interface CSR";
-
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

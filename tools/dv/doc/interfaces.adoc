@@ -61,7 +61,9 @@ Three boundaries carry no shared code:
   shared file is the run-level `result.json`.
 * The dashboard and the pages that render it meet only at the published
   data. The documentation build reads the branch through
-  `tools/doc/stage_dashboard_data.sh` and imports nothing from `tools/dv`.
+  `tools/doc/stage_dashboard_data.sh`
+  (xref:run-dashboard.adoc#dashboard-site[Documentation site]) and imports
+  nothing from `tools/dv`.
 * The workflow callers and the composite action meet at the action's inputs.
   A caller owns its matrix and tier policy; the action owns toolchain setup,
   the run, the result gate, and the upload.
@@ -236,7 +238,9 @@ nothing when a weekly DUT left no run tree
 (xref:run-dashboard.adoc#dashboard-current-limitations[Limitations]).
 The artifact and the branch carry identical content. The fields the
 documentation site renders are the ones `tools/doc/trim_dashboard_data.py`
-names, and every one of them is present in each record, `dut_status` row,
+names
+(xref:run-dashboard.adoc#dashboard-site[Documentation site]), and every one
+of them is present in each record, `dut_status` row,
 test row, and history point the tools write. Checked by the dashboard
 schema, link, completion, and site-data tests and by the Operational checks
 section of xref:run-dashboard.adoc[DV and FV Dashboard].

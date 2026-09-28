@@ -6,6 +6,9 @@
 [#regmap-{regmap-instance}-aes_wrapper_key]
 == Address Map: aes_wrapper_key
 
+Key storage registers for the AES sideload interface.
+Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.
+
 [NOTE]
 ======
 *Register Arrays:*

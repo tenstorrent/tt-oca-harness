@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-sep_scratch]
 == Address Map: sep_scratch
 
+General-purpose SEP scratch register bank.
+
 [NOTE]
 ======
 *Register Arrays:*
