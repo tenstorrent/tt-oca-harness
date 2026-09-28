@@ -25,6 +25,13 @@ dut = "smu"
 scope_epoch = "smu-vcs-cov-v3"
 
 [[thresholds]]
+id = "user"
+tool = "vcs"
+metric_family = "user"
+population = "effective"
+minimum_percent = 100.0
+
+[[thresholds]]
 id = "assertion"
 tool = "vcs"
 metric_family = "assertion"
