@@ -2,21 +2,28 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_crc_engine.sv
- * @brief Shared byte-per-cycle CRC engine for Key Manager PicoRV32 PCPI CRC instructions.
- */
+// Compute CRCs one byte per cycle as the shared engine behind the Key Manager PicoRV32
+// PCPI CRC instructions.
+//
+// On start_i it latches mode_i, state_i, and data_i, then folds one reflected byte per
+// cycle until the mode's byte count completes. busy_o stays high for the duration; done_o
+// pulses with result_o when the last byte finishes. mode_i selects CRC-32C word, CRC-32C
+// byte, or CRC-8/ROHC.
 
 module km_crc_engine (
-  input  logic        clk_i,
-  input  logic        rst_ni,
-  input  logic        start_i,
-  input  logic [1:0]  mode_i,
-  input  logic [31:0] state_i,
-  input  logic [31:0] data_i,
-  output logic        busy_o,
-  output logic        done_o,
-  output logic [31:0] result_o
+  input  logic        clk_i,    // System clock.
+  input  logic        rst_ni,   // Active-low asynchronous reset.
+  input  logic        start_i,  // Pulse that begins a CRC operation; ignored while busy_o is high.
+  input  logic [1:0]  mode_i,   // CRC mode: 2'b00 CRC-32C word, 2'b01 CRC-32C byte, 2'b10
+                                // CRC-8/ROHC; 2'b11 is illegal.
+  input  logic [31:0] state_i,  // Incoming CRC state / seed, used without inversion; CRC-8 uses
+                                // bits [7:0].
+  input  logic [31:0] data_i,   // Data word, folded least-significant byte first; byte modes
+                                // use bits [7:0].
+  output logic        busy_o,   // High while a CRC operation is in progress.
+  output logic        done_o,   // One-cycle pulse when result_o is valid.
+  output logic [31:0] result_o  // Final CRC value (CRC-8 zero-extended), held until the next
+                                // completion.
 );
 
   `include "prim_assert.sv"

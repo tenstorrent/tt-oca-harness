@@ -192,20 +192,37 @@ GLOBAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "GLOBAL_B
 LOCAL_BASE_RESET = reg_reset_word(_SMC_BASE_CFG_H, "SMC_BASE_CONFIG", "LOCAL_BASE")
 
 # The window table the register generator writes from the RDL address map and
-# `doc/memmap.adoc` includes: one row per unit, `|BASE + <lo> - BASE + <hi> |...|<unit>|`.
+# `doc/memmap.adoc` includes: one row per unit, `|BASE + <lo> - BASE + <hi> |...`.
+# Rows are keyed by their ``BASE + <lo>`` offset, not the trailing label column:
+# that column shows the addrmap's RDL `name` where one is set and its instance
+# name otherwise, so it is not a stable key.
 _MEMORY_MAP_ADOC = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "adoc" / "memory_map.adoc"
 _WINDOW_ROW = re.compile(
-    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|[^|]*\|([^|]+)\|"
+    r"^\|BASE \+ (0x[0-9A-Fa-f]+) [-\u2013] BASE \+ (0x[0-9A-Fa-f]+) \|[^|]*\|[^|]*\|[^|]+\|"
 )
+
+
+def _unit_base_offset(unit: str) -> int:
+    """Offset from the map's ``BASE`` (``LOCAL_BASE``) at which ``unit``'s window starts.
+
+    The adoc keys each row by ``BASE + <offset>``; the C header gives the same
+    window as an absolute ``SMC_TOP_<unit>_BASE_ADDR``. Both derive from the one
+    RDL address map, so the offset is the absolute address minus ``LOCAL_BASE``.
+    """
+    try:
+        return smc_addr(f"SMC_TOP_{unit.upper()}_BASE_ADDR") - LOCAL_BASE_RESET
+    except KeyError as exc:
+        raise KeyError(f"{unit} has no SMC_TOP_*_BASE_ADDR in {_SMC_ADDR_H}") from exc
 
 
 def generated_window(unit: str) -> tuple[int, int]:
     """Return ``(first, last)`` offsets of the window the generated memory map gives ``unit``."""
+    want = _unit_base_offset(unit)
     for line in _MEMORY_MAP_ADOC.read_text().splitlines():
         m = _WINDOW_ROW.match(line)
-        if m and m.group(3).strip() == unit:
+        if m and int(m.group(1), 16) == want:
             return int(m.group(1), 16), int(m.group(2), 16)
-    raise KeyError(f"{unit} has no window row in {_MEMORY_MAP_ADOC}")
+    raise KeyError(f"{unit} (BASE + {want:#x}) has no window row in {_MEMORY_MAP_ADOC}")
 
 
 # Component rows carry the decoded extent too:
@@ -220,12 +237,13 @@ _EXTENT_UNIT_BYTES = {"B": 1, "KiB": 1 << 10, "MiB": 1 << 20, "GiB": 1 << 30}
 
 def generated_decoded_extent(unit: str) -> int:
     """Return the byte count of the ``Decoded Extent`` the generated memory map gives ``unit``."""
+    want = _unit_base_offset(unit)
     for line in _MEMORY_MAP_ADOC.read_text().splitlines():
         m = _COMPONENT_ROW.match(line)
-        if m and m.group(4).strip() == unit:
+        if m and int(m.group(1), 16) == want:
             count, suffix = m.group(3).split()
             return int(count) * _EXTENT_UNIT_BYTES[suffix]
-    raise KeyError(f"{unit} has no component row in {_MEMORY_MAP_ADOC}")
+    raise KeyError(f"{unit} (BASE + {want:#x}) has no component row in {_MEMORY_MAP_ADOC}")
 
 
 def generated_unit_at(offset: int) -> str | None:

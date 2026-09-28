@@ -2,37 +2,31 @@
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
 
-
-/*
-
- Tile-Link UL response integrity generator
-
- This generates integrity bits that get stored in the rsp_intg and data_intg fields of tl_o.d_user.
-
- If EnableRspIntgGen is true then the rsp_intg field is generated from the opcode, d_size and
- d_error fields of the response (extracted with tlul_pkg::extract_d2h_rsp_intg). If it is false then
- the rsp_intg field either comes from the same field in the tl_i input (if UserInIsZero is false) or
- is wired to zero (if UserInIsZero is true).
-
- If EnableDataIntgGen is true then the data_intg field is generated from the d_data field of the
- response. If it is false then the rsp_intg field either comes from the same field in the tl_i input
- (if UserInIsZero is false) or is wired to zero (if UserInIsZero is true).
-
-*/
+// Generate TL-UL D-channel response integrity bits.
+//
+// Fill rsp_intg and data_intg in tl_o.d_user:
+//
+// - When EnableRspIntgGen is true, generate rsp_intg from the opcode, d_size, and d_error
+//   fields via tlul_pkg::extract_d2h_rsp_intg.
+// - When EnableDataIntgGen is true, generate data_intg from d_data.
+//
+// When EnableRspIntgGen is false, rsp_intg is zero if RspIntgInIsZero is set and taken
+// from tl_i otherwise. When EnableDataIntgGen is false, data_intg is zero if UserInIsZero
+// is set and taken from tl_i otherwise.
 
 module tlul_rsp_intg_gen
   import tlul_pkg::*;
 #(
-  parameter bit EnableRspIntgGen = 1'b1,
-  parameter bit EnableDataIntgGen = 1'b1,
-  parameter bit UserInIsZero = 1'b0,
-  parameter bit RspIntgInIsZero = UserInIsZero
+  parameter bit EnableRspIntgGen = 1'b1,           // Generate rsp_intg from opcode/size/error.
+  parameter bit EnableDataIntgGen = 1'b1,          // Generate data_intg from d_data.
+  parameter bit UserInIsZero = 1'b0,               // Zero data_intg when not generated;
+                                                   // simulation asserts d_user is zero.
+  parameter bit RspIntgInIsZero = UserInIsZero     // Zero rsp_intg when not generated;
+                                                   // simulation asserts it is zero.
 ) (
-  // TL-UL interface
-  input  tl_d2h_t tl_i,
-  output tl_d2h_t tl_o
+  input  tl_d2h_t tl_i,  // D-channel response before integrity insertion.
+  output tl_d2h_t tl_o   // D-channel response with integrity fields filled.
 );
-
   `include "prim_assert.sv"
 
   logic [D2HRspIntgWidth-1:0] rsp_intg;

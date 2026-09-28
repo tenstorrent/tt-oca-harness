@@ -2,120 +2,123 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file km_csr.sv
- * @brief Key Manager Control/Status Register (KMCSR) wrapper.
- *
- * @details Wraps the PeakRDL-generated km_csr_reg block and adds custom
- *          hardware logic:
- *          - IRQ aggregation: combines the sticky interrupt sources (parity
- *            errors, bus errors, DRBG error, wipe, execute and ROM access
- *            violations) with per-source enable masking into a single CPU
- *            interrupt output.
- *          - Scrambler lock: implements write-once lock for SCRAMBLER_KEY and
- *            SCRAMBLER_CTRL registers (reads return zero when locked).
- *          - OTP data capture and read-through: OTP register values reflect
- *            captured differential values, with UID/CLASS_KEY isolation in
- *            secure test mode.
- *          - Soft reset: magic-code-guarded reset generation.
- *          - Virtual UART and test protocol register plumbing.
- *
- * @details Reset domains:
- *          - cold_rst_ni (AASD): resets the SRAM scrambler lock/key/enable
- *            (SCRAMBLER_CTRL.lock, SCRAMBLER_KEY), VUART edge detect, and the
- *            entire regblock via arst_n. Cold reset always implies warm reset.
- *          - warm_rst_ni (synchronous): resets soft_rst_q and the regblock CPUIF
- *            plus all warm-tagged fields via WARM_RST_N. Warm-tagged fields include
- *            IRQ_STATUS/IRQ_ENABLE/IRQ_SET, SOFT_RST_CODE, RECOVERABLE_ERR,
- *            SRAM_LOCK (write-lock bits), SRAM_LOCK violation bits,
- *            SRAM_EXEC_MODE (execute-permission whitelist mode),
- *            IRQ_ENTRY_ADDR/IRQ_ENTRY_LOCK, and the firmware test-bench registers.
- *            Warm reset breaks the soft reset trigger loop and quiesces the AXI
- *            CPUIF state machine.
- *
- * @param axil_req_t   AXI-Lite request struct type.
- * @param axil_resp_t  AXI-Lite response struct type.
- */
+// Wrap the PeakRDL-generated km_csr_reg block with the Key Manager control/status
+// (KMCSR) hardware logic.
+//
+// Custom logic around the register block:
+//
+// - IRQ aggregation: combines the twelve sticky interrupt sources (ROM and SRAM parity
+//   errors, ROM write error, SRAM write-lock violation, AXI SLVERR and DECERR, DRBG
+//   error, wipe, OTP change, OTP signal-integrity error, execute and ROM access
+//   violations) with per-source enable masking into the single CPU interrupt km_irq_o;
+//   IRQ_SET sets any source for testing.
+// - Scrambler lock: write-once lock for the SCRAMBLER_KEY and SCRAMBLER_CTRL registers;
+//   once locked, SCRAMBLER_KEY reads return zero and ignores writes, SCRAMBLER_CTRL reads
+//   show lock and enable set, and scrambler_key_o keeps the key held at lock time.
+// - OTP data capture and read-through: OTP register values reflect the registered
+//   differential values, read as zero for any field locked in OTP_READ_LOCK or
+//   OTP_READ_LOCK_COLD; encoded changes and dual-rail signal-integrity errors raise
+//   sticky status and interrupts.
+// - Soft reset: generation guarded by the magic code 0x53525354 in SOFT_RST_CODE.
+// - Virtual UART and test protocol register plumbing.
+//
+// Reset domains:
+//
+// - cold_rst_ni (AASD) resets the SRAM scrambler lock/key/enable (SCRAMBLER_CTRL.lock,
+//   SCRAMBLER_KEY), the VUART edge detect, the OTP captures and decoders, and the entire
+//   regblock via arst_n. Cold reset always implies warm reset.
+// - warm_rst_ni (synchronous) resets soft_rst_q, the OTP identity and class-key captures,
+//   and the regblock CPUIF plus all warm-tagged fields via WARM_RST_N, including
+//   IRQ_STATUS/IRQ_ENABLE/IRQ_SET, SOFT_RST_CODE, RECOVERABLE_ERR, BOOT_STATUS, SRAM_LOCK
+//   (write-lock bits), SRAM_WRITE_LOCK_VIOLATION, SRAM_EXEC_MODE (execute-permission
+//   whitelist mode), IRQ_ENTRY_ADDR/IRQ_ENTRY_LOCK, OTP_READ_LOCK, OTP_CHANGE_STATUS, the
+//   VUART registers, and the firmware test-bench registers. The OTP life-cycle and
+//   demotion captures and OTP_READ_LOCK_COLD survive warm reset. Warm reset breaks the
+//   soft reset trigger loop and quiesces the AXI CPUIF state machine.
 
 module km_csr
   import km_intf_pkg::*;
   import km_csr_reg_pkg::*;
   import axi_pkg::*;
 #(
-  // AXI-Lite interface types
-  parameter type axil_req_t  = km_axil_req_t,
-  parameter type axil_resp_t = km_axil_resp_t
+  parameter type axil_req_t  = km_axil_req_t,  // AXI-Lite request struct type.
+  parameter type axil_resp_t = km_axil_resp_t  // AXI-Lite response struct type.
 ) (
-  // Clock and Reset
-  input  logic clk_i,
-  input  logic cold_rst_ni,   // Cold reset: async-assert/sync-deassert (AASD)
-  input  logic warm_rst_ni,   // Warm reset: fully synchronous (from km_reset_conditioner)
+  input  logic clk_i,        // System clock.
+  input  logic cold_rst_ni,  // Cold reset: async-assert/sync-deassert (AASD).
+  input  logic warm_rst_ni,  // Warm reset: fully synchronous (from km_reset_conditioner).
 
-  // AXI4-Lite Slave Interface (from crossbar)
-  input  axil_req_t axil_req_i,
-  output axil_resp_t axil_resp_o,
+  input  axil_req_t axil_req_i,    // AXI4-Lite slave request from the crossbar.
+  output axil_resp_t axil_resp_o,  // AXI4-Lite slave response to the crossbar.
 
-  // IRQ Event Inputs
-  input  logic   rom_parity_err_i,    // ROM parity error (pulse)
-  input  logic   sram_parity_err_i,   // SRAM parity error (pulse)
-  input  logic   rom_write_err_i,     // ROM write attempt detected (pulse)
-  input  logic   axi_slverr_i,        // AXI SLVERR error (pulse)
-  input  logic   axi_decerr_i,        // AXI DECERR error (pulse)
-  input  logic   drbg_err_i,         // DRBG Sampler error (pulse)
-  input  logic   wipe_state_i,      // Wipe state event (rising edge sets IRQ)
+  input  logic   rom_parity_err_i,   // IRQ event: ROM parity error (pulse).
+  input  logic   sram_parity_err_i,  // IRQ event: SRAM parity error (pulse).
+  input  logic   rom_write_err_i,    // IRQ event: ROM write attempt detected (pulse).
+  input  logic   axi_slverr_i,       // IRQ event: AXI SLVERR error (pulse).
+  input  logic   axi_decerr_i,       // IRQ event: AXI DECERR error (pulse).
+  input  logic   drbg_err_i,         // IRQ event: DRBG sampler error (pulse).
+  input  logic   wipe_state_i,       // IRQ event: wipe state; sets the sticky IRQ while high.
 
-  // Scrambler Control Outputs
-  output logic [31:0] scrambler_key_o,      // Scrambler key (0 when locked)
-  output logic        scrambler_enable_o,   // Scrambler enable
-  output logic        scrambler_lock_o,     // Scrambler lock status
+  output logic [31:0] scrambler_key_o,     // Scrambler key; frozen at its lock-time value once
+                                           // locked.
+  output logic        scrambler_enable_o,  // SRAM scrambler enable to the CPU wrapper, from
+                                           // SCRAMBLER_CTRL.ENABLE; forced high once locked.
+  output logic        scrambler_lock_o,    // Scrambler lock status.
 
-  // SRAM write-lock (to SRAM interface): bit[i]=1 locks region i. Write-1-only.
-  output logic [31:0] sram_lock_bits_o,
-  // SRAM write-lock violation (from SRAM interface): one-hot region that had attempted write while locked
-  input  logic [31:0] sram_write_lock_violation_region_i,
+  output logic [31:0] sram_lock_bits_o,                    // Write-1-only SRAM write-lock
+                                                           // bits to the SRAM interface;
+                                                           // bit[i]=1 locks region i.
+  input  logic [31:0] sram_write_lock_violation_region_i,  // SRAM write-lock violation from
+                                                           // the SRAM interface: one-hot
+                                                           // region that had an attempted
+                                                           // write while locked.
 
-  // SRAM execute-permission mode (to CPU wrapper): 0=ROM-only whitelist, 1=write-locked-SRAM whitelist
-  output logic        sram_exec_mode_o,
-  // Execute-permission whitelist violation (from CPU wrapper): pulse when fetch is outside whitelist
-  input  logic   exec_violation_i,
-  // ROM lockout violation (from CPU wrapper): pulse on ROM fetch or read after lockout engages
-  input  logic   rom_access_violation_i,
+  output logic        sram_exec_mode_o,   // SRAM execute-permission mode to the CPU wrapper:
+                                          // 0=ROM-only whitelist, 1=write-locked-SRAM
+                                          // whitelist.
+  input  logic   exec_violation_i,        // Execute-permission whitelist violation from the
+                                          // CPU wrapper: pulse when a fetch is outside the
+                                          // whitelist.
+  input  logic   rom_access_violation_i,  // ROM lockout violation from the CPU wrapper: pulse
+                                          // on a ROM fetch or read after lockout engages.
 
-  // Aggregated IRQ Output (to CPU)
-  output logic        km_irq_o,
+  output logic        km_irq_o,  // Aggregated IRQ output to the CPU: OR of IRQ_STATUS masked by
+                                 // IRQ_ENABLE.
 
-  // Programmable IRQ entry address (to CPU wrapper / PicoRV32)
-  output logic [31:0] irq_entry_addr_o,
+  output logic [31:0] irq_entry_addr_o,  // Programmable IRQ entry address to the CPU wrapper
+                                         // (PicoRV32); write-locked by IRQ_ENTRY_LOCK.
 
-  // Soft Reset Output
-  output logic        soft_rst_o,
+  output logic        soft_rst_o,  // Soft reset output to the conditioner, active-low; goes low
+                                   // once SOFT_RST_CODE holds the magic code and returns high on
+                                   // warm reset.
 
-  // Error condition output: recoverable error event
-  output logic        recoverable_err_o,
+  output logic        recoverable_err_o,  // Recoverable-error level from the firmware-written
+                                          // RECOVERABLE_ERR register.
 
-  // Virtual UART Interface (for testbench communication)
-  // TX: Firmware writes byte, testbench captures
-  output logic [7:0]  vuart_tx_data_o,       // TX byte data
-  output logic        vuart_tx_valid_o,      // TX data valid strobe (pulse)
-  // RX: Testbench writes byte, firmware reads
-  input  logic [7:0] vuart_rx_data_i,       // RX byte from testbench
-  input  logic   vuart_rx_valid_i,      // RX data valid
+  output logic [7:0]  vuart_tx_data_o,   // Virtual UART TX byte data; firmware writes the
+                                         // byte and the testbench captures it.
+  output logic        vuart_tx_valid_o,  // Virtual UART TX data valid strobe, one cycle on each
+                                         // rising edge of VUART_TX.DATA_VALID.
+  input  logic [7:0] vuart_rx_data_i,    // Virtual UART RX byte; the testbench writes it and
+                                         // firmware reads it.
+  input  logic   vuart_rx_valid_i,       // Virtual UART RX data valid, mirrored into VUART_RX and
+                                         // VUART_STATUS.
 
-  // Test Protocol Interface (for firmware-testbench communication)
-  // Firmware writes these, testbench reads
-  output logic [31:0] tb_result_o,           // Test result (0=fail, 1=pass)
-  output logic [31:0] tb_signature_o,        // Test completion signature
-  output logic [31:0] tb_errcode_o,          // Error code
-  output logic [31:0] tb_subtest_o,          // Current subtest number
-  output logic [31:0] tb_cmd_o,              // Command from firmware
-  output logic [31:0] tb_cmd_arg_o,          // Command argument
-  // Testbench writes these, firmware reads
-  input  logic [31:0] tb_cmd_next_i,         // Testbench can write to clear command
-  input  logic [31:0] tb_cmd_status_i,       // Command status from testbench
-  input  logic [31:0] tb_cmd_result_i,       // Command result from testbench
+  output logic [31:0] tb_result_o,      // Test protocol, firmware to testbench: test result
+                                        // (0=fail, 1=pass).
+  output logic [31:0] tb_signature_o,   // Test protocol: test completion signature.
+  output logic [31:0] tb_errcode_o,     // Test protocol: error code.
+  output logic [31:0] tb_subtest_o,     // Test protocol: current subtest number.
+  output logic [31:0] tb_cmd_o,         // Test protocol: command from firmware.
+  output logic [31:0] tb_cmd_arg_o,     // Test protocol: command argument from firmware.
+  input  logic [31:0] tb_cmd_next_i,    // Test protocol, testbench to firmware: loaded into
+                                        // TB_CMD on every cycle without a firmware write, so
+                                        // the testbench clears a command by driving zero.
+  input  logic [31:0] tb_cmd_status_i,  // Test protocol: command status from the testbench.
+  input  logic [31:0] tb_cmd_result_i,  // Test protocol: command result from the testbench.
 
-  // SEP OTP Data Interface
-  input  km_otp_data_t otp_data_i            // Differentially encoded OTP data
+  input  km_otp_data_t otp_data_i  // Differentially encoded SEP OTP data, registered before decode
+                                   // and readback.
 );
 
   `include "ocah_assert.svh"
@@ -124,11 +127,11 @@ module km_csr
   // Local Parameters
   // =========================================================================
 
-  /** @brief Bit positions within the SCRAMBLER_CTRL register (per RDL). */
+  // Bit positions within the SCRAMBLER_CTRL register (per RDL).
   localparam int unsigned SCRAMBLER_CTRL_ENABLE_BIT_POS = 0;
   localparam int unsigned SCRAMBLER_CTRL_LOCK_BIT_POS = 1;
 
-  /** @brief Bit positions for the internal IRQ aggregation vector (excludes mailbox). */
+  // Bit positions for the internal IRQ aggregation vector (excludes mailbox).
   localparam int unsigned IRQ_AGG_ROM_PARITY_ERR_BIT = 0;
   localparam int unsigned IRQ_AGG_SRAM_PARITY_ERR_BIT = 1;
   localparam int unsigned IRQ_AGG_ROM_WRITE_ERR_BIT = 2;
@@ -142,7 +145,7 @@ module km_csr
   localparam int unsigned IRQ_AGG_EXEC_VIOLATION_BIT = 10;
   localparam int unsigned IRQ_AGG_ROM_ACCESS_VIOLATION_BIT = 11;
 
-  /** @brief Total number of IRQ sources aggregated into km_irq_o. */
+  // Total number of IRQ sources aggregated into km_irq_o.
   localparam int unsigned NUM_IRQ_SOURCES = 12;
 
   //=========================================================================
@@ -809,7 +812,7 @@ module km_csr
   // - Soft reset forces async reset input low (active-low: 0 = reset)
   // - Soft reset is cleared by full reset sequence
 
-  /** @brief Magic code that triggers a soft reset when written to SOFT_RST_CODE. */
+  // Magic code that triggers a soft reset when written to SOFT_RST_CODE.
   localparam logic [31:0] SOFT_RST_CODE_MAGIC = 32'h53525354;  // ASCII "SRST"
 
   // Detect when SOFT_RST_CODE register contains the magic code

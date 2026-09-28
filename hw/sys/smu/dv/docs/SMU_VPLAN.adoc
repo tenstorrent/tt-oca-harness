@@ -203,6 +203,8 @@ one-line intent.
 |`smu_xtrig_ctm_remap_test` |fabric |product-pin CTM remap
 |`smu_axi_in_burst_outstanding_test` |fabric |The inbound SMN port carries several transfers in flight and refuses the burst types the register targets do not support.
 |`smu_axi_in_attribute_sweep_test` |fabric |Every AW/AR attribute the inbound SMN port carries is answered as the traffic-filter specification assigns, and one SMC write leaves the chiplet on `smu_axi_out`.
+|`smu_axi_out_addr_len_size_test` |fabric |What the SMC masters a bench can drive send out of the chiplet crosses smu_axi_out with the address, AxSIZE and AxLEN they were given.
+|`smu_aperture_map_walk_test` |fabric |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
 |`smu_periph_ext_window_test` |fabric |The SMC peripheral crossbar's macro AXI-Lite window is reachable over JTAG2AXI, decodes its sub-windows, and shrinks with the SMC aperture.
 |`smu_boot_stall_jtag_cold_reset_matrix_test` |reset |boot-stall sticky matrix
@@ -4308,6 +4310,203 @@ Two things are worth reading before the entries:
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
 
 '''''
+[[sec-109-smu_sep_lcc_state_rma_sip_0_test]]
+===== 109 `smu_sep_lcc_state_rma_sip_0_test`
+
+*Source Module*: `smu_sep_lcc_state_rma_sip_0_test` (`cocotb_wrapper/tests/`; one image of the shared body `smu_sep_lcc_state_matrix_test.py`)
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_0.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0xD2` at the SMC, with `dbg_disable` clear at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* RMA_SiP's `feat_ctrl` is the complement of the image's `sip_dis`, all-ones with this image, so like TEST_DEV it cannot show a closed-to-open demote; a post-run open low-32 does not prove the write did anything here. The `lc_state` decode is the load-bearing half.
+* This entry's contract: `+lcc_expect_lc_state=0xD2`, `+lcc_expect_demote_effective=1`, `+lcc_expect_dbg_disabled=0`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+* The boundary outputs the compares read -- `smc_lc_state_in_o`, `lcc_dbg_disable_o`, `lcc_feat_ctrl_o`, `lcc_demote_state_{1,2}_o` -- are sampled X-strict: an X or Z sample fails the leaf instead of reading as the passing value.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0xD2`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=1`, and `dbg_disable` against `+lcc_expect_dbg_disabled=0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0xD2` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `0` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`.
+
+'''''
+[[sec-110-smu_sep_lcc_state_rma_sip_1_test]]
+===== 110 `smu_sep_lcc_state_rma_sip_1_test`
+
+*Source Module*: `smu_sep_lcc_state_rma_sip_1_test` (`cocotb_wrapper/tests/`; one image of the shared body `smu_sep_lcc_state_matrix_test.py`)
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_sip_1.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0xC3` at the SMC, with `dbg_disable` clear at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* RMA_SiP's `feat_ctrl` is the complement of the image's `sip_dis`, all-ones with this image, so like TEST_DEV it cannot show a closed-to-open demote; a post-run open low-32 does not prove the write did anything here. The `lc_state` decode is the load-bearing half.
+* This entry's contract: `+lcc_expect_lc_state=0xC3`, `+lcc_expect_demote_effective=1`, `+lcc_expect_dbg_disabled=0`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+* The boundary outputs the compares read -- `smc_lc_state_in_o`, `lcc_dbg_disable_o`, `lcc_feat_ctrl_o`, `lcc_demote_state_{1,2}_o` -- are sampled X-strict: an X or Z sample fails the leaf instead of reading as the passing value.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0xC3`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=1`, and `dbg_disable` against `+lcc_expect_dbg_disabled=0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0xC3` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `0` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`.
+
+'''''
+[[sec-111-smu_sep_lcc_state_rma_chip_1_test]]
+===== 111 `smu_sep_lcc_state_rma_chip_1_test`
+
+*Source Module*: `smu_sep_lcc_state_rma_chip_1_test` (`cocotb_wrapper/tests/`; one image of the shared body `smu_sep_lcc_state_matrix_test.py`)
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_chip_1.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0x87` at the SMC, with `dbg_disable` clear at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* RMA_CHIP_1 is the second RMA_CHIPLET code (`4'b011x`) and its `feat_ctrl` is all-ones by state, so like TEST_DEV it cannot show a closed-to-open demote; a post-run open low-32 does not prove the write did anything here. The `lc_state` decode is the load-bearing half.
+* This entry's contract: `+lcc_expect_lc_state=0x87`, `+lcc_expect_demote_effective=1`, `+lcc_expect_dbg_disabled=0`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+* The boundary outputs the compares read -- `smc_lc_state_in_o`, `lcc_dbg_disable_o`, `lcc_feat_ctrl_o`, `lcc_demote_state_{1,2}_o` -- are sampled X-strict: an X or Z sample fails the leaf instead of reading as the passing value.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0x87`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=1`, and `dbg_disable` against `+lcc_expect_dbg_disabled=0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0x87` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `0` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`.
+
+'''''
+
+[[sec-112-smu_aperture_map_walk_test]]
+===== 112 `smu_aperture_map_walk_test`
+
+*Source Module*: `smu_aperture_map_walk_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins; `ocah_jtag_vip` for BASE_CONFIG and the inbound filter entry; the bench counters `smc_xbar_in_ar_count_o` / `smc_xbar_in_aw_count_o` on the crossbar-to-SMC channel; `elaboration` firmware mode
+
+*Objective*: The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
+
+*Test Coverage*:
+
+* `smc_base_config` defines GLOBAL_BASE as a 56-bit field and REGION_SIZE as a non-zero power of two GLOBAL_BASE is aligned to (`hw/sys/smc/regs/gen/c/blocks/smc_base_config.h`); `smu_axi_xbar` forms its SMC rule as `[GLOBAL_BASE, GLOBAL_BASE + REGION_SIZE)` and gives `ext_in` no default port, so an inbound transfer outside every rule is answered DECERR without being forwarded.
+* REGION_SIZE also sizes the SMC local alias window through which JTAG2AXI reaches BASE_CONFIG and the inbound filter, so the smallest size walked is the smallest power of two above the inbound filter entry; the RDL requires LOCAL_BASE, fixed at `0xC000_0000`, to be aligned to REGION_SIZE too, so the largest is 1 GiB. GLOBAL_BASE alternates between the `0xAA..` and `0x55..` patterns aligned to each size, so every base bit the alignment leaves free and every size bit walked is set in one setting and clear in the next, and a last setting puts the smallest window at the top of the 56-bit space, where the rule's end carries into bit 56 and there is no address past it to probe; every window lies above the SEP reset aperture `[0, 16 MiB)`, as the crossbar's overlap assertion requires.
+* At each setting the inbound filter entry is opened over the window first, then the aperture is moved onto it; VERSION_LO and SCRATCH_COLD are reached at the rebased addresses with ARID/AWID alternating between `0xAA` and `0x55`.
+* The decode edges are counted, not inferred from the response: the window's first address moves the crossbar-to-SMC AR count by one, and the word below the window and the first address past it move it by none and return DECERR. The window's last word is not read: its local offset, REGION_SIZE - 8, lands in SMC memories (mailbox, I3C, SPM) whose unwritten contents read X on a four-state simulator.
+* A zero REGION_SIZE is not programmed: the rule it forms has `start == end`, which the address decoder's map check rejects, and it closes the local window JTAG2AXI needs to reopen the aperture. The SEP aperture is programmed only by SEP firmware (`sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR), which this toolchain-free leaf does not load.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP and check the SEP aperture lies below every window the walk programs.
+. For each setting, program inbound filter entry 0 over `[base, base + size - 1]`, write GLOBAL_BASE and REGION_SIZE, and check both ports and the JTAG2AXI readback.
+. Read VERSION_LO and write and read back SCRATCH_COLD at the rebased addresses.
+. Read the window's first address, the word below it and the address past it, counting the crossbar-to-SMC AR handshakes each causes.
+. Write GLOBAL_BASE back to LOCAL_BASE and REGION_SIZE to its RDL reset, disable the entry, and check the ports and the readback.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMCMAP-WALK-PORT` |every programmed GLOBAL_BASE and REGION_SIZE reaches `smc_global_base_o` and `smc_region_size_o` within 64 `clk_smu` cycles and reads back over JTAG2AXI
+|`CHK-SMCMAP-WALK-INSIDE` |at every setting the rebased VERSION_LO read returns OKAY with its RDL reset value and the rebased SCRATCH_COLD write and readback return OKAY and the written word
+|`CHK-SMCMAP-WALK-EDGE` |at every setting the window's first address moves the crossbar-to-SMC AR count by exactly one, and the word below it and the address past it move it by none and return DECERR
+|`CHK-SMCMAP-RESTORE` |GLOBAL_BASE and REGION_SIZE written back to LOCAL_BASE and the RDL reset reach the ports and read back
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-113-smu_axi_out_addr_len_size_test]]
+===== 113 `smu_axi_out_addr_len_size_test`
+
+*Source Module*: `smu_axi_out_addr_len_size_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC JTAG2AXI bridge, the outbound filter and the iDMA registers; the shared responder on `u_axi_out_if`, whose address phases the sequence records; `elaboration` firmware mode
+
+*Objective*: What the SMC masters a bench can drive send out of the chiplet crosses `smu_axi_out` with the address, AxSIZE and AxLEN they were given.
+
+*Test Coverage*:
+
+* `smu_axi_xbar_pkg` `Connectivity` connects `smc_out` and `sep_out` to `ext_out` and gives `ext_in` no path there, so every outbound transfer is issued by the SMC or the SEP. Without firmware the bench drives two SMC masters: the JTAG2AXI bridge, whose requests carry the programmed address and AxSIZE with ID 0, AxLEN 0, INCR and fixed AxCACHE, AxPROT, AxQOS, AxREGION and AxLOCK (`hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv`), and the iDMA register frontend, which issues INCR bursts sized by the transfer with a fixed AxCACHE (`vendor/pulp-platform/idma/upstream/src/frontend/reg/tpl/idma_reg.sv.tpl`). The fixed fields are therefore not walked here.
+* JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper bits are the `0xAA..` and `0x55..` patterns, outside the SMC local window and the SEP aperture, and reads each back; each transfer crosses the boundary exactly once with that address, AxSIZE, AxLEN 0 and INCR, the responder holds the bytes and the read returns them.
+* With outbound filter entry 0 passing every address, the iDMA copies a 2 KiB block between two further such addresses; the reads and writes at the boundary are INCR, together cover the block exactly, and the longest reaches AxLEN 255. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP and start recording the outbound address phases.
+. For each address and AxSIZE, write over JTAG2AXI, wait for the outbound write count, read back, wait for the outbound read count, and compare the recorded phases, the responder's bytes and the returned data.
+. Fill the source block in the responder, zero the destination, program outbound filter entry 0 to pass all, program the iDMA descriptor, launch it by reading NEXT_ID once, and poll DONE.
+. Compare the destination with the source and the recorded bursts with the block.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIOUT-SIZE` |each of the eight JTAG2AXI writes and reads crosses `smu_axi_out` exactly once with its address, AxSIZE, AxLEN 0 and INCR; the responder holds every byte written and every read returns it
+|`CHK-AXIOUT-LEN` |the iDMA copy completes with the launched id, the destination holds the source block, and the boundary's INCR reads and writes cover the block exactly with the longest at AxLEN 255
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
 
 === Formal Verification Plan
 
@@ -4328,12 +4527,12 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |Group |Leaves |Notes
 |`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |14 |The fabric and filter leaves; every member is in `hosted`
+|`fabric` |16 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |30 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |70 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |102 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |72 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |104 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -4642,21 +4841,21 @@ covered above. SEP=1 3×3 xbar receives no release credit.
   metric choice and what this plan may claim from a database are in
   `SMU_FCOV.adoc`; the wrapper's policy file is
   `cov/config/verilator/smu_wrapper_coverage_policy.toml`.
-* *Verilator replaces the `och_prim` `prim_sync2` / `prim_sync3`
-  cells with the behavioural stand-ins in
-  `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops them. Xcelium receives
+* *Verilator replaces the `ocah_prim` `prim_sync3`
+  cell with the behavioural stand-in in
+  `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops it. Xcelium receives
   both files; which of the pair it elaborates is not established. The
   leaves that observe a crossing are named in <<smu-bench-standins>>.
 
 [[smu-bench-standins]]
 ==== Bench stand-ins
 
-The `prim_sync2` / `prim_sync3` files listed in `smu_sim_cfg.toml`
-`[build].stubs` are product-module stand-ins, not tooling shims. They
-elaborate ahead of the Bender filelist so Verilator's `-Wno-MODDUP`
-first-definition-wins selects them; when `tool == "vcs"` the
+The `prim_sync3` file listed in `smu_sim_cfg.toml`
+`[build].stubs` is a product-module stand-in, not a tooling shim. It
+elaborates ahead of the Bender filelist so Verilator's `-Wno-MODDUP`
+first-definition-wins selects it; when `tool == "vcs"` the
 runner drops any stub whose basename the Bender graph supplies, and the
-product cells elaborate. Xcelium receives both files like Verilator does;
+product cell elaborates. Xcelium receives both files like Verilator does;
 no Xcelium build of this bench is recorded, so which of the pair Xcelium
 elaborates is not established by this record. The behaviour the stand-in
 adds (`initial '0` on
@@ -4665,7 +4864,7 @@ each stage), the leaves that observe a crossing
 reset-release observes of `smu_smc_reset_ctrl_test` and
 `smu_ext_boot_seq_gate_test`, and the boot-stall gate of the five
 boot-stall leaves), and the condition that closes the entry are the
-`prim_sync2` / `prim_sync3` stand-ins row of
+`prim_sync3` stand-in row of
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc` (*Bench stand-ins and
 exceptions*). No VCS control run with the product cells is recorded on
 this composition.

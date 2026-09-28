@@ -7,62 +7,19 @@
 The OCA Log Engine provides multiple AXI4-Lite interfaces for register
 access, memory fetching, and UART communication.
 
-=== Configuration Parameters
+The engine serves 16 independent log entries, set by `NUM_LOG_ENTRIES` in `log_engine_pkg`.
 
-<<log-engine-configuration-parameters-table>> lists the log-entry and bus-dimension
-parameters.
-
-[[log-engine-configuration-parameters-table]]
-[width="100%",cols="30%,20%,50%",options="header",]
-.Log-engine configuration parameters
-|=====================================================================================
-|Parameter |Default |Description
-|NUM_LOG_ENTRIES |16 |Number of independent log entries
-
-|MAX_LOG_SIZE |Configurable |Maximum log region size (must be multiple
-of 16)
-
-|ADDR_WIDTH |64 |Address bus width for log region
-
-|DATA_WIDTH |32 |Data bus width
-|=====================================================================================
-
-=== Signal Interfaces
-
-=== Global Interface
-
-<<log-engine-global-interface-signals-table>> defines the log-engine clock and reset
-interface.
-
-[[log-engine-global-interface-signals-table]]
-.Log-engine Global Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Active |Description
-|`clk_i` |1 |Input |Rising |System clock. All interfaces operate
-synchronously to this clock.
-
-|`rst_ni` |1 |Input |Low |System reset. Asynchronous assertion and
-synchronous deassertion. Resets all state machines, counters, and FIFO
-to initial state.
-|=====================================================================================
+ifdef::backend-html5[]
+The parameters and ports of `log_engine` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/log_engine/log_engine.adoc[log_engine].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `log_engine` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 === DMA Interface
 
 The DMA interface provides flow control coordination with the UART
 transmitter.
-
-<<log-engine-dma-interface-signals-table>> defines the UART-ready handshake used by the
-log engine.
-
-[[log-engine-dma-interface-signals-table]]
-.Log-engine DMA Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Active |Description
-|`uart_tx_ready_i` |1 |Input |High |UART ready to accept character(s)
-for transmission. Used as flow control to prevent UART FIFO overflow.
-|=====================================================================================
 
 === Flow Control Operation:
 
@@ -76,18 +33,6 @@ characters
 === Interrupt Interface
 
 The interrupt interface provides error signaling to the system.
-
-<<log-engine-interrupt-interface-signals-table>> defines the log-engine interrupt
-output.
-
-[[log-engine-interrupt-interface-signals-table]]
-.Log-engine Interrupt Interface Signals
-[width="100%",cols="15%,10%,10%,10%,55%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Active |Description
-|`irq_o` |1 |Output |High |Interrupt request. Asserted when any enabled
-interrupt condition occurs.
-|=====================================================================================
 
 === Interrupt Sources:
 

@@ -4,7 +4,6 @@ This directory holds shared DV firmware collateral only (shared toolchain rules,
 the static register umbrellas, and policy notes). Keep it thin: subsystem
 firmware sources live beside the hardware that owns them.
 
-- `hw/ip/key_manager/dv/fw/`
 - `hw/sys/smc/dv/fw/`
 - `hw/sys/sep/dv/fw/`
 
@@ -37,7 +36,6 @@ build entrypoint.
 ## Build commands
 
 ```
-make ocah-dv-fw-libs TARGET=key_manager  # -> hw/ip/key_manager/dv/fw/build/libkey_manager.a
 make ocah-dv-fw-libs TARGET=smc          # -> hw/sys/smc/dv/fw/build/libsmc.a
 make ocah-dv-fw-libs TARGET=sep          # -> hw/sys/sep/dv/fw/build/libsep.a
 make ocah-dv-fw-libs                     # builds all discovered subsystem libraries
@@ -47,7 +45,7 @@ make ocah-dv-fw-tests TARGET=smc TEST=name  # build a single FW C test (TEST= se
 ```
 
 Each subsystem is an independent recursive sub-make with its own `toolchain.mk`,
-so the three different ISA/ABI/libc environments never share global flag state.
+so the subsystems' different ISA/ABI/libc environments never share global flag state.
 
 Driver archives and discovered test ELFs both use the native PeakRDL register
 headers under each block's `regs/gen/c/`.
@@ -63,7 +61,7 @@ make ocah-dv-fw-libs TARGET=smc RISCV_TOOLCHAIN=/opt/riscv/bin
 ```
 
 A `ocah-dv-fw-libs` build with no resolvable toolchain emits a clear error
-pointing at `RISCV_TOOLCHAIN`. All three subsystems use picolibc via
+pointing at `RISCV_TOOLCHAIN`. Every subsystem uses picolibc via
 `--specs=picolibc.specs` (provided by the Docker-provisioned toolchain); it is
 **not** vendored here.
 
@@ -73,8 +71,6 @@ Generated PeakRDL headers are authoritative and are never hand-edited. Firmware
 and tests use that surface directly (`.w` / `.f` on register unions; `*_BASE_ADDR`
 macros from the generated address headers).
 
-- **KM.** `key_manager_fw.h` pulls leaf PeakRDL headers (`km_csr.h`, wrapper-key
-  headers, etc.) plus `key_manager_addr.h`.
 - **SEP.** `sep_addr.h` (`OCH_SEP_TOP_*_BASE_ADDR`) and per-block headers under
   `regs/gen/c/blocks/` (`aes__*`, `OCH_SEP_TOP_AES_*`).
 - **SMC.** Umbrella `smc.h` with `SMC_TOP_*_BASE_ADDR`. Two blocks are not

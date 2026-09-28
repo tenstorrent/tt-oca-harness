@@ -2,38 +2,52 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2025 TT
 
-// AES Wrapper - AXI-Lite to TL-UL Bridge using axi_lite_to_tlul
-// Includes AXI4-Lite key interface CSR that drives the AES sideload port.
+// Wrap the OpenTitan AES core with an AXI-Lite CSR bridge and a Key Manager key CSR block.
+//
+// axi_lite_to_tlul bridges the 32-bit AXI-Lite CSR interface onto the AES TL-UL port. The
+// AXI4-Lite key interface terminates in the generated aes_wrapper_key_reg block, whose
+// two key shares and valid bit drive the AES keymgr_key_i sideload port.
+// EDN supplies entropy for PRNG reseeding. Two alerts leave the block: index 0 is
+// recoverable (recov_ctrl_update_err) and index 1 is fatal (fatal_fault).
+// The shadow-register reset is tied to rst_ni, lifecycle escalation is tied off, and the
+// EDN clock is clk_i.
+// bus_err_o sticks on a TL-UL error response until bus_err_clr_i. idle_o reports AES
+// idle.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module aes_wrapper (
-  input logic clk_i,
-  input logic rst_ni,
+  input logic clk_i,                          // System clock.
+  input logic rst_ni,                         // Active-low reset; also drives the AES
+                                              // shadow-register reset.
 
-  // 32-bit AXI-Lite CSR interface
-  input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t aes_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  aes_axil_req_i,  // AES CSR request, bridged to the AES
+                                                         // TL-UL port.
+  output sep_pkg::sep_32_32_axil_resp_t aes_axil_resp_o,  // AES CSR response from the TL-UL bridge.
 
-  // AXI4-Lite key interface (32-bit from Key Manager private bus)
-  input  sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req_i,
-  output sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp_o,
+  input  sep_pkg::sep_32_32_axil_req_t  aes_key_axil_req_i,  // Key Manager private-bus request to
+                                                             // the AES key CSR block.
+  output sep_pkg::sep_32_32_axil_resp_t aes_key_axil_resp_o,  // Response from the AES key CSR block
+                                                              // to the Key Manager.
 
-  // EDN interface (entropy for PRNG reseeding)
-  output edn_pkg::edn_req_t edn_req_o,
-  input  edn_pkg::edn_rsp_t edn_rsp_i,
+  output edn_pkg::edn_req_t edn_req_o,        // EDN request for PRNG reseeding entropy.
+  input  edn_pkg::edn_rsp_t edn_rsp_i,        // EDN response for PRNG reseeding entropy.
 
-  // Alert interface (2 alerts: recoverable, fatal)
-  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,
-  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,
+  input  prim_alert_pkg::alert_rx_t [1:0] alert_rx_i,  // Alert receiver handshakes; index 0
+                                                       // recoverable (recov_ctrl_update_err), index
+                                                       // 1 fatal (fatal_fault).
+  output prim_alert_pkg::alert_tx_t [1:0] alert_tx_o,  // Differential alert senders; index 0
+                                                       // recoverable (recov_ctrl_update_err), index
+                                                       // 1 fatal (fatal_fault).
 
-  // Register bridge fault (sticky, held until bus_err_clr_i)
-  output logic bus_err_o,
-  input  logic bus_err_clr_i,
+  output logic bus_err_o,                     // Set by a TL-UL error response on the CSR bridge;
+                                              // sticky until bus_err_clr_i.
+  input  logic bus_err_clr_i,                 // Clears bus_err_o; a fault in the same cycle still
+                                              // sets it.
 
-  // Idle output
-  output logic idle_o
+  output logic idle_o                         // High when the AES core reports idle (mubi4 strictly
+                                              // true).
 );
 
   // ============================================================================

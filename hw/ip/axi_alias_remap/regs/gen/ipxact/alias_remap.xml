@@ -12,6 +12,7 @@
       <ipxact:name>alias_remap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>alias_remap</ipxact:name>
+        <ipxact:displayName>AXI Alias Remap Address Map</ipxact:displayName>
         <ipxact:description>TLB Registers for address remapping and attribute tagging</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h18</ipxact:range>

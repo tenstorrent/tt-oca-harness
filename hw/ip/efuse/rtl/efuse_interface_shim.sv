@@ -1,49 +1,59 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Example Fuse Shim
+// Turn fuse-command requests into foundry APB accesses for an example fuse-bank model.
 //
-//-----------------------------------------------------------------------------
+// Hosts SHIM CSRs on fuse_bank_ctrl_*.
+// Sequences fuse_command_req_i onto efuse_model_otp_* APB, waiting the programmed bank init
+// time before each command; debug_bus_o exposes shim state.
+// The APB macro interface is foundry-specific in real integrations.
 
 module efuse_interface_shim
   import efuse_pkg::*;
 #(
-  parameter int unsigned SHADOW_REG_BITS = 24576,  // 3KB of efuses
-  parameter type addr_t = logic,
-  parameter type data_t = logic,
-  parameter type efuse_axil_req_t = logic,
-  parameter type efuse_axil_resp_t = logic,
-  parameter type efuse_apb_req_t = logic,
-  parameter type efuse_apb_resp_t = logic,
+  parameter int unsigned SHADOW_REG_BITS = 24576,  // Fuse array size in bits; declared but not used
+                                                   // in this module.
+  parameter type addr_t = logic,        // Type of the byte address register for read commands.
+  parameter type data_t = logic,        // Data type; declared but not used in this module.
+  parameter type efuse_axil_req_t = logic,  // eFuse AXI-Lite request type.
+  parameter type efuse_axil_resp_t = logic,  // eFuse AXI-Lite response type.
+  parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
+  parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-  parameter type efuse_addr_byte_t = logic,
-  parameter type efuse_data_t = logic,
-  parameter type efuse_word_counter_t = logic,
-  parameter type fuse_command_req_t = logic,
-  parameter type fuse_command_resp_t = logic,
+  parameter type efuse_addr_byte_t = logic,  // Fuse byte-address type.
+  parameter type efuse_data_t = logic,  // Fuse data-word type.
+  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type fuse_command_req_t = logic,  // Fuse-command request type.
+  parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
-  localparam int unsigned COUNTER_WIDTH = 32
+  localparam int unsigned COUNTER_WIDTH = 32  // Width of the read and write bank init-time
+                                              // counters.
 ) (
-  // Global Interface
-  input logic                      clk_i,
-  input logic                      rst_ni,
+  input logic                      clk_i,  // System clock.
+  input logic                      rst_ni,  // Active-low asynchronous reset.
 
-  // AXI4-Lite Register Interface - CSR for Fuse Bank Control
-  input  efuse_axil_req_t          fuse_bank_ctrl_req_i,
-  output efuse_axil_resp_t         fuse_bank_ctrl_resp_o,
+  input  efuse_axil_req_t          fuse_bank_ctrl_req_i,  // AXI4-Lite request to the fuse bank
+                                                          // control registers; only address bits
+                                                          // [2:0] are decoded.
+  output efuse_axil_resp_t         fuse_bank_ctrl_resp_o,  // AXI4-Lite response from the fuse bank
+                                                           // control registers, which hold the bank
+                                                           // init time.
 
-  // Fuse Command Interface - custom interface for SHIM state machine
-  input  fuse_command_req_t        fuse_command_req_i,
-  output fuse_command_resp_t       fuse_command_resp_o,
+  input  fuse_command_req_t        fuse_command_req_i,  // Filtered fuse command from the interface
+                                                        // controller: read, program, or program
+                                                        // with read-back.
+  output fuse_command_resp_t       fuse_command_resp_o,  // Fuse command response, one valid pulse
+                                                         // per word read or per program.
 
-  // Fuse Bank Interface - interface with Macro
-  // This example bank uses an APB interface, this will be foundry specific
-  output efuse_apb_req_t           efuse_model_otp_req_o,
-  input  efuse_apb_resp_t          efuse_model_otp_resp_i,
+  output efuse_apb_req_t           efuse_model_otp_req_o,  // Registered APB request to the fuse
+                                                           // bank model, byte addressed; a program
+                                                           // writes one bit with one byte strobe.
+  input  efuse_apb_resp_t          efuse_model_otp_resp_i,  // APB response from the fuse bank
+                                                            // model.
 
-  // Debug bus
-  output logic [15:0]              debug_bus_o
+  output logic [15:0]              debug_bus_o  // Shim status: {3'b0, write counter error, write
+                                                // FSM state, 3'b0, read counter error, read FSM
+                                                // state}.
 );
 
   localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;

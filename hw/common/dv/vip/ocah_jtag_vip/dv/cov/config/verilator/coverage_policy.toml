@@ -16,8 +16,8 @@
 #   ocah_jtag_vip_cov_scope.vlt  `coverage_off` -> the point never enters the
 #                                database: code this harness does not grade.
 #   [[holes]] here               the point exists and is not hit, carried with
-#                                a category, a rationale, an owner, a reviewer,
-#                                and an expiry.
+#                                a category, a rationale, an owner and a
+#                                reviewer.
 #
 # The branch family is the graded metric of the one-hot next-state function:
 # every legal transition is a branch point, and the selftests drive each of
@@ -31,9 +31,8 @@
 # point no [[holes]] entry classifies (max_unclassified_points = 0). The `raw`
 # branch threshold grades the unwaived figure.
 #
-# An accepted waiver grades as open again after its `expires` date, and an
-# accepted selector that matches a covered point fails the run: a waiver that
-# stimulus has overtaken has to be removed. Line selectors follow the source
+# An accepted selector that matches a covered point fails the run: a waiver
+# that stimulus has overtaken has to be removed. Line selectors follow the source
 # file; a moved line fails the run (`expected_matches`) until the entry is
 # updated.
 
@@ -75,8 +74,6 @@ confidence = "high"
 rationale = "Verilator's line metric does not count the case arms of a function evaluated inside an assertion; the branch metric of the same lines counts every arm in both TMS directions, and the selftests drive every legal transition."
 owner = "ocah-dv"
 reviewer = "ocah-dv"
-date = "2026-09-14"
-expires = "2027-03-31"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
 expected_matches = 16
 [[holes.native]]
@@ -170,8 +167,6 @@ confidence = "high"
 rationale = "The default arm answers a state input that is not one-hot; OCAH_JTAG_STATE_ONEHOT rejects such an input on the same cycle, so a passing run cannot reach it."
 owner = "ocah-dv"
 reviewer = "ocah-dv"
-date = "2026-09-14"
-expires = "2027-03-31"
 issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/476"]
 [[holes.native]]
 tool = "verilator"

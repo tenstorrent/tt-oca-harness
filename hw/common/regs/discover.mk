@@ -89,7 +89,9 @@ OCAH_VHR_FIRST_REPLICA_MULTIREGS := secure_dma
 OCAH_VHR_BASE_MULTIREG_FIELDS := aes
 OCAH_VHR_FLATTEN_MULTIREGS := csrng
 OCAH_VHR_ARRAYED_WINDOWS := spi_controller
-OCAH_VHR_NO_METADATA := aes csrng secure_dma spi_controller
+# Emit the addrmap name/desc from the upstream hjson human_name/one_line_desc so
+# the register pages head with a friendly title, matching the other vendored IPs.
+OCAH_VHR_NO_METADATA :=
 OCAH_VHR_NO_GUARD := aes csrng secure_dma spi_controller
 OCAH_VHR_NO_UDP_INCLUDE := secure_dma spi_controller
 

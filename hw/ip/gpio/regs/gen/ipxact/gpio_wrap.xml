@@ -10,10 +10,12 @@
   <ipxact:memoryMaps>
     <ipxact:memoryMap>
       <ipxact:name>gpio_wrap</ipxact:name>
-      <ipxact:description>Top-level addrmap for gpio_intf and gpio_shim</ipxact:description>
+      <ipxact:displayName>GPIO Wrapper Address Map</ipxact:displayName>
+      <ipxact:description>Top-level GPIO address map composing the interface and control register blocks.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>gpio_intf</ipxact:name>
-        <ipxact:description>GPIO Interface CSR</ipxact:description>
+        <ipxact:displayName>GPIO Interface Address Map</ipxact:displayName>
+        <ipxact:description>GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'hc</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -246,7 +248,8 @@ the filter may not update before your next transaction, causing unexpected behav
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>gpio_ctrl</ipxact:name>
-        <ipxact:description>GPIO Control CSR</ipxact:description>
+        <ipxact:displayName>GPIO Control Address Map</ipxact:displayName>
+        <ipxact:description>Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.</ipxact:description>
         <ipxact:baseAddress>'h10</ipxact:baseAddress>
         <ipxact:range>'h4</ipxact:range>
         <ipxact:width>32</ipxact:width>

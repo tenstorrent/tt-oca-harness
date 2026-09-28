@@ -433,6 +433,9 @@
 // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of
 // sep_interrupts[idx]; read-only XMR, no force (same class as the probes above).
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
+// Saturating count of cycles where CPU-LSU and DMA simultaneously present an
+// SRAM request on the same local-crossbar address channel.
+`SEP_TB_OUT(logic [31:0], dma_cpu_sram_overlap_count_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
 `SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)

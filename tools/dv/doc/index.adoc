@@ -52,7 +52,8 @@ ifdef::backend-html5[]
 * xref:run-dv.adoc[DV and FV Runner] -- configure, launch, reproduce, and debug
   native verification runs.
 * xref:run-dashboard.adoc[DV and FV Dashboard] -- normalize, render, aggregate,
-  and publish completed-run results.
+  and publish completed-run results, and stage that data into the
+  documentation site.
 * xref:interfaces.adoc[DV Infrastructure Interfaces] -- the files and
   command lines where the runner, the dashboard, the configuration, the
   coverage policies, the workflows, and the environment meet, and the check

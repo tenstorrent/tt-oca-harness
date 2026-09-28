@@ -21,10 +21,15 @@ from seq_lib.sep_irq_aggregator_seq import (
     hmac_misaligned_addr,
 )
 
+# Four bytes at CFG+2 cross a 32-bit word, so the master issues two beats.
+# The error slave answers each of those beats with DECERR.
+_PROBE_BYTES = 4
+_DECERR_BEATS = 2
+
 
 @pyuvm.test()
 class sep_periph_bus_err_misaligned_test(sep_base_test):
-    """A misaligned beat inside a mapped extent must latch the block's bit."""
+    """A misaligned access inside a mapped extent must latch the block's bit."""
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
@@ -40,13 +45,18 @@ class sep_periph_bus_err_misaligned_test(sep_base_test):
         # off the response rather than the monitor tally: the monitor counts on
         # its own clock edge, which may not have run when start_seq returns.
         mon = self.env.axi_monitor
-        mon.arm_expected_decerr(1)
+        mon.arm_expected_decerr(_DECERR_BEATS)
         seq = SepAxiAccessSeq(
-            "misaligned_rd", op=SepAxiOp.READ, addr=addr, size=2, expect_error=True
+            "misaligned_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=_PROBE_BYTES,
+            size=2,
+            expect_error=True,
         )
         await self.start_seq(seq)
         if seq.timed_out or seq.resp_code != RESP_DECERR:
-            mon.release_expected_decerr(1)
+            mon.release_expected_decerr(_DECERR_BEATS)
 
         status = await self.irq.read32(PERIPH_STATUS_ADDR)
         # Both halves of the contract are graded. The status bit alone would go

@@ -1,68 +1,109 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC eFuse Wrapper
+// Wrap the vendor eFuse controller for the SMC peripheral map.
 //
-//-----------------------------------------------------------------------------
-//
-// Wraps the generic `efuse_interface_controller` for SMC and implements the
-// SMC-specific JTAG access-control policy:
-//   * Block JTAG accesses to the eFuse when the SMC LC state (received from
-//     SEP, differentially encoded) is PROD or RMA_SiP.
-//   * Always allow JTAG reads of the JTAG_PUBLIC_IDENTITY register, so a part
-//     can still be identified in the field once the rest of the map is closed off.
-//   * On a differential-decode integrity error, restrict JTAG access.
-//
-// JTAG transactions that fail the policy are routed to a `prim_axi_lite_err_slv`
-// which returns `32'hbadcab1e` with a slave error response.
+// Presents the eFuse CSR window on the peripheral AXI-Lite map.
+// Bridges fuse sense, program, shadow-register, and DFT sidebands into the SMC peripheral
+// domain.
+// JTAG AXI-Lite accesses receive an error response with data 0xBADCAB1E when the SEP
+// lifecycle state is PROD or RMA_SiP or fails its integrity check, except reads of
+// JTAG_PUBLIC_IDENTITY outside an integrity error.
 
 module smc_efuse_wrapper
   import smc_pkg::*;
   import smc_efuse_pkg::*;
 (
-  input  logic                                       clk_i,
-  input  logic                                       rst_ni,
-  input  logic                                       test_en_i,
-  input  logic                                       scan_rst_ni,
+  input  logic                                       clk_i,  // SMC core clock for the
+                                                             // eFuse controller and JTAG
+                                                             // access filter.
+  input  logic                                       rst_ni,  // Primary reset, active-low,
+                                                              // synchronized to clk_i.
+  input  logic                                       test_en_i,  // DFT test-mode enable,
+                                                                 // active-high.
+  input  logic                                       scan_rst_ni,  // DFT scan reset,
+                                                                   // active-low, used while
+                                                                   // test_en_i is high.
 
-  // Functional AXI4-Lite slave (from SMC peripherals xbar)
-  input  smc_pkg::smc_axil_32_32_req_t               axil_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t              axil_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t               axil_req_i,  // Functional AXI4-Lite
+                                                                  // slave (from SMC
+                                                                  // peripherals xbar)
+                                                                  // request.
+  output smc_pkg::smc_axil_32_32_resp_t              axil_resp_o,  // Functional AXI4-Lite
+                                                                   // slave (from SMC
+                                                                   // peripherals xbar)
+                                                                   // response.
 
-  // JTAG AXI4-Lite slave
-  input  smc_pkg::smc_axil_32_32_req_t               axil_smc_otp_jtag_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t              axil_smc_otp_jtag_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t               axil_smc_otp_jtag_req_i,  // JTAG AXI4-Lite slave
+                                                                               // request.
+  output smc_pkg::smc_axil_32_32_resp_t              axil_smc_otp_jtag_resp_o,  // JTAG AXI4-Lite slave
+                                                                                // response.
 
-  // LC state from SEP (differentially encoded) and sigint error output
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]       lc_state_i,
-  output logic                                       lc_sigint_err_o,
+  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0]       lc_state_i,  // LC state from SEP
+                                                                  // (differentially
+                                                                  // encoded); PROD and
+                                                                  // RMA_SiP restrict JTAG
+                                                                  // access.
+  output logic                                       lc_sigint_err_o,  // Integrity error from
+                                                                       // the differential
+                                                                       // decode of lc_state_i,
+                                                                       // active-high; also
+                                                                       // blocks JTAG access.
 
-  // eFuse SHIM CSR AXI4-Lite
-  output smc_pkg::smc_axil_32_32_req_t               fuse_bank_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t              fuse_bank_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_32_req_t               fuse_bank_ctrl_req_o,  // eFuse SHIM CSR
+                                                                            // AXI4-Lite request.
+  input  smc_pkg::smc_axil_32_32_resp_t              fuse_bank_ctrl_resp_i,  // eFuse SHIM CSR
+                                                                             // AXI4-Lite response.
 
-  // eFuse Command Interface - custom interface for SHIM state machine
-  output smc_efuse_pkg::fuse_command_req_t           efuse_shim_command_req_o,
-  input  smc_efuse_pkg::fuse_command_resp_t          efuse_shim_command_resp_i,
+  output smc_efuse_pkg::fuse_command_req_t           efuse_shim_command_req_o,  // Fuse sense and program
+                                                                                // command request to the
+                                                                                // SHIM state machine.
+  input  smc_efuse_pkg::fuse_command_resp_t          efuse_shim_command_resp_i,  // Fuse command response
+                                                                                 // from the SHIM state
+                                                                                 // machine.
 
-  // SEP security disable
-  input  logic                                       sep_security_disable_i,
+  input  logic                                       sep_security_disable_i,  // Security disable
+                                                                              // from the SEP eFuse
+                                                                              // controller,
+                                                                              // active-high; skips
+                                                                              // automatic fuse
+                                                                              // sensing and releases
+                                                                              // the shadow registers
+                                                                              // without it.
 
-  // External boot sequence done (gate the released reset)
-  input  logic                                       ext_boot_seq_done_i,
+  input  logic                                       ext_boot_seq_done_i,  // External boot
+                                                                           // sequence done (gate
+                                                                           // the released reset).
 
-  // Released reset and fuse sense done
-  output logic                                       reset_n_o,
-  output logic                                       fuse_sense_done_o,
+  output logic                                       reset_n_o,  // Active-low reset released
+                                                                 // through a synchronizer
+                                                                 // once fuse sensing and
+                                                                 // ext_boot_seq_done_i are
+                                                                 // both done.
+  output logic                                       fuse_sense_done_o,  // High once
+                                                                         // shadow-register loading
+                                                                         // from the fuses
+                                                                         // completes.
 
-  // Shadow registers
-  output smc_efuse_pkg::efuse_map_t                  shadow_regs_o,
+  output smc_efuse_pkg::efuse_map_t                  shadow_regs_o,  // Shadow-register contents;
+                                                                     // zero until fuse sensing
+                                                                     // completes unless
+                                                                     // sep_security_disable_i is
+                                                                     // set.
 
-  // Debug
-  output logic [9:0]                                 efuse_debug_o,
+  output logic [9:0]                                 efuse_debug_o,  // eFuse controller status,
+                                                                     // from bit 0: shadow-register
+                                                                     // write and read locks,
+                                                                     // program and read locks,
+                                                                     // write-setup-only, LC-state
+                                                                     // access, read and program
+                                                                     // timeouts, request error and
+                                                                     // secure-test-mode block.
 
-  // Locked Field Access Interrupt
-  output logic                                       locked_field_access_interrupt_o
+  output logic                                       locked_field_access_interrupt_o  // High during an access
+                                                                                      // to the eFuse map
+                                                                                      // window that a field
+                                                                                      // lock blocks.
 );
 
   /////////////////////////////////////////////////////////////////////////

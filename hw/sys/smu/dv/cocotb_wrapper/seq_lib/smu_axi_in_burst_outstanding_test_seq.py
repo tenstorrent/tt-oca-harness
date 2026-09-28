@@ -306,6 +306,10 @@ class smu_axi_in_burst_outstanding_test_seq:
         self._log(
             f"CHK-AXIIN-BURST: wrap_read={resp_name(wrap.resp)} fixed_write={resp_name(fixed.resp)}"
         )
+        # The master takes the B beat on the edge after it rises; the cov/sv
+        # monitors sample the handshake on the next edge, which the simulation
+        # has to reach before the leaf ends.
+        await ClockCycles(self.dut.clk_smu_i, 2)
         self.s2_ok = True
 
     async def run(self) -> None:

@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_source.sv
- * @brief Top-level entropy source with ring oscillator array, health tests,
- *        and AXI4-Lite control interface.
- *
- * @details Generates a stream of high-entropy random numbers via a 12-element
- *          coprime ring oscillator array with metastable sampling. Features
- *          online entropy health testing (Repetition Test, Adaptive Proportion
- *          Test, Markov Test) to detect catastrophic failures, bias, and
- *          bit-to-bit correlation. Includes debug monitoring of intermediate
- *          signals via monitor port, register-based configuration and data
- *          access over AXI4-Lite, and boot-time validation via main_sm state
- *          machine gate. Entropy output is gated during warm reset and disabled
- *          health tests. Cryptographic applications include IV/nonce/key
- *          generation, SCA/FI countermeasure noise, challenge-response randomness,
- *          and random salt generation.
- */
+// Generate conditioned entropy from a ring-oscillator array with health tests and AXI-Lite control.
+//
+// A 12-lane array of ring oscillators of differing lengths, with metastable sampling,
+// feeds a GF(2^8) extractor whose 32-bit stream runs online Repetition, Adaptive
+// Proportion, and Markov health tests and an optional SHA-256 whitener.
+// rosc_sample_clk_i is the external sample clock.
+//
+// Interfaces:
+//
+// - The AXI-Lite slave carries register-based configuration and data access.
+// - signal_monitor_o observes intermediate signals.
+// - irq_o aggregates sticky fault and health status for the SEP host.
+//
+// Boot-time validation uses the main_sm gate: entropy reaches the whitener, the main FIFO
+// and the extracted-stream observe FIFO only after CTRL.MODULE_ENABLE is set and a boot
+// health-test window passes, and new entropy stops entering when MODULE_ENABLE clears or
+// the alert threshold trips.
 
 module entropy_source
     import entropy_source_reg_pkg::*,
@@ -26,44 +26,49 @@ module entropy_source
 
     `include "prim_assert.sv"
 (
-    input       logic        clk_i,
-    input       logic        rst_ni,
+    input       logic        clk_i,     // System clock.
+    input       logic        rst_ni,    // Active-low asynchronous reset.
 
-    // AXI4-Lite Write Address Channel
-    input       logic        s_axil_awvalid_i,
-    output      logic        s_axil_awready_o,
-    input       logic [8:0]  s_axil_awaddr_i,
-    input       logic [2:0]  s_axil_awprot_i,
+    input       logic        s_axil_awvalid_i,  // AXI-Lite write-address valid.
+    output      logic        s_axil_awready_o,  // AXI-Lite write-address ready.
+    input       logic [8:0]  s_axil_awaddr_i,  // AXI-Lite write byte address within the register
+                                               // map.
+    input       logic [2:0]  s_axil_awprot_i,  // AXI-Lite write protection attributes.
 
-    // AXI4-Lite Write Data Channel
-    input       logic        s_axil_wvalid_i,
-    output      logic        s_axil_wready_o,
-    input       logic [31:0] s_axil_wdata_i,
-    input       logic [3:0]  s_axil_wstrb_i,
+    input       logic        s_axil_wvalid_i,  // AXI-Lite write-data valid.
+    output      logic        s_axil_wready_o,  // AXI-Lite write-data ready.
+    input       logic [31:0] s_axil_wdata_i,  // AXI-Lite write data.
+    input       logic [3:0]  s_axil_wstrb_i,  // AXI-Lite write byte strobes.
 
-    // AXI4-Lite Write Response Channel
-    output      logic        s_axil_bvalid_o,
-    input       logic        s_axil_bready_i,
-    output      logic [1:0]  s_axil_bresp_o,
+    output      logic        s_axil_bvalid_o,  // AXI-Lite write-response valid.
+    input       logic        s_axil_bready_i,  // AXI-Lite write-response ready.
+    output      logic [1:0]  s_axil_bresp_o,  // AXI-Lite write response code.
 
-    // AXI4-Lite Read Address Channel
-    input       logic        s_axil_arvalid_i,
-    output      logic        s_axil_arready_o,
-    input       logic [8:0]  s_axil_araddr_i,
-    input       logic [2:0]  s_axil_arprot_i,
+    input       logic        s_axil_arvalid_i,  // AXI-Lite read-address valid.
+    output      logic        s_axil_arready_o,  // AXI-Lite read-address ready.
+    input       logic [8:0]  s_axil_araddr_i,  // AXI-Lite read byte address within the register
+                                               // map.
+    input       logic [2:0]  s_axil_arprot_i,  // AXI-Lite read protection attributes.
 
-    // AXI4-Lite Read Data Channel
-    output      logic        s_axil_rvalid_o,
-    input       logic        s_axil_rready_i,
-    output      logic [31:0] s_axil_rdata_o,
-    output      logic [1:0]  s_axil_rresp_o,
+    output      logic        s_axil_rvalid_o,  // AXI-Lite read-data valid.
+    input       logic        s_axil_rready_i,  // AXI-Lite read-data ready.
+    output      logic [31:0] s_axil_rdata_o,  // AXI-Lite read data.
+    output      logic [1:0]  s_axil_rresp_o,  // AXI-Lite read response code.
 
-    output      logic        signal_monitor_o,
-    input       logic        rosc_sample_clk_i,
+    output      logic        signal_monitor_o,  // Debug observe signal chosen and divided by
+                                                // DEBUG_CTRL.
+    input       logic        rosc_sample_clk_i,  // External ring-oscillator sample clock,
+                                                 // asynchronous to clk_i.
 
-    output      logic [31:0] entropy_stream_data_o,
-    output      logic        entropy_stream_vld_o,
-    output      logic        irq_o
+    output      logic [31:0] entropy_stream_data_o,  // Word offered to the main entropy FIFO:
+                                                     // whitener output, which is the extracted
+                                                     // stream itself while whitening is disabled,
+                                                     // or packed lane bytes when the compressor is
+                                                     // bypassed.
+    output      logic        entropy_stream_vld_o,  // Qualifies entropy_stream_data_o; independent
+                                                    // of FIFO_CTRL.ENABLE.
+    output      logic        irq_o      // Level interrupt: OR of the INTR_STATUS sticky bits masked
+                                        // by INTR_ENABLE.
 );
 
     /////////////
@@ -244,7 +249,7 @@ module entropy_source
     // Combinational
     /////////////////
 
-    // Expose raw stream before whitener/FIFO for external monitoring
+    // Expose each word pushed into the main FIFO for external monitoring
     assign entropy_stream_data_o = fifo_wdata;
     assign entropy_stream_vld_o  = fifo_push;
 
@@ -351,10 +356,10 @@ module entropy_source
     assign health_test_enable      = ~reg_out.CTRL.BYPASS_ENTROPY_COMPRESSOR.value;
     assign health_test_valid_gated = entropy_stream_valid & health_test_enable;
 
-    prim_clkgater u_health_test_clk_gate (
+    prim_clock_gating u_health_test_clk_gate (
         .clk_i  (clk_i),
         .en_i   (health_test_enable),
-        .te_i   (1'b0),
+        .test_en_i (1'b0),
         .clk_o  (health_test_clk)
     );
 
