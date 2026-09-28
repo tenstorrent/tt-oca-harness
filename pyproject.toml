@@ -131,7 +131,8 @@ vendor,nonfree,.git,*/tools/tt-oca-manifest,\
 */integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
-*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock\
+*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock,\
+*.dis\
 """
 # interruptor(s): the RISC-V CLINT spec spells out the acronym as
 # "Core-Local INTerruptor", matching every other occurrence in doc/; not the
