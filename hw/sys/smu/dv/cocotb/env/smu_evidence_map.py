@@ -501,7 +501,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-SEP-ADDRESS-BITS",
             "CHK-AXIIN-SEP-ADDRESS-BITS",
-            "a read at each SEP aperture address bit completes",
+            "every walked SEP aperture address arrives at the SEP inbound port on both "
+            "channels and no other address does",
         ),
         (
             "CHK-AXIIN-SEP-EXTERNAL",

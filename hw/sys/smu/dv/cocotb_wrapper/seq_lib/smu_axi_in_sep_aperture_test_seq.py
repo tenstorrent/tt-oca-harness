@@ -79,7 +79,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import cocotb
-from cocotb.triggers import with_timeout
+from cocotb.triggers import RisingEdge, with_timeout
 from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, AxiTimingProfile, worst_resp
 
 from seq_lib.smu_addr_map import (
@@ -97,7 +97,7 @@ from seq_lib.smu_addr_map import (
 from seq_lib.smu_axi_helpers import AXI_TIMEOUT_NS, make_smu_axi_master
 from seq_lib.smu_axi_out_addr_len_size_test_seq import DMA_CONFIG_ENABLE_ND
 from seq_lib.smu_boundary_regs import smc_base_config_u32
-from seq_lib.smu_compose_helpers import sample
+from seq_lib.smu_compose_helpers import hier, sample
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import (
     DMI_OP_READ,
     DMI_OP_WRITE,
@@ -127,7 +127,7 @@ from seq_lib.smu_dtp_sep_dm_sba_test_seq import (
     smu_dtp_sep_dm_sba_test_seq,
 )
 from seq_lib.smu_filter_helpers import PASS_ALL_END, PASS_RW_CONFIG
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 _SEP_ADDR_H = Path(__file__).resolve().parents[6] / "hw/sys/sep/regs/gen/c/sep_addr.h"
 SRAM_LOCAL = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_SRAM_BASE_ADDR")
@@ -200,9 +200,23 @@ HELD = 64
 # (the VIP's pause countdown), then every response is taken.
 HELD_HOLD_CYCLES = 20000
 HELD_WAIT_NS = 4 * AXI_TIMEOUT_NS
-# The SEP inbound ID remapper tracks four IDs of four transactions each
-# (sep_system_peripherals.sv); four IDs keep it full.
+# A bench choice: every held access has to complete whatever the number of
+# AXI IDs in flight, and four IDs keep sixteen accesses on each.
 HELD_IDS = 4
+# Bit positions of the valid, ready and address fields of the SEP inbound port
+# (`smu` net sep_smn_inbound_axi_req/resp): the pulp AXI4 request and response
+# structs (vendor/pulp-platform/axi include/axi/typedef.svh) with a 56-bit
+# address, 64-bit data, 6-bit ID and 12-bit user; the tap refuses to run on any
+# other width.
+SEP_IN_REQ_BITS = 302
+SEP_IN_RESP_BITS = 110
+SEP_IN_AW_VALID = 192
+SEP_IN_AW_ADDR = 240
+SEP_IN_AR_VALID = 1
+SEP_IN_AR_ADDR = 43
+SEP_IN_AW_READY = 109
+SEP_IN_AR_READY = 108
+SEP_IN_ADDR_BITS = 56
 W_LAG_CYCLES = 64
 W_LAG_WRITES = 4
 COLLIDE_SPAN = 24
@@ -374,15 +388,52 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         )
         return resp_r, data[:1], resp_w
 
+    async def _sep_port_tap(self, seen: dict[str, set[int]]) -> None:
+        """Record every AW and AR address handshaken on the SEP inbound port."""
+        smu = smu_scope(self.dut)
+        req = hier(smu, "sep_smn_inbound_axi_req")
+        resp = hier(smu, "sep_smn_inbound_axi_resp")
+        if (len(req), len(resp)) != (SEP_IN_REQ_BITS, SEP_IN_RESP_BITS):
+            raise AssertionError(
+                f"SEP inbound port is {len(req)}/{len(resp)} bits, the tap decodes "
+                f"{SEP_IN_REQ_BITS}/{SEP_IN_RESP_BITS}"
+            )
+
+        def field(bits: str, lsb: int, width: int, name: str) -> int:
+            text = bits[len(bits) - lsb - width : len(bits) - lsb]
+            if set(text) - {"0", "1"}:
+                raise AssertionError(f"X/Z on SEP inbound {name}: {text}")
+            return int(text, 2)
+
+        while True:
+            await RisingEdge(self.dut.clk_smu_i)
+            q = str(req.value)
+            r = str(resp.value)
+            for chan, valid, ready, addr in (
+                ("aw", SEP_IN_AW_VALID, SEP_IN_AW_READY, SEP_IN_AW_ADDR),
+                ("ar", SEP_IN_AR_VALID, SEP_IN_AR_READY, SEP_IN_AR_ADDR),
+            ):
+                if field(q, valid, 1, f"{chan}_valid") and field(r, ready, 1, f"{chan}_ready"):
+                    seen[chan].add(field(q, addr, SEP_IN_ADDR_BITS, f"{chan}.addr"))
+
     async def _address_bits(self, master, jtag, sb) -> None:
         touched = {}
+        issued: dict[object, int] = {}
+        seen: dict[str, set[int]] = {"aw": set(), "ar": set()}
+        tap = cocotb.start_soon(self._sep_port_tap(seen))
         await self._window(jtag, FOUR_GIB, SEP_SIZE_ONES)
         for addr in [FOUR_GIB] + [FOUR_GIB + (1 << k) for k in range(32)]:
+            issued[addr - FOUR_GIB] = addr
             touched[addr - FOUR_GIB] = await self._touch(master, addr)
         await self._window(jtag, SEP_BASE_ONES, 1)
+        issued["2^56-1"] = SEP_BASE_ONES
         touched["2^56-1"] = await self._touch(master, SEP_BASE_ONES)
         await self._window(jtag, SEP_GLOBAL_BASE_RESET, SEP_REGION_SIZE_RESET)
+        issued["reset base"] = SEP_GLOBAL_BASE_RESET
         touched["reset base"] = await self._touch(master, SEP_GLOBAL_BASE_RESET)
+        tap.cancel()
+        arrived = {key: (addr in seen["ar"], addr in seen["aw"]) for key, addr in issued.items()}
+        strays = sorted((seen["ar"] | seen["aw"]) - set(issued.values()))
         self._log(
             "OBSERVATION CHK-AXIIN-SEP-ADDRESS-BITS (read resp, byte, write resp) per SEP-local "
             f"offset {touched}"
@@ -394,12 +445,16 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
             SRAM_LOCAL: touched[SRAM_LOCAL],
             EFUSE_SHIM_LOCAL: touched[EFUSE_SHIM_LOCAL][::2],
         }
-        self._log(f"CHK-AXIIN-SEP-ADDRESS-BITS completed={len(touched)} decoded={decoded}")
+        self._log(
+            f"address walk arrivals (read, write) at the SEP port={arrived} strays="
+            f"{[hex(a) for a in strays]} decoded={decoded}"
+        )
         sb.expect_eq(
             "CHK-AXIIN-SEP-ADDRESS-BITS",
-            (len(touched), decoded),
+            (arrived, strays, decoded),
             (
-                35,
+                dict.fromkeys(issued, (True, True)),
+                [],
                 {
                     SRAM_LOCAL: (RESP_OKAY, bytes([STALL_PATTERN_BASE]), RESP_OKAY),
                     EFUSE_SHIM_LOCAL: (RESP_OKAY, RESP_OKAY),
