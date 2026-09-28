@@ -210,7 +210,9 @@
 <h3 id="straps-and-efuses"><a class="anchor" href="#straps-and-efuses"></a><a class="link" href="#straps-and-efuses">1.1. Straps and eFuses</a></h3>
 <div class="paragraph">
 <p>Early assembly reads strap registers at <code>0xC0405800</code> and <code>0xC0405804</code>.
-The C strap driver later caches the fields used for reporting or policy.</p>
+The C strap driver later caches the fields used for reporting or policy.
+Boot stall is controlled by the dedicated GPIO 57 hardware path before ROM
+execution and is not a captured strap.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. ROM strap use</caption>
@@ -236,11 +238,6 @@ The C strap driver later caches the fields used for reporting or policy.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>TEST_EN</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cached by the strap driver; no later ROM behavior depends on it.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_STALL</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reported in the POST word. CPU stalling occurs before ROM execution in hardware.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>BOOT_I2C</code></p></td>
