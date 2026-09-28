@@ -255,8 +255,8 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Misaligned in-extent register access. sep_cpu_ctrl.rdl and
 # doc/interrupts.adoc require SLVERR and the owning block's
-# PERIPH_BUS_ERR_STATUS bit. The fabric returns DECERR and the bit stays 0.
-# The VPLAN card owns the checker contract.
+# PERIPH_BUS_ERR_STATUS or DMA_BUS_ERR_STATUS bit. The VPLAN card owns the
+# checker contract.
 name = "sep_periph_bus_err_misaligned_test"
 module = "system.sep_periph_bus_err_misaligned_test"
 seed = 1

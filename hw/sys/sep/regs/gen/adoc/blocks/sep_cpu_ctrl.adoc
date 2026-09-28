@@ -62,9 +62,9 @@ to both latches. A fault arriving in the same cycle as the clear still
 latches, so acknowledging cannot drop a concurrent fault.
 | 0x1B8 | <<reg-{regmap-instance}-sep_cpu_ctrl-PERIPH_BUS_ERR_STATUS,PERIPH_BUS_ERR_STATUS>> | R a| Peripheral register-bridge fault status, one bit per block. Each bit latches
 when a CPU access to that block's registers returned a TL-UL error response
-(unmapped or misaligned offset, or a RACL denial), and is held until the
-matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also
-received SLVERR synchronously.
+(unmapped or misaligned offset), and is held until the matching
+PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
+SLVERR synchronously.
 
 All bits OR together into a single PIC source, so read this register to
 identify which block faulted.
@@ -397,8 +397,8 @@ to a DMA transfer, or a TL-UL command-integrity check failed on a command
 issued by the DMA. The latter is a fault-detection event with no other
 reporting path.
 | 0 | `reg_path_err` | R | 0x0 a| Register-path bus error: a CPU access to a Secure DMA register returned
-a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
-The faulting access also received SLVERR synchronously.
+a TL-UL error response (unmapped or misaligned offset). The faulting
+access also received SLVERR synchronously.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-DMA_BUS_ERR_CLEAR]

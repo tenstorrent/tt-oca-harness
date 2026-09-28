@@ -1323,7 +1323,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-XTRIG-CTP-S1",
             "all four CTP groups are 16 wide, the XTRIG_NUM_CTP default",
         ),
-        ("CHK-SMU-XTRIG-CTP-S6", "CHK-SMU-XTRIG-CTP-S6", "zero-tied CTP data inputs stay static"),
+        (
+            "CHK-SMU-XTRIG-CTP-S6",
+            "CHK-SMU-XTRIG-CTP-S6",
+            "resting CTP data inputs leave the CTP outputs static",
+        ),
         ("CHK-SMU-LC-STATE-S1", "CHK-SMU-LC-STATE-S1", "lc_state_o is 8 bits, 2*LC_STATE_WIDTH"),
         (
             "CHK-SMU-LC-DEMOTE-S1",

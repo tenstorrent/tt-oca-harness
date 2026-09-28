@@ -283,7 +283,7 @@ never when it was written.
 |`sep_periph_bus_err_misaligned_test`
 |no_cpu
 |ocah_axi_vip
-|A misaligned in-extent access. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's `PERIPH_BUS_ERR_STATUS` bit. The fabric returns DECERR and the bit stays 0.
+|A single-beat misaligned read inside the HMAC register extent receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one inside the Secure DMA register extent receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The same read at each aligned offset is the control.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -631,6 +631,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, real fuse sense
 |DUT probes and a one-cycle state force
 |The eFuse read and program interfaces fail closed from an illegal state encoding, and the read-error flag is set by a failed or timed-out read and cleared by the next legal request.
+|`sep_efuse_km_public_id_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, KM CPU image
+|The three sensed `SEP_*_ID` fuses reach the Key Manager: `{~id, id}` on its OTP input, and value and complement in the KMCSR `OTP_SEP_*_ID_{VAL,CPL}` words as KM firmware reads them. One seed-selected field carries its eFuse read lock, which withholds that field's shadow read and leaves both KM views intact. The KM-side `OTP_READ_LOCK` then zeroes the KMCSR words and leaves the input intact.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_locked_field_access_irq_path_test>> and <<sep_efuse_token_match_fault_pic_test>> reach eFuse state, but their contract is the IRQ/PIC delivery path. They are graded there so each test has one owning bucket.
@@ -821,6 +825,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |JTAG vs CPU vs KM eFuse mux
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`, `sep_efuse_km_axil_cpu_mux_coexist_test`
+
+|eFuse public identities → Key Manager
+|`sep_efuse_km_public_id_test`. The sensed `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` are compared with the staged image on the Key Manager's OTP input (`{~id, id}`) and in the 48 KMCSR words KM firmware reads. The two read-lock domains are graded apart: an eFuse read lock withholds the shadow read and leaves both KM views, and `OTP_READ_LOCK` zeroes the KMCSR words and leaves the input. Delivery under `secure_tm`, `OTP_READ_LOCK_COLD` for these fields, and identity-key derivation from them are not claimed.
 
 |SEC_DIS override
 |`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (`hw/sys/sep/doc/reset_controller.adoc`).
@@ -2275,7 +2282,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of both status registers are not claimed here. The misaligned-offset term is <<sep_periph_bus_err_misaligned_test>>.
+*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
 
 '''''
 
@@ -2290,16 +2297,20 @@ recovery. Those are listed in <<phase-3>>.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit. The fabric returns DECERR, so no TL-UL error reaches the block and the bit stays 0.
+*Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit.
 
-*Test Coverage*: The misaligned-offset term of the bus-error status contract.
+*Test Coverage*: The misaligned-offset term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit, and of `DMA_BUS_ERR_STATUS`, on `reg_path_err`.
 
 *Test Procedure*:
 
 [arabic]
-. Confirm `PERIPH_BUS_ERR_STATUS` reads 0, so the assertion below cannot be satisfied by stale state.
-. Read four bytes at a misaligned offset inside the mapped HMAC extent (`CFG` + 2, AxSIZE=2). The address sits two bytes into a 32-bit word, so the read crosses that word and the master issues two beats.
-. Require SLVERR and the `hmac` bit latched, per the documented contract. The fabric returns DECERR and the bit stays 0.
+. Confirm `PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` both read 0, so the assertions below cannot be satisfied by stale state.
+. HMAC control: read two bytes at the aligned HMAC `CFG` offset (AxSIZE=2). Require one R beat answered OKAY and both registers still 0.
+. HMAC probe: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered SLVERR, then SLVERR on the probe, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, and `DMA_BUS_ERR_STATUS` still 0.
+. DMA control: read two bytes at the aligned Secure DMA `INTR_STATE` offset. Require one R beat answered OKAY and both registers unchanged.
+. DMA probe: read two bytes at `INTR_STATE` + 2. Require one R beat answered SLVERR, then SLVERR on the probe, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, and `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit.
+
+Each probe must be one beat. A four-byte read at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC, so it never exercises the alignment check.
 
 *Checkers*:
 
@@ -2307,14 +2318,18 @@ recovery. Those are listed in <<phase-3>>.
 |===
 |Checker |Contract
 |CHK-MISALIGN-BASE
-|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. A bit left set by an earlier step fails here.
-|CHK-MISALIGN-LATCH
-|A misaligned in-extent access receives SLVERR and latches the owning block's bit. The fabric returns DECERR and the register stays 0.
+|`PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` read 0 before the probes. A bit left set by an earlier step fails here.
+|CHK-MISALIGN-CTRL, CHK-MISALIGN-DMA-CTRL
+|The aligned read of the same shape completes as one OKAY beat and leaves both registers unchanged. Each probe then differs from an accepted access only in address bits [1:0].
+|CHK-MISALIGN-BEAT, CHK-MISALIGN-DMA-BEAT
+|The bus monitor records exactly one R beat for the probe, answered SLVERR. A burst, or any other response code, fails here.
+|CHK-MISALIGN-LATCH, CHK-MISALIGN-DMA-LATCH
+|The probe's response is SLVERR, and both registers read exactly the expected value: the owning block's bit latched and the other register unchanged.
 |===
 
-*Pass Criteria*: CHK-MISALIGN-BASE reads 0. CHK-MISALIGN-LATCH requires SLVERR and the owning block's bit. The fabric returns DECERR and the register stays 0.
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the same term on the DMA register path (`reg_path_err`), and the access-control (RACL) term of either register — RACL is disabled in this design with its error output unconnected, so that term is unreachable for a separate reason.
+*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The error response's read data is not graded: no specification defines it.
 
 '''''
 
@@ -5185,6 +5200,54 @@ bank command. It does not grade suppression: the request is already low, so
 that term would pass with the RTL's suppression logic deleted.
 
 *Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_efuse_km_public_id_test]]
+===== `sep_efuse_km_public_id_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense, `+km_rom_hex=km_rom_otp_id.parhex`
+
+*Source Module*: `sep_efuse_km_public_id_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image (`km_rom_otp_id.S`)
+
+*Objective*: the public identity fuses reach the Key Manager as sensed. `otp_fuse_controller.adoc` routes `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` to the Key Manager, and `km_csr.rdl` exposes each as eight value and eight complement words that `OTP_READ_LOCK` zeroes. The eFuse read lock hides only software and JTAG reads (`otp_fuse_controller.adoc`) and does not blank the hardwired KM port (`hw/ip/key_manager/doc/architecture.adoc`, public identity delivery), so both KM views must survive it. The Key Manager block bench drives its own patterns onto the KM OTP input, so only a SEP-level run observes what the SEP delivers.
+
+*Test Coverage*: Three public IDs through fuse sense, the SEP dual-rail encoders and the KM capture, with one eFuse read lock and the KM-side lock.
+
+*Test Procedure*:
+
+[arabic]
+. Draw three 256-bit IDs from the seed with no zero, all-ones or shared word, and set the eFuse read lock (`LOCKS[59]`, `[61]` or `[63]`) of one seed-selected field. Stage the image at `LC_PROD` and sense it for real.
+. Compare each field on the KM `otp_data_i` input with `{~id, id}` of the staged value.
+. Read all eight shadow words of the read-locked field over AXI and require that none returns its staged word. Read the two unlocked fields and let the scoreboard judge them against the image.
+. Release the KM. Its image copies the 48 KMCSR words `OTP_SEP_CHIPLET_ID_VAL_0` .. `OTP_SEP_SYS_ID_CPL_7` to KM SRAM, sets the three public-ID bits of `OTP_READ_LOCK`, reads the register back, copies the 48 words again and stores a done marker.
+. Compare the first copy with the staged IDs and their complements, the read-locked field included. Require the readback to be exactly the three bits and the second copy to be zero.
+. Compare the KM input again.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KM-ID-PORT
+|Each public-ID field on the KM OTP input equals `{~id, id}` of the staged value, after sense and again after `OTP_READ_LOCK` is set.
+|CHK-KM-ID-EFUSE-LOCK
+|No shadow read of the eFuse-read-locked field returns its staged word, and the unlocked fields' shadow reads return theirs.
+|CHK-KM-ID-CSR
+|The 48 KMCSR words KM firmware read are the staged ID words (`VAL_k`) and their complements (`CPL_k`) for all three fields, the eFuse-read-locked field included.
+|CHK-KM-ID-KM-LOCK
+|`OTP_READ_LOCK` reads back exactly its three public-ID bits, and all 48 words then read zero.
+|===
+
+*Scope limit*: `secure_tm` is 0 and `OTP_READ_LOCK_COLD` is never set, so neither is graded here. The KM image grades nothing itself: it copies raw words, and the host holds every golden.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
