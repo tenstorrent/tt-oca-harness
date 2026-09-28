@@ -52,7 +52,7 @@ static void init_spi_controller(void) {
     ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     spi_controller__CONFIGOPTS_t cfg;
     cfg.w = 0;
@@ -62,16 +62,16 @@ static void init_spi_controller(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 }
 
 static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
     }
     printf("  TIMEOUT waiting for READY\n");
@@ -81,7 +81,7 @@ static int wait_for_ready(int timeout) {
 static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
     }
     printf("  TIMEOUT waiting for ACTIVE=0\n");
@@ -112,14 +112,14 @@ int main(void) {
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), (uint32_t)FLASH_CMD_JEDEC_ID);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), (uint32_t)FLASH_CMD_JEDEC_ID);
 
     cmd.w = 0;
     cmd.f.LEN = 0;       /* 1 byte */
     cmd.f.CSAAT = 1;     /* keep CS# low */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 2; /* TX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=TX, SPEED=Std, LEN=0(1B), CSAAT=1\n");
 
     /* ----------------------------------------------------------------
@@ -136,7 +136,7 @@ int main(void) {
     cmd.f.CSAAT = 0;     /* release CS# after */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 1; /* RX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=RX, SPEED=Std, LEN=2(3B), CSAAT=0\n");
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
@@ -151,7 +151,7 @@ int main(void) {
      * ---------------------------------------------------------------- */
     printf("\nStep 3: Read JEDEC response from RXDATA\n");
     spi_controller__STATUS_t status;
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
     uint8_t mfr_id = 0xFF, mem_type = 0xFF, capacity = 0xFF;
@@ -161,7 +161,7 @@ int main(void) {
         goto done;
     }
     {
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+        uint32_t rxdata = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         mfr_id = (uint8_t)(rxdata & 0xFF);
         mem_type = (uint8_t)((rxdata >> 8) & 0xFF);
         capacity = (uint8_t)((rxdata >> 16) & 0xFF);
@@ -196,7 +196,7 @@ int main(void) {
      * ---------------------------------------------------------------- */
     printf("\nStep 4: Check SPI error status\n");
     spi_controller__ERROR_STATUS_t err;
-    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x\n", err.w);
     if (err.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL (invalid speed/direction combination)\n");

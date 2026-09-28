@@ -47,7 +47,7 @@ _CONTROL_BLOCKS = (
     ("gpio-refclk-ctrl-decode", "GPIO_REFCLK_CTRL_CONTROL"),
 )
 
-EXPECTED_ACCESSES = len(_CONTROL_BLOCKS) + 3
+EXPECTED_ACCESSES = len(_CONTROL_BLOCKS) + 4
 
 
 def _ext(symbol: str) -> int:
@@ -60,6 +60,7 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
     def __init__(self, name: str = "smc_external_window_pad_ctrl_decode_test_seq") -> None:
         super().__init__(name)
         self.hits: dict[str, int] = {}
+        self.write_resp: int | None = None
 
     async def _probe(self, cell: str, label: str, addr: int) -> None:
         rdata, hits = await self.read_external_routed(label, addr, decerr=True)
@@ -70,8 +71,8 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
         self.hits[label] = hits
         self.close_cell(
             cell,
-            f"0x{addr:08x} drove smc_external_req_o for {hits} clk_smc_i cycle(s) and was answered "
-            f"DECERR/0 by the adopter-window terminator",
+            f"0x{addr:08x} was presented on smc_external_req_o as a read request for {hits} "
+            f"clk_smc_i cycle(s) and was answered DECERR/0 by the adopter-window terminator",
         )
 
     async def body(self) -> None:
@@ -109,16 +110,28 @@ class smc_external_window_pad_ctrl_decode_test_seq(SmcDecodeProbeSeq):
             f"per-pad-instance-{last}", f"GPIO_CTRL_{last}_CONTROL", external_gpio_ctrl_addr(last)
         )
 
+        # The write channel of the same terminator: a write into the first
+        # per-pad block must reach the port as a write request for that address
+        # and be refused, like the reads.
+        pad0 = external_gpio_ctrl_addr(0)
+        self.write_resp, wr_hits = await self.write_external_routed(
+            "GPIO_CTRL_0_CONTROL_WR", pad0, 0xFFFF_FFFF
+        )
+        self.hits["GPIO_CTRL_0_CONTROL_WR"] = wr_hits
+
         self.assert_all_reachable(EXPECTED_ACCESSES, "EXTERNAL_WINDOW_PAD_CTRL_DECODE")
         self.report_cells("CHK-EXTWIN-PAD-CTRL")
         cocotb.log.info(
             "CHK-EXTERNAL-WINDOW-PAD-CTRL-DECODE: %d control-block and %d per-pad addresses each "
-            "drove the adopter external AXI-Lite port (active cycles %s) and completed DECERR "
+            "reached the adopter external AXI-Lite port as a request carrying that address "
+            "(request cycles %s) and completed DECERR "
             "with zero data, the DV-owned answer for an address nothing behind the window "
-            "decodes; per-pad stride 0x%x, %d instances",
+            "decodes; per-pad stride 0x%x, %d instances; a write to per-pad block 0 reached the "
+            "port as a write request for that address and was refused with resp=%s",
             len(_CONTROL_BLOCKS),
             3,
             sorted(self.hits.values()),
             stride,
             len(idxs),
+            self.write_resp,
         )

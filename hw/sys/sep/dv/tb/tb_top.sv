@@ -1098,31 +1098,31 @@ module sep_uvm_top
     assign cpu_lsu_sram_aw_pending =
         `SEP_CORE.lsu_xbar_axi_req.aw_valid &&
         (`SEP_CORE.lsu_xbar_axi_req.aw.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.lsu_xbar_axi_req.aw.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign cpu_lsu_sram_ar_pending =
         `SEP_CORE.lsu_xbar_axi_req.ar_valid &&
         (`SEP_CORE.lsu_xbar_axi_req.ar.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.lsu_xbar_axi_req.ar.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign dma_sram_aw_pending =
         `SEP_CORE.dma_axi_req.aw_valid &&
         (`SEP_CORE.dma_axi_req.aw.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.dma_axi_req.aw.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign dma_sram_ar_pending =
         `SEP_CORE.dma_axi_req.ar_valid &&
         (`SEP_CORE.dma_axi_req.ar.addr >=
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
         (`SEP_CORE.dma_axi_req.ar.addr <
-            32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR +
-                och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE));
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
     assign dma_cpu_sram_overlap =
         (cpu_lsu_sram_aw_pending && dma_sram_aw_pending) ||
         (cpu_lsu_sram_ar_pending && dma_sram_ar_pending);

@@ -227,9 +227,9 @@ module sep_system_peripherals (
     end else if ((sep_system_peripheral_56_remapped_axi_req.aw.addr >= smu_global_base_addr && sep_system_peripheral_56_remapped_axi_req.aw.addr < smu_global_base_addr + smu_region_size) ||
                 (sep_system_peripheral_56_remapped_axi_req.aw.addr >= sep_pkg::EXTERNAL_TO_CHIPLET_BASE_ADDR)) begin
       address_remap_demux_select_aw = sep_pkg::SEP_EXT_TO_SMU;
-    end else if (sep_system_peripheral_56_remapped_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_SIZE) begin
+    end else if (sep_system_peripheral_56_remapped_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_AP_REGION_SIZE) begin
       address_remap_demux_select_aw = sep_pkg::SEP_EXT_AP_REMAP;
-    end else if (sep_system_peripheral_56_remapped_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_SIZE) begin
+    end else if (sep_system_peripheral_56_remapped_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_SIZE) begin
       address_remap_demux_select_aw = sep_pkg::SEP_EXT_STEE_REMAP;
     end else begin
       // Default to local for: sep_local_base_addr, sep_global_base_addr, or unmapped addresses
@@ -242,9 +242,9 @@ module sep_system_peripherals (
     end else if ((sep_system_peripheral_56_remapped_axi_req.ar.addr >= smu_global_base_addr && sep_system_peripheral_56_remapped_axi_req.ar.addr < smu_global_base_addr + smu_region_size) ||
                 (sep_system_peripheral_56_remapped_axi_req.ar.addr >= sep_pkg::EXTERNAL_TO_CHIPLET_BASE_ADDR)) begin
       address_remap_demux_select_ar = sep_pkg::SEP_EXT_TO_SMU;
-    end else if (sep_system_peripheral_56_remapped_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_SIZE) begin
+    end else if (sep_system_peripheral_56_remapped_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_AP_REGION_SIZE) begin
       address_remap_demux_select_ar = sep_pkg::SEP_EXT_AP_REMAP;
-    end else if (sep_system_peripheral_56_remapped_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_SIZE) begin
+    end else if (sep_system_peripheral_56_remapped_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR && sep_system_peripheral_56_remapped_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_SIZE) begin
       address_remap_demux_select_ar = sep_pkg::SEP_EXT_STEE_REMAP;
     end else begin
       // Default to local for: sep_local_base_addr, sep_global_base_addr, or unmapped addresses
@@ -298,7 +298,7 @@ module sep_system_peripherals (
     .remap_addr_t       (sep_pkg::sep_56_64_6_12_axi_addr_t),
     .user_ovrd_t        (sep_pkg::sep_56_64_6_12_axi_user_t),
     .NumRegions         (sep_pkg::NUM_AP_OUTPUT_REMAP_REGIONS),
-    .RegionBase         (och_sep_top_addrmap_pkg::OCH_SEP_TOP_AP_REGION_BASE_ADDR),
+    .RegionBase         (sep_top_addrmap_pkg::SEP_TOP_AP_REGION_BASE_ADDR),
     .IdxStart           (sep_pkg::AP_OUTPUT_REMAP_IDX_START),
     .UserOverrideEn     (1'b1),
     .UserOverrideVal    (sep_pkg::OTHERS_SOURCE_ID)
@@ -325,7 +325,7 @@ module sep_system_peripherals (
     .remap_addr_t       (sep_pkg::sep_56_64_6_12_axi_addr_t),
     .user_ovrd_t        (sep_pkg::sep_56_64_6_12_axi_user_t),
     .NumRegions         (sep_pkg::NUM_STEE_OUTPUT_REMAP_REGIONS),
-    .RegionBase         (och_sep_top_addrmap_pkg::OCH_SEP_TOP_STEE_REGION_BASE_ADDR),
+    .RegionBase         (sep_top_addrmap_pkg::SEP_TOP_STEE_REGION_BASE_ADDR),
     .IdxStart           (sep_pkg::STEE_OUTPUT_REMAP_IDX_START),
     .UserOverrideEn     (1'b1),
     .UserOverrideVal    (sep_pkg::OTHERS_SOURCE_ID)
@@ -514,7 +514,7 @@ module sep_system_peripherals (
     .NUM_MAILBOXES               (sep_pkg::NUM_MAILBOXES),
     .MAILBOX_DEPTH               (sep_pkg::MAILBOX_DEPTH),
     .MAX_TRANS                   (16),
-    .MAILBOX_BASE_ADDR           (och_sep_top_addrmap_pkg::OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
+    .MAILBOX_BASE_ADDR           (sep_top_addrmap_pkg::SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR),
     .MAILBOX_SIZE                (sep_pkg::MAILBOX_SIZE),
 
     .ADDR_WIDTH                  (sep_pkg::SEP_SYSTEM_PERIPHERALS_MAILBOX_AXI_LITE_ADDR_WIDTH),

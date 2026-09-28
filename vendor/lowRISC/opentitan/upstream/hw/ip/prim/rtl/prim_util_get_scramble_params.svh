@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 `ifndef SYNTHESIS
+`ifndef EMULATION
   export "DPI-C" function simutil_get_scramble_key;
 
   function int simutil_get_scramble_key(output bit [127:0] val);
@@ -23,4 +24,5 @@
     end
     return valid;
   endfunction
+`endif
 `endif

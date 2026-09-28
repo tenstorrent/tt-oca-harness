@@ -95,6 +95,9 @@
 
 `ifdef VERILATOR
  `include "abr_prim_assert_dummy_macros.svh"
+`elsif EMULATION
+ `include "abr_prim_assert_standard_macros.svh"
+ `define ABR_INC_ASSERT
 `elsif SYNTHESIS
  `include "abr_prim_assert_dummy_macros.svh"
 `elsif YOSYS

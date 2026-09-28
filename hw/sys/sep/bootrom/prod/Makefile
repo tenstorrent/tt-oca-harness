@@ -106,9 +106,9 @@ ifeq ($(filter $(BUILD_TYPE),debug release),)
 $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use 'debug' or 'release')
 endif
 
-# SPI flash transport selection. 0 = Cadence xSPI (default, memory-mapped XIP),
-# 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is dropped
-# by --gc-sections at link time.
+# SPI flash transport selection. 0 = integrated xSPI controller (memory-mapped
+# XIP), 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is
+# dropped by --gc-sections at link time.
 BOOT_SPI_CONTROLLER_OT ?= 0
 # OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
 # 0 = secure DMA (default), 1 = CPU programmed I/O.
@@ -255,9 +255,9 @@ BUILD_TYPE_DEFINES := -DTEST_BUILD=1 -DDEBUG
 endif
 # The generated register headers need <assert.h> for their packing checks, which
 # is not freestanding and only resolves through picolibc's spec file.
-CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
-	-MMD -MP \
-	--specs=picolibc.specs \
+CFLAGS   := -Os -g -gdwarf-4 -ffreestanding -fno-builtin -fdata-sections -ffunction-sections -mno-relax \
+-MMD -MP \
+--specs=picolibc.specs \
 	-I$(INCLUDE_DIR) -I$(BUILD_DIR) -I$(OTBN_APP_DIR) -I$(OCA_LIB_DIR) $(REG_INCLUDE_DIRS) \
 	-DSEP_ENTROPY_BRINGUP=$(SEP_ENTROPY_BRINGUP) \
 	-DSEP_ENTROPY_DEFER_FIPS_LOCK=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
@@ -273,7 +273,7 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
-ASFLAGS  := -x assembler-with-cpp -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
+ASFLAGS  := -x assembler-with-cpp -g -gdwarf-4 -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) \
 	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
 	$(CC_ABI)

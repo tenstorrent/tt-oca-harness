@@ -39,4 +39,14 @@ Bender `synth` filelist as `+define+` lines, with Design Compiler / Fusion
 Compiler and Genus commands that consume them.
 |0.0.10 |2026-09-21 |Alessandro Ottaviano |Documented the generated synthesis,
 Verilator, and VCS filelists published under `integration/filelists/`.
+|0.0.11 |2026-09-26 |Ben Melton |Documented the `EMULATION` view: the debug
+hooks it keeps, the constructs it drops, its precedence over `SYNTHESIS`, and
+the `OCAH_DEBUG_LIVE` and `ASSERTS_OVERRIDE_ON` names it derives.
+|0.0.12 |2026-09-26 |Ben Melton |Documented the SMC and DTP defines: SMC
+simulation hooks, CPU cluster initialization macros and i3c-core
+configuration, the shared-cell defines to leave unset, and the
+`+cdc_instrumentation_enabled` plusarg.
+|0.0.13 |2026-09-28 |Ben Melton |Documented the SEP defines: the Adams Bridge
+block-selection defines, the VeeR EL2 snapshot configuration, SEP view checks,
+and the SEP DV testbench names.
 |=======================================================================

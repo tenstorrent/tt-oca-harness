@@ -2,17 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Interface Unlatch Test
- *
- * Goal: Verify that after latching to one interface on a valid command, the ROM
- * unlatches when a threshold of invalid commands are received on the latched
- * interface, and then accepts a valid command on another interface.
+ * Latches the ROM onto one I2C interface, sends invalid commands until it unlatches, and
+ * checks the other interface is then accepted; then repeats in the other direction.
  */
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-/* smc_top_regs.h is not included: the dv_rom build force-includes I3C shims whose
- * types collide with it. SMC_STRAP_STATUS_RPT_DISABLE comes from smc_strap.h. */
+/* smc_top_regs.h must not be included: its types collide with the dv_rom I3C shims. */
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
@@ -38,7 +34,7 @@ static bool init_ctx_for_iface(test_context_t *ctx, iface_id_t iface) {
     }
     ctx->drv.i2c_drv = drv;
     ctx->type = DRIVER_TYPE_I2C;
-    ctx->slave_addr = 0; // unused for I2C path
+    ctx->slave_addr = 0;
     return true;
 }
 
@@ -80,20 +76,11 @@ static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected
     return true;
 }
 
-/* Send one randomized invalid OCCP operation to help trigger unlatch.
- * Error types covered:
- *  - Header CRC error (detectable or CRC-field corrupt)
- *  - Body CRC error (detectable or CRC-field corrupt)
- *  - Unaligned access (READ/WRITE)
- *  - Address outside SRAM range (READ/WRITE)
- *  - Zero-length READ/WRITE
- */
 static int send_random_invalid_for_unlatch(test_context_t *ctx) {
     int which = (int)(get_random_int() % 13);
     int rc = OCCP_ERR;
     uint32_t tmp32 = 0;
 
-    /* Default: no injections */
     ctx->header_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx->body_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
@@ -104,40 +91,36 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
     uint64_t range = (upper > base) ? (upper - base) : 0;
 
     switch (which) {
-    case 0: /* Header CRC error (detectable) */
+    case 0:
         simputs("Injecting Header CRC error (detectable)\n");
         ctx->header_crc_err_inject_mode = OCCP_CRC_INJECT_DETECTABLE;
-        /* Expect ROM to return CORRUPT_HEADER; API treats that as success when injection set */
         execute_random_commands(ctx, 1);
         rc = OCCP_SUCCESS;
         break;
-    case 1: /* Header CRC error (corrupt CRC field) */
+    case 1:
         simputs("Injecting Header CRC error (corrupt CRC field)\n");
         ctx->header_crc_err_inject_mode = OCCP_CORRUPT_CRC;
         execute_random_commands(ctx, 1);
         rc = OCCP_SUCCESS;
         break;
-    case 2: /* Body CRC error (detectable) */
+    case 2:
         simputs("Injecting Body CRC error (detectable)\n");
         ctx->body_crc_err_inject_mode = OCCP_CRC_INJECT_DETECTABLE;
-        /* Use a GET_* command with a small body */
         execute_random_commands(ctx, 1);
         rc = OCCP_SUCCESS;
         break;
-    case 3: /* Body CRC error (corrupt CRC field) */
+    case 3:
         simputs("Injecting Body CRC error (corrupt CRC field)\n");
         ctx->body_crc_err_inject_mode = OCCP_CORRUPT_CRC;
         execute_random_commands(ctx, 1);
         rc = OCCP_SUCCESS;
         break;
-    case 4: /* Unaligned access (READ/WRITE) */
+    case 4:
         simputs("Injecting Unaligned access (READ/WRITE)\n");
         {
             bool do_write = ((get_random_int() % 2) == 0);
-            /* Create an address within [base, upper) but not 4-byte aligned */
             uint16_t len = do_write ? get_random_occp_write_size() : get_random_occp_read_size();
             uint64_t addr = base + (get_random_int() % (range - len + 1)) & 0xfffffffffffffffc;
-            // make it not 4-byte aligned
             addr += ((get_random_int() % 3) + 1);
             ctx->exp_response_code = OCCP_INVALID_ADDRESS;
             if (do_write) {
@@ -152,12 +135,10 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
             increment_cmd_count(ctx);
             break;
         }
-    case 5: /* Address outside SRAM (READ/WRITE) */
-    {
+    case 5: {
         simputs("Injecting Address outside SRAM range (READ/WRITE)\n");
         bool do_write = ((get_random_int() % 2) == 0);
         uint16_t len = do_write ? get_random_occp_write_size() : get_random_occp_read_size();
-        /* Pick an address clearly outside the SRAM test window: above upper bound */
         uint64_t addr;
         if (is_secure_mode()) {
             uint8_t is_above = get_random_int() % 2;
@@ -182,8 +163,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         increment_cmd_count(ctx);
         break;
     }
-    case 6: /* Zero-length READ/WRITE */
-    {
+    case 6: {
         simputs("Injecting Zero-length READ/WRITE\n");
         bool do_write = ((get_random_int() % 2) == 0);
         uint64_t addr = base + (get_random_int() % (range - 1 + 1)) & 0xfffffffffffffffc;
@@ -199,7 +179,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         increment_cmd_count(ctx);
         break;
     }
-    case 7: // oversize body
+    case 7:
         simputs("Injecting Oversize body\n");
         ctx->inject_oversize_body_err = true;
         ctx->exp_response_code = OCCP_OVERSIZE_MSG;
@@ -208,7 +188,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         ctx->inject_oversize_body_err = false;
         ctx->exp_response_code = OCCP_ERROR_NONE;
         break;
-    case 8: // undersize body
+    case 8:
         simputs("Injecting Undersize body\n");
         ctx->inject_undersize_body_err = true;
         ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
@@ -217,7 +197,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         ctx->inject_undersize_body_err = false;
         ctx->exp_response_code = OCCP_ERROR_NONE;
         break;
-    case 9: // undersize header
+    case 9:
         simputs("Injecting Undersize header\n");
         ctx->inject_undersize_header_err = true;
         ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
@@ -226,7 +206,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         ctx->inject_undersize_header_err = false;
         ctx->exp_response_code = OCCP_ERROR_NONE;
         break;
-    case 10: // invalid command
+    case 10:
         simputs("Injecting Invalid command\n");
         int injection_mode = get_random_int() % 3;
         switch (injection_mode) {
@@ -245,14 +225,14 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
         ctx->exp_response_code = OCCP_ERROR_NONE;
         break;
-    case 11: // invalid length field
+    case 11:
         simputs("Injecting Invalid length field\n");
         ctx->invalid_len_err_inject_enable = true;
         execute_random_commands(ctx, 1);
         rc = OCCP_SUCCESS;
         ctx->invalid_len_err_inject_enable = false;
         break;
-    case 12: // unsupported status ID
+    case 12:
         simputs("Injecting Unsupported status ID\n");
         ctx->unsupported_status_id_inject_enable = true;
         ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
@@ -267,7 +247,6 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         break;
     }
 
-    /* Reset injections to keep later commands clean */
     ctx->header_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx->body_crc_err_inject_mode = OCCP_CRC_INJECT_NONE;
     ctx->invalid_header_inject_mode = OCCP_INVALID_HDR_INJECT_NONE;
@@ -299,10 +278,9 @@ int main(void) {
 
     simputs("=== OCCP Interface Unlatch Test ===\n");
 
-    /* Wait for target up (GPIO) before transacting */
+    /* The target must signal ready on GPIO before any OCCP transaction. */
     simputs("Waiting for target to be ready...\n");
     {
-        /* DATA_CTRL is at offset 0 of the GPIO interface register block. */
         gpio_intf__DATA_CTRL_t gpio_control;
         gpio_control.w = read_gpio(58, 0x0u);
         gpio_control.f.interface_enable = 1;
@@ -328,12 +306,10 @@ int main(void) {
         }
     }
 
-    /* 1) Latch on ifaceA with valid commands */
     int num_initial_commands = (get_random_int() % 2) ? (1) : ((get_random_int() % 5) + 1);
     simputs("Step 1: Send valid commands on ifaceA to trigger latch\n");
     execute_random_commands(&ctxA, 1);
 
-    /* 2) Send 5 invalid commands on ifaceA to trigger unlatch */
     simputs("Step 2: Send randomized invalid commands on ifaceA to force unlatch\n");
     for (int i = 0; i < 5; i++) {
         int rc = send_random_invalid_for_unlatch(&ctxA);
@@ -345,11 +321,9 @@ int main(void) {
 
     ctxB.exp_occp_last_error = ctxA.exp_occp_last_error;
     ctxB.cmd_count = ctxA.cmd_count;
-    /* 3) Attempt command on ifaceB - should succeed if unlatch happened */
     simputs("Step 3: Send random commands on ifaceB to confirm unlatch\n");
     execute_random_commands(&ctxB, 1);
 
-    /* 4) relatch to A */
     simputs("Step 4: Relatch to ifaceA\n");
     for (int i = 0; i < 5; i++) {
         int rc = send_random_invalid_for_unlatch(&ctxB);
