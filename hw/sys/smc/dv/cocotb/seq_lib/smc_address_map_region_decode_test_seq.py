@@ -442,16 +442,19 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
                 await self.csr_read_expect_error(f"{label}_RD", addr)
             await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
             await self.csr_read(f"{label}_NEIGHBOUR_AFTER", neighbour, expected=before)
-        # Past the zeroer control block the data-accelerator demux defaults to the
-        # DMA block, which answers OKAY and takes the write at the aliased offset
-        # (card 179, design observation). A write of 0 there is taken where every
-        # aliased DMA descriptor register already holds 0, so nothing may change.
+        # Past the zeroer control block the data-accelerator demux used to
+        # default to the DMA block, answering OKAY and taking the write at the
+        # aliased offset (card 179). #2265 resized the crossbars to the
+        # generated address space, so that alias is gone and the word is
+        # refused like the two corners above -- which is the behaviour #2274
+        # asked for. The DMA descriptor snapshot stays: a refused write there
+        # must still leave the registers it used to alias onto untouched.
         snapshot = [
             await self.csr_read(f"DMA_DESC_BEFORE_{i}", DMA_DESC_FIRST + 4 * i)
             for i in range(DMA_DESC_WORDS)
         ]
         assert not any(snapshot), f"DMA descriptor registers not idle: {snapshot}"
-        await self.csr_write("ZEROER_PAST_LAST_WR", ZEROER_PAST_LAST, 0)
+        await self.csr_write_expect_error("ZEROER_PAST_LAST_WR", ZEROER_PAST_LAST, 0)
         for i in range(DMA_DESC_WORDS):
             await self.csr_read(f"DMA_DESC_AFTER_{i}", DMA_DESC_FIRST + 4 * i, expected=0)
         await self.csr_read("ZEROER_DEST_AFTER", ZEROER_DEST_ADDR, expected=0)
@@ -460,8 +463,8 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"0x{GPIO_PAST_LAST:08x} (past GPIO_INTF[{GPIO_NUM - 1}], read and write) and "
             f"0x{MISC_PAST_LAST:08x} (past misc_wrap) were refused with an error response, "
             f"the last register before each unchanged; a write of 0 at "
-            f"0x{ZEROER_PAST_LAST:08x} (past the zeroer control block) left the DMA "
-            f"descriptor and zeroer registers at 0",
+            f"0x{ZEROER_PAST_LAST:08x} (past the zeroer control block) was refused "
+            f"and left the DMA descriptor and zeroer registers at 0",
         )
 
     async def _region_external(self) -> None:

@@ -58,10 +58,12 @@ _NOT_SWEPT = ("Trdstramdata",)
 # port offset.
 _UNMAPPED = {"dst": (0x40,), "dst_sink": (0x8,), "funnel": (0x10, 0x14, 0x18, 0x1C)}
 _BYTE_MASK = 0xFF
-# The SMC local crossbar forwards 0xC0160000 up to 0xC0260000 to the DFD port,
-# an integration fact the register map does not describe; the RDL's SMC_CLA
-# window ends 0x4000 above its base. Accesses past the RDL window but inside
-# the forwarded range reach the DFD MMR bridge with no MMR block to select.
+# The SMC local crossbar once forwarded 0xC0160000 up to 0xC0260000 to the DFD
+# port, well past the RDL's SMC_CLA window, which ends 0x4000 above its base.
+# #2265 resized the crossbars to the generated address space, so the forwarded
+# range is now the RDL window and the fabric error slave answers everything
+# above it. Both probes below therefore take DECERR; what they still prove is
+# that an access past the window disturbs no register.
 _XBAR_DFD_WINDOW_END = 0xC0260000
 
 
@@ -195,8 +197,12 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         """Read and write past the RDL window, inside the crossbar's DFD range."""
         base = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
         end = base + smc_addr("SMC_TOP_SMC_CLA_SIZE")
+        probes = (end, _XBAR_DFD_WINDOW_END - 4)
+        # Past the resized crossbar window the fabric error slave answers, and
+        # the SEP_IN monitor flags any DECERR it was not told to expect.
+        self.env.axi_monitor.expected_decerr_addrs.update(probes)
         before = await self._snapshot_blocks("past_before")
-        for addr in (end, _XBAR_DFD_WINDOW_END - 4):
+        for addr in probes:
             rd = await self._access(SmcSysAxiOp.READ, f"past_{addr:x}", addr)
             if rd.resp_code == 0:
                 assert rd.rdata == 0, (
