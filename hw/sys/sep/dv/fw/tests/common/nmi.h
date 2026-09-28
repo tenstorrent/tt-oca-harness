@@ -111,7 +111,7 @@ static inline void nmi_set_vector(void) {
  */
 static inline void nmi_set_vector_reg(void) {
     uint32_t nmi_addr = nmi_get_vector_addr();
-    WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR, nmi_addr);
+    WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR, nmi_addr);
 }
 
 /*
@@ -122,7 +122,7 @@ static inline void nmi_set_vector_reg(void) {
  * until reset.
  */
 static inline void nmi_lock_vector_reg(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR, 0x1);
+    WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR, 0x1);
 }
 
 /*
@@ -131,7 +131,7 @@ static inline void nmi_lock_vector_reg(void) {
  * @return Current NMI vector address
  */
 static inline uint32_t nmi_read_vector_reg(void) {
-    return READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR);
+    return READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR);
 }
 
 /*
@@ -140,7 +140,7 @@ static inline uint32_t nmi_read_vector_reg(void) {
  * @return 1 if locked, 0 if unlocked
  */
 static inline uint32_t nmi_read_lock_reg(void) {
-    return READ_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR);
+    return READ_REG(SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR);
 }
 
 #endif /* NMI_H */

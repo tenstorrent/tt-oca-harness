@@ -4,7 +4,7 @@
 // Bridge AXI register and host ports onto the secure_dma TileLink UL core.
 //
 // Register path: 64-bit AXI is downsized to 32 bits, rebased by subtracting
-// OCH_SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Master path:
+// SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL. Master path:
 // TL-UL is converted to AXI-Lite, then to AXI with AxCACHE 0, upsized to 64 bits, and passed
 // through a window remap that rewrites addresses in
 // [sep_local_base_addr_i, sep_local_base_addr_i + 0x3000_0000) to 0x1000_0000 plus the offset.
@@ -20,7 +20,7 @@
 module sep_dma_wrap #(
   parameter int unsigned REG_ADDR_WIDTH = 32,  // Width of SECURE_DMA_REG_MAP_BASE_ADDR only; unused
                                                // otherwise.
-  parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,  // Unused; the register path rebases with OCH_SEP_TOP_SECURE_DMA_BASE_ADDR instead.
+  parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,  // Unused; the register path rebases with SEP_TOP_SECURE_DMA_BASE_ADDR instead.
   parameter logic [secure_dma_reg_pkg::NumAlerts-1:0] AlertAsyncOn = {secure_dma_reg_pkg::NumAlerts{1'b1}},  // Per-alert async-on configuration of the secure_dma senders; the local receivers are synchronous.
   parameter int unsigned                            AlertSkewCycles = 1,  // Alert skew cycle count.
   parameter bit                                     EnableDataIntgGen = 1'b1,  // Generate TL-UL integrity in secure_dma, command and data integrity on the register
@@ -197,8 +197,8 @@ module sep_dma_wrap #(
   // Convert absolute address to offset by subtracting base address
   always_comb begin
     axi32_slv_req_offset         = axi32_slv_req;
-    axi32_slv_req_offset.ar.addr = axi32_slv_req.ar.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR;
-    axi32_slv_req_offset.aw.addr = axi32_slv_req.aw.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR;
+    axi32_slv_req_offset.ar.addr = axi32_slv_req.ar.addr - sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR;
+    axi32_slv_req_offset.aw.addr = axi32_slv_req.aw.addr - sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR;
   end
 
   // Convert AXI to AXI-Lite (after data width conversion)

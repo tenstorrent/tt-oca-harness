@@ -44,11 +44,11 @@
 #include "status_values.h"
 
 // SEP EXT SRAM: staging area for the manifest body and its payload.
-#define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
-#define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
+#define SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
+#define SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
 
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 
 // Staged state, valid only after a successful rom_manifest_boot().

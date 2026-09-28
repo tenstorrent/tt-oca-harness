@@ -13,6 +13,11 @@ public_flat_rw -module "ocah_axi_if" -var "*"
 public_flat_rw -module "prim_rom" -var "mem"
 public_flat_rw -module "prim_ram_1p" -var "mem"
 public_flat_rw -module "prim_ram_2p" -var "mem"
+// Captured straps, which the adopter's padring owns and this tree leaves for DV
+// to drive. Both directives are needed: public_flat_rw makes the signal visible
+// to cocotb, forceable makes a force on it more than a silent no-op.
+public_flat_rw -module "smc_ip_integration" -var "rom_straps"
+forceable -module "smc_ip_integration" -var "rom_straps"
 // Lifecycle decode observation for smc_efuse_jtag_lc_access_matrix_test's
 // white-box cross-check. READ-ONLY: the test only samples these,
 // and publishing them read-only keeps `[NO-FORCED-INTERNAL-STATE]` structurally

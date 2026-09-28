@@ -10,8 +10,8 @@
 // sep_rom_interface_shim here, which the responder replaces with equivalent
 // read-only/write-ignored behavior), reachable only by the EL2 CPU
 // (the no_cpu AXI splice forces lsu_axi_req_o, which cannot reach it). So this is
-// cpu-mode. The ROM sanity test proves the CPU IFU *executes* from ROM; boot-ROM LSU read covers the LSU
-// *data* read-port + the write-silently-ignored negative contract.
+// cpu-mode. The ROM sanity test proves the CPU IFU *executes* from ROM; boot-ROM LSU read covers
+// the LSU *data* read-port + the write-silently-ignored negative contract.
 //
 // The boot ROM responder is preloaded with a known image via
 // +sep_boot_rom_hex=mem_rom_test_rom.hex (64-bit words; the CPU is rv32 so each
@@ -33,8 +33,8 @@
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-#define ROM_BASE OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
-#define ROM_SIZE OCH_SEP_TOP_SEP_BOOT_ROM_SIZE
+#define ROM_BASE SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
+#define ROM_SIZE SEP_TOP_SEP_BOOT_ROM_SIZE
 #define ROM_TOP_LO (ROM_BASE + ROM_SIZE - 8) // top valid 64-bit word, low half
 
 static inline uint32_t rd(uint32_t a) {

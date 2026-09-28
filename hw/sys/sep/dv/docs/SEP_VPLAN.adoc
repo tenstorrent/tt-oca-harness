@@ -4440,7 +4440,7 @@ feature-scorecard hole.
 |CHK-SEQ
 |Consecutive single-beat 64-bit words hold distinct per-address values, which is the real address-decode proof in this entry.
 |CHK-BOUNDARY
-|The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `OCH_SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `OCH_SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SRAM_N_ENTRIES = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row: that address is the ROM base.
+|The base address and the last valid SRAM word both read and write exactly. The extent is the generated map, not a doc literal: `SEP_TOP_SEP_SRAM_BASE_ADDR` = `0x10000000` and `SEP_TOP_SEP_SRAM_SIZE` = `0x40000` in `hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv`, matching SRAM_N_ENTRIES = 256 * 1024 / 8 in `hw/top/sep_ip_integration.sv`, so the top valid 64-bit word is `0x1003fff8`. One-past-top decode-error is `sep_axi_map_refuse_test`, not this row: that address is the ROM base.
 |CHK-NONVAC
 |Two addresses are written with complementary patterns and both are read back and value-checked, so a read path returning the same value for both fails. Requiring an *unwritten* neighbour to differ from a non-zero pattern is not claimed — that difference is already guaranteed by the pattern constructor; see <<audit>>.
 |===

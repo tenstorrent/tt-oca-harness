@@ -36,7 +36,7 @@
 /* Real core clock (MHz) from the sensed eFuse sysclk_freq_mhz field; 0 -> 100
  * (reference-clock fallback, matching ROM pll_init). */
 static inline uint32_t spi_core_mhz(void) {
-    uint32_t raw = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
+    uint32_t raw = READ_REG(SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
     uint32_t f = (raw & SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm) >>
                  SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp;
     return f ? f : 100u;

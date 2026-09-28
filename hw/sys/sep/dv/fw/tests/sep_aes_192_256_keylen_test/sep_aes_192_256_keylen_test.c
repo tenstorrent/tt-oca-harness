@@ -189,7 +189,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_192_256_keylen_test (FUNC-003)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x\n", OCH_SEP_TOP_AES_BASE_ADDR);
+    printf("AES base=0x%08x\n", SEP_TOP_AES_BASE_ADDR);
 
     /* ECB encrypt with NIST golden vectors */
     if (rc == 0) rc = run_ecb_encrypt("AES-192", 0x2, key_192, 6, ct_192_exp);

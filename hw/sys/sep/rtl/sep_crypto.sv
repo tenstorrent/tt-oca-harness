@@ -22,6 +22,7 @@
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "ocah_assert.svh"
 
 module sep_crypto #(
   parameter bit LATCHED_MEM_RDATA = 1'b1,     // 1 if the Key Manager ROM and SRAM macros latch read
@@ -1017,7 +1018,7 @@ module sep_crypto #(
     .SRAM_SIZE_BYTES      (32768),
     .MAILBOX_DEPTH        (16),
     .LATCHED_MEM_RDATA    (LATCHED_MEM_RDATA),
-    .OTP_EFUSE_REMAP_BASE (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
+    .OTP_EFUSE_REMAP_BASE (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR))
   ) u_key_manager_s3c_scan (
     .clk_i              (clk_i),
     // Cold reset: SEP system cold reset (AASD) resets the entire KM.
@@ -1085,13 +1086,13 @@ module sep_crypto #(
   // all live inside these structs, any width change shows up in the total
   // $bits of the req/resp.
   // =========================================================================
-`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
+`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
   initial begin : gen_km_efuse_axil_type_assertions
     assert ($bits(km_intf_pkg::km_axil_req_t) == $bits(sep_efuse_pkg::efuse_axil_req_t))
     else $fatal(1, "KM_EFUSE_AXIL req width mismatch: km_axil_req_t != efuse_axil_req_t");
     assert ($bits(km_intf_pkg::km_axil_resp_t) == $bits(sep_efuse_pkg::efuse_axil_resp_t))
     else $fatal(1, "KM_EFUSE_AXIL resp width mismatch: km_axil_resp_t != efuse_axil_resp_t");
   end
-`endif  // SYNTHESIS
+`endif  // OCAH_DEBUG_LIVE
 
 endmodule
