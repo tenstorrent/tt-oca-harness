@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-pvt_wrap]
 == Address Map: pvt_wrap
 
-*PVT Wrapper Placeholder Address Map* — Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.
+Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.
 
 [NOTE]
 ======

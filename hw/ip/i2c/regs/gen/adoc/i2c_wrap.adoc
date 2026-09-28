@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-i2c_wrap]
 == Address Map: i2c_wrap
 
-*I2C Wrapper Address Map* — Wrapper address map instantiating the per-controller I2C register blocks and shared control.
+Wrapper address map instantiating the per-controller I2C register blocks and shared control.
 
 [NOTE]
 ======

@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-kmac_wrapper_key]
 == Address Map: kmac_wrapper_key
 
-*KMAC Wrapper Key Registers* — Key storage registers for the KMAC sideload interface.
+Key storage registers for the KMAC sideload interface.
 Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.
 
 [NOTE]

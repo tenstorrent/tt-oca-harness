@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-ndm_reset]
 == Address Map: ndm_reset
 
-*NDM Reset Control Address Map* — Per-cluster NDM reset handshake with an external CPU cluster debug module
+Per-cluster NDM reset handshake with an external CPU cluster debug module
 
 [cols="1,4,1,6", options="header"]
 |===

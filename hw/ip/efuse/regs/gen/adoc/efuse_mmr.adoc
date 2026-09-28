@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-efuse_mmr]
 == Address Map: efuse_mmr
 
-*eFuse Token Registers Address Map* — Security-token input and match-status registers for RMA and secure-disable eFuse tokens.
+Security-token input and match-status registers for RMA and secure-disable eFuse tokens.
 
 [NOTE]
 ======

@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-chip_config]
 == Address Map: chip_config
 
-*Chip Configuration Address Map* — Chip version, identification, and lifecycle-state registers.
+Chip version, identification, and lifecycle-state registers.
 
 [cols="1,4,1,6", options="header"]
 |===

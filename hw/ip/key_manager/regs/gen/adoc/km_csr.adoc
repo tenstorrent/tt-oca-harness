@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-km_csr]
 == Address Map: km_csr
 
-*Key Manager Control and Status Registers* — Control and status registers for the Key Manager subsystem
+Control and status registers for the Key Manager subsystem
 
 [cols="1,4,1,6", options="header"]
 |===

@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-axil_mailbox_smc_wrap]
 == Address Map: axil_mailbox_smc_wrap
 
-*SMC AXI-Lite Mailbox Wrapper Address Map* — SMC-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.
+SMC-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.
 
 [cols="1,4,1,6", options="header"]
 |===

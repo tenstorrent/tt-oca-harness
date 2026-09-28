@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-smc_base_config]
 == Address Map: smc_base_config
 
-*SMC Base Configuration Address Map* — Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.
+Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.
 
 [cols="1,4,1,6", options="header"]
 |===

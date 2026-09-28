@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-pll_wrap]
 == Address Map: pll_wrap
 
-*PLL Wrapper Placeholder Address Map* — Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.
+Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.
 
 [NOTE]
 ======

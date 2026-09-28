@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-zeroer_ctrl]
 == Address Map: zeroer_ctrl
 
-*Zeroer Control Address Map* — Control and status registers for the AXI memory-zeroing engine.
+Control and status registers for the AXI memory-zeroing engine.
 
 [cols="1,4,1,6", options="header"]
 |===

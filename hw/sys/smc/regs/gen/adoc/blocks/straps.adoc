@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-straps]
 == Address Map: straps
 
-*Straps Address Map* — Captured GPIO strap values (adopter padring capture)
+Captured GPIO strap values (adopter padring capture)
 
 [cols="1,4,1,6", options="header"]
 |===

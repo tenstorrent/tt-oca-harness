@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-gpio_wrap]
 == Address Map: gpio_wrap
 
-*GPIO Wrapper Address Map* — Top-level GPIO address map composing the interface and control register blocks.
+Top-level GPIO address map composing the interface and control register blocks.
 
 [cols="1,4,1,6", options="header"]
 |===

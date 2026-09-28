@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-otbn_wrapper_key]
 == Address Map: otbn_wrapper_key
 
-*OTBN Wrapper Key Registers* — Key storage registers for the OTBN sideload interface.
+Key storage registers for the OTBN sideload interface.
 Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.
 
 [NOTE]

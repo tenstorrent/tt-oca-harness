@@ -6,7 +6,7 @@
 [#regmap-{regmap-instance}-sep_efuse_map]
 == Address Map: sep_efuse_map
 
-*SEP eFuse Map Address Map* — Per-field write-lock and read-lock registers for the SEP eFuse map.
+Per-field write-lock and read-lock registers for the SEP eFuse map.
 
 [cols="1,4,1,6", options="header"]
 |===
