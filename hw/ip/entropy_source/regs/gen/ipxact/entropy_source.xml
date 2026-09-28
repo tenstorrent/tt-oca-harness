@@ -897,7 +897,7 @@
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DETUNE</ipxact:name>
-            <ipxact:description>Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
+            <ipxact:description>Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -909,7 +909,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DETUNE</ipxact:name>
-            <ipxact:description>Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
+            <ipxact:description>Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
