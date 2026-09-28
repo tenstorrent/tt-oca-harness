@@ -3,30 +3,33 @@
 """Outbound address, size and length on smu_axi_out, from the two SMC masters a bench can drive.
 
 The SMU crossbar connects ``smc_out`` and ``sep_out`` to ``ext_out`` and gives
-``ext_in`` no path there (``smu_axi_xbar_pkg`` ``Connectivity``), so what
+``ext_in`` no path there (``hw/sys/smu/doc/index.adoc``), so what
 leaves the chiplet on ``smu_axi_out`` is issued by the SMC or the SEP. Without
 firmware two SMC masters can be driven from the bench: the JTAG2AXI bridge,
-whose requests carry the programmed address and AxSIZE with ID 0, AxLEN 0,
-INCR, AxCACHE, AxPROT, AxQOS, AxREGION and AxLOCK fixed (``jtag2axi.sv``), and
-the iDMA register frontend, which issues INCR bursts sized by the transfer
-with a fixed AxCACHE (``idma_reg.sv.tpl``). An SMC address outside the SMC
-local window and the SEP aperture leaves on ``smu_axi_out``.
+whose single operation carries the programmed address and uses its size field
+as AxSIZE (``hw/ip/jtag/jtag_ptap/doc/architecture.adoc``, "JTAG2AXI
+single-operation fields"), and the iDMA register frontend, which moves LENGTH
+bytes from SRC_ADDRESS to DST_ADDRESS (``dma_ctrl.rdl``). Neither document
+states the AxLEN or AxBURST the master drives, or what the iDMA CONFIG fields
+do (``dma_ctrl.rdl`` describes each as "Not used"), so burst lengths and
+types are recorded rather than compared. An SMC address outside the SMC local
+window and the SEP aperture leaves on ``smu_axi_out``.
 
 S1: JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper
     bits are the 0xAA.. and 0x55.. patterns, and 1, 2 and 4 bytes at byte
     offsets 1, 2, 4, 7 and 6 of one doubleword, then reads each back. Each
     transfer crosses the boundary once with the address and AxSIZE the bridge
-    was given and AxLEN 0, the bench responder holds the bytes written, and
-    the read returns them.
+    was given, the bench responder holds the bytes written, and the read
+    returns them; AxLEN and AxBURST are recorded.
 S2: the iDMA copies a 2 KiB block between two addresses outside both
-    apertures. The boundary
-    carries INCR reads and writes whose AxLEN reaches 255, the destination
-    holds the source bytes, and DONE reports the id the launch was given.
+    apertures. The destination holds the source bytes, DONE reports the id
+    the launch was given, and the burst lengths and types that carry the
+    copy across the boundary are recorded.
 S3: the same copy while the bench responder stalls every AW, W and AR
     handshake. The copy still completes with the destination holding the
     source bytes, so the boundary READY stalls lose nothing.
-S3 uses single-beat bursts (CONFIG reduce_len, max_llen 0), so the iDMA keeps
-    many transfers in flight against the stalling responder. A second copy
+S3 sets CONFIG src/dst_reduce_len with max_llen 0, and the number of address
+    phases the copy takes is recorded. A second copy
     stalls only the write handshakes, and longer, so the write addresses the
     iDMA issues as read data returns queue at the boundary; it completes too.
 S5: the zeroer (``zeroer_ctrl`` register description) writes zeros over a
@@ -38,8 +41,9 @@ S6: the M-mode and Xvisor output remaps (``output_remap`` register
     at the target and read back, and a write and read outside both windows
     then leave by the default path at their own address.
 S4: a one-shot SLVERR and DECERR from the responder on a JTAG2AXI read and
-    write each reach the bridge as that response (``jtag2axi.sv`` reports the
-    AXI response in its status), and the next access at the address succeeds.
+    write each reach the bridge as that response (the single-operation op
+    field reads 1 for SLVERR and 2 for DECERR, ``architecture.adoc``), and the
+    next access at the address succeeds.
 """
 
 from __future__ import annotations
@@ -48,7 +52,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
-from seq_lib.smu_addr_map import smc_addr, smc_indexed_addr
+from seq_lib.smu_addr_map import _REPO_ROOT, c_header_u32, smc_addr, smc_indexed_addr
 from seq_lib.smu_filter_helpers import program_outbound0_pass_all
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
@@ -69,7 +73,6 @@ SIZES = (0, 1, 2, 3)
 # (AxSIZE, byte offset) pairs inside one doubleword.
 UNALIGNED = ((0, 1), (1, 2), (2, 4), (0, 7), (1, 6))
 PATTERN = 0x8877_6655_4433_2211
-AXI_BURST_INCR = 1
 
 DMA_CONFIG = smc_addr("SMC_TOP_DMA_CTRL_CONFIG_BASE_ADDR")
 DMA_STATUS_0 = smc_addr("SMC_TOP_DMA_CTRL_STATUS_0_BASE_ADDR")
@@ -96,16 +99,18 @@ DMA_SRC_STRIDE_LO = smc_addr("SMC_TOP_DMA_CTRL_SRC_STRIDE_LO_BASE_ADDR")
 DMA_SRC_STRIDE_HI = smc_addr("SMC_TOP_DMA_CTRL_SRC_STRIDE_HI_BASE_ADDR")
 DMA_REPS_LO = smc_addr("SMC_TOP_DMA_CTRL_NUM_REPETITIONS_LO_BASE_ADDR")
 DMA_REPS_HI = smc_addr("SMC_TOP_DMA_CTRL_NUM_REPETITIONS_HI_BASE_ADDR")
-# CONFIG.enable_nd (reg_wdata[10] in the generated iDMA register top): the
-# frontend takes the strides and repetitions below.
-DMA_CONFIG_ENABLE_ND = 1 << 10
-# CONFIG src/dst_reduce_len (bits 2, 3) with src/dst_max_llen 0 (bits 6:4, 9:7):
-# every burst is one beat (idma_reg.hjson.tpl conf).
-DMA_CONFIG_SINGLE_BEAT = DMA_CONFIG_ENABLE_ND | (1 << 2) | (1 << 3)
+_DMA_CTRL_H = _REPO_ROOT / "vendor/pulp-platform/idma/overlay/rdl/gen/c/dma_ctrl.h"
+_ZEROER_H = _REPO_ROOT / "hw/ip/zeroer/regs/gen/c/zeroer_ctrl.h"
+DMA_CONFIG_ENABLE_ND = c_header_u32(_DMA_CTRL_H, "DMA_CTRL__CONFIG__ENABLED_ND_bm")
+DMA_CONFIG_SINGLE_BEAT = (
+    DMA_CONFIG_ENABLE_ND
+    | c_header_u32(_DMA_CTRL_H, "DMA_CTRL__CONFIG__SRC_REDUCE_LEN_bm")
+    | c_header_u32(_DMA_CTRL_H, "DMA_CTRL__CONFIG__DST_REDUCE_LEN_bm")
+)
 ZEROER_DEST = smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR")
-ZEROER_SIZE = ZEROER_DEST + 0x8
-ZEROER_CTRL = ZEROER_DEST + 0x10
-ZEROER_BUSY = 1 << 32
+ZEROER_SIZE = smc_addr("SMC_TOP_ZEROER_CTRL_SIZE_BASE_ADDR")
+ZEROER_CTRL = smc_addr("SMC_TOP_ZEROER_CTRL_CTRL_STATUS_BASE_ADDR")
+ZEROER_BUSY = c_header_u32(_ZEROER_H, "ZEROER_CTRL__CTRL_STATUS__STATUS_bm")
 ZEROER_TARGET = 0x0600_0000
 ZEROER_LENGTH = 0x200
 MMODE_WINDOW = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR")
@@ -233,7 +238,7 @@ class smu_axi_out_addr_len_size_test_seq:
 
     async def _step_single(self, jtag, sb, tap) -> None:
         """S1: every AxSIZE at two 56-bit addresses, written, held and read back."""
-        phases, held, readback = {}, {}, {}
+        phases, held, readback, bursts = {}, {}, {}, {}
         want_phases, want_held, want_rb = {}, {}, {}
         cells = [(base + 8 * size, size, 0) for base in (OUT_A, OUT_B) for size in SIZES]
         # Byte offsets inside one doubleword, so each of address bits [2:0] rises and falls.
@@ -257,17 +262,19 @@ class smu_axi_out_addr_len_size_test_seq:
             rdata = await self._j2a_rd(jtag, addr, f"S1_RD_{cell}", size=size) >> (8 * off)
             await self._await_counts(w0 + 1, r0 + 1, f"s1_read_{cell}")
             aw, ar = tap.since(mark)
-            phases[cell] = ([p[:4] for p in aw], [p[:4] for p in ar])
-            want_phases[cell] = ([(addr, 0, size, AXI_BURST_INCR)],) * 2
+            phases[cell] = ([(p[0], p[2]) for p in aw], [(p[0], p[2]) for p in ar])
+            want_phases[cell] = ([(addr, size)],) * 2
+            bursts[cell] = ([p[1] for p in aw + ar], [p[3] for p in aw + ar])
             held[cell] = self.cfg.axi_out_mem.read_int(addr, nbytes)
             want_held[cell] = value
             readback[cell] = rdata & ((1 << (8 * nbytes)) - 1)
             want_rb[cell] = value
             self._log(f"CHK-AXIOUT-SIZE cell {cell} aw={aw} ar={ar} held=0x{held[cell]:x}")
 
+        self._log(f"OBSERVATION CHK-AXIOUT-SIZE (AxLEN, AxBURST) per cell {bursts}")
         sb.expect_eq(
             "CHK-AXIOUT-SIZE each JTAG2AXI write and read crossed smu_axi_out once with its "
-            "address, AxSIZE, AxLEN 0 and INCR",
+            "address and AxSIZE",
             phases,
             want_phases,
             evidence="CHK-AXIOUT-SIZE",
@@ -330,16 +337,14 @@ class smu_axi_out_addr_len_size_test_seq:
         )
         read_bytes = sum((p[1] + 1) << p[2] for p in ar if DMA_SRC <= p[0] < DMA_SRC + DMA_LENGTH)
         write_bytes = sum((p[1] + 1) << p[2] for p in aw if DMA_DST <= p[0] < DMA_DST + DMA_LENGTH)
+        self._log(
+            f"OBSERVATION CHK-AXIOUT-LEN AxBURST={sorted({p[3] for p in ar + aw})} "
+            f"longest AxLEN={max((p[1] for p in ar + aw), default=-1)}"
+        )
         sb.expect_eq(
-            "CHK-AXIOUT-LEN the boundary carried INCR bursts covering the block both ways, "
-            "the longest at AxLEN 255",
-            (
-                read_bytes,
-                write_bytes,
-                {p[3] for p in ar + aw},
-                max((p[1] for p in ar + aw), default=-1),
-            ),
-            (DMA_LENGTH, DMA_LENGTH, {AXI_BURST_INCR}, 255),
+            "CHK-AXIOUT-LEN the boundary carried bursts covering the block both ways",
+            (read_bytes, write_bytes),
+            (DMA_LENGTH, DMA_LENGTH),
             evidence="CHK-AXIOUT-LEN",
         )
         self.s2_ok = True
@@ -372,21 +377,19 @@ class smu_axi_out_addr_len_size_test_seq:
         finally:
             self.cfg.axi_out_mem.disable_backpressure()
         dst_w = self.cfg.axi_out_mem.read(DMA_STALLED_DST + WRITE_STALL_OFFSET, DMA_LENGTH)
-        beats = DMA_LENGTH // 8
         self._log(
-            f"CHK-AXIOUT-BACKPRESSURE: start_id={start_id} done={done} aw={len(aw)} ar={len(ar)} "
-            f"write-stalled start_id={start_w} done={done_w} aw={len(aw_w)} ar={len(ar_w)}"
+            f"CHK-AXIOUT-BACKPRESSURE: start_id={start_id} done={done} "
+            f"write-stalled start_id={start_w} done={done_w}"
+        )
+        self._log(
+            f"OBSERVATION CHK-AXIOUT-BACKPRESSURE address phases aw={len(aw)} ar={len(ar)} "
+            f"AxLEN={sorted({p[1] for p in ar + aw})}; write-stalled aw={len(aw_w)} "
+            f"ar={len(ar_w)}"
         )
         sb.expect_eq(
             "CHK-AXIOUT-BACKPRESSURE",
-            (
-                (done, dst.hex(), len(ar), len(aw), {p[1] for p in ar + aw}),
-                (done_w, dst_w.hex(), len(ar_w), len(aw_w)),
-            ),
-            (
-                (start_id, payload.hex(), beats, beats, {0}),
-                (start_w, payload_w.hex(), beats, beats),
-            ),
+            ((done, dst.hex()), (done_w, dst_w.hex())),
+            ((start_id, payload.hex()), (start_w, payload_w.hex())),
             evidence="CHK-AXIOUT-BACKPRESSURE",
         )
         self.s3_ok = True

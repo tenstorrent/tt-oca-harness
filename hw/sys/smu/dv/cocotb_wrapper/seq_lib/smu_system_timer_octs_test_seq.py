@@ -7,7 +7,10 @@ S2: PRESET + TIMER_START → STATUS.RUNNING; tb_timer_count advances.
 S3: Larger PRESET + START; pin reloads to the new PRESET then advances.
 S4: the 64-bit PRESET (TIMER_PRESET_HI/LO, read-write) at a value with every
     bit from 13 up set, then at zero; after each START the pin sits at the
-    preset, so every bit of the 64-bit count output rises and falls.
+    preset, so bits 13..63 of the count output rise and fall. The count output
+    then free-runs from zero, updating every cycle while the timer runs
+    (``hw/ip/system_timer_octs/doc/interface.adoc``), and is sampled every
+    clock until each of bits 0..12 has been seen at 0 and at 1.
 
 TIMER_COUNT_{HI,LO} is read over J2A and bracketed between two samples of
 the product pin ``tb_timer_count`` (``timer_count_o``) taken either side of
@@ -57,6 +60,8 @@ RELOAD_PIN_SLACK = 4096
 # Every bit from 13 up set, and 8192 counts short of the 64-bit wrap, so the
 # count cannot wrap inside RELOAD_PIN_SLACK.
 PRESET_HIGH = ((1 << 64) - 1) & ~((1 << 13) - 1)
+LOW_BITS = 13
+LOW_BIT_BOUND = 1 << 18
 
 
 class smu_system_timer_octs_test_seq:
@@ -278,9 +283,24 @@ class smu_system_timer_octs_test_seq:
             "CHK-OCTS-PRESET-EXTREMES "
             + " ".join(f"preset=0x{p:016x} pin=0x{v:016x}" for p, v in pins)
         )
-        sb.expect_true(
+        seen_one, seen_zero = 0, 0
+        low_mask = (1 << LOW_BITS) - 1
+        for _ in range(LOW_BIT_BOUND):
+            await ClockCycles(self.dut.clk_smu_i, 1)
+            pin = self._sample_pin_count()
+            if pin is None:
+                raise AssertionError("tb_timer_count unobservable during the free run")
+            seen_one |= pin & low_mask
+            seen_zero |= ~pin & low_mask
+            if seen_one == low_mask and seen_zero == low_mask:
+                break
+        self._log(
+            f"CHK-OCTS-PRESET-EXTREMES low bits seen at 1=0x{seen_one:04x} at 0=0x{seen_zero:04x}"
+        )
+        sb.expect_eq(
             "CHK-OCTS-PRESET-EXTREMES",
-            all(p <= v <= p + RELOAD_PIN_SLACK for p, v in pins),
+            (all(p <= v <= p + RELOAD_PIN_SLACK for p, v in pins), seen_one, seen_zero),
+            (True, low_mask, low_mask),
             evidence="CHK-OCTS-PRESET-EXTREMES",
         )
         self.s4_ok = True

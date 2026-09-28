@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_telemetry_atb_capture_test. SEP=0, no Force.
+"""Sequence for smu_telemetry_atb_capture_test. No force.
 
 The ATB telemetry source interface at the SMU boundary, driven on receiver 0
 and read back through the telemetry receiver's own registers over JTAG2AXI.
@@ -37,12 +37,19 @@ S5  Every receiver. The same message, framed with a probe id of the
 
 S6  The flush handshake of S4 on receivers 1 and 2.
 
-S7  Backpressure, on every receiver. The leaf runs ``clk_telemetry_i`` faster than the receiver
-    clock (``clk_smu_i``), so ATB beats offered back to back on every clock
-    outrun the crossing FIFO's drain and ``telemetry_atready_o`` must fall
-    (``doc/interface.adoc``, "Back-pressure"); dropping ``telemetry_atvalid_i``
-    lets the FIFO drain and ready rises again, and ``CTRL.TELEMETRY_RX_FLUSH``
-    then discards the partial message.
+S7  Backpressure, on every receiver. A complete message is queued first, so
+    STATUS.BUFFER_EMPTY reads 0. The leaf runs ``clk_telemetry_i`` faster than
+    the receiver clock (``clk_smu_i``), so ATB beats offered back to back on
+    every clock outrun the crossing FIFO's drain and ``telemetry_atready_o``
+    must fall after at least one beat is accepted (``doc/interface.adoc``,
+    "Back-pressure"); the beats accepted before it falls are counted and
+    recorded, since no document gives the FIFO depth. Dropping
+    ``telemetry_atvalid_i`` lets the FIFO drain and ready rises again.
+    ``CTRL.TELEMETRY_RX_FLUSH`` "discards queued messages and resets the
+    assembly write pointer" (``telemetry_receiver.rdl``), so the queued
+    message is gone, BUFFER_EMPTY reads 1, and a complete message sent after
+    the flush is captured with its own probe id, not shifted by the partial
+    beats.
 
 The frame this sequence drives is a DV-owned table transcribed from the
 telemetry receiver specification under ``hw/ip/telemetry_receiver/``; the
@@ -450,25 +457,47 @@ class smu_telemetry_atb_capture_seq:
         )
 
     async def _backpressure(self) -> None:
-        observed, want = {}, {}
-        for receiver in range(NUM_RECEIVERS):
-            observed[receiver] = await self._backpressure_lane(receiver)
-            want[receiver] = (True, True, STATUS_EMPTY_BM)
-        self.log.info("CHK-SMU-TEL-BACKPRESSURE %s", observed)
+        observed, want, accepted = {}, {}, {}
+        for receiver, probe_id in zip(range(NUM_RECEIVERS), RECEIVER_PROBE_IDS):
+            row, accepted[receiver] = await self._backpressure_lane(receiver, probe_id)
+            observed[receiver] = row
+            want[receiver] = (0, True, True, True, STATUS_EMPTY_BM, 0, probe_id)
+        self.log.info(
+            "CHK-SMU-TEL-BACKPRESSURE (queued empty, stalled, beat before stall, resumed, "
+            "empty after flush, empty after resend, probe id) %s",
+            observed,
+        )
+        self.log.info(
+            "OBSERVATION CHK-SMU-TEL-BACKPRESSURE beats accepted before the stall %s", accepted
+        )
         self.sb.expect_eq(
             "CHK-SMU-TEL-BACKPRESSURE", observed, want, evidence="CHK-SMU-TEL-BACKPRESSURE"
         )
 
-    async def _backpressure_lane(self, receiver: int) -> tuple[bool, bool, int]:
+    async def _status_until_queued(self, receiver: int) -> int:
+        status = STATUS_EMPTY_BM
+        for _ in range(STATUS_POLL_BOUND):
+            status = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
+            if not status & STATUS_EMPTY_BM:
+                break
+        return status & STATUS_EMPTY_BM
+
+    async def _backpressure_lane(self, receiver: int, probe_id: int) -> tuple[tuple, int]:
         dut = self.dut
+        await self._send_packet(
+            self._frame_single_counter(probe_id), lane=receiver, atid=ATB_ID_ALL
+        )
+        queued = await self._status_until_queued(receiver)
         self._set_lane("tb_telemetry_atdata", receiver, ATB_BEAT_BITS, 0)
         self._set_lane("tb_telemetry_atvalid", receiver, 1, 1)
         stalled = False
+        beats = 0
         for _ in range(BACKPRESSURE_BEATS):
             await RisingEdge(dut.clk_ref_i)
             if not self._bit("tb_telemetry_atready", receiver):
                 stalled = True
                 break
+            beats += 1
         self._set_lane("tb_telemetry_atvalid", receiver, 1, 0)
         resumed = False
         for _ in range(ATB_READY_BOUND):
@@ -479,5 +508,23 @@ class smu_telemetry_atb_capture_seq:
         await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
         await self._wr32(_tel("CTRL", receiver), RX_FLUSH_BM, f"TELEMETRY{receiver} CTRL")
         await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
-        status = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
-        return (stalled, resumed, status & STATUS_EMPTY_BM)
+        flushed = await self._rd32(_tel("STATUS", receiver), f"TELEMETRY{receiver} STATUS")
+        await self._send_packet(
+            self._frame_single_counter(probe_id), lane=receiver, atid=ATB_ID_ALL
+        )
+        self._set_lane("tb_telemetry_atdata", receiver, ATB_BEAT_BITS, 0)
+        self._set_lane("tb_telemetry_atid", receiver, 7, 0)
+        resent = await self._status_until_queued(receiver)
+        probe = await self._rd32(_tel("TELEMETRY_PROBE_ID", receiver), "TELEMETRY_PROBE_ID")
+        await self._wr32(_tel("CTRL", receiver), BUFFER_POP_BM, f"TELEMETRY{receiver} CTRL")
+        await ClockCycles(dut.clk_smu_i, AF_SETTLE_CYCLES)
+        row = (
+            queued,
+            stalled,
+            beats > 0,
+            resumed,
+            flushed & STATUS_EMPTY_BM,
+            resent,
+            probe & PROBE_ID_BM,
+        )
+        return row, beats

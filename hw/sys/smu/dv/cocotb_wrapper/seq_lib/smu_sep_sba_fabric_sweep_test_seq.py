@@ -32,19 +32,26 @@ S6: responder errors. A one-shot SLVERR and DECERR from the responder on an
     outbound read and write each come back as a system-bus error, and the
     next access at that address completes.
 S7: the SMC aperture. A SEP address in the SMC window goes straight to the
-    SMC unfiltered, and the SMC takes a SEP request inside its window
-    (``smc_input_fabric``). Every access size at every aligned offset of one
-    SPM doubleword and a write and read at every SPM address bit read back
-    through the SEP view of the SMC window; a read and a write in the ECAM
-    region, whose target the SMC decodes, complete.
-S8: the external aperture. ``0x2000_0000``-``0x3FFF_FFFF`` outside the eFuse
-    shim word leaves the SEP on ``sep_external`` (``sep.sv``), which this
-    integration terminates in a DECERR slave (``sep_ip_integration.sv``), and
-    ``0x1091_7000``-``0x1091_7FFF`` leaves on the external TRNG AXI-Lite port,
-    terminated the same way. Every access size, offset and free address bit
-    of the external aperture, an access back below the walk's base, and every
-    address bit and byte offset of the TRNG window, returns a system-bus error
-    for both reads and writes.
+    SMC's resources (``hw/sys/sep/doc/fabric.adoc``: "Neighboring SMC
+    resources are accessed through the SMC global aperture"). Every access
+    size at every aligned offset of one SPM doubleword and a write and read at
+    every SPM address bit read back through the SEP view of the SMC window.
+    A read and a write in the ECAM region are sent and their ``sberror`` is
+    recorded: the SMC map names the region only as "Remapped regions, either
+    ECAM, M-Mode or XVisor", and no specification states what it answers with
+    no remap programmed.
+S8: the external aperture. No adopter peripheral is attached to the SEP
+    extension port, whose response the SMU port table ties to DECERR when
+    unused (``hw/sys/smu/doc/port_table.adoc``, ``sep_external_resp_i``); the
+    eFuse SHIM control word at its base is the one target in
+    ``0x2000_0000``-``0x3FFF_FFFF`` that answers
+    (``hw/sys/sep/dv/models/regs/sep_external.rdl``). No external TRNG is
+    connected, and the integrator guide terminates ``ext_trng_axil`` in a
+    DECERR slave then (``doc/integrator/src/smu.adoc``, "External TRNG").
+    Every access size, offset and free address bit of the external aperture,
+    an access back below the walk's base, and every address bit and byte
+    offset of the TRNG window, returns ``sberror`` 2, "a bad address was
+    accessed", for both reads and writes.
 """
 
 from __future__ import annotations
@@ -408,9 +415,8 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
         ecam = self._smc_view(SMC_ECAM_BASE + SMC_ECAM_SIZE // 2)
         ecam_err, _ = await self._sb(jtag, ecam, 2)
         ecam_werr, _ = await self._sb(jtag, ecam, 2, 0)
-        self._log(
-            f"CHK-SEP-SBA-SMC-WINDOW {observed} ecam=0x{ecam:08x} err=({ecam_err},{ecam_werr})"
-        )
+        self._log(f"CHK-SEP-SBA-SMC-WINDOW {observed}")
+        self._log(f"OBSERVATION ECAM 0x{ecam:08x} sberror read={ecam_err} write={ecam_werr}")
         sb.expect_eq(
             "CHK-SEP-SBA-SMC-WINDOW",
             observed,

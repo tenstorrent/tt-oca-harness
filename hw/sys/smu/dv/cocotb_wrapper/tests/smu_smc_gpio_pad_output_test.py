@@ -9,13 +9,16 @@ GPIO_INTF block, so the 65-pad walk costs AXI transfers rather than JTAG scans.
 With the bench's pad drivers off, each pad's DATA_CTRL takes the pad from its
 LSIO owner (INTERFACE_ENABLE, LSIO_DISABLE) with both ENABLE_RX_TX enables,
 INTERRUPT_ENABLE at its reset type (active-high level) and CORE2PAD at 1, then
-at 0 (hw/ip/gpio register description). The pad loops the value back to the
-receiver, so every lane of gpio_interrupt_o rises and then falls, and
-core2pad_o and core2pad_en_o cross the SMU on every lane. Transmit alone then
-drops the input enable, and the reset value returns every pad to its LSIO
-owner. The interrupt vector is read on the wrapper pin rather than through
-DATA_CTRL, whose 32-bit read returns an undriven upper lane on the 64-bit
-inbound port.
+at 0 (hw/ip/gpio register description). Every pad follows CORE2PAD and loops
+the value back to the receiver, so every lane of gpio_interrupt_o rises and
+then falls. With ENABLE_RX_TX at 2'b01, "TX enabled" alone, and CORE2PAD at 1,
+every pad is driven high while every interrupt lane stays low, so the receive
+enable crosses the SMU apart from the transmit enable. The DATA_CTRL reset
+value is written back last; the pads it leaves are recorded, since which LSIO
+function owns each pad then is not a register fact. The interrupt vector is
+read on the wrapper pin rather than through DATA_CTRL, whose 32-bit read
+returns an undriven upper lane on the 64-bit inbound port; the pads are read
+on the bench's pad nets, which a pulldown holds low when nothing drives them.
 """
 
 from __future__ import annotations
@@ -92,20 +95,34 @@ class smu_smc_gpio_pad_output_test(smu_base_test):
                     bad.append((pin, "wr", resp))
 
         observed = []
-        for value in (BASE | RX_TX | INTERRUPT_ENABLE | CORE2PAD, BASE | RX_TX | INTERRUPT_ENABLE):
+        for value in (
+            BASE | RX_TX | INTERRUPT_ENABLE | CORE2PAD,
+            BASE | RX_TX | INTERRUPT_ENABLE,
+            BASE | TX_ONLY | INTERRUPT_ENABLE | CORE2PAD,
+        ):
             await write_all(value)
             await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
-            observed.append(sample(dut.tb_gpio_interrupt, "tb_gpio_interrupt"))
-        await write_all(BASE | TX_ONLY)
+            observed.append(
+                (
+                    sample(dut.gpio_pad_io, "gpio_pad_io"),
+                    sample(dut.tb_gpio_interrupt, "tb_gpio_interrupt"),
+                )
+            )
         await write_all(RESET)
+        await ClockCycles(dut.clk_smu_i, SYNC_CYCLES)
+        self.logger.info(
+            f"OBSERVATION pads after the DATA_CTRL reset value "
+            f"{sample(dut.gpio_pad_io, 'gpio_pad_io'):#x}"
+        )
         full = (1 << LANES) - 1
         self.logger.info(
-            f"CHK-SMU-LANE-GPIO-OUT gpio_interrupt=({observed[0]:#x}, {observed[1]:#x}) "
-            f"errors={bad}"
+            "CHK-SMU-LANE-GPIO-OUT (pads, gpio_interrupt)="
+            f"{[(hex(p), hex(i)) for p, i in observed]} errors={bad}"
         )
         sb.expect_eq(
-            f"CORE2PAD loops back to gpio_interrupt_o at 1 then 0 on all {LANES} pads",
+            f"CORE2PAD drives and loops back at 1 then 0 on all {LANES} pads, and transmit "
+            "alone drives the pads with every interrupt lane low",
             (observed, bad),
-            ([full, 0], []),
+            ([(full, full), (0, 0), (full, 0)], []),
             evidence="CHK-SMU-LANE-GPIO-OUT",
         )

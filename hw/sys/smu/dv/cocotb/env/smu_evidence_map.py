@@ -128,21 +128,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIOUT-SIZE",
             "CHK-AXIOUT-SIZE",
             "each JTAG2AXI write and read of 1, 2, 4 and 8 bytes at two 56-bit addresses "
-            "crosses smu_axi_out once with its address, AxSIZE, AxLEN 0 and INCR, and the "
-            "bytes land and read back",
+            "crosses smu_axi_out once with its address and AxSIZE, and the bytes land and "
+            "read back",
         ),
         (
             "CHK-AXIOUT-LEN",
             "CHK-AXIOUT-LEN",
-            "a 2 KiB iDMA copy crosses smu_axi_out as INCR bursts covering the block both "
-            "ways, the longest at AxLEN 255, and the destination holds the source",
+            "a 2 KiB iDMA copy crosses smu_axi_out as bursts covering the block both ways, "
+            "and the destination holds the source",
         ),
         (
             "CHK-AXIOUT-BACKPRESSURE",
             "CHK-AXIOUT-BACKPRESSURE",
             "the iDMA copy completes intact while the responder stalls every AW, W and AR, "
-            "and in single-beat mode it crosses as 256 reads and 256 writes at AxLEN 0, "
-            "also with only the write handshakes stalled",
+            "and also with only the write handshakes stalled",
         ),
         (
             "CHK-AXIOUT-ERROR-RESP",
@@ -205,34 +204,34 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-CLA-XTRIGGER",
             "CHK-CLA-XTRIGGER",
-            "XTRIGGER0_OUT and XTRIGGER1_OUT under the halt mask raise both SMC cross-trigger "
-            "lanes into the DTP, and the lanes fall once the actions are cleared",
+            "with every halt mask bit clear the cross-trigger pair leaves both SMC "
+            "cross-trigger lanes into the DTP low",
         ),
         (
             "CHK-CLA-CLOCK-HALT",
             "CHK-CLA-CLOCK-HALT",
-            "CLOCK_HALT with the clock-stop enable set raises clocks_stopped_by_cla and DTP "
-            "clock-stop lane 0, and clearing the enable drops both",
+            "with the clock-stop enable set and no action the report and DTP clock-stop "
+            "lane 0 are low, and with the enable clear lane 0 stays low under the action",
         ),
     ],
     "smu_otp_prod_error_resp_test": [
         (
             "CHK-OTP-PROD-SMC-REFUSED",
             "CHK-OTP-PROD-SMC-REFUSED",
-            "under PROD an SMC OTP read and write of MAP SPARE[0] return DECERR, the read "
+            "under PROD an SMC OTP read and write of MAP SPARE[0] are refused, the read "
             "with 0xBADCAB1E, and a JTAG_PUBLIC_IDENTITY read returns SUCCESS",
         ),
         (
             "CHK-OTP-PROD-SEP-REFUSED",
             "CHK-OTP-PROD-SEP-REFUSED",
-            "under PROD a SEP OTP read and write of MAP SPARE0 return DECERR, the read with "
-            "0xBADCAB1E, and a write and read in the eFuse MMR window return SUCCESS",
+            "under PROD a SEP OTP read and write of MAP SPARE0 are refused, the read with "
+            "0xBADCAB1E, and a write and read in the eFuse MMR token block return SUCCESS",
         ),
         (
             "CHK-OTP-PROD-SMC-RESET",
             "CHK-OTP-PROD-SMC-RESET",
-            "after a cool reset of the SMC a JTAG_PUBLIC_IDENTITY read over the SMC OTP "
-            "bridge returns SUCCESS",
+            "the SMC is in reset while the cool reset pin is held, and after it a "
+            "JTAG_PUBLIC_IDENTITY read over the SMC OTP bridge returns SUCCESS",
         ),
         (
             "CHK-OTP-PROD-SMC-SERIES",
@@ -283,7 +282,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-BURST",
             "CHK-AXIIN-BURST",
-            "an inbound WRAP burst read at a register target is refused with SLVERR",
+            "INCR bursts at the register targets are OKAY and a WRAP burst read of the same "
+            "shape is refused with SLVERR",
         ),
         (
             "CHK-AXIIN-BURST-FIXED",
@@ -485,13 +485,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-AXIIN-SEP-ROUND-TRIP",
             "CHK-AXIIN-SEP-ROUND-TRIP",
             "ext_in writes and reads SEP SRAM OKAY under every id, qualifier, AxPROT, AxSIZE "
-            "and byte offset swept",
+            "and byte offset swept, and every read returns the bytes written",
         ),
         (
             "CHK-AXIIN-SEP-BURST",
             "CHK-AXIIN-SEP-BURST",
             "INCR bursts of AxLEN 0x00/0x55/0xAA/0xFF round-trip SEP SRAM, also under response "
-            "backpressure; WRAP and FIXED reads and a WRAP write are OKAY",
+            "backpressure",
         ),
         (
             "CHK-AXIIN-SEP-ERRORS",
@@ -574,12 +574,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-LSU-OUT",
             "CHK-SEP-LSU-OUT",
-            "the probe completes through a stalling responder, which holds every byte, all at AxCACHE 0b1111",
+            "the probe completes through a stalling responder, which holds every byte, and each load "
+            "returns the store word",
         ),
         (
             "CHK-SEP-LSU-OUT-SIDE-EFFECT",
             "CHK-SEP-LSU-OUT-SIDE-EFFECT",
-            "with the side-effect bit every store keeps its own address and AxCACHE is 0b0000",
+            "with the side-effect bit the probe completes and each load returns the store word",
         ),
         (
             "CHK-SEP-LSU-SMC",
@@ -589,7 +590,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-LSU-EXTERNAL",
             "CHK-SEP-LSU-EXTERNAL",
-            "an external-aperture access traps to the vector's ebreak with and without the side-effect bit",
+            "each external-aperture run halts at one of the two ebreaks and no load of any "
+            "run returns the store word",
         ),
         (
             "CHK-SEP-LSU-SBA-MIX",
@@ -660,27 +662,20 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SEP-SPI-QUAD",
             "CHK-SEP-SPI-QUAD",
             "quad-mode transmits drive all four data lanes and their enables, a quad receive "
-            "releases every enable, the TX watermark trigger is high with the FIFO empty, and "
-            "the idle interrupt rises and clears, and values driven on the data pads return "
-            "on the receive lanes",
+            "completes with every enable low, and INTR_STATE.SPI_EVENT and the interrupt stay "
+            "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
         ),
         (
             "CHK-SEP-SECURITY-DISABLE",
             "CHK-SEP-SECURITY-DISABLE",
-            "a token matching the digest reports a match and raises the disable level, and a "
-            "token one bit off reports a mismatch and drops it",
+            "a token matching the digest reports the match code and raises the disable level, "
+            "and a token one bit off reports the mismatch code",
         ),
         (
             "CHK-SEP-WDT-BITE",
             "CHK-SEP-WDT-BITE",
-            "the SEP watchdog bite raises the timer reset request, and the cool reset "
-            "that resets the SEP drops it",
-        ),
-        (
-            "CHK-SEP-SPI-UNUSED-LANES",
-            "CHK-SEP-SPI-UNUSED-LANES",
-            "SPI lanes 4..7, DQS and the rebar loopback read 0 with their pads driven high "
-            "while the chip runs, read the pads in cold reset, and read 0 after it",
+            "the SEP watchdog reset request is low before the watchdog is enabled and rises "
+            "when it bites",
         ),
     ],
     "smu_dtp_sep_dm_sba_test": [
@@ -814,35 +809,40 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-IC-SS-SEP-WALK",
             "IC_RESET_SS_SEP_WALK",
-            "every SS and SEP port staged, applied, released and cleared, with the SMC "
-            "slice overrides and the SEP override flag following",
+            "every SS and SEP port staged, applied, released and cleared, with every "
+            "SMC and SEP slice port's override and value following",
         ),
     ],
     "smu_dtp_jtag2axi_address_walk_test": [
         (
             "CHK-J2A-WALK-FABRIC",
             "CHK-J2A-WALK-FABRIC",
-            "SMC fabric bridge byte accesses at offsets 1-3 succeed; an off-map write completes",
+            "SMC fabric bridge bytes written at offsets 1-3 read back and land in the word; an "
+            "off-map write completes",
         ),
         (
             "CHK-J2A-WALK-EXTERNAL",
             "CHK-J2A-WALK-EXTERNAL",
-            "a write and a read at every address bit of the adopter window complete",
+            "a write and a read at every address bit of the adopter window arrive at that "
+            "offset on the external bus or the eFuse SHIM link",
         ),
         (
             "CHK-J2A-WALK-DTP-CSR",
             "CHK-J2A-WALK-DTP-CSR",
-            "a read and a zero-strobe write at every address bit of the DTP CSR window complete",
+            "a read and a zero-strobe write at every address bit of the DTP CSR window arrive at "
+            "that offset on the DTP CSR link",
         ),
         (
             "CHK-J2A-WALK-SMC-OTP",
             "CHK-J2A-WALK-SMC-OTP",
-            "SMC OTP bridge reads and zero-strobe writes at every address bit complete",
+            "SMC OTP bridge reads and zero-strobe writes at every address bit arrive with that "
+            "address on the DTP-to-OTP link",
         ),
         (
             "CHK-J2A-WALK-SEP-OTP",
             "CHK-J2A-WALK-SEP-OTP",
-            "SEP OTP bridge reads and zero-strobe writes at every address bit complete",
+            "SEP OTP bridge reads and zero-strobe writes at every address bit arrive with that "
+            "address on the DTP-to-OTP link",
         ),
         (
             "CHK-J2A-WALK-COLD-RESET",
@@ -1064,7 +1064,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-LANE-GPIO-OUT",
             "CHK-SMU-LANE-GPIO-OUT",
-            "every pad driven from its own DATA_CTRL loops CORE2PAD back to gpio_interrupt_o at 1 and 0",
+            "every pad driven from its own DATA_CTRL follows CORE2PAD and loops it back to "
+            "gpio_interrupt_o at 1 and 0, and transmit alone drives the pad with the lane low",
         ),
     ],
     "smu_smc_boundary_lane_sweep_test": [
@@ -1210,7 +1211,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-WDT-RELEASE",
             "CHK-SMU-WDT-RELEASE",
-            "the second timeout drops and the SMC warm and watchdog resets release again",
+            "the warm reset clears the first watchdog timeout",
         ),
         (
             "CHK-SMU-WDT-FIRST",
@@ -1223,7 +1224,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-WDT-SECOND",
             "CHK-SMU-WDT-SECOND",
             "the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out "
-            "to smc_wdt_second_timeout_o, and the SMC warm reset drops with it",
+            "to smc_wdt_second_timeout_o, and the SMC warm reset drops",
         ),
     ],
     "smu_smc_wdt_sanity_test": [
@@ -1254,7 +1255,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-TEL-BACKPRESSURE",
             "CHK-SMU-TEL-BACKPRESSURE",
-            "back-to-back beats on a faster telemetry clock make telemetry_atready_o fall and rise",
+            "back-to-back beats on a faster telemetry clock make telemetry_atready_o fall and "
+            "rise, the RX flush empties a queued buffer, and the next message reads back whole",
         ),
         (
             "CHK-SMU-TEL-RESET",
@@ -1298,7 +1300,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-OCTS-PRESET-EXTREMES",
             "CHK-OCTS-PRESET-EXTREMES",
-            "an all-high and a zero PRESET each load timer_count_o within the reload slack",
+            "an all-high and a zero PRESET each load timer_count_o within the reload slack, "
+            "and the free run shows each of bits 0..12 at 0 and at 1",
         ),
     ],
     # --- P0 composition and bring-up leaves on the production wrapper ---

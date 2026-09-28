@@ -1321,7 +1321,7 @@ args = [
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
   "+sep_dtcm_hex=sep_dtcm_default.hex",
-  # +skip_fuse_sense: downstream of the fuse-reset release, which the boot_stall leaves prove.
+  # +skip_fuse_sense: supplies sense completion, a precondition of the checked fuse-reset release.
   "+skip_fuse_sense",
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
   "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/default_sep_efuse_shadow_reg.preload",

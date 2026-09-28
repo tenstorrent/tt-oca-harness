@@ -888,13 +888,16 @@ class smu_xtrig_ctp_pad_seq:
             await self._wr32(self._ctm_src_addr(port), 0, f"CTM CT_SRC[{port}]")
             observed[lane] = (rises, exposed)
             want[lane] = ([int(bit == lane) for bit in range(dtp_int_ct)], 0)
+        # Every cycle of each idle acknowledge pulse and of the settle after it
+        # is sampled, so a request that rises and falls inside it counts.
         ack_moved = 0
         for bit in range(SMU_INT_CT_EXPOSED):
             dut.xtrig_ctm_src_ack.value = 1 << bit
-            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
-            ack_moved |= sample(dtp_lanes, DTP_CTM_SRC_REQ_PATH)
-            dut.xtrig_ctm_src_ack.value = 0
-            await ClockCycles(dut.clk_smu_i, PAD_SETTLE)
+            for cycle in range(2 * PAD_SETTLE):
+                if cycle == PAD_SETTLE:
+                    dut.xtrig_ctm_src_ack.value = 0
+                await ClockCycles(dut.clk_smu_i, 1)
+                ack_moved |= sample(dtp_lanes, DTP_CTM_SRC_REQ_PATH)
         await self._set_mode(P2P_LANE, WIRE_OR)
         self.log.info(
             "CHK-SMU-CTM-EVERY-LANE reserved=%d %s ack_moved=0x%x", reserved, observed, ack_moved

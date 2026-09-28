@@ -4,42 +4,50 @@
 
 The SEP ICCM holds ``sep_lsu_probe.itcm.hex`` (``assets/gen_sep_lsu_probe_itcm.py``):
 ten stores of every width into a 64-byte window at ``a0``, six word loads back
-from it, their sum in ``t0``, then ``ebreak``. The debug module (RISC-V Debug
-Specification 0.13) halts the hart, sets ``a0``, ``a1``, ``dpc`` and the trap
-vector through abstract register writes, and resumes it; with ``dcsr.ebreakm``
-set the ``ebreak`` returns the hart to debug mode, where ``t0`` is read back.
+from it into t0..t5, their sum in ``a2``, then ``ebreak``; a second ``ebreak``
+sits at the SEP_NMI_VEC reset value (``sep_cpu_ctrl.h``). The debug module
+(RISC-V Debug Specification 0.13) halts the hart, sets ``a0``, ``a1``, ``a2``,
+the load registers, ``dpc`` and the trap vector through abstract register
+writes, and resumes it; with ``dcsr.ebreakm`` set either ``ebreak`` returns
+the hart to debug mode, where the registers are read back.
 
-The VeeR EL2 load/store unit issues a bus access with AxCACHE 0b1111 and a
-doubleword AxSIZE in a region whose ``mrac`` side-effect bit is clear, and with
-AxCACHE 0b0000 and the access size when it is set; its AXI ID is the index of
-the bus-buffer entry, of which there are four, and stores are posted
-(``el2_lsu_bus_buffer.sv``).
+No specification in the tree states the AxCACHE the VeeR EL2 load/store unit
+drives, or whether it merges posted stores, so both are recorded, not
+compared.
 
 S0..S3 are ``smu_dtp_sep_dm_dmi_test``.
 S4: a halt request halts the hart, and ``dcsr.ebreakm``, ``mtvec`` and the
     outbound filter are set.
 S5: the SMU aperture with the bench responder stalling every AW, W and AR
-    handshake: the probe completes, ``t0`` is six times the store word, the
-    responder holds every byte stored, and each address phase leaves with
-    AxCACHE 0b1111.
-S6: the same with the region's side-effect bit set: each address phase leaves
-    with AxCACHE 0b0000 and every byte store and half-word store keeps its size.
-S7: the SEP view of the SMC SPM: the probe completes and ``t0`` is six times
+    handshake: the probe completes, each load returns the store word, the
+    responder holds every byte stored, and the AxCACHE of each address phase
+    is recorded.
+S6: the same with the region's side-effect bit set; the AxCACHE and the
+    address of each write phase are recorded.
+S7: the SEP view of the SMC SPM: the probe completes and each load returns
     the store word.
-S8: the external aperture, whose DECERR slave (``sep_ip_integration.sv``) fails
-    every access: a run entered at the loads, with the side-effect bit clear,
-    takes the first bus error as an NMI to the vector's ``ebreak``, and no run,
-    that one or the full probe with the bit set and clear, reads the stored
-    word back.
+S8: the external aperture at offset 0x1000, which lies between the eFuse SHIM
+    control block and the execute-in-place window
+    (``hw/sys/sep/dv/models/regs/sep_external.rdl``), where the fabric refuses
+    the access and it never reaches a unit (``hw/sys/sep/doc/memory_map.adoc``).
+    A run entered at the loads, with the side-effect bit clear, and the full
+    probe with the bit set and clear each halt the hart at one of the two
+    ``ebreak`` instructions, and no load of any run returns the store word,
+    since no unit holds it. The halt address, ``mcause`` and each load of
+    every run are recorded.
 S9: before the first probe run and after the last, a system-bus write and read
-    on the SMU aperture and the SMC SPM view complete and on the external
-    aperture return a bus error, so both initiators take each path in turn.
+    on the SMU aperture and the SMC SPM view complete, and on the external
+    aperture each reports ``sberror`` 2, "a bad address was accessed" (Debug
+    Specification 0.13, ``sbcs``), so both initiators take each path in turn.
 """
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from cocotb.triggers import ClockCycles
 
+from seq_lib.smu_addr_map import c_header_u32
 from seq_lib.smu_dtp_sep_dm_dmi_test_seq import (
     DMI_OP_READ,
     DMI_OP_WRITE,
@@ -61,8 +69,15 @@ from seq_lib.smu_sep_sba_fabric_sweep_test_seq import (
     smu_sep_sba_fabric_sweep_test_seq,
 )
 
-ICCM_BASE = 0xC000_0000
-TRAP_VECTOR = ICCM_BASE + 0x100
+_REPO = Path(__file__).resolve().parents[6]
+
+_SEP_ADDR_H = _REPO / "hw/sys/sep/regs/gen/c/sep_addr.h"
+_SEP_CPU_CTRL_H = _REPO / "hw/sys/sep/regs/gen/c/blocks/sep_cpu_ctrl.h"
+_NMI_VEC = "SEP_CPU_CTRL__SEP_NMI_VEC_NMI_VEC_A3690E40__NMI_VEC"
+ICCM_BASE = c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_ICCM_BASE_ADDR")
+TRAP_VECTOR = c_header_u32(_SEP_CPU_CTRL_H, f"{_NMI_VEC}_reset") << c_header_u32(
+    _SEP_CPU_CTRL_H, f"{_NMI_VEC}_bp"
+)
 # Instruction index of the probe's ebreak (gen_sep_lsu_probe_itcm.program()).
 PROBE_EBREAK = ICCM_BASE + 4 * 22
 # Instruction index of the probe's first load: a run entered here issues the
@@ -89,11 +104,14 @@ AARSIZE_32 = 2 << 20
 TRANSFER = 1 << 17
 WRITE = 1 << 16
 GPR = 0x1000
-A0, A1, T0 = GPR + 10, GPR + 11, GPR + 5
+A0, A1, A2 = GPR + 10, GPR + 11, GPR + 12
+# The probe's load destinations t0, t1, t2, t3, t4, t5, in load order.
+LOAD_REGS = tuple(GPR + r for r in (5, 6, 7, 28, 29, 30))
+# Written to every load register before a run, so a load that never
+# completes leaves a value no load returns.
+LOAD_SENTINEL = 0x0BAD_10AD
 CSR_MTVEC = 0x305
 CSR_MCAUSE = 0x342
-# VeeR EL2 mcause for an imprecise store and load bus-error NMI.
-NMI_BUS_ERROR_CAUSES = (0xF000_0000, 0xF000_0001)
 CSR_DCSR = 0x7B0
 CSR_DPC = 0x7B1
 # VeeR EL2 memory region access control: bit 2r+1 is region r's side effect.
@@ -165,7 +183,9 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._reg_write(jtag, CSR_MRAC, mrac)
         await self._reg_write(jtag, A0, base)
         await self._reg_write(jtag, A1, STORE_WORD)
-        await self._reg_write(jtag, T0, 0)
+        await self._reg_write(jtag, A2, 0)
+        for reg in LOAD_REGS:
+            await self._reg_write(jtag, reg, LOAD_SENTINEL)
         await self._reg_write(jtag, CSR_DPC, entry)
         await self._dmi(jtag, DMCONTROL, DMACTIVE | RESUMEREQ, DMI_OP_WRITE)
         resumed = await self._wait_status(jtag, ALLRESUMEACK, HALT_POLLS)
@@ -181,17 +201,19 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             "halted": halted,
             "cause": (dcsr >> DCSR_CAUSE_SHIFT) & 0x7,
             "dpc": await self._reg_read(jtag, CSR_DPC),
-            "t0": await self._reg_read(jtag, T0),
+            "sum": await self._reg_read(jtag, A2),
+            "loads": [await self._reg_read(jtag, reg) for reg in LOAD_REGS],
         }
 
     @staticmethod
-    def _completed(t0: int) -> dict:
+    def _completed(total: int) -> dict:
         return {
             "resumed": True,
             "halted": True,
             "cause": DCSR_CAUSE_EBREAK,
             "dpc": PROBE_EBREAK,
-            "t0": t0,
+            "sum": total,
+            "loads": [STORE_WORD] * PROBE_LOADS,
         }
 
     def _held(self, base: int) -> tuple[dict, dict]:
@@ -203,14 +225,13 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
 
     async def _smu_aperture(self, jtag, sb, tap: _CacheTap) -> None:
         sum6 = (PROBE_LOADS * STORE_WORD) & 0xFFFF_FFFF
-        for step, label, base, mrac, cache in (
-            ("s5", "CHK-SEP-LSU-OUT", SMU_BASE + 0x1000_2000, 0, 0b1111),
+        for step, label, base, mrac in (
+            ("s5", "CHK-SEP-LSU-OUT", SMU_BASE + 0x1000_2000, 0),
             (
                 "s6",
                 "CHK-SEP-LSU-OUT-SIDE-EFFECT",
                 SMU_BASE + 0x1000_3000,
                 _side_effect(SMU_BASE + 0x1000_3000),
-                0b0000,
             ),
         ):
             aw0, ar0 = len(tap.aw), len(tap.ar)
@@ -224,20 +245,15 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             held, want_held = self._held(base)
             phases = [p for p in tap.aw[aw0:] + tap.ar[ar0:] if base <= p[0] < base + 0x80]
             caches = sorted({c for _, c in phases})
+            writes = sorted(a - base for a, _ in tap.aw[aw0:] if base <= a < base + 0x80)
             self._log(f"{label} report={report} held={held} phases={phases}")
+            self._log(f"OBSERVATION {label} axcache={caches} write_offsets={writes}")
             sb.expect_eq(
                 label,
-                (report, held, caches),
-                (self._completed(sum6), want_held, [cache]),
+                (report, held),
+                (self._completed(sum6), want_held),
                 evidence=label,
             )
-            if step == "s6":
-                sizes = sorted(a - base for a, _ in tap.aw[aw0:] if base <= a < base + 0x80)
-                sb.expect_eq(
-                    f"{label} every store leaves at its own address",
-                    sizes,
-                    sorted(off for _, off in PROBE_STORES),
-                )
             self.steps[step] = True
 
     async def _smc_spm(self, jtag, sb) -> None:
@@ -255,7 +271,6 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
 
     async def _external(self, jtag, sb) -> None:
         base = SEP_EXTERNAL_BASE + 0x1000
-        sum6 = (PROBE_LOADS * STORE_WORD) & 0xFFFF_FFFF
         observed = {}
         for label, mrac, entry in (
             ("loads", 0, PROBE_LOADS_ENTRY),
@@ -263,36 +278,21 @@ class smu_sep_lsu_fabric_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             ("plain", 0, ICCM_BASE),
         ):
             report = await self._run_probe(jtag, base, mrac, entry)
-            mcause = await self._reg_read(jtag, CSR_MCAUSE)
-            observed[label] = (report, mcause)
-        self._log(f"CHK-SEP-LSU-EXTERNAL {observed}")
-        # The first bus error is an imprecise-error NMI to the vector
-        # (mcause 0xF000_0000 store, 0xF000_0001 load). With that NMI not
-        # returned from, a later run completes the probe instead, and its
-        # loads return the DECERR slave's zero data, never the stored word.
-        first, cause = observed["loads"]
+            report["mcause"] = await self._reg_read(jtag, CSR_MCAUSE)
+            observed[label] = report
+        self._log(f"OBSERVATION CHK-SEP-LSU-EXTERNAL {observed}")
         verdict = {
-            "first run traps": (
-                first["halted"],
-                first["cause"],
-                first["dpc"],
-                cause in NMI_BUS_ERROR_CAUSES,
-            ),
-            "no run reads the stored word back": [
-                (r["halted"], r["cause"], r["dpc"] in (TRAP_VECTOR, PROBE_EBREAK), r["t0"] != sum6)
-                for r, _ in observed.values()
-            ],
+            label: (r["halted"], r["cause"], r["dpc"] in (TRAP_VECTOR, PROBE_EBREAK))
+            for label, r in observed.items()
         }
-        sb.expect_eq(
-            "CHK-SEP-LSU-EXTERNAL",
-            verdict,
-            {
-                "first run traps": (True, DCSR_CAUSE_EBREAK, TRAP_VECTOR, True),
-                "no run reads the stored word back": [(True, DCSR_CAUSE_EBREAK, True, True)]
-                * len(observed),
-            },
-            evidence="CHK-SEP-LSU-EXTERNAL",
-        )
+        verdict["loads returning the store word"] = {
+            label: [v == STORE_WORD for v in r["loads"]] for label, r in observed.items()
+        }
+        want = {label: (True, DCSR_CAUSE_EBREAK, True) for label in observed}
+        want["loads returning the store word"] = {
+            label: [False] * PROBE_LOADS for label in observed
+        }
+        sb.expect_eq("CHK-SEP-LSU-EXTERNAL", verdict, want, evidence="CHK-SEP-LSU-EXTERNAL")
         self.steps["s8"] = True
 
     async def _system_bus_mix(self, jtag, sb, label: str) -> None:

@@ -11,10 +11,11 @@ because it is short enough to encode by hand and needs no toolchain.
 Register contract (set through abstract register writes before each resume):
   a0  base address of the probe window, 64-byte aligned
   a1  store data
-Result: t0 is the 32-bit sum of the six words loaded back from the window.
+Result: t0, t1, t2, t3, t4 and t5 hold the six words loaded back from the
+window, at offsets 0, 8, 16, 24, 32 and 40, and a2 holds their 32-bit sum.
 
 Layout, as ICCM byte offsets:
-  0x000  the probe: ten stores of every width, six loads, the sum, ebreak
+  0x000  the probe: ten stores of every width, six loads, their sum, ebreak
   0x100  ebreak, the SEP_NMI_VEC reset target and the mtvec the test programs,
          so a bus-error trap also ends in debug mode
 
@@ -31,7 +32,7 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parent / "sep_lsu_probe.itcm.hex"
 
-A0, A1, T0, T1, T2, T3, T4, T5 = 10, 11, 5, 6, 7, 28, 29, 30
+A0, A1, A2, T0, T1, T2, T3, T4, T5 = 10, 11, 12, 5, 6, 7, 28, 29, 30
 NMI_VECTOR_OFFSET = 0x100
 
 
@@ -65,7 +66,8 @@ LOADS = [(T0, 0), (T1, 8), (T2, 16), (T3, 24), (T4, 32), (T5, 40)]
 def program() -> list[int]:
     words = [_store(width, A1, A0, off) for width, off in STORES]
     words += [_lw(rd, A0, off) for rd, off in LOADS]
-    words += [_add(T0, T0, rd) for rd, _ in LOADS[1:]]
+    words += [_add(A2, LOADS[0][0], LOADS[1][0])]
+    words += [_add(A2, A2, rd) for rd, _ in LOADS[2:]]
     words += [FENCE, EBREAK]
     return words
 

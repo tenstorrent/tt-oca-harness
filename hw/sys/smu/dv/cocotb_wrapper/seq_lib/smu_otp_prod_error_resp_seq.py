@@ -2,19 +2,27 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The OTP bridges under the PROD lifecycle state, where the eFuse JTAG policy refuses them.
 
-In PROD the SMC eFuse wrapper sends every OTP JTAG write, and every read outside
-JTAG_PUBLIC_IDENTITY, to an error slave (``smc_efuse_wrapper.sv``, "JTAG access
-control"); the SEP eFuse wrapper does the same for accesses outside the eFuse
-MMR window (``sep_efuse_wrapper.sv``, "JTAG Access Control Policy"). The error
-slave answers DECERR with the data word 0xBADCAB1E (``prim_axi_lite_err_slv``).
+In PROD the eFuse JTAG policy blocks every JTAG write and every JTAG read
+except the chiplet identity, and a blocked request gets an error response
+whose read data is 0xbadcab1e (``hw/ip/efuse/doc/architecture.adoc``, "eFuse
+lifecycle-based JTAG permissions"). On the SMC the admitted read range is
+JTAG_PUBLIC_IDENTITY, "the JTAG-public exception window" (``smc_efuse_map.rdl``;
+``hw/sys/sep/doc/lifecycle_controller.adoc``: in PROD the SMC wrapper "admits
+no writes at all"). On the SEP, JTAG may reach only the eFuse MMR token block
+-- the token-input arrays, TOKEN_EOP and the match-status registers -- and
+every other access completes with an error response
+(``hw/sys/sep/doc/otp_fuse_controller.adoc``). Neither chapter names the AXI
+response code, so a refusal is checked as SLVERR or DECERR, and the code is
+recorded.
 
-S1: an SMC OTP read and write of MAP SPARE[0] return DECERR, the read with
+S1: an SMC OTP read and write of MAP SPARE[0] are refused, the read with
     0xBADCAB1E, and a read of JTAG_PUBLIC_IDENTITY word 0 returns SUCCESS.
-S2: a SEP OTP read and write of MAP SPARE0 return DECERR, the read with
+S2: a SEP OTP read and write of MAP SPARE0 are refused, the read with
     0xBADCAB1E, and a write of a security-disable token word and a read of the
-    token match status, both in the eFuse MMR window, return SUCCESS.
-S3: the cool reset pin resets the SMC, and an SMC OTP read of
-    JTAG_PUBLIC_IDENTITY word 0 again returns SUCCESS.
+    token match status, both in the eFuse MMR token block, return SUCCESS.
+S3: the cool reset pin holds the SMC in reset while it is asserted, and after
+    the release an SMC OTP read of JTAG_PUBLIC_IDENTITY word 0 again returns
+    SUCCESS.
 S4: an SMC OTP series read of JTAG_PUBLIC_IDENTITY word 0 with pipeline depth
     3, so the bridge issues three reads ahead of the data shifts, completes
     with SUCCESS.
@@ -34,6 +42,7 @@ from seq_lib.smu_jtag_helpers import (
     J2A_OP_WRITE,
     J2A_STATUS_BUSY,
     J2A_STATUS_DECERR,
+    J2A_STATUS_SLVERR,
     J2A_STATUS_SUCCESS,
     SMC_OTP_AXSIZE_4B,
     SMC_OTP_ERR_DECODE_DATA,
@@ -61,6 +70,12 @@ PATTERN = 0x0BAD_F00D
 SERIES_DEPTH = 3
 COOL_RESET_HOLD_REF_CYCLES = 256
 SMC_RESET_BOUND_REF_CYCLES = 8192
+REFUSED = "refused"
+
+
+def _verdict(status: int) -> int | str:
+    """Fold the two AXI error responses into one verdict; keep every other status."""
+    return REFUSED if status in (J2A_STATUS_SLVERR, J2A_STATUS_DECERR) else status
 
 
 class smu_otp_prod_error_resp_seq(SmuOtpBridgesUnderDbgDisableSeq):
@@ -85,15 +100,17 @@ class smu_otp_prod_error_resp_seq(SmuOtpBridgesUnderDbgDisableSeq):
             await ClockCycles(self.dut.clk_smu_i, 16)
         return status, int(rdata) & 0xFFFF_FFFF
 
-    async def _smc_reset(self) -> None:
+    async def _smc_reset(self) -> int:
+        """Hold the cool reset pin; return the SMC reset seen while it is held."""
         dut = self.dut
         dut.tb_cool_reset_pin.value = 1
         await ClockCycles(dut.clk_ref_i, COOL_RESET_HOLD_REF_CYCLES)
+        held = int(dut.obs_smc_rst_n_o.value)
         dut.tb_cool_reset_pin.value = 0
         for _ in range(SMC_RESET_BOUND_REF_CYCLES):
             await RisingEdge(dut.clk_ref_i)
             if int(dut.obs_smc_rst_n_o.value) == 1:
-                return
+                return held
         raise AssertionError("SMC never left the cool reset")
 
     async def run(self) -> None:
@@ -113,35 +130,42 @@ class smu_otp_prod_error_resp_seq(SmuOtpBridgesUnderDbgDisableSeq):
             raise AssertionError(f"TAP not answering: IDCODE 0x{idcode:08x}")
 
         smc = "SMC_OTP_AXI_SINGLE_OP"
-        observed = (
+        raw = (
             await self._otp_op(jtag, smc, J2A_OP_READ, SMC_EFUSE_SPARE0),
             (await self._otp_op(jtag, smc, J2A_OP_WRITE, SMC_EFUSE_SPARE0, PATTERN))[0],
             (await self._otp_op(jtag, smc, J2A_OP_READ, SMC_PUBLIC_IDENTITY))[0],
         )
-        self._log_chk("CHK-OTP-PROD-SMC-REFUSED", observed)
+        self._log_chk("OBSERVATION CHK-OTP-PROD-SMC-REFUSED status", raw)
+        observed = ((_verdict(raw[0][0]), raw[0][1]), _verdict(raw[1]), _verdict(raw[2]))
         sb.expect_eq(
             "CHK-OTP-PROD-SMC-REFUSED",
             observed,
-            ((J2A_STATUS_DECERR, SMC_OTP_ERR_DECODE_DATA), J2A_STATUS_DECERR, J2A_STATUS_SUCCESS),
+            ((REFUSED, SMC_OTP_ERR_DECODE_DATA), REFUSED, J2A_STATUS_SUCCESS),
             evidence="CHK-OTP-PROD-SMC-REFUSED",
         )
         self.steps["S1"] = True
 
         sep = "SEP_OTP_AXI_SINGLE_OP"
-        observed = (
+        raw = (
             await self._otp_op(jtag, sep, J2A_OP_READ, SEP_EFUSE_SPARE0),
             (await self._otp_op(jtag, sep, J2A_OP_WRITE, SEP_EFUSE_SPARE0, PATTERN))[0],
             (await self._otp_op(jtag, sep, J2A_OP_WRITE, SEP_MMR_WORD, PATTERN))[0],
             (await self._otp_op(jtag, sep, J2A_OP_READ, SEP_MMR_STATUS))[0],
         )
         await self._otp_op(jtag, sep, J2A_OP_WRITE, SEP_MMR_WORD, 0)
-        self._log_chk("CHK-OTP-PROD-SEP-REFUSED", observed)
+        self._log_chk("OBSERVATION CHK-OTP-PROD-SEP-REFUSED status", raw)
+        observed = (
+            (_verdict(raw[0][0]), raw[0][1]),
+            _verdict(raw[1]),
+            _verdict(raw[2]),
+            _verdict(raw[3]),
+        )
         sb.expect_eq(
             "CHK-OTP-PROD-SEP-REFUSED",
             observed,
             (
-                (J2A_STATUS_DECERR, SMC_OTP_ERR_DECODE_DATA),
-                J2A_STATUS_DECERR,
+                (REFUSED, SMC_OTP_ERR_DECODE_DATA),
+                REFUSED,
                 J2A_STATUS_SUCCESS,
                 J2A_STATUS_SUCCESS,
             ),
@@ -149,14 +173,14 @@ class smu_otp_prod_error_resp_seq(SmuOtpBridgesUnderDbgDisableSeq):
         )
         self.steps["S2"] = True
 
-        await self._smc_reset()
+        held = await self._smc_reset()
         await ClockCycles(self.dut.clk_smu_i, 200)
         after = (await self._otp_op(jtag, smc, J2A_OP_READ, SMC_PUBLIC_IDENTITY))[0]
-        self._log_chk("CHK-OTP-PROD-SMC-RESET", after)
+        self._log_chk("CHK-OTP-PROD-SMC-RESET", (held, after))
         sb.expect_eq(
             "CHK-OTP-PROD-SMC-RESET",
-            after,
-            J2A_STATUS_SUCCESS,
+            (held, after),
+            (0, J2A_STATUS_SUCCESS),
             evidence="CHK-OTP-PROD-SMC-RESET",
         )
         self.steps["S3"] = True

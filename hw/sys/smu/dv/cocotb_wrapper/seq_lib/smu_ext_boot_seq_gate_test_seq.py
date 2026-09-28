@@ -178,11 +178,7 @@ class smu_ext_boot_seq_gate_test_seq:
             label=self.WAIT_LABELS[0],
             first_high=self.PRIMARY,
         )
-        self._log(
-            "CHK-PRIMARY-NOT-GATED: rst_primary_smc_clk_no releases to 1'b1 while "
-            "ext_boot_seq_done_i=0; only fuse_reset_n_delayed_o is boot-gated "
-            f"(primary={primary})"
-        )
+        self._log(f"CHK-PRIMARY-NOT-GATED observed rst_primary_smc_clk_no={primary}")
         sb.expect_eq(
             "CHK-PRIMARY-NOT-GATED primary released while gated",
             primary,
@@ -205,10 +201,8 @@ class smu_ext_boot_seq_gate_test_seq:
             first_high=self.FUSE,
         )
         self._log(
-            "CHK-BOOT-SEQ-GATE: with ext_boot_seq_done_i=0, smc_fuse_reset_n_delayed_o "
-            f"remains 1'b0 across >={self.GATED_SAMPLES} samples; after "
-            f"ext_boot_seq_done_i=1, smc_fuse_reset_n_delayed_o becomes 1'b1 within the "
-            f"bounded release window (gated_samples={gated_samples} released={released})"
+            f"CHK-BOOT-SEQ-GATE observed gated_samples={gated_samples} of "
+            f">={self.GATED_SAMPLES} and smc_fuse_reset_n_delayed_o={released} after the ungate"
         )
         sb.expect_eq(
             "CHK-BOOT-SEQ-GATE fuse_reset released after ungate",
@@ -224,8 +218,7 @@ class smu_ext_boot_seq_gate_test_seq:
                 f"expired={wait.expired} last={wait.last}"
             )
         self._log(
-            "CHK-TIMEOUT-PATHS: every bounded wait completed inside its bound "
-            f"(waits={len(self._waits)} expect={len(self.WAIT_LABELS)})"
+            f"CHK-TIMEOUT-PATHS observed waits={len(self._waits)} expected={len(self.WAIT_LABELS)}"
         )
         sb.expect_eq(
             "CHK-TIMEOUT-PATHS every bounded wait completed inside its bound",

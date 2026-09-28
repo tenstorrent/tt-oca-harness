@@ -23,10 +23,14 @@ Real checkers:
   - SMC cold_reset port override updates hierarchical SMC slice
   - Clearing TDR restores ovrd=0
   - Every managed-subsystem cold and warm port and every SEP port but the Key
-    Manager's, in the same two-update order: control staged, override applied
-    (ic_reset_smc_ovrd_o carries exactly those SMC-slice ovrd bits and the SEP
-    slice reports an override), control released under the override, then
-    cleared; the Key Manager port's control is staged and released unapplied
+    Manager's, in the same two-update order: control staged, override applied,
+    control released under the override, then cleared; the Key Manager port's
+    control is staged and released unapplied. After each update the SMC and
+    SEP slices are read whole: each is a packed struct whose .ovrd half sits
+    above its .val half, the first field of each half nearest TDI, and the
+    halves carry the inverse of reset_enable and reset_control
+    (doc/integrator/src/smu.adoc, "IC_RESET TDR Structure"), so every
+    port's override and value are compared bit by bit.
 """
 
 from __future__ import annotations
@@ -34,10 +38,12 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
+from seq_lib.smu_compose_helpers import hier
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_EXT_PORT,
     SMU_IC_RESET_NUM_SEP_PORTS,
+    SMU_IC_RESET_NUM_SMC_PORTS,
     SMU_IC_RESET_SMC_COLD_PORT,
     SMU_IC_RESET_SMC_FUSE_PORT,
     SMU_IC_RESET_SMC_SS_COLD0_PORT,
@@ -46,6 +52,7 @@ from seq_lib.smu_jtag_helpers import (
     pack_ic_reset_ports,
     require_jtag_tdo_resolved,
 )
+from seq_lib.smu_tb_pins import smu_scope
 from smu_base_test import smu_base_test
 
 SS_PORTS = 32
@@ -212,9 +219,27 @@ class smu_jtag_reset_override_test(smu_base_test):
         sep_ports = [SMU_IC_RESET_EXT_PORT + 1 + i for i in range(SMU_IC_RESET_NUM_SEP_PORTS)]
         km_port = SMU_IC_RESET_EXT_PORT + 1
         ports = ss_ports + sep_ports
-        want_smc_ovrd = 0
+        smc_all = (1 << SMU_IC_RESET_NUM_SMC_PORTS) - 1
+        sep_all = (1 << SMU_IC_RESET_NUM_SEP_PORTS) - 1
+        ss_mask = 0
         for port in ss_ports:
-            want_smc_ovrd |= 1 << (port - SMU_IC_RESET_SMC_FUSE_PORT)
+            ss_mask |= 1 << (port - SMU_IC_RESET_SMC_FUSE_PORT)
+        # Port EXT_PORT + 1 + i is the SEP field i places from TDO, which is
+        # bit i of each half.
+        sep_mask = sep_all & ~(1 << (km_port - SMU_IC_RESET_EXT_PORT - 1))
+        smu = smu_scope(dut)
+        smc_slice = hier(smu, "jtag_smc_reset_ctrl")
+        sep_slice = hier(smu, "jtag_sep_reset_ctrl")
+        widths = (len(smc_slice), len(sep_slice))
+        if widths != (2 * SMU_IC_RESET_NUM_SMC_PORTS, 2 * SMU_IC_RESET_NUM_SEP_PORTS):
+            raise AssertionError(f"IC_RESET slice widths {widths} do not match the TDR geometry")
+
+        def slices() -> tuple[int, int, int, int]:
+            smc = _sample(smc_slice, "jtag_smc_reset_ctrl")
+            sep = _sample(sep_slice, "jtag_sep_reset_ctrl")
+            n_smc, n_sep = SMU_IC_RESET_NUM_SMC_PORTS, SMU_IC_RESET_NUM_SEP_PORTS
+            return (smc >> n_smc, smc & smc_all, sep >> n_sep, sep & sep_all)
+
         observed = []
         for enable, control in ((1, 0), (0, 0), (0, 1)):
             port_enable = dict.fromkeys(ports, enable)
@@ -232,27 +257,22 @@ class smu_jtag_reset_override_test(smu_base_test):
                 (
                     int(readback) == word,
                     _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
-                    _sample(dut.ic_reset_sep_ovrd_any_o, "ic_reset_sep_ovrd_any_o"),
+                    *slices(),
                 )
             )
         await jtag.write("IC_RESET", SMU_IC_RESET_DEFAULT)
         await ClockCycles(dut.clk_smu_i, 16)
-        observed.append(
-            (
-                True,
-                _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
-                _sample(dut.ic_reset_sep_ovrd_any_o, "ic_reset_sep_ovrd_any_o"),
-            )
-        )
+        observed.append((True, _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"), *slices()))
+        # (readback, smc ovrd pin, smc ovrd, smc val, sep ovrd, sep val)
         want = [
-            (True, 0, 0),
-            (True, want_smc_ovrd, 1),
-            (True, want_smc_ovrd, 1),
-            (True, 0, 0),
+            (True, 0, 0, smc_all & ~ss_mask, 0, 0),
+            (True, ss_mask, ss_mask, smc_all & ~ss_mask, sep_mask, 0),
+            (True, ss_mask, ss_mask, smc_all, sep_mask, sep_all),
+            (True, 0, 0, smc_all, 0, sep_all),
         ]
         self.logger.info(
-            "IC_RESET SS/SEP walk (readback ok, smc ovrd, sep ovrd any): "
-            + " ".join(f"({a},0x{b:x},{c})" for a, b, c in observed)
+            "IC_RESET SS/SEP walk (readback ok, smc ovrd pin, smc ovrd, smc val, sep ovrd, "
+            "sep val): " + " ".join(str(tuple(hex(v) for v in row)) for row in observed)
         )
         sb.expect_eq(
             "SS and SEP ports staged, applied, released and cleared",

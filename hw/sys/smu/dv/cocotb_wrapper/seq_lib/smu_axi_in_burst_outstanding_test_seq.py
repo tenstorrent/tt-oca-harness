@@ -14,11 +14,11 @@ S1: a train of reads and a train of writes, each launched without waiting for
     port that serialises accepts one. The reads must all return the RDL reset
     value, and the writes, which share one AWID so the ordering is fixed, must
     leave the last value they wrote in the register.
-S2: a WRAP burst and a multi-beat FIXED burst at the same register target.
-    The AXI4-to-AXI-Lite conversion in front of the SMC register blocks
-    implements INCR only and answers an unsupported burst with SLVERR, which
-    is a different verdict from the DECERR a filter or decode miss returns --
-    the transfer reached a subordinate and was refused there.
+S2: a WRAP burst read and a multi-beat FIXED burst write at the same register
+    targets are refused with SLVERR, a different verdict from the DECERR a
+    filter or decode miss returns, while an INCR burst read and write of the
+    same address, length and size just before each are OKAY, so the refusal
+    follows the burst type and not the length.
 S3: the SMC SPM through the same window. Every AxSIZE, with each of address
     bits [2:0] set and cleared between transfers, and a write and read at every
     address bit the SPM leaves free, read back what was written; an INCR burst
@@ -76,7 +76,9 @@ WRITE_ID = 0x27
 SCRATCH_PATTERN_BASE = 0x51D0_0000
 
 # 4 beats x 4 bytes = a 16-byte wrapping window, and VERSION_LO is 16-byte
-# aligned, so the burst is legal AXI and only its type is unsupported.
+# aligned, so the burst is legal AXI and only its type is unsupported. The same
+# 16 bytes are the four CHIP_CONFIG registers and the first four SCRATCH_COLD
+# words, so the INCR controls touch registers only.
 BURST_BEATS = 4
 BURST_SIZE = 2
 AXI_BURST_FIXED = 0
@@ -279,10 +281,36 @@ class smu_axi_in_burst_outstanding_test_seq:
         self.s1_ok = True
 
     async def _step_burst_type(self, master, sb) -> None:
-        """S2: WRAP and multi-beat FIXED at a register target are refused."""
+        """S2: WRAP and multi-beat FIXED at a register target are refused; INCR is not."""
+        incr_read = await master.burst_read_result(
+            VERSION_LO,
+            BURST_BEATS,
+            size=BURST_SIZE,
+            burst=AXI_BURST_INCR,
+            check_response=False,
+            timeout_ns=AXI_TIMEOUT_NS,
+            allow_timeout=True,
+        )
+        incr_write = await master.burst_write_result(
+            SCRATCH_COLD,
+            [SCRATCH_PATTERN_BASE ^ (idx + 1) for idx in range(BURST_BEATS)],
+            size=BURST_SIZE,
+            burst=AXI_BURST_INCR,
+            check_response=False,
+            timeout_ns=AXI_TIMEOUT_NS,
+            allow_timeout=True,
+        )
+        if incr_read.timed_out or incr_write.timed_out:
+            raise AssertionError(f"TIMEOUT s2 INCR control: bound={AXI_TIMEOUT_NS}ns")
+        sb.expect_eq(
+            "CHK-AXIIN-BURST INCR read and write of the same length and size are OKAY",
+            (resp_name(incr_read.resp), resp_name(incr_write.resp)),
+            (resp_name(RESP_OKAY), resp_name(RESP_OKAY)),
+            evidence="CHK-AXIIN-BURST",
+        )
         wrap = await master.burst_read_result(
             VERSION_LO,
-            BURST_BEATS * (1 << BURST_SIZE),
+            BURST_BEATS,
             size=BURST_SIZE,
             burst=AXI_BURST_WRAP,
             check_response=False,
@@ -316,7 +344,9 @@ class smu_axi_in_burst_outstanding_test_seq:
             evidence="CHK-AXIIN-BURST-FIXED",
         )
         self._log(
-            f"CHK-AXIIN-BURST: wrap_read={resp_name(wrap.resp)} fixed_write={resp_name(fixed.resp)}"
+            f"CHK-AXIIN-BURST: incr_read={resp_name(incr_read.resp)} "
+            f"incr_write={resp_name(incr_write.resp)} wrap_read={resp_name(wrap.resp)} "
+            f"fixed_write={resp_name(fixed.resp)}"
         )
         # The master takes the B beat on the edge after it rises; the cov/sv
         # monitors sample the handshake on the next edge, which the simulation

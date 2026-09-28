@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_sram_auto_init_disabled_test. SEP=0, no Force.
+"""Sequence for smu_sram_auto_init_disabled_test. No force.
 
 The complement of smu_sram_auto_init_done_test. That leaf runs with
 ``smc_disable_sram_auto_init_i`` low and watches the SMC scratch-RAM zeroing
@@ -151,10 +151,16 @@ class smu_sram_auto_init_disabled_seq:
         await ClockCycles(dut.clk_smu_i, 4)
         restored = sample(disable, "smc_disable_sram_auto_init_i")
         dut.rst_cold_ni.value = 0
-        for _ in range(RESET_BOUND_REF_CYCLES):
+        for cycle in range(RESET_BOUND_REF_CYCLES):
             await RisingEdge(dut.clk_ref_i)
             if sample(dut.rst_primary_smc_clk_n_o, "rst_primary_smc_clk_n_o") == 0:
+                self.log.info("second cold reset reached the primary reset after %d clk_ref", cycle)
                 break
+        else:
+            raise AssertionError(
+                f"TIMEOUT rst_primary_smc_clk_n_o never asserted on the second cold reset: "
+                f"bound={RESET_BOUND_REF_CYCLES} clk_ref"
+            )
         for _ in range(HOLD_REF_CYCLES):
             await RisingEdge(dut.clk_ref_i)
         writes_before = sample(dut.smc_scratch_write_count_dv_o, "smc_scratch_write_count_dv_o")
