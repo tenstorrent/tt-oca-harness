@@ -2352,7 +2352,7 @@
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>CDbgEapStatus</ipxact:name>
-            <ipxact:description>Register to indicate if EAP Pair was activated. Use the corresponding w2c register to reset the status. There are 2 bits for each EAP. The bit corresponds to action-0 and action-1 of the EAP. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
+            <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
             <ipxact:addressOffset>'h188</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
