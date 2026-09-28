@@ -183,6 +183,14 @@ module smc_dma_fcov (
   // Clock gating. Both gated clocks are sampled for movement; "gated
   // together" is both held in the same sample, after both were seen moving.
   // ------------------------------------------------------------------
+  // A gated clock is observed through a flop it toggles itself. Sampling the
+  // clock net on the edge of the clock it is gated from reads the same level
+  // every cycle whether it runs or not; the flop changes between two samples
+  // exactly when the gated clock had an edge.
+  logic gated_clk_div_q, frontend_clk_div_q;
+  always_ff @(posedge gated_clk_i) gated_clk_div_q <= (gated_clk_div_q !== 1'b1);
+  always_ff @(posedge frontend_gated_clk_i) frontend_clk_div_q <= (frontend_clk_div_q !== 1'b1);
+
   logic gated_clk_q, frontend_clk_q;
   logic gated_clk_moved_q, frontend_clk_moved_q;
   always_ff @(posedge clk_smc_i) begin
@@ -192,15 +200,15 @@ module smc_dma_fcov (
       gated_clk_moved_q <= 1'b0;
       frontend_clk_moved_q <= 1'b0;
     end else begin
-      gated_clk_q <= gated_clk_i;
-      frontend_clk_q <= frontend_gated_clk_i;
-      if (gated_clk_i !== gated_clk_q) gated_clk_moved_q <= 1'b1;
-      if (frontend_gated_clk_i !== frontend_clk_q) frontend_clk_moved_q <= 1'b1;
+      gated_clk_q <= gated_clk_div_q;
+      frontend_clk_q <= frontend_clk_div_q;
+      if (gated_clk_div_q !== gated_clk_q) gated_clk_moved_q <= 1'b1;
+      if (frontend_clk_div_q !== frontend_clk_q) frontend_clk_moved_q <= 1'b1;
     end
   end
 
-  wire gated_clk_toggling = (gated_clk_i !== gated_clk_q);
-  wire frontend_clk_toggling = (frontend_gated_clk_i !== frontend_clk_q);
+  wire gated_clk_toggling = (gated_clk_div_q !== gated_clk_q);
+  wire frontend_clk_toggling = (frontend_clk_div_q !== frontend_clk_q);
   wire all_blocks_gated_e = gated_clk_moved_q && frontend_clk_moved_q && !gated_clk_toggling
       && !frontend_clk_toggling;
   `OCAH_FCOV_COVER(c_all_three_blocks_gated_together, all_blocks_gated_e, clk_smc_i, in_reset)
@@ -248,9 +256,17 @@ module smc_dma_fcov (
     cp_cg_en: coverpoint cg_en;
     cp_wakeup: coverpoint wakeup;
     cp_backend: coverpoint backend;
-    cp_fe_clk: coverpoint fe_clk_moving;
-    cp_be_clk: coverpoint be_clk_moving;
-    x_gaters: cross cp_fe_clk, cp_be_clk;
+    cp_fe_clk: coverpoint fe_clk_moving {bins held = {1'b0}; bins running = {1'b1};}
+    cp_be_clk: coverpoint be_clk_moving {bins held = {1'b0}; bins running = {1'b1};}
+    // dma.adoc (SMC DMA Clock Gating Configuration): the backend clock runs
+    // while the frontend or backend is busy, and the frontend clock runs then
+    // too and also while the control port has a transaction outstanding, with
+    // the same hysteresis, so the frontend clock is never held while the
+    // backend clock runs.
+    x_gaters: cross cp_fe_clk, cp_be_clk{
+      ignore_bins frontend_held_backend_running = binsof (cp_fe_clk.held) &&
+          binsof (cp_be_clk.running);
+    }
     x_sources: cross cp_wakeup, cp_backend;
   endgroup
 

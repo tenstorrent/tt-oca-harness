@@ -902,6 +902,10 @@ module smc_map_fcov (
   // Commercial-simulator covergroup: the attributed completion against the
   // layout region and response code, which the flat list cannot cross.
   // ------------------------------------------------------------------
+  localparam logic [NumRegions-1:0] RegionMemory = NumRegions'(1) << 9;
+  localparam logic [NumRegions-1:0] RegionCla = NumRegions'(1) << 10;
+  localparam logic [NumRegions-1:0] RegionRemap = NumRegions'(1) << 12;
+
   covergroup cg_map_access with function sample (
       logic [NumRegions-1:0] region, logic is_write, logic [1:0] resp
   );
@@ -917,15 +921,32 @@ module smc_map_fcov (
       bins unmapped = {13'b0};
     }
     cp_dir: coverpoint is_write;
-    // EXOKAY answers an exclusive access, and no manager on this bench issues
-    // one (the c_bresp_exokay / c_rresp_exokay points record the same fact).
+    // memmap.adoc says the fabric refuses an address between unit apertures
+    // or past a unit's decoded extent, and fabric.adoc names an error slave
+    // for invalid addresses; neither fixes which error code a refusal
+    // carries, so the bins are a completion and a refusal. EXOKAY answers an
+    // exclusive access, and no manager on this bench issues one (the
+    // per-manager channel points record the same fact).
     cp_resp: coverpoint resp {
-      bins okay = {2'b00};
-      bins slverr = {2'b10};
-      bins decerr = {2'b11};
-      ignore_bins exokay = {2'b01};
+      bins okay = {2'b00}; bins error = {2'b10, 2'b11}; ignore_bins exokay = {2'b01};
     }
-    x_region_resp: cross cp_region, cp_dir, cp_resp;
+    // Per-region facts:
+    // * CLA: the unit's decoded extent fills the region (memory_map.adoc,
+    //   smc_cla 16 KiB of 16 KiB), so no address in it is refused.
+    // * Address remapping: the remap stages serve the DMA, JTAG2AXI, log
+    //   engine and CPU external-path managers (fabric.adoc, SMC Fabric Traffic
+    //   Managers). This group samples SEP_IN, which the fabric refuses there.
+    // * Local memories: the ROM and scratchpad fill the region, so a read is
+    //   refused only for an uncorrectable ECC error, which needs fault
+    //   injection and is in the Phase 2 set (SMC_FCOV.adoc).
+    x_region_resp: cross cp_region, cp_dir, cp_resp{
+      ignore_bins cla_fills_region = binsof (cp_region) intersect {RegionCla} &&
+          binsof (cp_resp.error);
+      ignore_bins sep_in_not_remapped = binsof (cp_region) intersect {RegionRemap} &&
+          binsof (cp_resp.okay);
+      ignore_bins memory_read_refused = binsof (cp_region) intersect {RegionMemory} &&
+          binsof (cp_dir) intersect {1'b0} && binsof (cp_resp.error);
+    }
   endgroup
 
   cg_map_access u_cg_map_access = new();

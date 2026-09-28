@@ -296,14 +296,14 @@ them, isolation and FLR, and the protection and inbound filters.
 [[smc-fcov-groups]]
 === Covergroups
 
-Every covergroup bin is either walked by an `all`-group leaf or carried as an
-`ignore_bins` whose comment states the specification or bench fact that keeps
-it out of reach, the way the cover points are held. The bins that fact
-removes:
+Every covergroup bin and cross cell is either walked by an `all`-group leaf
+or carried as an `ignore_bins` whose comment states the specification or bench
+fact that keeps it out of reach, the way the cover points are held. The bins
+and cells that fact removes:
 
 [cols="2,2,4",options="header"]
 |===
-|Group |Bin |Why it is ignored
+|Group |Bin or cell |Why it is ignored
 |`smc_rst_seq_fcov::cg_primary_holds` |`cp_fabric` released |The primary
 reset covers the fabric infrastructure (`clk_rst.adoc`, Primary Reset), so
 both SEP_IN ready terms are low for the whole hold
@@ -313,17 +313,49 @@ cannot present a zero-strobe beat; the matching cover point is in
 |`smc_dma_fcov::cg_dma_burst` |`cp_strb` no byte |A transfer has a non-zero
 length (`dma.adoc`, zero-length transfers are rejected) and the backend
 writes only the bytes of the programmed range, so every beat carries one
+|`smc_map_fcov::cg_map_access` |CLA with an error |The CLA's decoded extent
+fills its region (`memory_map.adoc`), so no address in it is refused
+|`smc_map_fcov::cg_map_access` |Address remapping with OKAY |The remap stages
+serve the DMA, JTAG2AXI, log engine and CPU external-path managers
+(`fabric.adoc`, SMC Fabric Traffic Managers); the group samples SEP_IN
+|`smc_map_fcov::cg_map_access` |Local memories, read, error |In
+<<smc-fcov-phase2>>
+|`smc_iso_fcov::cg_isolate_terms` |Software term set, nothing isolated |Each
+subsystem's isolation is the OR of the software, pin and FLR terms
+(`clk_rst.adoc`, Isolation Control Architecture)
+|`smc_clk_fcov::cg_clk_ratio` |SMC much faster, peripheral slower |The
+peripheral clock is slower than the reference only against the 8 ns
+reference, where the fastest SMC clock is twice the reference
+|`smc_clk_fcov::cg_clk_gate` |Clock held with the gate bypassed or the block
+busy |`cg_enable_i` low bypasses the gate and a busy block keeps its clock
+(`dma.adoc`, `zeroer.adoc`, Clock Gating)
+|`smc_zeroer_fcov::cg_zeroer_gates` |A clock held while one of its enable
+terms is set; the AXI clock running on the reset term alone |`zeroer.adoc`
+(Clock Gating) gives each enable as an OR of its terms; the primary reset
+clears `CLOCK_GATE_CONTROL.ZEROER_CG_EN`, which sets `disable_cg`
+|`smc_dma_fcov::cg_dma_gates` |Frontend clock held, backend clock running
+|The frontend clock runs whenever the backend clock does, with the same
+hysteresis (`dma.adoc`, SMC DMA Clock Gating Configuration)
 |===
 
-`cg_sep_in_shape` crosses every AxSIZE with every burst type.
+`cg_map_access` grades a completion against a refusal rather than the
+response code: `memmap.adoc` and `fabric.adoc` say an address is refused but
+fix no code. `cg_sep_in_shape` crosses every AxSIZE with every burst type;
 `smc_sep_in_axi_shape_test` issues FIXED and WRAP bursts at each size, which
-the SEP_IN path refuses; the cells record the refusal at that size.
+the SEP_IN path refuses, and the cells record the refusal at that size.
+
+A gated clock is observed through a flop it toggles itself, and the gate
+terms it is crossed with are taken one sample late, because a movement seen at
+one sample is the edge the gate let through on the previous cycle. Sampling
+the clock net on the edge of the clock it is gated from reads the same level
+whether it runs or not.
 
 [[smc-fcov-phase2]]
 === Phase 2 (not collected)
 
-Each point below is compiled only under `SMC_FCOV_PHASE2`, which no target
-defines, so it is absent from every collected database.
+Each cover point below is compiled only under `SMC_FCOV_PHASE2`, which no
+target defines, so it is absent from every collected database. A covergroup
+cell here is an `ignore_bins` whose comment names this list.
 
 [cols="2,2,4,3",options="header"]
 |===
@@ -341,6 +373,11 @@ command that was not set up correctly, and the stream-0 frontend, which
 returns the transfer-id generator whatever the setup |A ruling: either the
 frontend returns 0 for a rejected command, and a leaf issues one, or the
 specification drops the sentence and the point with it
+|`cg_map_access`, local memories × read × error |`smc_map_fcov` |The ROM and
+scratchpad fill their region, so a read of them is refused only for an
+uncorrectable ECC error, which the bench reaches only by fault injection |A
+leaf that injects an uncorrectable scratchpad error and reads the word over
+SEP_IN
 |`c_sep_in_wstrb_none` |`smc_fabric_fcov` |A zero-strobe beat is legal AXI,
 but the bench AXI manager derives WSTRB from the bytes a payload covers and
 cannot present one |A SEP_IN driver that presents raw AW and W beats
