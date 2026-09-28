@@ -447,6 +447,125 @@ names:
   `simulation` target adds `prim_cdc_rand_delay.sv` to the `dtp` graph, so
   generate a simulation filelist with `-t dtp -t simulation`.
 
+[[sep-defines]]
+=== SEP
+
+The SEP graph adds four groups: the Adams Bridge block-selection defines, the
+VeeR EL2 core configuration, first-party view checks, and testbench-side DV
+names.
+
+[[sep-defines-abr]]
+==== Adams Bridge
+
+The Adams Bridge source group of the `sep` Bender target sets these three
+defines, and `flist-plus` emits them ahead of the source list. Every flow that
+uses the `sep` target gets them.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect
+
+|`SEP_ABR_EN`
+|Includes the Adams Bridge post-quantum engine: `sep_crypto` instantiates
+`sep_crypto_abr_wrapper`, and `sep_ip_integration` builds the ABR SRAMs.
+Without it, `sep_crypto` terminates the ABR AXI aperture and the key manager's
+ABR key bus with DECERR subordinates, and `sep_ip_integration` drives the ABR
+memory response to zero.
+
+|`CALIPTRA`
+|Adds the Caliptra Key Vault ports to `abr_top`, which `sep_abr_kv_shim`
+binds. The vendored RTL requires it. `sep_crypto` raises an elaboration
+`$error` when `SEP_ABR_EN` is set without `CALIPTRA`.
+
+|`TECH_SPECIFIC_ICG`
+|Removes the behavioural latch gate from `abr_icg.sv`. The overlay
+`abr_clk_gate` instantiates `prim_clock_gating` in its place.
+|===
+
+Adams Bridge also reads `RV_FPGA_SCA`, which adds FPGA side-channel trigger
+outputs to `abr_top`, and `FCOV`, which adds a covergroup to its AHB
+subordinate. No OCAH flow sets either.
+
+[[sep-defines-veer]]
+==== VeeR EL2 core
+
+The `RV_*` names that configure the VeeR EL2 core come from the snapshot
+header `vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common_defines.vh`,
+which the `sep_el2` Bender target puts on the include path. Change the core
+configuration by regenerating the snapshot with the `veer` command recorded in
+its header, not with a command-line `+define+`.
+
+The snapshot enables user mode (`RV_USER_MODE`), Smepmp (`RV_SMEPMP`) and the
+AXI4 bus interface (`RV_BUILD_AXI4`). It leaves `RV_BUILD_AHB_LITE`,
+`RV_ASSERT_ON`, `RV_FPGA_OPTIMIZE`, `RV_PHYSICAL`, `RV_CLOCKGATE`,
+`RV_LOCKSTEP_ENABLE` and `RV_LOCKSTEP_REGFILE_ENABLE` unset.
+
+`RV_LOCKSTEP_ENABLE` also changes SEP RTL. With it, `sep_cpu` connects
+`lockstep_ctrl_i` and `lockstep_status_o` to the lockstep ports of
+`el2_veer_wrapper`. Without it, `sep_cpu` ignores `lockstep_ctrl_i` and holds
+`lockstep_status_o` at zero. The `sep_cpu` port list is the same either way.
+
+The `sep_el2` Bender target sets `TECH_SPECIFIC_EC_RV_ICG`, so `beh_lib.sv`
+uses the snapshot's `user_clock_gate` cell rather than its own behavioural
+clock gate.
+
+The core also reads `GTLSIM`, which zero-initializes its RAM models for
+gate-level simulation, and `DUMP_BTB_ON`, which prints branch predictor
+configuration and a trace of BTB events. No OCAH flow sets either.
+
+[[sep-defines-checks]]
+==== First-party view checks
+
+* `sep_crypto` checks the key manager and eFuse AXI-Lite widths at elaboration
+  when `OCAH_DEBUG_LIVE` is defined.
+* `sep_local_axi_xbar_wrapper` and `sep_system_peripherals_xbar_wrapper` check
+  their AXI parameter widths at elaboration when `OCAH_DEBUG_LIVE` is defined.
+* `tlul_rsp_intg_gen` asserts that incoming response integrity and user bits
+  are zero, where its parameters declare them zero, when `OCAH_DEBUG_LIVE` is
+  defined.
+* In the simulation view, `entropy_ring_stage_wrappers` adds a `#1` delay to
+  each ring oscillator stage so the ring oscillates. `SYNTHESIS` and
+  `EMULATION` drop the delay, so a zero-delay simulation of either view has no
+  entropy source oscillation.
+
+The key manager's picorv32 core reads `FORMAL`, which compiles its embedded
+`assert` and `restrict` properties, and the riscv-formal names
+(`RISCV_FORMAL`, `RISCV_FORMAL_ALTOPS`, `RISCV_FORMAL_BLACKBOX_REGS`,
+`RISCV_FORMAL_BLACKBOX_ALU`), the `DEBUG*` trace names and the
+`PICORV32_TESTBUG_*` fault injections. Leave these unset outside a picorv32
+formal flow.
+
+[[sep-defines-dv]]
+==== DV testbench names
+
+SEP DV sets these for `hw/sys/sep/dv/tb/tb_top.sv` and its CPU stub. No DUT
+file reads them.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect
+
+|`SEP_JTAG_AXIL_LIVE`
+|Drives the OTP debug AXI-Lite port from the testbench instead of tying it
+off.
+
+|`SEP_SMN_INBOUND_AXI_LIVE`
+|Drives the SMN inbound AXI port from the testbench instead of tying it off.
+
+|`SEP_SMC_MEM_MODEL`
+|Routes the SMC address region to a testbench memory model. Set on the
+`rom_boot` target.
+
+|`SEP_CPU_STUB`
+|Compiles `hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv` in place of `sep_cpu`, so
+the build contains no VeeR core. The `lsu_stub_all_live` target sets it and
+removes `sep_cpu.sv` from the filelist.
+|===
+
+The SEP DV Verilator flags set neither `VERILATOR` nor `ASSERTS_OFF`.
+Verilator predefines the first; without the second, the PULP assertion macros
+expand.
+
 [[synthesis-filelist-defines]]
 == Synthesis filelist defines
 
