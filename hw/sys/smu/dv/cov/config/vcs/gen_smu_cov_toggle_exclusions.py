@@ -18,6 +18,12 @@ writes, and each class below states that fact and what would retire it:
   bus, and a transfer size above the bus width is not a legal AXI4 transfer.
 * SEP-OTP-DBG-TIED: the two OTP bridge terms of the SEP debug-disable vector,
   which the SEP lifecycle controller ties low.
+* EXT-TRNG-STREAM-TIED: the external TRNG AXI-stream requests, which the
+  reference SEP integration shell ties to zero.
+* SEP-DEBUG-LANES: the SEP half of the external debug bus, SEP-internal
+  status lanes the SMU only concatenates and forwards.
+* JTAG2AXI-FIXED: the AXI attributes the DTP JTAG2AXI bridges hold constant,
+  on the nets that carry only bridge traffic.
 * AXI-DATA, AXI-USER: write data, write strobe, read data and the user
   sideband of every AXI and AXI-Lite channel these units carry. The crossbar
   and the ID converters decode addresses and ids and pass these words
@@ -42,8 +48,8 @@ the base and sends a read and a write out through the crossbar, and
 `smu_sep_bidirect_test` drives the dedicated SMC channel, so a hole there is a
 stimulus gap.
 
-Apart from those last five classes and MEM-MACRO-CONTROL and AXSIZE-BUS-WIDTH,
-whose facts name them, no class takes an
+Apart from those last five classes and MEM-MACRO-CONTROL, AXSIZE-BUS-WIDTH,
+EXT-TRNG-STREAM-TIED and JTAG2AXI-FIXED, whose facts name them, no class takes an
 address, id, length, size, burst, cache, protection, QoS, region, lock or
 atomic field, nor a valid, ready or enable: those are decode and handshake,
 and a hole in one is a stimulus gap.
@@ -145,6 +151,75 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "sep_lifecycle_ctrl driving either term from the lifecycle state",
         ("smu",),
         None,
+    ),
+    (
+        "EXT-TRNG-STREAM-TIED",
+        re.compile(r"^ext_trng_axis_req(_i)?(\[\d+\])?\."),
+        "the external TRNG AXI-stream requests into the SEP. hw/top/sep_ip_integration.sv "
+        "(773) assigns every stream '{default: '0}, so tdata, tstrb and tvalid are "
+        "constant in this integration; an adopter TRNG replaces that assignment.",
+        "an integration shell that connects an external TRNG stream source",
+        None,
+        None,
+    ),
+    (
+        "SEP-DEBUG-LANES",
+        re.compile(r"^(sep_)?ext_debug_bus$"),
+        "the SEP half, bits [383:0], of the external debug bus. sep.sv (1186-1275) "
+        "packs SEP-internal status into 24 sixteen-bit lanes -- CPU trace, ECC and "
+        "performance-counter strobes, interrupt and reset status, eFuse, token, remap "
+        "and filter-hit debug, and reserved zero fields -- and smu.sv (1382-1385) "
+        "only concatenates it under the "
+        "adopter's bits and hands it to the SMC debug mux; the SEP bench grades each "
+        "source.",
+        "SMU logic that reads a SEP debug lane",
+        ("smu",),
+        ((0, 383),),
+    ),
+    (
+        "JTAG2AXI-FIXED",
+        re.compile(
+            r"^(dtp_axi_smc_dbg_req\.(aw|ar)\.(id|len|lock|prot|qos|region)|"
+            r"dtp_axil_(smc|sep)_otp_jtag_req\.(aw|ar)\.prot)$"
+        ),
+        "AXI attributes the DTP JTAG2AXI bridges drive as constants: AxID 0, AxLEN 0, "
+        "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
+        "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
+        "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
+        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
+        "the first transfer and fall on a reset.",
+        "a JTAG2AXI bridge that programs any of these attributes",
+        ("smu",),
+        None,
+    ),
+    (
+        "JTAG2AXI-FIXED",
+        re.compile(r"^dtp_axi_smc_dbg_req\.(aw|ar)\.burst$"),
+        "AXI attributes the DTP JTAG2AXI bridges drive as constants: AxID 0, AxLEN 0, "
+        "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
+        "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
+        "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
+        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
+        "the first transfer and fall on a reset.",
+        "a JTAG2AXI bridge that programs any of these attributes",
+        ("smu",),
+        ((1, 1),),
+    ),
+    (
+        "JTAG2AXI-FIXED",
+        re.compile(r"^dtp_axi_smc_dbg_req\.(aw|ar)\.cache$"),
+        "AXI attributes the DTP JTAG2AXI bridges drive as constants: AxID 0, AxLEN 0, "
+        "INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 "
+        "(hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv 141-142, 1185-1219, and 76/104 for the "
+        "AXI4-Lite prot outputs). smu.sv connects each bridge straight to its target "
+        "(711-716, 791-794, 963), so no other master drives these nets. Only the bits "
+        "those constants hold at 0 are taken; the INCR and AxCACHE bits at 1 rise on "
+        "the first transfer and fall on a reset.",
+        "a JTAG2AXI bridge that programs any of these attributes",
+        ("smu",),
+        ((0, 0), (2, 3)),
     ),
     (
         "AXI-USER",
