@@ -1639,6 +1639,36 @@ module sep_uvm_top
 `undef OTBN_RND_REQ
 `undef OTBN_URND_REQ
 
+    // +sep_otbn_cmd_drop -- fault injection, off by default. Makes OTBN ignore
+    // every command write, leaving the block powered, idle and error-free while
+    // no program ever runs.
+    //
+    // This is the "the CMD store never landed" case: what an instruction-skip
+    // glitch on the store produces deliberately, and what clock or reset
+    // mis-sequencing produces by accident. It is worth injecting because the
+    // block is indistinguishable from a completed run on the two registers the
+    // ROM used to consult -- STATUS reads IDLE (the state it was already in) and
+    // ERR_BITS reads 0 (nothing ran to fail). INTR_STATE.done is the only signal
+    // that separates them, which is what otbn_execute() now requires.
+    logic otbn_cmd_drop_on;
+    initial begin
+        otbn_cmd_drop_on = $test$plusargs("sep_otbn_cmd_drop");
+        if (otbn_cmd_drop_on) begin
+            $display("[tb] *** FAULT INJECTION: +sep_otbn_cmd_drop -- OTBN command writes");
+            $display("[tb] *** are dropped; no OTBN program will execute.");
+        end
+    end
+
+// reg2hw.cmd.qe is the write-enable otbn.sv decodes CmdExecute from
+// (otbn.sv:852-854), so holding it low drops commands without disturbing
+// anything else the block reports.
+`define OTBN_CMD_QE \
+    `SEP_CORE.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.reg2hw.cmd.qe
+    always @(posedge clk_i) begin
+        if (otbn_cmd_drop_on) force `OTBN_CMD_QE = 1'b0;
+    end
+`undef OTBN_CMD_QE
+
     // Entropy datapath probe taps (compiled-in XMR reads; no --public-flat-rw).
     assign esrc_ro_enable_o     = `SEP_ESRC.u_generator_complex.jitter_ro_enable_i;
     assign esrc_decor_bytes_o   = `SEP_ESRC.u_generator_complex.entropy_stream_uncompressed_o;

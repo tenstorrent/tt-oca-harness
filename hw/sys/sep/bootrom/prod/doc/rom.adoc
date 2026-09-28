@@ -2021,6 +2021,18 @@ ROM otherwise does not use. An earlier specification described provisioning the 
 public key `(n, e)` into the Key Manager through its software write port; that description
 is withdrawn and should not be reintroduced.
 
+[[req-SEP-ROM-SB-120]]*[SEP-ROM-SB-120]* Signature verification shall not report success
+unless OTBN is confirmed to have executed. The RSA application uses one DMEM buffer
+(`inout`) for both the signature and the modexp result, so a command the block never
+accepted leaves the caller's own signature bytes where the result belongs — and a signature
+authored as a well-formed PKCS#1 v1.5 block then verifies against itself, with no private
+key involved. Neither register the completion path would naturally consult distinguishes
+that case: `STATUS` reads idle, which is the state OTBN was already in, and `ERR_BITS` reads
+zero, because nothing ran to fail. `INTR_STATE.done`, cleared before the command and
+required after it, is the signal that separates "finished" from "never started". The ROM
+shall additionally reject a result bit-identical to the signature it supplied, since
+`sig^e mod n` cannot equal `sig` for a value that also parses as that block.
+
 [[fig:key_select_revoke]]
 .Key authorization, revocation, and verification
 [plantuml,key-select-revoke,svg]
@@ -3307,6 +3319,8 @@ terminal
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-110,SEP-ROM-SB-110>> |Public key goes straight to OTBN; Key Manager not
 involved |<<sec:secure_boot>>
+|<<req-SEP-ROM-SB-120,SEP-ROM-SB-120>> |No verified verdict unless OTBN is confirmed to have
+executed |<<sec:secure_boot>>
 |<<req-SEP-ROM-ENT-010,SEP-ROM-ENT-010>> |Entropy chain brought up lazily, once, before
 first use |<<sec:entropy>>
 |<<req-SEP-ROM-ENT-020,SEP-ROM-ENT-020>> |Entropy bring-up failure stops the boot; not a

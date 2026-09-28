@@ -18,6 +18,7 @@
 #define OTBN_ERR_EXEC -2
 #define OTBN_ERR_CRC -3
 #define OTBN_ERR_NOT_IDLE -4
+#define OTBN_ERR_NOT_STARTED -5
 
 // Initialize OTBN: release from SW reset, zero DMEM.
 // Returns OTBN_OK on success.
@@ -34,5 +35,12 @@ void otbn_dmem_write(uint32_t byte_offset, const uint32_t *data, uint32_t word_c
 void otbn_dmem_read(uint32_t byte_offset, uint32_t *data, uint32_t word_count);
 
 // Execute the loaded OTBN program and wait for completion.
-// Returns OTBN_OK on success, OTBN_ERR_TIMEOUT or OTBN_ERR_EXEC on failure.
+//
+// Success means the program ran to completion: a command the block never
+// accepted returns OTBN_ERR_NOT_STARTED rather than OTBN_OK, so a caller that
+// gets OTBN_OK can trust that DMEM holds a computed result and not its own
+// inputs.
+//
+// Returns OTBN_OK on success, or OTBN_ERR_TIMEOUT / OTBN_ERR_NOT_STARTED /
+// OTBN_ERR_EXEC on failure.
 int otbn_execute(void);

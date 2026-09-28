@@ -316,6 +316,9 @@ tests = [
     # The other half of SBOOT_DIS: a RESERVED bit set, which must be a
     # fuse-integrity fault rather than a second chicken bit (SEP-ROM-SB-041).
     "sep_firmware_sboot_dis_rsvd_terminal_test",
+    # Fault injection: OTBN command dropped, forged PKCS#1 block. Proves the
+    # verifier cannot report success on a modexp that never ran.
+    "sep_otbn_no_op_bypass_test",
     "sep_firmware_enforced_secure_boot_flow_test",
     "sep_firmware_cntl_secure_boot_flow_test",
     "sep_firmware_backup_invalid_signature_test",

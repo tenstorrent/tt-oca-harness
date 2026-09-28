@@ -320,6 +320,39 @@ args = [
 ]
 
 [[tests]]
+# An OTBN that never executed must not report a verified signature.
+#
+# +sep_otbn_cmd_drop holds reg2hw.cmd.qe low so OTBN ignores every command while
+# staying powered and idle, and the test forges the literal PKCS#1 v1.5 block
+# into both slots' signature fields. The modexp result shares its DMEM buffer
+# with the signature, so a block that never runs leaves the forgery in place for
+# the checker to accept -- an unverified boot reported as a verified one. The
+# ROM must refuse it on INTR_STATE.done instead.
+#
+# +esrc_noise_force is load-bearing: the signature path establishes entropy
+# before OTBN, and without injected noise the health test stops the boot short
+# of the verifier this entry exists to exercise.
+#
+# No +sep_efuse_preload: the packed image carries secure_boot_control, so
+# verification is in force under the default TEST_DEV OTP, the same way
+# sep_rom_ot_secure_boot_test relies on it.
+name = "sep_otbn_no_op_bypass_test"
+module = "rom_fw.sep_otbn_no_op_bypass_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+# No modexp runs on either slot, so this is far short of the full-RSA entries.
+timeout_sec = 7200
+tags = ["boot", "rom", "secure", "crypto", "otbn", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+  "+sep_otbn_cmd_drop",
+  "+esrc_noise_force",
+]
+
+[[tests]]
 # Enforced secure boot under PROD.
 # The full RSA-3072 chain runs on OTBN, which parks in UrndRefresh until EDN
 # grants entropy. The ROM brings that chain up itself, so this needs only
