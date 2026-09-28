@@ -4,130 +4,127 @@
 [[uart-16550-architecture]]
 == Architecture
 
-=== Overview
+`uart_16550` selects the register view; `uart_core` manages buffering, baud
+timing, modem state and interrupts; `uart_tx` and `uart_rx` serialize and
+sample characters. All core logic uses `clk_i`.
 
-The UART 16550 IP uses a hierarchical architecture with three main
-layers: a top-level wrapper handling the register interface, the core
-UART logic with FIFO management, and the transmit/receive engines. This
-separation allows for clear division between interface, data flow, and
-serial processing.
+=== Transmit and Receive Paths
 
-=== Hierarchical Structure
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="overview-2"></span>
+<span id="hierarchical-structure"></span>
+<span id="data-flow-architecture"></span>
+<span id="transmit-data-flow"></span>
+<span id="receive-data-flow"></span>
+++++
+endif::backend-html5[]
 
-*Top Level* (uart_16550)
+With `LCR.DLAB=0`, a write to `THR` supplies a transmit byte and a read of `RBR`
+consumes a received byte. FIFO mode queues characters; non-FIFO mode uses one
+holding register per direction. Changing `FCR.FIFO_ENABLE` clears both FIFOs
+and the single-character holding state, so changing mode can discard data.
 
-The `uart_16550` top-level module acts as an interface wrapper. It
-manages AXI4-Lite transactions and register map routing, ensuring
-protocol compliance and reliable integration.
+The transmitter runs whenever enabled and data is available, independently of
+CTS. `LSR.THRE` means the TX FIFO/holding register is empty; `LSR.TEMT` also
+requires the serializer to be idle. Use TEMT when the final character must have
+left the transmitter before reconfiguration.
 
-*UART Core* (uart_core)
+The receiver synchronizes `rx_i` and uses a three-sample majority decision at
+16-times-baud sampling. Received parity, framing and break indications accompany
+characters; software reads line status before consuming their data. In FIFO
+mode, an overrun drops the newly received character; in non-FIFO mode an unread
+character can be overwritten in RBR. Frame format supports 5–8 data bits, selectable parity
+and stop-bit configuration. `LCR.SET_BREAK` forces the transmit line low.
 
-The `uart_core` module handles the main UART functions. It manages
-transmit and receive FIFOs with configurable depths from 4 to 4096
-entries, supporting diverse use cases from low-latency to
-high-throughput. Baud rate generation uses 16x oversampling with a
-programmable divisor for timing precision.
+=== Baud Timing and Register Views
 
-The interrupt controller handles six prioritized interrupt sources, and
-modem control supports all standard modem signals. The modem interface is
-status and control only - the inputs are synchronized and reported in the
-`MSR` register with change detection and an interrupt, and the outputs are
-driven directly from the `MCR` register. No modem signal gates the
-transmit or receive datapath, so hardware flow control, if needed, is
-implemented by software on top of these registers. DMA is supported in
-both immediate and hysteresis modes for efficient data transfers. Both
-internal and external loopback modes are supported for testing and
-diagnostics.
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="divisor-latch-access-mode"></span>
+<span id="serial-interface-timing"></span>
+++++
+endif::backend-html5[]
 
-The core works together with the transmit engine (serialization),
-receive engine (deserialization), FIFO controllers for buffering, and
-timeout detection logic, providing a balance of performance and
-reliability.
+`LCR.DLAB` selects DLL/DLM at offsets `0x00` and `0x04` for divisor programming.
+With DLAB clear, these offsets select RBR/THR and IER. Other offsets retain their
+normal meaning. Serial operation is disabled when the combined divisor is zero;
+otherwise baud rate is `clk_i_frequency / (16 * (divisor + 1))`.
+The smallest usable divisor, 1, gives a maximum baud rate of `clk_i_frequency/32`.
 
-*Transmit Engine* (uart_tx)
+=== FIFO Protection and Line Errors
 
-The `uart_tx` module serializes parallel data for transmission,
-maintaining timing accuracy and signal integrity. It generates frames
-with selectable start, parity, and stop bits to match protocol
-requirements and legacy compatibility. Baud rate alignment uses 16x
-oversampling for precise timing. It also supports break signal generation
-for protocol control or device reset. The engine has no modem inputs and
-transmits whenever the TX FIFO is non-empty; it does not stall on CTS.
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="error-handling-architecture"></span>
+<span id="fifo-parity-protection"></span>
+<span id="serial-communication-errors"></span>
+<span id="error-interface"></span>
+<span id="uart-error-interface-signals-table"></span>
+++++
+endif::backend-html5[]
 
-*Receive Engine* (uart_rx)
-
-The `uart_rx` module deserializes incoming data, maintaining integrity
-and providing error detection. It detects start bits, validates stop
-bits, and checks parity where enabled, reporting errors for diagnostic
-use. Error detection covers framing errors, parity errors, and break
-conditions. Sampling uses 16x oversampling with majority voting for
-noise immunity. Timeout detection flags when reception exceeds 4
-character periods.
-
-=== Data Flow Architecture
-
-=== Transmit Data Flow
-
-1.  *CPU Write*: Software writes data to THR or FIFO
-2.  *FIFO Buffering*: Data goes into transmit FIFO
-3.  *Serialization*: Transmit engine converts to serial
-4.  *Output*: Data is sent via `tx_o`
-
-=== Receive Data Flow
-
-1.  *Input Sampling*: Receive engine samples `rx_i` at 16x baud rate
-2.  *Frame Processing*: Detects start bit, extracts data, checks parity
-and stop bit
-3.  *FIFO Storage*: Stores valid data in receive FIFO with error flags
-4.  *CPU Read*: Software reads data from RBR or FIFO
-
-When DLAB (Divisor Latch Access Bit) = 0: - Address 0x0: RBR (read), THR
-(write) - Address 0x4: IER - Standard UART 16550 register layout is
-active
-
-=== Divisor Latch Access Mode
-
-When DLAB = 1: - Address 0x0: DLL (Divisor Latch Low) - Address 0x4: DLM
-(Divisor Latch High) - Used for baud rate divisor programming
-
-=== Clock Domain Considerations
-
-UART 16550 operates in a single system clock domain (`clk_i`), with all
-external asynchronous inputs synchronized to prevent metastability. This
-simplifies integration and maintains reliable timing.
-
-Modem control inputs (CTS, DSR, RI, DCD) are synchronized to avoid
-errors. Serial input sampling uses 16x oversampling and majority voting,
-which also helps with synchronization. Reset is asserted asynchronously
-for immediate response but deasserts synchronously for safe recovery and
-predictable operation.
-
-=== Error Handling Architecture
-
-The design includes thorough error detection and reporting:
-
-=== FIFO Parity Protection
-
-FIFO parity protection covers stored data and pointers, detecting
-single-bit errors and maintaining integrity in FIFO control structures.
-Errors generate interrupts and error outputs for quick response by
-system software.
-
-=== Serial Communication Errors
-
-<<uart-serial-communication-errors-table>> lists the serial errors detected by the UART.
+FIFO/holding-register data and FIFO pointers have parity protection. An internal
+parity failure drives `err_o` and can raise the separately enabled FIFO-error
+interrupt. This is different from parity in a received serial frame.
 
 [[uart-serial-communication-errors-table]]
-.UART Serial Communication Errors
-[cols=",",options="header",]
-|=======================================================================
-|Error Type |Description
-|*Framing Errors* |Detection of invalid stop bits
+[cols="1,3",options="header"]
+.UART serial errors
+|===
+|LSR field |Meaning
+|`OE` |Receive FIFO overrun: a character arrived while the receive FIFO was full.
+|`PE` |Parity error on the character exposed at the receive head.
+|`FE` |Invalid stop bit on that character.
+|`BI` |Break: the received frame remained low.
+|===
 
-|*Parity Errors* |Validation of received parity bits (when enabled)
+In the current RTL, overwriting an unread non-FIFO RBR does not set OE.
+These error fields clear on an LSR read. Capture the status once for the
+character being serviced; repeated diagnostic reads can consume error evidence.
+The generated map specifies the status fields and their access side effects.
 
-|*Overrun Errors* |Detection of FIFO overflow conditions
+=== Interrupt Priority and Service
 
-|*Break Detection* |Recognition of extended low periods indicating break
-signals
-|=======================================================================
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="interrupt-interface"></span>
+<span id="uart-interrupt-interface-signals-table"></span>
+++++
+endif::backend-html5[]
+
+`irq_o` reports the OR of the interrupt requests. `IIR.INTERRUPT_PENDING=0`
+means a request is pending; `IIR.INTERRUPT_ID` identifies the highest-priority
+source. The following table is ordered highest first; IDs are the three-bit
+field values, not the full IIR register value.
+
+[[uart-interrupt-service-table]]
+[cols="1,2,3",options="header"]
+.UART interrupt priority and service
+|===
+|ID |Source |Service / control
+|7 |FIFO integrity error |Investigate `err_o`; `IER.EFEI` masks this source.
+An IIR read does not repair or acknowledge an underlying parity failure.
+|3 |Receiver line status |Capture LSR error fields, then service receive data;
+controlled by `IER.ELSI`.
+|6 |Receive timeout |Read RBR to clear the latched timeout. It is generated in
+FIFO mode after roughly four character times without receive-FIFO occupancy
+change. In the current RTL this request is not gated by IER.
+|2 |Received data ready |Drain RBR below the selected FIFO trigger, or consume
+the non-FIFO character; controlled by `IER.ERBFI`.
+|1 |Transmit holding register empty |Write THR, or read IIR while this is the
+selected source, to clear its latch. A subsequent transition back to empty
+re-arms it; controlled by `IER.ETBEI`.
+|0 |Modem status |Read MSR once to capture levels and clear delta bits;
+controlled by `IER.EDSSI`.
+|===
+
+`MCR.OUT2` does not gate `irq_o`; its modem and loopback uses are described
+in the programming section. The ITR
+extension can force interrupt sources for testing. Clear test settings after
+use. Do not rely on clearing IER alone to silence the unmasked timeout source;
+use the subsystem interrupt controller when masking all delivery is required.
