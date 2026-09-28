@@ -3,24 +3,31 @@
 """LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
 
 Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter
-_gating_test``). The contract:
+_gating_test``). The contract comes from the specification:
 
-  feat_ctrl.sep_debug (FEAT_CTRL[0]) drives the SEP inbound filter's
-  ``filter_skip_i`` (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``).
-  When sep_debug=0 the inbound filter is active (block-by-default) and an external
-  AXI access is blocked; when sep_debug=1 the filter is skipped and the external
-  access reaches the SEP-local fabric.
+  * ``feat_ctrl_o = ~(SIP_DIS | SYS_DIS)`` is positive logic, and bit 0 is
+    ``SEP_DBG``: 1 = SEP-scope debug enabled, inbound traffic bypasses the
+    filter; 0 = disabled, inbound traffic is filtered
+    (``hw/sys/sep/doc/lifecycle_controller.adoc``, feature-control-vector-definition).
+  * The inbound filter is bypassed in its entirety while SEP-scope debug is
+    enabled, and blocks traffic that matches no entry
+    (``hw/sys/sep/doc/fabric.adoc``, sep-traffic-filter-decode).
+  * A blocked transaction is not dropped: it is terminated with ``DECERR`` on
+    ``RRESP`` (``hw/ip/axi_filter/doc/index.adoc``, axi-traffic-filter-blocked).
+
+  So with FEAT_CTRL[0]=0 an external AXI read is refused with DECERR, and with
+  FEAT_CTRL[0]=1 it reaches the SEP-local fabric and returns OKAY.
 
 Two buses are exercised:
   * CONTROL (CPU-LSU, ``s_axi``, no inbound filter): reads FEAT_CTRL and writes
     DEMOTE_1 to flip PROD -> PROD_DBG_1. FEAT_CTRL reads carry an ``expected``
     golden value so the scoreboard exact-value-checks the lc_state -> feat_ctrl
-    decode (and FEAT_CTRL[0] is the frontdoor mirror of the internal
-    ``filter_skip_i`` -- the OSS replacement for the reference suite's backdoor ``uvm_hdl_read``).
+    decode. FEAT_CTRL[0] is the frontdoor view of the SEP_DBG enable, in place of
+    the reference suite's backdoor ``uvm_hdl_read``.
   * EXTERNAL (SMN-inbound, ``m_axi``): the filtered path. ``SepExtAxiProbeSeq``
     issues a single read and exposes resp_ok / resp_code / timed_out. Timeout is
-    fatal by default; the inbound filter proves a blocked access by routing it to
-    axi_err_slv with RESP_DECERR.
+    fatal by default; a blocked access is proven by the DECERR response the
+    specification requires.
 
 Register-map constants live here (co-located with the stimulus, never copied into
 the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl``.
@@ -134,8 +141,8 @@ class SepExtAxiProbeSeq(uvm_sequence):
     """Single read on the EXTERNAL (SMN-inbound, ``m_axi``) master.
 
     Run on the external sequencer (``start_ext_seq``). The access traverses the
-    inbound filter: blocked when sep_debug=0 (the filter routes it to axi_err_slv
-    -> RESP_DECERR) and allowed when sep_debug=1 (OKAY + real data). Exposes
+    inbound filter: blocked when sep_debug=0 (RESP_DECERR, per the module
+    contract) and allowed when sep_debug=1 (OKAY + real data). Exposes
     ``resp_ok`` / ``resp_code`` / ``timed_out`` / ``rdata``.
 
     ``allow_timeout`` defaults False: a non-completing access is then a test-fatal

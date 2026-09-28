@@ -5,11 +5,15 @@
 OSS port of the reference UVM ``sep_lcc_uvm_inbound_filter_gating_test``.
 Proves that ``feat_ctrl.sep_debug`` gates the SEP inbound filter:
 external AXI is BLOCKED in PROD (sep_debug=0, filter active) and ALLOWED in
-PROD_DBG_1 (sep_debug=1, filter skipped). Datapath
-(``sep.sv``: ``inbound_filter_skip_i = feat_ctrl.sep_debug``):
+PROD_DBG_1 (sep_debug=1, filter bypassed). The allow/refuse rule and the DECERR
+response come from the specification, as set out in the contract of
+``seq_lib/sep_lcc_inbound_filter_gating_seq.py`` (``lifecycle_controller.adoc``
+feature-control-vector-definition for SEP_DBG = FEAT_CTRL[0]; ``fabric.adoc``
+sep-traffic-filter-decode for the bypass; ``hw/ip/axi_filter/doc/index.adoc``
+axi-traffic-filter-blocked for DECERR):
 
-    eFuse OTP (LC_STATE=PROD) --sense--> LCC --feat_ctrl[0]=sep_debug-->
-        u_inbound_filter.filter_skip_i --gates--> smn_inbound external AXI
+    eFuse OTP (LC_STATE=PROD) --sense--> LCC --FEAT_CTRL[0]=SEP_DBG-->
+        inbound filter bypass --gates--> smn_inbound external AXI
 
 Run mode: ``no_cpu`` with REAL fuse sense (no ``+skip_fuse_sense``). A custom OTP
 image with LC_STATE constrained to PROD (random elsewhere, distinct non-zero
@@ -124,10 +128,10 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             ctl_prod.feat_ctrl,
         )
 
-        # allow_timeout=False: a blocked access must return the SPECIFIC DECERR
-        # the inbound filter's axi_err_slv emits (axi_filter_wrap.sv RESP_DECERR),
-        # NOT a timeout (which would be a wedge) and NOT SLVERR. A timeout raises
-        # in the driver and fails the test.
+        # allow_timeout=False: a blocked access must return DECERR, the response
+        # the specification assigns to a blocked transaction (axi_filter
+        # index.adoc, axi-traffic-filter-blocked) -- not a timeout (a wedge) and
+        # not SLVERR. A timeout raises in the driver and fails the test.
         probe_prod = SepExtAxiProbeSeq(LCC_FEAT_CTRL)
         await self.start_ext_seq(probe_prod)
         assert not probe_prod.resp_ok, (
@@ -255,15 +259,15 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             exp_lo,
         )
 
-        # ---- filter_skip_i identity + non-vacuity ----
+        # ---- SEP_DBG identity + non-vacuity ----
         assert (not probe_prod.resp_ok) and probe_lo.resp_ok, (
             "CHK-NONVAC: did not observe BOTH a blocked (PROD, DECERR) and an "
             "allowed (PROD_DBG_1, OKAY) external access"
         )
         self.logger.info(
-            # Do not name filter_skip_i here: nothing in this test samples that
-            # signal. The evidence is the external access flipping from DECERR to
-            # OKAY across the sep_debug change, which is a behavioural claim.
+            # The evidence is the external access flipping from DECERR to OKAY
+            # across the sep_debug change, a behavioural claim; no internal
+            # filter net is sampled.
             "CHK-IDENTITY PASS: external inbound access follows feat_ctrl.sep_debug "
             "(blocked@sep_debug=0 -> allowed@sep_debug=1)"
         )

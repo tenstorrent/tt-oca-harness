@@ -243,17 +243,33 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # AW and W carry no ordering requirement between them (AMBA IHI 0022
         # A3.3); one write transaction answers one BRESP. The backend presents
         # both in the same cycle, so the aw-first and w-first arms of that
-        # handshake are unreachable without arming the master.
+        # handshake are unreachable without arming the master. The profile is
+        # only a request: the order the DUT saw is taken from the s_axi monitor,
+        # which records the first AWVALID and WVALID cycle after it is armed.
+        # The background ESRC FIFO drain shares this master, so it is paused
+        # while the profile is armed; ESRC is already disabled, so the FIFO
+        # cannot overflow meanwhile.
         drv = self.env.axi_agent.driver.axi.driver
+        mon = self.env.axi_monitor
+        await self.stop_fifo_drain()
         for order, profile in (
             ("aw-first", AxiTimingProfile(w_delay=4)),
             ("w-first", AxiTimingProfile(aw_delay=4)),
         ):
+            mon.arm_write_order()
             drv.set_timing(profile)
             try:
                 wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
+                # Sample before the status read below issues more traffic.
+                seen = mon.last_write_stim
+                aw_cyc, w_cyc = mon.write_order_cycles[0], mon.write_order_cycles[1]
             finally:
                 drv.set_timing(AxiTimingProfile())
+            assert seen == order, (
+                f"CHK-WRITE-ORDER FAIL: requested {order} but the s_axi monitor saw "
+                f"{seen} (AWVALID cycle {aw_cyc}, WVALID cycle {w_cyc}); the arm "
+                "cannot be credited from the timing profile alone"
+            )
             assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
                 f"{order} write resp={wr.resp_code} timed_out={wr.timed_out}, "
                 f"expected one SLVERR; a slave that assumes same-cycle arrival "
@@ -264,10 +280,14 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 f"{order} write changed fifo_level {level_room} -> {pool_level(st)}"
             )
             self.logger.info(
-                "CHK-WRITE-ORDER PASS: %s write BRESP=SLVERR, level unchanged (%d)",
+                "CHK-WRITE-ORDER PASS: %s write observed on s_axi (AWVALID cycle %s, "
+                "WVALID cycle %s), BRESP=SLVERR, level unchanged (%d)",
                 order,
+                aw_cyc,
+                w_cyc,
                 level_room,
             )
+        self.start_fifo_drain()
 
         await ClockCycles(cocotb.top.clk_i, STALL_THRESH + 64)
         st_stall = await pool.status()

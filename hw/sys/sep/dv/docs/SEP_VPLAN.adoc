@@ -3828,7 +3828,7 @@ a waiting write, and two masters writing the same register.
 |CHK-STALL-DURATION
 |Holding the same stall three times past `StallThresh` leaves `[37]` asserted and the irq-cause code still reading the fill-stall value. The counter saturates and the flag clears only on forward progress, so a counter that wrapped or a flag that self-cleared on saturation would drop the fault while the outage continued.
 |CHK-WRITE-ORDER
-|A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3) and `sep_entropy_fifo.sv:390` states the module accepts either order; the backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`. A slave that assumed same-cycle arrival would wedge or answer twice.
+|A write whose AW leads W, and one whose W leads AW, each answer a single BRESP=SLVERR and leave `fifo_level` unchanged. AW and W carry no ordering requirement between them (AMBA IHI 0022 A3.3). The backend presents both in the same cycle, so the split-arrival arms of that handshake need the master armed with an `AxiTimingProfile`; the profile is only a request, so each arm is credited from the order the `s_axi` monitor observed (first AWVALID and WVALID cycle), and the background FIFO drain on the same master is paused while the profile is armed. A slave that assumed same-cycle arrival would wedge or answer twice.
 |CHK-WRITE-SLVERR
 |Writes to STATUS, IRQ_CAUSE, DATA and one unmapped offset return SLVERR and do not change `fifo_level` while the pool is not full (a full FIFO cannot show a refused fill).
 |CHK-UNMAPPED
@@ -4086,7 +4086,7 @@ claimed for the same reason. Both need the external inbound master — see
 . Read `STATUS` and `READ_DATA` before the peer writes anything, and read `ERROR_FLAGS` twice.
 . Push two 64-bit entries whose four halves are all distinct, from the external master, at the peer aperture's `WRITE_DATA`. A non-OKAY response here fails immediately rather than being carried into the checks.
 . Read `READ_DATA` at the low half, then at the high half, and compare each against the entry halves.
-. Program `RIRQT`, enable `rtirq`, fill above the threshold, read `STATUS`, `IRQS` and `IRQP`, then drain back to exactly the threshold.
+. Program `RIRQT`, enable `rtirq`, write-1-clear `IRQS.rtirq` and read `IRQS` and `IRQP`. Fill to exactly the threshold and read `STATUS` and `IRQS`; fill above it and read `STATUS`, `IRQS` and `IRQP`; then drain back to exactly the threshold.
 . Close the allow window, repeat the peer write, and read `STATUS` either side of it. Then reopen the window and repeat the write once more.
 
 *Checkers*:
@@ -4103,7 +4103,7 @@ claimed for the same reason. Both need the external inbound master — see
 |CHK-HIGH-HALF-LOSS
 |The high-half read does not return the high word of the first entry. This is the specified behaviour and it is the opposite of the intuitive one: two 32-bit reads do not reassemble one 64-bit entry, they consume two entries and the discarded half is lost. A DUT that packed two reads into one entry fails here, and it is the reason the two entries are chosen with four distinct halves.
 |CHK-RIRQT
-|`RIRQT` reads back as written; `STATUS.read_level_above` is clear on an empty FIFO, set once the fill exceeds the threshold, and clear again at exactly the threshold, matching the strict greater-than the write half already uses. With `rtirq` enabled, `IRQS.rtirq` is raised and reaches `IRQP` through the enable gate.
+|`RIRQT` reads back as written; `STATUS.read_level_above` is clear on an empty FIFO, set once the fill exceeds the threshold, and clear again at exactly the threshold, matching the strict greater-than the write half already uses. `IRQS.rtirq` is sticky and the two earlier pushes already exceeded the reset `RIRQT`, so it is cleared first and must read 0 in `IRQS` and `IRQP`; it must stay 0 at exactly the threshold, and only then, once the fill exceeds the threshold with `rtirq` enabled, is it raised and reaches `IRQP` through the enable gate.
 |CHK-FILTER-DENY
 |With the allow window closed, the same peer write that succeeded a moment earlier takes DECERR from the filter error slave and `STATUS` does not move. The refusal is measured on a path a healthy design has just been shown to complete, rather than against a bus that might be dead, which is what makes it a real deny rather than an absence of traffic. A DECERR that still enqueued would fail the second half.
 |CHK-FILTER-REOPEN
