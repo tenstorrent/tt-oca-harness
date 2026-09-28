@@ -1196,6 +1196,13 @@ module sep_uvm_top
     assign efuse_shadow_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
 
+    assign km_otp_sep_chiplet_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_chiplet_id;
+    assign km_otp_sep_sip_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sip_id;
+    assign km_otp_sep_sys_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sys_id;
+
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
     // ESRC decorrelator-SR probe below). The EL2 coexist firmware mirrors its
@@ -1828,6 +1835,12 @@ module sep_uvm_top
     // word0 compare in sep_km_mem_smoke_test fails.
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
+
+    localparam int unsigned KmSramProbeWords = $bits(km_sram_probe_o) / 32;
+    for (genvar i = 0; i < KmSramProbeWords; i++) begin : g_km_sram_probe
+        assign km_sram_probe_o[32*i +: 32] =
+            u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
+    end
 
     // Outbound mailbox responder + firmware-console/PASS-magic monitor.
     sep_outbound_mbx u_mbx (

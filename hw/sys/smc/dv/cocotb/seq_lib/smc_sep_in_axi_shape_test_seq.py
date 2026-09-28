@@ -4,8 +4,9 @@
 
 ``port_table.adoc`` declares ``sep_axi_in_req_i`` as a 64-bit AXI4 input, and
 ``smc_local_xbar.sv`` converts it to the 32-bit local AXI-Lite fabric through
-``axi_dw_converter -> axi_to_axi_lite``. Three properties of that path are
-exercised here, each against an expectation the conversion chain fixes:
+``axi_dw_converter -> axi_to_axi_lite``. That path is under test; the
+expectations below come from AXI4 strobe and burst arithmetic, and the refused
+burst types from the DV-owned rule stated with them:
 
 * AxSIZE below the bus width is a narrow transfer, and the byte strobes the
   master derives from the address select the lanes. A 1-byte write must leave
@@ -19,8 +20,9 @@ exercised here, each against an expectation the conversion chain fixes:
   does not state how the SEP_IN path answers a burst type it does not
   support, so the expectation is the DV-owned one for a refused write -- an
   AXI error response of either kind, never OKAY and never a wedge -- and the
-  registers the burst addressed must keep the values the INCR burst left, so a
-  path that errored the response but still wrote is caught. The code actually
+  registers the burst addressed, read back before any further write, must keep
+  the values the INCR burst left, so a path that errored the response but still
+  wrote is caught. The code actually
   returned is reported, not asserted; a specification statement fixing it
   would let this become an exact expectation.
 * A 16-beat INCR burst of full-width beats into the SPM: every beat must land
@@ -63,6 +65,23 @@ BURST_BEAT1 = 0x5A5A_0002
 # Payload of the rejected FIXED / WRAP bursts, which must never be stored.
 REJECTED_BEAT0 = 0xDEAD_0001
 REJECTED_BEAT1 = 0xDEAD_0002
+# FIXED and WRAP bursts of two beats at the byte, half-word and double-word
+# sizes the 2-beat bursts above leave out. SCRATCH_COLD_0 is 16-byte aligned,
+# so every WRAP here is aligned to its total size as AXI requires.
+NARROW_REJECT_SHAPES = (
+    ("fixed_byte_burst", 1, BURST_FIXED),
+    ("wrap_byte_burst", 1, BURST_WRAP),
+    ("fixed_half_burst", 2, BURST_FIXED),
+    ("wrap_half_burst", 2, BURST_WRAP),
+    ("wrap_dword_burst", 8, BURST_WRAP),
+)
+
+
+def _narrow_reject_payload(length: int) -> int:
+    beat = int.from_bytes(bytes([0xD0 + i for i in range(length)]), "little")
+    return (beat << (8 * length)) | beat
+
+
 # Sixteen full-width beats into the SPM, above the window other hosted
 # sequences use and below the top of the memory.
 LONG_BURST_BEATS = 16
@@ -83,11 +102,14 @@ UNIMPLEMENTED_ADDR = (
 )
 AXI_RESP_DECERR = 3
 
-# Accesses this sequence issues over SEP_IN, counted for the reachability gate.
-EXPECTED_ACCESSES = 24
-# Scoreboard value compares the sequence must book: all thirteen reads carry
-# an expectation, so all thirteen are compared by the scoreboard.
-MIN_VALUE_CHECKS = 13
+# Accesses this sequence issues over SEP_IN, before the NARROW_REJECT_SHAPES
+# legs, which add three accesses each whatever their response.
+BASE_ACCESSES = 28
+EXPECTED_ACCESSES = BASE_ACCESSES + 3 * len(NARROW_REJECT_SHAPES)
+# Scoreboard value compares the sequence must book: the seventeen reads outside
+# NARROW_REJECT_SHAPES all carry an expectation. The readbacks after a refused
+# shape add to it only when a shape is refused.
+MIN_VALUE_CHECKS = 17
 
 
 class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
@@ -96,6 +118,7 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
     def __init__(self, name: str = "smc_sep_in_axi_shape_test_seq") -> None:
         super().__init__(name)
         self.value_checks: int | None = None
+        self.shape_resps: dict[str, int] = {}
 
     async def _axi(
         self,
@@ -157,26 +180,25 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
             "incr_burst_rd", SmcSysAxiOp.READ, SCRATCH_COLD_0, beats=2, expected=burst_payload
         )
 
-        # FIXED and WRAP multi-beat bursts: an error response, and nothing stored.
+        # FIXED and WRAP multi-beat bursts: an error response, and nothing
+        # stored. Each is read back before anything else writes the registers,
+        # so a refused burst that was still committed is caught at its own
+        # size and type.
         rejected_payload = (REJECTED_BEAT1 << 32) | REJECTED_BEAT0
-        fixed = await self._axi(
-            "fixed_burst",
-            SmcSysAxiOp.WRITE,
-            SCRATCH_COLD_0,
-            beats=2,
-            burst=BURST_FIXED,
-            wdata=rejected_payload,
-            expect_error=True,
-        )
-        wrap = await self._axi(
-            "wrap_burst",
-            SmcSysAxiOp.WRITE,
-            SCRATCH_COLD_0,
-            beats=2,
-            burst=BURST_WRAP,
-            wdata=rejected_payload,
-            expect_error=True,
-        )
+        rejected: dict[str, SmcSysAxiItem] = {}
+        for label, burst in (("fixed_burst", BURST_FIXED), ("wrap_burst", BURST_WRAP)):
+            rejected[label] = await self._axi(
+                label,
+                SmcSysAxiOp.WRITE,
+                SCRATCH_COLD_0,
+                beats=2,
+                burst=burst,
+                wdata=rejected_payload,
+                expect_error=True,
+            )
+            await self._axi(f"{label}_rb0", SmcSysAxiOp.READ, SCRATCH_COLD_0, expected=BURST_BEAT0)
+            await self._axi(f"{label}_rb1", SmcSysAxiOp.READ, SCRATCH_COLD_1, expected=BURST_BEAT1)
+        fixed, wrap = rejected["fixed_burst"], rejected["wrap_burst"]
         # A FIXED burst of full-width beats carries the words the registers
         # already hold, so whether the path stores or refuses it the readbacks
         # below still test the INCR result.
@@ -192,6 +214,36 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
         )
         await self._axi("after_reject0", SmcSysAxiOp.READ, SCRATCH_COLD_0, expected=BURST_BEAT0)
         await self._axi("after_reject1", SmcSysAxiOp.READ, SCRATCH_COLD_1, expected=BURST_BEAT1)
+
+        # The same two burst types at the other beat sizes a 64-bit manager may
+        # issue. An error response must leave both registers as they were; an
+        # OKAY is reported, and the registers are re-seeded for the next shape.
+        for label, length, burst in NARROW_REJECT_SHAPES:
+            item = await self._axi(
+                label,
+                SmcSysAxiOp.WRITE,
+                SCRATCH_COLD_0,
+                length=length,
+                beats=2,
+                burst=burst,
+                wdata=_narrow_reject_payload(length),
+                allow_error=True,
+            )
+            self.shape_resps[label] = item.resp_code
+            if item.resp_code != 0:
+                await self._axi(
+                    f"{label}_rb0", SmcSysAxiOp.READ, SCRATCH_COLD_0, expected=BURST_BEAT0
+                )
+                await self._axi(
+                    f"{label}_rb1", SmcSysAxiOp.READ, SCRATCH_COLD_1, expected=BURST_BEAT1
+                )
+            else:
+                await self._axi(
+                    f"{label}_reseed", SmcSysAxiOp.WRITE, SCRATCH_COLD_0, wdata=BURST_BEAT0
+                )
+                await self._axi(
+                    f"{label}_reseed1", SmcSysAxiOp.WRITE, SCRATCH_COLD_1, wdata=BURST_BEAT1
+                )
 
         # AxLEN=15 INCR of full-width beats into the SPM, read back beat by
         # beat at both ends and as one burst.
@@ -266,11 +318,13 @@ class smc_sep_in_axi_shape_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-SEP-IN-BURST-UNSUPPORTED: AxLEN=1 FIXED refused with resp=%s and AxLEN=1 WRAP "
             "refused with resp=%s (error codes reported, not asserted: no specification fixes "
-            "them); SCRATCH_COLD_0/1 still hold 0x%08x / 0x%08x",
+            "them); SCRATCH_COLD_0/1 still hold 0x%08x / 0x%08x; at the other beat sizes %s, "
+            "each refused one leaving both registers unchanged",
             fixed.resp_code,
             wrap.resp_code,
             BURST_BEAT0,
             BURST_BEAT1,
+            ", ".join(f"{k}=resp {v}" for k, v in self.shape_resps.items()),
         )
         cocotb.log.info(
             "CHK-SEP-IN-DECERR-WRITE: SEP_IN write to the unimplemented ecam_region page 0x%08x "
