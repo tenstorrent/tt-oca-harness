@@ -300,8 +300,10 @@ ways to get these:</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The container is the primary toolchain access method for the initial release. It
-is built from the Nix flake in this repository — there is no pre-built image to
-pull from a registry; <code>docker-run.sh</code> builds it locally on first use.</p>
+is built from the Nix flake in this repository, and CI publishes that image to the
+GitHub Container Registry. You can pull the exact image CI verified rather than
+build it yourself (see <a href="#pulling">Pulling the prebuilt image</a>); <code>docker-run.sh</code> builds it locally on first use
+when no registry is configured.</p>
 </div>
 <div class="paragraph">
 <p>The container bundles:</p>
@@ -359,10 +361,32 @@ EOF</code></pre>
 </div>
 </div>
 <div class="sect2">
-<h3 id="using-the-container"><a class="anchor" href="#using-the-container"></a><a class="link" href="#using-the-container">3.2. Using the container</a></h3>
+<h3 id="pulling"><a class="anchor" href="#pulling"></a><a class="link" href="#pulling">3.2. Pulling the prebuilt image</a></h3>
+<div class="paragraph">
+<p>CI builds the OCAH container and publishes it to the GitHub Container Registry,
+so you normally do not need to build it yourself. Point <code>docker-run.sh</code> at the
+registry and it pulls the exact image CI verified:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
+export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
+./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Published images are listed on the
+<a href="https://github.com/orgs/tenstorrent/packages/container/package/ocah-container"><code>ocah-container</code> package page</a>.
+Build the image locally only when you are changing its definition. See
+<code>scripts/docker.md</code> for the full set of container commands and environment
+variables.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="using-the-container"><a class="anchor" href="#using-the-container"></a><a class="link" href="#using-the-container">3.3. Using the container</a></h3>
 <div class="paragraph">
 <p>All container interaction goes through <code>scripts/docker-run.sh</code>. The image is
-built automatically on first use:</p>
+pulled (or, with no registry configured, built) automatically on first use:</p>
 </div>
 <div class="listingblock">
 <div class="content">
