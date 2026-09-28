@@ -139,6 +139,7 @@ OCAH_VENDOR_DEFINE_ALIASES: dict[str, tuple[str, ...]] = {
     "SIMULATION": ("ABR_SIMULATION",),
     "VERILATOR": ("TARGET_VERILATOR",),
     "XSIM": ("TARGET_XSIM",),
+    "EMULATION": ("ASSERTS_OVERRIDE_ON",),
 }
 
 

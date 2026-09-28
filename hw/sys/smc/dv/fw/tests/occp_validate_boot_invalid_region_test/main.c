@@ -2,13 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Validate and Boot Invalid Region Test
- *
- * This test verifies that the VALIDATE_AND_BOOT command properly handles
- * addresses outside the valid region (OCCP_TEST_BASE_ADDR to OCCP_TEST_UPPER_ADDR).
- * The ROM should log an error for invalid addresses and not jump to them.
- * After the invalid command, additional commands are sent to verify the ROM
- * is still responsive and in the OCCP processing loop.
+ * Checks that the ROM rejects VALIDATE_AND_BOOT outside the OCCP window with Invalid_address,
+ * logs one VALIDATE_ADDRESS_FAILED status record per rejection, and keeps serving commands.
  */
 
 #include "occp_test_common.h"
@@ -55,11 +50,9 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // Execute some random OCCP commands first for baseline
     simputs("=== Random OCCP Commands (5 commands) ===\n");
     execute_random_commands(ctx, 5);
 
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -68,7 +61,6 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     increment_cmd_count(ctx);
     simputs("=== Test 1: Validate and Boot with address below valid range ===\n");
 
-    // Test 1: Address below valid range
     uint64_t invalid_addr_below =
         (ctx->test_base_addr - 1 - (get_random_int() % 0x5000)) & 0xfffffffc;
     simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (below range): 0x",
@@ -114,7 +106,6 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     if (is_secure_mode()) {
         simputs("=== Test 3: Validate and Boot with address above valid range ===\n");
 
-        // Test 2: Address above valid range
         uint64_t invalid_addr_above =
             (OCCP_TEST_UPPER_ADDR + (get_random_int() % 0x5000)) & 0xfffffffc;
         simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (above range): 0x",
@@ -136,7 +127,6 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
 
         simputs("=== Test 4: Validate and Boot with address just above valid range ===\n");
 
-        // Test 4: Address just above valid range
         uint64_t invalid_addr_above_valid =
             (OCCP_TEST_UPPER_ADDR + (get_random_int() % 0x10)) & 0xfffffffc;
         simputshex64("Attempting VALIDATE_AND_BOOT to invalid address (just above range): 0x",
@@ -158,14 +148,13 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
 
         simputs("PASS: VALIDATE_AND_BOOT command issued successfully (just above range)\n");
     }
-    // relatch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
         ctx->overall_result = false;
     }
     increment_cmd_count(ctx);
-    // send invalid commands in protected region
     simputs("=== Test 5: Validate and Boot with invalid commands in protected region ===\n");
     for (int i = 0; i < 4; i++) {
         uint64_t invalid_addr =
@@ -188,7 +177,6 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
                 "protected region)\n");
     }
 
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -197,18 +185,17 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
     increment_cmd_count(ctx);
     read_and_validate_smc_status_buffer(ctx);
 
-    // Execute more commands to verify ROM is still responsive
     simputs("=== Random OCCP Commands (10 commands after above-range test) ===\n");
     execute_random_commands(ctx, 5);
 
     simputs("=== Test 5: Validate and Boot with valid address for comparison ===\n");
 
-    // Test 5: Valid address for comparison
     uint64_t valid_addr =
         (ctx->test_base_addr + (get_random_int() % (OCCP_TEST_UPPER_ADDR - ctx->test_base_addr))) &
         0xfffffffc;
     simputshex64("Attempting VALIDATE_AND_BOOT to valid address: 0x", valid_addr);
 
+    // In secure mode the ROM accepts no OCCP command after this, so it must be the last one.
     retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, valid_addr);
     increment_cmd_count(ctx);
 
@@ -220,13 +207,10 @@ static void run_validate_boot_invalid_region_test(test_context_t *ctx) {
 
     simputs("PASS: VALIDATE_AND_BOOT command issued successfully (valid range)\n");
 
-    // NOTE: After a successful validate_boot command in secure mode, the ROM enters
-    // a wait state for SEP validation. We won't be able to send more commands after this.
     simputs("ROM should now be in validation wait state - test complete\n");
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    // Signal completion to cocotb by writing to the master's scratchpad
     if (ctx->overall_result) {
         simputs("\nVALIDATE AND BOOT INVALID REGION C-TEST PASSED! Signaling cocotb.\n");
         test_pass(0);
@@ -246,17 +230,14 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;                     // Start of valid range
-    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // End of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
+    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test
     run_validate_boot_invalid_region_test(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");
