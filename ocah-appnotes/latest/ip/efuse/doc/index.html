@@ -1147,6 +1147,7 @@ instance documented in this section.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: smc_efuse_map</h2>
+<p>Address map for efuse shadow registers providing access to various chip configuration and ID fields</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>I2C_I3C_ID[9]</strong>: 9 registers, base 0x28, stride 0x8</li>
@@ -1279,6 +1280,7 @@ authentication, including RMA tokens and security disable tokens.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: efuse_mmr</h2>
+<p>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
@@ -1371,6 +1373,7 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: efuse_interface_ctrl</h2>
+<p>Program and read command, address, data, status, and timeout registers for the eFuse interface.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1467,6 +1470,7 @@ does not appear at a fixed address in the generated OCAH map.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: efuse_shim_ctrl</h2>
+<p>DV model of the eFuse SHIM control interface.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>

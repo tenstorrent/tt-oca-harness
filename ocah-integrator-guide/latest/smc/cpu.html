@@ -702,6 +702,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: cpu_ctrl</h2>
+<p>Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>RESET_VECTOR[4]</strong>: 4 registers, base 0x0, stride 0x8</li>
@@ -897,6 +898,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: clint</h2>
+<p>Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>MSIP[4]</strong>: 4 registers, base 0x0, stride 0x4</li>
@@ -936,6 +938,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: debug_module</h2>
+<p>RISC-V External Debug Support Version 0.13.2 - Section 3.12. Field reset values updated as per specification and user rules (Preset/- -&gt; 0x0). HW access permissions are derived based on SW access. SW &#x27;w&#x27; access changed to &#x27;rw&#x27;. Fields previously rw1c now use &#x27;woclr&#x27;.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>abstractdata[12]</strong>: 12 registers, base 0x10, stride 0x4</li>
@@ -1174,6 +1177,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: bus_error_unit</h2>
+<p>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1259,6 +1263,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: wdt</h2>
+<p>Watchdog timer configuration, counter, compare, and feed and key registers.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>

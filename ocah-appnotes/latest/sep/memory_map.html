@@ -821,6 +821,7 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_cpu_ctrl</h2>
+<p>SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1094,6 +1095,7 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: el2_pic</h2>
+<p>VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.<br>Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>meipl[256]</strong>: 256 registers, base 0x0, stride 0x4</li>
@@ -1162,6 +1164,7 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_reset_ctrl</h2>
+<p>Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1190,6 +1193,7 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_lifecycle_ctrl</h2>
+<p>Lifecycle feature-control and demotion registers with their associated locks.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1234,6 +1238,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_scratch</h2>
+<p>General-purpose SEP scratch register bank.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>SCRATCH[8]</strong>: 8 registers, base 0x0, stride 0x8</li>
@@ -1260,6 +1265,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_efuse_map</h2>
+<p>Per-field write-lock and read-lock registers for the SEP eFuse map.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1639,6 +1645,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: efuse_mmr</h2>
+<p>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
@@ -1724,6 +1731,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: aon_timer</h2>
+<p>Wakeup and watchdog timers running on a low-power, always-on clock</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -1956,6 +1964,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: hmac</h2>
+<p>Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY[32]</strong>: 32 registers, base 0x24, stride 0x4</li>
@@ -2080,6 +2089,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: kmac</h2>
+<p>Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[16]</strong>: 16 registers, base 0x30, stride 0x4</li>
@@ -2252,6 +2262,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: otbn</h2>
+<p>Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -2375,6 +2386,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: entropy_source</h2>
+<p>Entropy-source configuration, status, and data registers.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -3173,6 +3185,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: edn</h2>
+<p>Distributes random numbers produced by CSRNG to hardware blocks</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -3343,6 +3356,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: key_manager</h2>
+<p>Complete memory map for the Key Manager subsystem, including ROM, SRAM,<br>control/status registers, mailbox, and external crypto engine ports.<br>This address map is from the perspective of the KM CPU (PicoRV32).</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>RMA_SIP_TOKEN_I[8]</strong>: 8 registers, base 0x11500, stride 0x4</li>
@@ -5576,6 +5590,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: km_csr</h2>
+<p>Control and status registers for the Key Manager subsystem</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -6537,6 +6552,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: km_kpv</h2>
+<p>Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_ENTRY[0].WORD[16]</strong>: 16 registers, base 0x0, stride 0x4</li>
@@ -7028,6 +7044,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: km_drbg_sampler</h2>
+<p>DRBG random data interface and configuration/status registers</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -7075,6 +7092,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: km_mailbox_km</h2>
+<p>Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -7158,6 +7176,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: km_mailbox_sep</h2>
+<p>Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -7241,6 +7260,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: abr_wrapper_key</h2>
+<p>Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.<br>Contains four dual-share secret-seed inputs and one shared-key output.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>MLDSA_SEED.KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
@@ -7371,6 +7391,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: aes_wrapper_key</h2>
+<p>Key storage registers for the AES sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
@@ -7410,6 +7431,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: hmac_wrapper_key</h2>
+<p>Key storage registers for the HMAC sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
@@ -7449,6 +7471,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: kmac_wrapper_key</h2>
+<p>Key storage registers for the KMAC sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x0, stride 0x4</li>
@@ -7488,6 +7511,7 @@ SEP aggregate.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: otbn_wrapper_key</h2>
+<p>Key storage registers for the OTBN sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[12]</strong>: 12 registers, base 0x0, stride 0x4</li>
@@ -7925,6 +7949,7 @@ Adopter-specific external devices require their own register documentation.</p>
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
 <h2>Address Map: sep_external</h2>
+<p>SEP external address map (eFuse SHIM control and execute-in-place window).</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
