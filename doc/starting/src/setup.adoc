@@ -58,8 +58,10 @@ ways to get these:
 == Container (recommended)
 
 The container is the primary toolchain access method for the initial release. It
-is built from the Nix flake in this repository — there is no pre-built image to
-pull from a registry; `docker-run.sh` builds it locally on first use.
+is built from the Nix flake in this repository, and CI publishes that image to the
+GitHub Container Registry. You can pull the exact image CI verified rather than
+build it yourself (see <<pulling>>); `docker-run.sh` builds it locally on first use
+when no registry is configured.
 
 The container bundles:
 
@@ -92,10 +94,31 @@ unqualified-search-registries = ["docker.io"]
 EOF
 ```
 
+[[pulling]]
+=== Pulling the prebuilt image
+
+CI builds the firmware-toolchain container and publishes it to the GitHub
+Container Registry, so you normally do not need to build it yourself. Point
+`docker-run.sh` at the registry and it pulls the exact image CI verified:
+
+```bash
+docker login ghcr.io -u <github-user>    # while the package is private
+export OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container
+export OCAH_IMAGE_WITH_UV=true            # the variant CI publishes
+./scripts/docker-run.sh verify           # pulls once; run/shell then reuse it
+```
+
+The login is required while the package is private, and the token needs the
+`read:packages` scope. Published images are listed on the
+https://github.com/orgs/tenstorrent/packages/container/package/ocah-container[`ocah-container` package page].
+Build the image locally only when you are changing its definition. See
+`scripts/docker.md` for the full set of container commands and environment
+variables.
+
 === Using the container
 
 All container interaction goes through `scripts/docker-run.sh`. The image is
-built automatically on first use:
+pulled (or, with no registry configured, built) automatically on first use:
 
 ```bash
 # Open an interactive shell (builds the image if needed)
