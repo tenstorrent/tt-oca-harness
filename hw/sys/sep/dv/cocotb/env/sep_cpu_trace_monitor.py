@@ -37,13 +37,21 @@ volume.
 from __future__ import annotations
 
 import logging
+import sys
 from collections import deque
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
 from pyuvm import uvm_component
 
 from .sep_fw_symbols import SepFwSymbols
+
+_TOOLS_DV = Path(__file__).resolve().parents[6] / "tools" / "dv"
+if str(_TOOLS_DV) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DV))
+
+from fw_coverage.renode_trace import TRACE_NAME, RenodeTraceWriter  # noqa: E402
 
 # RISC-V link registers (RV32I calling convention): x1/ra and x5/t0 alternate
 # link. rd in the set => call; jalr/c.jr with rd=x0 through the set => return.
@@ -135,6 +143,7 @@ class SepCpuTraceMonitor(uvm_component):
         self._fill_target = False
         self._hang_warned = False
         self._trace_file = None
+        self._coverage_trace: RenodeTraceWriter | None = None
 
     def add_symbols(self, path) -> None:
         """Merge one nm listing (missing file is a warning, not an error --
@@ -158,6 +167,8 @@ class SepCpuTraceMonitor(uvm_component):
         self.last_pc = pc
         self.pcs.add(pc)
         self.ring.append((cycle, pc, insn))
+        if self._coverage_trace is not None:
+            self._coverage_trace.log_pc(pc)
         if self._trace_file is not None:
             self._trace_file.write(f"{cycle:>10} {pc:08x} {insn:08x} {self._sym(pc)}\n")
         if self._fill_target:
@@ -238,6 +249,9 @@ class SepCpuTraceMonitor(uvm_component):
             return
         if "cpu_trace_log" in cocotb.plusargs:
             self._trace_file = open("cpu_trace.log", "w")
+        if "sep_rom_fw_coverage" in cocotb.plusargs:
+            self._coverage_trace = RenodeTraceWriter(TRACE_NAME)
+            self.logger.info("SEP Boot ROM coverage trace active: %s", TRACE_NAME)
         self.active = True
         self.logger.info("CPU trace monitor active (hang watch at %d cycles)", self.hang_cycles)
 
@@ -363,5 +377,10 @@ class SepCpuTraceMonitor(uvm_component):
         if self._trace_file is not None:
             self._trace_file.close()
             self._trace_file = None
+        if self._coverage_trace is not None:
+            count = self._coverage_trace.count
+            self._coverage_trace.close()
+            self._coverage_trace = None
+            self.logger.info("SEP Boot ROM coverage trace closed (%d unique PCs)", count)
         if self.active:
             self.dump_diagnostics(logging.INFO)
