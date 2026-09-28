@@ -60,6 +60,17 @@ writes, and each class below states that fact and what would retire it:
 * EFUSE-SHIM-DEBUG: the eFuse shim debug-bus bits that only a read state the
   machine lacks or a counter fault would set.
 * DTP-CSR-OFFSET: the DTP CSR address bits the window rebase keeps 0.
+* TRNG-R-ACCEPT: RREADY on the external TRNG port, which the width converter
+  above it keeps high.
+* OUTBOUND-B-ACCEPT: BREADY on ext_out, which every outbound initiator keeps
+  high as its responses arrive.
+* OTP-BRIDGE-DEPTH: the OTP ports' request readies, which fall only past a
+  depth the OTP bridges never reach.
+* BENCH-SEP-OUT-DEPTH, BENCH-SMC-SHIM-OTP-PACING, BENCH-NO-ECC-INJECTION:
+  bench scope, not design facts: the SEP outbound readies, which the bench's
+  buffering keeps high; the SMC eFuse shim readies, which the bench's JTAG
+  pacing keeps high; and the SMC cluster DED output, which this bench has no
+  way to raise.
 * XBAR-CONNECTIVITY: the input-port bits of the crossbar's output ID that the
   connectivity matrix never sets on a given output.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
@@ -629,6 +640,62 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         ((11, 11), (13, 13), (15, 15), (30, 31)),
     ),
     (
+        "OUTBOUND-B-ACCEPT",
+        re.compile(rf"^{EXT_OUT}\.b_ready$"),
+        "BREADY on the crossbar's ext_out port and the boundary past it: the ready of "
+        "the port's B spill register (smu_axi_xbar_pkg.sv 112, CUT_ALL_PORTS), which "
+        "falls only while two responses wait there for the path back to their "
+        "initiator. Every initiator that reaches ext_out takes its write response as "
+        "it arrives: the SEP load/store unit and system bus tie BREADY high "
+        "(el2_lsu_bus_buffer.sv 906, el2_dbg.sv 772), the SEP DMA's AXI-Lite master "
+        "raises it in the state that waits for B (tlul_to_axi_lite.sv 245), the zeroer "
+        "ties it high (zeroer.sv 280), JTAG2AXI raises it while a write is outstanding "
+        "(jtag2axi.sv 767-770), the iDMA's follows its midend's response ready, which is "
+        "tied high (idma_axi_write.sv 272, idma_nd_midend.sv 207, "
+        "idma_frontend_wrapper.sv 280), and the SMC CPU takes it into a two-entry queue "
+        "on its MMIO port (OCAH4CORECluster_AXI4Buffer.sv 207-216) that drains into its "
+        "TileLink D channel.",
+        "an initiator on the outbound path that holds write responses back",
+        None,
+        None,
+    ),
+    (
+        "TRNG-R-ACCEPT",
+        re.compile(r"^ext_trng_axil_req(_o)?\.r_ready$"),
+        "RREADY on the external TRNG port, the ready of the R slots of the cut in front "
+        "of it (sep_crypto_axi_interconnect.sv 1042-1058), which fall only while the "
+        "path above cannot take a response. The crypto interconnect sends that port only "
+        "single-beat reads (144, 236-241), so each read occupies one tracker of the data "
+        "width converter above it (1012, AxiMaxReads 8) and brings back at most the two "
+        "narrow beats of one wide beat; a tracker takes a beat whenever it holds none "
+        "unforwarded (axi_dw_downsizer.sv 569-572), and a tracker is only reused once "
+        "its beat has gone up. The converter therefore takes every beat as it arrives, "
+        "the AXI-Lite converter between passes R straight through, and the cut never "
+        "holds two.",
+        "a read path to the TRNG port that admits bursts, or a buffering stage between "
+        "the converter and the port",
+        None,
+        None,
+    ),
+    (
+        "OTP-BRIDGE-DEPTH",
+        re.compile(r"^dtp_axil_(smc|sep)_otp_jtag_resp\.(aw|w|ar)_ready$"),
+        "the AW, W and AR ready of the SMC and SEP OTP JTAG2AXI ports. Each is the "
+        "spill-register ready of the eFuse wrapper's access-control demux "
+        "(smc_efuse_wrapper.sv 146-163, sep_efuse_wrapper.sv 250-266: MaxTrans 2, "
+        "every channel spilled), which falls only with both slots holding a request "
+        "the demux cannot take, that is with two of that direction already accepted "
+        "below it; every target below takes two before refusing (the interface "
+        "controller's demux, efuse_interface_controller.sv 310-328, MaxTrans 2, and "
+        "an error slave with MAX_TRANS 2, smc_efuse_wrapper.sv 185, "
+        "sep_efuse_wrapper.sv 284). A refusal therefore needs four requests of one "
+        "direction outstanding, and the bridge issues at most three "
+        "(jtag2axi.sv 585, 641-645; jtag_ptap.sv 916-925, 1007-1016).",
+        "an OTP bridge that keeps four requests of one direction in flight",
+        ("smu",),
+        None,
+    ),
+    (
         "XBAR-CONNECTIVITY",
         re.compile(
             r"^(xbar_mst_req\[2\]\.(aw|ar)|xbar_mst_resp\[2\]\.(b|r)|ext_out_req_o\.(aw|ar)|"
@@ -653,6 +720,55 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "a crossbar connectivity matrix that routes smc_out to smc_in",
         None,
         ((8, 8),),
+    ),
+    (
+        "BENCH-SEP-OUT-DEPTH",
+        re.compile(
+            r"^(sep_smn_outbound_axi_resp|gen_sep\.sep_out_xbar_resp|sep_out_resp_o|"
+            r"xbar_slv_resp\[0\])\.(aw|w|ar)_ready$"
+        ),
+        "bench scope: the AW, W and AR ready of the SEP's outbound port. The SEP keeps "
+        "at most six requests in flight there: four from the load/store unit's bus "
+        "buffer (LSU_NUM_NBLOAD 4 in the sep common_defines.vh 61, el2_lsu_bus_buffer.sv "
+        "213), one from the debug module's system bus, whose state machine holds one "
+        "request (el2_dbg.sv 144, 631), and one from the DMA's AXI-Lite master "
+        "(tlul_to_axi_lite.sv 48-55). Between that port and the bench responder sit "
+        "eight slots per channel: the crossbar's slave and master spill registers and "
+        "its pipeline stage (smu_axi_xbar_pkg.sv 109-113, CUT_ALL_PORTS, PipelineStages "
+        "1) and the bench's axi_cut in front of the responder (tb_wrapper_top.sv "
+        "1399-1413), so the port's ready does not fall on this bench.",
+        "a deeper SEP issue window, or removal of the bench cut",
+        ("smu", "smu_axi_xbar"),
+        None,
+    ),
+    (
+        "BENCH-SMC-SHIM-OTP-PACING",
+        re.compile(r"^smc_efuse_bank_ctrl_resp(_i)?\.(ar|w)_ready$"),
+        "bench scope: the AR and W ready of the SMC eFuse bank-control port. Only the SMC "
+        "OTP JTAG2AXI bridge reaches it: the SMC eFuse interface controller sends to the "
+        "shim only addresses outside [MAP base, CTRL end] (efuse_interface_controller.sv "
+        "284-307), and the SMC peripheral crossbar gives the controller only the MAP and "
+        "CTRL windows (smc_periph_axi_lite_xbar.sv 114-122). The bridge launches one "
+        "request per JTAG data-register update of at least 32 TCK "
+        "(smu_jtag_helpers.py 229-233), and on this bench TCK is 32-48 ns "
+        "against a 8-12 ns SMU clock (smu_env_cfg.py 48-61), so requests arrive at least "
+        "85 clocks apart, while the shim's register block frees its holding registers "
+        "within two clocks of a request (efuse_shim_ctrl_reg.sv 114-150). Neither ready "
+        "falls.",
+        "a shim initiator that issues requests back to back, or a TCK close to the SMU clock",
+        ("smu", "smu_wrapper"),
+        None,
+    ),
+    (
+        "BENCH-NO-ECC-INJECTION",
+        re.compile(r"^smc_cluster_ded_o$"),
+        "bench scope: the SMC cluster's uncorrectable-error output, a registered OR of "
+        "the cluster's uncorrectable ECC flags (smc_4core_cpu.sv 191-196). The SMU "
+        "bench has no path to corrupt an SMC cluster memory word, so it stays low.",
+        "an ECC injection path on this bench, as the SMC bench's tb_cpu_ecc_poke_* "
+        "(hw/sys/smc/dv/tb/tb_top.sv 1087-1088)",
+        ("smu", "smu_wrapper"),
+        None,
     ),
     (
         "APERTURE-ALIGNMENT",
