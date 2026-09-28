@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-sep_reset_ctrl]
 == Address Map: sep_reset_ctrl
 
+*SEP Reset Control Address Map* — Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

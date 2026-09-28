@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-aon_timer]
 == Address Map: aon_timer
 
+*Always-On Timer* — Wakeup and watchdog timers running on a low-power, always-on clock
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

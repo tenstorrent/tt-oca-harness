@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-gpio_intf]
 == Address Map: gpio_intf
 
+*GPIO Interface Address Map* — GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

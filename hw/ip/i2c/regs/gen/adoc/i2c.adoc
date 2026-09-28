@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-i2c]
 == Address Map: i2c
 
+*I2C Address Map* — Interrupt status, enable, and test registers for a single I2C controller and target.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-sep_lifecycle_ctrl]
 == Address Map: sep_lifecycle_ctrl
 
+*SEP Lifecycle Control Address Map* — Lifecycle feature-control and demotion registers with their associated locks.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-efuse_interface_ctrl]
 == Address Map: efuse_interface_ctrl
 
+*eFuse Interface Control Address Map* — Program and read command, address, data, status, and timeout registers for the eFuse interface.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-entropy_source]
 == Address Map: entropy_source
 
+*Entropy Source Address Map* — Entropy-source configuration, status, and data registers.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

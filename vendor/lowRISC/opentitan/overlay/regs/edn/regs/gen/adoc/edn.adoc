@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-edn]
 == Address Map: edn
 
+*Entropy Distribution Network* — Distributes random numbers produced by CSRNG to hardware blocks
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

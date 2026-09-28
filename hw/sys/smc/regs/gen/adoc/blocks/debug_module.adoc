@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-debug_module]
 == Address Map: debug_module
 
+*RISC-V Debug Module Registers* — RISC-V External Debug Support Version 0.13.2 - Section 3.12. Field reset values updated as per specification and user rules (Preset/- -> 0x0). HW access permissions are derived based on SW access. SW 'w' access changed to 'rw'. Fields previously rw1c now use 'woclr'.
+
 [NOTE]
 ======
 *Register Arrays:*

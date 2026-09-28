@@ -6,6 +6,9 @@
 [#regmap-{regmap-instance}-hmac_wrapper_key]
 == Address Map: hmac_wrapper_key
 
+*HMAC Wrapper Key Registers* — Key storage registers for the HMAC sideload interface.
+Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.
+
 [NOTE]
 ======
 *Register Arrays:*

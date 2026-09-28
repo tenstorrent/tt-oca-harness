@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-bus_error_unit]
 == Address Map: bus_error_unit
 
+*Bus Error Unit Address Map* — Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

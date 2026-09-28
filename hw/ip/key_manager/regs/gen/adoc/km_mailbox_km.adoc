@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-km_mailbox_km]
 == Address Map: km_mailbox_km
 
+*Key Manager Mailbox KM Side* — Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

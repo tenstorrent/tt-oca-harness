@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-otbn]
 == Address Map: otbn
 
+*OpenTitan Big Number Accelerator* — Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
