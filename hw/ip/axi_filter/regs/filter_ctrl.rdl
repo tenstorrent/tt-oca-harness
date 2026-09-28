@@ -5,8 +5,9 @@
 `define FILTER_CTRL_REG_RDL
 
 addrmap filter_ctrl {
-    desc = "Filter control registers. One per filter";
-
+    name = "AXI Filter Control Address Map";
+    desc = "Per-filter access-control registers defining permitted address ranges and transaction attributes.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

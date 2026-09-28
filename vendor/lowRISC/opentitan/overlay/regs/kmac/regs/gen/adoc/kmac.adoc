@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-kmac]
-== Address Map: kmac
+== KMAC Accelerator
+
+Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures
 
 [NOTE]
 ======

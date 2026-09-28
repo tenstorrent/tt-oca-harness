@@ -41,8 +41,6 @@ from seq_lib.sep_abr_mlkem_seq import (
     KEM_EK_WORDS,
     KEM_K_WORDS,
     KEM_MSG_WORDS,
-    KEM_NAME0_EXP,
-    KEM_NAME1_EXP,
     KEM_SEED_WORDS,
     KEM_ST_ERROR,
     KEM_ST_READY,
@@ -260,15 +258,16 @@ class sep_km_abr_mlkem_sideload_test(sep_base_test):
         await self.km.wait_km_ready()
         self.logger.info("CHK0 PASS: rom_main booted, RESP_KM_READY over the mailbox")
 
-        # Identity gate. Every compare below reads this same aperture, so a dead
-        # decode would turn all of them into compares of zero against zero.
+        # Logged for the record, not graded: abr_reg.rdl declares NAME sw=r
+        # with no reset, and no SEP document gives its value. A dead decode
+        # reads both reference keys as zero and fails CHK-KEM-SEED-REF.
         name0 = await kem.rd32(MLKEM_NAME0)
         name1 = await kem.rd32(MLKEM_NAME1)
-        assert name0 == KEM_NAME0_EXP and name1 == KEM_NAME1_EXP, (
-            f"MLKEM NAME 0x{name0:08x}_0x{name1:08x}, expected "
-            f"0x{KEM_NAME0_EXP:08x}_0x{KEM_NAME1_EXP:08x} (KEM-1024)"
+        self.logger.info(
+            "ABR ML-KEM identity words (information only): NAME0=0x%08x NAME1=0x%08x",
+            name0,
+            name1,
         )
-        self.logger.info("CHK-KEM-NAME PASS: NAME0=0x%08x NAME1=0x%08x (KEM-1024)", name0, name1)
 
         # --- CHK-KEM-SEED-REF: the two reference keygens ----------------------
         ek_alt = await self._keygen(kem, _D_ALT, _Z_ALT, what="CHK-KEM-SEED-REF alt")

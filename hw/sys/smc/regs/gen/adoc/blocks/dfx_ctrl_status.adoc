@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-dfx_ctrl_status]
-== Address Map: dfx_ctrl_status
+== DFX Control and Status Address Map
+
+Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.
 
 [cols="1,4,1,6", options="header"]
 |===

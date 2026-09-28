@@ -4,6 +4,8 @@
 `ifndef EFUSE_INTERFACE_CTRL_RDL_DEFINED
 `define EFUSE_INTERFACE_CTRL_RDL_DEFINED
 addrmap efuse_interface_ctrl {
+    name = "eFuse Interface Control Address Map";
+    desc = "Program and read command, address, data, status, and timeout registers for the eFuse interface.";
 
     reg EFUSE_INTERFACE_CTRL_STATUS {
         desc = "eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.";

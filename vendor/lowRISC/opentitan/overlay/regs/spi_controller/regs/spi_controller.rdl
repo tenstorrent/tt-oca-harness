@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 addrmap spi_controller {
+    name = "SPI Host";
+    desc = "Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices";
     reg {
         field {
             sw = rw;

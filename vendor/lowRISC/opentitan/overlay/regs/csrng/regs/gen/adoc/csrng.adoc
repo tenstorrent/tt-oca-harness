@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-csrng]
-== Address Map: csrng
+== Cryptographically Secure Random Number Generator
+
+Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software
 
 [cols="1,4,1,6", options="header"]
 |===

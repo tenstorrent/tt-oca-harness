@@ -12,10 +12,11 @@
 # index comparison, the keying comparison and the round-trip verdict all live
 # in the host test.
 #
-# Every register address comes from the generated map, included below, so a
-# moved register is a build error rather than a stale constant. Field bit
-# positions are still literal -- the address header does not carry them.
-# KPV_SCRAMBLER_CTRL: ENABLE bit 0, LOCK bit 1.
+# Every register address and the key-entry geometry come from the generated
+# map, included below, so a moved register is a build error rather than a
+# stale constant. Field masks (KPV_SCRAMBLER_CTRL ENABLE / LOCK, mailbox
+# STATUS inbound_empty) come from km_fields.inc, lifted from km_kpv.h and
+# km_mailbox_km.h.
 #
 # Request, three words over the KM mailbox:
 #   word 0  first scrambler key
@@ -56,6 +57,11 @@
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_kpv_scrambler.parhex
 
 #include "key_manager_addr.h"
+#include "km_fields.inc"
+
+#define SCR_ENABLE          KM_KPV__KPV_SCRAMBLER_CTRL_REG__ENABLE_bm
+#define SCR_LOCK            KM_KPV__KPV_SCRAMBLER_CTRL_REG__LOCK_bm
+#define MBOX_INBOUND_EMPTY  KM_MAILBOX_KM__STATUS_REG__INBOUND_EMPTY_bm
 
     // Mailbox register offsets, derived from the generated map rather than
     // typed: the images hold the block base in a register and index off it.
@@ -64,7 +70,20 @@
     .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
     .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
 
-    .equ N_WORDS, 1024
+    // The image addresses the vault as one flat word array from
+    // KEY_ENTRY[0].WORD[0]: word L is at base + (L << WORD_SHIFT). That holds
+    // only while the word stride is 1 << WORD_SHIFT and entries are packed
+    // back to back; either one moving fails the build.
+    .equ WORD_SHIFT, 2
+    .if (1 << WORD_SHIFT) != (KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, 1) - KEY_MANAGER_KPV_KEY_ENTRY_WORD_BASE_ADDR(0, 0))
+    .error "KEY_ENTRY word stride is not 1 << WORD_SHIFT"
+    .endif
+    .if KEY_MANAGER_KPV_KEY_ENTRY_STRIDE != (KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM << WORD_SHIFT)
+    .error "KEY_ENTRY entries are not packed back to back"
+    .endif
+    .equ N_WORDS, (KEY_MANAGER_KPV_KEY_ENTRY_NUM * KEY_MANAGER_KPV_KEY_ENTRY_WORD_NUM)
+    // KPV_SCRAMBLER_CTRL as an offset from KPV_SCRAMBLER_KEY.
+    .equ SCR_CTRL_OFF, (KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR - KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR)
 
     .section .text
     .globl _start
@@ -82,15 +101,15 @@ _start:
 
     # --- host config: key A, key B, packed indices ---
 1:  lw    x4, MBOX_STATUS(x1)
-    andi  x5, x4, 0x1           # inbound_empty
+    andi  x5, x4, MBOX_INBOUND_EMPTY
     bnez  x5, 1b
     lw    x8, MBOX_READ_DATA(x1)
 2:  lw    x4, MBOX_STATUS(x1)
-    andi  x5, x4, 0x1
+    andi  x5, x4, MBOX_INBOUND_EMPTY
     bnez  x5, 2b
     lw    x12, MBOX_READ_DATA(x1)
 3:  lw    x4, MBOX_STATUS(x1)
-    andi  x5, x4, 0x1
+    andi  x5, x4, MBOX_INBOUND_EMPTY
     bnez  x5, 3b
     lw    x9, MBOX_READ_DATA(x1)
 
@@ -102,7 +121,7 @@ _start:
     addi  x3, x0, 0
     addi  x6, x0, N_WORDS
 zero_a:
-    slli  x4, x3, 2
+    slli  x4, x3, WORD_SHIFT
     add   x4, x2, x4
     sw    x0, 0(x4)
     addi  x3, x3, 1
@@ -110,8 +129,8 @@ zero_a:
 
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     sw    x8, 0(x5)             # KPV_SCRAMBLER_KEY = key A
-    addi  x4, x0, 1
-    sw    x4, 0x4(x5)           # ENABLE = 1
+    addi  x4, x0, SCR_ENABLE
+    sw    x4, SCR_CTRL_OFF(x5)  # ENABLE = 1
 
     addi  x3, x0, 0
 write_a:
@@ -126,7 +145,7 @@ write_a:
     lui   x7, 0xA5C3F
     addi  x7, x7, 0x00D
     xor   x6, x6, x7            # plaintext
-    slli  x7, x5, 2
+    slli  x7, x5, WORD_SHIFT
     add   x7, x2, x7
     sw    x6, 0(x7)
     addi  x3, x3, 1
@@ -140,7 +159,7 @@ write_a:
     addi  x8, x0, 0             # count; key A is no longer needed
     addi  x6, x0, N_WORDS
 count_a:
-    slli  x4, x3, 2
+    slli  x4, x3, WORD_SHIFT
     add   x4, x2, x4
     lw    x7, 0(x4)
     beqz  x7, count_a_next
@@ -156,7 +175,7 @@ count_a_next:
     addi  x3, x0, 0
     addi  x6, x0, N_WORDS
 emit_a:
-    slli  x4, x3, 2
+    slli  x4, x3, WORD_SHIFT
     add   x4, x2, x4
     lw    x7, 0(x4)
     beqz  x7, emit_a_next
@@ -174,7 +193,7 @@ emit_a_next:
     addi  x3, x0, 0
     addi  x6, x0, N_WORDS
 zero_b:
-    slli  x4, x3, 2
+    slli  x4, x3, WORD_SHIFT
     add   x4, x2, x4
     sw    x0, 0(x4)
     addi  x3, x3, 1
@@ -182,8 +201,8 @@ zero_b:
 
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     sw    x12, 0(x5)            # KPV_SCRAMBLER_KEY = key B (still unlocked)
-    addi  x4, x0, 1
-    sw    x4, 0x4(x5)           # ENABLE = 1
+    addi  x4, x0, SCR_ENABLE
+    sw    x4, SCR_CTRL_OFF(x5)  # ENABLE = 1
 
     slli  x6, x11, 20
     slli  x7, x11, 8
@@ -191,7 +210,7 @@ zero_b:
     lui   x7, 0xA5C3F
     addi  x7, x7, 0x00D
     xor   x6, x6, x7            # same plaintext as pass A for this index
-    slli  x7, x11, 2
+    slli  x7, x11, WORD_SHIFT
     add   x7, x2, x7
     sw    x6, 0(x7)
 
@@ -201,7 +220,7 @@ zero_b:
     addi  x3, x0, 0
     addi  x6, x0, N_WORDS
 find_b:
-    slli  x4, x3, 2
+    slli  x4, x3, WORD_SHIFT
     add   x4, x2, x4
     lw    x7, 0(x4)
     bnez  x7, found_b
@@ -219,10 +238,10 @@ found_b:
 
     # ================= round trip, then the sticky lock =================
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
-    addi  x4, x0, 1
+    addi  x4, x0, SCR_ENABLE
     sw    x4, 0(x5)             # ENABLE = 1
 
-    slli  x4, x11, 2
+    slli  x4, x11, WORD_SHIFT
     add   x4, x2, x4
     lw    x7, 0(x4)
     addi  x5, x0, 1
@@ -238,7 +257,7 @@ found_b:
     sw    x7, MBOX_WRITE_DATA(x1)           # key register, unlocked
 
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
-    addi  x4, x0, 3             # ENABLE | LOCK, taken last because it sticks
+    addi  x4, x0, (SCR_ENABLE | SCR_LOCK)  # taken last because it sticks
     sw    x4, 0(x5)
 
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
@@ -247,7 +266,7 @@ found_b:
     sw    x5, MBOX_WRITE_SEP(x1)
     sw    x7, MBOX_WRITE_DATA(x1)
 
-    slli  x4, x11, 2
+    slli  x4, x11, WORD_SHIFT
     add   x4, x2, x4
     lw    x7, 0(x4)
     addi  x5, x0, 1
@@ -264,7 +283,7 @@ found_b:
     li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     sw    x0, 0(x5)             # refused: enable is write-locked
 
-    slli  x4, x11, 2
+    slli  x4, x11, WORD_SHIFT
     add   x4, x2, x4
     lw    x7, 0(x4)
     addi  x5, x0, 1

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-sep_cpu_ctrl]
-== Address Map: sep_cpu_ctrl
+== SEP CPU Control Address Map
+
+SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.
 
 [cols="1,4,1,6", options="header"]
 |===

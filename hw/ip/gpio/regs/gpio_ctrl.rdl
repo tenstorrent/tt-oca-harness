@@ -5,9 +5,10 @@
 `define GPIO_CTRL_RDL_DEFINED
 
 addrmap gpio_ctrl {
+    name = "GPIO Control Address Map";
+    desc = "Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.";
 
-    desc = "GPIO Control CSR";
-
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

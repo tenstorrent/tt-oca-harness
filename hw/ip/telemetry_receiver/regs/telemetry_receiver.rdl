@@ -7,9 +7,10 @@
 addrmap telemetry_receiver #(
     longint unsigned NUM_COUNTER_REGS = 32
 ) {
+    name = "Telemetry Receiver Address Map";
+    desc = "Configuration, status, and data-buffer registers for a single telemetry receiver channel.";
 
-    desc = "Telemetry Receiver";
-
+    
     //////////////////////////
     // Register Definitions //
     //////////////////////////

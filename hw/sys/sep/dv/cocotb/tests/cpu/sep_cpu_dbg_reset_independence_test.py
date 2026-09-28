@@ -14,8 +14,8 @@ observable, so a pulse-and-check assert cannot fail.
 ``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:21) brought out as a
 controllable top-level port; ``sep_base_test`` default-drives it released (1).
 
-Checks (each asserts an exact value; ``self.rd`` resolves X->0, so the ==1
-released checks fail on a stuck/X reset tree):
+Checks (each asserts an exact value; ``self.rd`` raises on X/Z, so no check
+passes on an undriven reset tree):
   CHK-BASELINE : with dbg_rstb_i high, sep_reset_n and sep_cpu_reset_n are released.
   CHK-LIVE     : a real reset source (wdt_rst_ni_i low) drops sep_cpu_reset_n
                  to 0, then restores it -- so the observable is live, not stuck-1.
@@ -47,12 +47,10 @@ class sep_cpu_dbg_reset_independence_test(sep_base_test):
     async def _check_reset(self, sig, name: str, expected: int) -> None:
         """Assert a reset observable equals an exact value.
 
-        A zero expectation reads through rd_known: rd resolves X to 0, so
-        ``== 0`` would also hold for an observable nothing drives, which is the
-        whole point of a reset check. A one expectation is safe on rd -- an X
-        cannot satisfy it.
+        ``rd`` raises on an X/Z bit, so neither ``== 0`` nor ``== 1`` can hold
+        for an observable nothing drives.
         """
-        val = self.rd_known(sig) if expected == 0 else self.rd(sig)
+        val = self.rd(sig)
         if val != expected:
             raise AssertionError(f"{name}: expected {expected}, got {val}")
         self.logger.info("PASS: %s == %d", name, expected)

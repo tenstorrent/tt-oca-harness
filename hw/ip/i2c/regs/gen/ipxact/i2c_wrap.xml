@@ -12,11 +12,15 @@
       <ipxact:name>i2c_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>i2c_wrap</ipxact:name>
+        <ipxact:displayName>I2C Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Wrapper address map instantiating the per-controller I2C register blocks and shared control.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'he0c</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>i2c</ipxact:name>
+          <ipxact:displayName>I2C Address Map</ipxact:displayName>
+          <ipxact:description>Interrupt status, enable, and test registers for a single I2C controller and target.</ipxact:description>
           <ipxact:dim>3</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h200</ipxact:range>
@@ -2271,6 +2275,8 @@ detected while `CTRL.ENABLETARGET = 1`. Cleared when software writes 1.</ipxact:
         </ipxact:registerFile>
         <ipxact:registerFile>
           <ipxact:name>i2c_ctrl_regs</ipxact:name>
+          <ipxact:displayName>I2C Control Address Map</ipxact:displayName>
+          <ipxact:description>Top-level enable registers selecting I2C, controller-mode, and SMBus operation.</ipxact:description>
           <ipxact:addressOffset>'he00</ipxact:addressOffset>
           <ipxact:range>'hc</ipxact:range>
           <ipxact:register>

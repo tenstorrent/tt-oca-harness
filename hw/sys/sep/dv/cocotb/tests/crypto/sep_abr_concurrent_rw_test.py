@@ -17,9 +17,11 @@ master issues all its writes on one AWID, so its writes to a register land in
 issue order. A read may still overlap writes to the register it names, so it is
 graded against a window: the value of the last write whose response came back
 before the read was issued, or of any later write issued before the read
-returned. A read of an identity word must return that word exactly; the
-identity words read are those whose value no other of them holds, so a
-response swapped between two of them is a mismatch. A 64-bit access is graded
+returned. A read of an identity word must return that word exactly. The RDL
+and the SEP documents give no identity value, so ``CHK-ABR-ID-REF`` first reads
+each word alone and that capture is the reference. The identity words read are
+those whose captured value no other of them holds, so a response swapped
+between two of them is a mismatch. A 64-bit access is graded
 per word. Partial-word writes are mixed in and must answer SLVERR without
 moving their register.
 
@@ -27,7 +29,8 @@ After both streams drain, every read-write register must hold the last value
 its owner wrote. Registers are restored to their entry values at the end.
 
 RANDCFG: the op mix, addresses, data, outstanding depths and throttle patterns
-all come from the run seed.
+all come from the run seed. The identity addresses a stream picks from are the
+pool built from the capture, so the configuration is built after it.
 """
 
 from __future__ import annotations
@@ -44,6 +47,7 @@ from seq_lib.sep_abr_bus_seq import (
     GLOBAL_INTR_EN,
     ID_WIDTH,
     IDENTITY,
+    IDENTITY_PAIRS,
     IDENTITY_WORDS,
     NOTIF_COUNT,
     NOTIF_INTR_EN,
@@ -81,15 +85,25 @@ def _distinct_goldens(words: tuple[AbrWord, ...]) -> tuple[AbrWord, ...]:
     return tuple(kept)
 
 
-# Identity words the streams read. ML-KEM reports the same VERSION words as
-# ML-DSA, and a response swapped between two words of equal value would grade
-# as correct, so each value appears once here.
-IDENTITY_POOL = _distinct_goldens(IDENTITY_WORDS)
-_POOL_ADDRS = {w.addr for w in IDENTITY_POOL}
-# 64-bit identity reads: the granules whose two words are both in the pool.
-IDENTITY_GRANULES = tuple(
-    w.addr for w in IDENTITY_POOL if w.addr % 8 == 0 and w.addr + 4 in _POOL_ADDRS
-)
+def identity_pool() -> tuple[tuple[AbrWord, ...], tuple[int, ...]]:
+    """The identity words the streams read, and the granules of the 64-bit reads.
+
+    Built from the captured reference, so call it after ``capture_identity``.
+    Two identity words can hold the same value, and a response swapped between
+    them would grade as correct, so each value appears once in the pool. The
+    64-bit reads use the granules whose two words are both in the pool.
+    """
+    pool = _distinct_goldens(IDENTITY_WORDS)
+    values = [w.value for w in pool]
+    assert None not in values, "identity pool built before capture_identity() passed"
+    assert len(set(values)) == len(values), "identity pool values unique"
+    addrs = {w.addr for w in pool}
+    granules = tuple(lo.addr for lo, hi in IDENTITY_PAIRS if lo.addr in addrs and hi.addr in addrs)
+    # CHK-ABR-ID-REF requires the two words of a granule to differ, so the
+    # first granule is always whole in the pool.
+    assert granules, "at least one identity granule for the 64-bit reads"
+    return pool, granules
+
 
 # Op mix, as cumulative weights out of 100.
 _MIX = (
@@ -112,9 +126,6 @@ def _selftest() -> None:
     assert sorted(owned) == sorted(RW), "every read-write register has exactly one owner"
     assert all(w in OWNED["s_axi"] for w in PAIR)
     assert PAIR[1].addr == PAIR[0].addr + 4 and PAIR[0].addr % 8 == 0
-    values = [w.value for w in IDENTITY_POOL]
-    assert None not in values and len(set(values)) == len(values), "identity pool values unique"
-    assert IDENTITY_GRANULES, "at least one identity granule for the 64-bit reads"
 
 
 _selftest()
@@ -134,11 +145,17 @@ def _throttle(rng: SepSeededRng):
 
 
 class SepAbrConcurrentRwCfg:
-    """RANDCFG: both op streams, their depths and IDs, and the throttle seeds."""
+    """RANDCFG: both op streams, their depths and IDs, and the throttle seeds.
 
-    def __init__(self, seed: int) -> None:
+    ``pool`` and ``granules`` are the identity reads' targets from
+    ``identity_pool``.
+    """
+
+    def __init__(self, seed: int, pool: tuple[AbrWord, ...], granules: tuple[int, ...]) -> None:
         rng = SepSeededRng(seed)
         self.seed = seed
+        self.pool = pool
+        self.granules = granules
         self.depth = {bus: rng.randrange(3, 7) for bus in OWNED}
         self.awid = {bus: rng.randrange(1 << ID_WIDTH[bus]) for bus in OWNED}
         self.initial = {w.addr: rng.getrandbits(32) & w.mask for w in RW_WORDS}
@@ -149,8 +166,8 @@ class SepAbrConcurrentRwCfg:
         ops: list[AbrAccess] = []
         n_ids = 1 << ID_WIDTH[bus]
         rw = [w.addr for w in RW_WORDS]
-        identity = [w.addr for w in IDENTITY_POOL]
-        identity_granules = list(IDENTITY_GRANULES)
+        identity = [w.addr for w in self.pool]
+        identity_granules = list(self.granules)
         for k in range(OPS_PER_MASTER):
             roll = rng.randrange(100)
             kind = next(name for name, edge in _MIX if roll < edge)
@@ -203,6 +220,7 @@ class sep_abr_concurrent_rw_test(sep_base_test):
     """Both masters' interleaved ABR reads and writes against a windowed scoreboard."""
 
     required_evidence = (
+        "CHK-ABR-ID-REF",
         "CHK-ABR-CRW-WRITE-RESP",
         "CHK-ABR-CRW-READ",
         "CHK-ABR-CRW-STRESS",
@@ -211,10 +229,16 @@ class sep_abr_concurrent_rw_test(sep_base_test):
     )
 
     async def run_scenario(self) -> None:
-        cfg = SepAbrConcurrentRwCfg(self.random_seed())
-        self.logger.info("abr concurrent rw: %s", cfg.summary())
         await self.bring_up_no_cpu()
         abr = SepAbrBus(self)
+        await abr.capture_identity("s_axi")
+        pool, granules = identity_pool()
+        cfg = SepAbrConcurrentRwCfg(self.random_seed(), pool, granules)
+        self.logger.info(
+            "abr concurrent rw: %s identity-pool=%s",
+            cfg.summary(),
+            ",".join(w.name for w in pool),
+        )
         await abr.open_m_axi_window(write=True)
 
         entry = {}
