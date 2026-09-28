@@ -871,7 +871,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10800FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">336 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">secure_dma</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA control and status registers.</p></td>
 </tr>
 <tr>
@@ -943,7 +943,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10910FFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">140 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">aes</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AES Accelerator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES block-cipher accelerator.</p></td>
 </tr>
 <tr>
@@ -975,8 +975,8 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x109157FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">96 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">csrng</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cryptographically Secure Random Number Generator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10915800</p></td>
@@ -1191,7 +1191,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10BFFFFF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">56 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">spi_controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI Host</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External I/O SPI controller bridge.</p></td>
 </tr>
 <tr>
@@ -1282,11 +1282,11 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_cpu_ctrl</h2>
+<h2 id="regmap-sep_cpu_ctrl">SEP CPU Control Address Map</h2>
 <p>SEP CPU control and status registers: PKA and crypto configuration, boot and fast-memory enables, fuse-sense status, and interrupt controls.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-4">
-<caption class="title"><a href="#trm-table-4">Table 4</a>. Address Map: sep_cpu_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-4">Table 4</a>. SEP CPU Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x8</td><td><a href="#CLOCK_GATE_CTRL">CLOCK_GATE_CTRL</a></td><td>RW</td><td>TODO: clock-gate control - placeholder fields, not yet implemented.</td></tr>
 <tr><td>0x10</td><td><a href="#REFERENCE_COUNTER">REFERENCE_COUNTER</a></td><td>RW</td><td>-</td></tr>
@@ -1591,7 +1591,7 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: el2_pic</h2>
+<h2 id="regmap-el2_pic">EL2_PIC</h2>
 <p>VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.<br>Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1603,7 +1603,7 @@ corresponds to a unit in the SEP memory map above.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-39">
-<caption class="title"><a href="#trm-table-39">Table 39</a>. Address Map: el2_pic register list</caption>
+<caption class="title"><a href="#trm-table-39">Table 39</a>. EL2_PIC register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x3FC</td><td><a href="#meipl_256_">meipl[256]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
 <tr><td>0x1000 - 0x101C</td><td><a href="#meip_8_">meip[8]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
@@ -1667,11 +1667,11 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_reset_ctrl</h2>
+<h2 id="regmap-sep_reset_ctrl">SEP Reset Control Address Map</h2>
 <p>Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-46">
-<caption class="title"><a href="#trm-table-46">Table 46</a>. Address Map: sep_reset_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-46">Table 46</a>. SEP Reset Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#SW_RESET_N">SW_RESET_N</a></td><td>RW</td><td>-</td></tr>
 </table>
@@ -1698,11 +1698,11 @@ corresponds to a unit in the SEP memory map above.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_lifecycle_ctrl</h2>
+<h2 id="regmap-sep_lifecycle_ctrl">SEP Lifecycle Control Address Map</h2>
 <p>Lifecycle feature-control and demotion registers with their associated locks.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-48">
-<caption class="title"><a href="#trm-table-48">Table 48</a>. Address Map: sep_lifecycle_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-48">Table 48</a>. SEP Lifecycle Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#FEAT_CTRL">FEAT_CTRL</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#DEMOTE_1">DEMOTE_1</a></td><td>RW</td><td>-</td></tr>
@@ -1747,7 +1747,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_scratch</h2>
+<h2 id="regmap-sep_scratch">SEP Scratch Address Map</h2>
 <p>General-purpose SEP scratch register bank.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1755,7 +1755,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-52">
-<caption class="title"><a href="#trm-table-52">Table 52</a>. Address Map: sep_scratch register list</caption>
+<caption class="title"><a href="#trm-table-52">Table 52</a>. SEP Scratch Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x38</td><td><a href="#SCRATCH_8_">SCRATCH[8]</a></td><td>RW</td><td>-</td></tr>
 </table>
@@ -1776,11 +1776,11 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_efuse_map</h2>
+<h2 id="regmap-sep_efuse_map">SEP eFuse Map Address Map</h2>
 <p>Per-field write-lock and read-lock registers for the SEP eFuse map.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-54">
-<caption class="title"><a href="#trm-table-54">Table 54</a>. Address Map: sep_efuse_map register list</caption>
+<caption class="title"><a href="#trm-table-54">Table 54</a>. SEP eFuse Map Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#LOCKS_SPARE">LOCKS_SPARE</a></td><td>RW</td><td>-</td></tr>
@@ -2200,7 +2200,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: efuse_mmr</h2>
+<h2 id="regmap-efuse_mmr">eFuse Token Registers Address Map</h2>
 <p>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -2210,7 +2210,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-98">
-<caption class="title"><a href="#trm-table-98">Table 98</a>. Address Map: efuse_mmr register list</caption>
+<caption class="title"><a href="#trm-table-98">Table 98</a>. eFuse Token Registers Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
@@ -2295,11 +2295,11 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: aon_timer</h2>
+<h2 id="regmap-aon_timer">Always-On Timer</h2>
 <p>Wakeup and watchdog timers running on a low-power, always-on clock</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-107">
-<caption class="title"><a href="#trm-table-107">Table 107</a>. Address Map: aon_timer register list</caption>
+<caption class="title"><a href="#trm-table-107">Table 107</a>. Always-On Timer register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#WKUP_CTRL">WKUP_CTRL</a></td><td>RW</td><td>-</td></tr>
@@ -2424,7 +2424,8 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: aes</h2>
+<h2 id="regmap-aes">AES Accelerator</h2>
+<p>AES encryption and decryption engine with SCA and FI countermeasures</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[8]</strong>: 8 registers, base 0x4, stride 0x4</li>
@@ -2435,7 +2436,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-122">
-<caption class="title"><a href="#trm-table-122">Table 122</a>. Address Map: aes register list</caption>
+<caption class="title"><a href="#trm-table-122">Table 122</a>. AES Accelerator register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#ALERT_TEST">ALERT_TEST</a></td><td>W</td><td>-</td></tr>
 <tr><td>0x4 - 0x20</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>-</td></tr>
@@ -2556,7 +2557,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: hmac</h2>
+<h2 id="regmap-hmac">HMAC Accelerator</h2>
 <p>Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -2565,7 +2566,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-135">
-<caption class="title"><a href="#trm-table-135">Table 135</a>. Address Map: hmac register list</caption>
+<caption class="title"><a href="#trm-table-135">Table 135</a>. HMAC Accelerator register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -2695,7 +2696,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: kmac</h2>
+<h2 id="regmap-kmac">KMAC Accelerator</h2>
 <p>Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -2705,7 +2706,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-149">
-<caption class="title"><a href="#trm-table-149">Table 149</a>. Address Map: kmac register list</caption>
+<caption class="title"><a href="#trm-table-149">Table 149</a>. KMAC Accelerator register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -2886,11 +2887,11 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: otbn</h2>
+<h2 id="regmap-otbn">OpenTitan Big Number Accelerator</h2>
 <p>Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-167">
-<caption class="title"><a href="#trm-table-167">Table 167</a>. Address Map: otbn register list</caption>
+<caption class="title"><a href="#trm-table-167">Table 167</a>. OpenTitan Big Number Accelerator register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -3022,11 +3023,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: entropy_source</h2>
+<h2 id="regmap-entropy_source">Entropy Source Address Map</h2>
 <p>Entropy-source configuration, status, and data registers.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-179">
-<caption class="title"><a href="#trm-table-179">Table 179</a>. Address Map: entropy_source register list</caption>
+<caption class="title"><a href="#trm-table-179">Table 179</a>. Entropy Source Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#COMPONENT_ID">COMPONENT_ID</a></td><td>R</td><td>Identifies the entropy-source register interface.</td></tr>
 <tr><td>0x4</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>Controls entropy generation and conditioning.</td></tr>
@@ -3677,10 +3678,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: csrng</h2>
+<h2 id="regmap-csrng">Cryptographically Secure Random Number Generator</h2>
+<p>Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-249">
-<caption class="title"><a href="#trm-table-249">Table 249</a>. Address Map: csrng register list</caption>
+<caption class="title"><a href="#trm-table-249">Table 249</a>. Cryptographically Secure Random Number Generator register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -3916,11 +3918,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: edn</h2>
+<h2 id="regmap-edn">Entropy Distribution Network</h2>
 <p>Distributes random numbers produced by CSRNG to hardware blocks</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-274">
-<caption class="title"><a href="#trm-table-274">Table 274</a>. Address Map: edn register list</caption>
+<caption class="title"><a href="#trm-table-274">Table 274</a>. Entropy Distribution Network register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -4106,7 +4108,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: key_manager</h2>
+<h2 id="regmap-key_manager">Key Manager Top-Level Address Map</h2>
 <p>Complete memory map for the Key Manager subsystem, including ROM, SRAM,<br>control/status registers, mailbox, and external crypto engine ports.<br>This address map is from the perspective of the KM CPU (PicoRV32).</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -4198,7 +4200,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-293">
-<caption class="title"><a href="#trm-table-293">Table 293</a>. Address Map: key_manager register list</caption>
+<caption class="title"><a href="#trm-table-293">Table 293</a>. Key Manager Top-Level Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10000</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
 <tr><td>0x10004</td><td><a href="#KM_WRITE_SEPARATOR">KM_WRITE_SEPARATOR</a></td><td>RW</td><td>Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.</td></tr>
@@ -6649,11 +6651,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: km_csr</h2>
+<h2 id="regmap-km_csr">Key Manager Control and Status Registers</h2>
 <p>Control and status registers for the Key Manager subsystem</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-602">
-<caption class="title"><a href="#trm-table-602">Table 602</a>. Address Map: km_csr register list</caption>
+<caption class="title"><a href="#trm-table-602">Table 602</a>. Key Manager Control and Status Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#VERSION">VERSION</a></td><td>R</td><td>Hardware version register (semantic versioning: major.minor.patch)</td></tr>
 <tr><td>0x4</td><td><a href="#CTRL">CTRL</a></td><td>R</td><td>Control register (reserved for future use)</td></tr>
@@ -7756,7 +7758,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: km_kpv</h2>
+<h2 id="regmap-km_kpv">Key and Policy Vault (KM Port)</h2>
 <p>Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -7828,7 +7830,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-747">
-<caption class="title"><a href="#trm-table-747">Table 747</a>. Address Map: km_kpv register list</caption>
+<caption class="title"><a href="#trm-table-747">Table 747</a>. Key and Policy Vault (KM Port) register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x3C</td><td><a href="#KEY_ENTRY_0_.WORD_16_">KEY_ENTRY[0].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
 <tr><td>0x40 - 0x7C</td><td><a href="#KEY_ENTRY_1_.WORD_16_">KEY_ENTRY[1].WORD[16]</a></td><td>RW</td><td>One 32-bit word of a key entry (512-bit key = 16 words). No reset; powers up random.</td></tr>
@@ -8316,11 +8318,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: km_drbg_sampler</h2>
+<h2 id="regmap-km_drbg_sampler">DRBG Sampler</h2>
 <p>DRBG random data interface and configuration/status registers</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-815">
-<caption class="title"><a href="#trm-table-815">Table 815</a>. Address Map: km_drbg_sampler register list</caption>
+<caption class="title"><a href="#trm-table-815">Table 815</a>. DRBG Sampler register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#DATA">DATA</a></td><td>R</td><td>One word of random data. Read triggers request or returns prefetch. Writes return SLVERR. No reset.</td></tr>
 <tr><td>0x4</td><td><a href="#CFG">CFG</a></td><td>RW</td><td>Configuration: PREFETCH enable, TIMEOUT cycles for active CPU read.</td></tr>
@@ -8369,11 +8371,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: km_mailbox_km</h2>
+<h2 id="regmap-km_mailbox_km">Key Manager Mailbox KM Side</h2>
 <p>Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-820">
-<caption class="title"><a href="#trm-table-820">Table 820</a>. Address Map: km_mailbox_km register list</caption>
+<caption class="title"><a href="#trm-table-820">Table 820</a>. Key Manager Mailbox KM Side register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
 <tr><td>0x4</td><td><a href="#KM_WRITE_SEPARATOR">KM_WRITE_SEPARATOR</a></td><td>RW</td><td>Write 1 to set message separator on next outbound (KM→SEP) write. Cleared by hardware when that write completes.</td></tr>
@@ -8461,11 +8463,11 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: km_mailbox_sep</h2>
+<h2 id="regmap-km_mailbox_sep">Key Manager Mailbox SEP Side</h2>
 <p>Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-828">
-<caption class="title"><a href="#trm-table-828">Table 828</a>. Address Map: km_mailbox_sep register list</caption>
+<caption class="title"><a href="#trm-table-828">Table 828</a>. Key Manager Mailbox SEP Side register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#SEP_WRITE_DATA">SEP_WRITE_DATA</a></td><td>W</td><td>Write data to inbound FIFO (SEP→KM messages)</td></tr>
 <tr><td>0x4</td><td><a href="#SEP_WRITE_SEPARATOR">SEP_WRITE_SEPARATOR</a></td><td>RW</td><td>Write 1 to set message separator on next inbound (SEP→KM) write. Cleared by hardware when that write completes.</td></tr>
@@ -8553,7 +8555,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: abr_wrapper_key</h2>
+<h2 id="regmap-abr_wrapper_key">Adams Bridge Key Sideload Registers</h2>
 <p>Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.<br>Contains four dual-share secret-seed inputs and one shared-key output.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -8569,7 +8571,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-836">
-<caption class="title"><a href="#trm-table-836">Table 836</a>. Address Map: abr_wrapper_key register list</caption>
+<caption class="title"><a href="#trm-table-836">Table 836</a>. Adams Bridge Key Sideload Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#MLDSA_SEED.KEY_SHARE0_8_">MLDSA_SEED.KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#MLDSA_SEED.KEY_SHARE1_8_">MLDSA_SEED.KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
@@ -8701,7 +8703,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: aes_wrapper_key</h2>
+<h2 id="regmap-aes_wrapper_key">AES Wrapper Key Registers</h2>
 <p>Key storage registers for the AES sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -8710,7 +8712,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-853">
-<caption class="title"><a href="#trm-table-853">Table 853</a>. Address Map: aes_wrapper_key register list</caption>
+<caption class="title"><a href="#trm-table-853">Table 853</a>. AES Wrapper Key Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
@@ -8745,7 +8747,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: hmac_wrapper_key</h2>
+<h2 id="regmap-hmac_wrapper_key">HMAC Wrapper Key Registers</h2>
 <p>Key storage registers for the HMAC sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -8754,7 +8756,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-857">
-<caption class="title"><a href="#trm-table-857">Table 857</a>. Address Map: hmac_wrapper_key register list</caption>
+<caption class="title"><a href="#trm-table-857">Table 857</a>. HMAC Wrapper Key Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
@@ -8789,7 +8791,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: kmac_wrapper_key</h2>
+<h2 id="regmap-kmac_wrapper_key">KMAC Wrapper Key Registers</h2>
 <p>Key storage registers for the KMAC sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -8798,7 +8800,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-861">
-<caption class="title"><a href="#trm-table-861">Table 861</a>. Address Map: kmac_wrapper_key register list</caption>
+<caption class="title"><a href="#trm-table-861">Table 861</a>. KMAC Wrapper Key Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#KEY_SHARE0_8_">KEY_SHARE0[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#KEY_SHARE1_8_">KEY_SHARE1[8]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
@@ -8833,7 +8835,7 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: otbn_wrapper_key</h2>
+<h2 id="regmap-otbn_wrapper_key">OTBN Wrapper Key Registers</h2>
 <p>Key storage registers for the OTBN sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -8842,7 +8844,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-865">
-<caption class="title"><a href="#trm-table-865">Table 865</a>. Address Map: otbn_wrapper_key register list</caption>
+<caption class="title"><a href="#trm-table-865">Table 865</a>. OTBN Wrapper Key Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x2C</td><td><a href="#KEY_SHARE0_12_">KEY_SHARE0[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x30 - 0x5C</td><td><a href="#KEY_SHARE1_12_">KEY_SHARE1[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
@@ -8883,7 +8885,8 @@ SEP aggregate.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: secure_dma</h2>
+<h2 id="regmap-secure_dma">DMA Controller</h2>
+<p>DMA Controller for the integrated OpenTitan.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>SHA2_DIGEST_0[16]</strong>: 16 registers, base 0x58, stride 0x4</li>
@@ -8892,7 +8895,7 @@ SEP aggregate.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-869">
-<caption class="title"><a href="#trm-table-869">Table 869</a>. Address Map: secure_dma register list</caption>
+<caption class="title"><a href="#trm-table-869">Table 869</a>. DMA Controller register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -9155,10 +9158,11 @@ register map follows.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: spi_controller</h2>
+<h2 id="regmap-spi_controller">SPI Host</h2>
+<p>Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-898">
-<caption class="title"><a href="#trm-table-898">Table 898</a>. Address Map: spi_controller register list</caption>
+<caption class="title"><a href="#trm-table-898">Table 898</a>. SPI Host register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>-</td></tr>
@@ -9317,11 +9321,11 @@ Adopter-specific external devices require their own register documentation.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_external</h2>
+<h2 id="regmap-sep_external">SEP External</h2>
 <p>SEP external address map (eFuse SHIM control and execute-in-place window).</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-911">
-<caption class="title"><a href="#trm-table-911">Table 911</a>. Address Map: sep_external register list</caption>
+<caption class="title"><a href="#trm-table-911">Table 911</a>. SEP External register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
 </table>

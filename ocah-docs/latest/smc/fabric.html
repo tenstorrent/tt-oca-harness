@@ -1563,11 +1563,11 @@ local resources are accessed and which address translation is applied.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: alias_remap</h2>
+<h2 id="regmap-alias_remap">AXI Alias Remap Address Map</h2>
 <p>TLB Registers for address remapping and attribute tagging</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-9">
-<caption class="title"><a href="#trm-table-9">Table 9</a>. Address Map: alias_remap register list</caption>
+<caption class="title"><a href="#trm-table-9">Table 9</a>. AXI Alias Remap Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#region_start">region_start</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#region_end">region_end</a></td><td>RW</td><td>-</td></tr>
@@ -1618,11 +1618,11 @@ regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: output_remap</h2>
+<h2 id="regmap-output_remap">Output Remap Address Map</h2>
 <p>Address-translation registers that remap outbound transactions and tag their attributes.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. Address Map: output_remap register list</caption>
+<caption class="title"><a href="#trm-table-13">Table 13</a>. Output Remap Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#region_attrs">region_attrs</a></td><td>RW</td><td>-</td></tr>
 </table>
@@ -1652,11 +1652,11 @@ protection attribute policies to control inbound traffic.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: filter_ctrl</h2>
+<h2 id="regmap-filter_ctrl">AXI Filter Control Address Map</h2>
 <p>Per-filter access-control registers defining permitted address ranges and transaction attributes.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-15">
-<caption class="title"><a href="#trm-table-15">Table 15</a>. Address Map: filter_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-15">Table 15</a>. AXI Filter Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#FILTER_CONFIG">FILTER_CONFIG</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#START_ADDR">START_ADDR</a></td><td>RW</td><td>-</td></tr>

@@ -556,7 +556,7 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x38000 – BASE + 0x381FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">312 B</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">dma_ctrl</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">iDMA Controller Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Direct-memory-access controller.</p></td>
@@ -786,7 +786,7 @@ window is integration-specific.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: pll_wrap</h2>
+<h2 id="regmap-pll_wrap">PLL Wrapper Placeholder Address Map</h2>
 <p>Adopter clock-control placeholder reserving the PLL map slot; no CSRs are modeled.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -812,7 +812,7 @@ window is integration-specific.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: pvt_wrap</h2>
+<h2 id="regmap-pvt_wrap">PVT Wrapper Placeholder Address Map</h2>
 <p>Adopter PVT and monitor placeholder reserving the map slot; no CSRs are modeled.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -838,7 +838,7 @@ window is integration-specific.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: straps</h2>
+<h2 id="regmap-straps">Straps Address Map</h2>
 <p>Captured GPIO strap values (adopter padring capture)</p>
 <p><strong>Register List:</strong></p>
 <table>
@@ -974,7 +974,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: chip_config</h2>
+<h2 id="regmap-chip_config">Chip Configuration Address Map</h2>
 <p>Chip version, identification, and lifecycle-state registers.</p>
 <p><strong>Register List:</strong></p>
 <table>
@@ -1015,7 +1015,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: scratch</h2>
+<h2 id="regmap-scratch">Scratch Address Map</h2>
 <p>General-purpose scratch register bank.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1041,7 +1041,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: ndm_reset</h2>
+<h2 id="regmap-ndm_reset">NDM Reset Control Address Map</h2>
 <p>Per-cluster NDM reset handshake with an external CPU cluster debug module</p>
 <p><strong>Register List:</strong></p>
 <table>
@@ -1076,7 +1076,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: misc_wrap</h2>
+<h2 id="regmap-misc_wrap">SMC Miscellaneous Wrapper Address Map</h2>
 <p>Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1156,7 +1156,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: smc_base_config</h2>
+<h2 id="regmap-smc_base_config">SMC Base Configuration Address Map</h2>
 <p>Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.</p>
 <p><strong>Register List:</strong></p>
 <table>
@@ -1269,7 +1269,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: dfx_ctrl_status</h2>
+<h2 id="regmap-dfx_ctrl_status">DFX Control and Status Address Map</h2>
 <p>Memory-repair and MBIST status, chiplet enable, clock and debug controls, and debug-mux selects.</p>
 <p><strong>Register List:</strong></p>
 <table>
@@ -1330,7 +1330,7 @@ reset control.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: gpio_poc_pbias_ctrl</h2>
+<h2 id="regmap-gpio_poc_pbias_ctrl">GPIO POC and PBIAS Control Address Map</h2>
 <p>GPIO POC and PBIAS Control Register Interface</p>
 <p><strong>Register List:</strong></p>
 <table>

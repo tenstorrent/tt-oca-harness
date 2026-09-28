@@ -1139,7 +1139,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: cpu_ctrl</h2>
+<h2 id="regmap-cpu_ctrl">CPU Control Address Map</h2>
 <p>Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1155,7 +1155,7 @@ firmware development and diagnostics.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-4">
-<caption class="title"><a href="#trm-table-4">Table 4</a>. Address Map: cpu_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-4">Table 4</a>. CPU Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x18</td><td><a href="#RESET_VECTOR_4_">RESET_VECTOR[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x20</td><td><a href="#RESET_CTRL">RESET_CTRL</a></td><td>RW</td><td>-</td></tr>
@@ -1357,7 +1357,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: clint</h2>
+<h2 id="regmap-clint">CLINT Address Map</h2>
 <p>Core-Local Interruptor: software-interrupt, timer-compare, and machine-time registers.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1366,7 +1366,7 @@ firmware development and diagnostics.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-26">
-<caption class="title"><a href="#trm-table-26">Table 26</a>. Address Map: clint register list</caption>
+<caption class="title"><a href="#trm-table-26">Table 26</a>. CLINT Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC</td><td><a href="#MSIP_4_">MSIP[4]</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x4000 - 0x4018</td><td><a href="#MTIMECMP_4_">MTIMECMP[4]</a></td><td>RW</td><td>-</td></tr>
@@ -1401,7 +1401,7 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: debug_module</h2>
+<h2 id="regmap-debug_module">RISC-V Debug Module Registers</h2>
 <p>RISC-V External Debug Support Version 0.13.2 - Section 3.12. Field reset values updated as per specification and user rules (Preset/- -&gt; 0x0). HW access permissions are derived based on SW access. SW &#x27;w&#x27; access changed to &#x27;rw&#x27;. Fields previously rw1c now use &#x27;woclr&#x27;.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1411,7 +1411,7 @@ firmware development and diagnostics.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-30">
-<caption class="title"><a href="#trm-table-30">Table 30</a>. Address Map: debug_module register list</caption>
+<caption class="title"><a href="#trm-table-30">Table 30</a>. RISC-V Debug Module Registers register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x10 - 0x3C</td><td><a href="#abstractdata_12_">abstractdata[12]</a></td><td>RW</td><td>Abstract Data Register. Used for arguments/return values of abstract commands.</td></tr>
 <tr><td>0x40</td><td><a href="#dmcontrol">dmcontrol</a></td><td>RW</td><td>Controls the overall Debug Module and selected harts. Writes to action bits (haltreq, resumereq, etc.) apply to the new value of hartsel and hasel.</td></tr>
@@ -1667,11 +1667,11 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: bus_error_unit</h2>
+<h2 id="regmap-bus_error_unit">Bus Error Unit Address Map</h2>
 <p>Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-57">
-<caption class="title"><a href="#trm-table-57">Table 57</a>. Address Map: bus_error_unit register list</caption>
+<caption class="title"><a href="#trm-table-57">Table 57</a>. Bus Error Unit Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CAUSE">CAUSE</a></td><td>RW</td><td>-</td></tr>
 <tr><td>0x8</td><td><a href="#PHYS_ADDR">PHYS_ADDR</a></td><td>RW</td><td>-</td></tr>
@@ -1760,11 +1760,11 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: wdt</h2>
+<h2 id="regmap-wdt">Watchdog Timer Address Map</h2>
 <p>Watchdog timer configuration, counter, compare, and feed and key registers.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-64">
-<caption class="title"><a href="#trm-table-64">Table 64</a>. Address Map: wdt register list</caption>
+<caption class="title"><a href="#trm-table-64">Table 64</a>. Watchdog Timer Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CTRL">CTRL</a></td><td>RW</td><td>KEY reg must be written to before any other register in this addrmap can be written to, unlocking the WDT. After writing to another register, the WDT will be locked again, and KEY must be written to again to unlock it.</td></tr>
 <tr><td>0x8</td><td><a href="#COUNT">COUNT</a></td><td>RW</td><td>-</td></tr>

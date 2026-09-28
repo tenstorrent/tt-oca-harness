@@ -1618,7 +1618,7 @@ instance documented in this section.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: smc_efuse_map</h2>
+<h2 id="regmap-smc_efuse_map">Efuse address map of physical efuse macro</h2>
 <p>Address map for efuse shadow registers providing access to various chip configuration and ID fields</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1627,7 +1627,7 @@ instance documented in this section.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. Address Map: smc_efuse_map register list</caption>
+<caption class="title"><a href="#trm-table-14">Table 14</a>. Efuse address map of physical efuse macro register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#LOCKS">LOCKS</a></td><td>RW</td><td>Lock controls for each fuse field. When write locked, the corresponding field is not<br>programmable. When read locked, the shadow register is not readable.</td></tr>
 <tr><td>0x8</td><td><a href="#JTAG_PUBLIC_IDENTITY">JTAG_PUBLIC_IDENTITY</a></td><td>RW</td><td>JTAG-public exception window. In PROD and RMA_SiP, JTAG reads of this range<br>are admitted while JTAG access to every other fuse field is blocked. Encoding<br>is adopter-defined; the harness does not interpret or consume the value. The<br>slot-0 read lock still hides the bits when set.</td></tr>
@@ -1758,7 +1758,7 @@ authentication, including RMA tokens and security disable tokens.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: efuse_mmr</h2>
+<h2 id="regmap-efuse_mmr">eFuse Token Registers Address Map</h2>
 <p>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1768,7 +1768,7 @@ authentication, including RMA tokens and security disable tokens.</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-21">
-<caption class="title"><a href="#trm-table-21">Table 21</a>. Address Map: efuse_mmr register list</caption>
+<caption class="title"><a href="#trm-table-21">Table 21</a>. eFuse Token Registers Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x1C</td><td><a href="#RMA_SIP_TOKEN_I_8_">RMA_SIP_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
 <tr><td>0x20 - 0x3C</td><td><a href="#RMA_CHIPLET_TOKEN_I_8_">RMA_CHIPLET_TOKEN_I[8]</a></td><td>RW</td><td>Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.</td></tr>
@@ -1860,11 +1860,11 @@ after <code>PROGRAM_DONE</code> before issuing a read. See
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: efuse_interface_ctrl</h2>
+<h2 id="regmap-efuse_interface_ctrl">eFuse Interface Control Address Map</h2>
 <p>Program and read command, address, data, status, and timeout registers for the eFuse interface.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-30">
-<caption class="title"><a href="#trm-table-30">Table 30</a>. Address Map: efuse_interface_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-30">Table 30</a>. eFuse Interface Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_INTERFACE_CTRL_STATUS">EFUSE_INTERFACE_CTRL_STATUS</a></td><td>RW</td><td>eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.</td></tr>
 <tr><td>0x4</td><td><a href="#EFUSE_PROGRAM_CTRL">EFUSE_PROGRAM_CTRL</a></td><td>RW</td><td>eFuse program control and status. Configures the program address and data, triggers a program (optionally with read-back), and reports program progress and completion status.</td></tr>
@@ -1965,11 +1965,11 @@ does not appear at a fixed address in the generated OCAH map.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: efuse_shim_ctrl</h2>
+<h2 id="regmap-efuse_shim_ctrl">eFuse SHIM Control Model Address Map</h2>
 <p>DV model of the eFuse SHIM control interface.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-38">
-<caption class="title"><a href="#trm-table-38">Table 38</a>. Address Map: efuse_shim_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-38">Table 38</a>. eFuse SHIM Control Model Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#EFUSE_BANK_INIT_TIME">EFUSE_BANK_INIT_TIME</a></td><td>RW</td><td>eFuse bank initialization time. Number of cycles to wait for the OTP macro to initialize before sensing can begin.</td></tr>
 </table>

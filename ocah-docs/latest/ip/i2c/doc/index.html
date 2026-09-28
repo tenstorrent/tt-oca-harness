@@ -722,11 +722,11 @@ Bit numbering follows standard convention (bit 0 is LSB)</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: i2c</h2>
+<h2 id="regmap-i2c">I2C Address Map</h2>
 <p>Interrupt status, enable, and test registers for a single I2C controller and target.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-1">
-<caption class="title"><a href="#trm-table-1">Table 1</a>. Address Map: i2c register list</caption>
+<caption class="title"><a href="#trm-table-1">Table 1</a>. I2C Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#INTR_STATE">INTR_STATE</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
 <tr><td>0x4</td><td><a href="#INTR_ENABLE">INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
@@ -1123,7 +1123,7 @@ Bit numbering follows standard convention (bit 0 is LSB)</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: i2c_ctrl</h2>
+<h2 id="regmap-i2c_ctrl">I2C Control Address Map</h2>
 <p>Top-level enable registers selecting I2C, controller-mode, and SMBus operation.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1131,7 +1131,7 @@ Bit numbering follows standard convention (bit 0 is LSB)</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-35">
-<caption class="title"><a href="#trm-table-35">Table 35</a>. Address Map: i2c_ctrl register list</caption>
+<caption class="title"><a href="#trm-table-35">Table 35</a>. I2C Control Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x8</td><td><a href="#I2C_CTRL_3_">I2C_CTRL[3]</a></td><td>RW</td><td>Control Register</td></tr>
 </table>
@@ -1156,7 +1156,7 @@ Bit numbering follows standard convention (bit 0 is LSB)</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: i2c_wrap</h2>
+<h2 id="regmap-i2c_wrap">I2C Wrapper Address Map</h2>
 <p>Wrapper address map instantiating the per-controller I2C register blocks and shared control.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
@@ -1164,7 +1164,7 @@ Bit numbering follows standard convention (bit 0 is LSB)</p>
 </ul>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-37">
-<caption class="title"><a href="#trm-table-37">Table 37</a>. Address Map: i2c_wrap register list</caption>
+<caption class="title"><a href="#trm-table-37">Table 37</a>. I2C Wrapper Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#i2c_0_.INTR_STATE">i2c[0].INTR_STATE</a></td><td>RW</td><td>Interrupt Status Register</td></tr>
 <tr><td>0x4</td><td><a href="#i2c_0_.INTR_ENABLE">i2c[0].INTR_ENABLE</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>

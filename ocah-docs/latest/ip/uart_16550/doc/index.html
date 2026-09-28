@@ -1038,11 +1038,11 @@ when <code>LCR.DLAB=1</code>.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: uart_16550_main</h2>
+<h2 id="regmap-uart_16550_main">UART 16550 Main Address Map</h2>
 <p>Contains the mode-independent registers and the read-only registers accessible only<br>when `DLAB = 0`.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-2">
-<caption class="title"><a href="#trm-table-2">Table 2</a>. Address Map: uart_16550_main register list</caption>
+<caption class="title"><a href="#trm-table-2">Table 2</a>. UART 16550 Main Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#RBR">RBR</a></td><td>R</td><td>Receiver Buffer Register</td></tr>
 <tr><td>0x4</td><td><a href="#IER">IER</a></td><td>RW</td><td>Interrupt Enable Register</td></tr>
@@ -1172,11 +1172,11 @@ when <code>LCR.DLAB=1</code>.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: uart_16550_main_wo</h2>
+<h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
 <p>Contains the write-only registers accessible only when `LCR.DLAB = 0`.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. Address Map: uart_16550_main_wo register list</caption>
+<caption class="title"><a href="#trm-table-13">Table 13</a>. UART 16550 Main Write-Only Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#THR">THR</a></td><td>W</td><td>Transmitter Holding Register</td></tr>
 <tr><td>0x8</td><td><a href="#FCR">FCR</a></td><td>W</td><td>FIFO Control Register</td></tr>
@@ -1210,11 +1210,11 @@ when <code>LCR.DLAB=1</code>.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: uart_16550_dl</h2>
+<h2 id="regmap-uart_16550_dl">UART 16550 Divisor Latch Address Map</h2>
 <p>Contains the registers accessible only when `LCR.DLAB = 1`.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-16">
-<caption class="title"><a href="#trm-table-16">Table 16</a>. Address Map: uart_16550_dl register list</caption>
+<caption class="title"><a href="#trm-table-16">Table 16</a>. UART 16550 Divisor Latch Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#DLL">DLL</a></td><td>RW</td><td>Divisor Latch Least Significant Byte Register</td></tr>
 <tr><td>0x4</td><td><a href="#DLM">DLM</a></td><td>RW</td><td>Divisor Latch Most Significant Byte Register</td></tr>

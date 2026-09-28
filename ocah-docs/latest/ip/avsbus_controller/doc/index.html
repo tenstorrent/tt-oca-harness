@@ -1708,11 +1708,11 @@ register to poll.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: avsbus_controller</h2>
+<h2 id="regmap-avsbus_controller">AVSBus Controller Address Map</h2>
 <p>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p>
 <p><strong>Register List:</strong></p>
 <table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. Address Map: avsbus_controller register list</caption>
+<caption class="title"><a href="#trm-table-12">Table 12</a>. AVSBus Controller Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#AVS_CMD">AVS_CMD</a></td><td>W</td><td>The command+data to be transferred to the AVS bus</td></tr>
 <tr><td>0x4</td><td><a href="#AVS_READBACK">AVS_READBACK</a></td><td>R</td><td>Response data from AVS slave device (updated in response to both AVS read and write commands). Reading<br>this register causes the AVS response readback fifo pointer to advance.</td></tr>
