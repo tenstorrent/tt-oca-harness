@@ -360,8 +360,8 @@ infrastructure.
 === GPIO Pad Integration
 
 GPIO pad integration requires careful attention to function assignment and pull
-requirements. The GPIO table below lists each signal, bump location, function,
-recommended pull, and integration notes. Default input/output direction is
+requirements. The GPIO table below lists each signal, function, recommended
+pull, and integration notes. Default input/output direction is
 defined by `smc_padring_pkg::DefaultDirectionMap`, not by the table.
 
 The public `hw/top/smc_wrapper.sv` and `hw/top/smc_ip_integration.sv` examples
@@ -369,6 +369,50 @@ show the pad connections. For bidirectional pins, implement proper tri-state
 buffers controlled by the `core2pad_en_o` signals. Connect multiplexed UART,
 I2C, I3C, and SPI pins to external devices according to the function assignments
 in the GPIO table.
+
+The harness padring drives one GPIO pad per `u_gpio_interface` instance, so the
+adopter must integrate `smc_pkg::NUM_GPIO_WRAPS` pads: `smc_pkg::NUM_BONDED_GPIO`
+bonded pads plus `smc_pkg::NUM_UNBONDED_GPIO` unbonded pads (currently 61 and 4,
+65 in total). If the adopter chooses to capture configuration straps from GPIO
+pads, this can only be done from the bonded pads. The pads for the SDA and SCL
+lines of I3C[1] are recommended to be unbonded for security when transmitting OCCP
+traffic. The pads for cool reset (both in and out) should also be unbonded as they
+are meant only to interface with other chiplets within a package. All of these
+pads should be bidirectional, except for Cool Reset In which should use an
+input-only pad.
+
+An additional 10 pads should be instantiated to support the JTAG PTAP and STAP.
+This consists of two groups of TCK, TRSTN, TDI, TDO, and TMS -- one group for the
+PTAP and one for the STAP. For the PTAP, input-only pads may be used for TCK,
+TMS, and TDI, and a reset-type input pad for TRSTN; the PTAP TDO pad must be
+tri-state capable, since the harness drives an output enable for it
+(`jtag_ptap_client_tdo_oen_o`). For the STAP, TCK, TRSTN, TMS, and TDO are
+driven out of the chiplet and TDI returns from the external TAP, so an
+input-only pad may be used for TDI.
+
+Every cross trigger port (CTP) that `smu_wrapper` exposes must be connected; the
+harness does not tie off unused ports. Connecting a CTP does not require pads: a
+CTP that is not used off-chiplet may be tied off or routed to on-die logic by the
+adopter. A CTP that does leave the chiplet needs a group of 4 pads (request out,
+request in, acknowledge in, acknowledge out), with the two inputs on input-only
+pads and the two outputs on bidirectional pads capable of open-drain drive, to
+conform with the cross-trigger methodology described in
+ifdef::backend-html5[]
+xref:ocah-docs:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _Cross-Trigger Port_ section of the Technical Reference Manual
+endif::backend-pdf[]
+See <<xtrig-ctp-gpio-interface>> for the SMU-level ports.
+
+The harness also requires a reference clock, a cold reset, and a powergood
+indication (`clk_ref_i`, `rst_cold_ni`, and `powergood_i` on `smu`). These must
+be driven, but not necessarily from pads: an adopter may source them from
+dedicated pads as the GPIO table shows, from another chiplet, or from on-die
+logic.
+
+An adopter may choose to instantiate additional pads (with or without supporting
+instances of the harness `gpio` module) to support custom features.
 
 Configuration straps are captured separately from the GPIO table. Establish
 them before cold reset deassertion and keep them stable during capture. The
@@ -732,8 +776,8 @@ endif::backend-pdf[]
 === GPIO Pin Requirements
 
 The SMC provides GPIO functionality with multiplexed peripheral functions and
-test interfaces. The following table lists the signal and bump location,
-assigned function, recommended pull, and GPIO-specific notes. It does not define
+test interfaces. The following table lists the signal, assigned function,
+recommended pull, and GPIO-specific notes. It does not define
 default direction or decode configuration straps; use
 `smc_padring_pkg::DefaultDirectionMap` and the `STRAPS_LO` and `STRAPS_HI`
 register descriptions (see <<smc-external-supplementary>>) for those.
@@ -1648,6 +1692,7 @@ Clock-stop request lane 0 is reserved for SMC. The SMU exposes the remaining
 DTP lanes, so the SMU `XTRIG_NUM_CLK_STOP_REQ` field is
 `smu_pkg::XTRIG_SMC_CLK_STOP_LANES` less than DTP's.
 
+[[xtrig-ctp-gpio-interface]]
 ==== Cross Trigger Port GPIO Interface
 
 CTP signals from DTP are ported through the SMU and are direct
