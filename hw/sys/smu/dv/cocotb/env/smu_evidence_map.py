@@ -506,6 +506,38 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "slice overrides and the SEP override flag following",
         ),
     ],
+    "smu_dtp_jtag2axi_address_walk_test": [
+        (
+            "CHK-J2A-WALK-FABRIC",
+            "CHK-J2A-WALK-FABRIC",
+            "SMC fabric bridge byte accesses at offsets 1-3 succeed; an off-map write completes",
+        ),
+        (
+            "CHK-J2A-WALK-EXTERNAL",
+            "CHK-J2A-WALK-EXTERNAL",
+            "a write and a read at every address bit of the adopter window complete",
+        ),
+        (
+            "CHK-J2A-WALK-DTP-CSR",
+            "CHK-J2A-WALK-DTP-CSR",
+            "a read and a zero-strobe write at every address bit of the DTP CSR window complete",
+        ),
+        (
+            "CHK-J2A-WALK-SMC-OTP",
+            "CHK-J2A-WALK-SMC-OTP",
+            "SMC OTP bridge reads and zero-strobe writes at every address bit complete",
+        ),
+        (
+            "CHK-J2A-WALK-SEP-OTP",
+            "CHK-J2A-WALK-SEP-OTP",
+            "SEP OTP bridge reads and zero-strobe writes at every address bit complete",
+        ),
+        (
+            "CHK-J2A-WALK-COLD-RESET",
+            "CHK-J2A-WALK-COLD-RESET",
+            "a cold reset takes the primary SMC reset low and releases it",
+        ),
+    ],
     "smu_dtp_ptap_ir_walk_test": [
         (
             "CHK-PTAP-STATE-WALK",
@@ -715,6 +747,13 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_smc_reset_ctrl_test": [
         ("CHK-RST-PRIMARY", "RST_PRIMARY_SMC_1", "SMC primary reset released"),
         ("CHK-RST-COLD-STABLE", "RST_COLD_STABLE_1", "cold stable released"),
+    ],
+    "smu_smc_gpio_pad_output_test": [
+        (
+            "CHK-SMU-LANE-GPIO-OUT",
+            "CHK-SMU-LANE-GPIO-OUT",
+            "every pad driven from its own DATA_CTRL loops CORE2PAD back to gpio_interrupt_o at 1 and 0",
+        ),
     ],
     "smu_smc_boundary_lane_sweep_test": [
         (

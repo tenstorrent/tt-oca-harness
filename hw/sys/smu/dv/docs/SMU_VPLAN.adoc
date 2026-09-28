@@ -218,6 +218,7 @@ one-line intent.
 |`smu_ic_reset_ss_domain_matrix_test` |reset |IC_RESET SS cold/warm domains
 |`smu_jtag_reset_override_test` |reset |IC_RESET TDR override of EXT/SMC slices
 |`smu_dtp_ptap_ir_walk_test` |dtp |Every PTAP IR encoding decodes to its own bit, and the Pause and Exit2 TAP states reach the boundary
+|`smu_dtp_jtag2axi_address_walk_test` |dtp |Every address bit of the SMC fabric and both OTP JTAG2AXI bridges, and of the adopter and DTP CSR windows behind the SMC, reaches its target
 |`smu_smc_reset_ctrl_test` |reset |primary/cold/periph reset release under the SMU wrapper
 |`smu_reset_release_sync_test` |reset |Cold and primary reset deassertions land on a clock edge of the domain each output is synchronised to.
 |`smu_sram_auto_init_done_test` |reset |With SRAM auto-initialisation enabled, a cold reset clears `smc_init_mem_done_o`, the zeroing sweep runs, and the output asserts and holds when it completes.
@@ -233,6 +234,7 @@ one-line intent.
 |`smu_composition_parameter_test` |smu |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |A 28-`clk_ref` pulse on `rst_cool_n_from_pin_i` is filtered and a hold past that pulse asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
+|`smu_smc_gpio_pad_output_test` |smu |Every GPIO pad driven from its own DATA_CTRL loops CORE2PAD back to its interrupt lane, and transmit alone drops the input enable
 |`smu_smc_boundary_lane_sweep_test` |smu |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
 |`smu_smc_efuse_shadow_sense_reset_test` |smu |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
 |`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by receiver 0 and read back, and the ATB flush handshake completes at the pins.
@@ -4641,6 +4643,80 @@ Two things are worth reading before the entries:
 
 '''''
 
+[[sec-117-smu_dtp_jtag2axi_address_walk_test]]
+===== 117 `smu_dtp_jtag2axi_address_walk_test`
+
+*Source Module*: `smu_dtp_jtag2axi_address_walk_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip`; the bench's AXI-Lite responders behind the adopter window; `elaboration` firmware mode
+
+*Objective*: every address bit the three DTP JTAG2AXI bridges can carry crosses the nets the SMU wires between the DTP, the SMC and the SEP, and on through the SMC to the adopter window, the eFuse shim port and the DTP CSR window.
+
+*Test Coverage*:
+
+* A JTAG2AXI single op carries its own write strobe (`hw/ip/jtag/jtag2axi` single-op DR), and a zero strobe is a legal AXI write that changes no byte, so every write that could land on a live register carries a zero strobe.
+* S1: SMC fabric bridge byte writes and reads of SCRATCH_COLD at byte offsets 1, 2 and 3 complete SUCCESS, and a zero-strobe write to 0x1000, outside the SMC map, completes.
+* S2: a write and a read at the base of the adopter window (`smc_addr.h` SMC_EXTERNAL_REGION, 4 MiB at 0xC040_0000) plus 2^k for every k below 22 each complete. The SMC diverts the eFuse shim CSR at the window base to its eFuse controller and `hw/top/smc_ip_integration.sv` decodes the rest, so the response depends on the offset; the check is that every access completes.
+* S3: a read and a zero-strobe write at the DTP CSR window (DTP_CTRL_REG, 2 KiB at 0xC000_B000) plus 2^k for every k below 11 each complete.
+* S4, S5: the SMC and SEP OTP bridges each read and zero-strobe write address 0, 2^k for every k below 32, and 0xFFFF_FFFF, and every operation completes.
+* S6: a cold reset on `rst_cold_ni` takes `rst_primary_smc_clk_n_o` low and releases it again, so the request fields the bridges held since their last transfer return to their reset values.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP and walk S1 to S5 with single ops, polling each to completion, then drive the S6 cold reset.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-J2A-WALK-FABRIC` |the six byte accesses succeed and the off-map write completes
+|`CHK-J2A-WALK-EXTERNAL` |all 44 adopter-window accesses complete
+|`CHK-J2A-WALK-DTP-CSR` |all 22 DTP CSR window accesses complete
+|`CHK-J2A-WALK-SMC-OTP` |all 68 SMC OTP bridge operations complete
+|`CHK-J2A-WALK-SEP-OTP` |all 68 SEP OTP bridge operations complete
+|`CHK-J2A-WALK-COLD-RESET` |the primary SMC reset reads low during the cold reset and high after it
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-118-smu_smc_gpio_pad_output_test]]
+===== 118 `smu_smc_gpio_pad_output_test`
+
+*Source Module*: `smu_smc_gpio_pad_output_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins for the GPIO CSRs; `ocah_jtag_vip` for the SMC aperture and SYS_IN entry 0; the bench's GPIO pad drivers held off; `elaboration` firmware mode
+
+*Objective*: every GPIO pad is driven from the SMC, so `core2pad_o`, `core2pad_en_o` and `pad2core_en_o` cross the SMU on every lane.
+
+*Test Coverage*:
+
+* `smu_smc_boundary_lane_sweep_test` drives the pads from the bench and reads them in; this leaf drives them from the SMC and reads them back.
+* With the bench's pad drivers off, each pad's `DATA_CTRL` takes the pad from its LSIO owner (`INTERFACE_ENABLE`, `LSIO_DISABLE`) with both `ENABLE_RX_TX` enables, `INTERRUPT_ENABLE` at the reset interrupt type (active-high level) and `CORE2PAD` at 1, then at 0 (`hw/ip/gpio` register description). The pad loops the value back to its receiver, so all 65 lanes of `gpio_interrupt_o` rise and then fall. The vector is read on the wrapper pin: a 32-bit `DATA_CTRL` read returns an undriven upper lane on the 64-bit inbound port.
+* Transmit alone then drops the input enable, and the reset value returns every pad to its LSIO owner.
+
+*Test Procedure*:
+
+[arabic]
+. Route the SMC aperture to its local alias and open SYS_IN entry 0 over the GPIO_INTF block over JTAG2AXI, so the CSR walk runs on the inbound SMN port.
+. Write every pad's DATA_CTRL with both enables, the level interrupt and CORE2PAD at 1, sample `gpio_interrupt_o`; repeat with CORE2PAD at 0.
+. Write every pad's DATA_CTRL to transmit alone, then to its reset value.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-LANE-GPIO-OUT` |every pad loops CORE2PAD back to its `gpio_interrupt_o` lane at 1 and then at 0, and every CSR write is OKAY
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -4661,11 +4737,11 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 |`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
 |`fabric` |17 |The fabric and filter leaves; every member is in `hosted`
-|`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
-|`dtp_under_smu` |32 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
+|`smc_under_smu` |22 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
+|`dtp_under_smu` |33 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |75 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |110 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |77 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |112 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
@@ -4758,6 +4834,7 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_clock_stop_coordination_test` |F6 |dtp_under_smu, hosted |`CHK-DTP-BOOT-STALL-S1`
 |`smu_jtag_reset_override_test` |F3 |dtp_under_smu, hosted |`IC_RESET_DEFAULT`
 |`smu_dtp_ptap_ir_walk_test` |F3 |dtp_under_smu, hosted |`CHK-PTAP-IR-DECODE-WALK`
+|`smu_dtp_jtag2axi_address_walk_test` |F3 |dtp_under_smu, hosted |`CHK-J2A-WALK-SMC-OTP`
 |`smu_axi_in_sep_aperture_test` |F4 |fabric, hosted |`CHK-AXIIN-SEP-ROUND-TRIP`
 |`smu_xtrig_ctm_remap_test` |F6 |dtp_under_smu, hosted |`XT_CTM_REMAP`
 |`smu_sep_smoke_test` |F1 observe / F6 |fw_boot, all |`SEP_BOOT_ROM_OK` (SEP=1 wrapper; not F2 credit)
