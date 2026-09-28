@@ -28,7 +28,8 @@ S4  The ATB flush handshake. ``CTRL.TELEMETRY_TX_FLUSH`` requests the
     "Transmitter Flush"); ``afvalid_o`` is the flush request and ``afready_i``
     its acknowledgment (``doc/interface.adoc``). With ``telemetry_afready_i``
     held low the request must stay asserted at the pin and in the field, and
-    raising it retires both.
+    raising it retires both. Lowering it again at the wrapper pin leaves the
+    retired request retired.
 
 S5  Every receiver. The same message, framed with a probe id of the
     receiver's own, is driven into each receiver on its own ATB lane with
@@ -424,6 +425,17 @@ class smu_telemetry_atb_capture_seq:
             evidence="CHK-SMU-TEL-FLUSH",
         )
         self._set_lane("tb_telemetry_afready", receiver, 1, 0)
+        await ClockCycles(dut.clk_ref_i, AF_SETTLE_CYCLES)
+        wrapper_afready = dut.u_dut.telemetry_afready_i.value
+        if not wrapper_afready.is_resolvable:
+            raise AssertionError(f"X/Z on u_dut.telemetry_afready_i: {wrapper_afready}")
+        self.sb.expect_eq(
+            "with telemetry_afready_i low again at the wrapper the request stays retired "
+            "(afready, afvalid)",
+            ((int(wrapper_afready) >> receiver) & 1, self._bit("tb_telemetry_afvalid", receiver)),
+            (0, 0),
+            evidence="CHK-SMU-TEL-FLUSH",
+        )
 
     # ------------------------------------------------------------------
     # S5 / S7

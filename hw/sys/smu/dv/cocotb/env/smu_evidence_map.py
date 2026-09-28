@@ -1286,7 +1286,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-SMU-TEL-FLUSH",
             "CTRL.TELEMETRY_TX_FLUSH raises telemetry_afvalid_o and the request "
             "holds while telemetry_afready_i is low; raising it retires the "
-            "request at the pin and clears the register field",
+            "request at the pin and clears the register field, and lowering it "
+            "again at the wrapper pin leaves the request retired",
         ),
     ],
     "smu_system_timer_octs_test": [
