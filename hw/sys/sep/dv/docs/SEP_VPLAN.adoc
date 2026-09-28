@@ -283,7 +283,7 @@ never when it was written.
 |`sep_periph_bus_err_misaligned_test`
 |no_cpu
 |ocah_axi_vip
-|A single-beat misaligned read inside the HMAC register extent receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The same read at the aligned offset is the control.
+|A single-beat misaligned read inside the HMAC register extent receives SLVERR and latches the `hmac` bit of `PERIPH_BUS_ERR_STATUS`, and one inside the Secure DMA register extent receives SLVERR and latches `DMA_BUS_ERR_STATUS.reg_path_err`, as `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require. The same read at each aligned offset is the control.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -2275,7 +2275,7 @@ recovery. Those are listed in <<phase-3>>.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset term is not claimed here. For `PERIPH_BUS_ERR_STATUS` it is <<sep_periph_bus_err_misaligned_test>>; for `DMA_BUS_ERR_STATUS` it is not claimed.
+*Not claimed*: the bridge's `PutPartialData` opcode arm — a sub-word write is refused upstream of the bridge from this master, measured as SLVERR with the status register unchanged, so only the `PutFullData` arm is reachable here. DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — unreachable from this testbench, and all three of the block's `d_error` sources (`reg_top reg_error = addrmiss | wr_err | intg_err`) are closed for them: the extents are fully packed, so no in-window address owns no register (EDN maps 18 registers in 18 words, CSRNG 24 in 24, AES 35 in 35); a sub-word write is refused upstream of the bridge, measured as SLVERR with `PERIPH_BUS_ERR_STATUS` still 0; and the bridge generates command integrity itself so it cannot mismatch. HMAC/KMAC/OTBN differ only in having a CSR-to-memory gap inside their window. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset term of both status registers is <<sep_periph_bus_err_misaligned_test>>.
 
 '''''
 
@@ -2292,17 +2292,18 @@ recovery. Those are listed in <<phase-3>>.
 
 *Objective*: A misaligned CPU access inside a mapped register extent. `sep_cpu_ctrl.rdl` and `doc/interrupts.adoc` require SLVERR and the owning block's status bit.
 
-*Test Coverage*: The misaligned-offset term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit.
+*Test Coverage*: The misaligned-offset term of `PERIPH_BUS_ERR_STATUS`, on the `hmac` bit, and of `DMA_BUS_ERR_STATUS`, on `reg_path_err`.
 
 *Test Procedure*:
 
 [arabic]
-. Confirm `PERIPH_BUS_ERR_STATUS` reads 0, so the assertion below cannot be satisfied by stale state.
-. Control: read two bytes at the aligned HMAC `CFG` offset (AxSIZE=2). Require one R beat answered OKAY and the register still 0.
-. Probe: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered SLVERR.
-. Require SLVERR on the probe and the `hmac` bit latched.
+. Confirm `PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` both read 0, so the assertions below cannot be satisfied by stale state.
+. HMAC control: read two bytes at the aligned HMAC `CFG` offset (AxSIZE=2). Require one R beat answered OKAY and both registers still 0.
+. HMAC probe: read two bytes at `CFG` + 2 (AxSIZE=2). The read ends on the word boundary, so the master issues one beat. Require one R beat answered SLVERR, then SLVERR on the probe, `PERIPH_BUS_ERR_STATUS` exactly the `hmac` bit, and `DMA_BUS_ERR_STATUS` still 0.
+. DMA control: read two bytes at the aligned Secure DMA `INTR_STATE` offset. Require one R beat answered OKAY and both registers unchanged.
+. DMA probe: read two bytes at `INTR_STATE` + 2. Require one R beat answered SLVERR, then SLVERR on the probe, `DMA_BUS_ERR_STATUS` exactly `reg_path_err`, and `PERIPH_BUS_ERR_STATUS` still exactly the `hmac` bit.
 
-The probe must be one beat. A four-byte read at `CFG` + 2 crosses the word, goes out as a two-beat burst, and `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC, so it never exercises the alignment check.
+Each probe must be one beat. A four-byte read at a word offset + 2 crosses the word and goes out as a two-beat burst, and on the crypto path `doc/crypto.adoc` § "Single-Beat Access Only" refuses it with DECERR before any beat reaches HMAC, so it never exercises the alignment check.
 
 *Checkers*:
 
@@ -2310,18 +2311,18 @@ The probe must be one beat. A four-byte read at `CFG` + 2 crosses the word, goes
 |===
 |Checker |Contract
 |CHK-MISALIGN-BASE
-|`PERIPH_BUS_ERR_STATUS` reads 0 before the probe. A bit left set by an earlier step fails here.
-|CHK-MISALIGN-CTRL
-|The aligned read of the same shape completes as one OKAY beat and leaves the register 0. The probe then differs from an accepted access only in address bits [1:0].
-|CHK-MISALIGN-BEAT
+|`PERIPH_BUS_ERR_STATUS` and `DMA_BUS_ERR_STATUS` read 0 before the probes. A bit left set by an earlier step fails here.
+|CHK-MISALIGN-CTRL, CHK-MISALIGN-DMA-CTRL
+|The aligned read of the same shape completes as one OKAY beat and leaves both registers unchanged. Each probe then differs from an accepted access only in address bits [1:0].
+|CHK-MISALIGN-BEAT, CHK-MISALIGN-DMA-BEAT
 |The bus monitor records exactly one R beat for the probe, answered SLVERR. A burst, or any other response code, fails here.
-|CHK-MISALIGN-LATCH
-|The probe's response is SLVERR and `PERIPH_BUS_ERR_STATUS` reads exactly the `hmac` bit.
+|CHK-MISALIGN-LATCH, CHK-MISALIGN-DMA-LATCH
+|The probe's response is SLVERR, and both registers read exactly the expected value: the owning block's bit latched and the other register unchanged.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Not claimed*: the same term on the DMA register path (`reg_path_err`), and on the other peripheral-bridge bits. The error response's read data is not graded: no specification defines it.
+*Not claimed*: the same term on the AES, KMAC, OTBN, CSRNG, EDN and WDT bits. The error response's read data is not graded: no specification defines it.
 
 '''''
 
