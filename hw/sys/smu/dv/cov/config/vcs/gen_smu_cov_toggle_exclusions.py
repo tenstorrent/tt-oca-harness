@@ -49,6 +49,17 @@ writes, and each class below states that fact and what would retire it:
   the response code of the DECERR slaves on the SEP external and TRNG ports, and
   the address bits the decode that feeds each window holds fixed.
 * EFUSE-COMMAND-LENGTH: the fuse-command word-count bits no command source sets.
+* ID-REMAP-TABLE: the inbound ID bits above the index the crossbar's ID
+  remappers hand out.
+* SEP-EXTERNAL-ID: ID bit 2 on the SEP external aperture port, which no
+  initiator of that target sets.
+* ZEROER-WRITE-ONLY: read ID bit 3 on the SMC's outbound path, which only the
+  zeroer, a write-only engine, would set.
+* EFUSE-SHIM-CSR-OKAY: the response code of the eFuse bank-control CSR port,
+  which the shim's register block never makes an error.
+* EFUSE-SHIM-DEBUG: the eFuse shim debug-bus bits that only a read state the
+  machine lacks or a counter fault would set.
+* DTP-CSR-OFFSET: the DTP CSR address bits the window rebase keeps 0.
 * XBAR-CONNECTIVITY: the input-port bits of the crossbar's output ID that the
   connectivity matrix never sets on a given output.
 * APERTURE-ALIGNMENT: the SMC aperture bits no programmable setting reaches.
@@ -534,6 +545,88 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "an SMC external window that moves or grows past 4 MiB",
         None,
         window_bits(0xC040_0000, 23, 29),
+    ),
+    (
+        "ID-REMAP-TABLE",
+        re.compile(
+            r"^(sep_smn_inbound_axi_(req|resp)|smc_sys_axi_in_(req|resp))\.(aw|ar|b|r)\.id$"
+        ),
+        "ID bits [5:4] on the SEP and SMC inbound ports past the crossbar's ID width "
+        "converters. Each converter is built for 16 unique slave-port IDs (smu.sv 1127, "
+        "1151), so it remaps through axi_id_remap, which drives the 4-bit table index "
+        "zero-extended to the 6-bit port (axi_id_remap.sv 131, 198-200).",
+        "a converter built for more than 16 unique IDs",
+        ("smu",),
+        ((4, 5),),
+    ),
+    (
+        "SEP-EXTERNAL-ID",
+        re.compile(r"^sep_external_(req(_o)?\.(aw|ar)|resp(_i)?\.(b|r))\.id$"),
+        "ID bit 2 on the SEP external aperture port. The SEP local crossbar prepends "
+        "the initiator index above a 3-bit initiator ID (sep_local_axi_xbar_pkg.sv 22-23) "
+        "and connects the load/store unit, the debug module's system bus, the DMA and "
+        "the inbound port to that target (141-145; sep_local_axi_xbar.sv 334). The "
+        "load/store unit's ID is a bus-buffer entry index below four "
+        "(el2_lsu_bus_buffer.sv 213; LSU_NUM_NBLOAD 4), the system bus and the DMA send "
+        "ID 0 (el2_dbg.sv 736-770; sep_dma_wrap.sv 274-285), and the inbound remapper "
+        "hands out four IDs (sep_system_peripherals.sv 642; axi_id_remap.sv 131, "
+        "198-200), so bit 2 stays 0.",
+        "an initiator of the external aperture with IDs of four or more",
+        ("smu", "smu_wrapper"),
+        ((2, 2),),
+    ),
+    (
+        "ZEROER-WRITE-ONLY",
+        re.compile(
+            r"^(smc_output_axi_req|gen_sep\.smc_out_xbar_req|smc_out_req_i|xbar_slv_req\[1\])"
+            r"\.ar\.id$|^(smc_output_axi_resp|gen_sep\.smc_out_xbar_resp|smc_out_resp_o|"
+            r"xbar_slv_resp\[1\])\.r\.id$"
+        ),
+        "read ID bit 3 on the SMC's outbound path. That bit is the index the data "
+        "accelerator mux prepends (smc_data_accelerator_wrap.sv 234-249, smc_pkg.sv "
+        "334-335: the zeroer is 1). The MMIO and JTAG ports zero-extend their IDs into it "
+        "(smc_input_fabric.sv 140-145, 169-170; prim_axi_id_prepend_wrap.sv 35, 54), the "
+        "log port's AXI-Lite converter sends ID 0 (axi_lite_to_axi.sv 57-64), and the "
+        "zeroer never issues a read (zeroer.sv 445-446).",
+        "a data accelerator at index 1 that reads",
+        None,
+        ((3, 3),),
+    ),
+    (
+        "EFUSE-SHIM-CSR-OKAY",
+        re.compile(r"^(sep|smc)_efuse_bank_ctrl_resp(_i)?\.(b|r)\.resp$"),
+        "the response code of the eFuse bank-control CSR port. The eFuse interface shim "
+        "answers it from its generated register block (efuse_interface_shim.sv 78), "
+        "which reports SLVERR only for a write or readback error and ties both to 0 "
+        "(efuse_shim_ctrl_reg.sv 207-214, 307, 327, 332), so the code is always OKAY.",
+        "a shim register block that can report an access error",
+        None,
+        None,
+    ),
+    (
+        "EFUSE-SHIM-DEBUG",
+        re.compile(r"^(sep|smc)_efuse_debug_bus_o$"),
+        "bits 3, 4 and 12 of the eFuse shim debug bus (efuse_interface_shim.sv 577-584). "
+        "Bit 3 is the top bit of the read state, whose six states (156-163) never set "
+        "it; bits 4 and 12 are the read and write init-cycle counters' error outputs, "
+        "which prim_count raises only when its redundant counters disagree (118-137, "
+        "289-308), a fault this bench does not inject.",
+        "a read state machine with more than eight states, or counter fault injection",
+        ("smu_wrapper",),
+        ((3, 4), (12, 12)),
+    ),
+    (
+        "DTP-CSR-OFFSET",
+        re.compile(r"^smc_axil_dtp_csr_req\.(aw|ar)\.addr$"),
+        "address bits 11, 13, 15, 30 and 31 of the DTP CSR port. smc_peripherals.sv "
+        "(546-548) subtracts the DTP window base 0xC000_B000 from the address, and the "
+        "peripheral crossbar registers each target port (smc_periph_axi_lite_xbar_pkg.sv "
+        "103), so the port holds its reset value, 0 - 0xC000_B000 = 0x3FFF_5000, or the "
+        "offset of a DTP request, which is below the 2 KiB window "
+        "(smc_periph_axi_lite_xbar.sv 133-136). Those bits are 0 in both.",
+        "a DTP window of 2 KiB or more, or a rebase other than the window base",
+        ("smu",),
+        ((11, 11), (13, 13), (15, 15), (30, 31)),
     ),
     (
         "XBAR-CONNECTIVITY",
