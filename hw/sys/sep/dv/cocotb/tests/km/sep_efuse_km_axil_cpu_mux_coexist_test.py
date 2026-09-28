@@ -126,7 +126,17 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
         # Independent passive observer: read the EL2-published summary out of the
         # scratch-cold probe and assert the reference suite coexistence verdict directly
         # (not relying only on the firmware's PASS magic).
-        probe = self.rd(cocotb.top.scratch_cold_probe_o)
+        lanes = 0
+        for idx in (
+            _SCRATCH_READY,
+            _SCRATCH_COUNT,
+            _SCRATCH_BAD_UID,
+            _SCRATCH_CHANGES,
+            _SCRATCH_BACKWARD,
+            _SCRATCH_BAD_TAG,
+        ):
+            lanes |= 0xFFFF_FFFF << (32 * idx)
+        probe = self.rd(cocotb.top.scratch_cold_probe_o, mask=lanes)
         ready = self._scratch(probe, _SCRATCH_READY)
         count = self._scratch(probe, _SCRATCH_COUNT)
         bad_uid = self._scratch(probe, _SCRATCH_BAD_UID)

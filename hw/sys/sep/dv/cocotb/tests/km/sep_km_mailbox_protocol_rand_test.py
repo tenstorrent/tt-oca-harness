@@ -15,17 +15,23 @@ lives on cold reset, so the FIFOs and SEP registers stay alive while the KM
 CPU cannot consume inbound words or push outbound ones. Fill, overflow and
 underflow are then deterministic, and firmware cannot flush or fault the
 mailbox under the host. A SEP_CTRL write after a deliberate underflow is a
-register-block access, independent of the FIFO error path, and must stay
-OKAY. The write is a 32-bit beat: a 64-bit beat at SEP_CTRL (offset 0x18)
-spans past the 0x1C mailbox window and the fabric refuses it.
+register-block access, independent of the FIFO error path, and a 32-bit beat
+must stay OKAY. A 64-bit beat at SEP_CTRL (offset 0x18) reaches past the
+register file, and its single write response must be SLVERR or DECERR. One
+BRESP covers the whole beat, so it cannot say which half was refused; the
+SEP_CTRL value after the beat is logged and not graded (VPLAN known
+limitation "Dead-space per-beat refusal on writes"). SEP_CTRL is then
+rewritten with a 32-bit beat so the cells after it start from a known value.
 
 Checkers:
   CHK-HELD     SW_RESET_N bit 0 reads 0: KM is held, so no firmware peer
   CHK-IDLE     reset STATUS and IRQ_STATUS match the empty golden
   CHK-UFL      empty SEP_READ_DATA -> SLVERR, data 0, outbound_underflow
                latches in STATUS and IRQ_STATUS
-  CHK-CTRL     a SEP_CTRL write immediately after that underflow is OKAY
-               and reads back; the register is not the FIFO error path
+  CHK-CTRL     a 32-bit SEP_CTRL write immediately after that underflow is
+               OKAY and reads back; the register is not the FIFO error path.
+               A 64-bit write beat at SEP_CTRL returns SLVERR or DECERR
+               with no timeout; the SEP_CTRL value after it is logged only
   CHK-UFL-RESP SEP_CTRL.outbound_underflow_resp turns the same empty read
                into OKAY; the sticky bits stay set
   CHK-UFL-W1C  write-1-to-clear drops both sticky copies
@@ -36,8 +42,12 @@ Checkers:
                OKAY; the sticky bit stays; depth stays 16 (drop)
   CHK-IRQ      enabling the two error IRQs raises aggregator [14]; clearing
                the enable drops the pin while IRQ_STATUS stays; W1C drops both
-  CHK-FLUSH    CTRL.FLUSH empties both FIFOs, self-clears, and does not
-               clear the sticky error bits
+  CHK-FLUSH    CTRL.FLUSH empties the full inbound FIFO, self-clears, and
+               leaves inbound_overflow and outbound_underflow set in STATUS
+               and IRQ_STATUS until W1C. The outbound FIFO is
+               empty before and after: with KM held nothing can push into
+               it, so the outbound flush is not proven (VPLAN known
+               limitation "KM mailbox outbound flush")
 
 Scope deltas:
   * inbound_underflow, outbound_overflow, and flushed_by_km need the KM CPU
@@ -70,12 +80,12 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_STATUS_INBOUND_EMPTY,
     KM_STATUS_INBOUND_FULL,
     KM_STATUS_INBOUND_OVERFLOW,
-    KM_STATUS_LOW_MASK,
     KM_STATUS_OUTBOUND_DEPTH_LSB,
     KM_STATUS_OUTBOUND_DEPTH_MASK,
     KM_STATUS_OUTBOUND_EMPTY,
     KM_STATUS_OUTBOUND_FULL,
     KM_STATUS_OUTBOUND_UNDERFLOW,
+    RESP_DECERR,
     RESP_OKAY,
     RESP_SLVERR,
     SepKmMailbox,
@@ -198,7 +208,14 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
 
     async def _chk_underflow(self) -> None:
-        resp, data = await self.mb.read_data_raw(expect_error=True)
+        # The data half of this check expects 0 on an error beat; the driver
+        # packs X/Z as 0, so the bus monitor checks this beat's lanes too.
+        mon = self.env.axi_monitor
+        mon.open_error_rdata_window()
+        try:
+            resp, data = await self.mb.read_data_raw(expect_error=True)
+        finally:
+            mon.close_error_rdata_window()
         assert resp == RESP_SLVERR and not data, (
             f"CHK-UFL FAIL: empty READ_DATA resp={resp} data=0x{data:08x}, expected SLVERR and 0"
         )
@@ -207,13 +224,51 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         self.logger.info("CHK-UFL PASS: empty READ_DATA -> SLVERR + 0, outbound_underflow latched")
 
         # Register-block write, not a FIFO pop: must stay OKAY after underflow.
-        await self.mb.write_ctrl(1 << KM_CTRL_OUTBOUND_UNDERFLOW_RESP)
+        # This 32-bit write is also the positive control for the 64-bit leg:
+        # the same register, reached with a legal beat, accepts the write.
+        ctrl_32 = 1 << KM_CTRL_OUTBOUND_UNDERFLOW_RESP
+        await self.mb.write_ctrl(ctrl_32)
         ctrl = await self.mb.read_ctrl()
-        assert ctrl & (1 << KM_CTRL_OUTBOUND_UNDERFLOW_RESP), (
-            f"CHK-CTRL FAIL: outbound_underflow_resp did not stick (CTRL=0x{ctrl:08x})"
+        assert ctrl == ctrl_32, (
+            f"CHK-CTRL FAIL: 32-bit SEP_CTRL write 0x{ctrl_32:08x} read back 0x{ctrl:08x}"
+        )
+
+        # 64-bit beat at SEP_CTRL: its upper half is past the register file.
+        # The beat has one BRESP, which cannot say which half was refused, so
+        # only the response is graded (VPLAN known limitation "Dead-space
+        # per-beat refusal on writes"). The low word differs from ctrl_32 in
+        # one response-mode bit, so the logged readback shows whether it landed.
+        ctrl_64_lo = ctrl_32 | (1 << KM_CTRL_INBOUND_OVERFLOW_RESP)
+        # One credit: the monitor fails an unexpected DECERR in check_phase.
+        # SLVERR consumes nothing, so that response returns the credit.
+        mon = self.env.axi_monitor
+        mon.arm_expected_decerr(1)
+        resp, timed_out = await self.mb.write_ctrl_wide_raw(ctrl_64_lo)
+        if timed_out or resp != RESP_DECERR:
+            mon.release_expected_decerr(1)
+        assert not timed_out and resp in (RESP_SLVERR, RESP_DECERR), (
+            f"CHK-CTRL FAIL: 64-bit write beat at SEP_CTRL returned resp={resp} "
+            f"timed_out={timed_out}, expected SLVERR or DECERR"
+        )
+        ctrl_after_wide = await self.mb.read_ctrl()
+        self.logger.info(
+            "CHK-CTRL info: SEP_CTRL after the 64-bit beat reads 0x%08x "
+            "(32-bit value 0x%08x, beat low word 0x%08x); not graded",
+            ctrl_after_wide,
+            ctrl_32,
+            ctrl_64_lo,
+        )
+        # Rewrite with a legal beat so the cells below start from ctrl_32.
+        await self.mb.write_ctrl(ctrl_32)
+        ctrl = await self.mb.read_ctrl()
+        assert ctrl == ctrl_32, (
+            f"CHK-CTRL FAIL: 32-bit SEP_CTRL rewrite 0x{ctrl_32:08x} read back 0x{ctrl:08x}"
         )
         self.logger.info(
-            "CHK-CTRL PASS: SEP_CTRL write immediately after underflow is OKAY and reads back"
+            "CHK-CTRL PASS: 32-bit SEP_CTRL write after underflow is OKAY and reads "
+            "back 0x%08x; 64-bit beat at SEP_CTRL returned resp=%d",
+            ctrl_32,
+            resp,
         )
 
         resp, data = await self.mb.read_data_raw()
@@ -302,9 +357,16 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         )
 
     async def _chk_flush(self) -> None:
-        # Re-latch overflow so flush can be shown not to clear it.
+        # Latch both sticky errors in both copies, so the flush can be shown to
+        # clear neither: overflow by writing to the full inbound FIFO, underflow
+        # by reading the empty outbound FIFO.
         resp = await self.mb.write_data_raw(0xA5A5_A5A5, expect_error=True)
         assert resp == RESP_SLVERR, "CHK-FLUSH setup: write-to-full was not SLVERR"
+        resp, _data = await self.mb.read_data_raw(expect_error=True)
+        assert resp == RESP_SLVERR, "CHK-FLUSH setup: empty READ_DATA was not SLVERR"
+        sticky = {"inbound_overflow": 1, "outbound_underflow": 1}
+        await self._expect_status("CHK-FLUSH setup", inbound_depth=KM_MBOX_DEPTH, **sticky)
+        await self._expect_irq("CHK-FLUSH setup", inbound_depth=KM_MBOX_DEPTH, **sticky)
         await self.mb.write_ctrl(1 << KM_CTRL_FLUSH)
         for _ in range(16):
             if (await self.mb.read_ctrl() & (1 << KM_CTRL_FLUSH)) == 0:
@@ -313,22 +375,21 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         else:
             raise AssertionError("CHK-FLUSH FAIL: CTRL.flush did not self-clear")
 
-        st = await self.mb.read_status()
-        assert st & (1 << KM_STATUS_INBOUND_OVERFLOW), (
-            f"CHK-FLUSH FAIL: flush cleared inbound_overflow (STATUS=0x{st:08x})"
-        )
-        assert (st & KM_STATUS_LOW_MASK) == (
-            (1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)
-        ), f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
-        assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & KM_STATUS_INBOUND_DEPTH_MASK) == 0, (
-            f"CHK-FLUSH FAIL: inbound_depth not 0 after flush (STATUS=0x{st:08x})"
-        )
+        # Full golden after the flush: inbound empty at depth 0, outbound still
+        # empty, and both sticky errors still set in STATUS and IRQ_STATUS.
+        await self._expect_status("CHK-FLUSH FAIL", inbound_depth=0, **sticky)
+        await self._expect_irq("CHK-FLUSH FAIL", inbound_depth=0, **sticky)
 
-        await self.mb.write_status(1 << KM_STATUS_INBOUND_OVERFLOW)
-        await self.mb.write_irq_status(1 << KM_IRQ_INBOUND_OVERFLOW)
+        await self.mb.write_status(
+            (1 << KM_STATUS_INBOUND_OVERFLOW) | (1 << KM_STATUS_OUTBOUND_UNDERFLOW)
+        )
+        await self.mb.write_irq_status(
+            (1 << KM_IRQ_INBOUND_OVERFLOW) | (1 << KM_IRQ_OUTBOUND_UNDERFLOW)
+        )
         await self._expect_status("CHK-FLUSH", inbound_depth=0)
         await self._expect_irq("CHK-FLUSH", inbound_depth=0)
         self.logger.info(
-            "CHK-FLUSH PASS: flush emptied both FIFOs, self-cleared, and left the "
-            "overflow sticky set until W1C"
+            "CHK-FLUSH PASS: flush emptied the full inbound FIFO, self-cleared, and left "
+            "inbound_overflow and outbound_underflow set in STATUS and IRQ_STATUS until "
+            "W1C (outbound was empty throughout)"
         )

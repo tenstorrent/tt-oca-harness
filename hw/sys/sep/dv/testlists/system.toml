@@ -422,12 +422,11 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# A 64-bit CSR read must survive the crypto width converter unchanged. The
-# fabric is 64-bit and each crypto register block is 32-bit, so AxSIZE=3 takes
-# the converter's downsize arm and must be reassembled in order. Every other
-# leaf issues 32-bit beats and takes the passthrough arm, so the conversion has
-# never been tested. Golden is the DUT's own single-beat path. No burst: the
-# crypto demux routes any AxLEN != 0 to its error slave by design.
+# A 64-bit CSR read on each crypto host path named in crypto.adoc must return
+# the data its spec defines: both 32-bit words at OTBN, HMAC, AES, KMAC and
+# ESRC; the addressed lane at CSRNG and EDN (DRBG lane adapter). Serially and
+# with concurrent reads on distinct ids. Golden is the DUT's own
+# single-beat path. No burst: the spec answers any crypto AxLEN != 0 DECERR.
 name = "sep_crypto_csr_wide_access_test"
 module = "system.sep_crypto_csr_wide_access_test"
 seed = 1

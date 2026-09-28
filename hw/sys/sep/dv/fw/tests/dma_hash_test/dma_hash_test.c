@@ -142,11 +142,11 @@ int main(void) {
 
     printf("=== Secure DMA SHA-256 Hash Test ===\n\n");
 
-    // Check that DMA is idle (CFG_REGWEN should be MUBI4_TRUE = 0x6)
+    // Check that DMA is idle (CFG_REGWEN reads MUBI4 TRUE, its RDL reset)
     uint32_t cfg_regwen = READ_REG(OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
     printf("CFG_REGWEN = 0x%x (expected 0x%x for unlocked)\n", cfg_regwen, MUBI4_TRUE);
 
-    if ((cfg_regwen & 0xF) != MUBI4_TRUE) {
+    if ((cfg_regwen & SECURE_DMA__CFG_REGWEN__REGWEN_bm) != MUBI4_TRUE) {
         // This is the only check that the config write-enable is open before the
         // DMA is programmed: a CFG_REGWEN stuck locked, or reading as an unmapped
         // 0x0, fails the test here.
