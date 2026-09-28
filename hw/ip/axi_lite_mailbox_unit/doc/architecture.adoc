@@ -4,139 +4,93 @@
 [[mailbox-unit-architecture]]
 == Architecture
 
-The Mailbox IP provides inter-processor and inter-chiplet communication
-through a register-based interface. A single AXI4-Lite slave port is demuxed
-into one register aperture per mailbox direction, and each mailbox pair owns
-the two FIFOs that carry data between its two apertures.
-
 === Configuration Parameters
 
-<<mailbox-configuration-parameters-table>> lists the mailbox-count, aperture, and
-data-width parameters.
-
 [[mailbox-configuration-parameters-table]]
-[width="100%",cols="25%,15%,60%",options="header",]
+[cols="2,1,3",options="header"]
 .Mailbox configuration parameters
-|=======================================================================
-|Parameter |Default |Description
-|`NUM_MAILBOXES` |2 (max: 32) |Scales from point-to-point to
-multi-processor coordination
+|===
+|Parameter |Default |Meaning
+|`NUM_MAILBOXES` |2 |Bidirectional pairs; two apertures and two FIFOs per pair.
+|`MAILBOX_DEPTH` |8 |Entries in each FIFO; selected at elaboration.
+|`MAX_TRANS` |32 |Transaction limit passed to the AXI4-Lite demultiplexer.
+|`MAILBOX_BASE_ADDR` |0 |Base subtracted for aperture selection.
+|`MAILBOX_SIZE` |`0x800` |Bytes per aperture; register decode uses its low address bits.
+|`ADDR_WIDTH` / `DATA_WIDTH` |32 / 64 |Slave address and data widths.
+|===
 
-|`MAILBOX_DEPTH` |8 entries |Depth of each internal message FIFO
+=== Paired FIFOs
 
-|`MAX_TRANS` |32 |Maximum outstanding AXI4-Lite transactions per demux port
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="internal-structure"></span>
+<span id="bidirectional-communication"></span>
+++++
+endif::backend-html5[]
 
-|`MAILBOX_BASE_ADDR` |0x0 |Base address the aperture decode is relative to
+An `axi_lite_demux` selects one of `2 * NUM_MAILBOXES` register apertures.
+Within pair N, the outbound aperture writes FIFO A and reads FIFO B; the
+inbound aperture writes FIFO B and reads FIFO A. The FIFOs are internal to
+the unit. Flushing an aperture's write FIFO therefore discards data its peer
+would read; flushing its read FIFO discards data the peer has already sent.
 
-|`ADDR_WIDTH` / `DATA_WIDTH` |32 / 64 |AXI4-Lite slave port widths
+`WRITE_DATA` enqueues one word when space is available. Inactive AXI byte lanes
+are written as zero; a partial write does not merge with an existing FIFO word.
+`READ_DATA` returns and pops the oldest received word. Software must use status
+to avoid full writes and empty reads; the interface reports errors rather than
+waiting for FIFO space or data. The error responses are described below.
 
-|`MAILBOX_SIZE` |0x800 (2KB) |Register space per mailbox for control and
-status
-|=======================================================================
+=== Interrupts
 
-=== Address Space
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="interrupt-architecture"></span>
+<span id="interrupt-outputs"></span>
+<span id="mailbox-interrupt-characteristics-table"></span>
+++++
+endif::backend-html5[]
 
-The architecture supports up to 64 mailbox instances (32 bidirectional
-pairs):
+Each aperture has its own `WIRQT`, `RIRQT`, `IRQS`, `IRQEN` and `IRQP`.
+`inbound_interrupt_o[N]` and `outbound_interrupt_o[N]` are active-high level
+outputs. Each is the OR of `IRQP = IRQS & IRQEN` for its aperture.
 
-* *Total Space*: 2 × `MAILBOX_SIZE` × `NUM_MAILBOXES`, 
-decoded from a port that is `ADDR_WIDTH` bits wide
-* *Data Width*: 64 bits
-* *Per-Aperture Space*: 0x800 bytes (2KB)
-* *Decoding*: Address bits above `$clog2(MAILBOX_SIZE)` select one of
-`2 × NUM_MAILBOXES` apertures
+[[mailbox-interrupt-sources-table]]
+[cols="1,1,3",options="header"]
+.Mailbox interrupt sources
+|===
+|IRQS bit |Source |Set condition
+|0 |Write threshold |Occupancy of the aperture's write FIFO is strictly greater
+than `WIRQT`. This indicates queued outbound data, not successful peer receipt.
+|1 |Read threshold |Occupancy of its read FIFO is strictly greater than `RIRQT`.
+|2 |Access error |A full-FIFO write or empty-FIFO read. `ERROR_FLAGS` distinguishes
+which access failed.
+|===
 
-The 64-bit data width handles addresses, data payloads and status
-information without multi-word transfers. The 2KB allocation per aperture
-leaves the ten registers sparsely mapped; offsets above the register map are
-unmapped rather than aliased.
+These status bits latch independently of `IRQEN`. Acknowledge selected bits by
+writing ones to `IRQS`; reading it does not clear them. Threshold status can
+reassert if the occupancy condition remains true. `WIRQT` and `RIRQT` writes
+are clamped to `MAILBOX_DEPTH - 1`, so a threshold of zero detects any queued
+word and the maximum threshold detects a full FIFO.
 
-=== Internal Structure
-
-The unit is an `axi_lite_demux` in front of `NUM_MAILBOXES` mailbox instances.
-Each mailbox instance has two AXI4-Lite slave ports, one per aperture, and
-holds two message FIFOs of `MAILBOX_DEPTH` entries each. The FIFOs are
-cross-coupled between the two ports: the push side of one port is the pop side
-of the other. The FIFOs are internal to the IP; there is no external FIFO
-interface.
-
-=== Transaction Processing
-
-AXI4-Lite transactions follow this flow:
-
-1.  *Aperture Decode*: The demux selects an aperture from the address bits
-above `$clog2(MAILBOX_SIZE)`, relative to `MAILBOX_BASE_ADDR`
-2.  *Register Decode*: The mailbox slave port decodes the offset within the
-aperture into one of the ten registers
-3.  *FIFO Access*: `WRITE_DATA` pushes the port's write FIFO, `READ_DATA` pops
-the port's read FIFO; full and empty conditions set the error flags described
-in the Error Handling table
-4.  *Response*: The B and R responses are emitted through spill registers,
-giving one cycle of latency and keeping the response path free of
-combinational paths from the request
-
-=== Bidirectional Communication
-
-Each mailbox pair provides two register apertures, conventionally used as an
-outbound and an inbound direction. The two are not independent storage: they
-share the same pair of FIFOs, so `WRITE_DATA` in one aperture is what
-`READ_DATA` in the other aperture returns. Both apertures hang off the same
-AXI4-Lite slave port, so a local agent can drive either end; the direction
-naming reflects intended use, not an access restriction.
-
-Separate apertures give each direction its own thresholds, status, error flags
-and interrupt output.
+`STATUS` exposes live FIFO-empty/full and threshold conditions. It is distinct
+from the latched `IRQS`. Reading `ERROR_FLAGS` clears the detailed error flags,
+but does not acknowledge the shared `IRQS` error bit.
 
 === Clock and Reset
 
-The mailbox uses a single clock domain for integration reliability (<<mailbox-clock-and-reset-table>>).
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="mailbox-clock-and-reset-table"></span>
+<span id="control-signals"></span>
+<span id="mailbox-control-signal-descriptions-table"></span>
+++++
+endif::backend-html5[]
 
-[[mailbox-clock-and-reset-table]]
-[width="100%",cols="20%,30%,50%",options="header",]
-.Mailbox clock and reset
-|=======================================================================
-|Signal |Type |Description
-|`clk_i` |Single clock |Unifies functional logic and AXI4-Lite interface
-
-|`rst_ni` |Asynchronous, active-low |Primary reset, initializes all
-mailbox state
-
-|`test_en_i` |Test enable |DFT support
-|=======================================================================
-
-No internal clock domain crossings eliminates CDC complexity. Single
-clock domain simplifies timing analysis and integration verification.
-
-=== Interrupt Architecture
-
-The mailbox provides independent interrupt outputs for each mailbox
-instance:
-
-* `inbound_interrupt_o[NUM_MAILBOXES-1:0]`: Inbound communication events
-* `outbound_interrupt_o[NUM_MAILBOXES-1:0]`: Outbound communication
-events
-
-Separate inbound/outbound interrupts reflect different processing
-requirements. Inbound interrupts indicate incoming commands requiring
-immediate processing; outbound interrupts indicate successful
-transmission or buffer availability.
-
-<<mailbox-interrupt-sources-table>> reports the interrupt sources.
-
-[[mailbox-interrupt-sources-table]]
-[width="100%",cols="30%,70%",options="header",]
-.Mailbox interrupt sources
-|=======================================================================
-|Source |Description
-|Write Threshold |FIFO fill level exceeds configured threshold
-(proactive buffer management)
-
-|Read Threshold |FIFO data available for efficient retrieval scheduling
-
-|Access Error |Write to full FIFO or read from empty FIFO; both set the same
-error interrupt bit (fault detection)
-|=======================================================================
-
-Each interrupt output aggregates these sources and is level-triggered and
-active high. Threshold-based interrupts reduce polling overhead; error
-interrupts enable fault recovery and diagnostic analysis.
+The unit and its FIFOs use `clk_i`; there is no internal clock-domain crossing.
+`rst_ni` is asynchronous and active low. Reset empties the FIFOs and clears
+thresholds, error flags, interrupt status and enables. `test_en_i` supplies the
+AXI demultiplexer's test input. Follow subsystem reset and access-isolation
+requirements when either endpoint is active.

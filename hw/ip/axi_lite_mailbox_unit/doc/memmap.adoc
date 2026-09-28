@@ -12,9 +12,17 @@ endif::backend-html5[]
 
 === Memory Map
 
-Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
-The total address space is 0x20000 bytes supporting up to 64 mailbox
-apertures (32 pairs). The SMC and SEP wrapper layouts are generated from
+ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
+++++
+<span id="address-space"></span>
+++++
+endif::backend-html5[]
+
+With the default `MAILBOX_SIZE=0x800`, each directional aperture occupies
+2 KiB and each pair occupies 4 KiB. The supplied 32-pair maps span `0x20000`
+bytes; the generic unit's span is `2 * MAILBOX_SIZE * NUM_MAILBOXES`.
+The SMC and SEP wrapper layouts are generated from
 their SystemRDL compositions:
 
 ifdef::backend-html5[]
@@ -25,21 +33,9 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
-*Address Space Characteristics:*::
-  * *Per-Aperture Size*: `MAILBOX_SIZE`, 2KB (0x800)
-  * *Total Address Space*: 0x20000 bytes for 32 pairs
-  * *Decoded Address Span*: 17 bits for 32 pairs; the slave port itself is
-    `ADDR_WIDTH` bits wide (32 in the SMC and SEP integrations)
-  * *Maximum Mailboxes*: 32 pairs (64 apertures)
-
-The two apertures of a pair are the two ends of the same pair of FIFOs:
-`WRITE_DATA` in the outbound aperture pushes the FIFO that `READ_DATA` in the
-paired inbound aperture pops, and vice versa. Both ends are reachable from the
-same AXI4-Lite slave port.
-
 ==== Per-Mailbox Register Map
 
-Within each 2KB mailbox aperture, registers are organized as follows.
+Each aperture contains ten registers.
 Offsets are spaced by `DATA_WIDTH`/8, so they are 8 bytes apart in the
 64-bit configurations used today. The generated detailed register map below is
 authoritative for offsets, widths, access, and field descriptions. The `CTRL`
