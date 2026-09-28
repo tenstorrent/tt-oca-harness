@@ -273,6 +273,7 @@ one-line intent.
 |`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A
 |`smu_smc_smoke_test` |smc |wrapper SMC ROM boot to PASS; ROM-read and scratch-write floors (no_sep)
+|`smu_smc_fabric_test` |smc |SMC ROM firmware on all four harts stores to and reads back SEP SRAM over `smc_out` and an `ext_out` address, with the bench cross-checking every word
 |`smu_smc_wdt_sanity_test` |smc |CORE0 WDT unlock + CMP via J2A
 |`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
 |`smu_smc_fuse_sense_sequence_test` |smc |SMC fuse sense completes once after the primary reset released and after eFuse read traffic appeared, and the delayed fuse reset releases after that rise rather than with the cold reset.
@@ -4663,7 +4664,7 @@ Two things are worth reading before the entries:
 * S7: a write to the entropy pool drain aperture is SLVERR (`fabric.adoc`: "Writes to it terminate with BRESP=SLVERR"); a read and a write of SEP-local 0x0, which no component owns, are not OKAY.
 * S8: with the aperture at [4 GiB, 8 GiB), a byte is read and written back unchanged at 4 GiB and at 4 GiB + 2^k for each k below 32, and with the aperture at the single byte 2^56 - 1 the same there; each completes, and the aperture then returns to its RDL reset values, where a byte at the reset base completes too. Together with S5 each address bit of the SEP port rises and falls on both channels.
 
-* S9: with the aperture grown to 0x2100_0000 so that it covers SEP-local 0x2000_0000, inbound traffic reaches the SEP external aperture and the external TRNG window as the local crossbar's external initiator (`sep_local_axi_xbar_pkg` `Connectivity`), both terminated in DECERR slaves (`hw/top/sep_ip_integration.sv`). Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE with a byte offset, and INCR, WRAP and FIXED burst up to 256 beats offered there, write and read, ends in an error response, and so does each read of an eight-read train under distinct IDs held in flight by RREADY, and every access of twelve reads and twelve writes under distinct IDs held in flight by RREADY and BREADY at each. The eFuse shim word at the base of the external aperture is the one target there that answers: under each AxPROT, and under twelve reads and then twelve writes of distinct IDs held in flight by RREADY and BREADY, it reads and writes back OKAY. With the S4 aperture restored, a system-bus read and a write of the external aperture each report a bus error.
+* S9: with the aperture grown to 0x2100_0000 so that it covers SEP-local 0x2000_0000, inbound traffic reaches the SEP external aperture and the external TRNG window as the local crossbar's external initiator (`sep_local_axi_xbar_pkg` `Connectivity`), both terminated in DECERR slaves (`hw/top/sep_ip_integration.sv`). Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE with a byte offset, and INCR, WRAP and FIXED burst up to 256 beats offered there, write and read, ends in an error response, and so does each read of an eight-read train under distinct IDs held in flight by RREADY, and every access of sixty-four reads, alternately single and eight-beat bursts, and sixty-four writes over four IDs launched together at each with RREADY and BREADY held low for 20000 cycles, sixty-four held writes alone at the TRNG window, and four writes launched together whose W trails the first AW by 64 cycles. The eFuse shim word at the base of the external aperture is the one target there that answers: under each AxPROT, under sixty-four reads and sixty-four writes over four IDs launched together with RREADY and BREADY held low for 20000 cycles, and in a sweep of a write whose W trails its AW by 64 cycles against a read whose AR is delayed by 40 to 86 cycles, so that for some delay the read and the write data reach the shim together, it reads and writes back OKAY. With the S4 aperture restored, a system-bus read and a write of the external aperture each report a bus error.
 * S10: sixteen writes and then sixteen reads into SEP SRAM, each under its own ID, are launched before the first response is taken while the master holds RREADY and BREADY low for 600 cycles; every write is OKAY and every read returns its word.
 * S11: the SEP debug module's system bus opens SMC inbound filter entry 0 over the whole address space, and ext_in reads the SMC's VERSION_LO at its global address, which returns the RDL reset value. The system bus then sets SMC outbound filter entry 0 to pass all and programs the SMC iDMA through the SEP view of the SMC window to copy a block from SEP SRAM, over the crossbar's `smc_out` to `sep_in` route, to an address outside both apertures, which the crossbar sends to `ext_out`. The bench responder holds the block ext_in wrote; a second copy brings it back from `ext_out` into SEP SRAM over the same route, where ext_in reads it; a system-bus write and read then leave on `ext_out` from the SEP, and a further ext_in read of the source is OKAY.
 
@@ -4686,8 +4687,8 @@ Two things are worth reading before the entries:
 |`CHK-AXIIN-SEP-BURST` |every INCR burst reads back its pattern OKAY, with and without response backpressure; the WRAP and FIXED reads and the WRAP write and the INCR write after it are OKAY
 |`CHK-AXIIN-SEP-ERRORS` |the entropy pool write is SLVERR and both SEP-local 0x0 accesses are not OKAY
 |`CHK-AXIIN-SEP-ADDRESS-BITS` |all 35 address-bit read and write-back pairs complete
-|`CHK-AXIIN-SEP-EXTERNAL` |every S9 write and read into the external aperture and the TRNG window, every read of the ID train, and every access of the held trains there, ends in an error response
-|`CHK-AXIIN-SEP-SHIM` |the eFuse shim word reads and writes back OKAY under all eight AxPROT encodings and in the held trains, and the system-bus read and write of the external aperture each report `sberror` != 0
+|`CHK-AXIIN-SEP-EXTERNAL` |every S9 write and read into the external aperture and the TRNG window, every read of the ID train, every access of the held trains there and every W-lagged write ends in an error response
+|`CHK-AXIIN-SEP-SHIM` |the eFuse shim word reads and writes back OKAY under all eight AxPROT encodings, in the held trains and in the collision sweep, and the system-bus read and write of the external aperture each report `sberror` != 0
 |`CHK-AXIIN-SEP-ID-TRAIN` |every write of the S10 train is OKAY and every read returns the word written at its address
 |`CHK-AXIIN-SEP-SMC-DMA` |the ext_in source write is OKAY, the ext_in VERSION_LO read is OKAY with the RDL reset value, DONE reports each launched id, the responder's destination holds the source block, the block copied back reads back over ext_in, the SEP egress read returns its word, and the ext_in read after the copies is OKAY
 |===
@@ -4925,7 +4926,7 @@ Two things are worth reading before the entries:
 * S1: under each of the eight AxPROT encodings ext_in reads the word at the base of the SMC external window, the external target 4 KiB above it, cross-trigger port 7's CONFIG register in the DTP control window and eFuse MAP SPARE[0], and writes each word read back to it. The window-base and DTP accesses are OKAY and their words read back unchanged; the external target's and the eFuse accesses complete. The eFuse controller's demux passes each access's address phase to its bank-control port as well (`efuse_interface_controller.sv`).
 * S2: every AxSIZE, with each of address bits [6:0] set and then cleared between accesses, writes and reads the external target; each completes.
 * S3: sixteen writes into the SMC SPM, each under its own AWID, are launched before the first response is taken while the master holds BREADY back 600 cycles; each is OKAY and every word reads back.
-* S4: twelve reads and then twelve writes, each under its own ID, are launched at the external target and then at the DTP CONFIG word before the first response is taken, with RREADY and BREADY held back 600 cycles; every one completes, and the DTP word written back is unchanged. A read and write-back of eFuse SPARE[0] at AxPROT 0 follow.
+* S4: sixty-four reads, alternately single and eight-beat INCR bursts, and sixty-four writes over sixteen IDs are launched together at the external target, and then at the DTP CONFIG word, before the first response is taken, with RREADY and BREADY held low for 20000 cycles from the start of each train; every one completes, and the DTP word written back is unchanged. A read and write-back of eFuse SPARE[0] at AxPROT 0 follow.
 * S5: holding the cool reset pin asserts the SMC primary reset, which the SMU crossbar and its ID converters also run on (`smu.sv`), and releasing it releases the SMC.
 
 *Test Procedure*:
@@ -4935,7 +4936,7 @@ Two things are worth reading before the entries:
 . For each AxPROT, read, write back and read again the window-base word, the external target, the DTP CONFIG word and eFuse SPARE[0].
 . Write and read the external target at each AxSIZE and offset.
 . Launch the sixteen-write train with BREADY held back, collect the responses, and read every word back.
-. Launch the twelve-read and twelve-write trains at the external target and the DTP CONFIG word with RREADY and BREADY held back, collect the responses, read the DTP word, and read and write back eFuse SPARE[0].
+. Launch the sixty-four-read and sixty-four-write trains together at the external target and then at the DTP CONFIG word with RREADY and BREADY held low, collect the responses, read the DTP word, and read and write back eFuse SPARE[0].
 . Hold the cool reset pin, sample the SMC primary reset, release the pin and wait for the reset to release.
 
 *Checkers*:
@@ -4946,7 +4947,7 @@ Two things are worth reading before the entries:
 |`CHK-SMC-WINDOW-PROT` |under every AxPROT the window-base and DTP reads and write-backs are OKAY and the words read back unchanged, and the external target's and eFuse accesses complete
 |`CHK-SMC-WINDOW-EXTERNAL-SIZE` |all ten size and offset cells at the external target complete
 |`CHK-SMC-WINDOW-AWID-TRAIN` |every write of the train is OKAY and every word reads back
-|`CHK-SMC-WINDOW-HELD-TRAIN` |all twenty-four held accesses at each target complete and the DTP word reads back unchanged
+|`CHK-SMC-WINDOW-HELD-TRAIN` |all 128 held accesses at each target complete and the DTP word reads back unchanged
 |`CHK-SMC-WINDOW-COOL-RESET` |the SMC primary reset is low while the cool reset pin is held and high after its release
 |assertion |window sweep incomplete <steps>
 |===
@@ -5082,6 +5083,46 @@ Two things are worth reading before the entries:
 
 '''''
 
+[[sec-126-smu_smc_fabric_test]]
+===== 126 `smu_smc_fabric_test`
+
+*Source Module*: `smu_smc_fabric_test` (`cocotb_wrapper/tests/`; the sequence extends the `smu_axi_in_sep_aperture_test` sequence for its system-bus access)
+
+*BFM / Model*: `ocah_jtag_vip` for the SEP debug module; the shared responder on `u_axi_out_if`, used as backing memory and whose address phases the sequence records; `smc_smoke` firmware mode with the SMC ROM image `smu_smc_fabric` (`hw/sys/smu/dv/fw/tests/smu_smc_fabric`, built by `fw/build_firmware.py` through the toolchain container); eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: SMC firmware running on all four SMC harts stores to and loads from SEP SRAM over the crossbar's `smc_out`-to-`sep_in` route, an address that leaves on `ext_out`, and the SMC-local scratch words, so those paths carry SMC-CPU-issued transfers.
+
+*Test Coverage*:
+
+* The image enters at the SMC ROM on every hart; each hart takes its own stack (`fw/common/smc_mp_start.S`) and runs `main(mhartid)`. Hart 0 publishes READY in scratch word 0, and every hart polls scratch word 1 for GO (`smu_smc_fabric_protocol.h`, which the sequence parses). The SMC CPU reaches everything outside its caches through its MMIO port and the SMC input fabric.
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`.
+* S4: the SEP debug module's system bus opens the SEP aperture at 0x0400_0000, so SEP SRAM is at global 0x1400_0000, sets SMC outbound filter entry 0 to pass all through the SEP view of the SMC window, and writes GO.
+* S5: each hart stores four doublewords tagged with its hart id into SEP SRAM and into 0x2A00_0000 plus its hart offset, outside the SEP aperture and the SMC one at its RDL reset, before loading any back; it compares every read-back and re-reads GO, posts its result in scratch word 4 + hart, and hart 0 posts TEST_PASS once all four pass.
+* S6: all four hart words pass; the responder holds each hart's `ext_out` words and a system-bus read of SEP SRAM returns each hart's SEP words; `ext_out` carried writes and reads from every hart. The SMC zeroer, started over the system bus, then writes zeros past the harts' words and the responder holds them.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`; wait for READY.
+. Open the SEP aperture and SMC outbound filter entry 0 over the system bus, start recording the outbound address phases, and write GO.
+. Wait for TEST_PASS or TEST_FAIL in scratch word 0.
+. Read the four hart words, compare the responder's words and SEP SRAM over the system bus, run the zeroer and compare its target.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SMC-FW-FABRIC-PASS` |the image posts READY, and after GO scratch word 0 reads TEST_PASS
+|`CHK-SMC-FW-FABRIC-CROSSCHECK` |the zeroer finishes with its target zero, all four hart words pass, the responder and SEP SRAM hold every hart's words, and `ext_out` carried writes and reads from every hart
+|assertion |smc fabric firmware incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fw_boot`.
+
+'''''
+
 === Formal Verification Plan
 
 No formal target exists for SMU. There is no `smu_formal_cfg.toml`, no
@@ -5099,14 +5140,14 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 [cols="2,1,4",options="header",]
 |===
 |Group |Leaves |Notes
-|`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
+|`fw_boot` |4 |The firmware boot smokes, the SMC firmware fabric leaf and the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
 |`fabric` |18 |The fabric and filter leaves; every member is in `hosted`
 |`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
 |`dtp_under_smu` |38 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
 |`hosted` |84 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |119 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`all` |120 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers

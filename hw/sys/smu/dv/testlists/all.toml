@@ -14,7 +14,8 @@ schema_version = 1
 #
 # `all` is every test in this file. `smoke` is the toolchain-free PR gate,
 # `hosted` the toolchain-free nightly set, `fw_boot` the firmware boot smokes
-# and `elaboration` the elaboration leaf alone.
+# with the SMC firmware fabric leaf, and `elaboration` the elaboration leaf
+# alone.
 #
 # The EL2 ICCM/DCCM macros come from the upstream VeeR mem_lib.sv already on
 # the Bender closure, and tb_wrapper_top.sv backdoor-loads +sep_itcm_hex /
@@ -71,6 +72,29 @@ args = [
 # Scoreboard bar: boot-ROM fetch, ICCM execution, >=16 distinct PCs, >=256
 # retires, and DCCM result stores. Console/STDOUT over the external AXI path is
 # out of scope here.
+[[tests]]
+name = "smu_smc_fabric_test"
+module = "smu_smc_fabric_test"
+target = "compile_smu_chiplet"
+firmware = { name = "smu_smc_fabric", mode = "smc_smoke" }
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "smc", "fabric", "dmi", "sba"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smu_smc_fabric.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+  # +skip_fuse_sense: SMC firmware to TEST_PASS; no OTP/eFuse data is read.
+  "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+  # TEST_DEV: SEP debug open, so the debug module's system bus is reachable.
+  "+sep_shadow_reg_preload={repo_root}/hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload",
+]
+
 [[tests]]
 name = "smu_sep_smoke_test"
 module = "smu_sep_smoke_test"
@@ -865,6 +889,7 @@ args = [
 name = "fw_boot"
 tests = [
   "smu_smc_smoke_test",
+  "smu_smc_fabric_test",
   "smu_wrapper_elaboration_test",
   "smu_sep_smoke_test",
 ]
@@ -2732,6 +2757,7 @@ name = "all"
 tests = [
   "smu_wrapper_elaboration_test",
   "smu_smc_smoke_test",
+  "smu_smc_fabric_test",
   "smu_sep_smoke_test",
   "smu_sep_boot_health_test",
   "smu_sep_sanity_test",
@@ -2850,7 +2876,7 @@ tests = [
   "smu_aperture_map_walk_test",
   "smu_axi_out_addr_len_size_test",
 ]
-expected_count = 119
+expected_count = 120
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.

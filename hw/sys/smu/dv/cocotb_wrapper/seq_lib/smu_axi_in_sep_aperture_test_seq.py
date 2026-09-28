@@ -39,11 +39,16 @@ S9 (before S8): with the aperture grown to cover SEP-local 0x2000_0000, inbound
     (``hw/top/sep_ip_integration.sv``). Every AxID, AxCACHE/AxQOS/AxREGION/
     AxLOCK corner, AxPROT encoding, AxSIZE and burst type ext_in offers there,
     and each read of an eight-read train under distinct IDs held in flight,
-    completes with an error response, as do twelve reads and twelve writes of
-    distinct IDs held in flight at each. The eFuse shim word at the base of the
-    external aperture reads and writes back OKAY under every AxPROT and under
-    twelve reads and twelve writes of distinct IDs held in flight, and with
-    the aperture restored a system-bus read and write of the external aperture
+    completes with an error response, as do sixty-four reads (alternately
+    single and eight-beat bursts) and sixty-four writes over four IDs
+    launched together and held in flight at each, sixty-four held writes alone
+    at the TRNG window, and four writes launched together whose W trails the
+    first AW by 64 cycles. The eFuse shim word at the base of the external
+    aperture reads and writes back OKAY under every AxPROT, under sixty-four
+    reads and sixty-four writes over four IDs launched together and held in
+    flight, and in a sweep of a W-lagged write against a read whose AR is
+    delayed around the same lag. With the aperture restored a system-bus read
+    and write of the external aperture
     each report a bus error.
 S10: sixteen reads and sixteen writes, each under its own ID, are launched into SEP
     SRAM before the first response is taken, with RREADY and BREADY held back;
@@ -181,7 +186,17 @@ TRAIN = 16
 # Cycles the master holds RREADY and BREADY low once a train is launched, long
 # enough for the queued responses to fill every buffer back to the SEP port.
 TRAIN_HOLD_CYCLES = 600
-HELD = 12
+HELD = 64
+# RREADY and BREADY stay low this long after each train starts
+# (the VIP's pause countdown), then every response is taken.
+HELD_HOLD_CYCLES = 20000
+HELD_WAIT_NS = 4 * AXI_TIMEOUT_NS
+# The SEP inbound ID remapper tracks four IDs of four transactions each
+# (sep_system_peripherals.sv); four IDs keep it full.
+HELD_IDS = 4
+W_LAG_CYCLES = 64
+W_LAG_WRITES = 4
+COLLIDE_SPAN = 24
 
 
 class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
@@ -488,28 +503,73 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
             shim_ok.append((resp_r, resp_w))
         shim_word = data[:4] or bytes(4)
         held_resp = {}
-        master.driver.set_timing(
-            AxiTimingProfile(r_ready_delay=TRAIN_HOLD_CYCLES, b_ready_delay=TRAIN_HOLD_CYCLES)
-        )
         try:
-            for name, addr, word in (
-                ("shim", shim, shim_word),
-                ("external", ext, bytes(4)),
-                ("trng", trng, bytes(4)),
+            for name, addr, word, reads in (
+                ("shim", shim, shim_word, HELD),
+                ("external", ext, bytes(4), HELD),
+                ("trng", trng, bytes(4), HELD),
+                ("trng_writes", trng, bytes(4), 0),
             ):
-                held = [master.init_read(addr, 4, size=2, id=16 * i + 6) for i in range(HELD)]
-                for event in held:
-                    await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
-                held_w = [master.init_write(addr, word, size=2, id=16 * i + 8) for i in range(HELD)]
-                for event in held_w:
-                    await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+                master.driver.set_timing(
+                    AxiTimingProfile(r_ready_delay=HELD_HOLD_CYCLES, b_ready_delay=HELD_HOLD_CYCLES)
+                )
+                held = [
+                    master.init_read(
+                        addr, 4 * (1 + (i % 2) * 7), size=2, id=16 * (i % HELD_IDS) + 6
+                    )
+                    for i in range(reads)
+                ]
+                held_w = [
+                    master.init_write(addr, word, size=2, id=16 * (i % HELD_IDS) + 8)
+                    for i in range(HELD)
+                ]
+                for event in held + held_w:
+                    await with_timeout(event.wait(), HELD_WAIT_NS, "ns")
                 pick = max if name == "shim" else min
                 held_resp[name] = (
-                    pick(worst_resp(e.data.resp) for e in held),
+                    pick((worst_resp(e.data.resp) for e in held), default=RESP_SLVERR),
                     pick(worst_resp(e.data.resp) for e in held_w),
                 )
         finally:
             master.driver.set_timing(AxiTimingProfile())
+        # Writes launched together whose W trails the first AW, so their address
+        # phases reach the DECERR slave ahead of the data.
+        lagged = []
+        try:
+            for addr in (ext, trng):
+                master.driver.set_timing(AxiTimingProfile(w_delay=W_LAG_CYCLES))
+                events = [
+                    master.init_write(addr, bytes(4), size=2, id=16 * i + 5)
+                    for i in range(W_LAG_WRITES)
+                ]
+                for event in events:
+                    await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+                lagged += [worst_resp(e.data.resp) for e in events]
+        finally:
+            master.driver.set_timing(AxiTimingProfile())
+        observed += [resp != RESP_OKAY for resp in lagged]
+        # A shim write whose W trails its AW, with a read of the shim whose AR is
+        # delayed by a swept amount, so for some delay the read and the write's
+        # data reach the shim's register block in the same cycle.
+        collide = []
+        try:
+            for ar_lag in range(W_LAG_CYCLES - COLLIDE_SPAN, W_LAG_CYCLES + COLLIDE_SPAN, 2):
+                master.driver.set_timing(AxiTimingProfile(w_delay=W_LAG_CYCLES, ar_delay=ar_lag))
+                wr = master.init_write(shim, shim_word, size=2, id=0x15)
+                rd = master.init_read(shim, 4, size=2, id=0x16)
+                for event in (wr, rd):
+                    await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+                collide.append(
+                    (worst_resp(wr.data.resp), worst_resp(rd.data.resp), bytes(rd.data.data)[:4])
+                )
+        finally:
+            master.driver.set_timing(AxiTimingProfile())
+        shim_ok.append(
+            (
+                max(c[0] for c in collide),
+                max(c[1] for c in collide) if all(c[2] == shim_word for c in collide) else -1,
+            )
+        )
         shim_ok.append(held_resp.pop("shim"))
         observed += [RESP_OKAY not in resp for resp in held_resp.values()]
         await self._window(jtag, WIN_BASE, WIN_SIZE)
@@ -520,7 +580,7 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         sb.expect_eq(
             "CHK-AXIIN-SEP-SHIM",
             (shim_ok, sb_err != 0, sb_werr != 0),
-            ([(RESP_OKAY, RESP_OKAY)] * 9, True, True),
+            ([(RESP_OKAY, RESP_OKAY)] * 10, True, True),
             evidence="CHK-AXIIN-SEP-SHIM",
         )
         self._log(f"CHK-AXIIN-SEP-EXTERNAL {len(observed)} accesses errors={sum(observed)}")

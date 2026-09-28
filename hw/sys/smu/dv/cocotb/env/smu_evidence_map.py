@@ -184,8 +184,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMC-WINDOW-HELD-TRAIN",
             "CHK-SMC-WINDOW-HELD-TRAIN",
-            "twelve reads and twelve writes under distinct IDs held in flight at the external "
-            "target and at the DTP CONFIG word all complete, and the DTP word is unchanged",
+            "sixty-four reads and sixty-four writes launched together with responses held at "
+            "the external target and at the DTP CONFIG word all complete, and the DTP word "
+            "is unchanged",
         ),
         (
             "CHK-SMC-WINDOW-COOL-RESET",
@@ -238,6 +239,25 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-OTP-PROD-SMC-SERIES",
             "an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3 completes "
             "with SUCCESS",
+        ),
+    ],
+    "smu_smc_fabric_test": [
+        (
+            "CHK-SEP-DMI-DMSTATUS",
+            "CHK-SEP-DMI-DMSTATUS",
+            "SEP TAP dmi read of dmstatus completes with status 0 and version 2 (spec 0.13)",
+        ),
+        (
+            "CHK-SMC-FW-FABRIC-PASS",
+            "CHK-SMC-FW-FABRIC-PASS",
+            "the SMC ROM image posts READY, and after GO every hart's SEP SRAM and ext_out "
+            "read-backs match and hart 0 posts TEST_PASS",
+        ),
+        (
+            "CHK-SMC-FW-FABRIC-CROSSCHECK",
+            "CHK-SMC-FW-FABRIC-CROSSCHECK",
+            "all four hart words pass, the responder and SEP SRAM hold each hart's words, "
+            "and ext_out carried writes and reads from every hart",
         ),
     ],
     "smu_axi_in_burst_outstanding_test": [
@@ -502,9 +522,9 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-SEP-SHIM",
             "CHK-AXIIN-SEP-SHIM",
-            "the eFuse shim word reads and writes back OKAY under every AxPROT and in held "
-            "trains of distinct IDs, and a system-bus read and write of a closed window return "
-            "sberror",
+            "the eFuse shim word reads and writes back OKAY under every AxPROT, in held "
+            "trains and in a read-against-lagged-write sweep, and a system-bus read and "
+            "write of a closed window return sberror",
         ),
     ],
     "smu_efuse_command_test": [

@@ -289,16 +289,18 @@ outputs = [
   "hw/sys/smu/dv/build/firmware/preloads/sep_dtcm_default.hex",
 ]
 
+# SMC ROM images from this DV root's builder: {fw_target} is the image and its
+# --target (smu_smc_smoke, smu_smc_fabric).
 [c_build.smc_smoke]
 cwd = "."
 argv = [
   "python3",
   "hw/sys/smu/dv/fw/build_firmware.py",
   "--target",
-  "smu_smc_smoke",
+  "{fw_target}",
 ]
 outputs = [
-  "hw/sys/smu/dv/build/firmware/smu_smc_smoke/smu_smc_smoke.rom.hex",
+  "hw/sys/smu/dv/build/firmware/{fw_target}/{fw_target}.rom.hex",
   "hw/sys/smu/dv/build/firmware/preloads/smc_efuse_default.hex",
   # The SEP=1 wrapper loads its SEP boot ROM, TCMs and eFuse at time zero and
   # is fatal without them; build_firmware.py writes these zero-filled preloads

@@ -20,9 +20,10 @@ S2: every AxSIZE, with each of address bits [6:0] set and cleared between
 S3: sixteen writes into the SMC SPM, each under its own AWID, are launched
     before the first response is taken while the master holds BREADY back;
     each is OKAY and every word reads back.
-S4: twelve reads and then twelve writes, each under its own ID, are launched
-    at the external target and at the DTP CONFIG word before the first response
-    is taken, with RREADY and BREADY held back; every one completes, and the DTP
+S4: sixty-four reads, alternately single and eight-beat INCR bursts, and
+    sixty-four writes over sixteen IDs are launched together at the external
+    target, and then at the DTP CONFIG word, before the first response is
+    taken, with RREADY and BREADY held back; every one completes, and the DTP
     word written back is unchanged. A read and write-back of eFuse SPARE[0] at
     AxPROT 0 follow.
 S5: holding the cool reset pin asserts the SMC primary reset, which also resets
@@ -76,7 +77,11 @@ CFG_SECURE = (
 # (AxSIZE, byte offset from EXTERNAL) setting and clearing address bits [6:0].
 SIZE_CELLS = ((2, 0), (0, 1), (1, 2), (2, 4), (3, 8), (2, 16), (2, 32), (2, 64), (0, 0x7F), (3, 0))
 ID_TRAIN = 16
-HELD_TRAIN = 12
+HELD_TRAIN = 64
+# RREADY and BREADY stay low this long after each train starts
+# (the VIP's pause countdown), then every response is taken.
+HELD_HOLD_CYCLES = 20000
+HELD_WAIT_NS = 4 * AXI_TIMEOUT_NS
 COOL_RESET_HOLD_REF_CYCLES = 256
 COOL_RESET_RELEASE_REF_CYCLES = 8192
 TRAIN_HOLD_CYCLES = 600
@@ -204,24 +209,24 @@ class smu_smc_inbound_window_sweep_test_seq(smu_axi_in_burst_outstanding_test_se
             master, write=False, addr=DTP_CTP_CONFIG, payload=4, size=2, label="dtp0"
         )
         done = {}
-        master.driver.set_timing(
-            AxiTimingProfile(r_ready_delay=TRAIN_HOLD_CYCLES, b_ready_delay=TRAIN_HOLD_CYCLES)
-        )
         try:
             for name, addr, word in (
                 ("external", EXTERNAL, bytes(4)),
                 ("dtp", DTP_CTP_CONFIG, dtp_word[:4]),
             ):
+                master.driver.set_timing(
+                    AxiTimingProfile(r_ready_delay=HELD_HOLD_CYCLES, b_ready_delay=HELD_HOLD_CYCLES)
+                )
                 reads = [
-                    master.init_read(addr, 4, size=2, id=16 * i + 7) for i in range(HELD_TRAIN)
+                    master.init_read(addr, 4 * (1 + (i % 2) * 7), size=2, id=16 * (i % 16) + 7)
+                    for i in range(HELD_TRAIN)
                 ]
-                for event in reads:
-                    await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
                 writes = [
-                    master.init_write(addr, word, size=2, id=16 * i + 9) for i in range(HELD_TRAIN)
+                    master.init_write(addr, word, size=2, id=16 * (i % 16) + 9)
+                    for i in range(HELD_TRAIN)
                 ]
-                for event in writes:
-                    await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+                for event in reads + writes:
+                    await with_timeout(event.wait(), HELD_WAIT_NS, "ns")
                 done[name] = len(reads) + len(writes)
         finally:
             master.driver.set_timing(AxiTimingProfile())
