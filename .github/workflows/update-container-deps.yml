@@ -43,22 +43,25 @@ jobs:
         with:
           python-version: "3.11"
 
-      # Move the three dependency sources the container closure is built from in
-      # lockstep, so the candidate image is rebuilt and validated once for the
-      # whole set rather than once per source. Patch-sensitive source pins under
-      # nix/packages/ (for example the GCC toolchain) are left for manual review.
-      - name: Update Nix, Python and manifest pins
+      # Move the container closure's floating dependency sources in lockstep, so
+      # the candidate image is rebuilt and validated once for the whole set rather
+      # than once per source. The tt-oca-manifest submodule is deliberately excluded:
+      # it is a TT-owned repository whose bumps can carry breaking changes the
+      # container CI cannot catch (the manifest is not in the image closure, so the
+      # content hash is unchanged and verify passes on the unchanged image); bump it
+      # in its own reviewed PR. Patch-sensitive source pins under nix/packages/ (for
+      # example the GCC toolchain) are likewise left for manual review.
+      - name: Update Nix and Python pins
         run: |
           set -euo pipefail
           nix flake update
           uv lock --upgrade
-          git submodule update --remote hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 
       - name: Open update pull request
         shell: bash
         run: |
           set -euo pipefail
-          paths="flake.lock uv.lock hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"
+          paths="flake.lock uv.lock"
           if [ -z "$(git status --porcelain -- $paths)" ]; then
             echo "Container dependencies are current."
             exit 0
@@ -82,19 +85,24 @@ jobs:
               --title "nix: Update container dependency pins" \
               --body "$(cat <<'EOF'
           ## Summary
-          Weekly lockstep refresh of the sources the container closure is built from:
+          Weekly lockstep refresh of the floating sources the container closure is
+          built from:
 
           - `flake.lock` — `nix flake update` (nixpkgs and other flake inputs)
           - `uv.lock` — `uv lock --upgrade` (Python dependency versions)
-          - `tt-oca-manifest` submodule — advanced to its latest upstream commit
 
           The `container` workflow rebuilds and verifies the candidate image on this
-          PR automatically (its path filter covers `flake.lock`, `uv.lock`, `nix/**`
-          and the manifest gitlink), so a green check here means the refreshed closure
-          builds and passes the image smoke test.
+          PR automatically (its path filter covers `flake.lock`, `uv.lock` and
+          `nix/**`), so a green check here means the refreshed closure builds and
+          passes the image smoke test.
 
-          Patch-sensitive source pins under `nix/packages/` (for example the GCC
-          toolchain) are intentionally not rewritten here; bump those manually.
+          The `tt-oca-manifest` submodule is deliberately not bumped here: it is a
+          TT-owned repository whose changes can be breaking, and the container CI
+          cannot catch that (the manifest is not part of the image closure, so a bump
+          leaves the content hash unchanged and verify passes on the unchanged image).
+          Bump it in its own reviewed PR. Patch-sensitive source pins under
+          `nix/packages/` (for example the GCC toolchain) are likewise left for manual
+          review.
 
           ## Test plan
           `container` workflow (build + verify the candidate image).
