@@ -66,15 +66,9 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 Each row below is the aperture reserved for a unit, and the Decoded Extent
 column gives the part of it that registers or memory back. The last two
 columns state how SEP answers a 32-bit access that no register or memory
-backs, as seen at its inbound AXI port. Each cell gives the read response and
-read data, then the write response. _Hole in Extent_ covers the unbacked
+backs, as seen at its inbound AXI port. _Hole in Extent_ covers the unbacked
 offsets inside a unit's decoded extent, _Past Extent_ covers the rest of its
 aperture, and the `Reserved` rows are the addresses between unit apertures.
-
-A write refused behind an AXI-to-AXI-Lite converter answers `SLVERR`, whatever
-response the refusing component returns. An error on the 64-bit fabric carries
-`0xCA11AB1E` instead of `0xBADCAB1E` when address bit 2 is set; a note below
-the table marks the cells this applies to.
 
 In the response cells, `-` means the region does not exist: the unit is
 memory, its registers fill its extent, or its aperture ends at its extent.

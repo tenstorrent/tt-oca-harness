@@ -46,8 +46,7 @@ include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
 The last two columns state how the SMC answers a 32-bit access that no
-register or memory backs, as seen at its inbound AXI port. Each cell gives the
-read response and read data, then the write response. _Hole in Extent_ covers
+register or memory backs, as seen at its inbound AXI port. _Hole in Extent_ covers
 the unbacked offsets inside a unit's decoded extent. Where the space between a
 wrapper's sub-blocks answers differently, the cell names it separately, and
 `between instances` names the padding after each element of an array. _Past
@@ -55,11 +54,7 @@ Extent_ covers the rest of the unit's aperture.
 
 An address between unit apertures reaches no unit. A read there answers `DECERR`
 with data `0xBADCAB1E`, and a write answers `DECERR`, except from
-`BASE + 0x001_7000` through `BASE + 0x001_7FFF`, where it answers `SLVERR`. A
-write refused behind an AXI-to-AXI-Lite converter answers `SLVERR`, whatever
-response the refusing component returns. An error on the 64-bit fabric carries
-`0xCA11AB1E` instead of `0xBADCAB1E` when address bit 2 is set; a note below
-the table marks the cells this applies to.
+`BASE + 0x001_7000` through `BASE + 0x001_7FFF`, where it answers `SLVERR`.
 
 An address inside neither the local nor the global aperture answers `DECERR`
 to reads and writes. The M-mode and Xvisor remap regions forward accesses from
