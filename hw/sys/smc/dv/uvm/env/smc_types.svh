@@ -248,7 +248,7 @@ function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entr
 
   // --- reset_unit.rdl ---
   // SS_WARM_RESET_N is a plain PeakRDL-internal `sw=rw; hw=r` register
-  // (smc_subsystem_resets.sv:58 only reads hwif_out), so a write lands
+  // (smc_subsystem_resets.sv:58 only reads hwif_out_i), so a write lands
   // unfiltered and the shadow rule above describes it. Its default is all
   // ones, the second non-zero expectation in this catalogue.
   entries.push_back('{"RESET_UNIT_SS_WARM_RESET_N",

@@ -66,8 +66,6 @@ filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
 bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
 work_dir = "hw/sys/smc/dv/build"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
@@ -90,14 +88,13 @@ exclude_files = [
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
 ]
 stubs = [
-  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
-  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On
   # VCS only, the runner drops any stub whose basename the Bender graph
-  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # supplies, so the product prim_sync3 elaborates there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
   # in docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
-  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
@@ -106,7 +103,7 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
-  #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
+  #   prim_fifo_async <- hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv:79
   #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
   #   prim_rst_sync   <- hw/ip/efuse/rtl/efuse_interface_controller.sv:159
   #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))
@@ -258,6 +255,12 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 #
 # The DV test images need a picolibc-enabled RISC-V toolchain. Use an explicit
 # $RISCV_TOOLCHAIN, else scripts/docker-run.sh run-here. No site or PATH probe.
+# The container image carries no uv. bin_to_verilog.py and
+# update_smc_hex_to_preload_addr.py are stdlib, so the container invocation
+# passes PYTHON=python3, as [c_build.km_rom_main] does. A command-line PYTHON
+# wins over preamble.mk, which would otherwise expand $(UV) to the host uv
+# path `uv run` exported. The host toolchain branch leaves PYTHON unset and
+# keeps the locked uv default.
 # Same contract as [c_build.bootrom], [c_build.dual_occp] and
 # [c_build.occp_sanity] below. Without it, every `firmware = "<name>"` test
 # fails at c_compile on any host that does not carry the toolchain.
@@ -269,7 +272,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf-; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
 ]
 outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
@@ -345,7 +348,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3 && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
@@ -368,7 +371,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP sanity image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP sanity image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",

@@ -29,6 +29,8 @@ _EFUSE_READ_BUSY_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_
 _EFUSE_READ_DONE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_done")
 _EFUSE_READ_STATUS_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_status")
 _EFUSE_READ_ENABLE_BIT = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable")
+_EFUSE_ADDR_MASK = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_addr")
+_EFUSE_ADDR_LSB = EFUSE_INTERFACE_CTRL.field_lsb("EFUSE_READ_CTRL", "efuse_addr")
 
 _POLL_CYCLES = 200
 
@@ -57,7 +59,9 @@ class sep_efuse_direct_read_seq(uvm_sequence):
         return item.rdata
 
     async def body(self) -> None:
-        bit_addr = (self.word_index * 32) & 0xFFFF
+        bit_addr = (self.word_index * 32) << _EFUSE_ADDR_LSB
+        if self.word_index < 0 or bit_addr & ~_EFUSE_ADDR_MASK:
+            raise ValueError(f"word {self.word_index} is outside the efuse_addr range")
         await self._access(
             SepAxiOp.WRITE,
             _EFUSE_READ_CTRL,

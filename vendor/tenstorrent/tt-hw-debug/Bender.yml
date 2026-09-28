@@ -16,7 +16,7 @@
 # Two upstream file groups are shadowed or dropped in `sources` below:
 #   - overlay/prim_shim/ replaces upstream's behavioural generic_clkgate and
 #     generic_clkmux2, keeping the module names but calling the OCH prims, so the
-#     DFD inherits the och_prim_generic `not(synth)` tech swap instead of
+#     DFD inherits the ocah_prim_generic `not(synth)` tech swap instead of
 #     synthesising a behavioural clock gate.
 #   - trace_mem, trace_mem_sink and generic_mem_model are not compiled:
 #     EXTERNAL_SINK_MEM = 1 never takes that branch and they duplicate the OCH SRAM.

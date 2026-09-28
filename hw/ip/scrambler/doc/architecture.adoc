@@ -31,40 +31,16 @@ The scrambler IP consists of a generic top-level module (`scrambler`) and a set 
 
 The scrambler module accepts three parameters. Only 32-bit data widths are supported in the current implementation.
 
-<<sram-scrambler-parameters-table>> lists the address width, data width, and byte-wise
-permutation parameters.
-
-[[sram-scrambler-parameters-table]]
-[cols="<25%,<15%,<15%,<45%",options="header"]
-.SRAM scrambler parameters
-|===
-|Parameter |Type |Default |Description
-|`ADDR_WIDTH` |`int unsigned` |10 |Address width of the target SRAM. Determines which address scramble function is selected (6 through 13). Values outside this range fall through to a pass-through assignment.
-|`DATA_WIDTH` |`int unsigned` |32 |Data width. Only 32-bit operation is supported.
-|`BYTE_WISE` |`int unsigned` |0 |Selects the permutation mode. When 0, a single 32-bit permutation (`perm32`) is applied to the full word. When 1, four independent 8-bit permutations (`perm8`) are applied to each byte lane.
-|===
+ifdef::backend-html5[]
+The parameters and ports of `scrambler` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/scrambler/scrambler.adoc[scrambler].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `scrambler` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 == Port Interface
 
 The scrambler is purely combinational. It has no clock or reset ports.
-
-<<sram-scrambler-ports-table>> lists the combinational address, data, key, and enable
-interfaces.
-
-[[sram-scrambler-ports-table]]
-[cols="<25%,<10%,<20%,<45%",options="header"]
-.SRAM scrambler ports
-|===
-|Port |Dir |Width |Description
-|`addr_i` |in |`ADDR_WIDTH` |Memory address input.
-|`byte_mask_i` |in |`DATA_WIDTH/8` |Byte mask. Reserved for future per-byte-lane gating; currently unused.
-|`scrambler_key_i` |in |32 |Scrambling key provided by the Key Manager CSR block.
-|`scrambled_addr_o` |out |`ADDR_WIDTH` |Scrambled address output sent to the SRAM macro.
-|`write_data_i` |in |`DATA_WIDTH` |Plaintext write data from the CPU.
-|`scrambled_write_data_o` |out |`DATA_WIDTH` |Scrambled write data to be stored in the SRAM macro.
-|`scrambled_read_data_i` |in |`DATA_WIDTH` |Scrambled data read back from the SRAM macro.
-|`read_data_o` |out |`DATA_WIDTH` |Descrambled read data returned to the CPU.
-|===
 
 == Data Scrambling Algorithm
 

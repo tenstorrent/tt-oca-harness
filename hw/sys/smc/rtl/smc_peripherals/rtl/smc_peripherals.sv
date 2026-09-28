@@ -1,189 +1,351 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Peripherals
+// Aggregate SMC peripherals, eFuse, and pad-facing I/O.
+//
+// Instantiates the peripheral CSR crossbar and its clock-domain crossings, the padring
+// and GPIOs, UART, I2C, I3C, telemetry receivers, AVSBus controller, eFuse wrapper,
+// system timer, misc registers and the SMC reset unit. The SPI controller is outside this
+// module: its signals only pass through the padring to the SPI pads. Returns UART/GPIO
+// interrupts, the gated I3C clock, and debug buses.
+//
+// EFUSE_SHIM_SIZE is the vendor eFuse shim CSR carve-out at the base of the opaque
+// smc_external window. Each peripheral clock-gate enable stops its clock when high.
 
 module smc_peripherals #(
-  parameter int unsigned MAX_TRANS = 2,  // GPIO obs consistency; threaded from smc_wrapper
-  // Vendor eFuse shim CSR block carved off the base of the smc_external window;
-  // literal because the open smc_external map is opaque. Threaded from smc.sv.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h44
+  parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
+                                         // GPIO demux and of each GPIO interface.
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
+                                                 // the base of the smc_external window;
+                                                 // literal because the open smc_external
+                                                 // map is opaque. Passed to the peripheral
+                                                 // crossbar.
 ) (
-  input  logic clk_ref_i,
-  input  logic clk_smc_i,
-  input  logic clk_periph_i,
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic clk_ref_i,               // Reference clock for the reset unit, the AVSBus
+                                        // controller and the peripheral CDC.
+  input  logic clk_smc_i,               // SMC core clock for the peripheral crossbar and the
+                                        // SMC-clock peripherals.
+  input  logic clk_periph_i,            // Peripheral clock for the UART, I2C, I3C and
+                                        // AVSBus register interfaces.
+  input  logic test_en_i,               // DFT test-mode enable, active-high; bypasses
+                                        // the peripheral clock gates and selects the scan
+                                        // reset.
+  input  logic scan_rst_ni,             // DFT scan reset, active-low, used in place of
+                                        // functional resets while test_en_i is high.
 
-  // Telemetry Unit clock and reset
-  input  logic clk_telemetry_i,
-  input  logic rst_telemetry_ni,
+  input  logic clk_telemetry_i,         // Telemetry clock, gated by tel_cg_en_i before it
+                                        // reaches the telemetry receivers.
+  input  logic rst_telemetry_ni,        // Telemetry-domain reset, active-low, passed to the
+                                        // telemetry receivers without synchronization.
 
-  // Clock Gating
-  input  logic i3c_cg_en_i,
-  input  logic avs_cg_en_i,
-  input  logic i2c_cg_en_i,
-  input  logic uart_cg_en_i,
-  input  logic tel_cg_en_i,
+  input  logic i3c_cg_en_i,             // Stops the I3C peripheral clock when high;
+                                        // synchronized to the peripheral clock.
+  input  logic avs_cg_en_i,             // Stops the AVSBus controller peripheral and
+                                        // reference clocks when high.
+  input  logic i2c_cg_en_i,             // Stops the I2C peripheral clock when high.
+  input  logic uart_cg_en_i,            // Stops the UART peripheral clock when high.
+  input  logic tel_cg_en_i,             // Stops the telemetry receivers' gated SMC and
+                                        // telemetry clocks when high.
 
-  // Peripherals AXI-Lite Slave
-  input  smc_pkg::smc_axil_32_32_req_t  axil_peripherals_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t axil_peripherals_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t  axil_peripherals_req_i,  // Request from the local
+                                                                 // crossbar into the
+                                                                 // peripheral crossbar.
+  output smc_pkg::smc_axil_32_32_resp_t axil_peripherals_resp_o,  // Response to the local
+                                                                  // crossbar.
 
-  // Log Engine AXI-Lite Master
-  output smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_o,
-  input  smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_i,
+  output smc_pkg::smc_axil_56_64_req_t  axil_log_engine_req_o,  // Log-engine fetch request
+                                                                // from the UART, moved onto the
+                                                                // SMC clock.
+  input  smc_pkg::smc_axil_56_64_resp_t axil_log_engine_resp_i,  // Log-engine fetch
+                                                                 // response on the SMC clock.
 
-  // DTP CSR AXI-Lite Master
-  output smc_pkg::smc_axil_32_32_req_t  axil_dtp_csr_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t axil_dtp_csr_resp_i,
+  output smc_pkg::smc_axil_32_32_req_t  axil_dtp_csr_req_o,  // DTP CSR request with its
+                                                             // address rebased to zero at
+                                                             // the DTP control window.
+  input  smc_pkg::smc_axil_32_32_resp_t axil_dtp_csr_resp_i,  // DTP CSR response.
 
-  // External AXI-Lite Master
-  output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t smc_external_resp_i,
+  output smc_pkg::smc_axil_32_32_req_t  smc_external_req_o,  // Request for the part of the
+                                                             // smc_external window above
+                                                             // the eFuse shim carve-out.
+  input  smc_pkg::smc_axil_32_32_resp_t smc_external_resp_i,  // Response from the
+                                                              // smc_external window.
 
-  // eFuse JTAG AXI-Lite Slave
-  input  smc_pkg::smc_axil_32_32_req_t  axil_smc_otp_jtag_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t axil_smc_otp_jtag_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t  axil_smc_otp_jtag_req_i,  // JTAG request into the
+                                                                  // eFuse wrapper, filtered
+                                                                  // by lifecycle state.
+  output smc_pkg::smc_axil_32_32_resp_t axil_smc_otp_jtag_resp_o,  // Response to the JTAG
+                                                                   // eFuse access path.
 
-  // GPIO Data Signals (to external GPIO macros via gpio_shim instances)
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,
-  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] lsio_interface_select_o,  // LSIO select per pad
+                                                                       // from the padring,
+                                                                       // high where a
+                                                                       // peripheral function
+                                                                       // claims the pad.
+  input  logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_i,  // Value received from each GPIO
+                                                          // pad.
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_o,  // Value driven onto each GPIO
+                                                          // pad.
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en_o,  // Input enable of each GPIO
+                                                             // pad.
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en_o,  // Output enable of each GPIO
+                                                             // pad.
 
-  // SPI
-  input  logic       spi_enable_i,
-  input  logic       spi_clk_i,
-  input  logic [7:0] spi_txd_i,
-  input  logic       spi_cs_n_i,
-  input  logic       spi_cs_oe_n_i,
-  input  logic       spi_cs_ie_n_i,
-  input  logic       spi_clk_ie_n_i,
-  input  logic       spi_clk_oe_n_i,
-  input  logic       spi_dqs_ie_n_i,
-  input  logic       spi_dqs_oe_n_i,
-  input  logic [7:0] spi_dq_ie_n_i,
-  input  logic [7:0] spi_dq_oe_n_i,
-  output logic [7:0] spi_rxd_o,
-  output logic       spi_rxds_o,
-  input  logic       spi_mem_rebar_oepad_i,
-  input  logic       spi_mem_rebar_opad_i,
-  input  logic       spi_mem_rebar_iepad_i,
-  output logic       spi_mem_rebar_ipad_o,
+  input  logic       spi_enable_i,      // Hands the SPI pads to the external SPI host,
+                                        // active-high.
+  input  logic       spi_clk_i,         // Serial clock from the external SPI host, driven
+                                        // onto the SPI clock pad.
+  input  logic [7:0] spi_txd_i,         // Transmit data from the external SPI host, one
+                                        // bit per data pad.
+  input  logic       spi_cs_n_i,        // Chip select from the external SPI host,
+                                        // active-low.
+  input  logic       spi_cs_oe_n_i,     // Output enable for the chip-select pad,
+                                        // active-low.
+  input  logic       spi_cs_ie_n_i,     // Input enable for the chip-select pad,
+                                        // active-low.
+  input  logic       spi_clk_ie_n_i,    // Input enable for the SPI clock pad, active-low.
+  input  logic       spi_clk_oe_n_i,    // Output enable for the SPI clock pad, active-low.
+  input  logic       spi_dqs_ie_n_i,    // Input enable for the data-strobe pad,
+                                        // active-low.
+  input  logic       spi_dqs_oe_n_i,    // Output enable for the data-strobe pad,
+                                        // active-low; the pad drives zero when enabled.
+  input  logic [7:0] spi_dq_ie_n_i,     // Input enables for the data pads, active-low,
+                                        // one bit per data pad.
+  input  logic [7:0] spi_dq_oe_n_i,     // Output enables for the data pads, active-low,
+                                        // one bit per data pad.
+  output logic [7:0] spi_rxd_o,         // Receive data sampled from the data pads, to the
+                                        // external SPI host.
+  output logic       spi_rxds_o,        // Read data strobe sampled from the data-strobe
+                                        // pad, used in DDR mode.
+  input  logic       spi_mem_rebar_oepad_i,  // Output enable for the SPI DQS loopback
+                                             // pad, active-high.
+  input  logic       spi_mem_rebar_opad_i,  // Data driven onto the SPI DQS loopback
+                                            // pad.
+  input  logic       spi_mem_rebar_iepad_i,  // Input enable for the SPI DQS loopback
+                                             // pad, active-high.
+  output logic       spi_mem_rebar_ipad_o,  // Value sampled from the SPI DQS loopback
+                                            // pad.
 
-  // Telemetry ATB signals
-  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,
-  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atid_i,
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atready_o,
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atvalid_i,
-  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afvalid_o,
-  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,
+  input  telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atdata_i,  // ATB trace data
+                                                                                                                     // per telemetry
+                                                                                                                     // receiver.
+  input  telemetry_receiver_pkg::atb_id_t         [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atid_i,  // ATB trace source
+                                                                                                                   // ID per receiver.
+  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atready_o,  // ATB ready from
+                                                                                                                      // each receiver.
+  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_atvalid_i,  // ATB data valid
+                                                                                                                      // per receiver.
+  output logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afvalid_o,  // ATB flush
+                                                                                                                      // request from
+                                                                                                                      // each receiver.
+  input  logic                                    [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0] telemetry_afready_i,  // ATB flush
+                                                                                                                      // acknowledge per
+                                                                                                                      // receiver.
 
-  // Efuse Interface from xBar
-  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
-  output logic                                 lc_sigint_err_o,
+  input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,  // Differentially encoded
+                                                            // lifecycle state, used by the
+                                                            // eFuse JTAG access filter and
+                                                            // reported in chip_config.
+  output logic                                 lc_sigint_err_o,  // Integrity error from the
+                                                                 // differential decode of
+                                                                 // lc_state_i, active-high.
 
-  // System Timer OCTS
-  input  logic        chiplet_is_primary_i,
-  output logic [63:0] timer_count_o,
-  output logic [8:0]  system_timer_octs_credits_debug_o,
-  output logic        system_timer_octs_credits_left_debug_o,
+  input  logic        chiplet_is_primary_i,  // Makes the system timer drive the timer sync
+                                             // pads when high and follow them when low.
+  output logic [63:0] timer_count_o,    // Live 64-bit system timer count.
+  output logic [8:0]  system_timer_octs_credits_debug_o,  // Current system timer credit
+                                                          // count.
+  output logic        system_timer_octs_credits_left_debug_o,  // High while system timer
+                                                               // credits remain.
 
-  // Efuse Interface to SHIM
-  output smc_pkg::smc_axil_32_32_req_t  fuse_bank_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t fuse_bank_ctrl_resp_i,
+  output smc_pkg::smc_axil_32_32_req_t  fuse_bank_ctrl_req_o,  // Request to the vendor eFuse
+                                                               // shim CSRs.
+  input  smc_pkg::smc_axil_32_32_resp_t fuse_bank_ctrl_resp_i,  // Response from the vendor
+                                                                // eFuse shim CSRs.
 
-  // Boot Stall
-  input  logic boot_stall_jtag_ovrd_i,
-  input  logic boot_stall_jtag_val_i,
-  output logic boot_stall_processed_o,
+  input  logic boot_stall_jtag_ovrd_i,  // Replaces the boot-stall pad value with
+                                        // boot_stall_jtag_val_i when high.
+  input  logic boot_stall_jtag_val_i,   // Boot-stall value used while the JTAG override is
+                                        // set.
+  output logic boot_stall_processed_o,  // Boot stall synchronized to the SMC clock and made
+                                        // sticky: once low it stays low until the next
+                                        // primary reset; while high it holds fuse_reset_n_o
+                                        // low.
 
-  // Efuse Command Interface - custom interface for SHIM
-  output smc_efuse_pkg::fuse_command_req_t  efuse_shim_command_req_o,
-  input  smc_efuse_pkg::fuse_command_resp_t efuse_shim_command_resp_i,
+  output smc_efuse_pkg::fuse_command_req_t  efuse_shim_command_req_o,  // Fuse sense and
+                                                                       // program command
+                                                                       // request to the shim
+                                                                       // state machine.
+  input  smc_efuse_pkg::fuse_command_resp_t efuse_shim_command_resp_i,  // Fuse command
+                                                                        // response from the
+                                                                        // shim state machine.
 
-  // Efuse dft signal
-  input  logic ext_boot_seq_done_i,
+  input  logic ext_boot_seq_done_i,     // External boot sequence done, active-high; the
+                                        // eFuse wrapper holds its released reset until it is
+                                        // set.
 
-  // SEP security disable
-  input  logic sep_security_disable_i,
+  input  logic sep_security_disable_i,  // Security disable from the SEP eFuse
+                                        // controller, active-high; skips automatic fuse
+                                        // sensing and releases the shadow registers
+                                        // without it.
 
-  // Efuse Released Reset
-  output logic fuse_reset_n_o,  // Fuse sensing done && external boot sequence done (includes memory repair and shadow reg override being complete) - the rest of SMC can now boot
-  output logic fuse_reset_n_delayed_o,  // fuse_reset_n_o after pipe stages
-  output logic fuse_sense_done_o,  // Fuse sensing done
+  output logic fuse_reset_n_o,          // Efuse Released Reset.
+                                        // Fuse sensing done && external boot sequence
+                                        // done (includes memory repair and shadow reg
+                                        // override being complete) - the rest of SMC can
+                                        // now boot. Held low while the boot stall is set.
+  output logic fuse_reset_n_delayed_o,  // fuse_reset_n_o after 16 SMC clock pipe stages
+                                        // reset by the primary reset.
+  output logic fuse_sense_done_o,       // Fuse sensing done.
+                                        // High once shadow-register loading from the
+                                        // fuses completes.
 
-  // Efuse Shadow Regs
-  output smc_efuse_pkg::efuse_map_t shadow_regs_o,
+  output smc_efuse_pkg::efuse_map_t shadow_regs_o,  // eFuse shadow-register contents; zero
+                                                    // until fuse sensing completes unless
+                                                    // sep_security_disable_i is set.
 
-  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
-  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o,
+  input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,  // Asynchronous NDM reset
+                                                                            // request from each
+                                                                            // external CPU cluster;
+                                                                            // synchronized to the SMC
+                                                                            // clock and raised as a
+                                                                            // peripheral interrupt.
+  output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o,  // Firmware response to
+                                                                            // each cluster's NDM
+                                                                            // reset request, from the
+                                                                            // NDMRESET_PROCESS
+                                                                            // register.
 
-  // SMC Reset Unit Signals
-  input  logic powergood_i,
-  input  logic rst_cold_ni,
-  input  logic rst_cool_ni,
+  input  logic powergood_i,             // Powergood, active-high; while low the reset unit
+                                        // holds the cold, primary and warm resets.
+  input  logic rst_cold_ni,             // Cold reset, active-low, deglitched and extended in
+                                        // the reset unit.
+  input  logic rst_cool_ni,             // Cool reset from the pin, active-low, deglitched in
+                                        // the reset unit into the primary reset.
 
-  output logic rst_cold_stable_ref_clk_no,
-  output logic powergood_stable_o,
+  output logic rst_cold_stable_ref_clk_no,  // De-glitched and extended cold reset,
+                                            // active-low, synchronized to the reference
+                                            // clock.
+  output logic powergood_stable_o,      // Powergood from the reset unit: falls with
+                                        // powergood_i and rises 32 reference clock cycles
+                                        // after it.
 
-  input  logic rst_ext_wdt_ni,
-  input  logic smc_wdt_first_timeout_i,
-  input  logic smc_wdt_second_timeout_i,
+  input  logic rst_ext_wdt_ni,          // SEP watchdog reset, active-low; drives the
+                                        // watchdog reset in the reset unit and, once
+                                        // synchronized, a peripheral interrupt.
+  input  logic smc_wdt_first_timeout_i,  // First-stage SMC watchdog timeout, passed to
+                                         // the reset unit.
+  input  logic smc_wdt_second_timeout_i,  // Second-stage SMC watchdog timeout; asserts
+                                          // the watchdog reset in the reset unit.
 
-  input  logic        cfg_flr_pf_active_i,
-  output logic [31:0] isolate_req_o,
-  output logic        skip_mem_repair_o,
+  input  logic        cfg_flr_pf_active_i,  // PCIe function-level reset request, active-high;
+                                            // starts the reset unit's isolation and cool
+                                            // reset sequence.
+  output logic [31:0] isolate_req_o,    // Per-subsystem isolation requests from the reset
+                                        // unit, raised by its registers, the isolate pin or
+                                        // the function-level reset sequence.
+  output logic        skip_mem_repair_o,  // Asserted during a function-level reset to
+                                          // skip memory repair and MBIST.
 
-  input  logic [31:0]                     ss_reset_complete_i,
-  output logic [31:0]                     ss_config_o,
-  output smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o [31:0],
+  input  logic [31:0]                     ss_reset_complete_i,  // Per-subsystem reset
+                                                                // complete acknowledgments,
+                                                                // synchronized to the SMC
+                                                                // clock in the reset unit.
+  output logic [31:0]                     ss_config_o,  // Per-subsystem configuration
+                                                        // bits written through the
+                                                        // reset-unit SS_CONFIG register;
+                                                        // cleared by primary reset.
+  output smc_reset_unit_pkg::reset_ctrl_t ss_reset_ctrl_o [31:0],  // Per-subsystem cold and
+                                                                   // warm resets, hold controls
+                                                                   // and force-to-reference-clock
+                                                                   // select; the resets are not
+                                                                   // synchronized to the
+                                                                   // subsystem clock.
 
-  output logic rst_primary_ref_clk_no,
-  output logic rst_primary_smc_clk_no,
-  output logic rst_warm_smc_clk_no,
-  output logic rst_wdt_smc_clk_no,
-  output logic rst_primary_periph_clk_no,
+  output logic rst_primary_ref_clk_no,  // Primary reset (cold, cool and function-level
+                                        // reset combined), active-low, synchronized to the
+                                        // reference clock.
+  output logic rst_primary_smc_clk_no,  // Primary reset, active-low, synchronized to the
+                                        // SMC clock; resets the peripheral crossbar and
+                                        // SMC-clock peripherals.
+  output logic rst_warm_smc_clk_no,     // Warm reset (primary, watchdog and fuse reset
+                                        // combined), active-low, synchronized to the SMC
+                                        // clock.
+  output logic rst_wdt_smc_clk_no,      // Watchdog reset from the SEP watchdog or the
+                                        // second-stage SMC watchdog timeout, active-low,
+                                        // synchronized to the SMC clock.
+  output logic rst_primary_periph_clk_no,  // Primary reset, active-low, synchronized to
+                                           // the peripheral clock.
 
-  output logic sync_irq_o,
+  output logic sync_irq_o,              // Global sync bit set by software through the
+                                        // reset-unit SYNC_REG register.
 
-  input  smc_pkg::jtag_smc_reset_ctrl_t jtag_reset_ctrl_i,
+  input  smc_pkg::jtag_smc_reset_ctrl_t jtag_reset_ctrl_i,  // JTAG override selects and
+                                                            // values for the fuse, cold,
+                                                            // cool, warm and per-subsystem
+                                                            // resets, in the TCK domain.
 
+  input  logic [7:0] sep_mailbox_interrupts_i,  // SEP mailbox interrupts, placed on
+                                                // peripheral interrupt bits 7:0.
 
-  input  logic [7:0] sep_mailbox_interrupts_i,
+  input  logic        axi_hang_irq_i,   // OR of the smc_base AXI hang detectors, placed
+                                        // on peripheral interrupt bit 30.
+  output logic [31:0] peripheral_interrupts_o,  // Peripheral interrupt vector to the SMC
+                                                // interrupt controller: SEP mailbox,
+                                                // telemetry, NDM reset, I3C, UART, AVSBus,
+                                                // I2C, SEP watchdog, eFuse locked-field,
+                                                // GPIO and AXI hang sources.
 
-  input  logic        axi_hang_irq_i,
-  output logic [31:0] peripheral_interrupts_o,
+  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,  // Per-GPIO interrupt from
+                                                                 // the padring, on the SMC
+                                                                 // clock.
+  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o,  // Per-UART interrupt on
+                                                                 // the peripheral clock,
+                                                                 // without the error and
+                                                                 // log-engine sources.
 
-  // UART and GPIO interrupt outputs to top level
-  output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,
-  output logic [smc_config_pkg::NUM_UART-1:0] uart_interrupt_o,
+  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,  // Read data from each
+                                                                                   // I3C device address
+                                                                                   // table memory.
+  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,  // Request to each I3C
+                                                                                    // device address table
+                                                                                    // memory.
+  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,  // Read data from each
+                                                                                   // I3C device
+                                                                                   // characteristics table
+                                                                                   // memory.
+  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,  // Request to each I3C
+                                                                                    // device
+                                                                                    // characteristics table
+                                                                                    // memory.
+  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,  // Read data from each
+                                                                                   // I3C reverse-lookup
+                                                                                   // table memory.
+  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_o,  // Request to each I3C
+                                                                                    // reverse-lookup table
+                                                                                    // memory.
+  output logic gated_clk_periph_i3c_o,  // Gated I3C peripheral clock (same domain as
+                                        // i3ccore_wrapper).
 
-  // I3C DAT/DCT memory interfaces (NUM_I3C instances)
-  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,
-  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,
-  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_o,
-  // Gated I3C peripheral clock (same domain as i3ccore_wrapper)
-  output logic gated_clk_periph_i3c_o,
+  output logic [16:0] avsbus_cur_state_debug_o,  // AVSBus controller state,
+                                                 // synchronized to the SMC clock.
 
-  // ------------------
-  // Debug signals
-  // ------------------
-  // AVS debug - current state of controller
-  output logic [16:0] avsbus_cur_state_debug_o,
+  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_debug_o,  // telemetry receiver
+                                                                                      // debug (4 bits per;
+                                                                                      // see
+                                                                                      // telemetry_receiver.sv
+                                                                                      // for field
+                                                                                      // definitions).
 
-  // telemetry receiver debug (4 bits per; see telemetry_receiver.sv for field definitions)
-  output logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][3:0] telemetry_debug_o,
+  output logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_o,  // I2C debug (4 bits per
+                                                                // I2C; see i2c_core.sv
+                                                                // for field definitions).
 
-  // I2C debug (4 bits per I2C; see i2c_core.sv for field definitions)
-  output logic [smc_config_pkg::NUM_I2C-1:0][3:0] i2c_debug_o,
-
-  output logic [9:0] efuse_debug_o
+  output logic [9:0] efuse_debug_o      // eFuse controller status for the SMC debug bus:
+                                        // shadow-register write and read locks, program
+                                        // and read locks, write-setup-only, LC-state
+                                        // access, read and program timeouts, request
+                                        // error and secure-test-mode block, from bit 0
+                                        // upward.
 );
 
   /////////////////////////
@@ -293,6 +455,7 @@ module smc_peripherals #(
   logic boot_stall_from_bp;
   logic boot_stall_combined;
   logic boot_stall_sticky;
+  logic boot_stall_sticky_n;
   logic fuse_reset_stalled_n;
 
   // Reset Unit Signals
@@ -473,15 +636,11 @@ module smc_peripherals #(
   /////////////
 
   // Protect against truncation from casts
-  `OCAH_OT_ASSERT_INIT(
-      PadringGpioSizeFits_A,
-      smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE < (64'd1 << gpio_pkg::ADDR_WIDTH))
   `OCAH_OT_ASSERT_INIT(PadringGpioBaseFits_A, smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0
                        ) < (64'd1 << gpio_pkg::ADDR_WIDTH))
 
   smc_padring #(
     .MAX_TRANS                  (MAX_TRANS), // threaded from smc_wrapper (was hardcoded 2)
-    .ADDRESS_MAP_SIZE_PER_GPIO  (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_SIZE)),
     .GPIO_INTF_BASE_ADDR        (gpio_pkg::ADDR_WIDTH'(smc_top_addrmap_pkg::SMC_TOP_GPIO_INTF_BASE_ADDR(0)))
   ) u_smc_padring (
     .clk_i                      (clk_smc_i),
@@ -585,17 +744,17 @@ module smc_peripherals #(
   logic gated_clk_ref_avs;
   logic gated_clk_periph_avs;
 
-  prim_clkgater u_avs_clk_ref_gater (
+  prim_clock_gating u_avs_clk_ref_gater (
     .clk_i(clk_ref_i),
     .en_i(~avs_cg_en_ref_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_ref_avs)
   );
 
-  prim_clkgater u_avs_clk_periph_gater (
+  prim_clock_gating u_avs_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~avs_cg_en_periph_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_avs)
   );
 
@@ -633,10 +792,10 @@ module smc_peripherals #(
 
   logic gated_clk_periph_i2c;
 
-  prim_clkgater u_i2c_clk_periph_gater (
+  prim_clock_gating u_i2c_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~i2c_cg_en_periph_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_i2c)
   );
 
@@ -700,10 +859,10 @@ module smc_peripherals #(
 
   logic gated_clk_periph_uart;
 
-  prim_clkgater u_uart_clk_periph_gater (
+  prim_clock_gating u_uart_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~uart_cg_en_periph_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_uart)
   );
 
@@ -792,19 +951,19 @@ module smc_peripherals #(
 
   logic gated_clk_smc_tel;
 
-  prim_clkgater u_tel_clk_smc_gater (
+  prim_clock_gating u_tel_clk_smc_gater (
     .clk_i(clk_smc_i),
     .en_i(~tel_cg_en_i),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_smc_tel)
   );
 
   logic gated_clk_telemetry;
 
-  prim_clkgater u_tel_clk_telemetry_gater (
+  prim_clock_gating u_tel_clk_telemetry_gater (
     .clk_i(clk_telemetry_i),
     .en_i(~tel_cg_en_telemetry_clk),
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_telemetry)
   );
 
@@ -930,7 +1089,19 @@ module smc_peripherals #(
   // provide final boot stall in case needed by other blocks
   assign boot_stall_processed_o = boot_stall_sticky;
 
-  assign fuse_reset_stalled_n = fuse_reset_n & ~boot_stall_sticky;
+  prim_inv u_boot_stall_sticky_inv (
+    .in_i  (boot_stall_sticky),
+    .out_o (boot_stall_sticky_n)
+  );
+
+  prim_and2 #(
+    .Width(1)
+  ) u_fuse_reset_stall_and (
+    .in0_i (fuse_reset_n),
+    .in1_i (boot_stall_sticky_n),
+    .out_o (fuse_reset_stalled_n)
+  );
+
   assign fuse_reset_n_o = fuse_reset_stalled_n;
 
 
@@ -975,10 +1146,10 @@ module smc_peripherals #(
 
   logic gated_clk_periph_i3c;
 
-  prim_clkgater u_i3c_clk_periph_gater (
+  prim_clock_gating u_i3c_clk_periph_gater (
     .clk_i(clk_periph_i),
     .en_i(~i3c_cg_en_periph_clk),  // Note: inverted - 1 = gate clock OFF
-    .te_i(test_en_i),
+    .test_en_i(test_en_i),
     .clk_o(gated_clk_periph_i3c)
   );
 

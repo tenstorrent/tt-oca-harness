@@ -1,53 +1,64 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Read Interface
+// Read fuse words through the fuse-command interface with timeouts and sticky errors.
 //
-//-----------------------------------------------------------------------------
+// read_go_i starts a read from read_addr_i; read_back_data_o captures the response.
+// read_addr_oob_i is computed upstream against the full-width CSR field because casting
+// to efuse_addr_t truncates upper bits.
+// Honors secure_tm_blocked_i, efuse_req_err_i, and optional read_req_timeout_*; sticky
+// address errors clear with read_addr_error_clear_i.
+// is_reading_o and read_target_addr_o feed the guard while a read is active.
 
 `include "prim_assert.sv"
 
 module efuse_read_interface #(
-  parameter type efuse_addr_t = logic,
-  parameter type efuse_word_counter_t = logic,
-  parameter type fuse_command_req_t = logic,
-  parameter type fuse_command_resp_t = logic,
-  parameter type efuse_data_t = logic
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type fuse_command_req_t = logic,  // Fuse-command request type.
+  parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
+  parameter type efuse_data_t = logic   // Fuse data-word type.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                    // System clock.
+  input logic rst_ni,                   // Active-low asynchronous reset.
+  input logic test_en_i,                // DFT test enable; not used in this module.
 
-  input  logic        read_enable_i,
-  output logic        is_reading_o,
-  output efuse_addr_t read_target_addr_o,
+  input  logic        read_enable_i,    // Read operations allowed; a start while low completes
+                                        // immediately with an error.
+  output logic        is_reading_o,     // High while a read command is outstanding, for the guard.
+  output efuse_addr_t read_target_addr_o,  // Fuse bit address of the outstanding read command; zero
+                                           // when idle.
 
-  input  efuse_addr_t read_addr_i,
-  input  logic        read_go_i,
-  output logic        read_busy_o,
-  output logic        read_done_o,
-  output logic        read_error_o,
-  output efuse_data_t read_back_data_o,
+  input  efuse_addr_t read_addr_i,      // Fuse bit address to read, sampled on a start.
+  input  logic        read_go_i,        // Starts a read operation when high in the idle state.
+  output logic        read_busy_o,      // High while a read operation waits for its response.
+  output logic        read_done_o,      // Set when the last read operation completed; cleared by
+                                        // the next start.
+  output logic        read_error_o,     // Set when the last read operation failed: rejected,
+                                        // blocked, errored by the bank, or timed out.
+  output efuse_data_t read_back_data_o,  // Data word from the last read; zero after an
+                                         // out-of-bounds, blocked, errored or timed-out read, and
+                                         // unchanged when a start is rejected because read_enable_i
+                                         // is low.
 
-  // Address validation: oob computed in controller against full-width
-  // CSR field (the cast to efuse_addr_t that produces read_addr_i
-  // truncates upper bits, so the bounds check must live upstream).
-  input  logic read_addr_oob_i,
-  output logic read_addr_error_o,
-  input  logic read_addr_error_clear_i,
+  input  logic read_addr_oob_i,         // High when the full-width CSR read address is beyond the
+                                        // fuse array; a start is then rejected.
+  output logic read_addr_error_o,       // Sticky out-of-bounds read address error.
+  input  logic read_addr_error_clear_i,  // Clears the sticky address error; a same-cycle new error
+                                         // takes priority.
 
-  input logic efuse_req_err_i,
-  input logic secure_tm_blocked_i,
+  input logic efuse_req_err_i,          // Guard lock error; ends an outstanding read with an error.
+  input logic secure_tm_blocked_i,      // Guard secure-test-mode block; ends an outstanding read
+                                        // with an error.
 
-  input logic        read_req_timeout_en_i,
-  input logic [27:0] read_req_timeout_cycles_i,
+  input logic        read_req_timeout_en_i,  // Enables the response timeout for read operations.
+  input logic [27:0] read_req_timeout_cycles_i,  // Response timeout in clock cycles.
 
-  output fuse_command_req_t  fuse_command_req_o,
-  input  fuse_command_resp_t fuse_command_resp_i,
+  output fuse_command_req_t  fuse_command_req_o,  // Read command to the guard; valid only while
+                                                  // waiting for the response.
+  input  fuse_command_resp_t fuse_command_resp_i,  // Filtered response to the read command.
 
-  // Debug signals
-  output logic is_read_timeout_debug_o
+  output logic is_read_timeout_debug_o  // One-cycle pulse when a read operation times out.
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;

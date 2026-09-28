@@ -1,71 +1,79 @@
-//-----------------------------------------------------------------------------
-// I2C Controller FSM
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Drive the I2C controller FSM from the FMT FIFO onto SCL and SDA.
 //
-// Description: I2C finite state machine
+// Issues START and STOP around fmt_byte_i per FMT flags, waits while the target stretches
+// SCL, and reports NAK, arbitration-loss, and stretch-timeout events.
 
 module i2c_controller_fsm
   import i2c_pkg::*;
 #(
-  parameter  int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
-  localparam int unsigned CONTROLLER_TX_FIFO_DEPTH_WIDTH = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1)
+  parameter  int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,    // FMT FIFO depth.
+  localparam int unsigned CONTROLLER_TX_FIFO_DEPTH_WIDTH = $clog2(CONTROLLER_TX_FIFO_DEPTH + 1) // clog2(depth+1) for FMT fill.
 ) (
-  input  logic                                      clk_i,
-  input  logic                                      rst_ni,
+  input  logic                                      clk_i,  // System clock.
+  input  logic                                      rst_ni, // Async reset, active-low.
 
-  input  logic                                      scl_i,
-  output logic                                      scl_o,
-  input  logic                                      sda_i,
-  output logic                                      sda_o,
-  input  logic                                      bus_free_i,                    // Bus free for new transmission
-  output logic                                      transmitting_o,                // Transmitting SDA
+  input  logic                                      scl_i,  // SCL pad input.
+  output logic                                      scl_o,  // SCL pad output.
+  input  logic                                      sda_i,  // SDA pad input.
+  output logic                                      sda_o,  // SDA pad output.
+  input  logic                                      bus_free_i, // Bus free for a new transfer.
+  output logic                                      transmitting_o, // Controller is driving SDA.
 
-  input  logic                                      host_enable_i,
-  input  logic                                      halt_controller_i,             // Halt the controller FSM in Idle
+  input  logic                                      host_enable_i, // Host/controller enable.
+  input  logic                                      halt_controller_i, // Halt the controller FSM in Idle.
 
-  input  logic                                      fmt_fifo_rvalid_i,             // Indicates there is valid data in fmt_fifo
-  input  logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0] fmt_fifo_depth_i,              // fmt_fifo_depth
-  output logic                                      fmt_fifo_rready_o,             // Populates fmt_fifo
-  input  logic [7:0]                                fmt_byte_i,                    // Byte in fmt_fifo to be sent to target
-  input  logic                                      fmt_flag_start_before_i,       // Issue start before sending byte
-  input  logic                                      fmt_flag_stop_after_i,          // Issue stop after sending byte
-  input  logic                                      fmt_flag_read_bytes_i,          // Indicates byte is an number of reads
-  input  logic                                      fmt_flag_read_continue_i,       // Host to send Ack to final byte read
-  input  logic                                      fmt_flag_nak_ok_i,              // No ACK is expected
-  input  logic                                      unhandled_unexp_nak_i,
-  input  logic                                      unhandled_nak_timeout_i,        // NACK handler timeout event not cleared
+  input  logic                                      fmt_fifo_rvalid_i, // FMT FIFO has valid data.
+  input  logic [CONTROLLER_TX_FIFO_DEPTH_WIDTH-1:0] fmt_fifo_depth_i, // FMT FIFO fill level.
+  output logic                                      fmt_fifo_rready_o, // Pop FMT FIFO.
+  input  logic [7:0]                                fmt_byte_i, // Byte in FMT FIFO to send to the
+                                                                // target.
+  input  logic                                      fmt_flag_start_before_i, // Issue START before sending the byte.
+  input  logic                                      fmt_flag_stop_after_i, // Issue STOP after sending the byte.
+  input  logic                                      fmt_flag_read_bytes_i, // Byte is a number of reads; zero means 256.
+  input  logic                                      fmt_flag_read_continue_i, // Host sends Ack to the final read byte.
+  input  logic                                      fmt_flag_nak_ok_i, // No ACK is expected.
+  input  logic                                      unhandled_unexp_nak_i, // Unexpected-NACK IRQ still pending.
+  input  logic                                      unhandled_nak_timeout_i, // NACK-handler timeout event not cleared.
 
-  output logic                                      rx_fifo_wvalid_o,               // High if there is valid data in rx_fifo
-  output logic [CONTROLLER_RX_FIFO_WIDTH-1:0]       rx_fifo_wdata_o,                // Byte in rx_fifo read from target
+  output logic                                      rx_fifo_wvalid_o, // Push a read byte into the RX FIFO.
+  output logic [CONTROLLER_RX_FIFO_WIDTH-1:0]       rx_fifo_wdata_o, // Byte read from the target for the RX FIFO.
 
-  output logic                                      host_idle_o,                    // Indicates the host is idle
+  output logic                                      host_idle_o, // Host is idle.
 
-  input  logic [12:0]                               thigh_i,                        // High period of the SCL in clock units
-  input  logic [12:0]                               tlow_i,                         // Low period of the SCL in clock units
-  input  logic [12:0]                               t_r_i,                          // Rise time of both SDA and SCL in clock units
-  input  logic [12:0]                               t_f_i,                          // Fall time of both SDA and SCL in clock units
-  input  logic [12:0]                               thd_sta_i,                      // Hold time for (repeated) START in clock units
-  input  logic [12:0]                               tsu_sta_i,                      // Setup time for repeated START in clock units
-  input  logic [12:0]                               tsu_sto_i,                      // Setup time for STOP in clock units
-  input  logic [12:0]                               thd_dat_i,                      // Data hold time in clock units
-  input  logic                                      sda_interference_i,             // High when SCL is high and SDA doesn't match while transmitting
-  input  logic [29:0]                               stretch_timeout_i,              // Max time target connected to this host may stretch the clock
-  input  logic                                      timeout_enable_i,               // Assert if target stretches clock past max
-  input  logic [30:0]                               host_nack_handler_timeout_i,    // Timeout threshold for unhandled Host-Mode 'nak' irq.
-  input  logic                                      host_nack_handler_timeout_en_i,
+  input  logic [12:0]                               thigh_i, // SCL high period in clock units.
+  input  logic [12:0]                               tlow_i, // SCL low period in clock units.
+  input  logic [12:0]                               t_r_i,  // Rise time of SDA and SCL in clock
+                                                            // units.
+  input  logic [12:0]                               t_f_i,  // Fall time of SDA and SCL in clock
+                                                            // units.
+  input  logic [12:0]                               thd_sta_i, // Hold time for (repeated) START in
+                                                               // clock units.
+  input  logic [12:0]                               tsu_sta_i, // Setup time for repeated START in
+                                                               // clock units.
+  input  logic [12:0]                               tsu_sto_i, // Setup time for STOP in clock
+                                                               // units.
+  input  logic [12:0]                               thd_dat_i, // Data hold time in clock units.
+  input  logic                                      sda_interference_i, // SCL high and SDA does not match while transmitting.
+  input  logic [29:0]                               stretch_timeout_i, // Max clocks a target may stretch the clock.
+  input  logic                                      timeout_enable_i, // Enables event_stretch_timeout_o.
+  input  logic [30:0]                               host_nack_handler_timeout_i, // Clocks the FSM may stay halted on an unhandled
+                                                                                 // Host-Mode NACK before it issues a STOP.
+  input  logic                                      host_nack_handler_timeout_en_i, // Enable unhandled-NACK timeout.
 
-  output logic                                      event_nak_o,                    // Target didn't Ack when expected
-  output logic                                      event_unhandled_nak_timeout_o,  // SW didn't handle the NACK in time
-  output logic                                      event_arbitration_lost_o,       // Lost arbitration after beginning a transaction
-  output logic                                      event_scl_interference_o,       // Other device forcing SCL low
-  output logic                                      event_stretch_timeout_o,        // Target stretches clock past max time
-  output logic                                      event_sda_unstable_o,           // SDA is not constant during SCL pulse
-  output logic                                      event_cmd_complete_o            // Command is complete
+  output logic                                      event_nak_o, // Target did not Ack when
+                                                                 // expected.
+  output logic                                      event_unhandled_nak_timeout_o, // SW did not handle the NACK in time; held while
+                                                                                   // the FSM stays halted.
+  output logic                                      event_arbitration_lost_o, // SDA unstable, SDA interference, or a failed START
+                                                                              // or STOP symbol.
+  output logic                                      event_scl_interference_o, // Other device forcing SCL low.
+  output logic                                      event_stretch_timeout_o, // Target stretches clock past max time.
+  output logic                                      event_sda_unstable_o, // SDA is not constant during an SCL pulse.
+  output logic                                      event_cmd_complete_o // Command is complete.
 );
 
   // I2C bus clock timing variables

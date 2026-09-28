@@ -72,7 +72,7 @@ class dtp_jtag2axi_req_ref_model extends ocah_ref_model #(ocah_jtag_scan_item, o
     end
     if (!m_ir.ir_known()) return;
     if (m_bridge.decode(m_ir.ir(), t, target, req) == DTP_J2A_SCAN_NONE) return;
-    if ((tb_vif.dbg_disable & target.dbg_disable_mask) != '0) begin
+    if (dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path)) begin
       m_bridge.gated(target.name);
       return;
     end

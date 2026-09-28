@@ -5,50 +5,17 @@
 
 === Signal Interface
 
-These are the ports of `cross_trigger_port`. Packed control and bus types remain
-bundles at the module boundary; their members are not separate scalar ports.
-
-<<ctp-signal-interface-table>> lists the CTP ports and their signal types and
-directions.
+Packed control and bus types remain bundles at the `cross_trigger_port` module
+boundary; their members are not separate scalar ports.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTP signal interface" tabindex="0">
-++++
+The parameters and ports of `cross_trigger_port` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port.adoc[cross_trigger_port].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_port` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-[[ctp-signal-interface-table]]
-[cols="<30,<14,<25,<31",options="header",role="port-reference"]
-.CTP signal interface
-|===
-|Signal |Direction |Type / dimensions |Description
-|`clk_i` |Input |`logic` |System clock for the bus and synchronous logic.
-|`rst_ni` |Input |`logic` |Active-low asynchronous system reset.
-|`axil_req_i` |Input |`axil_req_t` |AXI-Lite CSR request.
-|`axil_resp_o` |Output |`axil_resp_t` |AXI-Lite CSR response.
-|`ct_src_i` |Input |`logic` |Synchronous trigger pulse to transmit.
-|`ct_dst_o` |Output |`logic` |Registered received trigger pulse.
-|`busy_o` |Output |`logic` |Transfer-in-progress status.
-|`ct_req_out_dout_en_o` |Output |`logic` |Output enable for CT_Req_out pad.
-|`ct_req_out_din_en_o` |Output |`logic` |Input enable for CT_Req_out pad.
-|`ct_req_out_dout_o` |Output |`logic` |Output data for CT_Req_out pad.
-|`ct_req_out_din_i` |Input |`logic` |Input data from CT_Req_out pad.
-|`ct_req_in_din_en_o` |Output |`logic` |Input enable for CT_Req_in pad.
-|`ct_req_in_din_i` |Input |`logic` |Input data from CT_Req_in pad.
-|`ct_ack_in_din_en_o` |Output |`logic` |Input enable for CT_Ack_in pad.
-|`ct_ack_in_din_i` |Input |`logic` |Input data from CT_Ack_in pad.
-|`ct_ack_out_dout_en_o` |Output |`logic` |Output enable for CT_Ack_out pad.
-|`ct_ack_out_dout_o` |Output |`logic` |Output data for CT_Ack_out pad.
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-This table describes `cross_trigger_port`, including its CSR interface.
-The register-free `cross_trigger_port_core` instead takes `mode_wire_or_i`,
+`cross_trigger_port` includes the CSR interface. The register-free `cross_trigger_port_core` instead takes `mode_wire_or_i`,
 `invert_i`, `handshake_reset_i`, and `stretch_mult_i` as configuration inputs.
 At that core interface, `mode_wire_or_i = 1` selects wire-OR and `0` selects
 point-to-point; the CSR MODE field is inverted before reaching it.
@@ -57,4 +24,4 @@ point-to-point; the CSR MODE field is inverted before reaching it.
 
 The CTP depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells (synchronizers, pulse stretcher)
+* `hw/common/ocah_prim` - Primitive cells (synchronizers, pulse stretcher)

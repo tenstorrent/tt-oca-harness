@@ -3,9 +3,10 @@
 //
 // dtp_jtag2axi_decode_error_mixed_test — cross-bridge robustness scenario
 // iterating all three JTAG2AXI bridges (smc_axi, smc_otp, sep_otp).
-// Mapped/unmapped decode mix on every bridge: a good checked write,
-// a DECERR read at a neighbouring unmapped slot, then a good checked
-// read proves the bridge decodes past the error.
+// Clean and DECERR-faulted accesses interleaved on every bridge: a good
+// checked write, a DECERR read and a DECERR write at a neighbouring slot,
+// then a good checked read proves the clean slot and its status are
+// unaffected.
 
 class dtp_jtag2axi_decode_error_mixed_test extends dtp_jtag2axi_robustness_base_test;
   `uvm_component_utils(dtp_jtag2axi_decode_error_mixed_test)

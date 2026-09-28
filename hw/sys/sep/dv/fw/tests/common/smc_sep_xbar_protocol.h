@@ -34,7 +34,6 @@
 
 /* ---- SEP->SMC dedicated fixed-alias datapath (scratch8) ---- */
 #define XBAR_SEP_TO_SMC_SCRATCH8_SEP 0x400390C0u /* SEP-view (global)  */
-#define XBAR_SEP_TO_SMC_SCRATCH8_SMU 0x000390C0u /* SMU axi_window_remap stage */
 #define XBAR_SEP_TO_SMC_SCRATCH8_SMC 0xC00390C0u /* SMC local-fabric rebase (final consumer) */
 #define XBAR_DATA_PATTERN 0x13579BDFu            /* the correlated SEP->SMC word */
 

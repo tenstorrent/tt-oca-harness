@@ -1,56 +1,84 @@
-//-----------------------------------------------------------------------------
-// I2C
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-//
-// Description: I2C top level wrapper file
 
+// Wrap the I2C core with AXI-Lite CSRs, SMBus sideband, and DMA ready levels.
+//
+// Instantiates i2c_core and the i2c_reg register block, both on clk_i.
+// The FIFO depth parameters size the controller and target FIFOs; INPUT_DELAY_CYCLES sets
+// the external input delay the core allows for.
+// debug_o mirrors i2c_core's four debug bits.
 
 module i2c
   import i2c_pkg::*;
 #(
-  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,
-  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,
-  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,
-  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,
-  parameter int unsigned INPUT_DELAY_CYCLES       = 0
+  parameter int unsigned CONTROLLER_TX_FIFO_DEPTH = 64,     // Entries in the controller format
+                                                            // (FMT) FIFO; 1 to 4095.
+  parameter int unsigned CONTROLLER_RX_FIFO_DEPTH = 64,     // Entries in the controller receive
+                                                            // (RX) FIFO; 1 to 4095.
+  parameter int unsigned TARGET_TX_FIFO_DEPTH     = 64,     // Entries in the target transmit (TX)
+                                                            // FIFO; 1 to 4095.
+  parameter int unsigned TARGET_RX_FIFO_DEPTH     = 268,    // Entries in the target acquisition
+                                                            // (ACQ) FIFO; 1 to 4095.
+  parameter int unsigned INPUT_DELAY_CYCLES       = 0       // External SCL/SDA input delay in clk_i
+                                                            // cycles; lengthens the
+                                                            // interference-detection blanking
+                                                            // window after each output change.
 ) (
-  // Global Interface
-  input  logic                             clk_i,
-  input  logic                             rst_ni,
+  input  logic                             clk_i,           // System clock.
+  input  logic                             rst_ni,          // Async reset, active-low.
 
-  // AXI4-Lite Register Interface
-  input  axil_req_t                        axil_req_i,
-  output axil_resp_t                       axil_resp_o,
+  input  axil_req_t                        axil_req_i,      // AXI-Lite CSR request.
+  output axil_resp_t                       axil_resp_o,     // AXI-Lite CSR response.
 
-  // I2C Interface
-  input  logic                             scl_i,
-  output logic                             scl_o,
-  input  logic                             sda_i,
-  output logic                             sda_o,
+  input  logic                             scl_i,           // SCL pad input, synchronized to clk_i
+                                                            // inside i2c_core.
+  output logic                             scl_o,           // SCL pad output for an open-drain pad;
+                                                            // 0 pulls the line low, 1 releases it.
+  input  logic                             sda_i,           // SDA pad input, synchronized to clk_i
+                                                            // inside i2c_core.
+  output logic                             sda_o,           // SDA pad output for an open-drain pad;
+                                                            // 0 pulls the line low, 1 releases it.
 
-  // SMBus Interface
-  input  logic                             smbus_en_i,
-  input  logic                             smbsus_ni,
-  output logic                             smbsus_no,
-  input  logic                             smbalert_ni,
-  output logic                             smbalert_no,
+  input  logic                             smbus_en_i,      // When low, masks smbalert_ni so SMBus
+                                                            // ALERT reads as deasserted.
+  input  logic                             smbsus_ni,       // SMBus SUS pin in, active-low;
+                                                            // synchronized and reported in
+                                                            // SMBUS_STATUS.
+  output logic                             smbsus_no,       // SMBus SUS pin out, active-low; driven
+                                                            // from SMBUS_CTRL.SMBSUS in host mode
+                                                            // without line loopback, high
+                                                            // otherwise.
+  input  logic                             smbalert_ni,     // SMBus ALERT pin in, active-low;
+                                                            // synchronized, reported in
+                                                            // SMBUS_STATUS and raises the SMBALERT
+                                                            // interrupt.
+  output logic                             smbalert_no,     // SMBus ALERT pin out, active-low;
+                                                            // driven from SMBUS_CTRL.SMBALERT in
+                                                            // target mode without loopback, high
+                                                            // otherwise.
 
-  // DMA Interface
-  output logic                             controller_tx_ready_o,
-  output logic                             controller_rx_ready_o,
-  output logic                             target_tx_ready_o,
-  output logic                             target_rx_ready_o,
+  output logic                             controller_tx_ready_o, // Controller TX DMA ready; drops
+                                                                  // when the FMT FIFO fills and
+                                                                  // returns once its level falls
+                                                                  // below the FMT threshold.
+  output logic                             controller_rx_ready_o, // Controller RX DMA ready; rises
+                                                                  // when the RX level exceeds the
+                                                                  // RX threshold and stays high
+                                                                  // until the FIFO empties.
+  output logic                             target_tx_ready_o, // Target TX DMA ready; drops when the
+                                                              // TX FIFO fills and returns once its
+                                                              // level falls below the TX threshold.
+  output logic                             target_rx_ready_o, // Target RX DMA ready; rises when the
+                                                              // ACQ level exceeds the ACQ threshold
+                                                              // and stays high until the FIFO
+                                                              // empties.
 
-  // Interrupt Interface
-  output logic                             irq_o,
+  output logic                             irq_o,           // Level interrupt; OR of the INTR_STATE
+                                                            // sources masked by INTR_ENABLE.
 
-  // Debug Interface (see i2c_core.sv for field definitions)
-  output logic [3:0]                       debug_o
+  output logic [3:0]                       debug_o          // Four-bit debug bus; see i2c_core for
+                                                            // field definitions.
 );
 
   `include "prim_assert.sv"

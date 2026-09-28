@@ -72,7 +72,7 @@ class sep_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   task wait_sys_cycles(int unsigned cycles);
-    #(cycles * env_cfg.clk_period_ns * 1ns);
+    #(cycles * env_cfg.sys_clk_period_ns * 1ns);
   endtask
 
   // ------------------------------------------------------------------

@@ -5,6 +5,8 @@
 `define SEP_LIFECYCLE_CTRL_RDL
 
 addrmap sep_lifecycle_ctrl {
+    name = "SEP Lifecycle Control Address Map";
+    desc = "Lifecycle feature-control and demotion registers with their associated locks.";
     
     reg FEAT_CTRL {
         regwidth = 64;

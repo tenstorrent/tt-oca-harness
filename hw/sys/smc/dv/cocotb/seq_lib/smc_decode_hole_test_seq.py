@@ -33,10 +33,10 @@ _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
 
 
 #: The data accelerator sends every address outside its zeroer registers to
-#: the DMA, whose register port keeps nine address bits, so a tail address
-#: reaches the DMA at its offset modulo 0x200. This one lands at 0x138, past
-#: the DMA's last register, rather than on a live DMA register (issue #585
-#: covers the aliasing).
+#: the DMA (smc_data_accelerator_wrap.sv:60), whose register port keeps nine
+#: address bits (:111-116), so a tail address reaches the DMA at its offset
+#: modulo 0x200 and lands on a live DMA register unless that offset is past the
+#: DMA's last one. This one lands at 0x138.
 DATA_ACCEL_HOLE_OFFSET = 0x338
 
 

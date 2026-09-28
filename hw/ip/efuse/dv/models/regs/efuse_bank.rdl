@@ -4,6 +4,8 @@
 `ifndef EFUSE_BANK_RDL_DEFINED
 `define EFUSE_BANK_RDL_DEFINED
 addrmap efuse_bank {
+    name = "eFuse Bank Model Address Map";
+    desc = "DV model of an eFuse bank exposing the sense-data output register.";
 
     reg EFUSE_BANK_REG {
         desc = "eFuse bank storage word. Models a single 32-bit OTP word in the reference bank model, using write-one-to-set semantics to emulate set-once OTP behavior.";

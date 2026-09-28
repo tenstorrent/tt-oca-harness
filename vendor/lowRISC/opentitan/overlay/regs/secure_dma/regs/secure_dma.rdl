@@ -2,6 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 addrmap secure_dma {
+    name = "DMA Controller";
+    desc = "DMA Controller for the integrated OpenTitan.";
     reg {
         field {
             sw = r;

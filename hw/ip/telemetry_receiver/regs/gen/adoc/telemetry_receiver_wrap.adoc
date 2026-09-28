@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-telemetry_receiver_wrap]
-== Address Map: telemetry_receiver_wrap
+== Telemetry Receiver Wrapper Address Map
+
+Wrapper address map instantiating the telemetry receiver channels.
 
 [NOTE]
 ======

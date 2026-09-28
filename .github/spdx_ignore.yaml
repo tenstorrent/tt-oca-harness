@@ -19,7 +19,7 @@ ignore:
     - .bender-kg/
     # Foreign IP blocks (lowRISC/OpenTitan and SiFive Metal SDK) — OSPO policy:
     # keep the upstream license, do not claim TT copyright on third-party code.
-    - hw/common/och_prim_generic/rtl/
+    - hw/common/ocah_prim_generic/rtl/
     - hw/common/ot_pkg/rtl/
     - hw/common/tlul/rtl/
     - hw/ip/i2c/rtl/

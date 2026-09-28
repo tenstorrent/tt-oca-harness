@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test — VPLAN
-// 4.8: 3-beat incrementing series read through the WITH_ERROR_STATUS TDR
-// with the fault armed on the middle beat. Each beat's capture shift
-// returns the per-beat status MSB alongside the data, the injected
-// response must be classified as EXPECTED (CHK-AXI-ERR-INJ), and the
-// recovery read returns the reference data with OKAY.
+// dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test — 3-beat
+// incrementing series read through the WITH_ERROR_STATUS TDR with the fault
+// armed on the middle beat. Each beat's capture shift returns the per-beat
+// status MSB alongside the data, the injected response must be classified as
+// EXPECTED (CHK-AXI-ERR-INJ), and the recovery read returns the reference
+// data with OKAY.
 
 class dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_sep_otp_axi_error_series_incr_read_with_status_test)

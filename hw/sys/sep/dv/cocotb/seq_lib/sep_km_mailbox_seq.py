@@ -3,7 +3,7 @@
 """Host-side Key Manager (KM) mailbox command driver.
 
 Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so an OSS cocotb test
+(`hw/ip/key_manager/approm/prod`, `rom_main`) implements, so an OSS cocotb test
 can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
 send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
 
@@ -21,7 +21,6 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 import cocotb
@@ -84,6 +83,7 @@ KM_MBOX_IRQ_AGG = agg_from_pic("KM mailbox IRQ")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
+RESP_DECERR = 3
 
 # SEP_CTRL bit positions, from the generated export.
 KM_CTRL_INBOUND_OVERFLOW_RESP = _KM_MBOX("SEP_CTRL", "inbound_overflow_resp")
@@ -152,7 +152,6 @@ KM_DEST_ABR_MLKEM_SEED_Z = 0x40
 KM_DEST_ABR_MLKEM_MSG = 0x80
 
 
-# Packed versions: patch[7:0], minor[15:8], major[23:16] (rom_km_version_ret_t).
 def _hw_root() -> Path:
     return Path(__file__).resolve().parents[5]
 
@@ -169,20 +168,8 @@ def _km_csr_version_reset() -> int:
     return int(mod.KM_CSR_VERSION_REG_REG_DEFAULT)
 
 
-def _km_rom_version() -> int:
-    """ROM version word from the firmware header, not a copied literal."""
-    hdr = (_hw_root() / "ip/key_manager/dv/fw/include/rom_defs.h").read_text()
-    parts: dict[str, int] = {}
-    for name in ("MAJOR", "MINOR", "PATCH"):
-        match = re.search(rf"#define ROM_KM_ROM_VERSION_{name}\s+(\d+)", hdr)
-        if match is None:
-            raise RuntimeError(f"ROM_KM_ROM_VERSION_{name} missing from rom_defs.h")
-        parts[name] = int(match.group(1))
-    return parts["PATCH"] | (parts["MINOR"] << 8) | (parts["MAJOR"] << 16)
-
-
+# KMCSR VERSION reset from the RDL: patch[7:0], minor[15:8], major[23:16].
 KM_HW_VER_1_0_0 = _km_csr_version_reset()
-KM_ROM_VER_1_1_0 = _km_rom_version()
 
 
 def crc8_rohc(data: bytes) -> int:
@@ -736,6 +723,26 @@ class SepKmMailbox:
 
     async def read_ctrl(self) -> int:
         return await self._rd32(KM_MBOX_CTRL)
+
+    async def write_ctrl_wide_raw(self, value: int) -> tuple[int, bool]:
+        """One 64-bit write beat (AxSIZE=3, 8 bytes) at SEP_CTRL.
+
+        The upper four bytes of this beat fall past the register file. Returns
+        (resp_code, timed_out) so the caller can grade the single write
+        response. expect_error tells the scoreboard a non-OKAY response is the
+        contract.
+        """
+        seq = SepAxiAccessSeq(
+            "km_mbox_ctrl_wr64",
+            op=SepAxiOp.WRITE,
+            addr=self.base + KM_MBOX_CTRL,
+            wdata=value & 0xFFFF_FFFF_FFFF_FFFF,
+            length=8,
+            size=3,
+            expect_error=True,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code, seq.timed_out
 
     async def read_data_raw(self, *, expect_error: bool = False) -> tuple[int, int]:
         """Read SEP_READ_DATA. Returns (resp_code, data).

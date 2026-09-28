@@ -104,9 +104,10 @@ Provide the equivalents yourself:
 - `TMPDIR` pointed at a large local scratch directory (see below).
 
 Nothing here is exotic. `scripts/docker-run.sh` documents its own environment variables in its
-header, and with the optional ones unset — notably `OCAH_DOCKER_CACHE_DIR` and
-`OCAH_TOOLCHAIN_ROOTFS` — it builds and runs the image itself. Doc builds, register generation,
-lint and format targets need no site tooling at all.
+header, and with the optional registry, cache and rootfs variables unset — notably
+`OCAH_CONTAINER_REGISTRY_IMAGE`, `OCAH_DOCKER_CACHE_DIR` and `OCAH_TOOLCHAIN_ROOTFS` — it
+builds and runs the image itself. Doc builds, register generation, lint and format targets
+need no site tooling at all.
 
 ### Work from the physical path if your checkout is reached through a symlink
 
@@ -228,18 +229,28 @@ building.
 
 ### The firmware toolchain container
 
-The RISC-V DV firmware toolchain comes from the container image.
+The RISC-V DV firmware toolchain normally comes from the Nix-built `ocah-container` image.
 All subsystems compile with `--specs=picolibc.specs`, and a stock or site RISC-V toolchain
 often lacks picolibc, so a native build fails with a message pointing you back at the
 container. A host toolchain that does provide it works too — point `RISCV_TOOLCHAIN` at it.
 
+**Prefer pulling the prebuilt image over building it.** CI publishes the unified `ocah-container`
+to the GitHub Container Registry
+(`ghcr.io/tenstorrent/ocah-container`, listed at
+<https://github.com/orgs/tenstorrent/packages/container/package/ocah-container>), so most
+contributors never run `build`. Set `OCAH_CONTAINER_REGISTRY_IMAGE=ghcr.io/tenstorrent/ocah-container`
+and `OCAH_IMAGE_WITH_UV=true` (the variant CI publishes) and `docker-run.sh` pulls the matching
+Nix content tag on the next `verify`/`run`/`shell`:
+
 ```bash
-./scripts/docker-run.sh build     # build the image once (via Nix)
-./scripts/docker-run.sh verify    # prints the compiler version and multilib list
+./scripts/docker-run.sh verify    # pulls the published image; prints the compiler version
+./scripts/docker-run.sh build     # only when changing the container definition (builds via Nix)
 ```
 
-With the companion's `OCAH_DOCKER_CACHE_DIR` set, `docker-run.sh` loads the image from that
-shared cache instead of building it; otherwise it builds locally via Nix.
+With `OCAH_CONTAINER_REGISTRY_IMAGE` set, `docker-run.sh` first tries that registry tag. With the
+companion's `OCAH_DOCKER_CACHE_DIR` set, it next checks the shared tarball cache; otherwise it
+builds locally from the flake. `scripts/docker.md` is authoritative for the source selection
+controls.
 
 A testbench that builds firmware as part of its own flow dispatches those builds through
 `scripts/docker-run.sh run-here`, so the container is used automatically while the simulator
@@ -359,7 +370,7 @@ Whatever the testbench, these hold:
 
 | Path | Contents |
 |---|---|
-| `hw/common/` | Shared RTL and infrastructure: `och_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
+| `hw/common/` | Shared RTL and infrastructure: `ocah_prim*` primitives, `tlul/`, `axi/`, `ot_chip_cfg/`, assertions, packages, `regs/` register flow, `dv/fw/` firmware build engine |
 | `hw/ip/` | Reusable IP blocks, grouped by family where applicable (`cross_trigger/`, `jtag/`, `uart/` hold sub-blocks) |
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
@@ -582,6 +593,20 @@ work, is worse than the ordering mistake.
 Without companion access you can only do the open half. Say so and stop, rather than editing
 open files to compensate.
 
+### What the open side may say about the companion
+
+Everything that lands in the open repository is public: files, code comments, commit
+messages, and pull request and issue bodies and comments. The "keep proprietary material
+out" rule for this guide holds there too. The open half of a pair links the companion PR and
+says that it merges first, and nothing more. It does not describe what the companion
+contains, which of its tests or scripts ran, what passed there, or how the companion builds
+or consumes open files. That evidence belongs in the companion PR's own test plan.
+
+Open files follow the same rule. A comment or README documents the open code and its open
+callers. It does not name a companion consumer ("testbench layouts that include this file",
+"the companion builds these images from …"), because the only reader who can act on that
+statement has the companion's own documentation.
+
 ## Linting and Formatting
 
 | Check | Local command |
@@ -591,6 +616,7 @@ open files to compensate.
 | SystemVerilog lint (verible) | `make lint-sv-verible`; report-only in CI while the classified legacy style backlog remains |
 | Structural synthesis readiness | Select `flows/synth/yosys/scripts/readiness.tcl` as the synthesis driver; commands, scope and warning-review requirements are in `flows/synth/yosys/README.md` |
 | SystemVerilog formatting | `make format-sv`, `make format-sv-check`; both use the same inventory as Verible lint |
+| SystemVerilog comments | `make lint-sv-comments` checks the `//` header and parameter/port clauses of every source the RTL Modules Reference documents; `tools/doc/check_sv_comments.py <files>` checks individual files |
 | C formatting | `make format-c`, `make format-c-check` |
 | Python | `make lint-python`, `make lint-python-fix`, `make format-python`, `make format-python-check` |
 | TCL | `make lint-tcl`, `make format-tcl`, `make format-tcl-check` |

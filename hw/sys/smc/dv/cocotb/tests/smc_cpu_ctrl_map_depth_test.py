@@ -19,8 +19,9 @@ class smc_cpu_ctrl_map_depth_test(smc_base_test):
         "CHK-CPU-BFM-OBSERVABILITY",
         "CHK-CPU-CTRL-MAP-DEPTH",
         "CHK-CPU-CTRL-MAP-LIVE",
+        "CHK-CPU-CTRL-MAP-LOCAL-BASE-RO",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 

@@ -138,7 +138,7 @@ module sep_ip_integration
     .apb_req_i  (efuse_model_otp_req),
     .apb_resp_o (efuse_model_otp_resp),
 
-    .hwif_out ()
+    .hwif_out_o ()
   );
 
   //////////////////////////
