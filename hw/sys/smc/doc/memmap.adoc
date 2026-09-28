@@ -96,7 +96,7 @@ which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
 never appears on the external port. The adopter defines the SHIM's control
 registers at offset `0x0` of its own `smc_external` map.
 
-The rest of the window, is passed through to the chip-level adopter external port.
+The rest of the window, is passed through to the smu-level adopter external port.
 
 === External Window Reference Maps
 
