@@ -4,14 +4,14 @@
 [[project-defines]]
 = Project Defines
 
-Compile-time defines that apply across OCAH rather than to a single block.
-Set the OCAH names in this chapter. Do not set vendor preprocessor names;
-`hw/common/defs/ocah_vendor_defines.svh` derives the aliases those names
-imply. OCAH lint and Yosys force-include that header. Native DV expands the
+Compile-time defines for OCAH RTL: the names that apply across OCAH, then
+the defines specific to one subsystem. Set the OCAH names in this chapter. Do
+not set vendor preprocessor names; `hw/common/defs/ocah_vendor_defines.svh`
+derives the aliases those names imply. OCAH lint and Yosys force-include that header. Native DV expands the
 same aliases onto the command line. An adopter compile must do one of those
-two. Block-selection defines are not in this chapter at all: they ride the
-Bender filelist as `+define+` lines (<<synthesis-filelist-defines,Synthesis
-filelist defines>>).
+two. Block-selection defines ride the Bender filelist as `+define+` lines
+(<<synthesis-filelist-defines,Synthesis filelist defines>>); do not restate
+them on the command line.
 
 A `` `define `` in a header is visible only in compilation units that include
 it. Command-line `+define+` / `-D` is global. Force-include (or the flow's
@@ -59,6 +59,12 @@ sensing the bank through the adopter's SHIM.
 |`+rom_bin64=<file>`, `+rom_hex=<file>`
 |Preloads `OCAH4CORECluster_rom_ext`, the SMC CPU ROM simulation model. Applies
 only to integrations that use the reference memory swaps.
+
+|`+cdc_instrumentation_enabled=1`
+|Arms every `prim_cdc_rand_delay` and `abr_prim_cdc_rand_delay` instance. On
+each input change, a random
+subset of bits keeps its old value for one more destination cycle. Without the
+plusarg the delay model passes its input through.
 |===
 
 The define also zeroes the RMA and security-disable token and digest bits in
@@ -67,8 +73,9 @@ X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
 Two model families it enables make simulation deliberately non-deterministic:
-`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
-`prim_cdc_rand_delay` ahead of the synchronizer, and
+`prim_flop_2sync`, its Adams Bridge equivalent, and the OCAH
+`prim_sync3` / `prim_sync4` cells insert `prim_cdc_rand_delay` ahead of the
+synchronizer, which `+cdc_instrumentation_enabled=1` arms, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
@@ -205,12 +212,13 @@ compile.
 
 |`COMMON_CELLS_ASSERTS_OFF`
 |Strips inline assertion blocks inside PULP `common_cells` modules. Native DV
-sets it on every tool (Verilator, VCS, Xcelium) from
-`hw/common/dv/configs/profiles/native.toml`. This spelling is the OCAH name.
+sets it on Verilator only, from the shared Verilator flags in
+`hw/common/dv/configs/profiles/native.toml`; VCS and Xcelium compile and run
+those blocks. It is independent of `ASSERTS_OFF`.
 
 |`ASSERTS_OFF`
-|Turns off PULP `OCAH_PULP_INC_ASSERT` macros. Verilator DUT flags and
-Verilator lint set it; VCS and Xcelium native compiles do not.
+|Turns off PULP `OCAH_PULP_INC_ASSERT` macros. The SMC and DTP Verilator DUT
+flags and Verilator lint set it; VCS and Xcelium native compiles do not.
 |===
 
 [[derived-assert-defines]]
@@ -286,6 +294,277 @@ No checked-in config sets these. An adopter overlay
 |`OCAH_AXI_VENDOR_IF`
 |Nests a commercial AXI verification interface.
 |===
+
+[[subsystem-defines]]
+== Subsystem defines
+
+Each subsystem graph reads the view, tool and assertion names above as this
+chapter describes. The sections below cover the defines the rest of the
+chapter does not: two shared cells, then each subsystem in turn.
+
+[[shared-cell-defines]]
+=== Shared cells
+
+Two cells in `hw/common/ocah_prim`, compiled into every subsystem graph, read
+a define of their own. Leave both unset.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Reason
+
+|`GATER_CHK`
+|In the simulation view, `prim_clk_gater_hysteresis` expands
+`export_dpi_get` to export its state over DPI. OCAH does not define that macro,
+so setting `GATER_CHK` breaks the compile.
+
+|`SIM_APB_ARB`
+|Adds a test-master APB port set to `prim_apb_arb`. No OCAH module
+instantiates `prim_apb_arb`.
+|===
+
+[[smc-defines]]
+=== SMC
+
+The SMC graph adds three groups: first-party simulation hooks, the generated
+CPU cluster macros, and the i3c-core configuration.
+
+[[smc-defines-hooks]]
+==== Simulation hooks
+
+The `SIMULATION` plusargs for the CPU ROM and the eFuse shadow registers are
+listed under <<simulation-define>>. The SMC RTL also reads these view names:
+
+* `smc_4core_cpu` prints scratch RAM initialization progress when neither
+  `SYNTHESIS` nor `EMULATION` is set.
+* `smc_local_fabric` checks its AXI parameter widths at elaboration when
+  `OCAH_DEBUG_LIVE` is defined.
+
+The `prim_flop_2sync`, `prim_sync3` and `prim_sync4` synchronizers instantiate
+`prim_cdc_rand_delay` in the simulation view, but no `smc` Bender target lists
+`prim_cdc_rand_delay.sv`. Add it to any `SIMULATION` compile of the `smc`
+filelist; SMC DV lists it as an extra source in
+`hw/sys/smc/dv/smc_sim_cfg.toml`.
+
+The SMC DV `dual` target sets `SYNTHESIS` next to `SMC_DUAL`, so the CPU
+clusters in that build get no time-zero initialization (<<smc-defines-cluster>>).
+`SMC_DUAL` is read only by `hw/sys/smc/dv/tb/tb_top.sv`, where it selects the
+two-instance testbench.
+
+[[smc-defines-cluster]]
+==== CPU cluster
+
+The Chipyard-generated cluster in
+`hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/4core` reads the FIRRTL
+macros in the table below. It ignores `EMULATION`. The generated code defines
+`ENABLE_INITIAL_REG_` and `ENABLE_INITIAL_MEM_` only when `SYNTHESIS` is
+absent, and those gate every time-zero initializer, so a `SYNTHESIS` compile
+reads none of the initialization macros.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect
+
+|`RANDOMIZE_REG_INIT`
+|Assigns every cluster register from `RANDOM` at time zero. Without it the
+registers hold X until their first clocked write.
+
+|`RANDOMIZE_MEM_INIT`
+|Assigns every generated memory array from `RANDOM` at time zero. Without it a
+read before the first write returns X.
+
+|`RANDOM`
+|The value both initializers assign. Defaults to `$random`; `RANDOM=0` makes
+initialization a deterministic zero-fill.
+
+|`RANDOMIZE_DELAY`
+|Delay before the initializers run, in simulator time units. Defaults to
+`0.002`. Verilator ignores it.
+
+|`INIT_RANDOM`
+|Code placed at the start of every generated initializer, for a custom seeding
+scheme. Defaults to empty.
+
+|`FIRRTL_BEFORE_INITIAL`, `FIRRTL_AFTER_INITIAL`
+|Code placed before and after every generated `initial` block. Defaults to
+empty.
+
+|`ASSERT_VERBOSE_COND`
+|Expression that gates the `$error` message of each generated assertion.
+Defaults to 1.
+
+|`STOP_COND`
+|Expression that gates the `$fatal` that follows each generated assertion
+failure. Defaults to 1.
+|===
+
+Each generated module also defines a default for `PRINTF_COND`, but the
+cluster contains no `printf`, so that macro has no effect.
+
+Do not set `RANDOMIZE`, `INIT_RANDOM_PROLOG_`, `ENABLE_INITIAL_REG_`,
+`ENABLE_INITIAL_MEM_`, `PRINTF_COND_`, `ASSERT_VERBOSE_COND_` or `STOP_COND_`.
+The generated code derives them from the macros above.
+
+[[smc-defines-i3c]]
+==== i3c-core configuration
+
+`vendor/chipsalliance/i3c-core/upstream/src/i3c_defines.svh` fixes the
+i3c-core configuration: the AXI host interface (`I3C_USE_AXI`) and its widths,
+controller and target support, loopback disabled, and the FIFO, DAT and DCT
+depths. Change a value in that header, not on the command line. The header
+leaves these upstream options unset:
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect when set
+
+|`I3C_USE_AHB`
+|Selects an AHB host interface instead of AXI.
+
+|`AXI_ID_FILTERING`
+|Adds AXI ID filtering, which needs `NUM_PRIV_IDS` and changes the `i3c`
+parameter and port lists.
+
+|`CALIPTRA_AXI_SUB_EX_EN`
+|Adds exclusive-access tracking to the AXI subordinate.
+
+|`IBI_FIFO_EXT_SIZE`
+|Multiplies the HCI and TTI IBI FIFO depths by 8.
+
+|`DISABLE_INPUT_FF`
+|Removes the two-flop synchronizers on the SCL and SDA inputs.
+|===
+
+[[dtp-defines]]
+=== DTP
+
+The `dtp` graph reads no define of its own. Two parts of it respond to the view
+names:
+
+* `jtag2axi` asserts AXI valid stability and address and data pairing on its
+  manager port when `OCAH_DEBUG_LIVE` is defined.
+* The `prim_flop_2sync`, `prim_sync3` and `prim_sync4` synchronizers
+  instantiate `prim_cdc_rand_delay` in the simulation view. The Bender
+  `simulation` target adds `prim_cdc_rand_delay.sv` to the `dtp` graph, so
+  generate a simulation filelist with `-t dtp -t simulation`.
+
+[[sep-defines]]
+=== SEP
+
+The SEP graph adds four groups: the Adams Bridge block-selection defines, the
+VeeR EL2 core configuration, first-party view checks, and testbench-side DV
+names.
+
+[[sep-defines-abr]]
+==== Adams Bridge
+
+The Adams Bridge source group of the `sep` Bender target sets these three
+defines, and `flist-plus` emits them ahead of the source list. Every flow that
+uses the `sep` target gets them.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect
+
+|`SEP_ABR_EN`
+|Includes the Adams Bridge post-quantum engine: `sep_crypto` instantiates
+`sep_crypto_abr_wrapper`, and `sep_ip_integration` builds the ABR SRAMs.
+Without it, `sep_crypto` terminates the ABR AXI aperture and the key manager's
+ABR key bus with DECERR subordinates, and `sep_ip_integration` drives the ABR
+memory response to zero.
+
+|`CALIPTRA`
+|Adds the Caliptra Key Vault ports to `abr_top`, which `sep_abr_kv_shim`
+binds. The vendored RTL requires it. `sep_crypto` raises an elaboration
+`$error` when `SEP_ABR_EN` is set without `CALIPTRA`.
+
+|`TECH_SPECIFIC_ICG`
+|Removes the behavioural latch gate from `abr_icg.sv`. The overlay
+`abr_clk_gate` instantiates `prim_clock_gating` in its place.
+|===
+
+Adams Bridge also reads `RV_FPGA_SCA`, which adds FPGA side-channel trigger
+outputs to `abr_top`, and `FCOV`, which adds a covergroup to its AHB
+subordinate. No OCAH flow sets either.
+
+[[sep-defines-veer]]
+==== VeeR EL2 core
+
+The `RV_*` names that configure the VeeR EL2 core come from the snapshot
+header `vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common_defines.vh`,
+which the `sep_el2` Bender target puts on the include path. Change the core
+configuration by regenerating the snapshot with the `veer` command recorded in
+its header, not with a command-line `+define+`.
+
+The snapshot enables user mode (`RV_USER_MODE`), Smepmp (`RV_SMEPMP`) and the
+AXI4 bus interface (`RV_BUILD_AXI4`). It leaves `RV_BUILD_AHB_LITE`,
+`RV_ASSERT_ON`, `RV_FPGA_OPTIMIZE`, `RV_PHYSICAL`, `RV_CLOCKGATE`,
+`RV_LOCKSTEP_ENABLE` and `RV_LOCKSTEP_REGFILE_ENABLE` unset.
+
+`RV_LOCKSTEP_ENABLE` also changes SEP RTL. With it, `sep_cpu` connects
+`lockstep_ctrl_i` and `lockstep_status_o` to the lockstep ports of
+`el2_veer_wrapper`. Without it, `sep_cpu` ignores `lockstep_ctrl_i` and holds
+`lockstep_status_o` at zero. The `sep_cpu` port list is the same either way.
+
+The `sep_el2` Bender target sets `TECH_SPECIFIC_EC_RV_ICG`, so `beh_lib.sv`
+uses the snapshot's `user_clock_gate` cell rather than its own behavioural
+clock gate.
+
+The core also reads `GTLSIM`, which zero-initializes its RAM models for
+gate-level simulation, and `DUMP_BTB_ON`, which prints branch predictor
+configuration and a trace of BTB events. No OCAH flow sets either.
+
+[[sep-defines-checks]]
+==== First-party view checks
+
+* `sep_crypto` checks the key manager and eFuse AXI-Lite widths at elaboration
+  when `OCAH_DEBUG_LIVE` is defined.
+* `sep_local_axi_xbar_wrapper` and `sep_system_peripherals_xbar_wrapper` check
+  their AXI parameter widths at elaboration when `OCAH_DEBUG_LIVE` is defined.
+* `tlul_rsp_intg_gen` asserts that incoming response integrity and user bits
+  are zero, where its parameters declare them zero, when `OCAH_DEBUG_LIVE` is
+  defined.
+* In the simulation view, `entropy_ring_stage_wrappers` adds a `#1` delay to
+  each ring oscillator stage so the ring oscillates. `SYNTHESIS` and
+  `EMULATION` drop the delay, so a zero-delay simulation of either view has no
+  entropy source oscillation.
+
+The key manager's picorv32 core reads `FORMAL`, which compiles its embedded
+`assert` and `restrict` properties, and the riscv-formal names
+(`RISCV_FORMAL`, `RISCV_FORMAL_ALTOPS`, `RISCV_FORMAL_BLACKBOX_REGS`,
+`RISCV_FORMAL_BLACKBOX_ALU`), the `DEBUG*` trace names and the
+`PICORV32_TESTBUG_*` fault injections. Leave these unset outside a picorv32
+formal flow.
+
+[[sep-defines-dv]]
+==== DV testbench names
+
+SEP DV sets these for `hw/sys/sep/dv/tb/tb_top.sv` and its CPU stub. No DUT
+file reads them.
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect
+
+|`SEP_JTAG_AXIL_LIVE`
+|Drives the OTP debug AXI-Lite port from the testbench instead of tying it
+off.
+
+|`SEP_SMN_INBOUND_AXI_LIVE`
+|Drives the SMN inbound AXI port from the testbench instead of tying it off.
+
+|`SEP_SMC_MEM_MODEL`
+|Routes the SMC address region to a testbench memory model. Set on the
+`rom_boot` target.
+
+|`SEP_CPU_STUB`
+|Compiles `hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv` in place of `sep_cpu`, so
+the build contains no VeeR core. The `lsu_stub_all_live` target sets it and
+removes `sep_cpu.sv` from the filelist.
+|===
+
+The SEP DV Verilator flags set neither `VERILATOR` nor `ASSERTS_OFF`.
+Verilator predefines the first; without the second, the PULP assertion macros
+expand.
 
 [[synthesis-filelist-defines]]
 == Synthesis filelist defines

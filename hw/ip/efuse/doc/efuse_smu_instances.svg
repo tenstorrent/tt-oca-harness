@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="790" viewBox="0 0 1000 790" role="img" aria-labelledby="title desc">
+  <title id="title">eFuse connections at the smu.sv boundary</title>
+  <desc id="desc">Inside smu.sv, the SMC and the SEP each contain their own eFuse controller. Each controller drives its own bank control AXI-Lite window, command request and command response across the smu.sv boundary, prefixed smc_ or sep_. Below the boundary the adopter places two separate Interface SHIM instances, each fronting its own 8 Kbit eFuse macro. Each eFuse controller also drives its fuse_sense_done output out to the smu.sv boundary as smc_fuse_sense_done_o and sep_fuse_sense_done_o, and holds the sensed values in its shadow registers.</desc>
+  <defs>
+    <marker id="gray-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#374151"/>
+    </marker>
+    <marker id="gray-start" markerWidth="7" markerHeight="7" refX="0" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M7,0 L0,3.5 L7,7 z" fill="#374151"/>
+    </marker>
+    <marker id="req-end" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="#1d4ed8"/>
+    </marker>
+    <marker id="resp-end" markerWidth="5" markerHeight="5" refX="5" refY="2.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L5,2.5 L0,5 z" fill="#b45309"/>
+    </marker>
+    <marker id="done-end" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="tech-end" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L7,3.5 L0,7 z" fill="#287a45"/>
+    </marker>
+    <style>
+      text { font-family: Arial, sans-serif; fill: #1f2937; }
+      .heading { font-weight: bold; font-size: 20px; }
+      .label { font-weight: bold; font-size: 15px; }
+      .small { font-size: 12px; }
+      .note { font-size: 12px; fill: #4b5563; }
+      .port { font-family: "Courier New", monospace; font-size: 10px; font-weight: bold; }
+      .port-req { font-family: "Courier New", monospace; font-size: 10px; font-weight: bold; fill: #1d4ed8; }
+      .port-resp { font-family: "Courier New", monospace; font-size: 10px; font-weight: bold; fill: #b45309; }
+      .port-done { font-family: "Courier New", monospace; font-size: 10px; font-weight: bold; fill: #7c3aed; }
+      .done-label { font-size: 11px; fill: #7c3aed; }
+      .ocah { fill: #e8f0ff; stroke: #315b9a; stroke-width: 1.5; }
+      .subsys { fill: #f8fafc; stroke: #315b9a; stroke-width: 1.5; }
+      .ctrl { fill: #dbe7fb; stroke: #315b9a; stroke-width: 1.5; }
+      .adopter { fill: #e9f8ee; stroke: #287a45; stroke-width: 1.5; }
+      .block { fill: #ffffff; stroke: #6b7280; stroke-width: 1; }
+      .macro { fill: #f3f4f6; stroke: #374151; stroke-width: 1.5; }
+      .axil { fill: none; stroke: #374151; stroke-width: 2.5; marker-start: url(#gray-start); marker-end: url(#gray-end); }
+      .req { fill: none; stroke: #1d4ed8; stroke-width: 3; marker-end: url(#req-end); }
+      .resp { fill: none; stroke: #b45309; stroke-width: 3; marker-end: url(#resp-end); }
+      .done { fill: none; stroke: #7c3aed; stroke-width: 2; marker-end: url(#done-end); }
+      .tech { fill: none; stroke: #287a45; stroke-width: 1.5; marker-end: url(#tech-end); }
+    </style>
+  </defs>
+
+  <!-- Containers -->
+  <rect x="20" y="40" width="960" height="385" rx="10" class="ocah"/>
+  <rect x="40" y="80" width="440" height="325" rx="8" class="subsys"/>
+  <rect x="520" y="80" width="440" height="325" rx="8" class="subsys"/>
+  <rect x="40" y="500" width="330" height="140" rx="10" class="adopter"/>
+  <rect x="520" y="500" width="330" height="140" rx="10" class="adopter"/>
+
+  <text x="36" y="68" class="heading">smu.sv</text>
+  <text x="964" y="66" text-anchor="end" class="note">OCAH top level</text>
+  <text x="964" y="418" text-anchor="end" class="note">ports cross the smu.sv boundary</text>
+  <text x="990" y="450" text-anchor="end" class="note">Adopter</text>
+
+  <!-- SMC -->
+  <text x="56" y="104" class="label">SMC</text>
+  <rect x="60" y="115" width="400" height="90" rx="6" class="ctrl"/>
+  <text x="260" y="138" text-anchor="middle" class="label">SMC eFuse controller</text>
+  <text x="260" y="155" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
+  <rect x="150" y="165" width="220" height="32" rx="5" class="block"/>
+  <text x="260" y="186" text-anchor="middle" class="small" font-weight="bold">Shadow registers</text>
+
+  <!-- SEP -->
+  <text x="944" y="104" text-anchor="end" class="label">SEP</text>
+  <rect x="540" y="115" width="400" height="90" rx="6" class="ctrl"/>
+  <text x="740" y="138" text-anchor="middle" class="label">SEP eFuse controller</text>
+  <text x="740" y="155" text-anchor="middle" class="small">senses its 8 Kbit bank once per cold boot</text>
+  <rect x="630" y="165" width="220" height="32" rx="5" class="block"/>
+  <text x="740" y="186" text-anchor="middle" class="small" font-weight="bold">Shadow registers</text>
+
+  <!-- SMC ports -->
+  <path d="M90 205 V560" class="axil"/>
+  <path d="M210 205 V560" class="req"/>
+  <path d="M250 560 V205" class="resp"/>
+  <path d="M440 205 V505" class="done"/>
+  <text x="86" y="402" transform="rotate(-90 86 402)" class="port">smc_efuse_bank_ctrl_*</text>
+  <text x="205" y="402" transform="rotate(-90 205 402)" class="port-req">smc_efuse_shim_command_req_o</text>
+  <text x="264" y="402" transform="rotate(-90 264 402)" class="port-resp">smc_efuse_shim_command_resp_i</text>
+  <text x="436" y="402" transform="rotate(-90 436 402)" class="port-done">smc_fuse_sense_done_o</text>
+
+  <!-- SEP ports -->
+  <path d="M570 205 V560" class="axil"/>
+  <path d="M690 205 V560" class="req"/>
+  <path d="M730 560 V205" class="resp"/>
+  <path d="M920 205 V505" class="done"/>
+  <text x="566" y="402" transform="rotate(-90 566 402)" class="port">sep_efuse_bank_ctrl_*</text>
+  <text x="685" y="402" transform="rotate(-90 685 402)" class="port-req">sep_efuse_shim_command_req_o</text>
+  <text x="744" y="402" transform="rotate(-90 744 402)" class="port-resp">sep_efuse_shim_command_resp_i</text>
+  <text x="916" y="402" transform="rotate(-90 916 402)" class="port-done">sep_fuse_sense_done_o</text>
+
+  <!-- Sense-done destinations -->
+  <text x="440" y="522" text-anchor="middle" class="done-label">adopter logic,</text>
+  <text x="440" y="537" text-anchor="middle" class="done-label">e.g. memory repair</text>
+  <text x="920" y="522" text-anchor="middle" class="done-label">adopter logic,</text>
+  <text x="920" y="537" text-anchor="middle" class="done-label">e.g. memory repair</text>
+
+  <!-- SMC SHIM instance -->
+  <text x="360" y="524" text-anchor="end" class="label">SMC SHIM</text>
+  <text x="360" y="540" text-anchor="end" class="note">adopter instance 1</text>
+  <rect x="55" y="560" width="105" height="55" rx="5" class="block"/>
+  <text x="107" y="583" text-anchor="middle" class="small" font-weight="bold">Bank ctrl</text>
+  <text x="107" y="600" text-anchor="middle" class="small" font-weight="bold">CSRs</text>
+  <rect x="180" y="560" width="110" height="55" rx="5" class="block"/>
+  <text x="235" y="583" text-anchor="middle" class="small" font-weight="bold">Read / program</text>
+  <text x="235" y="600" text-anchor="middle" class="small" font-weight="bold">FSMs</text>
+  <path d="M160 588 H180" class="tech"/>
+  <path d="M235 615 V680" class="tech"/>
+  <rect x="110" y="680" width="250" height="55" rx="6" class="macro"/>
+  <text x="235" y="703" text-anchor="middle" class="label">SMC eFuse macro</text>
+  <text x="235" y="722" text-anchor="middle" class="small">8 Kbit, 256 x 32-bit words</text>
+
+  <!-- SEP SHIM instance -->
+  <text x="840" y="524" text-anchor="end" class="label">SEP SHIM</text>
+  <text x="840" y="540" text-anchor="end" class="note">adopter instance 2</text>
+  <rect x="535" y="560" width="105" height="55" rx="5" class="block"/>
+  <text x="587" y="583" text-anchor="middle" class="small" font-weight="bold">Bank ctrl</text>
+  <text x="587" y="600" text-anchor="middle" class="small" font-weight="bold">CSRs</text>
+  <rect x="660" y="560" width="110" height="55" rx="5" class="block"/>
+  <text x="715" y="583" text-anchor="middle" class="small" font-weight="bold">Read / program</text>
+  <text x="715" y="600" text-anchor="middle" class="small" font-weight="bold">FSMs</text>
+  <path d="M640 588 H660" class="tech"/>
+  <path d="M715 615 V680" class="tech"/>
+  <rect x="590" y="680" width="250" height="55" rx="6" class="macro"/>
+  <text x="715" y="703" text-anchor="middle" class="label">SEP eFuse macro</text>
+  <text x="715" y="722" text-anchor="middle" class="small">8 Kbit, 256 x 32-bit words</text>
+
+  <text x="500" y="770" text-anchor="middle" class="note">Two independent SHIM and macro instances: each serves one eFuse controller, and the banks are never shared.</text>
+</svg>
