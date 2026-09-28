@@ -19116,8 +19116,8 @@ a fault from before that reset rather than a new one.</ipxact:description>
             <ipxact:field>
               <ipxact:name>reg_path_err</ipxact:name>
               <ipxact:description>Register-path bus error: a CPU access to a Secure DMA register returned
-a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
-The faulting access also received SLVERR synchronously.</ipxact:description>
+a TL-UL error response (unmapped or misaligned offset). The faulting
+access also received SLVERR synchronously.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -19170,9 +19170,9 @@ latches, so acknowledging cannot drop a concurrent fault.</ipxact:description>
             <ipxact:name>PERIPH_BUS_ERR_STATUS</ipxact:name>
             <ipxact:description>Peripheral register-bridge fault status, one bit per block. Each bit latches
 when a CPU access to that block's registers returned a TL-UL error response
-(unmapped or misaligned offset, or a RACL denial), and is held until the
-matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also
-received SLVERR synchronously.
+(unmapped or misaligned offset), and is held until the matching
+PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also received
+SLVERR synchronously.
 
 All bits OR together into a single PIC source, so read this register to
 identify which block faulted.
