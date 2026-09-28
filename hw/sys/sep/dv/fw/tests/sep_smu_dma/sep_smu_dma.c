@@ -20,25 +20,24 @@ static int rw_check32(uint32_t addr, uint32_t value) {
 }
 
 static int run_dma_reg_sequence(void) {
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0xC0000000u) != 0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0xC0000000u) != 0)
         return -1;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xC00FFFFFu) != 0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xC00FFFFFu) != 0)
         return -2;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -3;
+    if (rw_check32(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u) != 0) return -3;
 
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) !=
-        0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR) != 0)
         return -4;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
-                   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)
+    if (rw_check32(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR,
+                   SEP_TOP_SEP_SRAM_BASE_ADDR + 0x1000u) != 0)
         return -5;
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100u) != 0) return -6;
+    if (rw_check32(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, 0x100u) != 0) return -6;
 
     /*
      * Keep this as a register-level smoke sequence only; avoid real transfer
      * side effects in SMU-level integration test.
      */
-    if (rw_check32(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u) != 0) return -7;
+    if (rw_check32(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x0u) != 0) return -7;
     return 0;
 }
 

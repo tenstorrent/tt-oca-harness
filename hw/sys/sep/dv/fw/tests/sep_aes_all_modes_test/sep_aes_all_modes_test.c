@@ -268,7 +268,7 @@ static int run_ctr_manual_mode(void) {
      * Must trigger START explicitly. */
     aes__TRIGGER_t trigger = {.w = 0};
     trigger.f.START = 1;
-    WRITE_REG(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
+    WRITE_REG(SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
 
     if (wait_for_output_valid() != 0) return -1;
     read_data_out(out);
@@ -342,7 +342,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_all_modes_test (FUNC-002)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x\n", OCH_SEP_TOP_AES_BASE_ADDR);
+    printf("AES base=0x%08x\n", SEP_TOP_AES_BASE_ADDR);
 
     /* Part 1: ECB encrypt + decrypt roundtrip */
     if (rc == 0) rc = run_ecb_roundtrip();

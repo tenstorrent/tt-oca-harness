@@ -245,6 +245,25 @@ What the resulting number is not:
 * **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
   test contributes one sample. Pin seeds for any number that gets cited.
 
+### Boot ROM firmware coverage
+
+Boot ROM C source coverage is separate from simulator-native RTL coverage.
+Run the `rom_fw` group with `--plusarg +sep_rom_fw_coverage`; the existing
+CPU trace monitor then writes a Renode-format retired-PC trace into each
+simulation leaf. Generate the report from that exact run directory:
+
+```bash
+uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
+  --run-dir "$RUN_DIR"
+```
+
+The generator accepts only passing, complete traces and uses the leaf-local
+`boot_rom.elf` staged by the firmware profile. It reports `boot_rom`,
+`boot_rom_ot`, and `boot_rom_ot_pio` separately because their PCs cannot be
+interpreted with one shared ELF. See
+[`tools/dv/fw_coverage/README.md`](../../../../tools/dv/fw_coverage/README.md)
+for the complete command and tool prerequisites.
+
 ## Run modes, targets, and groups
 
 The run mode selects who owns the CPU master buses. The RTL target selects which

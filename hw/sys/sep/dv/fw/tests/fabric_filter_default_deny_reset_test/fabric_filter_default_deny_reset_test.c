@@ -19,7 +19,7 @@
 #define TEST_FILTER_IDX 14u
 #define TEST_OUT_FILTER_IDX 31u
 
-#define MAILBOX_0_APERTURE_SIZE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
+#define MAILBOX_0_APERTURE_SIZE SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
 
 static int check_eq32(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -29,7 +29,7 @@ static int check_eq32(const char *name, uint32_t actual, uint32_t expected) {
 }
 
 static uint32_t inbound_addr(uint32_t base) {
-    return base + (TEST_FILTER_IDX * OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE);
+    return base + (TEST_FILTER_IDX * SEP_TOP_INBOUND_FILTER_CTRL_STRIDE);
 }
 
 static void write64_split(uint32_t addr, uint64_t value) {
@@ -39,11 +39,11 @@ static void write64_split(uint32_t addr, uint64_t value) {
 
 int main(void) {
     int pass = 1;
-    uint32_t in_cfg_addr = inbound_addr(OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0));
-    uint32_t in_start_addr = inbound_addr(OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0));
-    uint32_t in_end_addr = inbound_addr(OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0));
-    uint32_t out_cfg_addr = OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) +
-                            (TEST_OUT_FILTER_IDX * OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_STRIDE);
+    uint32_t in_cfg_addr = inbound_addr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0));
+    uint32_t in_start_addr = inbound_addr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0));
+    uint32_t in_end_addr = inbound_addr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0));
+    uint32_t out_cfg_addr = SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) +
+                            (TEST_OUT_FILTER_IDX * SEP_TOP_OUTBOUND_FILTER_CTRL_STRIDE);
     uint32_t cfg_lo;
     uint32_t cfg_hi;
     uint32_t programmed_cfg;
@@ -80,9 +80,9 @@ int main(void) {
         pass = 0;
     }
 
-    write64_split(in_start_addr, OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
-    write64_split(in_end_addr, OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR +
-                                   MAILBOX_0_APERTURE_SIZE - 1u);
+    write64_split(in_start_addr, SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    write64_split(in_end_addr,
+                  SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR + MAILBOX_0_APERTURE_SIZE - 1u);
 
     programmed_cfg =
         FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |

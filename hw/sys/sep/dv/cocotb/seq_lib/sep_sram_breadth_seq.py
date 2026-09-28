@@ -32,7 +32,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 # SEP SRAM aperture (256 KiB). Derived from the generated Python register export
 # rather than a literal, so a map change surfaces as an import error instead of a
 # silently stale constant. The C header spells the same aperture
-# OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
+# SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
 # is importable from here.
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")

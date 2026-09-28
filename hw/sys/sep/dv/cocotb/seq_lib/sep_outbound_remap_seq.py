@@ -38,7 +38,7 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     STEE_BASE,
 )
 
-# och_sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
+# sep_top_addrmap / hw/sys/sep/regs/gen/c/sep_addr.h
 AP_REGION_BASE = sym("AP_REGION_MEM_BASE_ADDR")
 STEE_REGION_BASE = sym("STEE_REGION_MEM_BASE_ADDR")
 # Region count from fabric.adoc ("Sixteen remap regions") and the RDL array.

@@ -2,11 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Unsupported Status ID Injection Test
- *
- * Sends a GET_* status request with a randomly chosen unsupported status_id.
- * Expects an OCCP error response (Unsupported) which the command helpers
- * validate and treat as success.
+ * Sends GET_OCCP_BOOT_STATUS with a randomly injected unsupported status_id and expects the
+ * Unsupported error response; the command helpers treat that response as success.
  */
 
 #include "occp_test_common.h"
@@ -17,7 +14,6 @@ static void run_test_suite(test_context_t *ctx) {
     simputs("=== OCCP Unsupported Status ID Injection Test ===\n");
 
     execute_random_commands(ctx, 5);
-    // re-latch to recover
     uint32_t status_data = 0;
     int retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -40,7 +36,7 @@ static void run_test_suite(test_context_t *ctx) {
     ctx->unsupported_status_id_inject_enable = false;
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
-    // re-latch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");

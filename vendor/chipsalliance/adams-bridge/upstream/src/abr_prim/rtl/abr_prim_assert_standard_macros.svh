@@ -32,8 +32,10 @@
   initial begin                                                                      \
     // When a net is assigned with a value, the assignment is evaluated after        \
     // initial in Xcelium. Add 1ps delay to check value after the assignment is      \
-    // completed.                                                                    \
+    // completed. The emulation view has no procedural delays.                      \
+`ifndef EMULATION                                                                    \
     #1ps;                                                                            \
+`endif                                                                               \
     __name: assert (__prop)                                                          \
       else begin                                                                     \
         `ABR_ASSERT_ERROR(__name)                                                        \
