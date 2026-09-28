@@ -631,6 +631,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, real fuse sense
 |DUT probes and a one-cycle state force
 |The eFuse read and program interfaces fail closed from an illegal state encoding, and the read-error flag is set by a failed or timed-out read and cleared by the next legal request.
+|`sep_efuse_km_public_id_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, KM CPU image
+|The three sensed `SEP_*_ID` fuses reach the Key Manager: `{~id, id}` on its OTP input, and value and complement in the KMCSR `OTP_SEP_*_ID_{VAL,CPL}` words as KM firmware reads them. One seed-selected field carries its eFuse read lock, which withholds that field's shadow read and leaves both KM views intact. The KM-side `OTP_READ_LOCK` then zeroes the KMCSR words and leaves the input intact.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_locked_field_access_irq_path_test>> and <<sep_efuse_token_match_fault_pic_test>> reach eFuse state, but their contract is the IRQ/PIC delivery path. They are graded there so each test has one owning bucket.
@@ -821,6 +825,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |JTAG vs CPU vs KM eFuse mux
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`, `sep_efuse_km_axil_cpu_mux_coexist_test`
+
+|eFuse public identities → Key Manager
+|`sep_efuse_km_public_id_test`. The sensed `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` are compared with the staged image on the Key Manager's OTP input (`{~id, id}`) and in the 48 KMCSR words KM firmware reads. The two read-lock domains are graded apart: an eFuse read lock withholds the shadow read and leaves both KM views, and `OTP_READ_LOCK` zeroes the KMCSR words and leaves the input. Delivery under `secure_tm`, `OTP_READ_LOCK_COLD` for these fields, and identity-key derivation from them are not claimed.
 
 |SEC_DIS override
 |`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (`hw/sys/sep/doc/reset_controller.adoc`).
@@ -5193,6 +5200,54 @@ bank command. It does not grade suppression: the request is already low, so
 that term would pass with the RTL's suppression logic deleted.
 
 *Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_efuse_km_public_id_test]]
+===== `sep_efuse_km_public_id_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense, `+km_rom_hex=km_rom_otp_id.parhex`
+
+*Source Module*: `sep_efuse_km_public_id_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image (`km_rom_otp_id.S`)
+
+*Objective*: the public identity fuses reach the Key Manager as sensed. `otp_fuse_controller.adoc` routes `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` to the Key Manager, and `km_csr.rdl` exposes each as eight value and eight complement words that `OTP_READ_LOCK` zeroes. The Key Manager block bench drives its own patterns onto the KM OTP input, so only a SEP-level run observes what the SEP delivers.
+
+*Test Coverage*: Three public IDs through fuse sense, the SEP dual-rail encoders and the KM capture, with one eFuse read lock and the KM-side lock.
+
+*Test Procedure*:
+
+[arabic]
+. Draw three 256-bit IDs from the seed with no zero, all-ones or shared word, and set the eFuse read lock (`LOCKS[59]`, `[61]` or `[63]`) of one seed-selected field. Stage the image at `LC_PROD` and sense it for real.
+. Compare each field on the KM `otp_data_i` input with `{~id, id}` of the staged value.
+. Read all eight shadow words of the read-locked field over AXI and require that none returns its staged word. Read the two unlocked fields and let the scoreboard judge them against the image.
+. Release the KM. Its image copies the 48 KMCSR words `OTP_SEP_CHIPLET_ID_VAL_0` .. `OTP_SEP_SYS_ID_CPL_7` to KM SRAM, sets the three public-ID bits of `OTP_READ_LOCK`, reads the register back, copies the 48 words again and stores a done marker.
+. Compare the first copy with the staged IDs and their complements, the read-locked field included. Require the readback to be exactly the three bits and the second copy to be zero.
+. Compare the KM input again.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KM-ID-PORT
+|Each public-ID field on the KM OTP input equals `{~id, id}` of the staged value, after sense and again after `OTP_READ_LOCK` is set.
+|CHK-KM-ID-EFUSE-LOCK
+|No shadow read of the eFuse-read-locked field returns its staged word, and the unlocked fields' shadow reads return theirs.
+|CHK-KM-ID-CSR
+|The 48 KMCSR words KM firmware read are the staged ID words (`VAL_k`) and their complements (`CPL_k`) for all three fields, the eFuse-read-locked field included.
+|CHK-KM-ID-KM-LOCK
+|`OTP_READ_LOCK` reads back exactly its three public-ID bits, and all 48 words then read zero.
+|===
+
+*Scope limit*: `secure_tm` is 0 and `OTP_READ_LOCK_COLD` is never set, so neither is graded here. The KM image grades nothing itself: it copies raw words, and the host holds every golden.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
