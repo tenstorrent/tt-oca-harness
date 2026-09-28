@@ -5218,7 +5218,7 @@ that term would pass with the RTL's suppression logic deleted.
 
 *BFM / Model*: ocah_axi_vip, KM CPU image (`km_rom_otp_id.S`)
 
-*Objective*: the public identity fuses reach the Key Manager as sensed. `otp_fuse_controller.adoc` routes `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` to the Key Manager, and `km_csr.rdl` exposes each as eight value and eight complement words that `OTP_READ_LOCK` zeroes. The Key Manager block bench drives its own patterns onto the KM OTP input, so only a SEP-level run observes what the SEP delivers.
+*Objective*: the public identity fuses reach the Key Manager as sensed. `otp_fuse_controller.adoc` routes `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` to the Key Manager, and `km_csr.rdl` exposes each as eight value and eight complement words that `OTP_READ_LOCK` zeroes. The eFuse read lock hides only software and JTAG reads (`otp_fuse_controller.adoc`) and does not blank the hardwired KM port (`hw/ip/key_manager/doc/architecture.adoc`, public identity delivery), so both KM views must survive it. The Key Manager block bench drives its own patterns onto the KM OTP input, so only a SEP-level run observes what the SEP delivers.
 
 *Test Coverage*: Three public IDs through fuse sense, the SEP dual-rail encoders and the KM capture, with one eFuse read lock and the KM-side lock.
 
