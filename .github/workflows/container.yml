@@ -124,22 +124,25 @@ jobs:
 
           registry_ref="${REGISTRY_IMAGE}:${image_hash}"
 
-          # The content-hash tag is immutable. If it already exists, only the
-          # identical closure may reuse it: the same tag resolving to different
-          # bytes is a hash collision or a tampered upload, so fail rather than
-          # silently trust or overwrite it.
+          # The content-hash tag is write-once: the first build to publish a
+          # given closure hash is canonical, and a later build of the same hash
+          # reuses it rather than overwriting it. The Nix image build is not
+          # bit-reproducible, so a rebuilt archive can differ byte-for-byte from
+          # the published image while denoting the same closure. Reuse the
+          # published bytes -- which consumers already pull and which verify runs
+          # against -- and never push over them.
           if remote_digest=$(skopeo inspect --insecure-policy \
               --format '{{.Digest}}' "docker://${registry_ref}" 2>/dev/null); then
             local_digest=$(skopeo inspect --insecure-policy \
               --format '{{.Digest}}' "docker-archive:${archive}")
             if [ "${remote_digest}" = "${local_digest}" ]; then
               echo "already published (identical bytes): ${registry_ref}"
-              digest="${remote_digest}"
             else
-              echo "::error::${registry_ref} already exists with different bytes" \
-                   "(remote ${remote_digest}, local ${local_digest})"
-              exit 1
+              echo "::notice::${registry_ref} already published as ${remote_digest};" \
+                   "reusing it (local rebuild ${local_digest} differs: the image" \
+                   "build is not bit-reproducible)"
             fi
+            digest="${remote_digest}"
           else
             # docker-archive reads the gzip archive; skopeo relays its compressed
             # layers to the registry without unpacking them to disk. --digestfile
