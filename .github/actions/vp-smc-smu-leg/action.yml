@@ -3,9 +3,8 @@
 
 # One smc-vp/smu-vp leg on a hosted runner. Shared by the native and container jobs in
 # .github/workflows/vp.yml so the two cannot drift apart; each caller owns only
-# which mode it is and, for the container leg, the image the toolchain-image job
-# published. Splitting the legs into separate jobs is what lets the native one
-# start immediately while only the container one waits on that image.
+# which mode it is. The container leg pulls its toolchain image from the
+# registry by the flake content hash; the native leg needs no image at all.
 #
 # The caller must check the repository out first and gate this action on the
 # submodule token: a local composite action is loaded from the checked-out tree,
@@ -28,23 +27,9 @@ inputs:
   oca_pat:
     required: true
     description: 'PAT granting the private model and manifest submodules'
-  image_hash:
-    required: false
-    default: ''
-    description: 'Toolchain image hash from the toolchain-image job; container mode only'
 runs:
   using: composite
   steps:
-    # See the sep-vp job: the runner context is not available in env:.
-    - name: Point the image cache at the runner temp dir
-      shell: bash
-      run: |
-        # Created here, not by actions/cache: a cache miss restores nothing and
-        # leaves no directory, and docker-run.sh copies the built image into
-        # this path without creating it.
-        mkdir -p "$RUNNER_TEMP/ocah-image-cache"
-        echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
-
     - name: Skip when the submodule token is unavailable
       if: false  # caller handles the skip notice
       shell: bash
@@ -135,7 +120,7 @@ runs:
           access-tokens = github.com=${{ inputs.oca_pat }}
 
     - name: Install VP build dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       shell: bash
       run: |
         # Acquire options: turn a stalled mirror into an error so apt's
@@ -176,20 +161,13 @@ runs:
         fi
         echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
 
-    - name: Restore toolchain image
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
-      uses: actions/cache/restore@v4
-      with:
-        path: ${{ runner.temp }}/ocah-image-cache
-        key: ocah-image-${{ runner.os }}-${{ inputs.image_hash }}
-
     # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
     # tree, so a shared key would let whichever job saved first decide whether
     # Whisper is in the cache at all. The key carries the revision, the
     # PIC-ness, and a recipe version to bump when the set of archives changes.
     # Native leg only; the container gets Whisper from ocah_deps.nix too.
     - name: Cache VP dependencies (including Whisper)
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       uses: actions/cache@v4
       with:
         path: |
@@ -224,11 +202,22 @@ runs:
           rm -f "$stamp"
         fi
 
-    # Container leg only. The native leg here never reaches for the image, as
-    # the SMC/SMU firmware suites call the model's runners with plain make and
-    # so have no fw_make picolibc fallback to cover.
+    # The published tag is the same flake content hash docker-run.sh computes,
+    # so a pull either matches this tree exactly or misses and falls through.
+    - name: Log in to GHCR
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    # The native leg here never reaches for the image: the SMC/SMU firmware
+    # suites call the model's runners with plain make, so they have no
+    # fw_make picolibc fallback to cover. `ensure` reuses a matching local
+    # image, then the registry tag, then the cached tarball, then builds.
     - name: Provision toolchain image
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
       shell: bash
       run: ./scripts/docker-run.sh ensure
 

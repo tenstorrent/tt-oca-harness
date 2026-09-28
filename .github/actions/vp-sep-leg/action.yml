@@ -3,9 +3,8 @@
 
 # One sep-vp leg on a hosted runner. Shared by the native and container jobs in
 # .github/workflows/vp.yml so the two cannot drift apart; each caller owns only
-# which mode it is and, for the container leg, the image the toolchain-image job
-# published. Splitting the legs into separate jobs is what lets the native one
-# start immediately while only the container one waits on that image.
+# which mode it is. The container leg pulls its toolchain image from the
+# registry by the flake content hash; the native leg needs no image at all.
 #
 # The caller must check the repository out first and gate this action on the
 # submodule token: a local composite action is loaded from the checked-out tree,
@@ -28,25 +27,9 @@ inputs:
   oca_pat:
     required: true
     description: 'PAT granting the private model and manifest submodules'
-  image_hash:
-    required: false
-    default: ''
-    description: 'Toolchain image hash from the toolchain-image job; container mode only'
 runs:
   using: composite
   steps:
-    # Feeds docker-run.sh's tarball cache, which actions/cache then persists.
-    # The runner context is not available in a job's env: block, so the value
-    # is set here instead.
-    - name: Point the image cache at the runner temp dir
-      shell: bash
-      run: |
-        # Created here, not by actions/cache: a cache miss restores nothing and
-        # leaves no directory, and docker-run.sh copies the built image into
-        # this path without creating it.
-        mkdir -p "$RUNNER_TEMP/ocah-image-cache"
-        echo "OCAH_DOCKER_CACHE_DIR=$RUNNER_TEMP/ocah-image-cache" >> "$GITHUB_ENV"
-
     - name: Skip when the submodule token is unavailable
       if: false  # caller handles the skip notice
       shell: bash
@@ -148,7 +131,7 @@ runs:
           access-tokens = github.com=${{ inputs.oca_pat }}
 
     - name: Install VP build dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       shell: bash
       run: |
         # Acquire options: the hosted-runner mirror list falls back from
@@ -169,7 +152,7 @@ runs:
     # `docker-run.sh run-here` even though the runner's toolchain is usable.
     # It wants a bin dir; RISCV_PREFIX resolves itself from what it finds there.
     - name: Point the bootrom at the runner's RISC-V toolchain
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       shell: bash
       run: echo "RISCV_TOOLCHAIN=/usr/bin" >> "$GITHUB_ENV"
 
@@ -191,20 +174,13 @@ runs:
         fi
         echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
 
-    - name: Restore toolchain image
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
-      uses: actions/cache/restore@v4
-      with:
-        path: ${{ runner.temp }}/ocah-image-cache
-        key: ocah-image-${{ runner.os }}-${{ inputs.image_hash }}
-
     # Only the native leg builds dependencies, so only it has anything to
     # cache. The container carries SystemC,
     # CCI, Boost, OpenSSL and Whisper from ocah_deps.nix and exports their
     # prefixes, so the container leg resolves every one as explicit and builds
     # none of them.
     - name: Cache VP dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       uses: actions/cache@v4
       with:
         path: |
@@ -216,22 +192,32 @@ runs:
     # populates. Doing it in its own step rather than letting vp-test's import
     # guard trigger it keeps a dependency failure off the test step.
     - name: Install uv
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       uses: astral-sh/setup-uv@v6
       with:
         python-version: "3.11"
 
     - name: Sync harness Python deps
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       shell: bash
       run: make -C virtual_platform vp-py-deps
 
-    # `ensure`, not `build`: build always rebuilds, ensure reuses a matching
-    # local image, then the cached tarball, then builds and publishes.
-    # Container leg only: with RISCV_TOOLCHAIN set above, the native leg builds
-    # firmware in place and never reaches for the image.
+    # The published tag is the same flake content hash docker-run.sh computes,
+    # so a pull either matches this tree exactly or misses and falls through.
+    - name: Log in to GHCR
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    # `ensure`, not `build`: build always rebuilds, while ensure reuses a
+    # matching local image, then the registry tag, then the cached tarball,
+    # and only then builds. With RISCV_TOOLCHAIN set above, the native leg
+    # builds firmware in place and never reaches for the image.
     - name: Provision toolchain image
-      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
       shell: bash
       run: ./scripts/docker-run.sh ensure
 
