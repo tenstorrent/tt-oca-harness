@@ -2,7 +2,13 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = SEP Reset Controller
-:description: SEP software reset requests, AXI isolation, and TRNG reset sequencing.
+:description: SEP software reset requests, AXI isolation, and Key Manager and TRNG reset sequencing.
+ifdef::backend-html5[]
+:km-reset-conditioning-ref: xref:ip:key_manager/doc/index.adoc#key-manager-reset-conditioning[Key Manager Reset Conditioning]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:km-reset-conditioning-ref: <<key-manager-reset-conditioning,Key Manager Reset Conditioning>>
+endif::backend-pdf[]
 
 ifdef::backend-html5[]
 :dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
@@ -48,16 +54,50 @@ reset.
 
 == Isolation and Reset Sequencing
 
-Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
-isolates the domain's AXI paths, waits for outstanding transactions to drain,
-and then asserts reset. New transactions presented while isolated terminate
-with SLVERR. Isolation remains asserted for the duration of reset and is
-released with reset when software removes the request.
+Each `SW_RESET_N` bit is a request to a per-domain sequencer. Before the domain
+enters reset, the sequencer isolates every AXI path into it, so that no
+transaction is in flight when reset asserts. <<sep-axi-isolation-diagram>>
+shows the isolated paths through the crypto interconnect.
 
-An accelerator reset waits for both its host CSR path and Key Manager key path
-to isolate. A Key Manager reset waits for all of its outgoing accelerator and
-eFuse key paths. This prevents either endpoint of a key path from entering
-reset with a transaction in flight.
+[[sep-axi-isolation-diagram]]
+.SEP crypto AXI isolation
+image::SEP_AXIIsolation_FIG030.png[alt="SEP crypto AXI isolation",width=100%,pdfwidth=100%]
+
+Each accelerator has two isolated paths: its host CSR path from the crypto
+demux and its key path from the Key Manager. The Key Manager also has an
+isolated path to the eFuse wrapper, and the TRNG has one host path each for
+ESRC, CSRNG, and EDN. The demux ports to the Key Manager mailbox, eFuse
+wrapper, lifecycle controller, and external TRNG are not isolated.
+
+A software reset proceeds as follows:
+
+. The SEP host firmware writes `0` to the domain's `SW_RESET_N` bit.
+. The sequencer requests isolation on each of the domain's paths. From then
+on, new transactions on those paths complete with SLVERR and read data
+`0x1501A7ED`.
+. Each isolate unit waits for the transactions it has already accepted to
+complete, then reports its path isolated.
+. Once every path in the domain reports isolated, the sequencer asserts the
+domain's reset. Isolation stays in place for as long as the reset is held.
+. The SEP host firmware writes `1` to the bit. Reset and isolation are
+released together.
+
+<<sep-isolation-paths-table>> lists the paths each domain waits on before its
+reset asserts.
+
+[[sep-isolation-paths-table]]
+[cols="<30%,<70%",options="header"]
+.Paths isolated before each software reset
+|===
+|Domain |Paths that must report isolated
+|OTBN, AES, HMAC, KMAC, Adams Bridge |The accelerator's host path and its Key Manager key path
+|Key Manager |The key paths to all five accelerators, and the eFuse path
+|TRNG |The ESRC, CSRNG, and EDN host paths
+|===
+
+A key path isolates when either of its endpoints is being reset, so neither
+the Key Manager nor an accelerator can enter reset with a key transfer in
+flight between them.
 
 The sequenced resets are ANDed with `sep_reset_n`, which holds every IP in reset
 until eFuse sensing completes during boot. JTAG can drive `sep_reset_n` in
@@ -66,21 +106,39 @@ place of the eFuse reset through the SEP slice of the IC_RESET TDR (see
 whose fuse sensing does not complete. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.
 
+[[sep-km-reset]]
+== Resetting the Key Manager
+
+The sequenced Key Manager reset drives the Key Manager's warm reset input, and
+`sep_reset_n` drives its cold reset input. A software reset therefore restarts
+the Key Manager CPU, its internal fabric, and its warm-domain state, but keeps
+cold-domain state such as the SRAM scrambler lock, the SEP-facing mailbox
+FIFOs, and the cold OTP read locks. {km-reset-conditioning-ref} shows how the
+Key Manager conditions both inputs and lists the state each one resets.
+
+The mailbox port is not isolated. Its SEP-facing side is reset only by
+`sep_reset_n`, so the SEP host can still reach it while the Key Manager is in
+software reset.
+
+Key Manager firmware can also request a warm reset through its own
+`SOFT_RST_CODE` register. That reset does not pass through the SEP Reset
+Controller, so its key and eFuse paths are not isolated first.
+
 [[sep-trng-reset]]
 == Resetting the TRNG
 
 The TRNG reset bit controls one reset domain containing the entropy source,
-CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
-independent demux ports, a shared coordinator requests isolation on all three
-converted AXI4-Lite paths and does not assert the TRNG reset until all three
-report isolated. Reset and isolation are released together.
+CSRNG, EDN, and DRBG endpoint state. ESRC, CSRNG, and EDN occupy three
+independent demux ports, so the TRNG sequencer isolates all three host paths
+and does not assert the TRNG reset until all three report isolated. Reset and
+isolation are released together.
 
 The fabric entropy-pool AXI responder is not reset, so accesses remain
 responsive. While the TRNG reset is active, both post-mux EDN adapters and the
 pool synchronously clear their pending and buffered state, including the pool's
 half-packed word, FIFO contents, and fill-stall state.
 
-Consumers are not part of the reset coordinator. Native EDN requests from AES,
+Consumers are not part of the TRNG reset sequence. Native EDN requests from AES,
 KMAC, and OTBN receive no acknowledgement while the post-mux adapter is
 clearing, remain asserted, and are serviced with fresh entropy after the chain
 restarts. Software may wait for those consumers to become idle and hold them in

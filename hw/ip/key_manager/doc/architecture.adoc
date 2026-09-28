@@ -88,6 +88,7 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
+[[key-manager-reset-conditioning]]
 == Reset Conditioning
 
 <<key-manager-reset-diagram>> shows how cold and warm reset requests are conditioned for
@@ -110,8 +111,8 @@ SEP connections.
 .Key Manager reset inputs
 |===
 |Input port |Polarity |Synchronicity |Integration tie-off (SEP)
-|`cold_rst_ni` |Active-low |Asynchronous |SEP system cold reset (`sep_reset_n`).
-|`warm_rst_ni` |Active-low |Synchronous to `clk_i` |SEP KM sub-component software-reset CSR bit (`km_sw_rst_ni`).
+|`cold_rst_ni` |Active-low |Asynchronous |SEP reset (`sep_reset_n`), released once eFuse sensing completes.
+|`warm_rst_ni` |Active-low |Synchronous to `clk_i` |Isolation-sequenced Key Manager reset from the SEP Reset Controller (`SW_RESET_N.km_sw_rst_n`).
 |===
 
 The `km_reset_conditioner` submodule conditions these inputs and the
@@ -129,7 +130,7 @@ cold path.
 
 *Warm path (`rst_warm_sync_no`)*
 
-* Synchronous sources: `warm_rst_ni` (external pulse from the integrator)
+* Synchronous sources: `warm_rst_ni` (the integrator's warm reset request)
 or `soft_rst_ni` (the KMCSR software-triggered reset, see below). Both are
 assumed synchronous to `clk_i`.
 * Cold coupling: `rst_cold_aasd_no` is wired as the asynchronous reset of
