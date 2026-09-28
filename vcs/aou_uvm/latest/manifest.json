@@ -8,7 +8,7 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/history.json",
-    "history_points": 1,
+    "history_points": 2,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/aou/uvm/vcs/aou_uvm/dashboard-data/summary.json",
     "tests": {
       "failing": 0,
@@ -21,17 +21,17 @@
     }
   },
   "errors": [],
-  "generated_at": "2026-09-27T14:31:22.800904+00:00",
+  "generated_at": "2026-09-28T01:20:37.982125+00:00",
   "git": {
     "commit": "607996386f36e1cae96e59d4d8518d0b75003306",
-    "harness_commit": "9cf1e80ad8081af9e9ae331bb179e94f0aaf6369",
-    "nonfree_commit": "5c53990bfa4c1f352c786501b64092063d90ccb6",
+    "harness_commit": "6c90ede8079554e1c962c77f89d41b0a13e95e66",
+    "nonfree_commit": "1b3641b823919bb27eecbee52afc1960e5c5f754",
     "remote": "git@aus-gitlab.local.tenstorrent.com:arch/aou-rtl",
     "requested_ref": "verification"
   },
   "jenkins": {
-    "build_number": "7",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/7/",
+    "build_number": "8",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/8/",
     "job_name": "tt-oca-harness/aou/uvm",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/aou/job/uvm/"
   },
