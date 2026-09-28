@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-cross_trigger_matrix]
 == Address Map: cross_trigger_matrix
 
+Configuration registers for the cross trigger matrix
+
 [NOTE]
 ======
 *Register Arrays:*

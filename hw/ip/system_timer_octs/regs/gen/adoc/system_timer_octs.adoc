@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-system_timer_octs]
 == Address Map: system_timer_octs
 
+Open Chiplet Time Synchronization (OCTS) System Timer Registers
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-axil_mailbox]
 == Address Map: axil_mailbox
 
+Register interface for a single AXI-Lite mailbox: data FIFOs, level and status flags, and interrupt controls.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

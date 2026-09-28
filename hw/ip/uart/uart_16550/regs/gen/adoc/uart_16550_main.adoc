@@ -6,6 +6,9 @@
 [#regmap-{regmap-instance}-uart_16550_main]
 == Address Map: uart_16550_main
 
+Contains the mode-independent registers and the read-only registers accessible only
+when `DLAB = 0`.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

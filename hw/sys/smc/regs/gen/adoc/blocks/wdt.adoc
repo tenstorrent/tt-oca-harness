@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-wdt]
 == Address Map: wdt
 
+Watchdog timer configuration, counter, compare, and feed and key registers.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

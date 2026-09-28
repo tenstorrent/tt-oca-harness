@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-plic]
 == Address Map: plic
 
+Platform-Level Interrupt Controller register interface.
+
 [NOTE]
 ======
 *Register Arrays:*

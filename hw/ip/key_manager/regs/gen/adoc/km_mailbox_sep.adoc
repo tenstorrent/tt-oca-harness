@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-km_mailbox_sep]
 == Address Map: km_mailbox_sep
 
+Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

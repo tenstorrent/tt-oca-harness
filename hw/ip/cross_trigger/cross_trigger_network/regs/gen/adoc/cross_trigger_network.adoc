@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-cross_trigger_network]
 == Address Map: cross_trigger_network
 
+Cross trigger matrix and externally visible cross trigger ports
+
 [NOTE]
 ======
 *Register Arrays:*

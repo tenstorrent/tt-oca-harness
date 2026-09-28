@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-sep_external]
 == Address Map: sep_external
 
+SEP external address map (eFuse SHIM control and execute-in-place window).
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

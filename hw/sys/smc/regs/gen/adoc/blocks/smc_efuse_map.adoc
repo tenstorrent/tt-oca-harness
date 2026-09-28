@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-smc_efuse_map]
 == Address Map: smc_efuse_map
 
+Address map for efuse shadow registers providing access to various chip configuration and ID fields
+
 [NOTE]
 ======
 *Register Arrays:*

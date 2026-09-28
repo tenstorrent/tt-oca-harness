@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-uart_16550_main_wo]
 == Address Map: uart_16550_main_wo
 
+Contains the write-only registers accessible only when `LCR.DLAB = 0`.
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description

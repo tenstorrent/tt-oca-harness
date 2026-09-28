@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-telemetry_receiver_wrap]
 == Address Map: telemetry_receiver_wrap
 
+Wrapper address map instantiating the telemetry receiver channels.
+
 [NOTE]
 ======
 *Register Arrays:*

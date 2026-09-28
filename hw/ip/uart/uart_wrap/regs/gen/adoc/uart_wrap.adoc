@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-uart_wrap]
 == Address Map: uart_wrap
 
+Wrapper address map instantiating the per-UART log-engine blocks.
+
 [NOTE]
 ======
 *Register Arrays:*

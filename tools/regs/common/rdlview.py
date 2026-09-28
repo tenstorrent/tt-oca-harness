@@ -91,6 +91,20 @@ def first_addrmap_name(root) -> str:
     )
 
 
+def addrmap_desc(root) -> str | None:
+    """The map's ``desc`` for the per-block heading intro.
+
+    The heading keeps its identifier form (``Address Map: <inst>``) that the
+    block catalog and coverage tooling parse. The map's ``name`` is surfaced in
+    the IP-XACT ``displayName``; on this page it would only echo the heading, so
+    only the description is added here.
+    """
+    node = next(iter(root.children()), None)
+    if node is None:
+        return None
+    return node.get_property("desc")
+
+
 def sw_access(node) -> str:
     r = (
         "R"
@@ -274,6 +288,9 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
         f"== Address Map: {title}",
         "",
     ]
+    desc = addrmap_desc(root)
+    if desc:
+        lines += [desc_adoc(desc), ""]
     if data.arrays:
         lines += [
             "[NOTE]",
@@ -326,6 +343,9 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         "</style>",
         f"<h2>Address Map: {escape(title)}</h2>",
     ]
+    desc = addrmap_desc(root)
+    if desc:
+        lines.append(f"<p>{desc_html_text(desc)}</p>")
     if data.arrays:
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
         for name, (count, base, stride) in data.arrays.items():

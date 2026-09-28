@@ -6,6 +6,8 @@
 [#regmap-{regmap-instance}-km_drbg_sampler]
 == Address Map: km_drbg_sampler
 
+DRBG random data interface and configuration/status registers
+
 [cols="1,4,1,6", options="header"]
 |===
 | Address | Name | Access | Description
