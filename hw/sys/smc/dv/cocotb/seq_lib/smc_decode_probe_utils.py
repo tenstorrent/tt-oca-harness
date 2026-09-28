@@ -120,29 +120,6 @@ class SmcDecodeProbeSeq(SmcCsrSeq):
         self.accesses += 1
         return item.resp_code, item.rdata
 
-    async def rw_coresident(
-        self,
-        entries: list[tuple[str, int, int, int]],
-        length: int = 4,
-    ) -> None:
-        """Write every ``(label, addr, pattern, restore)`` first, then read all back.
-
-        The patterns and the addresses must be pairwise distinct: with the
-        writes batched, a decode that collapses two of the addresses onto one
-        register holds the last pattern written and the first readback fails.
-        Every address is then restored and the restore read back exactly.
-        """
-        assert len({e[1] for e in entries}) == len(entries), "co-resident addresses not distinct"
-        assert len({e[2] for e in entries}) == len(entries), "co-resident patterns not distinct"
-        for label, addr, pattern, _restore in entries:
-            await self.csr_write(f"{label}_PATTERN", addr, pattern, length=length)
-        for label, addr, pattern, _restore in entries:
-            await self.csr_read(f"{label}_PATTERN_RB", addr, expected=pattern, length=length)
-        for label, addr, _pattern, restore in entries:
-            await self.csr_write(f"{label}_RESTORE", addr, restore, length=length)
-        for label, addr, _pattern, restore in entries:
-            await self.csr_read(f"{label}_RESTORE_RB", addr, expected=restore, length=length)
-
     async def read_external_routed(
         self,
         label: str,

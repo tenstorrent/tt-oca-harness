@@ -14,6 +14,14 @@ class smc_cpu_l2_read_wedge_test(smc_base_test):
     """Flush pending L2 reads while SEP_IN keeps R blocked."""
 
     auto_protocol_vip = False
+    required_evidence = (
+        "CHK-CPU-ISO-FLUSH-CLUSTER-REOPENED",
+        "CHK-CPU-ISO-FLUSH-DRAINED-WHILE-BLOCKED",
+        "CHK-CPU-ISO-FLUSH-FORCED-RESET",
+        "CHK-CPU-ISO-FLUSH-L2-READ-RECOVERED",
+        "CHK-CPU-ISO-FLUSH-STALE-R-DISCARDED",
+    )
+    min_evidence = 5
 
     async def run_scenario(self) -> None:
         seq = smc_cpu_l2_read_wedge_test_seq("cpu_l2_read_wedge_seq")

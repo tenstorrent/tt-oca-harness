@@ -70,7 +70,8 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
             details=(
                 f"FIFO trigger-level ids {seq.trigger_ids}; threshold 32 stayed "
                 f"inactive at depth 31 and fired at 32, while thresholds 64 "
-                f"through 4096 stayed inactive for an empty 32-entry FIFO; "
+                f"through 4096 stayed inactive on a full 32-entry FIFO that "
+                f"fired at the 32-character encoding before and after; "
                 f"RX/TX FIFO reset before/after LSR contrast"
             ),
         )

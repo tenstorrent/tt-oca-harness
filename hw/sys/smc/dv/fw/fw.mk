@@ -72,6 +72,12 @@ FW_TEST_EXTRA_CFLAGS += \
   -Wno-implicit-int \
   -Wno-int-conversion \
   -Wno-strict-prototypes
+# CLA match PCs for smu_sep_debug_bus come from the SEP image's .sym.
+SEP_DEBUG_BUS_SYMBOLS_DIR := \
+  $(OCAH_ROOT)/hw/sys/sep/dv/fw/build/tests/sep_smu_debug_bus
+SEP_DEBUG_BUS_SYMBOLS_H := $(SEP_DEBUG_BUS_SYMBOLS_DIR)/sep_debug_bus_symbols.h
+FW_TEST_IMAGE_CFLAGS_smu_sep_debug_bus += -I$(SEP_DEBUG_BUS_SYMBOLS_DIR)
+
 # Tests default to sram; opt into another mode with FW_TEST_MODE_<name> := rom.
 FW_DEFAULT_TEST_MODE := sram
 # Both sram and rom use FW_LDFLAGS and --whole-archive (compile.mk defaults).
@@ -133,3 +139,12 @@ include $(FW_DIR)/postprocess.mk
 
 include $(FW_DIR)/toolchain.mk
 include $(OCAH_ROOT)/hw/common/dv/fw/compile.mk
+
+$(FW_TEST_BUILD_DIR)/smu_sep_debug_bus/main.o: $(SEP_DEBUG_BUS_SYMBOLS_H)
+
+$(SEP_DEBUG_BUS_SYMBOLS_H):
+	+$(MAKE) -C "$(OCAH_ROOT)/hw/sys/sep/dv/fw" -f fw.mk dv-fw-tests \
+	  TEST=sep_smu_debug_bus \
+	  OCAH_ROOT="$(OCAH_ROOT)" \
+	  RISCV_TOOLCHAIN="$(RISCV_TOOLCHAIN)" \
+	  RISCV_PREFIX="$(RISCV_PREFIX)"

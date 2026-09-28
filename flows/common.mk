@@ -15,6 +15,19 @@ OCAH_FLOW_COMMON_BENDER_TARGETS ?= -t axi_rtl -t apb_rtl -t common_cells_rtl \
 
 # Defines shared by lint and synth so both see the same design.
 OCAH_FLOW_COMMON_DEFINES ?= -D SYNTHESIS=1
+OCAH_VENDOR_DEFINES_SVH := $(OCAH_ROOT)/hw/common/defs/ocah_vendor_defines.svh
+
+# Insert the mapping header after +define+/+incdir+ lines so a single-unit
+# compile applies those options before the mapping arms run. $(1) = .f path.
+ocah_flist_insert_vendor_defines = \
+	awk -v hdr="$(OCAH_VENDOR_DEFINES_SVH)" ' \
+		BEGIN { ins=0 } \
+		{ \
+		  isopt = $$0 ~ /^\+define\+/ || $$0 ~ /^\+incdir\+/ || $$0 ~ /^-f / || $$0 ~ /^[[:space:]]*$$/; \
+		  if (!ins && !isopt) { print hdr; ins=1 } \
+		  print \
+		} \
+		END { if (!ins) print hdr }' $(1) > $(1).tmp && mv $(1).tmp $(1)
 
 # Default timescale for files that don't declare their own. Shared by
 # flows/lint/slang.mk and flows/synth/yosys/scripts/elab.tcl.
@@ -48,10 +61,38 @@ ocah_require_host_tool = @command -v "$(1)" >/dev/null 2>&1 || { \
 
 # Native bender flist wrapper; bender always runs on the host, auto-discovering
 # Bender.yml from whichever directory it's invoked in.
+# $(1) = defines and output-mode flags
+# $(2) = block-specific bender targets (FLOW_BENDER_TARGETS)
+ocah_bender_flist = $(OCAH_BENDER) script flist-plus $(1) \
+	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(2)
+
 # $(1) = block-specific bender targets (FLOW_BENDER_TARGETS)
 # $(2) = output .f path (relative to the recipe's own CWD)
-ocah_eda_flist = $(OCAH_BENDER) script flist-plus $(OCAH_FLOW_COMMON_DEFINES) \
-	$(OCAH_FLOW_COMMON_BENDER_TARGETS) $(1) > $(2)
+ocah_eda_flist = $(call ocah_bender_flist,$(OCAH_FLOW_COMMON_DEFINES),$(1)) > $(2) && \
+	$(call ocah_flist_insert_vendor_defines,$(2))
+
+ifdef FLOW_DESIGN
+
+FLOW_INTEGRATION_NAME ?= $(FLOW_DESIGN)
+OCAH_INTEGRATION_FILELIST_DIR ?= $(OCAH_ROOT)/integration/filelists
+OCAH_INTEGRATION_SIM_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).sim.f
+OCAH_INTEGRATION_SYNTH_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).synth.f
+
+## Generate portable simulation and synthesis filelists for integrators.
+.PHONY: ocah-integration-filelists
+ocah-integration-filelists:
+	@mkdir -p "$(OCAH_INTEGRATION_FILELIST_DIR)"
+ifneq ($(FLOW_INTEGRATION_SIM_FROM_DV),1)
+	@$(call ocah_bender_flist,-D SIMULATION=1,$(FLOW_BENDER_TARGETS)) \
+		> "$(OCAH_INTEGRATION_SIM_FLIST)"
+	@$(call ocah_flist_insert_vendor_defines,$(OCAH_INTEGRATION_SIM_FLIST))
+	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SIM_FLIST)"
+endif
+	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth,$(FLOW_BENDER_TARGETS)) \
+		> "$(OCAH_INTEGRATION_SYNTH_FLIST)"
+	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SYNTH_FLIST)"
+
+endif
 
 # Fan a goal out to selected blocks as an isolated sub-make (BLOCK=<block>
 # picks one, else all discovered blocks). Not named TARGET= to avoid
@@ -62,6 +103,11 @@ ocah_flow_run = @$(foreach b,$(if $(strip $(BLOCK)),$(strip $(BLOCK)),$(OCAH_FLO
 	  [ -n "$$dir" ] || { echo "error: unknown flow target '$(b)' (known: $(OCAH_FLOW_TARGETS))" >&2; exit 1; }; \
 	  echo "==> $(b): $(1)"; \
 	  $(MAKE) -C "$$dir" -f flow.mk OCAH_ROOT="$(OCAH_ROOT)" $(2) $(1); } &&) true
+
+## Generate integration filelists for all BLOCK-selected flow descriptors.
+.PHONY: ocah-integration-filelists-all
+ocah-integration-filelists-all:
+	$(call ocah_flow_run,ocah-integration-filelists)
 
 OCAH_UV_RUN := $(UV) --directory "$(OCAH_ROOT)" run --locked
 

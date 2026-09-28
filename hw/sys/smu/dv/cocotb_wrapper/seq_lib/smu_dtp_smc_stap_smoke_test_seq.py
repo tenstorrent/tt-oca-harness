@@ -19,18 +19,20 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagMasterSequence, OcahJtagState
 
+from seq_lib.smu_boundary_regs import (
+    SMU_SEP_STAP_ORDER,
+    ptap_prefixed,
+    stap_3dcr_scan_word,
+    stap_sib_pattern,
+)
 from seq_lib.smu_jtag_helpers import (
     DTP_DEFAULT_IDCODE,
     DTP_IR_IDCODE,
     DTP_IR_TAP_3DCR,
     DTP_IR_WIDTH,
     PTAP_3DCR_WIDTH,
-    SMU_STAP_ORDER,
     make_smu_jtag_tap,
     ptap_3dcr_value,
-    ptap_prefixed,
-    stap_3dcr_scan_word,
-    stap_sib_pattern,
 )
 
 EDGE_SAMPLE_CYCLES = 2000
@@ -129,11 +131,11 @@ class smu_dtp_smc_stap_smoke_test_seq:
         await jtag.step_tms(0)
 
         sib = stap_sib_pattern("smc", 1)
-        sib_word, sib_width = ptap_prefixed(sib, len(SMU_STAP_ORDER))
+        sib_word, sib_width = ptap_prefixed(sib, len(SMU_SEP_STAP_ORDER))
         await jtag.shift_dr(sib_word, sib_width, back_to_rti=True)
 
         stap_word, stap_width = stap_3dcr_scan_word(
-            "smc", config_hold=1, stap_sel=1, tms_hold=1, close_sib=0
+            "smc", config_hold=1, stap_sel=1, tms_hold=1, sib_en=0
         )
         value, width = ptap_prefixed(stap_word, stap_width)
         await jtag.shift_dr(value, width, back_to_rti=True)
@@ -143,7 +145,7 @@ class smu_dtp_smc_stap_smoke_test_seq:
         self._log(
             f"OBS SMC STAP TAP_3DCR selected "
             f"sib=0x{sib:x}->{sib_word:x}/{sib_width} "
-            f"3dcr=0x{stap_word:x}->{value:x}/{width} order={SMU_STAP_ORDER} "
+            f"3dcr=0x{stap_word:x}->{value:x}/{width} order={SMU_SEP_STAP_ORDER} "
             f"j2a_security_disable={sec}"
         )
 
@@ -248,9 +250,24 @@ class smu_dtp_smc_stap_smoke_test_seq:
             f"ptap_edges={sel['ptap_edges']} mismatch={sel['mismatch']} "
             f"oen_tcks={sel['oen_tcks']} unsel_smc={unsel['smc_edges']}"
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE", sel["smc_edges"], sel["ptap_edges"])
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-OEN", sel["oen_tcks"], EXPECTED_SHIFT_TCKS)
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH", sel["mismatch"], 0)
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE",
+            sel["smc_edges"],
+            sel["ptap_edges"],
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE-OEN",
+            sel["oen_tcks"],
+            EXPECTED_SHIFT_TCKS,
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE-TMS-MATCH",
+            sel["mismatch"],
+            0,
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
 
         # S3: TRST restores 2-bit PTAP 3DCR (config_hold blocks TLR), then
         # re-select and IDCODE with a non-zero DR payload.
@@ -297,7 +314,12 @@ class smu_dtp_smc_stap_smoke_test_seq:
             f"ptap_edges={byp['ptap_edges']} mismatch={byp['mismatch']} "
             f"oen_tcks={byp['oen_tcks']} payload=0x{PAYLOAD:08x}"
         )
-        sb.expect_eq("CHK-DTP-SMC-STAP-IDCODE-BFM", byp["smc_edges"], byp["ptap_edges"])
+        sb.expect_eq(
+            "CHK-DTP-SMC-STAP-IDCODE-BFM",
+            byp["smc_edges"],
+            byp["ptap_edges"],
+            evidence="CHK-DTP-SMC-STAP-IDCODE",
+        )
         sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-OEN", byp["oen_tcks"], EXPECTED_SHIFT_TCKS)
         sb.expect_eq("CHK-DTP-SMC-STAP-PAYLOAD-TMS-MATCH", byp["mismatch"], 0)
 

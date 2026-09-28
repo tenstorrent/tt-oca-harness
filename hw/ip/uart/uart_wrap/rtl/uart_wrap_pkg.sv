@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// UART Wrapper Package
+// Define address-map constants and AXI-Lite typedefs for the multi-UART wrap.
 //
-//-----------------------------------------------------------------------------
+// Defines the 32-bit csr_axil types, MAX_NUM_UARTS and the per-UART address spacing.
 
 package uart_wrap_pkg;
 
@@ -30,6 +29,6 @@ package uart_wrap_pkg;
   //////////////////////////////
 
   localparam int unsigned MAX_NUM_UARTS = 4;
-  localparam int unsigned UART_LOG_ENGINE_WRAP_SPACING = 32'h400; // Address spacing between UART instances
+  localparam int unsigned UART_LOG_ENGINE_WRAP_SPACING = 32'h400; // Address spacing between UART instances.
 
 endpackage

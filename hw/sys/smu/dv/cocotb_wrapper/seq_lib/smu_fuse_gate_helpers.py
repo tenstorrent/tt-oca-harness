@@ -79,7 +79,7 @@ def _sample(signal, name: str) -> int:
 
 
 def _now_ns() -> float:
-    return float(get_sim_time(units="ns"))
+    return float(get_sim_time(unit="ns"))
 
 
 async def wait_rise(signal, clk, *, timeout_cycles: int, name: str) -> int:

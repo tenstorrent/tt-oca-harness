@@ -78,8 +78,8 @@ class DeadWindow:
     watch: tuple[int, ...]
     write_ok: bool = True
     # Watched addresses hardware may change on its own (sep_reg_meta.reg_hw_updating,
-    # the same source the bit-bash reset walk uses). Excluded from the write-probe
-    # store compare -- see probe(). They stay in the snapshot for the read-alias
+    # the same source the bit-bash reset walk uses). Excluded from the per-probe
+    # change compare -- see probe(). They stay in the snapshot for the read-alias
     # compare, which does not care that they move.
     hw_updating: frozenset[int] = frozenset()
     # Watched addresses a sampled value cannot be written back to (woclr/woset).
@@ -531,13 +531,14 @@ class SepDeadspace:
                 f"{win.name} {item.op} 0x{item.addr:08x} refused with "
                 f"resp={resp}, not DECERR (allocated ends at +0x{win.alloc:x})"
             )
-        # A read of a dead offset must not return a live register's value.
-        # Write probes also require the allocated image to stay put: a
-        # DECERR/SLVERR that still stores is the wrap this entry exists to
-        # catch. Read probes skip that compare — health-test counters move
-        # on their own and would false-fail it.
+        # A read of a dead offset must not return a live register's value, and
+        # no probe -- read or write -- may change the allocated image: a refused
+        # write that still stores is the wrap this entry exists to catch, and a
+        # refused read that still reaches a unit can pop a FIFO or clear a
+        # read-to-clear field without returning anything that matches the
+        # snapshot.
         #
-        # The store compare covers software-WRITABLE registers only. A field
+        # The change compare covers software-WRITABLE registers only. A field
         # declared `sw = r` has no bus write path -- the generated regblock
         # answers a write to one with OKAY and no error (entropy_source_reg.sv
         # `is_valid_rw = '1'`, `cpuif_wr_err = '0'`) and stores nothing -- so
@@ -546,44 +547,53 @@ class SepDeadspace:
         # Leaving it in this compare instead measures the entropy source's own
         # health-test counters advancing over the microseconds the readback
         # takes, and reports that drift as a wrap. Every `sw = rw` register
-        # stays armed, so a write that aliases onto a control register is still
-        # caught -- at that control register, where the store actually lands.
-        if item.op == "w":
-            after = {}
-            skipped = 0
-            for addr in snap:
-                if addr in win.hw_updating:
-                    skipped += 1
-                    continue
-                resp_a, val, _to = await self._access(SepAxiOp.READ, addr)
-                if resp_a == RESP_OKAY:
-                    after[addr] = val
-            # Report the size of the store compare, not just its verdict. An
-            # exclusion that silently grows -- a schema change widening the
-            # software-read-only set onto a control register -- would otherwise
-            # shrink the coverage with an identical-looking log.
-            self.test.logger.info(
-                "deadspace scope: %s %s 0x%08x compared %d of %d watched "
-                "register(s); %d skipped as hardware-updating",
-                win.name,
-                item.op,
-                item.addr,
-                len(after),
-                len(snap),
-                skipped,
+        # stays armed, so an access that aliases onto a control register is
+        # still caught -- at that control register, where it lands.
+        after = {}
+        skipped = 0
+        unread: list[str] = []
+        for addr in snap:
+            if addr in win.hw_updating:
+                skipped += 1
+                continue
+            resp_a, val, to_a = await self._access(SepAxiOp.READ, addr)
+            if resp_a == RESP_OKAY and not to_a:
+                after[addr] = val
+            else:
+                unread.append(f"+0x{addr - win.base:x} resp={resp_a} timed_out={to_a}")
+        # An armed register that cannot be read back cannot show it did not
+        # move, so a failed re-read fails the probe instead of shrinking it.
+        if unread:
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} re-read of armed register(s) "
+                f"failed: {' '.join(unread)}"
             )
-            changed = {
-                addr: (snap[addr], after[addr])
-                for addr in snap
-                if addr in after and after[addr] != snap[addr]
-            }
-            if changed:
-                detail = " ".join(
-                    f"+0x{addr - win.base:x}:0x{old:08x}->0x{new:08x}"
-                    for addr, (old, new) in sorted(changed.items())
-                )
-                fails.append(
-                    f"{win.name} {item.op} 0x{item.addr:08x} changed live register(s) {detail}"
-                )
-                await self.restore(win, snap)
+        # Report the size of the change compare, not just its verdict. An
+        # exclusion that silently grows -- a schema change widening the
+        # software-read-only set onto a control register -- would otherwise
+        # shrink the coverage with an identical-looking log.
+        self.test.logger.info(
+            "deadspace scope: %s %s 0x%08x compared %d of %d watched "
+            "register(s); %d skipped as hardware-updating",
+            win.name,
+            item.op,
+            item.addr,
+            len(after),
+            len(snap),
+            skipped,
+        )
+        changed = {
+            addr: (snap[addr], after[addr])
+            for addr in snap
+            if addr in after and after[addr] != snap[addr]
+        }
+        if changed:
+            detail = " ".join(
+                f"+0x{addr - win.base:x}:0x{old:08x}->0x{new:08x}"
+                for addr, (old, new) in sorted(changed.items())
+            )
+            fails.append(
+                f"{win.name} {item.op} 0x{item.addr:08x} changed live register(s) {detail}"
+            )
+            await self.restore(win, snap)
         return fails

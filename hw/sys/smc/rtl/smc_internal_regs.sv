@@ -1,140 +1,258 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC Internal Registers Module
+// Aggregate SMC internal CSR blocks on the internal AXI-Lite and APB maps.
+//
+// Decodes filter, remap, mailbox, DFT, and base-config CSRs and exposes their structs.
+// Publishes the SMC address window, clock-gate enables, and AXI hang-detector config from
+// smc_base_config for consumers outside this module.
+// Carries DFD, TDR debug, and trace-sink memory sidebands plus DFT status and clock-gater
+// activity indicators.
+// The mailbox, filter and remap register blocks each run on their own idle-gated copy of
+// the SMC core clock. Writes to a filter whose FILTER_CONFIG.locked bit is set receive
+// DECERR; reads of a locked filter still complete.
 
 module smc_internal_regs #(
-  parameter int unsigned NumOutboundFilters = 16,
-  parameter int unsigned NumInboundFilters  = 16,
+  parameter int unsigned NumOutboundFilters = 16,  // Number of outbound filter register blocks;
+                                                   // sizes the outbound filter CSR arrays and the
+                                                   // AXI-Lite demux that selects one block per
+                                                   // 32-byte address window.
+  parameter int unsigned NumInboundFilters  = 16,  // Number of inbound filter register blocks;
+                                                   // sizes the inbound filter CSR arrays and the
+                                                   // AXI-Lite demux that selects one block per
+                                                   // 32-byte address window.
 
-  localparam type outbound_select_t = logic [$clog2(NumOutboundFilters)-1:0],
-  localparam type inbound_select_t  = logic [$clog2(NumInboundFilters)-1:0]
+  localparam type outbound_select_t = logic [$clog2(NumOutboundFilters)-1:0],  // Index that selects one outbound filter
+                                                                               // register block from the AXI-Lite address.
+  localparam type inbound_select_t  = logic [$clog2(NumInboundFilters)-1:0]  // Index that selects one inbound filter
+                                                                             // register block from the AXI-Lite address.
 ) (
-  input  logic clk_ref_i,
-  input  logic clk_smc_i,
+  input  logic clk_ref_i,               // Reference clock, used only by the DFD block for the CLA
+                                        // time tick.
+  input  logic clk_smc_i,               // SMC core clock for every CSR block, and the source of
+                                        // their gated clocks.
 
-  input  logic rst_primary_smc_clk_ni,
+  input  logic rst_primary_smc_clk_ni,  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock; resets every CSR block in this module.
 
-  // CSR structs for filter configurations
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [NumOutboundFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [NumOutboundFilters-1:0],
-  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [NumInboundFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [NumInboundFilters-1:0],
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_i [NumOutboundFilters-1:0],  // Hardware status of
+                                                                                                     // each outbound filter
+                                                                                                     // entry, from the output
+                                                                                                     // fabric.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_o [NumOutboundFilters-1:0],  // Register
+                                                                                                   // configuration of each
+                                                                                                   // outbound filter entry.
+  input  filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_i [NumInboundFilters-1:0],  // Hardware status of
+                                                                                                   // each inbound filter
+                                                                                                   // entry, from the input
+                                                                                                   // fabric.
+  output filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_o [NumInboundFilters-1:0],  // Register
+                                                                                                 // configuration of each
+                                                                                                 // inbound filter entry.
 
-  // CSR structs for remap configurations
-  output output_remap_reg_pkg::output_remap__out_t mR_ctrl_o [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
-  output output_remap_reg_pkg::output_remap__out_t xR_ctrl_o [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
-  output alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_o [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  output output_remap_reg_pkg::output_remap__out_t mR_ctrl_o [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // Register
+                                                                                                             // configuration of each
+                                                                                                             // M-mode output remap
+                                                                                                             // region.
+  output output_remap_reg_pkg::output_remap__out_t xR_ctrl_o [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Register
+                                                                                                              // configuration of each
+                                                                                                              // Xvisor output remap
+                                                                                                              // region.
+  output alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_o [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Register
+                                                                                                      // configuration of each
+                                                                                                      // alias remap region.
 
-  // APB interface from smc_local_xbar -- DFD
-  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,
-  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,
+  input  smc_pkg::smc_dfd_apb_req_t  apb_smc_dfd_reg_req_i,  // APB request from the local
+                                                             // crossbar for the CLA and DST
+                                                             // registers.
+  output smc_pkg::smc_dfd_apb_resp_t apb_smc_dfd_reg_resp_o,  // APB response to the local
+                                                              // crossbar.
 
-  // AXI-Lite interface from smc_internal_axi_lite_xbar -- filters
-  input  smc_pkg::smc_axil_32_64_req_t  axil_inbound_filter_ctrl_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_inbound_filter_ctrl_resp_o,
-  input  smc_pkg::smc_axil_32_64_req_t  axil_outbound_filter_ctrl_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t  axil_inbound_filter_ctrl_req_i,  // Request from the
+                                                                         // internal CSR crossbar
+                                                                         // for the inbound
+                                                                         // filter windows.
+  output smc_pkg::smc_axil_32_64_resp_t axil_inbound_filter_ctrl_resp_o,  // Response for the
+                                                                          // inbound filter
+                                                                          // windows.
+  input  smc_pkg::smc_axil_32_64_req_t  axil_outbound_filter_ctrl_req_i,  // Request from the
+                                                                          // internal CSR
+                                                                          // crossbar for the
+                                                                          // outbound filter
+                                                                          // windows.
+  output smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp_o,  // Response for the
+                                                                           // outbound filter
+                                                                           // windows.
 
-  // AXI-Lite interface from smc_internal_axi_lite_xbar -- remaps
-  input  smc_pkg::smc_axil_32_64_req_t  axil_mR_ctrl_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_mR_ctrl_resp_o,
-  input  smc_pkg::smc_axil_32_64_req_t  axil_xR_ctrl_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_xR_ctrl_resp_o,
-  input  smc_pkg::smc_axil_32_64_req_t  axil_aR_ctrl_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_aR_ctrl_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t  axil_mR_ctrl_req_i,  // Request from the internal CSR
+                                                             // crossbar for the M-mode remap
+                                                             // windows.
+  output smc_pkg::smc_axil_32_64_resp_t axil_mR_ctrl_resp_o,  // Response for the M-mode
+                                                              // remap windows.
+  input  smc_pkg::smc_axil_32_64_req_t  axil_xR_ctrl_req_i,  // Request from the internal CSR
+                                                             // crossbar for the Xvisor remap
+                                                             // windows.
+  output smc_pkg::smc_axil_32_64_resp_t axil_xR_ctrl_resp_o,  // Response for the Xvisor
+                                                              // remap windows.
+  input  smc_pkg::smc_axil_32_64_req_t  axil_aR_ctrl_req_i,  // Request from the internal CSR
+                                                             // crossbar for the alias remap
+                                                             // windows.
+  output smc_pkg::smc_axil_32_64_resp_t axil_aR_ctrl_resp_o,  // Response for the alias remap
+                                                              // windows.
 
-  // AXI-Lite interface from smc_internal_axi_lite_xbar -- Mailbox
-  input  smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req_i,  // Request from the internal CSR
+                                                             // crossbar for the mailbox
+                                                             // window.
+  output smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp_o,  // Response for the mailbox
+                                                              // window.
 
-  // AXI-Lite interface from smc_internal_axi_lite_xbar -- DFT CSR
-  input  smc_pkg::smc_axil_32_64_req_t  axil_dfx_csr_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t  axil_dfx_csr_req_i,  // Request from the internal CSR
+                                                             // crossbar for the DFX control
+                                                             // window.
+  output smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_o,  // Response for the DFX control
+                                                              // window.
 
-  // Mailbox interrupts
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] inbound_interrupt_o,
-  output logic [smc_pkg::NUM_MAILBOXES-1:0] outbound_interrupt_o,
+  output logic [smc_pkg::NUM_MAILBOXES-1:0] inbound_interrupt_o,  // Per-mailbox inbound data
+                                                                  // interrupt; smc_base routes
+                                                                  // it to the SMC CPU.
+  output logic [smc_pkg::NUM_MAILBOXES-1:0] outbound_interrupt_o,  // Per-mailbox outbound data
+                                                                   // interrupt; smc_base drives
+                                                                   // it out of the SMC.
 
-  // AXI-Lite interface from smc_internal_axi_lite_xbar -- base config CSR
-  input  smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req_i,
-  output smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp_o,
+  input  smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req_i,  // Request from the
+                                                                     // internal CSR crossbar
+                                                                     // for the base-config
+                                                                     // window.
+  output smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp_o,  // Response for the
+                                                                      // base-config window.
 
-  // SMC address window from smc_base_config
-  output smc_pkg::smc_axi_addr_t smc_global_base_o,
-  output smc_pkg::smc_axi_addr_t smc_local_base_o,
-  output logic [31:0]            smc_region_size_o,
+  output smc_pkg::smc_axi_addr_t smc_global_base_o,  // SMC global base address from
+                                                     // GLOBAL_BASE.
+  output smc_pkg::smc_axi_addr_t smc_local_base_o,  // SMC local base address from
+                                                    // LOCAL_BASE.
+  output logic [31:0]            smc_region_size_o,  // SMC region size in bytes from
+                                                     // REGION_SIZE.
 
-  // Clock-gate enables from smc_base_config (consumed outside this module)
-  output logic                cg_ctrl_dma_cg_en_o,
-  output logic                cg_ctrl_ob_filter_axi_cg_en_o,
-  output logic                cg_ctrl_ib_filter_axi_cg_en_o,
-  output logic                cg_ctrl_output_fabric_cg_en_o,
-  output logic                cg_ctrl_zeroer_cg_en_o,
-  output logic                cg_ctrl_i3c_cg_en_o,
-  output logic                cg_ctrl_avs_cg_en_o,
-  output logic                cg_ctrl_i2c_cg_en_o,
-  output logic                cg_ctrl_uart_cg_en_o,
-  output logic                cg_ctrl_tel_cg_en_o,
-  output smc_pkg::cg_hyster_t cg_ctrl_hysteresis_o,
+  output logic                cg_ctrl_dma_cg_en_o,  // Enables idle clock gating of the DMA
+                                                    // when high.
+  output logic                cg_ctrl_ob_filter_axi_cg_en_o,  // Enables idle clock gating of
+                                                              // the outbound filter datapath
+                                                              // when high.
+  output logic                cg_ctrl_ib_filter_axi_cg_en_o,  // Enables idle clock gating of
+                                                              // the inbound filter datapath
+                                                              // when high.
+  output logic                cg_ctrl_output_fabric_cg_en_o,  // Enables idle clock gating of
+                                                              // the output fabric when high.
+  output logic                cg_ctrl_zeroer_cg_en_o,  // Enables idle clock gating of the
+                                                       // zeroer when high.
+  output logic                cg_ctrl_i3c_cg_en_o,  // In smc, stops the I3C peripheral clock
+                                                    // when high.
+  output logic                cg_ctrl_avs_cg_en_o,  // In smc, stops the AVSBus controller
+                                                    // peripheral and reference clocks when
+                                                    // high.
+  output logic                cg_ctrl_i2c_cg_en_o,  // In smc, stops the I2C peripheral clock
+                                                    // when high.
+  output logic                cg_ctrl_uart_cg_en_o,  // In smc, stops the UART peripheral clock
+                                                     // when high.
+  output logic                cg_ctrl_tel_cg_en_o,  // In smc, stops the telemetry unit's gated
+                                                    // SMC and telemetry clocks when high.
+  output smc_pkg::cg_hyster_t cg_ctrl_hysteresis_o,  // Idle SMC core clock cycles every idle
+                                                     // clock gate waits before stopping its
+                                                     // clock; also used by the gates in this
+                                                     // module.
 
-  // AXI hang detector config from smc_base_config (to the detector instances in smc_base)
-  output logic        hang_det_sys_axi_enable_o,
-  output logic        hang_det_sys_axi_irq_en_o,
-  output logic        hang_det_sys_axi_irq_test_o,
-  output logic [19:0] hang_det_sys_axi_threshold_o,
-  output logic        hang_det_sep_axi_enable_o,
-  output logic        hang_det_sep_axi_irq_en_o,
-  output logic        hang_det_sep_axi_irq_test_o,
-  output logic [19:0] hang_det_sep_axi_threshold_o,
-  output logic        hang_det_data_accel_enable_o,
-  output logic        hang_det_data_accel_irq_en_o,
-  output logic        hang_det_data_accel_irq_test_o,
-  output logic [19:0] hang_det_data_accel_threshold_o,
+  output logic        hang_det_sys_axi_enable_o,  // Enables the system AXI hang detector.
+  output logic        hang_det_sys_axi_irq_en_o,  // Enables the system AXI hang interrupt.
+  output logic        hang_det_sys_axi_irq_test_o,  // Forces the system AXI hang interrupt
+                                                    // high.
+  output logic [19:0] hang_det_sys_axi_threshold_o,  // Stall cycles after which the system
+                                                     // AXI hang detector fires.
+  output logic        hang_det_sep_axi_enable_o,  // Enables the SEP AXI hang detector.
+  output logic        hang_det_sep_axi_irq_en_o,  // Enables the SEP AXI hang interrupt.
+  output logic        hang_det_sep_axi_irq_test_o,  // Forces the SEP AXI hang interrupt high.
+  output logic [19:0] hang_det_sep_axi_threshold_o,  // Stall cycles after which the SEP AXI
+                                                     // hang detector fires.
+  output logic        hang_det_data_accel_enable_o,  // Enables the data-accelerator AXI hang
+                                                     // detector.
+  output logic        hang_det_data_accel_irq_en_o,  // Enables the data-accelerator AXI hang
+                                                     // interrupt.
+  output logic        hang_det_data_accel_irq_test_o,  // Forces the data-accelerator AXI hang
+                                                       // interrupt high.
+  output logic [19:0] hang_det_data_accel_threshold_o,  // Stall cycles after which the
+                                                        // data-accelerator AXI hang detector
+                                                        // fires.
 
-  // DFD signals
-  output logic                                             cla_interrupt_o,
-  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,
+  output logic                                             cla_interrupt_o,  // Debug interrupt raised by
+                                                                             // a CLA external action.
+  output logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom_o,  // Custom CLA
+                                                                                     // external-action
+                                                                                     // outputs, one bit per
+                                                                                     // action.
 
-  output smc_pkg::xtrigger_t      xtrigger_ss_o,
-  input  wire smc_pkg::xtrigger_t xtrigger_ss_i,
+  output smc_pkg::xtrigger_t      xtrigger_ss_o,  // Cross-trigger outputs from the CLA to the
+                                                  // subsystem cross-trigger network, masked by the
+                                                  // DFD cross-trigger clock-halt mask.
+  input  wire smc_pkg::xtrigger_t xtrigger_ss_i,  // Cross-trigger inputs from the subsystem
+                                                  // cross-trigger network to the CLA.
 
-  // TDR debug control signals
-  input  wire logic tdr_dbg_ctrl_clock_stop_en_i,
-  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,
+  input  wire logic tdr_dbg_ctrl_clock_stop_en_i,  // Enables reporting a CLA halt-clock
+                                                   // action as a clock stop.
+  output logic      tdr_dbg_ctrl_clocks_stopped_by_cla_o,  // High while an enabled CLA
+                                                           // halt-clock action requests a
+                                                           // clock stop.
 
-  input  logic [1023:0] debug_bus_i,
-  output logic [7:0]    debug_marker_o,
+  input  logic [1023:0] debug_bus_i,    // Debug bus observed by the CLA, 64 lanes of 16 bits whose
+                                        // upper 32 lanes carry adopter signals; not synchronized to
+                                        // the SMC core clock.
+  output logic [7:0]    debug_marker_o,  // Debug marker byte driven by the CLA.
 
-  // Trace Sink Memory Interface
-  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,
-  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,
+  output trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]  trace_mem_req_o,  // Requests from the DFD
+                                                                                          // trace sink to the
+                                                                                          // external trace RAMs.
+  input  trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_resp_i,  // Read data from the
+                                                                                           // external trace RAMs.
 
-  // Test mode
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic test_en_i,               // Scan test mode enable, active-high; forces the CSR clock
+                                        // gates on and switches the DFD block onto scan_rst_ni.
+  input  logic scan_rst_ni,             // Scan reset, active-low, used by the DFD block while
+                                        // test_en_i is high.
 
-  // indicators for DFT status
-  input  logic mem_repair_done_i,
-  input  logic mem_repair_success_i,
-  input  logic mem_repair_abort_i,
-  input  logic mbist_done_i,
-  input  logic mbist_pass_i,
-  input  logic mbist_abort_i,
+  input  logic mem_repair_done_i,       // Memory repair has finished; reported in the DFX
+                                        // STATUS_SMU register.
+  input  logic mem_repair_success_i,    // Memory repair succeeded; reported in the DFX STATUS_SMU
+                                        // register.
+  input  logic mem_repair_abort_i,      // Memory repair was aborted; reported in the DFX STATUS_SMU
+                                        // register.
+  input  logic mbist_done_i,            // Memory BIST has finished; reported in the DFX STATUS_SMU
+                                        // register.
+  input  logic mbist_pass_i,            // Memory BIST passed; reported in the DFX STATUS_SMU
+                                        // register.
+  input  logic mbist_abort_i,           // Memory BIST was aborted; reported in the DFX STATUS_SMU
+                                        // register.
 
-  // Clock gater activity indicators
-  output logic mailbox_clk_active_o,
-  output logic mailbox_bus_active_o,
-  output logic ob_filter_clk_active_o,
-  output logic ob_filter_bus_active_o,
-  output logic ib_filter_clk_active_o,
-  output logic ib_filter_bus_active_o,
-  output logic mmode_remap_clk_active_o,
-  output logic mmode_remap_bus_active_o,
-  output logic xvisor_remap_clk_active_o,
-  output logic xvisor_remap_bus_active_o,
-  output logic alias_remap_clk_active_o,
-  output logic alias_remap_bus_active_o
+  output logic mailbox_clk_active_o,    // High while the mailbox gated clock is running.
+  output logic mailbox_bus_active_o,    // High while the mailbox register port has a
+                                        // transaction outstanding.
+  output logic ob_filter_clk_active_o,  // High while the outbound filter register gated clock is
+                                        // running.
+  output logic ob_filter_bus_active_o,  // High while the outbound filter register port has a
+                                        // transaction outstanding.
+  output logic ib_filter_clk_active_o,  // High while the inbound filter register gated clock is
+                                        // running.
+  output logic ib_filter_bus_active_o,  // High while the inbound filter register port has a
+                                        // transaction outstanding.
+  output logic mmode_remap_clk_active_o,  // High while the M-mode remap register gated clock is
+                                          // running.
+  output logic mmode_remap_bus_active_o,  // High while the M-mode remap register port has a
+                                          // transaction outstanding.
+  output logic xvisor_remap_clk_active_o,  // High while the Xvisor remap register gated clock
+                                           // is running.
+  output logic xvisor_remap_bus_active_o,  // High while the Xvisor remap register port has a
+                                           // transaction outstanding.
+  output logic alias_remap_clk_active_o,  // High while the alias remap register gated clock is
+                                          // running.
+  output logic alias_remap_bus_active_o  // High while the alias remap register port has a
+                                         // transaction outstanding.
 );
 
   // Clock-gate enables from smc_base_config consumed within this module
@@ -151,7 +269,6 @@ module smc_internal_regs #(
   localparam int unsigned AXIL_OUTSTANDING_TX = smc_internal_axi_lite_xbar_pkg::XbarCfg.MaxSlvTrans;
 
   // DFD config from the DFT/DFD CSR block
-  logic [cla_pkg::XTRIGGER_WIDTH-1:0] debug_chiplet_enable;
   smc_pkg::dfd_enable_t                   dfd_enables;
   tt_dbm_pkg::DbgMuxSelMmr_s          dbg_mux_sel_csr;
 
@@ -167,7 +284,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) mailbox_cg (
+  ) u_mailbox_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -234,7 +351,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) outbound_filter_reg_cg (
+  ) u_outbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -281,7 +398,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) outbound_filter_axil_demux (
+  ) u_outbound_filter_axil_demux (
     .clk_i            (outbound_filter_clk),
     .rst_ni           (rst_primary_smc_clk_ni),
     .test_i           (test_en_i),
@@ -324,7 +441,7 @@ module smc_internal_regs #(
         .SpillB      (1'b0),
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
-      ) outbound_filter_axi_lite_demux (
+      ) u_outbound_filter_axi_lite_demux (
         .clk_i            (outbound_filter_clk),
         .rst_ni           (rst_primary_smc_clk_ni),
         .test_i           (test_en_i),
@@ -339,7 +456,7 @@ module smc_internal_regs #(
       );
 
       // Filter control register
-      filter_ctrl_reg outbound_filter_ctrl_reg (
+      filter_ctrl_reg u_outbound_filter_ctrl_reg (
         .clk            (outbound_filter_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -374,7 +491,7 @@ module smc_internal_regs #(
 
         .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
         .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-      ) err_slv (
+      ) u_err_slv (
         .clk_i          (outbound_filter_clk),
         .rst_ni         (rst_primary_smc_clk_ni),
         .axil_req_i     (locked_reg_req),
@@ -405,7 +522,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) inbound_filter_reg_cg (
+  ) u_inbound_filter_reg_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -447,7 +564,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) inbound_filter_axil_demux (
+  ) u_inbound_filter_axil_demux (
     .clk_i            (inbound_filter_clk),
     .rst_ni           (rst_primary_smc_clk_ni),
     .test_i           (test_en_i),
@@ -489,7 +606,7 @@ module smc_internal_regs #(
         .SpillB      (1'b0),
         .SpillAr     (1'b1),
         .SpillR      (1'b0)
-      ) inbound_filter_axi_lite_demux (
+      ) u_inbound_filter_axi_lite_demux (
         .clk_i            (inbound_filter_clk),
         .rst_ni           (rst_primary_smc_clk_ni),
         .test_i           (test_en_i),
@@ -504,7 +621,7 @@ module smc_internal_regs #(
       );
 
       // Filter control register
-      filter_ctrl_reg inbound_filter_ctrl_reg (
+      filter_ctrl_reg u_inbound_filter_ctrl_reg (
         .clk            (inbound_filter_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -539,7 +656,7 @@ module smc_internal_regs #(
 
         .axil_req_t     (smc_pkg::smc_axil_32_64_req_t),
         .axil_resp_t    (smc_pkg::smc_axil_32_64_resp_t)
-      ) err_slv (
+      ) u_err_slv (
         .clk_i       (inbound_filter_clk),
         .rst_ni      (rst_primary_smc_clk_ni),
         .axil_req_i  (locked_reg_req),
@@ -560,7 +677,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) mmode_remap_cg (
+  ) u_mmode_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -608,7 +725,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) mmode_remap_axil_demux (
+  ) u_mmode_remap_axil_demux (
     .clk_i           (mR_local_clk),
     .rst_ni          (rst_primary_smc_clk_ni),
     .test_i          (test_en_i),
@@ -622,7 +739,7 @@ module smc_internal_regs #(
 
   generate
     for (genvar i = 0; i < smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS; i++) begin : gen_mmode_remap_reg
-      output_remap_reg smc_mmode_remap_reg (
+      output_remap_reg u_smc_mmode_remap_reg (
         .clk            (mR_local_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -661,7 +778,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) xvisor_remap_cg (
+  ) u_xvisor_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -709,7 +826,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) xvisor_remap_axil_demux (
+  ) u_xvisor_remap_axil_demux (
     .clk_i           (xR_local_clk),
     .rst_ni          (rst_primary_smc_clk_ni),
     .test_i          (test_en_i),
@@ -725,7 +842,7 @@ module smc_internal_regs #(
     for (
         genvar i = 0; i < smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS; i++
     ) begin : gen_xvisor_remap_reg
-      output_remap_reg smc_xvisor_remap_reg (
+      output_remap_reg u_smc_xvisor_remap_reg (
         .clk            (xR_local_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -764,7 +881,7 @@ module smc_internal_regs #(
     .OutstandingTx(AXIL_OUTSTANDING_TX), // all in-flight txns this AXI-Lite port admits
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) alias_remap_cg (
+  ) u_alias_remap_cg (
     .clk_i           (clk_smc_i),
     .rst_ni          (rst_primary_smc_clk_ni),
 
@@ -813,7 +930,7 @@ module smc_internal_regs #(
     .SpillB      (1'b0),
     .SpillAr     (1'b1),
     .SpillR      (1'b0)
-  ) axi_alias_remap_demux (
+  ) u_axi_alias_remap_demux (
     .clk_i            (aR_local_clk),
     .rst_ni           (rst_primary_smc_clk_ni),
     .test_i           (test_en_i),
@@ -827,7 +944,7 @@ module smc_internal_regs #(
 
   generate
     for (genvar i = 0; i < smc_pkg::NUM_ALIAS_REMAP_REGIONS; i++) begin : gen_alias_remap_reg
-      alias_remap_reg smc_alias_remap_reg (
+      alias_remap_reg u_smc_alias_remap_reg (
         .clk            (aR_local_clk),
         .arst_n         (rst_primary_smc_clk_ni),
 
@@ -897,7 +1014,7 @@ module smc_internal_regs #(
   // DFT STATUS WRAP //
   /////////////////////
 
-  smc_dfx_ctrl_status_wrap smc_dfx_ctrl_status_wrap (
+  smc_dfx_ctrl_status_wrap u_smc_dfx_ctrl_status_wrap (
     .clk_i                  (clk_smc_i),
     .rst_ni                 (rst_primary_smc_clk_ni),
     .axil_dfx_csr_req_i     (axil_dfx_csr_req_i),
@@ -908,7 +1025,6 @@ module smc_internal_regs #(
     .mbist_done_i           (mbist_done_i),
     .mbist_pass_i           (mbist_pass_i),
     .mbist_abort_i          (mbist_abort_i),
-    .debug_chiplet_enable_o (debug_chiplet_enable),
     .dfd_enables_o          (dfd_enables),
     .dbg_mux_sel_csr_o      (dbg_mux_sel_csr)
   );
@@ -917,7 +1033,7 @@ module smc_internal_regs #(
   // BASE CONFIG WRAP //
   //////////////////////
 
-  smc_base_config_wrap smc_base_config_wrap (
+  smc_base_config_wrap u_smc_base_config_wrap (
     .clk_i                           (clk_smc_i),
     .rst_n_i                         (rst_primary_smc_clk_ni),
 

@@ -29,6 +29,14 @@ run_modes = ["smoke"]
 
 # BFM: SEP outstanding stall timeout (tb_sep_axi_r_hold); not irq_test.
 [[tests]]
+name = "smc_hang_detector_disable_test"
+module = "smc_hang_detector_disable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_hang_detector_timeout_test"
 module = "smc_hang_detector_timeout_test"
 seed = 1

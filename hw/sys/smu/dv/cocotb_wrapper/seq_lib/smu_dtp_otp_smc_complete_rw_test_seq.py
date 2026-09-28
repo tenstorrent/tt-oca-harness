@@ -169,6 +169,7 @@ class smu_dtp_otp_smc_complete_rw_test_seq:
             "CHK-OTP-MAP-RW",
             tuple(trip),
             tuple((p, p, p) for p in PATTERNS),
+            evidence="OTP_MAP_RW_OK",
         )
 
         await self._otp_wr(jtag, RESERVED_ADDRS[0], REWRITE0, "RES0-RE")

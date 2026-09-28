@@ -14,7 +14,7 @@ export_include_dirs:
   - upstream/hw/ip/prim/rtl
 
 sources:
-  - target: any(dtp, cross_trigger, sep, smc, opentitan_smu, smu, key_manager)
+  - target: any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager)
     files:
       - upstream/hw/ip/prim/rtl/prim_util_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_count_pkg.sv
@@ -25,35 +25,58 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
   # prim_generic cells that the current synth overlay replaces.
   # Add a cell here only if the overlay supplies a replacement.
-  - target: all(any(dtp, cross_trigger, sep, smc, opentitan_smu, smu, key_manager), not(synth))
+  - target: all(any(dtp, cross_trigger, drbg, uart, system_timer_octs, entropy_source, sep, smc, opentitan_smu, smu, key_manager), not(synth))
     files:
       - upstream/hw/ip/prim_generic/rtl/prim_and2.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
       - upstream/hw/ip/prim_generic/rtl/prim_clock_buf.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_clock_gating.sv
       - upstream/hw/ip/prim_generic/rtl/prim_clock_inv.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_clock_mux2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop.sv
       - upstream/hw/ip/prim_generic/rtl/prim_flop_2sync.sv
+      - upstream/hw/ip/prim_generic/rtl/prim_inv.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xnor2.sv
       - upstream/hw/ip/prim_generic/rtl/prim_xor2.sv
   # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is
-  # defined; the dtp and cross_trigger graphs receive prim_flop_2sync above
-  # but not the any(opentitan_smu, sep, smu) file set that carries the delay
-  # model.
-  - target: all(any(dtp, cross_trigger), simulation)
+  # defined; the dtp, cross_trigger, uart and system_timer_octs graphs receive
+  # prim_flop_2sync above but not the any(opentitan_smu, sep, smu) file set
+  # that carries the delay model.
+  - target: all(any(dtp, cross_trigger, uart, system_timer_octs), simulation)
     files:
       - upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv
+
+  # Standalone entropy_source IP bench. Keep this closure separate from the
+  # subsystem-wide OpenTitan graph below.
+  - target: entropy_source
+    files:
+      - upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
+      - upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
+      - upstream/hw/ip/prim/rtl/prim_max_tree.sv
+      - upstream/hw/ip/prim/rtl/prim_sha2_pad.sv
+      - upstream/hw/ip/prim/rtl/prim_sha2.sv
+      - upstream/hw/ip/prim/rtl/prim_sha2_32.sv
+      - upstream/hw/ip/prim/rtl/prim_sparse_fsm_flop.sv
+      - upstream/hw/ip/prim/rtl/prim_sum_tree.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_markov_ht.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_repcnt_ht.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_watermark_reg.sv
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
 
   # Leaf primitives shared by every subsystem graph. They live only here, not in
   # the big any(opentitan_smu, sep, smu) list below: that list also carries
   # hw/sys/sep RTL (sep_pkg.sv), which the smc and key_manager builds must not
   # pull in.
-  - target: any(sep, smc, opentitan_smu, smu, key_manager)
+  - target: any(drbg, sep, smc, opentitan_smu, smu, key_manager, uart)
     files:
       - upstream/hw/ip/prim/rtl/prim_alert_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_sec_anchor_buf.sv
       - upstream/hw/ip/prim/rtl/prim_sec_anchor_flop.sv
       - upstream/hw/ip/prim/rtl/prim_diff_decode.sv
       - upstream/hw/ip/prim/rtl/prim_alert_sender.sv
-      - upstream/hw/ip/prim_generic/rtl/prim_buf.sv
       - upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv
       - upstream/hw/ip/prim/rtl/prim_fifo_async.sv
       - upstream/hw/ip/prim/rtl/prim_rst_sync.sv
@@ -63,7 +86,7 @@ sources:
 
   # Held out of the big any(opentitan_smu, sep, smu) list for the same reason as
   # the group above, but smc has no LFSR consumer so it stays off this target.
-  - target: any(opentitan_smu, sep, smu, key_manager)
+  - target: any(drbg, opentitan_smu, sep, smu, key_manager)
     files:
       # prim_cipher_pkg supplies the PRINCE/PRESENT S-boxes prim_lfsr uses, so it
       # has to be compiled ahead of it.
@@ -99,7 +122,7 @@ sources:
   # hmac_wrapper.sv, kmac_wrapper.sv, sep_crypto_otbn_wrapper.sv, sep.sv's secure_dma
   # integration) unconditionally instantiate these OpenTitan IP cores, so any build
   # that compiles SEP/SMU needs this whole file list to elaborate cleanly.
-  - target: any(opentitan_smu, sep, smu)
+  - target: any(drbg, opentitan_smu, sep, smu)
     files:
       # Primitive packages.
       - upstream/hw/ip/prim/rtl/prim_sha2_pkg.sv
@@ -214,6 +237,10 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_ram_1r1w.sv
       - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
 
+  # The packages and primitives above are shared with `drbg`; the IP cores below
+  # are not, except for CSRNG and EDN.
+  - target: any(opentitan_smu, sep, smu)
+    files:
       # Entropy source helpers instantiated by SEP wrappers.
       - upstream/hw/ip/entropy_src/rtl/entropy_src_adaptp_ht.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_cntr_reg.sv
@@ -223,6 +250,10 @@ sources:
       - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm_pkg.sv
       - upstream/hw/ip/entropy_src/rtl/entropy_src_main_sm.sv
 
+  # drbg.sv instantiates csrng and edn directly, without the surrounding SEP
+  # crypto complex.
+  - target: any(drbg, opentitan_smu, sep, smu)
+    files:
       # OpenTitan reggen-generated register tops.
       - upstream/hw/ip/csrng/rtl/csrng_block_encrypt.sv
       - upstream/hw/ip/csrng/rtl/csrng_cmd_stage.sv
@@ -238,6 +269,9 @@ sources:
       - upstream/hw/ip/edn/rtl/edn_main_sm.sv
       - upstream/hw/ip/edn/rtl/edn_reg_top.sv
       - upstream/hw/ip/edn/rtl/edn.sv
+
+  - target: any(opentitan_smu, sep, smu)
+    files:
       - upstream/hw/ip/aon_timer/rtl/aon_timer_core.sv
       - upstream/hw/ip/aon_timer/rtl/aon_timer_reg_top.sv
       - upstream/hw/ip/aon_timer/rtl/aon_timer.sv
@@ -254,6 +288,10 @@ sources:
       - upstream/hw/ip/spi_host/rtl/spi_host_window.sv
       - upstream/hw/ip/spi_host/rtl/spi_host.sv
 
+  # csrng_block_encrypt instantiates aes_cipher_core, so the AES cipher subtree
+  # is part of the drbg closure.
+  - target: any(drbg, opentitan_smu, sep, smu)
+    files:
       # AES.
       - upstream/hw/ip/aes/rtl/aes_cipher_control.sv
       - upstream/hw/ip/aes/rtl/aes_cipher_control_fsm.sv
@@ -292,6 +330,8 @@ sources:
       - upstream/hw/ip/aes/rtl/aes_sub_bytes.sv
       - upstream/hw/ip/aes/rtl/aes.sv
 
+  - target: any(opentitan_smu, sep, smu)
+    files:
       # HMAC.
       - upstream/hw/ip/hmac/rtl/hmac_reg_top.sv
       - upstream/hw/ip/hmac/rtl/hmac_core.sv

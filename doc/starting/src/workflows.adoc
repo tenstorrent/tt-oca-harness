@@ -105,10 +105,10 @@ RDL sources. The flow lives in `hw/common/regs/` (discovery, classification, and
 == DV Firmware
 
 Per-subsystem DV firmware libraries (runtime **drivers**, not tests) are built via
-`make dv-fw-libs [TARGET=key_manager|sep|smc]` (alias of `ocah-dv-fw-libs`). Each
+`make dv-fw-libs [TARGET=sep|smc]` (alias of `ocah-dv-fw-libs`). Each
 subsystem owns a `fw.mk` + `toolchain.mk` under `hw/{ip,sys}/<name>/dv/fw/` and builds
-as an independent recursive sub-make so the target CPUs (PicoRV32/KM, VeeR EL2/SEP,
-Rocket/SMC) never share ISA/ABI/libc flag state.
+as an independent recursive sub-make so the target CPUs (VeeR EL2/SEP, Rocket/SMC)
+never share ISA/ABI/libc flag state.
 
 The RISC-V toolchain is provided by the project container or selected via
 `RISCV_TOOLCHAIN`. The build flow lives in `hw/common/dv/fw/`.
@@ -125,7 +125,7 @@ make dv-fw-tests TARGET=smc TEST=version_id   # one test
 
 Each subsystem's tests link against one of that subsystem's **link modes** —
 memory targets discovered from `link/modes/*.ld` (e.g. SMC: `sram`, `rom`; SEP:
-`tcm`; KM: `vrom`) — and output artifacts fold the mode into their name
+`tcm`) — and output artifacts fold the mode into their name
 (`<test>.<mode>.elf`, e.g. `version_id.sram.elf`). A test uses its subsystem's
 default mode unless it overrides `FW_TEST_MODE_<test>`; see `hw/common/dv/fw/compile.mk`
 for the full mechanism.
@@ -164,87 +164,116 @@ Outputs land under `hw/sys/smc/bootrom/dummy/build/tests/dummy/` (e.g.
 `.spi` variants from the shared SMC post-process step).
 
 Build the production ROM from the same container (self-contained Makefile, not
-the shared `compile.mk` engine):
+the shared `compile.mk` engine).
+See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/README.md[`hw/sys/smc/bootrom/prod/README.md`] and
+https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/smc/bootrom/prod/doc/index.adoc[`hw/sys/smc/bootrom/prod/doc/`] for
+the full target list, build variables, and architecture.
+
+The build splits across two halves so each runs in the right environment:
+
+* `toolchain-images` — RISC-V/picolibc compilation; use a container when `RISCV_TOOLCHAIN` is unset.
+* `pack-images` — image conversion via `uv`; can run in the container or on the host.
 
 ```bash
-# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
-make -C hw/sys/smc/bootrom/prod
+# Compile and link (use the container toolchain when RISCV_TOOLCHAIN is unset):
+scripts/docker-run.sh run-here make -C hw/sys/smc/bootrom/prod toolchain-images
+
+# Convert outputs to ROM preload formats on the host:
+make -C hw/sys/smc/bootrom/prod pack-images
+
+# Or build both in one step when the host has a picolibc-enabled toolchain:
+RISCV_TOOLCHAIN=/path/to/toolchain/bin make -C hw/sys/smc/bootrom/prod
 ```
+
+Build products land under `build/release/` (or `build/debug/` with `BUILD_TYPE=debug`):
+`bin/` holds the ELF and binary image, `hex/` the ROM formats, and `disasm/` the disassembly.
 
 === SEP boot ROM
 
 `hw/sys/sep/bootrom/prod/` is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
 It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via `NONFREE_BOOTCODE_SOURCES` (same pattern as the SMC prod ROM).
+See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md[`hw/sys/sep/bootrom/prod/README.md`] and
+https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc[`hw/sys/sep/bootrom/prod/doc/`] for
+the full target list, build variables, key provisioning, and boot flow.
 
 The ROM supports two SPI transports selected at build time by `BOOT_SPI_CONTROLLER_OT`; the unused driver is dropped by `--gc-sections` at link time.
-The open-source driver uses the OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`).
-A proprietary memory-mapped SPI controller is also supported, plugged via the SEP extension port (`BOOT_SPI_CONTROLLER_OT=0`), but is optional from the OCAH open tree's perspective.
+The open-source OpenTitan SPI host (`BOOT_SPI_CONTROLLER_OT=1`) is the recommended transport and the one to use from the open tree.
+A proprietary memory-mapped SPI controller (`BOOT_SPI_CONTROLLER_OT=0`) is also supported via the SEP extension port but is not available in the open tree.
+The flag defaults to `0` in the Makefile; the named targets `ot-toolchain-images` and `ot-pio-toolchain-images` set it to `1` for you.
 
-The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make pack-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
+The DV `sep` testbench has no SPI flash, so the ROM stubs SPI (`src/sep_spi.c`) and boots instead from the SMC-SRAM manifest path; `make oca-images` builds and packs the matching manifest+BL1 image (`build/smc_mem.hex`).
 
-The build is split into two halves so each can run in the correct environment:
+The build splits into two halves so each can run in the correct environment:
 
-* `toolchain-images` — RISC-V/picolibc compilation; use the container toolchain when `RISCV_TOOLCHAIN` is unset.
-* `pack-images` — pure Python manifest packing via the `tt-oca-manifest` submodule (requires `uv`); runs on the host without the container.
+* `ot-toolchain-images` — RISC-V/picolibc compilation with the OpenTitan SPI host; use the container when `RISCV_TOOLCHAIN` is unset.
+* `key-digests` and `oca-images` — pure Python via `uv`, which the container carries; can run in the container or on the host.
+  `oca-images` is transport-agnostic: the same manifest+BL1 payload works with all three ROM variants, so no extra flags are needed after `ot-toolchain-images`.
+
+The manifest-tool submodule must be initialized before running `oca-images`:
 
 ```bash
-# OpenTitan SPI-host build (outputs to build_ot/):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
-make -C hw/sys/sep/bootrom/prod ot-toolchain-images
-
-# Signed (secure boot) SPI flash image — requires the tt-oca-manifest submodule:
-# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
-make -C hw/sys/sep/bootrom/prod secure_boot_spi
-
-# Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
-make -C hw/sys/sep/bootrom/prod encrypted_boot_spi
+git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
 ```
 
-Outputs land under `hw/sys/sep/bootrom/prod/build_ot/` (signed/encrypted images land in `build/`):
+DV test manifest configs live under `configs/`; the corresponding test signing keys are in
+`tests/signing_keys/` (debug builds only — a release build reads public keys from
+`release_signing_keys/` and refuses to produce images anchored on test keys).
+
+```bash
+# Recommended: compile with the OpenTitan SPI host (outputs to build_ot/):
+# - Prefix with `scripts/docker-run.sh run-here` to run in the container
+make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+
+# Pack all OCA test images (signed, encrypted, per-ROM-key, and negative cases):
+make -C hw/sys/sep/bootrom/prod oca-images
+```
+
+ROM images land under `build_ot/` (the OpenTitan variant's build directory):
 
 * `boot_rom.vmem` — 64-bit VMEM for the Boot ROM responder.
 * `boot_rom.itcm.hex` — ROM `.text` as ICCM-relative byte hex.
 * `boot_rom.dtcm.hex` — `.data`/`.bss` initial image as DCCM-relative byte hex.
+
+Packed flash images from `oca-images` always land under `build/`, regardless of which ROM variant was compiled:
+
 * `smc_mem.hex` — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.
-* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — SPI flash preload images (built by the corresponding targets above).
+* `secure_boot.spi_preload` / `encrypted_boot.spi_preload` — signed and AES-encrypted SPI flash preload images.
 
-=== KM boot ROM
+=== KM application ROM
 
-The Key Manager (KM) subsystem (PicoRV32) has no dedicated `bootrom/` directory.
-Its ROM firmware lives in the DV firmware tree at `hw/ip/key_manager/dv/fw/` and is built by the same shared engine (`compile.mk`) used for DV tests.
+The Key Manager (KM) subsystem (PicoRV32) runs its firmware from ROM.
+That firmware is not only a boot loader: it is the KM runtime, serving the SEP mailbox, until the SEP loads alternative firmware into KM SRAM and hands over to it.
+It therefore lives in `hw/ip/key_manager/approm/prod/` rather than a `bootrom/` directory, and builds with a self-contained `Makefile` there.
 
-Two link modes are discovered from `hw/ip/key_manager/dv/fw/link/modes/`:
-
-* `vrom` (default for test images) — the ROM carries only the interrupt-vector sections (`.text.reset`, `.text.irq_vec`, `.text.irq_handler`); the rest of the code runs from a side-loaded Virtual ROM (VROM).
-* `rom` — the entire image runs from ROM with no VROM.
-  The production entry point (`production/rom_main`) and all `sep_images/` entries always use this mode.
-
-The production entry point is `production/rom_main/rom_main.c`.
-It runs forever serving the KM mailbox and is not enumerated by the test regression (only `tests/test_*` directories are).
-The SEP UVM testbench loads all KM ROM images via `+KM_ROM_HEX_FILE`.
+The entry point is `src/rom_main.c`.
+The whole image — vectors, code, constants and the `.data` load image — links into the 16 KB ROM through `link/km_production.ld`.
 
 ```bash
-# Build the production ROM entry (uses the standard DV firmware dispatcher):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
-make dv-fw-tests TARGET=key_manager TEST=rom_main
+# Build the application ROM; without RISCV_TOOLCHAIN it builds in the toolchain container
+make -C hw/ip/key_manager/approm/prod
+
+# Boot and unrecoverable-fault SRAM wipes disabled, in a separate build directory
+make -C hw/ip/key_manager/approm/prod KM_BOOT_WIPE=0 KM_UNREC_WIPE=0 BUILD_DIR=build/nowipe
 ```
 
-Outputs land under `hw/ip/key_manager/dv/fw/build/tests/rom_main/`:
+Outputs land under `hw/ip/key_manager/approm/prod/build/` (or `BUILD_DIR`):
 
-* `rom_main.rom.elf` — linked ELF.
+* `rom_main.elf` — linked ELF, with `rom_main.map` and `rom_main.dis` beside it.
 * `rom_main.rom.hex` — address-zero-based Verilog hex for the ROM responder.
 * `rom_main.rom.parhex` — parity-annotated hex (used by the KM RTL's ROM model).
-* `rom_main.rom.sym` / `rom_main.sym` — symbol tables (the bare `rom_main.sym` lets the SEP UVM resolve firmware symbols from the `rom`-mode image).
+* `rom_main.sym` — address-sorted symbol table.
+
+SEP DV builds its own wipe-disabled copy through `hw/sys/sep/dv/cocotb/tests/km_fw` (`make rom_main`), which `run_dv.py` drives for tests that declare `mode = "km_rom_main"`.
 
 == Simulation and Testing
 
-We will use open source tools as much as possible and hence will focus
+The OCA Harness uses open source tools as much as possible and hence focuses
 on using Verilator for unit tests. Verilator has comprehensive
 SystemVerilog (SV) support and is widely used in industry.
 
 === Testbench and Test Sequence
 
-Most components use Cocotb Python tests. The DTP also has a nonfree UVM
+Most components use Cocotb Python tests. Some DUTs also have a nonfree UVM
 test workflow using VCS. The testbench is run and configured using a Python
 script. Run the following command to see all available options:
 
@@ -391,7 +420,7 @@ make ocah-synth-pdks
 
 This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
 used for synthesis may be selected with `TECH`. `BLOCK` is a `flow.mk` top
-(`dtp`, `sep`, `smc`, `smu`, `aou`), not an IP name. Discovery and `TECH=` are
+(`dtp`, `sep`, `smc`, `smu`, `aou`), not an IP name. Details on discovery and `TECH=` are
 in https://github.com/tenstorrent/tt-oca-harness/blob/main/flows/synth/yosys/README.md[`flows/synth/yosys/README.md`].
 
 [WARNING]
@@ -723,11 +752,13 @@ contributor enables the hook.
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
+`lint-sv-comments`, `lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
 `regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
 (`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
 Verilator, and reviewdog artifacts; jobs report through
-`.github/actions/reviewdog-report`.
+`.github/actions/reviewdog-report`. A Checks API HTTP 5xx is retried.
+`lint-sv-verilator` and `lint-python` still pass or fail on the tool exit
+status when that post does not succeed.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -770,6 +801,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `lint-spelling`
 | `lint-spelling`
 | `make ocah-lint-spelling` and `make ocah-lint-spelling-fix`
+
+| `lint-sv-comments`
+| `lint-sv-comments`
+| `make ocah-lint-sv-comments`
 
 | `lint-yaml`
 | `lint-yaml`

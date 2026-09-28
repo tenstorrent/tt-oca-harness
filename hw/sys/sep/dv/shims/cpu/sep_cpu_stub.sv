@@ -9,7 +9,7 @@
 // CPU's LSU master, it drives the LSU request net directly from the tb's
 // assembled cocotb-AXI struct (sep_uvm_top.lsu_req_drive, an upward reference)
 // and the tb reads back the LSU response net by hierarchical name
-// (u_dut.sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
+// (u_dut.u_sep_cpu.lsu_axi_resp). No `force` is used in the stub model -- the LSU
 // request is single-driven, so it is driven, not forced.
 //
 // This stub removes el2_veer_wrapper, the IFU demux, the debug/DMI logic, and
@@ -66,36 +66,36 @@ module sep_cpu
   input logic test_en_i,  // DFT test-enable
 
   // DMI port for uncore
-  input  logic        dmi_core_enable,
-  input  logic        dmi_uncore_enable,
-  output logic        dmi_uncore_en,
-  output logic        dmi_uncore_wr_en,
-  output logic [6:0]  dmi_uncore_addr,
-  output logic [31:0] dmi_uncore_wdata,
-  input  logic [31:0] dmi_uncore_rdata,
-  output logic        dmi_active,
+  input  logic        dmi_core_enable_i,
+  input  logic        dmi_uncore_enable_i,
+  output logic        dmi_uncore_en_o,
+  output logic        dmi_uncore_wr_en_o,
+  output logic [6:0]  dmi_uncore_addr_o,
+  output logic [31:0] dmi_uncore_wdata_o,
+  input  logic [31:0] dmi_uncore_rdata_i,
+  output logic        dmi_active_o,
 
-  input logic [31:1] rst_vec,  // PC to jump to @ reset (unused: no CPU in the stub)
-  input logic [31:1] nmi_vec,  // PC to jump to @ NMI
-  input logic [31:1] jtag_id,
+  input logic [31:1] rst_vec,    // PC to jump to @ reset (unused: no CPU in the stub)
+  input logic [31:1] nmi_vec_i,  // PC to jump to @ NMI
+  input logic [31:1] jtag_id_i,
 
   // IRQs
-  input logic                       nmi_int,
-  input logic                       timer_int,
-  input logic                       soft_int,
-  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req,
+  input logic                       nmi_int_i,
+  input logic                       timer_int_i,
+  input logic                       soft_int_i,
+  input logic [sep_pkg::SEP_CPU_IRQ_WIDTH-1:0] extintsrc_req_i,
 
-  output sep_cpu_trace_t sep_cpu_trace,
+  output sep_cpu_trace_t sep_cpu_trace_o,
 
-  output logic iccm_ecc_single_error,
-  output logic iccm_ecc_double_error,
-  output logic dccm_ecc_single_error,
-  output logic dccm_ecc_double_error,
+  output logic iccm_ecc_single_error_o,
+  output logic iccm_ecc_double_error_o,
+  output logic dccm_ecc_single_error_o,
+  output logic dccm_ecc_double_error_o,
 
-  output logic dec_tlu_perfcnt0, // toggles when slot0 perf counter 0 has an event inc
-  output logic dec_tlu_perfcnt1,
-  output logic dec_tlu_perfcnt2,
-  output logic dec_tlu_perfcnt3,
+  output logic dec_tlu_perfcnt0_o, // toggles when slot0 perf counter 0 has an event inc
+  output logic dec_tlu_perfcnt1_o,
+  output logic dec_tlu_perfcnt2_o,
+  output logic dec_tlu_perfcnt3_o,
 
   // Unconditional, matching sep_cpu: the port footprint does not depend on
   // the lockstep build define.
@@ -224,26 +224,26 @@ module sep_cpu
   assign cpu_run_ack_o       = 1'b0;
 
   // DMI uncore port
-  assign dmi_uncore_en       = 1'b0;
-  assign dmi_uncore_wr_en    = 1'b0;
-  assign dmi_uncore_addr     = '0;
-  assign dmi_uncore_wdata    = '0;
-  assign dmi_active          = 1'b0;
+  assign dmi_uncore_en_o     = 1'b0;
+  assign dmi_uncore_wr_en_o  = 1'b0;
+  assign dmi_uncore_addr_o   = '0;
+  assign dmi_uncore_wdata_o  = '0;
+  assign dmi_active_o        = 1'b0;
 
   // Trace
-  assign sep_cpu_trace       = '0;
+  assign sep_cpu_trace_o     = '0;
 
   // ECC error status
-  assign iccm_ecc_single_error = 1'b0;
-  assign iccm_ecc_double_error = 1'b0;
-  assign dccm_ecc_single_error = 1'b0;
-  assign dccm_ecc_double_error = 1'b0;
+  assign iccm_ecc_single_error_o = 1'b0;
+  assign iccm_ecc_double_error_o = 1'b0;
+  assign dccm_ecc_single_error_o = 1'b0;
+  assign dccm_ecc_double_error_o = 1'b0;
 
   // Perf counters
-  assign dec_tlu_perfcnt0    = 1'b0;
-  assign dec_tlu_perfcnt1    = 1'b0;
-  assign dec_tlu_perfcnt2    = 1'b0;
-  assign dec_tlu_perfcnt3    = 1'b0;
+  assign dec_tlu_perfcnt0_o  = 1'b0;
+  assign dec_tlu_perfcnt1_o  = 1'b0;
+  assign dec_tlu_perfcnt2_o  = 1'b0;
+  assign dec_tlu_perfcnt3_o  = 1'b0;
 
   assign lockstep_status_o = '0;
 

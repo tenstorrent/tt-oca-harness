@@ -1,52 +1,64 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// AXI Zeroer
+// Write zeros over a programmed AXI address range from a ctrl port.
+//
+// zeroer_ctrl_axi_* programs DEST_ADDR and SIZE in bytes, and a write to CTRL_STATUS starts
+// the clear unless SIZE is 0; mst_axi_* performs the clears.
+// The clears are INCR write bursts of zeros at full data width, with ID 0, at most 256 beats,
+// never crossing a 4 KiB boundary, and strobes limited to the range. The master never reads
+// and ignores write response codes. An illegal FSM state locks the zeroer busy until reset.
+// With cg_enable_i high, the clear FSM clock runs only while busy and the register clock is
+// gated after ctrl-bus inactivity; zeroer_intp_o signals completion.
 
 module zeroer #(
-  // AXI ctrl interface types
-  parameter type zeroer_ctrl_req_t  = logic,
-  parameter type zeroer_ctrl_resp_t = logic,
+  parameter type zeroer_ctrl_req_t  = logic,                // Ctrl AXI request type.
+  parameter type zeroer_ctrl_resp_t = logic,                // Ctrl AXI response type.
 
-  // AXI master interface types
-  parameter type mst_req_t  = logic,
-  parameter type mst_resp_t = logic,
+  parameter type mst_req_t  = logic,                        // Master AXI request type.
+  parameter type mst_resp_t = logic,                        // Master AXI response type.
 
-  // Width params for ctrl-side AXI-Lite derivation + axi_to_axi_lite
-  parameter int unsigned CTRL_ADDR_WIDTH = 5,
-  parameter int unsigned CTRL_DATA_WIDTH = 64,
-  parameter int unsigned CTRL_ID_WIDTH   = 8,
-  parameter int unsigned CTRL_USER_WIDTH = 12,
+  parameter int unsigned CTRL_ADDR_WIDTH = 5,               // Ctrl AXI address width.
+  parameter int unsigned CTRL_DATA_WIDTH = 64,              // Ctrl AXI data width.
+  parameter int unsigned CTRL_ID_WIDTH   = 8,               // Ctrl AXI ID width.
+  parameter int unsigned CTRL_USER_WIDTH = 12,              // Ctrl AXI user width.
 
-  // Width params for master-side internal logic
-  parameter int unsigned AXI_ADDR_WIDTH = 56,
-  parameter int unsigned AXI_DATA_WIDTH = 64,
-  parameter int unsigned AXI_USER_WIDTH = 12,
-  parameter int unsigned MST_ID_WIDTH   = 3,
+  parameter int unsigned AXI_ADDR_WIDTH = 56,               // Master AXI address width; DEST_ADDR
+                                                            // is truncated to it.
+  parameter int unsigned AXI_DATA_WIDTH = 64,               // Master AXI data width.
+  parameter int unsigned AXI_USER_WIDTH = 12,               // Master AXI user width.
+  parameter int unsigned MST_ID_WIDTH   = 3,                // Master AXI ID width.
 
-  parameter int unsigned CG_HYSTERESIS_W = 6
+  parameter int unsigned CG_HYSTERESIS_W = 6                // Clock-gater hysteresis width.
 ) (
-  input logic clk_i,
-  input logic rst_ni,
-  input logic test_en_i,
+  input logic clk_i,                                        // System clock; source of both gated
+                                                            // clocks.
+  input logic rst_ni,                                       // Async reset, active-low.
+  input logic test_en_i,                                    // DFT test enable; forces both clock
+                                                            // gates open.
 
-  input logic                       cg_enable_i,
-  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,
+  input logic                       cg_enable_i,            // Enable gating of the clear FSM and
+                                                            // register clocks.
+  input logic [CG_HYSTERESIS_W-1:0] cg_hysteresis_i,        // Idle cycles before gating the
+                                                            // register clock.
 
-  output logic zeroer_busy_o,
-  output logic zeroer_intp_o,
+  output logic zeroer_busy_o,                               // Zeroer has work in flight: a start,
+                                                            // an active clear, or writes awaiting a
+                                                            // response. Also high in the error
+                                                            // state.
+  output logic zeroer_intp_o,                               // Completion interrupt: a one-cycle
+                                                            // pulse when busy falls, if
+                                                            // CTRL_STATUS.INT_EN is set.
 
-  // AXI Register Interface
-  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,
-  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,
+  input  zeroer_ctrl_req_t  zeroer_ctrl_axi_req_i,          // Ctrl AXI slave request.
+  output zeroer_ctrl_resp_t zeroer_ctrl_axi_resp_o,         // Ctrl AXI slave response.
 
-  // Zeroer Output Interface
-  output mst_req_t  mst_axi_req_o,
-  input  mst_resp_t mst_axi_resp_i,
+  output mst_req_t  mst_axi_req_o,                          // Clearing AXI master request.
+  input  mst_resp_t mst_axi_resp_i,                         // Clearing AXI master response.
 
-  // Clock gater activity indicators
-  output logic zeroer_clk_active_o,
-  output logic zeroer_bus_active_o
+  output logic zeroer_clk_active_o,                         // Register clock is running.
+  output logic zeroer_bus_active_o                          // Ctrl bus has a transaction in
+                                                            // progress.
 );
 
   `include "ocah_assert.svh"
@@ -90,7 +102,7 @@ module zeroer #(
     .lite_req_t (zeroer_ctrl_axil_req_t),
     .lite_resp_t(zeroer_ctrl_axil_resp_t)
 
-  ) ctrl_axi_to_axilite (
+  ) u_ctrl_axi_to_axilite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
@@ -110,6 +122,7 @@ module zeroer #(
   logic [63:0] size;
   logic        int_en;
   logic [1:0] status_swacc;
+  logic        start;
 
   logic [31:0] outstanding_reqs;
 
@@ -129,7 +142,7 @@ module zeroer #(
   always_comb begin
     zeroer_busy_o = 1'b1;
     if (cur_state == ST_IDLE) begin
-      zeroer_busy_o = status_swacc[1] | (|outstanding_reqs);
+      zeroer_busy_o = start | (|outstanding_reqs);
     end
   end
 
@@ -137,10 +150,10 @@ module zeroer #(
 
   wire axi_clk_enable = disable_cg | zeroer_busy_o | ~rst_ni;
 
-  prim_clkgater axi_clk_gater (
+  prim_clock_gating u_axi_clk_gater (
     .clk_i(clk_i),
     .en_i (axi_clk_enable),
-    .te_i (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o(axi_clk)
   );
 
@@ -148,7 +161,7 @@ module zeroer #(
     .OutstandingTx(1),
     .DenyDelay(1),
     .HystWidth(CG_HYSTERESIS_W)
-  ) zeroer_cg (
+  ) u_zeroer_cg (
     .clk_i (clk_i),
     .rst_ni(rst_ni),
 
@@ -177,7 +190,7 @@ module zeroer #(
   zeroer_ctrl_reg_pkg::zeroer_ctrl__in_t  hwif_in;
   zeroer_ctrl_reg_pkg::zeroer_ctrl__out_t hwif_out;
 
-  zeroer_ctrl_reg zeroer_reg (
+  zeroer_ctrl_reg u_zeroer_reg (
     .clk(reg_clk),
     .arst_n(rst_ni),
 
@@ -214,6 +227,8 @@ module zeroer #(
   assign status_swacc = {
     hwif_out.CTRL_STATUS.INT_EN.wr_swacc, hwif_out.CTRL_STATUS.STATUS.rd_swacc
   };
+
+  assign start = status_swacc[1] & (|size);
 
   // ----------
 
@@ -268,7 +283,7 @@ module zeroer #(
     unique case (cur_state)
       ST_IDLE: begin
         // when command is triggered, lock in values
-        if (status_swacc[1]) begin
+        if (start) begin
           nxt_state = ST_ISSUE_ADDR;
           nxt_dest_addr = dest_addr[AXI_ADDR_WIDTH-1:0];
           nxt_size = size;
@@ -387,8 +402,9 @@ module zeroer #(
     end
   end
 
+  // Ungated clock: axi_clk stops the cycle busy falls, so it would never sample that edge.
   logic prev_busy;
-  always_ff @(posedge axi_clk) begin
+  always_ff @(posedge clk_i) begin
     if (~rst_ni) begin
       prev_busy <= 1'b0;
       zeroer_intp_o <= 1'b0;

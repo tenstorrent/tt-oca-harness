@@ -1,79 +1,145 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// SMC 4 core CPU cluster
-// - built using Chipyard's Rocket-chip generator framework
+// Instantiate the four-core SMC Rocket CPU cluster shell.
 //
-//-----------------------------------------------------------------------------
+// Instantiates the Chipyard-generated OCAH4CORECluster_DigitalTop and the boundary logic around
+// it: AXI isolation of the L2-frontend and MMIO ports with status clamping, a debug-module clock
+// gate, core reset sequencing, scratch RAM zero-fill and a registered uncorrectable-error flag.
+// Exposes TileLink/AXI cluster ports and interrupt inputs to smc_cpu_wrapper.
 
 module smc_4core_cpu (
-  // Clock and reset
-  input  logic                                            clk_i,
-  input  logic                                            rst_isolate_ni,
+  input  logic                                            clk_i,  // Cluster clock for the core,
+                                                                  // uncore and debug domains and
+                                                                  // the boundary logic.
+  input  logic                                            rst_isolate_ni,  // Active-low reset for the
+                                                                           // L2-frontend and MMIO AXI isolate
+                                                                           // modules.
 
-  input  logic                                            mem_init_reset_ni,
+  input  logic                                            mem_init_reset_ni,  // Active-low reset for the scratch
+                                                                              // RAM zero-fill sequencer; its
+                                                                              // release starts the zero-fill.
 
-  input  logic                                            rst_uncore_ni,
-  input  logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    rst_core_ni,
-  input  logic                                            rst_debug_ni,
+  input  logic                                            rst_uncore_ni,  // Active-low cluster uncore reset;
+                                                                          // while low, the cluster boundary
+                                                                          // stays isolated and cluster_ded_o
+                                                                          // is cleared.
+  input  logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    rst_core_ni,  // Active-low per-core reset; the
+                                                                        // core also stays in reset until
+                                                                        // the scratch RAM zero-fill
+                                                                        // completes and while the cluster
+                                                                        // requests a hart reset.
+  input  logic                                            rst_debug_ni,  // Active-low reset for the debug
+                                                                         // module and its clock-gate
+                                                                         // enable.
 
-  // Reset-drain handshake (driven by smc_cpu_ctrl_wrap, always-on domain)
-  input  logic                                            isolate_req_i,
-  output logic                                            drained_o,
-  // Flush requests to the AXI isolate modules
-  input  logic                                            isolate_flush_i,
+  input  logic                                            isolate_req_i,  // Drain request for a software
+                                                                          // reset; while high, the cluster
+                                                                          // boundary is isolated and the
+                                                                          // status outputs are clamped.
+  output logic                                            drained_o,  // High once both the L2-frontend
+                                                                      // and MMIO AXI isolate modules
+                                                                      // report isolated.
+  input  logic                                            isolate_flush_i,  // Flush request to both AXI
+                                                                            // isolate modules, latched until
+                                                                            // de-isolation; clears their
+                                                                            // outstanding-transaction state
+                                                                            // so isolation can complete.
 
-  // Reset vector inputs
-  input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,
+  input  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][55:0] reset_vector_i,  // Per-core boot address
+                                                                             // into the cluster.
 
-  // Interrupts input
-  input  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]      interrupts_i,
+  input  logic [smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS-1:0]      interrupts_i,  // Cluster interrupt lines,
+                                                                               // passed unchanged to
+                                                                               // DigitalTop.
 
-  // AXI interfaces
-  output smc_pkg::smc_cpu_mmio_axi_req_t                  mmio_axi_req_o,
-  input  smc_pkg::smc_cpu_mmio_axi_resp_t                 mmio_axi_resp_i,
+  output smc_pkg::smc_cpu_mmio_axi_req_t                  mmio_axi_req_o,  // Cluster MMIO AXI master
+                                                                           // request through the MMIO
+                                                                           // isolate module, with AxCACHE
+                                                                           // modifiable forced set; while
+                                                                           // isolated, the module answers
+                                                                           // the cluster with SLVERR.
+  input  smc_pkg::smc_cpu_mmio_axi_resp_t                 mmio_axi_resp_i,  // Cluster MMIO AXI master
+                                                                            // response from the
+                                                                            // fabric.
 
-  input  smc_pkg::smc_cpu_l2_frontend_axi_req_t           l2_frontend_axi_req_i,
-  output smc_pkg::smc_cpu_l2_frontend_axi_resp_t          l2_frontend_axi_resp_o,
+  input  smc_pkg::smc_cpu_l2_frontend_axi_req_t           l2_frontend_axi_req_i,  // AXI request into the
+                                                                                  // cluster L2 frontend bus
+                                                                                  // through its isolate module,
+                                                                                  // which blocks rather than
+                                                                                  // terminates while isolated.
+  output smc_pkg::smc_cpu_l2_frontend_axi_resp_t          l2_frontend_axi_resp_o,  // AXI response from the
+                                                                                   // cluster L2 frontend bus.
 
-  // Debug interfaces (JTAG)
-  input  logic                                            smc_cpu_jtag_TCK_i,
-  input  logic                                            smc_cpu_jtag_TMS_i,
-  input  logic                                            smc_cpu_jtag_TDI_i,
-  output logic                                            smc_cpu_jtag_TDO_data_o,
-  input  logic                                            smc_cpu_jtag_reset_i,
-  input  logic [10:0]                                     smc_cpu_jtag_mfr_id_i,
-  input  logic [15:0]                                     smc_cpu_jtag_part_number_i,
-  input  logic [3:0]                                      smc_cpu_jtag_version_i,
+  input  logic                                            smc_cpu_jtag_TCK_i,  // JTAG test clock for the cluster
+                                                                               // debug transport module.
+  input  logic                                            smc_cpu_jtag_TMS_i,  // JTAG test mode select for the
+                                                                               // cluster debug transport module.
+  input  logic                                            smc_cpu_jtag_TDI_i,  // JTAG test data into the cluster
+                                                                               // debug transport module.
+  output logic                                            smc_cpu_jtag_TDO_data_o,  // JTAG test data out of the
+                                                                                    // cluster debug transport module.
+  input  logic                                            smc_cpu_jtag_reset_i,  // Active-high asynchronous reset of
+                                                                                 // the cluster JTAG debug transport
+                                                                                 // module (TAP) and of the debug
+                                                                                 // module's DMI interface.
+  input  logic [10:0]                                     smc_cpu_jtag_mfr_id_i,  // Manufacturer ID reported in the
+                                                                                  // cluster JTAG IDCODE.
+  input  logic [15:0]                                     smc_cpu_jtag_part_number_i,  // Part number reported in the
+                                                                                       // cluster JTAG IDCODE.
+  input  logic [3:0]                                      smc_cpu_jtag_version_i,  // Version reported in the cluster
+                                                                                   // JTAG IDCODE.
 
-  // Core status outputs
-  output logic                                            cluster_ded_o,
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]    wb_pc_valid_o,
-  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]   wb_reg_pc_o,
+  output logic                                            cluster_ded_o,  // Registered OR of the cluster's
+                                                                          // uncorrectable-error flags.
+  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][1-1:0]    wb_pc_valid_o,  // Per-core qualifier for
+                                                                                // wb_reg_pc_o, forced low while
+                                                                                // the cluster boundary is
+                                                                                // isolated.
+  output logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0][58-1:0]   wb_reg_pc_o,  // Per-core writeback program
+                                                                              // counter, forced to zero while
+                                                                              // the cluster boundary is
+                                                                              // isolated.
 
-  output logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    wdt_reset_o,
+  output logic  [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0]    wdt_reset_o,  // Per-core watchdog timeout from
+                                                                        // the cluster, forced low while
+                                                                        // the cluster boundary is
+                                                                        // isolated.
 
-  // Memory interface signals between DigitalTop and mems
-  output chipyard_4core_mem_pkg::rom_tilelink_req_t             rom_intf_req_o,
-  input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t             rom_intf_rsp_i,
-  output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t            l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_icache_data_req_t           l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t           l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_dcache_tag_req_t            l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t            l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],
-  output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
-  input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],
+  output chipyard_4core_mem_pkg::rom_tilelink_req_t             rom_intf_req_o,  // TileLink A-channel request,
+                                                                                 // D-channel ready, clock and reset
+                                                                                 // from the cluster boot ROM port.
+  input  chipyard_4core_mem_pkg::rom_tilelink_rsp_t             rom_intf_rsp_i,  // TileLink A-channel ready and
+                                                                                 // D-channel response to the
+                                                                                 // cluster boot ROM port.
+  output chipyard_4core_mem_pkg::scratch_ram_req_t              scratch_ram_intf_req_o     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],  // Scratch RAM bank requests,
+                                                                                                                                          // driven by the zero-fill
+                                                                                                                                          // sequencer until the zero-fill
+                                                                                                                                          // completes.
+  input  chipyard_4core_mem_pkg::scratch_ram_rsp_t              scratch_ram_intf_rsp_i     [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0],  // Scratch RAM bank read data.
+  output chipyard_4core_mem_pkg::l1_icache_tag_req_t            l1_icache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank
+                                                                                                                                                // requests.
+  input  chipyard_4core_mem_pkg::l1_icache_tag_rsp_t            l1_icache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS-1:0],  // Instruction-cache tag bank read
+                                                                                                                                                // data.
+  output chipyard_4core_mem_pkg::l1_icache_data_req_t           l1_icache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank
+                                                                                                                                                 // requests.
+  input  chipyard_4core_mem_pkg::l1_icache_data_rsp_t           l1_icache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS-1:0],  // Instruction-cache data bank read
+                                                                                                                                                 // data.
+  output chipyard_4core_mem_pkg::l1_dcache_tag_req_t            l1_dcache_tag_intf_req_o   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank requests.
+  input  chipyard_4core_mem_pkg::l1_dcache_tag_rsp_t            l1_dcache_tag_intf_rsp_i   [chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS-1:0],  // Data-cache tag bank read data.
+  output chipyard_4core_mem_pkg::l1_dcache_data_req_t           l1_dcache_data_intf_req_o  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank requests.
+  input  chipyard_4core_mem_pkg::l1_dcache_data_rsp_t           l1_dcache_data_intf_rsp_i  [chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS-1:0],  // Data-cache data bank read data.
 
-  input  logic                                            disable_sram_auto_init_i,
+  input  logic                                            disable_sram_auto_init_i,  // High skips the scratch RAM
+                                                                                     // zero-fill after
+                                                                                     // mem_init_reset_ni releases.
 
-  output logic                                            init_mem_done_o,
+  output logic                                            init_mem_done_o,  // High once the scratch RAM
+                                                                            // zero-fill has completed or been
+                                                                            // skipped.
 
-  // Test related signals
-  input  logic                                            test_en_i
+  input  logic                                            test_en_i  // Scan test mode enable for the
+                                                                     // debug clock gate.
 );
   // Mem Init signals
   chipyard_4core_mem_pkg::scratch_ram_req_t scratch_ram_intf_req_pre_init [chipyard_4core_mem_pkg::NUM_SRAM_BANKS-1:0];
@@ -96,7 +162,7 @@ module smc_4core_cpu (
   logic debug_dmactive, debug_dmactiveAck;
   logic gated_debug_clock;
 
-  prim_flop_3sync_r sync_debug_active (
+  prim_flop_3sync_r u_sync_debug_active (
     .clk_i(clk_i),
     .rst_ni(rst_debug_ni),
     .d_i(debug_dmactive),
@@ -111,10 +177,10 @@ module smc_4core_cpu (
     end
   end
 
-  prim_clkgater debug_clock_gate (
+  prim_clock_gating u_debug_clock_gate (
     .clk_i    (clk_i),
     .en_i     (clock_en),
-    .te_i     (test_en_i),
+    .test_en_i (test_en_i),
     .clk_o    (gated_debug_clock)
   );
 
@@ -234,10 +300,53 @@ module smc_4core_cpu (
 
   // Core Reset Logic (Wait until init_mem_complete is asserted)
 
+  logic rst_uncore;
+  logic rst_debug;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core;
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] int_rst_core_n;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] mem_init_core_reset_n;
+  logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_n;
   logic [smc_4core_cpu_pkg::NUM_CPU_CORES-1:0] hart_reset_req;
 
-  assign int_rst_core_n = {smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}} & rst_core_ni & ~hart_reset_req;
+  prim_inv u_uncore_reset_inv (
+    .in_i  (rst_uncore_ni),
+    .out_o (rst_uncore)
+  );
+
+  prim_inv u_debug_reset_inv (
+    .in_i  (rst_debug_ni),
+    .out_o (rst_debug)
+  );
+
+  prim_and2 #(
+    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+  ) u_mem_init_core_reset_and (
+    .in0_i ({smc_4core_cpu_pkg::NUM_CPU_CORES{init_mem_complete}}),
+    .in1_i (rst_core_ni),
+    .out_o (mem_init_core_reset_n)
+  );
+
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_hart_reset_inv
+    prim_inv u_hart_reset_inv (
+      .in_i  (hart_reset_req[core]),
+      .out_o (hart_reset_n[core])
+    );
+  end
+
+  prim_and2 #(
+    .Width(smc_4core_cpu_pkg::NUM_CPU_CORES)
+  ) u_hart_core_reset_and (
+    .in0_i (mem_init_core_reset_n),
+    .in1_i (hart_reset_n),
+    .out_o (int_rst_core_n)
+  );
+
+  for (genvar core = 0; core < smc_4core_cpu_pkg::NUM_CPU_CORES; core++) begin : gen_core_reset_inv
+    prim_inv u_core_reset_inv (
+      .in_i  (int_rst_core_n[core]),
+      .out_o (int_rst_core[core])
+    );
+  end
 
   // ----------
   // Instantiate DigitalTop
@@ -264,15 +373,15 @@ module smc_4core_cpu (
 
     // Clock and reset domains
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_reset(~rst_uncore_ni),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_uncore_reset(rst_uncore),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_reset(~int_rst_core_n[3]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_3_reset(int_rst_core[3]),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_2_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_2_reset(~int_rst_core_n[2]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_2_reset(int_rst_core[2]),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_1_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_1_reset(~int_rst_core_n[1]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_1_reset(int_rst_core[1]),
     .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_clock(clk_i),
-    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_reset(~int_rst_core_n[0]),
+    .auto_chipyard_prcictrl_domain_resetSynchronizer_in_member_allClocks_core_0_reset(int_rst_core[0]),
 
     // Clock outputs
     .auto_cbus_fixedClockNode_anon_out_clock(), // unused
@@ -285,24 +394,24 @@ module smc_4core_cpu (
     .resetctrl_hartResetReq_2 (hart_reset_req[2]),
     .resetctrl_hartResetReq_1 (hart_reset_req[1]),
     .resetctrl_hartResetReq_0 (hart_reset_req[0]),
-    .resetctrl_hartIsInReset_3(~int_rst_core_n[3]),
-    .resetctrl_hartIsInReset_2(~int_rst_core_n[2]),
-    .resetctrl_hartIsInReset_1(~int_rst_core_n[1]),
-    .resetctrl_hartIsInReset_0(~int_rst_core_n[0]),
+    .resetctrl_hartIsInReset_3(int_rst_core[3]),
+    .resetctrl_hartIsInReset_2(int_rst_core[2]),
+    .resetctrl_hartIsInReset_1(int_rst_core[1]),
+    .resetctrl_hartIsInReset_0(int_rst_core[0]),
 
     // WDT reset control
-    .wdt_0_corerst(~int_rst_core_n[0]),
+    .wdt_0_corerst(int_rst_core[0]),
     .wdt_0_rst    (wdt_reset_raw[0]),
-    .wdt_1_corerst(~int_rst_core_n[1]),
+    .wdt_1_corerst(int_rst_core[1]),
     .wdt_1_rst    (wdt_reset_raw[1]),
-    .wdt_2_corerst(~int_rst_core_n[2]),
+    .wdt_2_corerst(int_rst_core[2]),
     .wdt_2_rst    (wdt_reset_raw[2]),
-    .wdt_3_corerst(~int_rst_core_n[3]),
+    .wdt_3_corerst(int_rst_core[3]),
     .wdt_3_rst    (wdt_reset_raw[3]),
 
     // Debug interface
     .debug_clock(gated_debug_clock),
-    .debug_reset(~rst_debug_ni),
+    .debug_reset(rst_debug),
     .debug_dmactive(debug_dmactive),
     .debug_dmactiveAck(debug_dmactiveAck),
 

@@ -541,11 +541,15 @@ class SepAxiOrderSweep:
                 f"(awvalid cycle {cyc[0]}, wvalid cycle {cyc[1]}); the "
                 f"ordering under test never reached the bus"
             )
-        if hs not in (cell.order, "same-cycle"):
+        allowed_hs = (
+            (cell.order,)
+            if self.bus == "m_axi" and cell.order == "w-first"
+            else (cell.order, "same-cycle")
+        )
+        if hs not in allowed_hs:
             return (
                 f"{tag} presented {stim} and the slave answered {hs}; a "
-                f"handshake may match the presentation or coincide, not "
-                f"invert it"
+                f"handshake on {self.bus} must be one of {allowed_hs}"
             )
         self.stim_seen[stim] += 1
         if hs is not None:

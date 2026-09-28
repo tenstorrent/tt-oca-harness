@@ -11,6 +11,14 @@ subsystem composition, power and clock domains, reset hierarchy, and memory
 map. It is organised into focused topic pages; subsequent chapters provide
 detailed microarchitectural documentation for each subsystem.
 
+ifdef::backend-pdf[]
+include::overview.adoc[leveloffset=+1]
+include::memory_map.adoc[leveloffset=+1]
+include::power_domains.adoc[leveloffset=+1]
+include::clock_domains.adoc[leveloffset=+1]
+include::reset.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
 [[ocah-rtl-assertions]]
 == RTL Assertions
 
@@ -21,6 +29,10 @@ cover known-value hygiene, illegal parameter combinations, and local protocol
 or FSM invariants. They compile out of synthesis and fire on four-state
 simulators.
 
+<<rtl-assertion-macro-families-table>> identifies the header for each assertion macro
+family.
+
+[[rtl-assertion-macro-families-table]]
 .RTL assertion macro families
 [cols="<28%,<72%",options="header"]
 |===

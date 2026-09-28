@@ -113,6 +113,7 @@ class dtp_base_test(OcahTest):
         self.logger.info("dbg_disable startup vector: %s", format_dbg_disable(startup))
         cocotb.start_soon(Clock(tb.clk, self.cfg.sys_clk_period_ns, units="ns").start())
         await ClockCycles(tb.clk, 5)
+        tb.check_dv_cfg()
         tb.por_rst_n.value = 1
         await ClockCycles(tb.clk, 5)
         tb.sys_rst_n.value = 1

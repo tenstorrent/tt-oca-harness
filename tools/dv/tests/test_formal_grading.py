@@ -82,11 +82,10 @@ SIM_STAGE_KEYS = {
     "started_at",
     "ended_at",
     "log",
-    "artifacts",
     "failure_buckets",
     "reason",
-    "parser",
     "metadata",
+    "result_json",
     "target",
 }
 SIM_RESULT_KEYS = {

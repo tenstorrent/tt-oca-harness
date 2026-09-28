@@ -1,24 +1,34 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-sep_lifecycle_ctrl]
+== SEP Lifecycle Control Address Map
+
+Lifecycle feature-control and demotion registers with their associated locks.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | FEAT_CTRL | R a| -
-| 0x8 | DEMOTE_1 | RW a| -
-| 0x10 | DEMOTE_2 | RW a| -
+| 0x0 | <<reg-{regmap-instance}-sep_lifecycle_ctrl-FEAT_CTRL,FEAT_CTRL>> | R a| -
+| 0x8 | <<reg-{regmap-instance}-sep_lifecycle_ctrl-DEMOTE_1,DEMOTE_1>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-sep_lifecycle_ctrl-DEMOTE_2,DEMOTE_2>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-sep_lifecycle_ctrl-FEAT_CTRL]
+=== FEAT_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.FEAT_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `feature_control` | R | 0x0 a| Lifecycle feature control bits,
 |===
 
+[#reg-{regmap-instance}-sep_lifecycle_ctrl-DEMOTE_1]
+=== DEMOTE_1
+
 [cols="1,3,1,1,6", options="header"]
-.DEMOTE_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `rsvd` | RW | 0x0 a| Not used
@@ -26,8 +36,10 @@
 | 0 | `demote` | RW | 0x0 a| Demote bit to enter PROD_DBG state
 |===
 
+[#reg-{regmap-instance}-sep_lifecycle_ctrl-DEMOTE_2]
+=== DEMOTE_2
+
 [cols="1,3,1,1,6", options="header"]
-.DEMOTE_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `rsvd` | RW | 0x0 a| Not used

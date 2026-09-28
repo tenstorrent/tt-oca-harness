@@ -7,8 +7,9 @@
 `include "axil_mailbox.rdl"
 
 addrmap axil_mailbox_sep_wrap {
-    desc = "";
-
+    name = "SEP AXI-Lite Mailbox Wrapper Address Map";
+    desc = "SEP-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.";
+    
     axil_mailbox     outbound_mailbox_0      @0x000_0000;
     axil_mailbox     inbound_mailbox_0       @0x000_0800;
     axil_mailbox     outbound_mailbox_1      @0x000_1000;

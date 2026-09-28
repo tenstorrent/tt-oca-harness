@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP TCM Wrapper
-// Contains ICCM and DCCM RAM instances
-// Uses struct-based interface to connect to VeeR EL2 core via sep_cpu
+// Instantiate ICCM and DCCM RAM macros for the SEP CPU TCM interface.
+//
+// Uses the sep_cpu_tcm_req_t / sep_cpu_tcm_rsp_t struct interface from sep_cpu.
+// Bank geometry comes from el2_param.vh via the EL2 parameter include. Each bank is one
+// 39-bit RAM macro (32 data plus 7 ECC bits) chosen by the DCCM bank depth or the ICCM index
+// width; an unsupported value is an elaboration error. The macro test and power pins are tied
+// off, and a memory is built only when DCCM_ENABLE or ICCM_ENABLE is set.
 
 module sep_tcm_wrapper
     import el2_pkg::*;
@@ -12,8 +16,9 @@ module sep_tcm_wrapper
 `include "el2_param.vh"
 )
 (
-    input  sep_cpu_tcm_req_t tcm_req_i,
-    output sep_cpu_tcm_rsp_t tcm_rsp_o
+    input  sep_cpu_tcm_req_t tcm_req_i,       // Per-bank ICCM and DCCM enables, addresses and write data plus ECC from sep_cpu,
+                                              // with the macro clock.
+    output sep_cpu_tcm_rsp_t tcm_rsp_o        // Per-bank ICCM and DCCM read data and ECC to sep_cpu.
 );
 
   //////////
@@ -21,16 +26,6 @@ module sep_tcm_wrapper
   //////////
 
   if (pt.DCCM_ENABLE == 1) begin : gen_dccm
-    `define EL2_LOCAL_DCCM_RAM_TEST_PORTS .TEST1   (1'b0), \
-                                          .RME     (1'b0), \
-                                          .RM      (4'b0), \
-                                          .LS      (1'b0), \
-                                          .DS      (1'b0), \
-                                          .SD      (1'b0), \
-                                          .TEST_RNM(1'b0), \
-                                          .BC1     (1'b0), \
-                                          .BC2     (1'b0),
-
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_FDATA_WIDTH-1:0] dccm_wr_fdata_bank;
     logic [pt.DCCM_NUM_BANKS-1:0][pt.DCCM_FDATA_WIDTH-1:0] dccm_bank_fdout;
     localparam int unsigned DCCM_INDEX_DEPTH = pt.DCCM_SIZE * 1024 / (pt.DCCM_BYTE_WIDTH * pt.DCCM_NUM_BANKS); // Depth of memory bank
@@ -42,7 +37,7 @@ module sep_tcm_wrapper
 
       case (DCCM_INDEX_DEPTH)
         32768: begin : gen_dccm_ram
-          ram_32768x39 ram (
+          ram_32768x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -52,12 +47,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         16384: begin : gen_dccm_ram
-          ram_16384x39 ram (
+          ram_16384x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -67,12 +69,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         8192: begin : gen_dccm_ram
-          ram_8192x39 ram (
+          ram_8192x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -82,12 +91,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         4096: begin : gen_dccm_ram
-          ram_4096x39 ram (
+          ram_4096x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -97,12 +113,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         3072: begin : gen_dccm_ram
-          ram_3072x39 ram (
+          ram_3072x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -112,12 +135,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         2048: begin : gen_dccm_ram
-          ram_2048x39 ram (
+          ram_2048x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -127,12 +157,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         1024: begin : gen_dccm_ram
-          ram_1024x39 ram (
+          ram_1024x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -142,12 +179,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         512: begin : gen_dccm_ram
-          ram_512x39 ram (
+          ram_512x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -157,12 +201,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         256: begin : gen_dccm_ram
-          ram_256x39 ram (
+          ram_256x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -172,12 +223,19 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         128: begin : gen_dccm_ram
-          ram_128x39 ram (
+          ram_128x39 u_ram (
             // Primary ports
             .ME  (tcm_req_i.dccm_clken    [i]),
             .CLK (tcm_req_i.clk),
@@ -187,8 +245,15 @@ module sep_tcm_wrapper
             .Q   (dccm_bank_fdout              [i][pt.DCCM_FDATA_WIDTH-1:0]),
             .ROP (),
             // These are used by SoC
-            `EL2_LOCAL_DCCM_RAM_TEST_PORTS
-            .*
+            .TEST1    (1'b0),
+            .RME      (1'b0),
+            .RM       (4'b0),
+            .LS       (1'b0),
+            .DS       (1'b0),
+            .SD       (1'b0),
+            .TEST_RNM (1'b0),
+            .BC1      (1'b0),
+            .BC2      (1'b0)
           );
         end
         default: begin : gen_invalid_ram
@@ -215,7 +280,7 @@ module sep_tcm_wrapper
 
       case (pt.ICCM_INDEX_BITS)
         6: begin : gen_iccm_ram
-          ram_64x39 ram (
+          ram_64x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -237,7 +302,7 @@ module sep_tcm_wrapper
           );
         end
         7: begin : gen_iccm_ram
-          ram_128x39 ram (
+          ram_128x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -259,7 +324,7 @@ module sep_tcm_wrapper
           );
         end
         8: begin : gen_iccm_ram
-          ram_256x39 ram (
+          ram_256x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -281,7 +346,7 @@ module sep_tcm_wrapper
           );
         end
         9: begin : gen_iccm_ram
-          ram_512x39 ram (
+          ram_512x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -303,7 +368,7 @@ module sep_tcm_wrapper
           );
         end
         10: begin : gen_iccm_ram
-          ram_1024x39 ram (
+          ram_1024x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -325,7 +390,7 @@ module sep_tcm_wrapper
           );
         end
         11: begin : gen_iccm_ram
-          ram_2048x39 ram (
+          ram_2048x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -347,7 +412,7 @@ module sep_tcm_wrapper
           );
         end
         12: begin : gen_iccm_ram
-          ram_4096x39 ram (
+          ram_4096x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -369,7 +434,7 @@ module sep_tcm_wrapper
           );
         end
         13: begin : gen_iccm_ram
-          ram_8192x39 ram (
+          ram_8192x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -391,7 +456,7 @@ module sep_tcm_wrapper
           );
         end
         14: begin : gen_iccm_ram
-          ram_16384x39 ram (
+          ram_16384x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),
@@ -413,7 +478,7 @@ module sep_tcm_wrapper
           );
         end
         15: begin : gen_iccm_ram
-          ram_32768x39 ram (
+          ram_32768x39 u_ram (
             // Primary ports
             .CLK      (tcm_req_i.clk),
             .ME       (tcm_req_i.iccm_clken    [i]),

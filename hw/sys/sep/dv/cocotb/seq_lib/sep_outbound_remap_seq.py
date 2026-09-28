@@ -96,15 +96,29 @@ class SepOutboundRemapCfg:
         self.entry = rng.randrange(OUTFILT_N_ENTRIES)
         # 8-byte aligned intra-region offset so the filter window is one beat.
         self.intra = rng.randrange(0, 0x1000, 8)
+        # Next beat of the same region. The allow entry covers one address,
+        # so this beat translates to a non-zero address outside that entry.
+        # Offset 0 on the other region can also miss because the translated
+        # address is low; this beat cannot.
+        self.neighbor_intra = self.intra + 8 if self.intra + 8 < _REGION_SPAN else self.intra - 8
         self.offset = REMAP_TARGET_BASE
         self.access_addr = remap_access_addr(self.region_base, self.region, self.intra)
         self.expect_addr = remapped_addr(self.offset, self.intra)
+        self.neighbor_addr = remap_access_addr(self.region_base, self.region, self.neighbor_intra)
+        self.neighbor_expect = remapped_addr(self.offset, self.neighbor_intra)
         self.forbidden_addr = remap_access_addr(self.region_base, self.forbidden_region, self.intra)
         self.forbidden_expect = remapped_addr(0, self.intra)
         if self.expect_addr == self.access_addr:
             raise RuntimeError("remap target equals identity -- vacuous")
         if self.expect_addr == self.forbidden_expect:
             raise RuntimeError("allowed and forbidden remaps collide")
+        if (
+            self.neighbor_expect == self.expect_addr
+            or self.neighbor_expect == self.forbidden_expect
+        ):
+            raise RuntimeError("neighbor remap does not leave the allow window")
+        if self.neighbor_expect < REMAP_TARGET_BASE:
+            raise RuntimeError("neighbor remap collapsed to a low address")
 
     def summary(self) -> str:
         return (

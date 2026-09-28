@@ -34,15 +34,30 @@ RISCV_PREFIX ?= $(if $(wildcard $(RISCV_TOOLCHAIN)/riscv64-unknown-elf-gcc),risc
 GCC_PREFIX ?= $(if $(strip $(RISCV_TOOLCHAIN)),$(patsubst %/,%,$(RISCV_TOOLCHAIN))/$(patsubst %-,%,$(RISCV_PREFIX)),riscv64-unknown-elf)
 
 # hw/sys/sep -- this ROM lives at <sep>/bootrom/prod, the DV tree is its sibling.
-SEP_ROOT := $(abspath $(CURDIR)/../..)
+PROD_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+SEP_ROOT := $(abspath $(PROD_DIR)/../..)
 DV_ROOT  := $(SEP_ROOT)/dv
 
 OCAH_ROOT := $(abspath $(SEP_ROOT)/../../..)
 
+UV ?= uv
+# The manylinux_2_34 cryptography wheel requires GLIBC_2.30. A host whose glibc
+# is older installs the manylinux_2_28 wheel, or the 2.17 wheel below that.
+# An environment created without the cap keeps the incompatible wheel, so the
+# capped invocation reinstalls it.
+MANIFEST_UV_PLATFORM := $(shell python3 -c 'import platform; libc, ver = platform.libc_ver(); parts = tuple(int(x) for x in ver.split(".")[:2]) if ver else (0, 0); machine = platform.machine(); print("" if libc != "glibc" or parts >= (2, 34) else f"{machine}-manylinux_2_28" if parts >= (2, 28) else f"{machine}-manylinux_2_17")' 2>/dev/null)
+MANIFEST_UV_FLAGS := $(if $(MANIFEST_UV_PLATFORM),--python-platform $(MANIFEST_UV_PLATFORM) --reinstall-package cryptography,)
+MANIFEST_PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked --group manifest $(MANIFEST_UV_FLAGS) python
+
 # Generated SEP register headers, read from the register flow's own output so
 # they cannot drift from the RDL the RTL is built from.
+# Overlay inputs must be explicit make command-line assignments. These
+# assignments discard ambient environment values while preserving command-line
+# overrides.
+OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep :=
+OCAH_FW_OVERLAY_SOURCES_sep :=
 include $(OCAH_ROOT)/hw/common/dv/fw/reg_includes.mk
-REG_INCLUDE_DIRS := $(call ocah_fw_nonfree_reg_includes,sep) $(call ocah_fw_reg_includes,sep)
+REG_INCLUDE_DIRS := $(call ocah_fw_reg_includes,sep)
 
 ROM_BASE  ?= 0x10040000
 DCCM_BASE ?= 0xC0040000
@@ -105,14 +120,14 @@ BOOT_OT_SPI_PROFILE ?= 0
 # names build/ directly; a command-line value has to win. Release lands in its own
 # tree, so a caller that means the debug image cannot pick up the release one.
 ifeq ($(BUILD_TYPE),release)
-BUILD_DIR ?= build_release
+BUILD_DIR ?= $(PROD_DIR)/build_release
 else
-BUILD_DIR ?= build
+BUILD_DIR ?= $(PROD_DIR)/build
 endif
-LINK_DIR  := link
-SRC_DIR   := src
-TOOLS_DIR := tools
-INCLUDE_DIR := include
+LINK_DIR  := $(PROD_DIR)/link
+SRC_DIR   := $(PROD_DIR)/src
+TOOLS_DIR := $(PROD_DIR)/tools
+INCLUDE_DIR := $(PROD_DIR)/include
 
 # ROM key material. The ROM anchors on SHA-256 of each slot's RSA-3072 public modulus.
 # key_digests.c is generated from these files at build time, so the anchors track the
@@ -175,7 +190,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 #
 # Objects land in a subdirectory, NOT flat in $(BUILD_DIR): the library ships its
 # own lifecycle.c, which would otherwise overwrite this ROM's src/lifecycle.o.
-# That is also why NONFREE_BOOTCODE_SOURCES is the wrong hook for it -- that one
+# That is also why the firmware overlay hook is wrong for it -- that hook
 # $(notdir)s every source into one flat namespace.
 OCA_LIB_DIR  := $(TT_OCA_MANIFEST_DIR)/validators/oca/lib
 OCA_LIB_SRCS := $(wildcard $(OCA_LIB_DIR)/*.c)
@@ -217,11 +232,12 @@ OBJS += $(OCA_LIB_OBJS)
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
-# Optional extra source paths. Their strong symbols override weak stubs in src/,
-# such as an SPI controller driver replacing src/sep_spi.c.
-NONFREE_BOOTCODE_SOURCES ?=
-NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
-OBJS += $(NONFREE_BOOTCODE_OBJS)
+# Optional extra sources injected by an adopter overlay build (absolute .c paths).
+# Their strong symbols override the weak stubs in src/ at link time (e.g. a
+# supplied SPI controller driver overriding the weak src/sep_spi.c stub).
+SEP_FW_OVERLAY_SOURCES := $(OCAH_FW_OVERLAY_SOURCES_sep)
+SEP_FW_OVERLAY_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(SEP_FW_OVERLAY_SOURCES)))
+OBJS += $(SEP_FW_OVERLAY_OBJS)
 
 # rv32im (no C) + no relax. zifencei is spelled out because binutils >= 2.38
 # rejects fence.i without it.
@@ -303,23 +319,23 @@ release:
 # read -- so they are built ONCE by `oca-images` into the default build/ and shared.
 # Packing them per variant would be pure duplication with three copies to drift.
 ot-toolchain-images:
-	$(MAKE) BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
+	$(MAKE) BUILD_DIR=$(PROD_DIR)/build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
 ot-pio-toolchain-images:
-	$(MAKE) BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
+	$(MAKE) BUILD_DIR=$(PROD_DIR)/build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
 		toolchain-images
 
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
-# container), while oca-images is pure Python and needs cryptography +
-# ruamel.yaml, which the container image does not carry. The companion's SEP
-# firmware build script drives the two halves this way.
+# container). oca-images and key-digests are pure Python and run via uv, which
+# the container carries. The companion's SEP firmware build script drives the
+# two halves this way.
 #
 # Direct `make toolchain-images` uses only an explicit RISCV_TOOLCHAIN on the
 # host. Otherwise it runs the compiler-dependent half in the OCAH container.
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
 
-# key-digests first, and always on this side of the sandbox boundary: the sandbox
-# has no python3-cryptography to read a PEM with.
+# key-digests runs before entering the container so the generated source is
+# available to the compiler regardless of which path toolchain-images takes.
 toolchain-images: key-digests
 	@if [ -n "$(RISCV_TOOLCHAIN)" ]; then \
 	  $(MAKE) toolchain-images-build; \
@@ -336,8 +352,8 @@ toolchain-images: key-digests
 	    BOOT_SPI_CONTROLLER_OT="$(BOOT_SPI_CONTROLLER_OT)" \
 	    BOOT_OT_SPI_USE_PIO="$(BOOT_OT_SPI_USE_PIO)" \
 	    BOOT_OT_SPI_PROFILE="$(BOOT_OT_SPI_PROFILE)" \
-	    NONFREE_ROOT="$(NONFREE_ROOT)" \
-	    NONFREE_BOOTCODE_SOURCES="$(NONFREE_BOOTCODE_SOURCES)" \
+	    OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep="$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep)" \
+	    OCAH_FW_OVERLAY_SOURCES_sep="$(OCAH_FW_OVERLAY_SOURCES_sep)" \
 	    RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf \
 	    toolchain-images-build; \
 	else \
@@ -361,7 +377,8 @@ BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) 
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
 	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) ICCM_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
-	NONFREE=$(if $(NONFREE_ROOT),1,0) \
+	REG_OVERLAY=$(OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep) \
+	SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_sep) \
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \
 	OCA_TOC_MAX=$(OCA_TOC_MAX_IMAGES) ENTROPY=$(SEP_ENTROPY_BRINGUP) \
 	DEFER_FIPS=$(SEP_ENTROPY_DEFER_FIPS_LOCK) \
@@ -406,20 +423,15 @@ $(KEY_INPUTS_STAMP): FORCE | $(BUILD_DIR)
 	@echo '$(SEP_ROM_KEYS_DIR) form=$(SEP_ROM_KEY_FORM)' > "$@.tmp"
 	@if ! cmp -s "$@.tmp" "$@" 2>/dev/null; then mv "$@.tmp" "$@"; else rm "$@.tmp"; fi
 
-# GENERATED ON THE HOST, NOT IN THE TOOLCHAIN SANDBOX. Reading a PEM needs
-# python3-cryptography, and the sandbox carries a bare python3 -- the same boundary
-# that keeps oca-images on the host while toolchain-images-build runs in the
-# container. `toolchain-images` runs `key-digests` before it dispatches the compile.
 $(SEP_ROM_KEY_FILES): ;
 $(KEY_DIGESTS_C): $(GENERATE_KEY_DIGESTS) $(SEP_ROM_KEY_FILES) $(KEY_INPUTS_STAMP) | $(BUILD_DIR)
-	@python3 -c 'import cryptography' 2>/dev/null || { \
+	@$(MANIFEST_PYTHON) -c 'import cryptography' 2>/dev/null || { \
 	  echo "ERROR: cannot generate $@ here."; \
 	  echo "       Key digests are read from PEM files with python3-cryptography,"; \
-	  echo "       which the RISC-V toolchain sandbox does not carry. Generate them"; \
-	  echo "       on the host first:"; \
+	  echo "       Generate them on the host first:"; \
 	  echo "         make -C $(CURDIR) BUILD_DIR=$(BUILD_DIR) BUILD_TYPE=$(BUILD_TYPE) key-digests"; \
 	  exit 1; }
-	python3 "$(GENERATE_KEY_DIGESTS)" --keys-dir "$(SEP_ROM_KEYS_DIR)" \
+	$(MANIFEST_PYTHON) "$(GENERATE_KEY_DIGESTS)" --keys-dir "$(SEP_ROM_KEYS_DIR)" \
 		--key-form "$(SEP_ROM_KEY_FORM)" -o "$@"
 
 .PHONY: key-digests
@@ -463,10 +475,10 @@ $(OTBN_APP_C):
 # rsa_verify.c/otbn_driver.c include the generated header too (order-only).
 $(OBJS): | $(OTBN_APP_C)
 
-# Compile rule for NONFREE_BOOTCODE_SOURCES (static pattern rule so Make maps
+# Compile rule for overlay sources (static pattern rule so Make maps
 # each object back to its out-of-tree source path).
-$(NONFREE_BOOTCODE_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
-	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(NONFREE_BOOTCODE_SOURCES))" -o "$@"
+$(SEP_FW_OVERLAY_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
+	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(SEP_FW_OVERLAY_SOURCES))" -o "$@"
 
 # The ROM-hash insert is not optional. g_rom_sha256_str (src/rom_metadata.c) ships as
 # an all-zero placeholder, and a silently skipped insert leaves it that way -- which
@@ -475,14 +487,14 @@ $(NONFREE_BOOTCODE_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
 # it changes.
 $(ELF): $(BUILD_DIR) $(OBJS) $(LINK_DIR)/rom.ld $(INSERT_SHA256)
 	$(GCC_PREFIX)-gcc $(LDFLAGS) $(OBJS) -o "$@"
-	python3 $(INSERT_SHA256) --gcc-prefix $(GCC_PREFIX) -o "$@" "$@"
+	$(MANIFEST_PYTHON) $(INSERT_SHA256) --gcc-prefix $(GCC_PREFIX) -o "$@" "$@"
 	$(GCC_PREFIX)-objdump -d -S "$@" > "$(BUILD_DIR)/boot_rom.dis"
 	$(GCC_PREFIX)-nm -B -n "$@" > "$(BUILD_DIR)/boot_rom.sym"
 
 # Boot ROM responder image. elf-to-vmem.py selects sections by LMA, and .data's
 # LMA is in ROM (AT> rom), so its initial image lands here too.
 $(VMEM): $(ELF) $(ELF_TO_VMEM)
-	python3 $(ELF_TO_VMEM) --base $(ROM_BASE) -o "$@" "$(ELF)"
+	$(MANIFEST_PYTHON) $(ELF_TO_VMEM) --base $(ROM_BASE) -o "$@" "$(ELF)"
 
 $(ITCM_HEX): $(ELF)
 	$(GCC_PREFIX)-objcopy -O verilog "$(ELF)" $(ROM_ELF_SECTIONS) --change-addresses "-$(ROM_BASE)" "$@"
@@ -520,13 +532,9 @@ $(BL1_TEST_BIN):
 # resolved on another host cannot supply ABI-incompatible binaries; uv still
 # detects the current OS, architecture and libc when resolving those wheels.
 ifneq ($(shell command -v uv 2>/dev/null),)
-PACK_RUN := uv run --isolated --no-cache --no-project \
-	--with-editable "$(TT_OCA_MANIFEST_DIR)" \
-	python -m tt_boot_manifest.pack_images
+PACK_RUN := $(MANIFEST_PYTHON) -m tt_boot_manifest.pack_images
 else
-# uv-less fallback (e.g. the ocah-toolchain container, which carries the
-# packer's deps as distro packages: python3-{cryptography,ruamel.yaml,tomlkit,
-# bitarray}). The submodule maps package-dir {tt_boot_manifest = "src"}, which
+# uv-less fallback The submodule maps package-dir {tt_boot_manifest = "src"}, which
 # plain PYTHONPATH can't express — a symlink shim reproduces it. Kept a single
 # sh -c command so callers' `OCH_ROOT=... ROOT=... $(PACK_RUN) args` env
 # prefixes still bind to the packer, not to a leading mkdir.
@@ -545,12 +553,11 @@ ensure-pack-deps:
 	  echo "       Run: git -C $(OCAH_ROOT) submodule update --init \\"; \
 	  echo "              hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"; \
 	  exit 1; }
-	@command -v uv >/dev/null || python3 -c 'import cryptography, ruamel.yaml, tomlkit, bitarray' 2>/dev/null || { \
+	@command -v uv >/dev/null || $(MANIFEST_PYTHON) -c 'import cryptography, ruamel.yaml, tomlkit, bitarray' 2>/dev/null || { \
 	  echo "ERROR: uv not found and the packer's Python deps are not importable."; \
 	  echo "       Either install uv (https://docs.astral.sh/uv/getting-started/installation/,"; \
 	  echo "       tools/dv/run_dv.py requires the same tool, so this is a one-off), or"; \
-	  echo "       provide python3 with cryptography, ruamel.yaml, tomlkit and bitarray"; \
-	  echo "       (the ocah-toolchain container carries them as distro packages)."; \
+	  echo "       provide python3 with cryptography, ruamel.yaml, tomlkit and bitarray."; \
 	  exit 1; }
 
 # ROM key 0's private key, for the oca-images existence check only.
@@ -560,7 +567,7 @@ ensure-pack-deps:
 # (tt-oca-manifest src/manifest_signing.py), and pack_images has no key option. To sign
 # with a different key, edit the config. For the ROM's trust anchors, see
 # SEP_ROM_KEYS_DIR above.
-SEP_SIGNING_KEY    ?= $(CURDIR)/tests/signing_keys/rsa_private_key.rom_key0.pem
+SEP_SIGNING_KEY    ?= $(PROD_DIR)/tests/signing_keys/rsa_private_key.rom_key0.pem
 
 # --- OCA boot-manifest images (the format the ROM parses) ---------------------
 # One entry per path through the validator. Each name <n> in OCA_IMAGES needs a
@@ -609,7 +616,7 @@ OCA_HEXS := $(patsubst %,$(BUILD_DIR)/oca_%.spi_preload,$(OCA_IMAGES))
 # The SMC-SRAM path stages a BARE BUNDLE, not a combined image: it resolves the
 # payload from the manifest's own payload_offset, which for a bundle is exactly
 # body_size, so the slot offsets a combined image adds mean nothing there.
-OCA_SMC_CONFIG := $(CURDIR)/configs/oca_secure_boot_test.yaml
+OCA_SMC_CONFIG := $(PROD_DIR)/configs/oca_secure_boot_test.yaml
 OCA_SMC_BIN    := $(BUILD_DIR)/oca_smc_bundle.bin
 OCA_SMC_MEM_HEX := $(BUILD_DIR)/oca_smc_mem.hex
 
@@ -634,8 +641,8 @@ endif
 
 # Static pattern rule so a new image is one line in OCA_IMAGES plus its two
 # configs -- there is no per-image recipe to copy and get subtly wrong.
-$(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
-                                     $(CURDIR)/configs/oca_%_test.yaml \
+$(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(PROD_DIR)/configs/oca_%_image.yaml \
+                                     $(PROD_DIR)/configs/oca_%_test.yaml \
                                      bl1_test ensure-pack-deps | $(BUILD_DIR)
 	@test -f "$(SEP_SIGNING_KEY)" || { \
 	  echo "ERROR: OCA images need the ROM key 0 signing key."; \
@@ -646,7 +653,7 @@ $(OCA_BINS): $(BUILD_DIR)/oca_%.bin: $(CURDIR)/configs/oca_%_image.yaml \
 	$(PACK_RUN) --config "$<" --out "$@" -v
 
 $(OCA_HEXS): $(BUILD_DIR)/oca_%.spi_preload: $(BUILD_DIR)/oca_%.bin
-	python3 "$(BIN_TO_SPI)" "$<" "$@"
+	$(MANIFEST_PYTHON) "$(BIN_TO_SPI)" "$<" "$@"
 
 $(OCA_SMC_BIN): $(OCA_SMC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
 	$(PACK_RUN) --config "$(OCA_SMC_CONFIG)" --out "$@" -v
@@ -658,11 +665,11 @@ $(OCA_SMC_BIN): $(OCA_SMC_CONFIG) bl1_test ensure-pack-deps | $(BUILD_DIR)
 # combined image already puts it. Rebasing the bundle instead would place the
 # manifest at the window base and the ROM would read 0x1000 bytes past it.
 $(OCA_SMC_MEM_HEX): $(BUILD_DIR)/oca_non_secure_boot.bin
-	python3 "$(BIN_TO_SPI)" "$<" "$(BUILD_DIR)/oca_smc_mem.spi_preload"
+	$(MANIFEST_PYTHON) "$(BIN_TO_SPI)" "$<" "$(BUILD_DIR)/oca_smc_mem.spi_preload"
 	sed 's/@00000000/@$(SMC_SRAM_BASE)/' "$(BUILD_DIR)/oca_smc_mem.spi_preload" > "$@"
 
 # Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
 # behind would let a stale OT image survive into the next run and boot silently.
 clean:
-	rm -rf "$(BUILD_DIR)" build build_ot build_ot_pio
+	rm -rf "$(BUILD_DIR)" $(PROD_DIR)/build $(PROD_DIR)/build_ot $(PROD_DIR)/build_ot_pio
 	$(MAKE) -C "$(BL1_TEST_DIR)" clean 2>/dev/null || true

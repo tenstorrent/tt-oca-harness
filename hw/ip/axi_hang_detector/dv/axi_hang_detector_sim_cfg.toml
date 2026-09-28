@@ -1,0 +1,61 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Launch entry: selected by `--dut axi_hang_detector`, resolved by the
+# hw/ip/<name>/dv directory convention rather than a duts.toml registration.
+# IP-level cocotb bench for the AXI Hang Detector: the IP has no CSR block of
+# its own (config lives in cpu_ctrl at the SMC level), so the config fields and
+# the AXI snoop probes are pin-exposed on tb/tb_top.sv and driven directly from
+# cocotb. No bus VIP, and no register model to generate.
+name = "axi_hang_detector"
+profile = "native"
+default_framework = "cocotb"
+description = "AXI Hang Detector IP-level cocotb DV flow"
+default_tool = "verilator"
+tools = ["verilator", "vcs", "xcelium"]
+
+[testlist]
+path = "testlists/all.toml"
+format = "toml_list"
+
+[native.stages.clean]
+kind = "clean"
+paths = ["{run_dir}", "hw/ip/axi_hang_detector/dv/build"]
+
+[build]
+top_module = "axi_hang_detector_tb_top"
+top_file = "hw/ip/axi_hang_detector/dv/tb/tb_top.sv"
+filelist = "hw/ip/axi_hang_detector/dv/build/axi_hang_detector_dut_compile.f"
+bender_filelist = "hw/ip/axi_hang_detector/dv/build/axi_hang_detector_bender.f"
+work_dir = "hw/ip/axi_hang_detector/dv/build"
+# The RTL closure is axi_hang_detector.sv plus the prim_axi_snoop.sv it
+# instantiates and the prim_assert.sv include both pull in. It carries no
+# packages, AXI structs or common_cells, so it needs no dependency targets.
+bender_targets = ["axi_hang_detector"]
+
+[frameworks.cocotb]
+python_root = "hw/ip/axi_hang_detector/dv/cocotb"
+test_dir = "hw/ip/axi_hang_detector/dv/cocotb/tests"
+results_dir = "{run_dir}/{item}/results"
+cocotb_log = "{run_dir}/{item}/logs/{item}.log"
+
+[run_modes.smoke]
+description = "Hang detector timeout-counter bring-up"
+timeout_sec = 600
+args = []
+
+[run_modes.functional]
+description = "Hang detector config corners, threshold latching, and bus-progress control"
+timeout_sec = 600
+args = []
+
+[targets.default]
+description = "AXI Hang Detector IP-level cocotb target"
+build_dir = "hw/ip/axi_hang_detector/dv/build/cocotb"
+
+[targets.default.tools.verilator]
+flags = [
+  "+define+VERILATOR",
+]

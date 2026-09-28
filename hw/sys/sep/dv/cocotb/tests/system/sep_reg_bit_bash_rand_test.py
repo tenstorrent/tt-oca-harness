@@ -28,7 +28,10 @@ safety gate admits -- ``touch_reason`` clear (plain storage) AND
 write seed-derived ``x`` inside the software-usable mask, check
 ``(readback & mask) == (x & mask)``, restore reset. No key / lock / remap /
 outbound filter / GO. The seed picks the values and the block order, not the
-register set, so the touch count is the same at every seed.
+register set, so the touch count is the same at every seed. Always-on
+threshold registers stay busy until ``prim_reg_cdc`` finishes on
+``clk_wdt_i``; this sweep runs that clock at eight core periods so the
+readback retires inside the AXI timeout.
 
 CSRNG, EDN and ENTROPY_SOURCE reach the write side through this gate; those
 rows are the write coverage of the entropy complex CSRs.
@@ -51,6 +54,16 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepRegBitBashCfg(self.random_seed())
         self.logger.info("bit-bash config: %s", cfg.summary())
+        # Threshold writes return on clk_i. prim_reg_cdc then holds the register
+        # busy until the pulse synchronizer finishes on clk_wdt_i, and the next
+        # read waits for that. Eight core periods keeps the handshake inside the
+        # AXI timeout. The readback compare is still the written value.
+        self.cfg.wdt_clk_period_ns = 8 * self.cfg.sys_clk_period_ns
+        self.logger.info(
+            "WDT sim-timing knob: clk_wdt=%s ns (8x core) so a threshold "
+            "readback retires inside the AXI timeout",
+            self.cfg.wdt_clk_period_ns,
+        )
         await self.bring_up_no_cpu()
         bash = SepRegBitBash(self)
 

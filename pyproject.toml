@@ -28,6 +28,7 @@ dependencies = [
   "semantic-version>=2.10.0",
   "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
   "shfmt-py==4.1.0",  # wraps the shfmt binary; no lint rules of its own, pairs with shellcheck-py
+  "svdoc==0.3.0",  # RTL Modules Reference: module, parameter, and port tables
   "systemrdl-compiler>=1.32.2",
   "tclint==0.4.2",
   "tomllint==0.3.6",  # syntax-only: catches malformed DV testlist/sim-config TOML, no style rules
@@ -85,8 +86,6 @@ ignore = ["E501"]
 "**/dv/tb_vcs/**/*.py" = ["E722", "E741", "F403", "F405", "F841"]
 "**/cocotb/**/*.py" = ["E402"]
 "hw/ip/i3ccore_wrap/dv/tb/*.py" = ["E402"]
-"hw/ip/key_manager/dv/tb/test_firmware.py" = ["E402", "E722", "F841"]
-"hw/ip/entropy_source/dv/cocotb/test_entropy_source.py" = ["F403", "F405"]
 # sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
 # a side effect); isort's alphabetical sort would put sep_reg first and break it.
 "hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]

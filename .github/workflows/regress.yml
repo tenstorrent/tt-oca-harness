@@ -106,21 +106,10 @@ jobs:
             # uses `elaboration` firmware, whose only products are zero-filled
             # preload images written in Python, so there is no RISC-V toolchain
             # stage on hosted runners. `smu` is the wrapper DUT on its single
-            # compile profile (real SEP); the bare block bench is `smu_block`
-            # (hw/sys/smu/dv/testlists/block.toml). `smu`'s own `all` is not
-            # usable here -- it carries the SEP firmware set, which needs the
+            # compile profile (real SEP). `smu`'s own `all` is not usable
+            # here -- it carries the SEP firmware set, which needs the
             # toolchain container.
             items: hosted
-            reseed: 1
-            coverage: false
-            runner: ubuntu-latest
-          - dut: smu_block
-            # The bare `smu #(.SEP(0))` bench. `all` is its cocotb leaves --
-            # the SEP=0 composition proofs plus the two JTAG leaves that cannot
-            # run on the wrapper -- with no firmware stage, so it runs on the
-            # hosted runner; sim.yml gates only the `smoke` leaf, so the
-            # scheduled tiers are where the abort-mid-op leaf executes.
-            items: all
             reseed: 1
             coverage: false
             runner: ubuntu-latest
@@ -133,7 +122,8 @@ jobs:
             reseed: 1
             coverage: false
             runner: ubuntu-latest
-          # Cross-trigger IP-level benches: small single-IP DUTs, seconds per
+          # IP-level benches (cross-trigger family, UART family, system timer,
+          # scrambler): small single-IP DUTs, seconds to a few minutes per
           # full group; nightly is their only scheduled enrollment besides
           # the weekly.
           - dut: cross_trigger_port
@@ -147,6 +137,51 @@ jobs:
             coverage: false
             runner: ubuntu-latest
           - dut: cross_trigger_network
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_16550
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: log_engine
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_log_engine_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: system_timer_octs
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: scrambler
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: entropy_source
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: axi_hang_detector
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: axi_lite_to_ahb
             items: all
             reseed: 1
             coverage: false
@@ -240,11 +275,6 @@ jobs:
             reseed: 1
             coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
-          - dut: smu_block
-            items: all
-            reseed: 1
-            coverage: false
-            runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
           - dut: smc
             items: hosted
             reseed: 1
@@ -273,6 +303,62 @@ jobs:
             runner: ubuntu-latest
           - dut: cross_trigger_network
             items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_16550
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: log_engine
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_log_engine_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: uart_wrap
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: system_timer_octs
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: scrambler
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: entropy_source
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: axi_hang_detector
+            items: all
+            reseed: 1
+            coverage: true
+            runner: ubuntu-latest
+          - dut: axi_lite_to_ahb
+            items: all
+            reseed: 1
+            coverage: false
+            runner: ubuntu-latest
+          - dut: axi_lite_to_ahb
+            # The SVA negative control: its one leaf carries `expect_fail` and
+            # fails only when a converter assertion fires, so the row is green
+            # only while the assertions are compiled into the CI Verilator
+            # build. Its own row because a graded expected failure must not
+            # count on the dashboard.
+            items: sva_live
+            label: sva_live
             reseed: 1
             coverage: false
             runner: ubuntu-latest

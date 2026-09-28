@@ -32,7 +32,7 @@ endif
 # the two conventions per-declaration depending on packed vs. unpacked would
 # be a net readability loss for no functional benefit. plusarg-assignment
 # flags every $test$plusargs call in the tree; each one checks
-# only whether a boolean flag was passed (waves, smc_skip_pll_init,
+# only whether a boolean flag was passed (waves, smc_hold_cpu_boot,
 # sep_no_tcm_preload, ...), which is exactly what $test$plusargs is for -
 # none of them extract a value, so the rule's suggested $value$plusargs
 # would be wrong for all of them.
@@ -53,9 +53,9 @@ OCAH_SV_DECLARATION_SPACING_CHECK := $(OCAH_ROOT)/scripts/ci/check_sv_declaratio
 OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 	hw/common/axi/axi_lite_to_tlul.sv \
 	hw/common/axi/tlul_to_axi_lite.sv \
-	hw/common/och_prim/rtl/prim_jtag_scan_reg.sv \
-	hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv \
-	hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv \
+	hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv \
+	hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv \
+	hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv \
 	hw/common/tlul/rtl/tlul_adapter_host.sv \
 	hw/common/tlul/rtl/tlul_adapter_reg.sv \
 	hw/common/tlul/rtl/tlul_adapter_sram.sv \
@@ -71,22 +71,15 @@ OCAH_VERIBLE_CONTEXT_EXCLUDES := \
 # formatter cannot process or reparse reliably. Slang compilation remains
 # authoritative for their syntax.
 OCAH_VERIBLE_FORMAT_PARSER_EXCLUDES := \
-	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/dtp/dv/tb/tb_top.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/smc/dv/tb/tb_top.sv \
-	hw/sys/smu/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv \
 	hw/top/smc_ip_integration.sv
 
 # Lint parses these three conditional-header/integration files even though the
 # formatter's output reparse does not. Keep their lint findings visible.
 OCAH_VERIBLE_LINT_PARSER_EXCLUDES := \
-	hw/common/och_prim/rtl/prim_apb_mux_struct.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/decorrelator/decor_cfg_if.sv \
-	hw/ip/entropy_source/dv/tb_vcs/models/ro/ro_cfg_if.sv \
 	hw/sys/sep/dv/tb/tb_top.sv \
 	hw/sys/sep/rtl/sep_tcm_wrapper.sv
 

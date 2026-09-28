@@ -8,7 +8,7 @@ without an SPI host IP, a passive bus monitor, and a checker that rebuilds the
 flash array and the write-enable latch from the wire and judges the exchange.
 
 This is a **behavioural model**.  It is not silicon-accurate and is not
-affiliated with any flash manufacturer.  No vendor or brand names appear
+affiliated with any flash manufacturer.  No manufacturer or brand names appear
 in class or method names.
 
 ---
@@ -16,9 +16,9 @@ in class or method names.
 ## Purpose
 
 OCAH cocotb tests that exercise SPI-attached flash (SMC SPI peripherals and
-the SEP xSPI path) need a single, versioned flash device model so that:
+the SEP octal-SPI path) need a single, versioned flash device model so that:
 
-1. Tests do not depend on any proprietary flash vendor simulation model.
+1. Tests do not depend on an external flash simulation model.
 2. The API is stable across changes to the underlying implementation.
 3. The model is deterministic by default (fixed JEDEC ID, preloaded contents).
 4. A test's verdict rests on named checker evidence, not on in-leaf asserts.
@@ -31,7 +31,7 @@ the SEP xSPI path) need a single, versioned flash device model so that:
 |---------|-------------------------------------------------------|-------------|
 | single  | Standard 1-bit SPI (MOSI/MISO), Mode 0 (CPOL=0/CPHA=0) | 1-bit on MOSI/MISO |
 | quad    | 4-bit data bus (QSPI); command/address 1-bit         | 1-bit on DQ0 (see note below) |
-| octal   | 8-bit data bus (OSPI/xSPI); SDR only                 | 1-bit on DQ0 (see note below) |
+| octal   | 8-bit data bus (octal SPI); SDR only                 | 1-bit on DQ0 (see note below) |
 
 **Quad/Octal note:** Command and address bytes are always received in 1-bit
 mode, and the data phase uses the same 1-bit engine on DQ0, so the quad and
@@ -74,7 +74,7 @@ ocah_spi_vip/
   __init__.py                           — re-exports the cocotb public API
   cocotb/ocah_spi_types.py              — OcahSpiOpcode, SpiMode, page/sector geometry, SR1 bits
   cocotb/ocah_spi_flash.py              — OcahSpiFlash (generic SPI/QSPI/OSPI device)
-  cocotb/ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP xSPI pin set)
+  cocotb/ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP octal-SPI pin set)
   cocotb/ocah_spi_master_bfm.py         — OcahSpiMasterBfm (Mode-0 controller engine)
   cocotb/ocah_spi_master_sequence.py    — OcahSpiMasterSequence (test-facing controller operations)
   cocotb/ocah_spi_monitor.py            — OcahSpiMonitor (passive bus observer)
@@ -144,7 +144,7 @@ completes when chip-select rises.
 
 ---
 
-### OcahSepSpiFlash — SEP xSPI pin set
+### OcahSepSpiFlash — SEP octal-SPI pin set
 
 ```python
 from ocah_spi_vip import OcahSepSpiFlash
@@ -313,7 +313,7 @@ Multiple flash instances in the same test will all receive the same override
 unless `set_jedec_id()` or `preload()` is called individually after
 construction.
 
-Example (VCS):
+Example:
 
 ```
 +spi_flash_jedec_id=EF4018 +spi_flash_preload=/path/to/firmware.bin
@@ -361,12 +361,12 @@ works for both flash types.  A failed checker record raises
 | Block and chip erase, 4-byte address mode entry | Out of scope; drained, recorded refused, never credited |
 | 4-byte (32-bit) address mode | Default is 3-byte; set `addr_bytes=4` in the constructor |
 | SPI Mode 1/2/3 (CPOL/CPHA variants) | Only Mode 0 (CPOL=0 CPHA=0) |
-| Program and erase timing | Instant-ready: the BUSY bit never sets; no vendor timing |
-| Vendor commands and registers | None; status register 2 is a constant the bench configures |
+| Program and erase timing | Instant-ready: the BUSY bit never sets; no device-specific timing |
+| Device-specific commands and registers | None; status register 2 is a constant the bench configures |
 | Addresses at or beyond `flash_size` | Read as 0xFF and take no program; a read address wraps at 24 bits, not at the device size |
-| SEP-named pad-bundle class | `OcahSepSpiFlash` carries the xSPI pad-bundle binding (chip-select, clock, DQ out/in, DQ output-enable, REBAR) under the SEP name; SMC binds the same class to its lifted SPI pads |
+| SEP-named pad-bundle class | `OcahSepSpiFlash` carries the octal-SPI pad-bundle binding (chip-select, clock, DQ out/in, DQ output-enable, REBAR) under the SEP name; SMC binds the same class to its lifted SPI pads |
 | SV collateral | None: no interface, SVA, coverage model, or SV-UVM realization ships; the package is cocotb only |
-| Simulators | Verilator, VCS, and Xcelium run the cocotb `dv/` harness; Verilator runs the SEP and SMC benches |
+| Simulators | Verilator and the optional backends reported by `run_dv.py --list` |
 
 ## Validation
 
@@ -413,7 +413,7 @@ code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_spi_vip import <Class>`, never from the subfolders.
 This package has no `interface/` or `uvm/` realization. The SV-UVM
-template and the commercial-VIP plug-in contract (env-level factory
+template and the optional-backend plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`
 ("Template Contract") — the reference implementation for all OCAH SV-UVM

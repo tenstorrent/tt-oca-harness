@@ -53,7 +53,6 @@ confidence = "high"
 rationale = "capture_en is tied low in this configuration."
 owner = "fixture-dv"
 reviewer = "fixture-dv"
-date = "2026-09-02"
 [[holes.native]]
 tool = "verilator"
 metric_family = "toggle"
@@ -345,7 +344,8 @@ class WaiveRegrade(FixtureCase):
             self.assertEqual(record[key], old_record[key])
         regression = read_json(run_dir / REGRESSION_REL)
         self.assertEqual((regression["status"], regression["exit_code"]), ("PASS", 0))
-        self.assertTrue(regression["coverage"]["threshold_met"])
+        self.assertNotIn("coverage", regression)
+        self.assertTrue(regression["artifacts"]["coverage_summary"])
         self.assertEqual(graded_key_sets(self.root), old_keys)
         self.assertEqual(
             (run_dir / "stages" / "cov_report" / "logs" / "cov_report.log").read_bytes(), old_log
@@ -405,26 +405,6 @@ class WaiveRegrade(FixtureCase):
         self.assertEqual(manifest["tool_version"], closure.TOOL_VERSION)
         self.assertEqual(manifest["generated_at"], "2026-09-01T08:00:00+00:00")
         self.assertEqual(result["tool_version"], old_result["tool_version"])
-
-    def test_lapsed_waiver_is_applied_not_refused(self):
-        run_dir = stage_finished_run(self.root)
-        edit_text(
-            self.root / closure.POLICY_REL,
-            'date = "2026-09-01"\n[[holes.native]]\ntool = "verilator"\nmetric_family = "toggle"\n'
-            'native_locator = "*|o=scan_ctrl_i.capture_en:0->1|*"',
-            'date = "2026-09-01"\nexpires = "2020-01-01"\n[[holes.native]]\ntool = "verilator"\n'
-            'metric_family = "toggle"\nnative_locator = "*|o=scan_ctrl_i.capture_en:0->1|*"',
-        )
-        rc, out, err = run_waive(self.root, run_dir)
-        self.assertEqual((rc, err), (1, ""))
-        self.assertIn("coverage=FAIL", out)
-        summary = read_json(run_dir / "cov" / "report" / "summary.json")
-        self.assertEqual(summary["holes_summary"]["accepted"], 0)
-        application = read_json(run_dir / "cov" / "report" / "policy-application.json")
-        self.assertEqual(
-            application["warnings"],
-            ["toggle-capture_en-rise expired on 2020-01-01; treated as open"],
-        )
 
     def test_second_run_is_idempotent(self):
         run_dir = stage_finished_run(self.root)

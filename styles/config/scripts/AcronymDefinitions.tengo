@@ -45,7 +45,7 @@ canonical := {
   KPV:    ["key and policy vault"], // hw/ip/key_manager/doc/architecture.adoc
   LCC:    ["life cycle controller"], // hw/sys/sep/doc/lifecycle_controller.adoc
   AGP:    ["alarm aggregation processor"], // hw/sys/sep/doc/cpu.adoc
-  ARBC:   ["anti-rollback counter"], // hw/sys/sep/doc/periphs.adoc
+  ARBC:   ["anti-rollback counter"], // hw/sys/sep/doc/otp_fuse_controller.adoc
   FLR:    ["function level reset"], // hw/sys/smc/doc/clk_rst.adoc
   CLINT:  ["core local interruptor"], // hw/sys/smc/doc/interrupts.adoc
   PLIC:   ["platform-level interrupt controller"], // hw/sys/smc/doc/interrupts.adoc
@@ -65,7 +65,7 @@ canonical := {
   MBIST:  ["memory built-in self-test"], // hw/sys/smc/doc/clk_rst.adoc
   DMA:    ["direct memory access"], // hw/sys/sep/doc/cpu.adoc
   AES:    ["advanced encryption standard"], // hw/ip/entropy_source/dv/tb_vcs/models/compressor/README.md
-  SPI:    ["serial peripheral interface"], // hw/sys/sep/doc/periphs.adoc
+  SPI:    ["serial peripheral interface"], // hw/sys/sep/doc/spi.adoc
   CSR:    ["control and status register"], // hw/ip/i2c/doc/architecture.adoc
   CSRs:   ["control and status registers"], // hw/ip/i2c/doc/architecture.adoc
   RDL:    ["register description language"], // hw/ip/memory_interface/README.adoc
@@ -80,7 +80,7 @@ canonical := {
   KMCSR:  ["key manager control and status registers"], // hw/ip/key_manager/doc/architecture.adoc
   ABR:    ["adams bridge"], // hw/ip/key_manager/doc/architecture.adoc
   CCC:    ["common command codes"], // hw/ip/i3ccore_wrap/doc/interface.adoc
-  WDT:    ["watchdog timer"], // hw/sys/sep/doc/periphs.adoc
+  WDT:    ["watchdog timer"], // hw/sys/sep/doc/watchdog.adoc
   RoT:    ["root of trust"], // doc/trm/src/architecture.adoc
   PCRV:   ["pcr vault"], // hw/ip/key_manager/doc/architecture.adoc
   PIC:    ["programmable interrupt controller"], // hw/sys/sep/doc/cpu.adoc
@@ -89,7 +89,7 @@ canonical := {
   CTPs:   ["cross trigger ports"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
   CLAs:   ["core logic analyzers"], // hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc
   DFT:    ["design for test"], // hw/ip/gpio/doc/interface.adoc
-  VROM:   ["virtual rom"], // hw/ip/key_manager/dv/tb/README.md
+  VROM:   ["virtual rom"], // hw/ip/key_manager/doc/architecture.adoc
   PCPI:   ["pico co-processor interface"], // hw/ip/key_manager/doc/architecture.adoc
   EK:     ["endorsement key"], // hw/ip/key_manager/doc/architecture.adoc
   AK:     ["attestation key"], // hw/ip/key_manager/doc/architecture.adoc

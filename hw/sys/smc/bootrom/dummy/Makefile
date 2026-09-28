@@ -14,7 +14,8 @@ DUMMY_DIR  := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 SMC_FW_DIR := $(abspath $(DUMMY_DIR)/../../dv/fw)
 OCAH_ROOT  ?= $(abspath $(DUMMY_DIR)/../../../../..)
 OCAH_DOCKER_RUN := $(OCAH_ROOT)/scripts/docker-run.sh
-PYTHON ?= python3
+UV = uv
+PYTHON ?= $(UV) --project "$(OCAH_ROOT)" run --locked python3
 
 # Shared engine inputs (mirror hw/sys/smc/dv/fw/fw.mk).
 FW_NAME      := smc

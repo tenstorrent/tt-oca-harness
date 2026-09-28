@@ -39,6 +39,7 @@ from __future__ import annotations
 import cocotb
 from cocotb.triggers import ClockCycles
 
+from seq_lib.smu_addr_map import smc_indexed_addr
 from seq_lib.smu_lifecycle_table import (
     LC_STATE_PRESENSE,
     lc_raw_from_shadow_preload,
@@ -56,7 +57,9 @@ from seq_lib.wrapper_jtag import (
 
 # SMC CPU_CTRL scratch0, SMC-local. A benign, always-mapped read target: the
 # point is whether the transaction is launched, not what it returns.
-J2A_READ_ADDR = 0xC003_9080
+J2A_READ_ADDR = smc_indexed_addr(
+    "SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR", 0
+)  # SMC CPU_CTRL scratch0
 
 SETTLE_CYCLES = 4000
 
@@ -64,10 +67,14 @@ SETTLE_CYCLES = 4000
 class SmuSepDbgGatingSeq:
     """Prove dbg_disable stops JTAG2AXI traffic, and its absence allows it."""
 
+    #: Evidence tokens logged once every check above the verdict has held.
+    EVIDENCE = ("SEP_DBG_DISABLE_ENFORCED_OK", "SEP_LCC_TO_DTP_GATING_OK")
+
     def __init__(self, test) -> None:
         self.test = test
         self.dut = cocotb.top
         self.log = test.logger
+        test.declare_evidence(*self.EVIDENCE)
 
     def _rd(self, handle, name):
         return self.test.read_int(handle, name, allow_xz=True)
@@ -227,7 +234,7 @@ class SmuSepDbgGatingSeq:
                 before_ar,
                 after_ar,
             )
-        for token in ("SEP_DBG_DISABLE_ENFORCED_OK", "SEP_LCC_TO_DTP_GATING_OK"):
+        for token in self.EVIDENCE:
             self.log.info("EVIDENCE: %s", token)
             self.log.info("EVIDENCE:%s", token)
             self.log.info("EVIDENCE:CHK-%s", token)

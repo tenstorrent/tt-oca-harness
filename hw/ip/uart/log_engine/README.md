@@ -13,4 +13,5 @@ Authoritative description and register maps: `hw/ip/uart/log_engine/doc/` (publi
 
 ## Verification
 
-No dedicated block TB in this tree; covered by SMC DV.
+Block-level bench on the unified DV flow: `dv/README.md`
+(`python3 tools/dv/run_dv.py --dut log_engine`). SMC-level scenarios live under `hw/sys/smc/dv/`.

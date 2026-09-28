@@ -16,6 +16,7 @@ from seq_lib.smc_output_fabric_vip_utils import (
     jtag_axi_write,
     output_fabric_model,
     output_fabric_pass_all_cfg_seq,
+    output_responder_counts,
 )
 from smc_base_test import smc_base_test
 
@@ -23,6 +24,9 @@ from smc_base_test import smc_base_test
 @pyuvm.test()
 class smc_output_fabric_wr_rd_responder_test(smc_base_test):
     """Drive JTAG AXI through output fabric; scoreboard checks memory golden."""
+
+    required_evidence = ("CHK-OUTPUT-FABRIC-WR-RD-GOLDEN",)
+    min_evidence = 1
 
     auto_protocol_vip = False
 
@@ -58,6 +62,21 @@ class smc_output_fabric_wr_rd_responder_test(smc_base_test):
         )
         assert self.env.scoreboard.memory_model_updates_seen >= 1
         assert self.env.scoreboard.memory_model_checks_seen >= 1
+        end_writes, end_reads = output_responder_counts(dut)
+        cocotb.log.info(
+            "CHK-OUTPUT-FABRIC-WR-RD-GOLDEN: JTAG AXI write 0x%016x @ 0x%x then read "
+            "back through the output fabric; SYS_OUT responder write_count %d -> %d "
+            "(exactly +1), read_count %d -> %d (>= +1), last_addr/last_wdata matched "
+            "the write; scoreboard memory-model updates=%d, golden read checks=%d",
+            OUTPUT_FABRIC_DATA,
+            OUTPUT_FABRIC_ADDR,
+            start_writes,
+            end_writes,
+            start_reads,
+            end_reads,
+            self.env.scoreboard.memory_model_updates_seen,
+            self.env.scoreboard.memory_model_checks_seen,
+        )
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,

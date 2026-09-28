@@ -1,36 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-bus_error_unit]
+== Bus Error Unit Address Map
+
+Status registers reporting correctable and uncorrectable I-cache, D-cache, and TileLink bus errors.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CAUSE | RW a| -
-| 0x8 | PHYS_ADDR | R a| -
-| 0x10 | ENABLE | RW a| -
-| 0x18 | PLIC_ENABLE | RW a| -
-| 0x20 | ACCRUED_ENABLE | RW a| -
-| 0x28 | LOCAL_ENABLE | RW a| -
+| 0x0 | <<reg-{regmap-instance}-bus_error_unit-CAUSE,CAUSE>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-bus_error_unit-PHYS_ADDR,PHYS_ADDR>> | RW a| -
+| 0x10 | <<reg-{regmap-instance}-bus_error_unit-ENABLE,ENABLE>> | RW a| -
+| 0x18 | <<reg-{regmap-instance}-bus_error_unit-PLIC_ENABLE,PLIC_ENABLE>> | RW a| -
+| 0x20 | <<reg-{regmap-instance}-bus_error_unit-ACCRUED_ENABLE,ACCRUED_ENABLE>> | RW a| Sticky accrued error status. The legacy name ACCRUED_ENABLE does not denote an enable mask. Error events set these bits independently of ENABLE. Ordinary software writes replace the bits (write zero to clear) and take priority over simultaneous events. PLIC_ENABLE and LOCAL_ENABLE mask this status for interrupt delivery.
+| 0x28 | <<reg-{regmap-instance}-bus_error_unit-LOCAL_ENABLE,LOCAL_ENABLE>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-bus_error_unit-CAUSE]
+=== CAUSE
+
 [cols="1,3,1,1,6", options="header"]
-.CAUSE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
 | 2:0 | `data` | RW | 0x0 a| Cause register. Enumerates different kinds of errors
 |===
 
+[#reg-{regmap-instance}-bus_error_unit-PHYS_ADDR]
+=== PHYS_ADDR
+
 [cols="1,3,1,1,6", options="header"]
-.PHYS_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:56 | `Reserved` | - | - a| Reserved
-| 55:0 | `value` | R | - a| Physical address of error event. No reset value
+| 55:0 | `value` | RW | - a| Physical address captured with CAUSE when an enabled error arrives and CAUSE is zero. Software may overwrite the value; writes take priority over capture. No reset value
 |===
 
+[#reg-{regmap-instance}-bus_error_unit-ENABLE]
+=== ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:8 | `Reserved` | - | - a| Reserved
@@ -44,8 +56,10 @@
 | 0 | `rsvd0` | RW | 0x0 a| Reserved
 |===
 
+[#reg-{regmap-instance}-bus_error_unit-PLIC_ENABLE]
+=== PLIC_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.PLIC_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:8 | `Reserved` | - | - a| Reserved
@@ -59,23 +73,27 @@
 | 0 | `rsvd0` | RW | 0x0 a| Reserved
 |===
 
+[#reg-{regmap-instance}-bus_error_unit-ACCRUED_ENABLE]
+=== ACCRUED_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.ACCRUED_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:8 | `Reserved` | - | - a| Reserved
-| 7 | `dcache_uncorrectable` | RW | 0x0 a| Coarse grain interrupt enable mask for DCache ECC uncorrectable bus error.
-| 6 | `dcache_correctable` | RW | 0x0 a| Coarse grain interrupt enable mask for DCache ECC correctable bus error.
-| 5 | `dcache_tlbus` | RW | 0x0 a| Coarse grain interrupt enable mask for DCache Tilelink bus error.
+| 7 | `dcache_uncorrectable` | RW | 0x0 a| Sticky accrued status for DCache ECC uncorrectable bus error.
+| 6 | `dcache_correctable` | RW | 0x0 a| Sticky accrued status for DCache ECC correctable bus error.
+| 5 | `dcache_tlbus` | RW | 0x0 a| Sticky accrued status for DCache Tilelink bus error.
 | 4 | `rsvd4` | RW | 0x0 a| Reserved
 | 3 | `rsvd3` | RW | 0x0 a| Reserved
-| 2 | `icache_correctable` | RW | 0x0 a| Coarse grain interrupt enable mask for ICache ECC correctable bus error.
-| 1 | `icache_tlbus` | RW | 0x0 a| Coarse grain interrupt enable mask for ICache Tilelink bus error.
+| 2 | `icache_correctable` | RW | 0x0 a| Sticky accrued status for ICache ECC correctable bus error.
+| 1 | `icache_tlbus` | RW | 0x0 a| Sticky accrued status for ICache Tilelink bus error.
 | 0 | `rsvd0` | RW | 0x0 a| Reserved
 |===
 
+[#reg-{regmap-instance}-bus_error_unit-LOCAL_ENABLE]
+=== LOCAL_ENABLE
+
 [cols="1,3,1,1,6", options="header"]
-.LOCAL_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:8 | `Reserved` | - | - a| Reserved

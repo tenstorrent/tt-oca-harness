@@ -1,67 +1,92 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// UART & Log Engine Wrapper
+// Map one uart_16550, an optional log engine and a CTRL register behind one AXI-Lite port.
 //
-//-----------------------------------------------------------------------------
-
+// Decodes the UART, log-engine and CTRL windows set by the *_REG_MAP_* parameters.
+// Addresses outside every window go to an error slave that answers DECERR with
+// read data 0xBADCAB1E.
+// The log engine shares the UART register port with the CSR path through an AXI-Lite mux
+// and is paced by uart_txrdy_o.
+// UART serial, modem, DMA and interrupt pins pass to the top unchanged.
 
 module uart_log_engine_wrap
   import uart_log_engine_wrap_pkg::*;
 #(
-  parameter int unsigned UART_TX_FIFO_DEPTH    = 32,
-  parameter int unsigned UART_RX_FIFO_DEPTH    = 32,
-  parameter bit          GEN_LOG_ENGINE        = 1'b1,
-  parameter int unsigned LOG_ENGINE_FIFO_DEPTH = 32,
+  parameter int unsigned UART_TX_FIFO_DEPTH    = 32,  // Per-UART TX FIFO depth. Must be a power of
+                                                      // 2 from 4 to 4096 inclusive.
+  parameter int unsigned UART_RX_FIFO_DEPTH    = 32,  // Per-UART RX FIFO depth. Must be a power of
+                                                      // 2 from 4 to 4096 inclusive.
+  parameter bit          GEN_LOG_ENGINE        = 1'b1,  // Instantiates the log engine when set.
+                                                        // When clear, the log-engine window is not
+                                                        // decoded, log_fetch_axil_req_o is idle and
+                                                        // log_engine_irq_o is low.
+  parameter int unsigned LOG_ENGINE_FIFO_DEPTH = 32,  // Entries in the log engine's read-data FIFO
+                                                      // between log fetch and UART write.
 
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_REG_MAP_BASE_ADDR = 0,
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_REG_MAP_SIZE      = 0,
-  parameter bit [REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,
-  parameter bit [REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,
-  parameter bit [REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0
+  parameter bit [REG_ADDR_WIDTH-1:0] UART_REG_MAP_BASE_ADDR = 0,  // UART register-map base.
+  parameter bit [REG_ADDR_WIDTH-1:0] UART_REG_MAP_SIZE      = 0,  // UART register-map size.
+  parameter bit [REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_BASE_ADDR = 0,  // Log-engine register-map base.
+  parameter bit [REG_ADDR_WIDTH-1:0] LOG_ENGINE_REG_MAP_SIZE      = 0,  // Log-engine register-map size.
+  parameter bit [REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_BASE_ADDR = 0,  // Log-engine CTRL base.
+  parameter bit [REG_ADDR_WIDTH-1:0] UART_LOG_ENGINE_CTRL_REG_MAP_SIZE = 0  // Log-engine CTRL size.
 ) (
-  // Global Interface
-  input  logic                                 clk_i,
-  input  logic                                 rst_ni,
+  input  logic                                 clk_i,  // System clock, rising-edge triggered.
+  input  logic                                 rst_ni,  // Active-low reset. Assert asynchronously;
+                                                        // deassert synchronously to clk_i.
 
-  // AXI4-Lite Register Interface
-  input  csr_axil_req_t                        csr_axil_req_i,
-  output csr_axil_resp_t                       csr_axil_resp_o,
+  input  csr_axil_req_t                        csr_axil_req_i,  // Register-port request, decoded
+                                                                // onto the UART, log-engine and
+                                                                // CTRL maps.
+  output csr_axil_resp_t                       csr_axil_resp_o,  // Csr AXI-Lite resp.
 
-  // AXI4-Lite Log fetch Interface
-  output log_engine_pkg::log_fetch_axil_req_t  log_fetch_axil_req_o,
-  input  log_engine_pkg::log_fetch_axil_resp_t log_fetch_axil_resp_i,
+  output log_engine_pkg::log_fetch_axil_req_t  log_fetch_axil_req_o,  // Log-engine log-fetch request; all zero when GEN_LOG_ENGINE is clear.
+  input  log_engine_pkg::log_fetch_axil_resp_t log_fetch_axil_resp_i,  // Log fetch AXI-Lite resp.
 
-  // Control Interface
-  output logic                                 uart_en_o,
+  output logic                                 uart_en_o,  // Uart en, active-high (Control
+                                                           // Interface); driven from CTRL.UART_EN.
 
-  // UART Interface
-  input  logic                                 uart_rx_i,
-  output logic                                 uart_tx_o,
+  input  logic                                 uart_rx_i,  // Uart rx (UART Interface); idles high.
+                                                           // Asynchronous; synchronized internally.
+  output logic                                 uart_tx_o,  // Uart tx; idles high.
 
-  // UART Modem Interface
-  input  logic                                 uart_cts_ni,
-  input  logic                                 uart_dsr_ni,
-  input  logic                                 uart_ri_ni,
-  input  logic                                 uart_dcd_ni,
+  input  logic                                 uart_cts_ni,  // uart cts, active-low (UART Modem
+                                                             // Interface). Asynchronous;
+                                                             // synchronized internally.
+  input  logic                                 uart_dsr_ni,  // uart dsr, active-low. Asynchronous;
+                                                             // synchronized internally.
+  input  logic                                 uart_ri_ni,  // uart ri, active-low. Asynchronous;
+                                                            // synchronized internally.
+  input  logic                                 uart_dcd_ni,  // uart dcd, active-low. Asynchronous;
+                                                             // synchronized internally.
 
-  output logic                                 uart_rts_no,
-  output logic                                 uart_dtr_no,
-  output logic                                 uart_out1_no,
-  output logic                                 uart_out2_no,
+  output logic                                 uart_rts_no,  // uart rts, active-low.
+  output logic                                 uart_dtr_no,  // uart dtr, active-low.
+  output logic                                 uart_out1_no,  // uart out1, active-low.
+  output logic                                 uart_out2_no,  // uart out2, active-low.
 
-  // UART DMA Interface
-  output logic                                 uart_rxrdy_o,
-  output logic                                 uart_txrdy_o,
+  output logic                                 uart_rxrdy_o,  // Uart rxrdy, active-high (UART DMA
+                                                              // Interface): in mode 0 while the RX
+                                                              // FIFO is not empty; in mode 1 from
+                                                              // the trigger level or a character
+                                                              // timeout until the FIFO empties.
+  output logic                                 uart_txrdy_o,  // Uart txrdy, active-high: in mode 0
+                                                              // while the TX FIFO is empty; in mode
+                                                              // 1 until it fills, then again once
+                                                              // it drains. Also paces the log
+                                                              // engine.
 
-  // UART Error Interface
-  output logic                                 uart_err_o,
+  output logic                                 uart_err_o,  // Uart err, active-high (UART Error
+                                                            // Interface). Flags a data-parity or
+                                                            // pointer integrity error in the UART
+                                                            // FIFOs or holding registers, unrelated
+                                                            // to the parity of received characters.
 
-  // Interrupt Interface
-  output logic                                 uart_irq_o,
-  output logic                                 log_engine_irq_o
+  output logic                                 uart_irq_o,  // Uart irq, active-high (Interrupt
+                                                            // Interface); the OR of the enabled
+                                                            // UART interrupt sources.
+  output logic                                 log_engine_irq_o  // Log engine irq, active-high; low
+                                                                 // when GEN_LOG_ENGINE is clear.
 );
 
   `include "axi/assign.svh"
@@ -143,7 +168,7 @@ module uart_log_engine_wrap
     .SpillB          (1'b0),
     .SpillAr         (1'b1),
     .SpillR          (1'b0)
-  ) csr_axi_lite_demux (
+  ) u_csr_axi_lite_demux (
     .clk_i,
     .rst_ni,
     .test_i          (1'b0),
@@ -164,7 +189,7 @@ module uart_log_engine_wrap
     .RESP_WIDTH     (REG_DATA_WIDTH),
     .RESP_DATA      (32'hBADCAB1E),
     .MAX_TRANS      (1)
-  ) csr_axi_lite_err_slv (
+  ) u_csr_axi_lite_err_slv (
     .clk_i,
     .rst_ni,
 
@@ -180,7 +205,7 @@ module uart_log_engine_wrap
   uart_16550 #(
     .TX_FIFO_DEPTH (UART_TX_FIFO_DEPTH),
     .RX_FIFO_DEPTH (UART_RX_FIFO_DEPTH)
-  ) uart_16550 (
+  ) u_uart_16550 (
     // Global Interface
     .clk_i,
     .rst_ni,
@@ -254,7 +279,7 @@ module uart_log_engine_wrap
 
     log_engine #(
       .FIFO_DEPTH(LOG_ENGINE_FIFO_DEPTH)
-    ) log_engine (
+    ) u_log_engine (
       // Global Interface
       .clk_i,
       .rst_ni,
@@ -303,7 +328,7 @@ module uart_log_engine_wrap
       .SpillB      (1'b0),
       .SpillAr     (1'b1),
       .SpillR      (1'b0)
-    ) log_write_axi_lite_mux (
+    ) u_log_write_axi_lite_mux (
       .clk_i,
       .rst_ni,
       .test_i      (1'b0),
@@ -330,7 +355,7 @@ module uart_log_engine_wrap
 
   uart_log_engine_ctrl_reg_pkg::uart_log_engine_ctrl__out_t reg_out;
 
-  uart_log_engine_ctrl_reg uart_log_engine_ctrl_reg (
+  uart_log_engine_ctrl_reg u_uart_log_engine_ctrl_reg (
     .clk            (clk_i),
     .arst_n         (rst_ni),
 

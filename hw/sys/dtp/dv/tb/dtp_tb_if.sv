@@ -133,25 +133,31 @@ interface dtp_tb_if;
 
   // Registered BUSY of every external cross-trigger port (driven by tb_top
   // from the CTP busy outputs); STATUS.BUSY reads the same flop.
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0] xtrig_ctp_busy;
+  logic [dtp_dv_cfg_pkg::NumCtp-1:0] xtrig_ctp_busy;
 
-  // JTAG2AXI bridge state per target for the reset-abort scenarios, sampled
-  // by tb_top from the bridges' TCK-domain registers: the AXI FSM state
-  // (jtag2axi.sv axi_state_e: 0 IDLE, 1 SEND_ADDR_W, 2 SEND_DATA_W,
-  // 3 WAIT_BRESP, 4 SEND_ADDR_R, 5 WAIT_RDATA, 6 UPDATE_STATUS), the
+  // JTAG2AXI bridge state per target for the stall and reset-abort
+  // scenarios, decoded by tb_top from each bridge's TCK-domain AXI state
+  // machine by state name: idle; on the write path (address, data, or
+  // response wait); on the read path (address or data wait). Beside them the
   // single-op pending flag, and a sticky flag set once the bridge's CDC has
   // run its TCK-side isolate-and-clear; cdc_clear_seen_clear = 1 clears the
   // sticky flags.
-  logic [2:0] smc_axi_fsm_state;
-  logic       smc_axi_op_pending;
-  logic       smc_axi_cdc_clear_seen;
-  logic [2:0] smc_otp_fsm_state;
-  logic       smc_otp_op_pending;
-  logic       smc_otp_cdc_clear_seen;
-  logic [2:0] sep_otp_fsm_state;
-  logic       sep_otp_op_pending;
-  logic       sep_otp_cdc_clear_seen;
-  logic       cdc_clear_seen_clear = 1'b0;
+  logic smc_axi_fsm_idle;
+  logic smc_axi_fsm_write_path;
+  logic smc_axi_fsm_read_path;
+  logic smc_axi_op_pending;
+  logic smc_axi_cdc_clear_seen;
+  logic smc_otp_fsm_idle;
+  logic smc_otp_fsm_write_path;
+  logic smc_otp_fsm_read_path;
+  logic smc_otp_op_pending;
+  logic smc_otp_cdc_clear_seen;
+  logic sep_otp_fsm_idle;
+  logic sep_otp_fsm_write_path;
+  logic sep_otp_fsm_read_path;
+  logic sep_otp_op_pending;
+  logic sep_otp_cdc_clear_seen;
+  logic cdc_clear_seen_clear = 1'b0;
 
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.
@@ -168,6 +174,32 @@ interface dtp_tb_if;
 
   // CLA clock-stop request vector (driven by debug-TDR sequences; init
   // quiescent so unrelated tests see no requests).
-  logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
+  logic [dtp_dv_cfg_pkg::NumClkStopReq-1:0] xtrig_clk_stop_req = '0;
+
+  // The bench configuration (dtp_dv_cfg_pkg) the cocotb bring-up compares
+  // with its own copy of the table.
+  logic [7:0]  cfg_num_ctp          = 8'(dtp_dv_cfg_pkg::NumCtp);
+  logic [7:0]  cfg_num_int_ct       = 8'(dtp_dv_cfg_pkg::NumIntCt);
+  logic [7:0]  cfg_num_clk_stop_req = 8'(dtp_dv_cfg_pkg::NumClkStopReq);
+  logic [31:0] cfg_int_ct_mode      = 32'(dtp_dv_cfg_pkg::IntCtMode);
+  logic [7:0]  cfg_num_extra_staps  = 8'(dtp_dv_cfg_pkg::NumExtraStaps);
+  logic [7:0]  cfg_num_smc_ic_reset = 8'(dtp_dv_cfg_pkg::NumSmcIcReset);
+  logic [7:0]  cfg_num_sep_ic_reset = 8'(dtp_dv_cfg_pkg::NumSepIcReset);
+  logic [7:0]  cfg_num_ext_ic_reset = 8'(dtp_dv_cfg_pkg::NumExtIcReset);
+  logic [7:0]  cfg_och_ver          = dtp_dv_cfg_pkg::OchVer;
+  logic [31:0] cfg_idcode           = dtp_dv_cfg_pkg::Idcode;
+  logic [7:0]  cfg_wire_or_pull     = 8'(dtp_dv_cfg_pkg::WireOrPull);
+  logic [7:0]  cfg_wire_or_assert   = 8'(dtp_dv_cfg_pkg::WireOrAssert);
+  logic [7:0]  cfg_ct_dst_latency   = 8'(dtp_dv_cfg_pkg::CtDstLatency);
+  logic [7:0]  cfg_smc_axi_addr_width  = 8'(dtp_dv_cfg_pkg::SmcAxiAddrWidth);
+  logic [7:0]  cfg_smc_axi_data_width  = 8'(dtp_dv_cfg_pkg::SmcAxiDataWidth);
+  logic [7:0]  cfg_otp_axil_addr_width = 8'(dtp_dv_cfg_pkg::OtpAxilAddrWidth);
+  logic [7:0]  cfg_otp_axil_data_width = 8'(dtp_dv_cfg_pkg::OtpAxilDataWidth);
+  logic [7:0]  cfg_smc_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpRdPlDepth);
+  logic [7:0]  cfg_smc_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpWrPlDepth);
+  logic [7:0]  cfg_sep_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpRdPlDepth);
+  logic [7:0]  cfg_sep_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpWrPlDepth);
+  logic [7:0]  cfg_smc_rd_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcRdPlDepth);
+  logic [7:0]  cfg_smc_wr_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcWrPlDepth);
 
 endinterface : dtp_tb_if

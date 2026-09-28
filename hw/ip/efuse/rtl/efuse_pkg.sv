@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Package
+// Define shared eFuse field-map rules, shadow range maps, and bus typedef helpers.
 //
-//-----------------------------------------------------------------------------
+// Provides rule_t, shadow_word_range_map_t, and related constants imported by the
+// controller, guard, shadow regs, and token processing.
+// Also defines the lifecycle-state encoding, fuse commands, and address-decode selects, and
+// includes the AXI, APB, and fuse-command typedef macros used by interface blocks.
 
 package efuse_pkg;
 

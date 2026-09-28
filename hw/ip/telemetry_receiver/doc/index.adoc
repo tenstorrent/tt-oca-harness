@@ -11,12 +11,16 @@ telemetry transmitters. It implements a receiver for a probe-ID and
 multi-counter message format.
 
 [[telemetry-receiver-message-format]]
-===== Message Format
+=== Message Format
 
 Eight little-endian ATB beats form a 64-bit packet. One or more packets
 form a message that ends when `last_packet` is set.
 
+<<telemetry-packet-fields-table>> defines the fields carried in each telemetry packet.
+
+[[telemetry-packet-fields-table]]
 [width="100%",cols="20%,15%,65%",options="header",]
+.Telemetry packet fields
 |====================================================================================
 |Field |Width |Location
 |`last_packet` |1 bit |Bit 63 of each packet

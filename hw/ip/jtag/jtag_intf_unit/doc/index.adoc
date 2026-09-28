@@ -28,35 +28,16 @@ IEEE 1687-2014 (iJTAG) and IEEE 1838-2019 (3DIC).
 
 == Configuration Parameters
 
-[cols="<28%,<12%,<12%,<48%",options="header"]
-|===
-|Parameter |Range |Default |Description
+The JIU is configured through the PTAP feature enables, the I/O, SMC debug and SEP
+debug STAP enables, the number of additional STAPs, the IDCODE and JTAG_CAPS values,
+and the JTAG2AXI pipeline depths.
 
-|`NUM_STAP`
-|0–8
-|4
-|Number of STAP interfaces.
-
-|`STAP_IO_EN`
-|0/1
-|1
-|Enable I/O STAP for chiplet-to-chiplet connectivity.
-
-|`SMC_DBG_EN`
-|0/1
-|1
-|Enable SMC debug STAP.
-
-|`SEP_DBG_EN`
-|0/1
-|1
-|Enable SEP debug STAP.
-
-|`NUM_XTRA_STAP`
-|0–4
-|0
-|Number of additional STAPs.
-|===
+ifdef::backend-html5[]
+The parameters of `jtag_intf_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_intf_unit/jtag_intf_unit.adoc[jtag_intf_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `jtag_intf_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 == Architecture
 

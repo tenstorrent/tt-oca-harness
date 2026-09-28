@@ -1,51 +1,113 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Output Fabric
+// Route the SMC's outbound AXI through the output remap and filter to the system AXI port.
+//
+// With NO_ADDR_REMAP clear, requests inside the M-mode or Xvisor remap window at either SMC base go
+// through the matching output_remap, which rewrites the address and replaces AxUSER with the M-mode
+// or the other source ID; all other requests have AxUSER replaced with the SMC source ID; a mux
+// merges the three paths and widens the ID. With NO_ADDR_REMAP set, only the ID widening remains. A
+// clock-gated outbound access filter, which allows traffic that hits no rule, then guards the port.
 
 module smc_output_fabric #(
-  parameter bit          NO_ADDR_REMAP           = 1'b1,
-  parameter int unsigned NumFilters              = 16,
-  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,
-  parameter bit          FilterReqPipelineEnable = 1'b0,
-  parameter bit          FilterRspPipelineEnable = 1'b0,
-  parameter int unsigned MmodeBaseAddr           = smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR,
-  parameter int unsigned XvisorBaseAddr          = smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR
+  parameter bit          NO_ADDR_REMAP           = 1'b1,  // Removes the M-mode and Xvisor
+                                                          // output remap when the integration
+                                                          // map is fixed, leaving an ID-width
+                                                          // converter in its place.
+  parameter int unsigned NumFilters              = 16,  // Number of system outbound filter entries;
+                                                        // sizes the filter CSR arrays and the
+                                                        // hit-index outputs.
+  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,  // Outstanding transactions per ID bucket in
+                                                                               // the remap demux and mux, which also sizes
+                                                                               // their clock-gate snoop; unused when
+                                                                               // NO_ADDR_REMAP is set.
+  parameter bit          FilterReqPipelineEnable = 1'b0,  // Adds spill registers on the request
+                                                          // channels at the system outbound filter
+                                                          // boundary.
+  parameter bit          FilterRspPipelineEnable = 1'b0,  // Adds spill registers on the response
+                                                          // channels at the system outbound filter
+                                                          // boundary.
+  parameter int unsigned MmodeBaseAddr           = smc_top_addrmap_pkg::SMC_TOP_MMODE_REGION_BASE_ADDR,  // Base of the M-mode remap region,
+                                                                                                         // subtracted from request addresses before
+                                                                                                         // the M-mode remap region lookup; unused
+                                                                                                         // when NO_ADDR_REMAP is set.
+  parameter int unsigned XvisorBaseAddr          = smc_top_addrmap_pkg::SMC_TOP_XVISOR_REGION_BASE_ADDR  // Base of the Xvisor remap region,
+                                                                                                         // subtracted from request addresses before
+                                                                                                         // the Xvisor remap region lookup; unused
+                                                                                                         // when NO_ADDR_REMAP is set.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock.
+  input  logic test_en_i,               // Scan test mode enable, active-high; forwarded to the AXI
+                                        // primitives and forces the fabric and filter clock gates
+                                        // on.
 
-  input  smc_pkg::smc_axi_addr_t global_base_addr_i,
-  input  smc_pkg::smc_axi_addr_t local_base_addr_i,
+  input  smc_pkg::smc_axi_addr_t global_base_addr_i,  // Global base address of the SMC address
+                                                      // window; requests inside the M-mode or
+                                                      // Xvisor remap window at this base go to that
+                                                      // remap. Unused when NO_ADDR_REMAP is set.
+  input  smc_pkg::smc_axi_addr_t local_base_addr_i,  // Local base address of the SMC address
+                                                     // window; requests inside the M-mode or Xvisor
+                                                     // remap window at this base go to that remap.
+                                                     // Unused when NO_ADDR_REMAP is set.
 
-  input  logic                filter_axi_cg_en_i,
-  input  logic                fabric_cg_en_i,
-  input  smc_pkg::cg_hyster_t cg_hysteresis_i,
+  input  logic                filter_axi_cg_en_i,  // Enables clock gating of the system outbound
+                                                   // filter, active-high; low keeps the filter
+                                                   // clock running.
+  input  logic                fabric_cg_en_i,  // Enables clock gating of the remap demux and mux,
+                                               // active-high; low keeps their clock running. Unused
+                                               // when NO_ADDR_REMAP is set.
+  input  smc_pkg::cg_hyster_t cg_hysteresis_i,  // Idle SMC core clock cycles the remap fabric and
+                                                // outbound filter clock gates wait after their bus
+                                                // goes quiet before stopping the gated clock.
 
-  // AXI interface
-  input  smc_pkg::smc_56_64_6_12_axi_req_t  axi_req_i,
-  output smc_pkg::smc_56_64_6_12_axi_resp_t axi_resp_o,
+  input  smc_pkg::smc_56_64_6_12_axi_req_t  axi_req_i,  // Outbound request from the input fabric's
+                                                        // global output port.
+  output smc_pkg::smc_56_64_6_12_axi_resp_t axi_resp_o,  // Response to the input fabric's global
+                                                         // output port.
 
-  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,
-  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,
+  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,  // Request to the system
+                                                                                  // AXI output after remap
+                                                                                  // and the outbound filter.
+  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,  // Response from the
+                                                                                   // system AXI output.
 
-  // Config struct from register block
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],  // Per-entry system outbound
+                                                                                  // filter configuration from
+                                                                                  // the register block; the
+                                                                                  // filter matches source ID
+                                                                                  // and the non-secure flag.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],  // Per-entry system outbound
+                                                                                    // filter status returned to
+                                                                                    // the register block.
 
-  // CSR structs for remap configurations
-  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
-  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
+  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // M-mode output remap
+                                                                                                             // region configuration;
+                                                                                                             // unused when
+                                                                                                             // NO_ADDR_REMAP is set.
+  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Xvisor output remap
+                                                                                                              // region configuration;
+                                                                                                              // unused when
+                                                                                                              // NO_ADDR_REMAP is set.
 
-  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,
-  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,
+  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,  // Filter entry index hit by
+                                                                   // outbound writes; tied to zero
+                                                                   // because the filter instance
+                                                                   // disables its debug output.
+  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,  // Filter entry index hit by
+                                                                  // outbound reads; tied to zero
+                                                                  // because the filter instance
+                                                                  // disables its debug output.
 
-  // Clock gater activity indicators
-  output logic fabric_clk_active_o,
-  output logic fabric_bus_active_o,
-  output logic sys_out_filter_clk_active_o,
-  output logic sys_out_filter_bus_active_o
+  output logic fabric_clk_active_o,     // High while the remap demux and mux clock runs; tied low
+                                        // when NO_ADDR_REMAP is set.
+  output logic fabric_bus_active_o,     // High while axi_req_i has a request valid or a
+                                        // transaction outstanding; tied low when NO_ADDR_REMAP is
+                                        // set.
+  output logic sys_out_filter_clk_active_o,  // High while the system outbound filter clock runs.
+  output logic sys_out_filter_bus_active_o  // High while the filter input has a request valid or a
+                                            // transaction outstanding.
 );
 
   `include "ocah_assert.svh"
@@ -75,7 +137,7 @@ module smc_output_fabric #(
       .input_axi_resp_t (smc_pkg::smc_56_64_6_12_axi_resp_t),
       .output_axi_req_t (smc_pkg::smc_output_56_64_8_12_axi_req_t),
       .output_axi_resp_t (smc_pkg::smc_output_56_64_8_12_axi_resp_t)
-    ) prim_axi_id_converter (
+    ) u_prim_axi_id_converter (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -103,7 +165,7 @@ module smc_output_fabric #(
       .OutstandingTx(smc_pkg::FABRIC_ID_BUCKETS * MaxTrans),
       .DenyDelay(1),
       .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-    ) fabric_cg (
+    ) u_fabric_cg (
       .clk_i           (clk_i),
       .rst_ni          (rst_ni),
 
@@ -186,7 +248,7 @@ module smc_output_fabric #(
       .SpillB             (1'b0),
       .SpillAr            (1'b0),
       .SpillR             (1'b0)
-    ) output_axi_demux (
+    ) u_output_axi_demux (
       .clk_i              (fabric_clk),
       .rst_ni             (rst_ni),
       .test_i             (test_en_i),
@@ -210,7 +272,7 @@ module smc_output_fabric #(
 
       .axi_req_t      (smc_pkg::smc_56_64_6_12_axi_req_t),
       .axi_resp_t     (smc_pkg::smc_56_64_6_12_axi_resp_t)
-    ) prim_axi_user_override_struct (
+    ) u_prim_axi_user_override_struct (
       .axi_in_req_i   (axi_from_demux_req.filter),
       .axi_in_resp_o  (axi_from_demux_resp.filter),
       .axi_out_req_o  (axi_remap_out_req.filter),
@@ -227,7 +289,7 @@ module smc_output_fabric #(
       .IdxStart           (smc_pkg::OUTPUT_REMAP_IDX_START),
       .UserOverrideEn     (1'b1),
       .UserOverrideVal    (smc_pkg::MMODE_SRC_ID)
-    ) mmode_addr_remap (
+    ) u_mmode_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -250,7 +312,7 @@ module smc_output_fabric #(
       .IdxStart           (smc_pkg::OUTPUT_REMAP_IDX_START),
       .UserOverrideEn     (1'b1),
       .UserOverrideVal    (smc_pkg::OTHERS_SRC_ID)
-    ) xvisor_addr_remap (
+    ) u_xvisor_addr_remap (
       .clk_i              (clk_i),
       .rst_ni             (rst_ni),
       .test_en_i          (test_en_i),
@@ -286,7 +348,7 @@ module smc_output_fabric #(
       .SpillB         (1'b0),
       .SpillAr        (1'b0),
       .SpillR         (1'b0)
-    ) output_mux (
+    ) u_output_mux (
       .clk_i          (fabric_clk),
       .rst_ni         (rst_ni),
       .test_i         (test_en_i),
@@ -318,7 +380,7 @@ module smc_output_fabric #(
     .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
     .DenyDelay(1),
     .HystWidth(smc_pkg::CG_HYSTERESIS_W)
-  ) sys_out_filter_cg (
+  ) u_sys_out_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
 
@@ -368,7 +430,7 @@ module smc_output_fabric #(
     .filter_b_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_b_chan_t),
     .filter_ar_chan_t    (smc_pkg::smc_output_56_64_8_12_axi_ar_chan_t),
     .filter_r_chan_t     (smc_pkg::smc_output_56_64_8_12_axi_r_chan_t)
-  ) smc_sys_outbound_filter (
+  ) u_smc_sys_outbound_filter (
     .clk_i                      (filter_clk),
     .rst_ni                     (rst_ni),
     .test_en_i                  (test_en_i),

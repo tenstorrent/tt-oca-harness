@@ -138,15 +138,16 @@ class RegBlock:
             alias = f"{self.block}_{_TYPE_ALIAS[name]}"
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
                 return alias
+        # Suffix match. A hit is accepted only when it also carries one of this
+        # block's own name tokens -- a single hit included -- so an instance
+        # can never take the reset of an unrelated block's type that merely
+        # shares a register name. "SEP" is on every block and says nothing.
         norm = _normalize_inst_name(name)
         hits = [key for key in _default_type_keys() if key.endswith("_" + norm) or key == norm]
-        if len(hits) == 1:
-            return hits[0]
-        if len(hits) > 1:
-            tokens = [t for t in self.block.split("_") if t and not t.isdigit()]
-            scored = [h for h in hits if any(tok in h for tok in tokens)]
-            if len(scored) == 1:
-                return scored[0]
+        tokens = [t for t in self.block.split("_") if t and not t.isdigit() and t != "SEP"]
+        scored = [h for h in hits if any(tok in h for tok in tokens)]
+        if len(scored) == 1:
+            return scored[0]
         return None
 
     def _sym(self, name: str, suffix: str, *, alias_ok: bool):
@@ -1049,6 +1050,22 @@ def _selftest() -> int:
         "ABR.MLKEM_NAME_1_",
         "ABR.MLKEM_VERSION_0_",
         "ABR.MLKEM_VERSION_1_",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_0.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_1.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_2.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_3.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_4.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_5.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_6.READ_DATA",
+        "AXIL_MAILBOX_INBOUND_MAILBOX_7.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_0.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_1.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_2.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_3.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_4.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_5.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_6.READ_DATA",
+        "AXIL_MAILBOX_OUTBOUND_MAILBOX_7.READ_DATA",
         "CSRNG.GENBITS",
         "CSRNG.GENBITS_VLD",
         "CSRNG.INT_STATE_VAL",

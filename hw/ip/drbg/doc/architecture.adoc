@@ -17,20 +17,26 @@ The `drbg` top-level module wraps the OpenTitan CSRNG and EDN blocks with bus-pr
 
 == Parameters
 
-[cols="<25%,<15%,<15%,<45%",options="header"]
-|===
-|Parameter |Type |Default |Description
-|`SEED_FIFO_DEPTH` |`int unsigned` |1 |Depth of the seed FIFO in `drbg_csrng_seed_adapter`. Holds packed seeds awaiting CSRNG consumption.
-|`EDN_ENDPOINT_COUNT` |`int unsigned` |1 |Number of EDN output endpoints. Each endpoint produces an independent AXI-Stream of random data.
-|`EDN_NATIVE_ENDPOINT_COUNT` |`int unsigned` |0 |Number of native EDN req/rsp endpoints. Each exposes a raw `edn_pkg` bundle that bypasses AXI-Stream buffering.
-|`ENDPOINT_FIFO_DEPTH` |`int unsigned` |8 |Depth of the per-endpoint FIFO in `drbg_edn_axis_adapter`.
-|===
+The DRBG is configured through its seed FIFO depth, its AXI-Stream and native EDN
+endpoint counts, and the depth of each AXI-Stream endpoint FIFO.
+
+ifdef::backend-html5[]
+The parameters of `drbg` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/drbg/drbg.adoc[drbg].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `drbg` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 == External Interfaces
 
 The DRBG presents several interface types to the rest of the SEP subsystem.
 
+<<drbg-external-interfaces-table>> describes the entropy ingress, random-data endpoints,
+and control interfaces.
+
+[[drbg-external-interfaces-table]]
 [cols="<30%,<70%",options="header"]
+.DRBG external interfaces
 |===
 |Interface |Description
 |Entropy ingress |Fire-and-forget: `entropy_stream_data_i[31:0]` and `entropy_stream_vld_i` from the entropy source. There is no backpressure; each valid word feeds the CSRNG seed-packing path directly on the cycle it arrives.

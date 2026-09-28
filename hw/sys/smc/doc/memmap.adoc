@@ -45,6 +45,17 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
+A unit's `Size` is the aperture reserved for it; its `Decoded Extent` is the
+part of that aperture which decodes. The fabric refuses an address that falls
+between unit apertures, or past a unit's decoded extent; such an access never
+reaches a unit.
+
+Inside the decoded extent, an offset that owns no register is accepted by the
+unit: reads return zero and writes are discarded, both with an OKAY response.
+Software gets no indication that it addressed nothing. Such an offset cannot
+alias a live register, because register decode is an exact address match rather
+than a range — not because the access is refused.
+
 == Detailed Address Map
 
 The component-level assignments are generated in the preceding table. This
@@ -77,10 +88,32 @@ firmware.
 The unallocated remainder of the window is passed through to the chip-level
 adopter external port.
 
+=== External Window Reference Maps
+
+The PLL and PVT maps below describe placeholder memory footprints used by the
+open verification models. Their memory words do not specify the control
+registers of an adopter's clock or sensor implementation. The straps map
+describes captured GPIO values. Placement of these blocks within the external
+window is integration-specific.
+
+ifdef::backend-html5[]
+++++
+include::partial$smc/dv/models/regs/gen/html/pll_wrap.html[]
+include::partial$smc/dv/models/regs/gen/html/pvt_wrap.html[]
+include::partial$smc/regs/gen/html/blocks/straps.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../dv/models/regs/gen/adoc/pll_wrap.adoc[leveloffset=+2]
+include::../dv/models/regs/gen/adoc/pvt_wrap.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
+endif::backend-pdf[]
+
 == Register Interface Standards
 
 All SMC components use standard AMBA interfaces. We summarize the
-interfaces in the following table:
+interfaces in <<smc-register-interface-standards-table>>:
 
 ifdef::backend-html5[]
 ++++
@@ -88,7 +121,8 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-.Register Interface Standards
+[[smc-register-interface-standards-table]]
+.SMC Register Interface Standards
 [width="100%",cols="20%,18%,18%,44%",options="header",role="smc-memory-table"]
 |=======================================================================
 |Interface |Address Width |Data Width |Description
@@ -107,9 +141,10 @@ endif::backend-html5[]
 
 == Access Control and Security
 
-The SMC implements the following access control mechanisms:
+<<smc-access-control-mechanisms-table>> summarises the SMC access-control mechanisms.
 
-.Access Control Mechanisms
+[[smc-access-control-mechanisms-table]]
+.SMC Access Control Mechanisms
 [width="100%",cols="30%,70%",options="header"]
 |=======================================================================
 |Mechanism |Description
@@ -130,14 +165,9 @@ The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
 example, the scratch block provides general-purpose registers, and the
 chip-config and NDM-reset blocks hold system-level configuration and
-reset control. `oca_i3c_wrap` is omitted; I3C remains deferred as described in
-ifdef::backend-html5[]
-xref:smc:periphs.adoc#peripherals[Peripherals].
-endif::backend-html5[]
-ifdef::backend-pdf[]
-<<peripherals>>.
-endif::backend-pdf[]
+reset control.
 
+[[smc-ndm-reset-block]]
 === Chip Config, Scratch, NDM Reset, and Misc Wrap
 
 ifdef::backend-html5[]
@@ -150,10 +180,10 @@ include::partial$smc/regs/gen/html/blocks/misc_wrap.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/chip_config.adoc[]
-include::../regs/gen/adoc/blocks/scratch.adoc[]
-include::../regs/gen/adoc/blocks/ndm_reset.adoc[]
-include::../regs/gen/adoc/blocks/misc_wrap.adoc[]
+include::../regs/gen/adoc/blocks/chip_config.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/scratch.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/ndm_reset.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/misc_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 === Base Config, DFX Status, and GPIO POC/PBias
@@ -167,16 +197,17 @@ include::partial$smc/regs/gen/html/blocks/gpio_poc_pbias_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/blocks/smc_base_config.adoc[]
-include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[]
-include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[]
+include::../regs/gen/adoc/blocks/smc_base_config.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/dfx_ctrl_status.adoc[leveloffset=+2]
+include::../regs/gen/adoc/blocks/gpio_poc_pbias_ctrl.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 == Component-Specific Register Documentation
 
 For detailed register-level documentation of each SMC component, refer
-to the individual component documentation:
+to the individual component documentation (<<smc-component-documentation-table>>).
 
+[[smc-component-documentation-table]]
 .SMC Component Documentation
 [width="100%",cols="30%,50%,20%",options="header",]
 |=======================================================================
@@ -194,8 +225,8 @@ details |interrupts
 |Fabric Control |Address remapping, inbound/outbound filters, and fabric
 control registers |fabric
 
-|Peripherals and I/O |GPIO, UART, I2C, PVT, eFuse, Telemetry, and System
-Timer registers |periphs
+|Peripherals and I/O |Mailbox, System Timer OCTS, eFuse, UART 16550, Log
+Engine, I2C, I3C, AVSBus, GPIO, and Telemetry Receiver |periphs
 
 |Reset Management |Reset unit and system control registers |clk_rst
 

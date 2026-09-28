@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import tomllib
+from collections import Counter
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
@@ -90,6 +91,32 @@ def first_addrmap_name(root) -> str:
     )
 
 
+def addrmap_heading(root) -> str:
+    """The per-block page heading.
+
+    Renders the addrmap's authored ``name`` (e.g. "UART 16550 Main Write-Only
+    Address Map") so the reader sees the friendly title rather than the instance
+    identifier. Falls back to ``Address Map: <ident>`` when no ``name`` is
+    authored -- systemrdl defaults ``name`` to the instance name. The identifier
+    is still carried in the section anchor and the HTML ``<h2>`` id, which the
+    block catalog and coverage tooling key off.
+    """
+    node = next(iter(root.children()), None)
+    if node is not None:
+        name = node.get_property("name")
+        if name and name != node.inst_name:
+            return name
+    return f"Address Map: {first_addrmap_name(root)}"
+
+
+def addrmap_desc(root) -> str | None:
+    """The map's ``desc``, rendered as an intro paragraph below the heading."""
+    node = next(iter(root.children()), None)
+    if node is None:
+        return None
+    return node.get_property("desc")
+
+
 def sw_access(node) -> str:
     r = (
         "R"
@@ -171,6 +198,7 @@ class Collector(RDLListener):
         self.regs: list[Reg] = []
         self.arrays: dict[str, tuple[int, str, str | None]] = {}
         self.seen: set[str] = set()
+        self.qualified_names: dict[str, str] = {}
         self.overrides = overrides or {}
         self.used_overrides: set[str] = set()
 
@@ -182,7 +210,11 @@ class Collector(RDLListener):
         # array of registers is, so document one entry with the enclosing stride
         # rather than one entry per index.
         enclosing = array_ancestor(node)
-        if enclosing is not None and any(i != 0 for i in (enclosing.current_idx or [])):
+        if (
+            not node.is_array
+            and enclosing is not None
+            and any(i != 0 for i in (enclosing.current_idx or []))
+        ):
             return
 
         if node.is_array or enclosing is not None:
@@ -196,18 +228,24 @@ class Collector(RDLListener):
             else:
                 name = f"{enclosing.get_path_segment(array_suffix='')}[{count}].{node.inst_name}"
             addr = f"0x{base:X} - 0x{last:X}"
-            self.arrays.setdefault(
-                name, (count, f"0x{base:X}", f"0x{stride:X}" if stride else None)
+            self.arrays[node.get_path()] = (
+                count,
+                f"0x{base:X}",
+                f"0x{stride:X}" if stride else None,
             )
         else:
             name = node.inst_name
             addr = f"0x{node.absolute_address:X}"
 
-        key = name
-        if key in self.seen:
-            return
-        self.seen.add(key)
         path = node.get_path()
+        if path in self.seen:
+            return
+        self.seen.add(path)
+        qualified = path.split(".")[1:]
+        if node.is_array or enclosing is not None:
+            array_index = len(dim_node.get_path().split(".")) - 2
+            qualified[array_index] = f"{dim_node.inst_name}[{count}]"
+        self.qualified_names[path] = ".".join(qualified)
         selector = ".".join(re.sub(r"\[\d+\]$", "", segment) for segment in path.split(".")[1:])
         description = node.get_property("desc") or ""
         if selector in self.overrides:
@@ -232,6 +270,11 @@ class Collector(RDLListener):
 def collect(root, overrides: dict[str, str] | None = None) -> Collector:
     c = Collector(overrides)
     RDLWalker(unroll=True).walk(root, c)
+    counts = Counter(reg.name for reg in c.regs)
+    for reg in c.regs:
+        if counts[reg.name] > 1:
+            reg.name = c.qualified_names[reg.path]
+    c.arrays = {reg.name: c.arrays[reg.path] for reg in c.regs if reg.path in c.arrays}
     unmatched = set(c.overrides) - c.used_overrides
     if unmatched:
         raise ValueError(
@@ -242,37 +285,51 @@ def collect(root, overrides: dict[str, str] | None = None) -> Collector:
 
 def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     data = collect(root, overrides)
+    ident = first_addrmap_name(root)
+    anchors = {
+        r.path: "reg-{regmap-instance}-" + re.sub(r"[^A-Za-z0-9_-]+", "-", r.path)
+        for r in data.regs
+    }
     lines: list[str] = [
         "// SPDX-License-Identifier: Apache-2.0",
         "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
         "",
+        ":regmap-instance: {counter:regmap-number}",
+        "",
+        f"[#regmap-{{regmap-instance}}-{ident}]",
+        f"== {addrmap_heading(root)}",
+        "",
     ]
+    desc = addrmap_desc(root)
+    if desc:
+        lines += [desc_adoc(desc), ""]
     if data.arrays:
         lines += [
             "[NOTE]",
             "======",
-            "*Register Arrays:* This register map contains the following register arrays:",
+            "*Register Arrays:*",
             "",
         ]
         for name, (count, base, stride) in data.arrays.items():
-            lines.append(f"* *{name}*: {count} registers")
-            lines.append(f"  ** Base Address: {base}")
-            if stride:
-                lines.append(f"  ** Address Increment: {stride} per register")
-            lines.append("")
+            extra = f", stride {stride}" if stride else ""
+            lines.append(f"* *{name}*: {count} registers, base {base}{extra}")
         lines.append("======\n")
     lines += [
         '[cols="1,4,1,6", options="header"]',
-        ".Register Map",
         "|===",
         "| Address | Name | Access | Description",
     ]
-    lines += [f"| {r.addr} | {r.name} | {r.access} a| {desc_adoc(r.desc)}" for r in data.regs]
+    lines += [
+        f"| {r.addr} | <<{anchors[r.path]},{r.name}>> | {r.access} a| {desc_adoc(r.desc)}"
+        for r in data.regs
+    ]
     lines.append("|===\n")
     for r in data.regs:
         lines += [
+            f"[#{anchors[r.path]}]",
+            f"=== {r.name}",
+            "",
             '[cols="1,3,1,1,6", options="header"]',
-            f".{r.name} Register",
             "|===",
             "| Bits | Field | Access | Reset | Description",
         ]
@@ -284,9 +341,9 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     Path(out).write_text("\n".join(lines))
 
 
-def write_html(root, out: str, title: str | None = None, overrides: dict[str, str] | None = None):
+def write_html(root, out: str, ident: str | None = None, overrides: dict[str, str] | None = None):
     data = collect(root, overrides)
-    title = title or first_addrmap_name(root)
+    ident = ident or first_addrmap_name(root)
     lines = [
         "<!-- SPDX-License-Identifier: Apache-2.0 -->",
         "<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->",
@@ -296,8 +353,11 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         ".ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}",
         ".ocah-reg-html th{background:#81BCE5;text-align:left}",
         "</style>",
-        f"<h2>Address Map: {escape(title)}</h2>",
+        f'<h2 id="regmap-{escape(ident)}">{escape(addrmap_heading(root))}</h2>',
     ]
+    desc = addrmap_desc(root)
+    if desc:
+        lines.append(f"<p>{desc_html_text(desc)}</p>")
     if data.arrays:
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
         for name, (count, base, stride) in data.arrays.items():
@@ -307,7 +367,7 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
             )
         lines.append("</ul>")
     lines += [
-        "<h2>Register List:</h2>",
+        "<p><strong>Register List:</strong></p>",
         "<table>",
         "<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>",
     ]
@@ -316,7 +376,7 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         lines.append(
             f'<tr><td>{escape(r.addr)}</td><td><a href="#{anchor}">{escape(r.name)}</a></td><td>{escape(r.access)}</td><td>{desc_html_text(r.desc)}</td></tr>'
         )
-    lines += ["</table>", "<h2>Register Details:</h2>"]
+    lines += ["</table>", "<p><strong>Register Details:</strong></p>"]
     for r in data.regs:
         anchor = escape(r.name.replace("[", "_").replace("]", "_"))
         lines += [

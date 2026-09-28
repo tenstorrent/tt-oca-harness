@@ -14,6 +14,9 @@ from smc_base_test import smc_base_test
 class smc_uart_loopback_test(smc_base_test):
     """U4-1: AXI-program UART0 THR and capture the byte on pad12 TX."""
 
+    required_evidence = ("CHK-UART-TX-PAD-CAPTURE",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

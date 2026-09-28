@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: gpio_wrap</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-gpio_wrap">GPIO Wrapper Address Map</h2>
+<p>Top-level GPIO address map composing the interface and control register blocks.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#DATA_CTRL">DATA_CTRL</a></td><td>RW</td><td>-</td></tr>
@@ -15,7 +16,7 @@
 <tr><td>0x8</td><td><a href="#ACCESS_FILTER">ACCESS_FILTER</a></td><td>RW</td><td>GPIO Access Filter Register. WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 <tr><td>0x10</td><td><a href="#CONTROL">CONTROL</a></td><td>RW</td><td>-</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="DATA_CTRL">DATA_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
@@ -50,8 +51,8 @@
 <tr><td>15:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>10:8</td><td>awprot_requirement</td><td>RW</td><td>0x1</td><td>When write_filter_enable is set, only allow write accesses with this prot value<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 <tr><td>7:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Value - the value that must be written to the filter register to allow access to the GPIO register interface.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
-<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Filter Enable - when set, only SEP may access the GPIO register interface. This effectivley makes the GPIO a SEP-only interface.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>1</td><td>read_filter_enable</td><td>RW</td><td>0x0</td><td>Read Filter Enable. When set, reads require an exact match between AXI ARPROT and arprot_requirement. When clear, reads are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
+<tr><td>0</td><td>write_filter_enable</td><td>RW</td><td>0x0</td><td>Write Filter Enable. When set, writes require an exact match between AXI AWPROT and awprot_requirement. When clear, writes are unfiltered. PROT does not identify the initiator.<br>WARNING: please read back this register to ensure the filter was written correctly. If you do not do so<br>the filter may not update before your next transaction, causing unexpected behavior.</td></tr>
 </table>
 <h3 id="CONTROL">CONTROL</h3>
 <table>

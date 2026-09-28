@@ -8,17 +8,12 @@ schema_version = 1
 # hw/common/dv/configs/duts.toml registers as an `alias_of = "smu"` and so
 # resolves to this same config and identity.
 #
-# This is the SMU regression. The bare `smu #(.SEP(0))` block bench is
-# smu_block_sim_cfg.toml.
+# This is the SMU regression.
 #
 # DUT is hw/top/smu_wrapper.sv (smu + smc_ip_integration + sep_ip_integration),
 # pulled through the `smu_wrapper` bender target — same OSS composition as
 # smc_wrapper / sep_wrapper. The CPU memory macros come with
 # smc_ip_integration; the TB keeps the cocotb observe surface.
-#
-# Independent of the SEP=0 block bench in
-# smu_block_sim_cfg.toml; both configs share this DV root and the build/runs
-# evidence directory.
 name = "smu"
 profile = "native"
 description = "Production-wrapper OSS regression on the single SEP=1 compile profile"
@@ -70,8 +65,6 @@ filelist = "hw/sys/smu/dv/build/smu_wrapper_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_wrapper_bender.f"
 work_dir = "hw/sys/smu/dv/build/work_wrapper"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
@@ -100,8 +93,7 @@ incdirs = [
 # in and that the smu_wrapper hierarchy never instantiates: a licensed SPI
 # controller wrapper and its DLL PHY, the pad and ESD libraries,
 # padring_dv_wrapper and the SPI flash models. Excluded so Verilator is not
-# made to parse their switch-level primitives; same denylist as
-# smu_block_sim_cfg.toml.
+# made to parse their switch-level primitives.
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -116,11 +108,19 @@ exclude_files = [
   "meta/models/spi",
 ]
 stubs = [
-  # Tooling shims only (OSS prim port / X-init). No product-module overrides.
-  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
+  # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On
+  # VCS only, the runner drops any stub whose basename the Bender graph
+  # supplies, so the product prim_sync3 elaborates there; Xcelium
+  # receives both files like Verilator does. The leaves that read a
+  # signal behind one, and the record that keeps those claims honest, are
+  # in docs/SMU_VPLAN.adoc, Known Limitations (Bench stand-ins).
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
+  # ocah_open_drain_bus.sv must precede tb/tb_wrapper_top.sv, which
+  # instantiates it.
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
   # axi_cut (+ its spill_register deps) registers the ext_out channels at the
   # boundary, ahead of the responder in tb_wrapper_top.sv. Two things it
   # buys: the crossbar's ext_out aw_valid does not settle until late in the
@@ -154,10 +154,8 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   # Functional-coverage modules (cov/sv/), instantiated in tb/tb_wrapper_top.sv
-  # on this bench's signal names. smu_block_sim_cfg.toml carries the same set
-  # minus smu_clk_fcov, whose clock mirrors only this bench exposes, and plus
-  # smu_nosep_fcov, whose points only exist without SEP. Their cover
-  # properties are the `user` points --coverage-user records.
+  # on this bench's signal names. Their cover properties are the `user`
+  # points --coverage-user records.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
@@ -175,15 +173,13 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, toggle and SVL user coverage,
-# replacing the simulator default `--coverage`.
-#
-# Toggle is what an integration level owns: whether every interface it wires
-# up was actually exercised. smu_wrapper_cov_scope.vlt drops the SMU block,
-# the subsystem, vendored and generated trees at compile time, so the toggle
-# points that remain belong to smu_wrapper itself; cov/interface_toggle.py
-# keeps the ones on its ports and folds them into one figure per port from
-# the run's cov/merged.dat.
+# Line / branch (--coverage-line), expression and SVL user coverage, replacing
+# the simulator default `--coverage`. Toggle is left out, as the DTP Verilator
+# set leaves it out: Verilator's `coverage_off -file` does not apply to a
+# source file whose last line has no newline, and the vendored and
+# hw/common files in that state carry tens of thousands of toggle points of
+# SMC, DTP and SEP logic into the wrapper's database. The wrapper's toggle is
+# graded on the VCS flow, where -cm_hier scopes it at compile time.
 #
 # --output-groups 0 compiles the generated .cpp files one by one, as the other
 # DUTs do: grouped, one unit of the coverage-instrumented model grows past
@@ -191,14 +187,13 @@ ccache = true
 build_args = [
   "--coverage-line",
   "--coverage-expr",
-  "--coverage-toggle",
   "--coverage-user",
   "--output-groups",
   "0",
   "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
 ]
-# Two DUTs share this dv tree, so the policy is named per DUT rather than
-# discovered at cov/config/verilator/coverage_policy.toml.
+# The policy file is named explicitly rather than discovered at
+# cov/config/verilator/coverage_policy.toml.
 policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
 
 [coverage.vcs]
@@ -207,18 +202,28 @@ policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.to
 # because a DUT table replaces the list, then the scope file is added.
 # `-cm_hier` limits what is instrumented at compile time; `-cm_common_hier`
 # extends the same file to assertion coverage, which carries the cov/sv
-# `cover property` points, and needs `-lca`. The coverage database lands
-# next to simv under the wrapper's one compile profile, compile_smu_chiplet;
-# the runner's default looks under a `default` build directory this DUT never
-# compiles into, so design_db names the database the profile writes.
-# cov/config/vcs/README.md explains the scope file.
-# Edit `smu_wrapper_cov_scope.hier` then `--rebuild`.
+# `cover property` points, and needs `-lca`. Toggle covers every net of the
+# units the scope keeps, as on the SMC scope. `-cm_noconst` and
+# `-cm_seqnoconst` leave nets a constant drives out of the toggle population,
+# as the DTP scope does. The coverage
+# database lands next to simv under the wrapper's one compile profile,
+# compile_smu_chiplet; the runner's default looks under a `default` build
+# directory this DUT never compiles into, so design_db names the database the
+# profile writes. cov/config/vcs/README.md explains the scope file and how a
+# finished run is read.
+# `smu_wrapper_cov_scope.hier` is written by gen_smu_cov_scope.py beside it;
+# regenerate it after a build, then `--rebuild`.
+# Two DUTs share this dv tree, so the policy is named per DUT rather than
+# discovered at cov/config/vcs/coverage_policy.toml.
+policy_file = "hw/sys/smu/dv/cov/config/vcs/smu_wrapper_coverage_policy.toml"
 design_db = "hw/sys/smu/dv/build/cocotb_wrapper/vcs-coverage/compile_smu_chiplet/cov_build.vdb"
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
   "-cm_dir",
   "{build_cov_dir}",
+  "-cm_noconst",
+  "-cm_seqnoconst",
   "-cm_hier",
   "{repo_root}/hw/sys/smu/dv/cov/config/vcs/smu_wrapper_cov_scope.hier",
   "-lca",
@@ -232,16 +237,18 @@ compile_args = [
 build_jobs = 4
 
 [frameworks.cocotb]
-# Wrapper flow keeps its own PyUVM tree so module names stay independent of
-# the bare-smu cocotb/ catalog sharing this DV root.
+# The PyUVM test tree: test bodies under cocotb_wrapper/tests, with the `env`
+# and `seq_lib` packages spanning cocotb_wrapper/ and cocotb/.
 python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
   # `env` and `seq_lib` are namespace packages (no __init__.py) spanning two
-  # directories: the wrapper-only half under this DUT's python_root above, and
-  # the half both DUTs share under cocotb/. No regular package of either name
-  # may appear anywhere on this path, or it would shadow both halves.
+  # directories: the half under this DUT's python_root above, and the half
+  # under cocotb/ (the PyUVM env, scoreboard, evidence map and FCOV ledger,
+  # and the pin, address-map, AXI, JTAG and lifecycle helpers). No regular
+  # package of either name may appear anywhere on this path, or it would
+  # shadow both halves.
   "hw/sys/smu/dv/cocotb",
   # The DTP bench's DV-owned JTAG tables (dtp_types: instruction opcodes, IR
   # width) as top-level modules. The DTP `env` package itself cannot go on

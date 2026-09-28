@@ -19,8 +19,11 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_addr_map import smc_addr
+from .smc_csr_field_catalog import misc_wrap_reset
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import efuse_preload_word_at
+
+VERSION_LO_RESET = misc_wrap_reset("CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 
 EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
@@ -55,7 +58,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         map0 = await self.csr_read("EFUSE_MAP_0", EFUSE_MAP_0)
         assert map0 == OTP_WORD0_MARKER, f"positive signature gate failed: map0=0x{map0:08x}"
         ver = await self.csr_read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO)
-        assert ver == 0x0001_00A0, f"CHIP_CONFIG_VERSION_LO unexpected 0x{ver:08x}"
+        assert ver == VERSION_LO_RESET, f"CHIP_CONFIG_VERSION_LO unexpected 0x{ver:08x}"
 
         # Negative: first PROGRAM fails under +smc_efuse_prog_fail_count=1.
         prog_before = int(dut.tb_efuse_programmed_word0.value)
@@ -64,7 +67,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             EFUSE_PROGRAM_CTRL,
             8 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
-        for _ in range(10_000):
+        for fail_polls in range(10_000):
             await RisingEdge(clk)
             st = await self.csr_read("PROGRAM_FAIL_POLL", EFUSE_PROGRAM_CTRL)
             if (st >> 25) & 1:
@@ -105,7 +108,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             EFUSE_PROGRAM_CTRL,
             0 | _PROG_DATA | _PROG_GO | _PROG_READBACK | _PROG_ENABLE,
         )
-        for _ in range(10_000):
+        for ok_polls in range(10_000):
             await RisingEdge(clk)
             st = await self.csr_read("PROGRAM_OK_POLL", EFUSE_PROGRAM_CTRL)
             if (st >> 25) & 1:
@@ -115,4 +118,16 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
 
         prog_ok = int(dut.tb_efuse_programmed_word0.value)
         assert (prog_ok & 1) == 1, "recovery burn did not sticky-OR bit0"
-        cocotb.log.info("OCCP/secure public path: fail-then-recover OK")
+        cocotb.log.info(
+            "CHK-OCCP-SECURE-ERROR-RECOVERY: EFUSE_MAP word0 = 0x%08x matched the "
+            "preload marker and CHIP_CONFIG_VERSION_LO = 0x%08x; the injected "
+            "program failure reported PROGRAM_DONE after %d poll(s) with word0 "
+            "held at 0x%08x, and the recovery burn reported PROGRAM_DONE after "
+            "%d poll(s) and sticky-ORed bit0: word0 = 0x%08x",
+            map0,
+            ver,
+            fail_polls + 1,
+            prog_after,
+            ok_polls + 1,
+            prog_ok,
+        )

@@ -7,8 +7,8 @@
 // interrupt vector, the eFuse bank-control AXI-Lite shims, and the outputs
 // the chiplet presents to external systems.
 //
-// One passive, signal-driven module shared by tb_top and tb_wrapper_top.
-// Every port is a signal both benches expose at their top level; the port
+// One passive, signal-driven module. Every port is a signal the bench
+// exposes at its top level; the port
 // widths come from the DUT packages, so a width point is unhittable when
 // the bench's signal does not match them.
 //
@@ -30,7 +30,7 @@
 module smu_ext_fcov #(
   // 0 on an elaboration without SEP. The SEP eFuse bank-control shim is
   // driven from the SEP subsystem, so smu.sv's gen_no_sep branch ties the
-  // request port to '0 and both benches tie the response pins off; the two
+  // request port to '0 and the bench ties the response pins off; the two
   // points on that shim are dropped rather than carried unhittable.
   parameter bit SepPresent = 1'b1
 ) (
@@ -170,8 +170,13 @@ module smu_ext_fcov #(
   covergroup cg_smn_ids with function sample (logic [7:0] in_id, logic [9:0] out_id);
     option.per_instance = 1;
     cp_in_id: coverpoint in_id {bins zero = {8'h00}; bins max = {8'hff}; bins other = default;}
+    // The crossbar prefixes each outbound ID with its 2-bit slave-port index.
+    // ext_out is reachable from sep_out (index 0) and smc_out (index 1) only,
+    // so an outbound ID above 10'h1ff never appears on this port.
     cp_out_id: coverpoint out_id {
-      bins zero = {10'h000}; bins max = {10'h3ff}; bins other = default;
+      bins from_sep = {[10'h000 : 10'h0ff]};
+      bins from_smc = {[10'h100 : 10'h1ff]};
+      ignore_bins unrouted_ports = {[10'h200 : 10'h3ff]};
     }
   endgroup
 

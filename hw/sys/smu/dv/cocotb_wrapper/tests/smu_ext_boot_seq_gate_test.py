@@ -25,11 +25,9 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
     async def bring_up(self) -> None:
         """Clocks + cold release with boot gate held at 0 (card S1)."""
         dut = cocotb.top
-        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, units="ns").start())
-        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
-        cocotb.start_soon(
-            Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, units="ns").start()
-        )
+        cocotb.start_soon(Clock(dut.clk_smu_i, self.cfg.smu_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, unit="ns").start())
+        cocotb.start_soon(Clock(dut.clk_periph_i, self.cfg.periph_clk_period_ns, unit="ns").start())
 
         dut.ext_boot_seq_done_i.value = 0
         dut.jtag_tck.value = 0
@@ -45,6 +43,11 @@ class smu_ext_boot_seq_gate_test(smu_base_test):
             dut.captured_straps_i.value = 0
         if hasattr(dut, "gpio_boot_stall_drive_i"):
             dut.gpio_boot_stall_drive_i.value = 0
+        # The per-pad drive enables are among the idle inputs; left undriven on
+        # a four-state simulator they put X on every pad, and pad 57 is the
+        # boot-stall input whose sticky flop then holds fuse_reset_n_delayed_o
+        # at X once the boot gate opens.
+        self.drive_idle_inputs()
         # Prefix, not literal names: this TB calls the same slave ext_in_*.
         axi = smu_axi_in_prefix(dut)
         for suffix in ("awvalid", "wvalid", "bready", "arvalid", "rready"):

@@ -3,18 +3,21 @@
 """Peripheral block and instance-stride decode over the SEP_IN AXI port.
 
 Every peripheral block the generated map declares is read at a register whose
-reset value is non-zero, and every multi-instance peripheral is proven at its
-first and last instance: single-instance blocks by their generated reset,
+reset value is non-zero, and every multi-instance peripheral is proven at every
+probed instance: single-instance blocks by their generated reset,
 multi-instance ones additionally by distinct patterns written to all probed
 instances before any is read back, so a stride that aliases two instances
-returns a neighbour's pattern and fails. The PVT wrapper is proven at the
+returns a neighbour's pattern and fails. A reset read alone cannot tell N
+registers from one aliased register, so the watchdog, I2C, UART and telemetry
+instances each carry a co-resident pattern leg as well (the watchdog through
+its KEY unlock, one key write per register write). The PVT wrapper is proven at the
 adopter external port (``tb_axil_external_active`` pulses while the access is
 in flight; the bench PVT model answers OKAY with zero data).
 
 The DTP control window is not probed: ``tb_top`` leaves its AXI-Lite response
-idle, so an access there would never complete. The four bus error units sit
-behind the bit-25 fold of ``smc_local_fabric`` and are not reachable from
-SEP_IN (see ``smc_cluster_beu_test``).
+idle, so an access there would never complete. The four bus error units lie
+outside the local and global apertures at the reset ``REGION_SIZE`` and answer
+DECERR from SEP_IN (see ``smc_cluster_beu_test``); this leaf does not widen it.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ from .smc_i3c_to_fabric_test_seq import (
     I3C_HCI_VERSION_RESET,
     _i3c_multifield_reg_from_rdl,
 )
+from .smc_output_fabric_vip_utils import reg_field_pack
 
 _SMC_REG_PY = Path(__file__).resolve().parents[3] / "regs" / "gen" / "py"
 if str(_SMC_REG_PY) not in sys.path:
@@ -49,11 +53,14 @@ from smc_reg import (  # noqa: E402
     EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT,
     GPIO_INTF_ACCESS_FILTER_REG_DEFAULT,
     I2C_STATUS_REG_DEFAULT,
+    I2C_TARGET_ID_REG_DEFAULT,
     LOG_ENGINE_LOG_REGION_SIZE_REG_DEFAULT,
     RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT,
     SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT,
+    TELEMETRY_RECEIVER_INTR_ENABLE_REG_DEFAULT,
     TELEMETRY_RECEIVER_STATUS_REG_DEFAULT,
     UART_16550_MAIN_LSR_REG_DEFAULT,
+    UART_16550_MAIN_SCR_REG_DEFAULT,
     WDT_CMP_REG_DEFAULT,
 )
 
@@ -105,6 +112,22 @@ LOGENG_NUM = smc_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_NUM
 _LOGENG_PATTERNS = (0xA0001, 0xB0002, 0xC0003, 0xD0004)
 assert all(p < (1 << 20) for p in _LOGENG_PATTERNS)
 
+# --- watchdogs: four cores, CMP behind the KEY unlock -----------------------------------------
+# wdt.rdl KEY: "Magic key (0x51F15E) must be written to this register before a
+# write to any other register in this addrmap. Must be written every time."
+# CMP.wdogcmp0 is 16 bits of plain rw storage (reset 0x1000); the patterns stay
+# inside it and differ from the reset and from each other.
+WDT_NUM = 4
+WDT_KEY_MAGIC = 0x51F15E
+_WDT_CMP_PATTERNS = (0x1100, 0x1200, 0x1300, 0x1400)
+assert all(p < (1 << 16) and p != WDT_CMP_REG_DEFAULT for p in _WDT_CMP_PATTERNS)
+# --- I2C: three controllers, TARGET_ID is plain rw storage ------------------------------------
+_I2C_TARGET_ID_RESET = I2C_TARGET_ID_REG_DEFAULT
+# --- UART: four wraps, SCR is the 8-bit scratch register --------------------------------------
+_UART_SCR_PATTERNS = (0xA1, 0xB2, 0xC3, 0xD4)
+_UART_SCR_RESET = UART_16550_MAIN_SCR_REG_DEFAULT
+# --- telemetry: three receivers, INTR_ENABLE holds two plain rw bits --------------------------
+_TELEMETRY_INTR_ENABLE_RESET = TELEMETRY_RECEIVER_INTR_ENABLE_REG_DEFAULT
 # --- single-instance blocks with a non-zero generated reset -----------------------------------
 AVS_CFG_0 = smc_addr("SMC_TOP_SMC_AVSBUS_CONTROLLER_AVS_CFG_0_BASE_ADDR")
 I2C_NUM = smc_addr("SMC_TOP_SMC_I2C_WRAP_I2C_NUM")
@@ -126,8 +149,8 @@ PVT_MODEL_RDATA = 0
 _CLA_PATTERNS = (0x3C3C_C3C3, 0xC3C3_3C3C)
 
 # Literal floors: exact-value compares and total accesses the body issues.
-EXPECTED_VALUE_CHECKS = 64
-EXPECTED_ACCESSES = 100
+EXPECTED_VALUE_CHECKS = 92
+EXPECTED_ACCESSES = 164
 
 
 class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
@@ -223,16 +246,41 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
             f"outbound/inbound mailbox 31 IRQEN held {_MBX_PATTERNS['OUT31']}/{_MBX_PATTERNS['IN31']}",
         )
 
+    async def _wdt_write_unlocked(self, label: str, core: int, value: int) -> None:
+        """One KEY write then one CMP write: the lock re-engages after every write."""
+        await self.csr_write(
+            f"WDT{core}_KEY_{label}",
+            smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_KEY_BASE_ADDR"),
+            WDT_KEY_MAGIC,
+        )
+        await self.csr_write(
+            f"WDT{core}_CMP_{label}",
+            smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_CMP_BASE_ADDR"),
+            value,
+        )
+
     async def _wdt_instances(self) -> None:
-        for core in range(4):
-            await self.read_reset(
-                f"WDT{core}_CMP",
-                smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_CMP_BASE_ADDR"),
-                WDT_CMP_REG_DEFAULT,
-            )
+        cmp_addrs = [
+            smc_addr(f"SMC_TOP_SMC_CLUSTER_CORE{core}_WDT_CMP_BASE_ADDR") for core in range(WDT_NUM)
+        ]
+        for core, addr in enumerate(cmp_addrs):
+            await self.read_reset(f"WDT{core}_CMP", addr, WDT_CMP_REG_DEFAULT)
+        # Co-resident patterns through the KEY unlock: every CMP is written
+        # before any is read back, so an aliased pair holds the last pattern
+        # written and the first readback of the pair fails.
+        for core in range(WDT_NUM):
+            await self._wdt_write_unlocked("PATTERN", core, _WDT_CMP_PATTERNS[core])
+        for core, addr in enumerate(cmp_addrs):
+            await self.csr_read(f"WDT{core}_CMP_PATTERN_RB", addr, expected=_WDT_CMP_PATTERNS[core])
+        for core in range(WDT_NUM):
+            await self._wdt_write_unlocked("RESTORE", core, WDT_CMP_REG_DEFAULT)
+        for core, addr in enumerate(cmp_addrs):
+            await self.csr_read(f"WDT{core}_CMP_RESTORE_RB", addr, expected=WDT_CMP_REG_DEFAULT)
         self.close_cell(
             "wdt-instance-3",
-            f"CLUSTER_CORE3_WDT.CMP read 0x{WDT_CMP_REG_DEFAULT:x} (as did cores 0..2)",
+            f"CLUSTER_CORE0..3_WDT.CMP each read 0x{WDT_CMP_REG_DEFAULT:x}, then held "
+            f"{', '.join(f'{p:#x}' for p in _WDT_CMP_PATTERNS)} co-resident (KEY-unlocked "
+            f"writes) and read back the reset after the restore",
         )
 
     async def _log_engines(self) -> None:
@@ -269,8 +317,21 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
                 smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR", idx),
                 I2C_STATUS_REG_DEFAULT,
             )
+        await self.rw_coresident(
+            [
+                (
+                    f"I2C{idx}_TARGET_ID",
+                    smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_ID_BASE_ADDR", idx),
+                    reg_field_pack("I2C_TARGET_ID_reg_t", address0=0x21 + idx, mask0=0x7F),
+                    _I2C_TARGET_ID_RESET,
+                )
+                for idx in range(I2C_NUM)
+            ]
+        )
         self.close_cell(
-            "i2c-decode", f"I2C 0..{I2C_NUM - 1} STATUS == 0x{I2C_STATUS_REG_DEFAULT:x}"
+            "i2c-decode",
+            f"I2C 0..{I2C_NUM - 1} STATUS == 0x{I2C_STATUS_REG_DEFAULT:x}, and each TARGET_ID "
+            f"held its own address pattern co-resident with the other two",
         )
         for idx in range(UART_NUM):
             await self.read_reset(
@@ -280,8 +341,23 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
                 ),
                 UART_16550_MAIN_LSR_REG_DEFAULT,
             )
+        await self.rw_coresident(
+            [
+                (
+                    f"UART{idx}_SCR",
+                    smc_indexed_addr(
+                        "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR", idx
+                    ),
+                    _UART_SCR_PATTERNS[idx],
+                    _UART_SCR_RESET,
+                )
+                for idx in range(UART_NUM)
+            ]
+        )
         self.close_cell(
-            "uart-decode", f"UART 0..{UART_NUM - 1} LSR == 0x{UART_16550_MAIN_LSR_REG_DEFAULT:x}"
+            "uart-decode",
+            f"UART 0..{UART_NUM - 1} LSR == 0x{UART_16550_MAIN_LSR_REG_DEFAULT:x}, and each SCR "
+            f"held its own pattern co-resident with the other three",
         )
         locks = efuse_preload_word_at(EFUSE_MAP_LOCKS)
         await self.read_reset("EFUSE_MAP_LOCKS_LO", EFUSE_MAP_LOCKS, locks)
@@ -303,9 +379,36 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
                 ),
                 TELEMETRY_RECEIVER_STATUS_REG_DEFAULT,
             )
+        # INTR_ENABLE has two rw bits (MISSING_LAST, BUFFER_THRESHOLD); the three
+        # non-zero combinations give one distinct pattern per receiver.
+        telemetry_patterns = [
+            reg_field_pack("TELEMETRY_RECEIVER_INTR_ENABLE_reg_t", **fields)
+            for fields in (
+                {"missing_last": 1},
+                {"buffer_threshold": 1},
+                {"missing_last": 1, "buffer_threshold": 1},
+            )
+        ]
+        assert TELEMETRY_NUM == len(telemetry_patterns)
+        await self.rw_coresident(
+            [
+                (
+                    f"TELEMETRY{idx}_INTR_ENABLE",
+                    smc_indexed_addr(
+                        "SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_INTR_ENABLE_BASE_ADDR",
+                        idx,
+                    ),
+                    telemetry_patterns[idx],
+                    _TELEMETRY_INTR_ENABLE_RESET,
+                )
+                for idx in range(TELEMETRY_NUM)
+            ]
+        )
         self.close_cell(
             "telemetry-decode",
-            f"receivers 0..{TELEMETRY_NUM - 1} STATUS == 0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}",
+            f"receivers 0..{TELEMETRY_NUM - 1} STATUS == "
+            f"0x{TELEMETRY_RECEIVER_STATUS_REG_DEFAULT:x}, and each INTR_ENABLE held its own "
+            f"pattern co-resident with the other two",
         )
         await self.read_reset("OCTS_CTRL", OCTS_CTRL, SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT)
         self.close_cell("octs-decode", f"OCTS CTRL == 0x{SYSTEM_TIMER_OCTS_CTRL_REG_DEFAULT:x}")
@@ -369,8 +472,8 @@ class smc_peripheral_instance_decode_test_seq(SmcDecodeProbeSeq):
         )
         self.leave_open(
             "beu-instance-3",
-            "the BEU window 0xC801_x000 folds onto the local base in smc_local_fabric; no SEP_IN "
-            "access reaches a bus error unit",
+            "the BEU window 0xC801_x000 lies outside the local and global apertures at the reset "
+            "REGION_SIZE and answers DECERR, so no SEP_IN access here reaches a bus error unit",
         )
 
         self.value_checks_measured = sb.sys_axi_value_checks_seen - value_checks_before

@@ -11,7 +11,7 @@ windows, the 65 GPIO interfaces, the 32 mailbox pairs and the four log engines
 are proven at their first and last instance by distinct co-resident
 write/readback patterns, and the PVT wrapper is proven at the adopter external
 AXI-Lite port. The DTP control window (idle response in this bench) and the
-bus error units (behind the local-fabric address fold) are left open.
+bus error units (outside the reset apertures, DECERR) are left open.
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\

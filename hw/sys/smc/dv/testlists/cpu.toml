@@ -84,6 +84,166 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_dfd_cla_mmr_sweep_test"
+module = "smc_dfd_cla_mmr_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_node_eap_sweep_test"
+module = "smc_dfd_cla_node_eap_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_accumulator_fill_test"
+module = "smc_dfd_trace_accumulator_fill_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_format_sweep_test"
+module = "smc_dfd_trace_format_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_xor_format_test"
+module = "smc_dfd_trace_xor_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_vlt_format_test"
+module = "smc_dfd_trace_vlt_format_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_counter_edge_test"
+module = "smc_dfd_cla_counter_edge_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_event_type_sweep_test"
+module = "smc_dfd_cla_event_type_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_snapshot_capture_test"
+module = "smc_dfd_cla_snapshot_capture_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_window_test"
+module = "smc_dfd_trace_sink_window_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_readout_test"
+module = "smc_dfd_trace_sink_readout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_sink_mmr_sweep_test"
+module = "smc_dfd_sink_mmr_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_ro_mmr_write_test"
+module = "smc_dfd_ro_mmr_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_mmr_lane_test"
+module = "smc_dfd_mmr_lane_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_cla_live_bus_test"
+module = "smc_dfd_cla_live_bus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_flush_corner_test"
+module = "smc_dfd_trace_flush_corner_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_reset_test"
+module = "smc_dfd_trace_reset_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_writeout_phase_test"
+module = "smc_dfd_trace_writeout_phase_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_dbm_mode_lock_test"
+module = "smc_dfd_dbm_mode_lock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_dfd_trace_sink_concurrent_test"
+module = "smc_dfd_trace_sink_concurrent_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_cpu_ecc_lint_pint_depth_test"
 module = "smc_cpu_ecc_lint_pint_depth_test"
 seed = 1
@@ -176,8 +336,8 @@ args = [
     "+smc_efuse_prog_fail_count=1",
 ]
 
-# Timeout-reset recovery tests remain available by name for DV review, but
-# are intentionally excluded from every regression group.
+# Timeout-reset recovery: L2 leaves are in cpu, hosted and all; MMIO leaves
+# are in cpu and all only (they build mmio_wedge). None is in smoke.
 
 [[tests]]
 name = "smc_cpu_l2_read_wedge_test"
@@ -185,6 +345,7 @@ module = "smc_cpu_l2_read_wedge_test"
 seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_cpu_l2_write_wedge_test"
@@ -192,6 +353,7 @@ module = "smc_cpu_l2_write_wedge_test"
 seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_cpu_mmio_read_wedge_test"
@@ -199,6 +361,7 @@ module = "smc_cpu_mmio_read_wedge_test"
 seed = 1
 timeout_sec = 3600
 tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 firmware = "mmio_wedge"
 args = [
     "+smc_hold_cpu_boot",
@@ -211,6 +374,7 @@ module = "smc_cpu_mmio_write_wedge_test"
 seed = 1
 timeout_sec = 3600
 tags = ["cpu", "firmware", "isolate_flush", "pyuvm"]
+run_modes = ["smoke"]
 firmware = "mmio_wedge"
 args = [
     "+smc_hold_cpu_boot",
@@ -218,10 +382,14 @@ args = [
 ]
 
 [[groups]]
-name = "cpu_depth"
+name = "cpu"
 tests = [
     "smc_cpu_ctrl_map_depth_test",
     "smc_cpu_ctrl_scratch_window_test",
+    "smc_cpu_l2_read_wedge_test",
+    "smc_cpu_l2_write_wedge_test",
+    "smc_cpu_mmio_read_wedge_test",
+    "smc_cpu_mmio_write_wedge_test",
     "smc_mutex_semaphore_test",
     "smc_spm_mem_boundary_test",
 ]

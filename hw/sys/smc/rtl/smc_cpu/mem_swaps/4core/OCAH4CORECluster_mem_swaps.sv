@@ -1,25 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11
-) (
-  input  [7:0]   RW0_addr,
-  input          RW0_clk,
-  input  [143:0] RW0_wdata,
-  output [143:0] RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+// Replace Chipyard memory black boxes for the four-core cluster.
+//
+// Maps generated *_ext memory modules onto prim_ram_1p and prim_rom.
+// MEM_CFG_WIDTH sizes the foundry config bus threaded to each macro.
+// In simulation the ROM is zero-filled and then loaded from the +rom_bin64 or +rom_hex plusarg.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
+) (
+  input  [7:0]   RW0_addr,              // Word address of the access.
+  input          RW0_clk,               // Memory clock, supplied by the cluster with the request.
+  input  [143:0] RW0_wdata,             // Data stored at RW0_addr on a write access.
+  output [143:0] RW0_rdata,             // Read data from RW0_addr, valid one cycle after a read.
+  input          RW0_en,                // Access enable; starts a read or write in this cycle.
+  input          RW0_wmode,             // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]   RW0_wmask,             // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
+
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
     .Width(144),
     .Depth(256),
     .DataBitsPerMask(72)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -37,24 +44,25 @@ module OCAH4CORECluster_rockettile_dcache_data_arrays_0_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [4:0]   RW0_addr,
-  input          RW0_clk,
-  input  [107:0] RW0_wdata,
-  output [107:0] RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+  input  [4:0]   RW0_addr,              // Word address of the access.
+  input          RW0_clk,               // Memory clock, supplied by the cluster with the request.
+  input  [107:0] RW0_wdata,             // Data stored at RW0_addr on a write access.
+  output [107:0] RW0_rdata,             // Read data from RW0_addr, valid one cycle after a read.
+  input          RW0_en,                // Access enable; starts a read or write in this cycle.
+  input          RW0_wmode,             // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]   RW0_wmask,             // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
     .Width(108),
     .Depth(32),
     .DataBitsPerMask(54)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -72,24 +80,25 @@ module OCAH4CORECluster_rockettile_dcache_tag_array_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [4:0]   RW0_addr,
-  input          RW0_clk,
-  input  [93:0]  RW0_wdata,
-  output [93:0]  RW0_rdata,
-  input          RW0_en,
-  input          RW0_wmode,
-  input  [1:0]   RW0_wmask,
+  input  [4:0]   RW0_addr,              // Word address of the access.
+  input          RW0_clk,               // Memory clock, supplied by the cluster with the request.
+  input  [93:0]  RW0_wdata,             // Data stored at RW0_addr on a write access.
+  output [93:0]  RW0_rdata,             // Read data from RW0_addr, valid one cycle after a read.
+  input          RW0_en,                // Access enable; starts a read or write in this cycle.
+  input          RW0_wmode,             // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]   RW0_wmask,             // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
     .Width(94),
     .Depth(32),
     .DataBitsPerMask(47)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -107,24 +116,25 @@ module OCAH4CORECluster_rockettile_icache_tag_array_ext #(
 endmodule
 
 module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [7:0]  RW0_addr,
-  input         RW0_clk,
-  input  [65:0] RW0_wdata,
-  output [65:0] RW0_rdata,
-  input         RW0_en,
-  input         RW0_wmode,
-  input  [1:0]  RW0_wmask,
+  input  [7:0]  RW0_addr,               // Word address of the access.
+  input         RW0_clk,                // Memory clock, supplied by the cluster with the request.
+  input  [65:0] RW0_wdata,              // Data stored at RW0_addr on a write access.
+  output [65:0] RW0_rdata,              // Read data from RW0_addr, valid one cycle after a read.
+  input         RW0_en,                 // Access enable; starts a read or write in this cycle.
+  input         RW0_wmode,              // Access type while RW0_en is high: 1 writes, 0 reads.
+  input  [1:0]  RW0_wmask,              // Write enable per half-word; bit 1 covers the upper half
+                                        // of RW0_wdata, bit 0 the lower half.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
     .Width(66),
     .Depth(256),
     .DataBitsPerMask(33)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -142,23 +152,23 @@ module OCAH4CORECluster_rockettile_icache_data_arrays_0_ext #(
 endmodule
 
 module OCAH4CORECluster_mem_0_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [11:0] RW0_addr,
-  input         RW0_clk,
-  input  [71:0] RW0_wdata,
-  output [71:0] RW0_rdata,
-  input         RW0_en,
-  input         RW0_wmode,
+  input  [11:0] RW0_addr,               // Word address of the access.
+  input         RW0_clk,                // Memory clock, supplied by the cluster with the request.
+  input  [71:0] RW0_wdata,              // Data stored at RW0_addr on a write access.
+  output [71:0] RW0_rdata,              // Read data from RW0_addr, valid one cycle after a read.
+  input         RW0_en,                 // Access enable; starts a read or write in this cycle.
+  input         RW0_wmode,              // Access type while RW0_en is high: 1 writes, 0 reads.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the RAM primitive.
 );
 
   prim_ram_1p #(
     .Width(72),
     .Depth(4096),
     .DataBitsPerMask(72)
-  ) mem (
+  ) u_mem (
     .clk_i(RW0_clk),
     .rst_ni(1'b1),  // unused
 
@@ -176,21 +186,21 @@ module OCAH4CORECluster_mem_0_ext #(
 endmodule
 
 module OCAH4CORECluster_rom_ext #(
-  parameter int MEM_CFG_WIDTH = 11
+  parameter int MEM_CFG_WIDTH = 11  // Foundry memory config bus width.
 ) (
-  input  [13:0] R0_addr,
-  input         R0_clk,
-  input         R0_en,
-  output [63:0] R0_rdata,
+  input  [13:0] R0_addr,                // Word address of the read access.
+  input         R0_clk,                 // ROM clock, supplied by the cluster with the request.
+  input         R0_en,                  // Read enable; starts a read of R0_addr in this cycle.
+  output [63:0] R0_rdata,               // Read data from R0_addr, valid one cycle after a read.
 
-  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i
+  input  [MEM_CFG_WIDTH-1:0] mem_cfg_i  // Foundry memory configuration for the ROM primitive.
 );
 
   prim_rom #(
     .Width(64),
     .Depth(16384),
     .MemInitFile("")
-  ) mem (
+  ) u_mem (
     .clk_i(R0_clk),
     .rst_ni(1'b1),  // unused
     .req_i(R0_en),
@@ -219,7 +229,7 @@ module OCAH4CORECluster_rom_ext #(
     // remaining entries stay X and cause X-propagation when the ICache
     // speculatively fetches beyond the loaded firmware range.
     for (int i = 0; i < 16384; i++) begin
-      mem.mem[i] = '0;
+      u_mem.mem[i] = '0;
     end
 
     // Check for rom_bin64 first (binary format, 64-bit-per-line)
@@ -231,7 +241,7 @@ module OCAH4CORECluster_rom_ext #(
       file_handle = $fopen(rom_mem_path, "r");
       if (file_handle) begin
         $fclose(file_handle);
-        $readmemb(rom_mem_path, mem.mem);
+        $readmemb(rom_mem_path, u_mem.mem);
         file_loaded = 1;
         $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from bin64 file: %s",
                  rom_mem_path);
@@ -247,7 +257,7 @@ module OCAH4CORECluster_rom_ext #(
       file_handle = $fopen(rom_mem_path, "r");
       if (file_handle) begin
         $fclose(file_handle);
-        $readmemh(rom_mem_path, mem.mem);
+        $readmemh(rom_mem_path, u_mem.mem);
         file_loaded = 1;
         $display("INFO: [OCAH4CORECluster_rom_ext] Successfully loaded ROM from hex file: %s",
                  rom_mem_path);

@@ -25,6 +25,7 @@ _DFX_CTRL_STATUS_H = (
     _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
 )
 _NDM_RESET_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "ndm_reset.h"
+_CPU_CTRL_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "cpu_ctrl.h"
 _TELEMETRY_RECEIVER_H = (
     _REPO_ROOT / "hw" / "ip" / "telemetry_receiver" / "regs" / "gen" / "c" / "telemetry_receiver.h"
 )
@@ -62,6 +63,28 @@ _INDEXED2_RE = re.compile(
 )
 
 
+# One outbound mailbox instance: #define SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_<n>_BASE_ADDR
+_MBX_INSTANCE_RE = re.compile(
+    r"^\s*#define\s+SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_(\d+)_BASE_ADDR\s"
+)
+
+
+@lru_cache(maxsize=1)
+def smc_outbound_mailbox_count() -> int:
+    """Number of outbound mailbox instances ``smc_addr.h`` enumerates."""
+    found = set()
+    for line in _SMC_ADDR_H.read_text(encoding="utf-8").splitlines():
+        m = _MBX_INSTANCE_RE.match(line)
+        if m:
+            found.add(int(m.group(1)))
+    if sorted(found) != list(range(len(found))) or not found:
+        raise RuntimeError(
+            f"outbound mailbox instances are not a contiguous 0..N-1 set in {_SMC_ADDR_H}: "
+            f"{sorted(found)}"
+        )
+    return len(found)
+
+
 def smc_base_config_u32(symbol: str) -> int:
     """Return an ``SMC_BASE_CONFIG__*`` integer ``#define``."""
     return c_header_u32(_SMC_BASE_CONFIG_H, symbol)
@@ -75,6 +98,11 @@ def dfx_ctrl_status_u32(symbol: str) -> int:
 def ndm_reset_u32(symbol: str) -> int:
     """Return an ``NDM_RESET__*`` integer ``#define``."""
     return c_header_u32(_NDM_RESET_H, symbol)
+
+
+def cpu_ctrl_u32(symbol: str) -> int:
+    """Return a ``CPU_CTRL__*`` integer ``#define``."""
+    return c_header_u32(_CPU_CTRL_H, symbol)
 
 
 def telemetry_receiver_u32(symbol: str) -> int:
@@ -193,7 +221,6 @@ def smc_indexed2_addr(symbol: str, outer: int = 0, inner: int = 0) -> int:
 # Integrator Guide smu.adoc "STAP Scan Chain Topology"). The SMU parameter
 # table there sets JTAG_STAP_IO_ENABLE=1, JTAG_SMC_DBG_ENABLE=1 and
 # JTAG_NUM_EXTRA_STAPS=1, and SEP=1 enables the SEP debug STAP.
-# smu_jtag_helpers.SMU_STAP_ORDER is the SEP=0 chain; this is the SEP=1 one.
 SMU_SEP_STAP_ORDER = ("io", "smc", "sep", "extra0")
 
 
@@ -209,15 +236,30 @@ def stap_3dcr_scan_word(
     config_hold: int,
     stap_sel: int,
     tms_hold: int,
-    close_sib: int = 0,
+    sib_en: int = 0,
     order: tuple[str, ...] = (),
 ) -> tuple[int, int]:
-    """SIB bits then the 3-bit STAP 3DCR, for the given chain order."""
+    """The STAP chain segment of a TAP_3DCR scan while only ``name``'s SIB is open.
+
+    The chain carries one SIB flop per STAP in chain order, TDI-nearest first,
+    and an open SIB splices its STAP's 3-bit 3DCR (tms_hold, stap_sel,
+    config_hold) TDI-side of that SIB (IEEE 1838 serial configuration; the DTP
+    scan reference model's ``chain_layout``). ``sib_en`` is the value the
+    target SIB latches at Update-DR: 0 closes it again.
+    """
     chain = order or SMU_SEP_STAP_ORDER
     payload = stap_3dcr_payload(config_hold=config_hold, stap_sel=stap_sel, tms_hold=tms_hold)
-    value = (close_sib & 0x1) << (len(chain) - 1 - chain.index(name))
-    value |= payload << len(chain)
-    return value, len(chain) + STAP_3DCR_WIDTH
+    value = 0
+    width = 0
+    for stap in chain:
+        if stap == name:
+            value = (value << STAP_3DCR_WIDTH) | payload
+            width += STAP_3DCR_WIDTH
+            value = (value << 1) | (sib_en & 0x1)
+        else:
+            value <<= 1
+        width += 1
+    return value, width
 
 
 def ptap_prefixed(

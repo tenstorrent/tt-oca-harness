@@ -19,6 +19,8 @@ class dtp_jtag2axi_backpressure_aw_before_w_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-STALL-FSM",
+        "CHK-J2A-STALL-BUSY",
     )
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 

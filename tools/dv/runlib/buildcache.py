@@ -23,6 +23,7 @@ the full stack:
 from __future__ import annotations
 
 import hashlib
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -195,6 +196,32 @@ def xcelium_version(root: Path) -> str:
     return binary_version("xrun", ["-version"], root)
 
 
+# The compile job count each tool's build arguments carry: `-j<N>` on VCS, and
+# the flag plus its value on Verilator and Xcelium. It sets how fast a model
+# builds, not what it contains, and a cluster build job takes it from its core
+# request while the coordinator takes `--build-jobs`, so it stays out of the
+# fingerprint: both must name one model directory.
+_JOB_COUNT_FLAG = re.compile(r"-j\d+")
+_JOB_COUNT_FLAGS_WITH_VALUE = {"--build-jobs", "-mce_build_thread_count"}
+
+
+def fingerprint_build_args(build_args: list[str]) -> list[str]:
+    """The build arguments that enter the fingerprint: all but the compile job count."""
+    kept: list[str] = []
+    skip_value = False
+    for arg in build_args:
+        if skip_value:
+            skip_value = False
+            continue
+        if arg in _JOB_COUNT_FLAGS_WITH_VALUE:
+            skip_value = True
+            continue
+        if _JOB_COUNT_FLAG.fullmatch(arg):
+            continue
+        kept.append(arg)
+    return kept
+
+
 def build_fingerprint(
     *,
     build_args: list[str],
@@ -203,9 +230,18 @@ def build_fingerprint(
     filelist_text: str,
     extra: list[str],
 ) -> str:
-    """Stable 12-hex digest over the declared build inputs (not per-seed)."""
+    """Stable 12-hex digest over the declared build inputs (not per-seed).
+
+    The compile job count in ``build_args`` is left out (``fingerprint_build_args``).
+    """
     hasher = hashlib.sha256()
-    for part in (top_module, tool_version, filelist_text, *build_args, *extra):
+    for part in (
+        top_module,
+        tool_version,
+        filelist_text,
+        *fingerprint_build_args(build_args),
+        *extra,
+    ):
         hasher.update(str(part).encode("utf-8"))
         hasher.update(b"\0")
     return hasher.hexdigest()[:12]

@@ -19,7 +19,7 @@ import tempfile
 import textwrap
 import unittest
 from argparse import Namespace
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -97,7 +97,7 @@ class SiteCase(unittest.TestCase):
 class SiteFileDiscoveryTest(SiteCase):
     def test_no_file_and_no_variable_means_no_layer(self) -> None:
         # A companion checkout beside the configs changes nothing.
-        (self.tmp / "nonfree").mkdir()
+        (self.tmp / "companion").mkdir()
         (self.tmp / "hw" / "common" / "dv" / "configs").mkdir(parents=True)
         self.assertIsNone(site_layer_path(self.tmp, {}))
         self.assertIsNone(load_site_layer(self.tmp, {}))
@@ -172,8 +172,22 @@ class SiteFileValidationTest(SiteCase):
         self.rejects('[simulators.sby]\nargv = ["{binary}", "{nope}"]\n', "nope")
 
     def test_dut_entry_keys_and_target(self) -> None:
-        self.rejects('[duts.dtp]\nsim_cfg = "x.toml"\n', "unsupported key(s): sim_cfg")
+        self.rejects('[duts.dtp]\nroot = "x"\n', "unsupported key(s): root")
+        self.rejects("[duts.dtp]\n", "[duts.dtp] sets none of: formal_cfg, sim_cfg, tools")
         self.rejects("[duts.dtp]\nformal_cfg = 1\n", "formal_cfg must be a non-empty path")
+        self.rejects('[duts.dtp]\nsim_cfg = ""\n', "sim_cfg must be a non-empty path")
+        self.rejects('[duts.dtp]\ntools = "vcs"\n', "tools", "must be a list of strings")
+        self.rejects("[duts.dtp]\ntools = []\n", "tools must be a non-empty list of tool names")
+
+    def test_absent_sim_cfg_loads_and_fails_only_when_selected(self) -> None:
+        layer = self.load('[duts.dtp]\nsim_cfg = "missing_sim_cfg.toml"\n')
+        self.assertEqual(layer.sim_cfg(["dtp"]), "missing_sim_cfg.toml")
+        self.assertIsNone(layer.formal_cfg(["dtp"]))
+        resolve_dut(REPO_ROOT, "dtp", mode="formal", site=layer)
+        with self.assertRaises(ConfigError) as ctx:
+            resolve_dut(REPO_ROOT, "dtp", site=layer)
+        self.assertIn("sim config not found", str(ctx.exception))
+        self.assertIn("named by the site layer", str(ctx.exception))
 
     def test_absent_formal_cfg_loads_and_fails_only_when_selected(self) -> None:
         layer = self.load('[duts.dtp]\nformal_cfg = "missing_formal_cfg.toml"\n')
@@ -263,16 +277,20 @@ class MergeTest(SiteCase):
         base = load_executors(REPO_ROOT)
         layer = self.load(
             """
-            [executors.lsf]
+            [executors.grid]
             kind = "cluster"
-            binary = "bsub"
-            submit_argv = ["bsub", "-q", "{queue}"]
+            binary = "qsub"
+            submit_argv = ["qsub", "-q", "{queue}"]
             wait_mode = "poll"
             """
         )
         merged = merged_executors(base, layer)
-        self.assertEqual(merged["lsf"]["binary"], "bsub")
+        self.assertEqual(merged["grid"]["binary"], "qsub")
         self.assertEqual(merged["local"], base["local"])
+        self.assertEqual(merged["lsf"], base["lsf"])
+        with self.assertRaises(ConfigError) as ctx:
+            merged_executors(base, self.load('[executors.lsf]\nkind = "local"\n'))
+        self.assertIn("kind", str(ctx.exception))
         with self.assertRaises(ConfigError) as ctx:
             merged_executors(base, self.load('[executors.local]\nbinary = "x"\n'))
         self.assertIn("binary", str(ctx.exception))
@@ -299,6 +317,9 @@ class MergeTest(SiteCase):
             kind = "formal"
             [duts.dtp]
             formal_cfg = "{cfg}"
+            [duts.smc]
+            sim_cfg = "smc_sim_cfg.toml"
+            tools = ["vcs"]
             """
         )
         summary = site_summary(layer, {"vcs", "verilator"})
@@ -306,6 +327,7 @@ class MergeTest(SiteCase):
         self.assertIn("vcs(binary)", summary)
         self.assertIn("fvtool(added)", summary)
         self.assertIn("dtp(formal_cfg)", summary)
+        self.assertIn("smc(sim_cfg, tools)", summary)
 
 
 class ToolLaunchTest(SiteCase):
@@ -640,6 +662,35 @@ class CliViewsTest(SiteCase):
             cli.load_registries(REPO_ROOT)
         self.assertIn("no_such_dut", str(ctx.exception))
 
+    def test_load_registries_checks_the_tools_a_dut_entry_adds(self) -> None:
+        for body, needles in (
+            ('tools = ["nosuch"]', ("[duts.dtp].tools names unknown tool `nosuch`",)),
+            ('tools = ["sby"]', ("`sby`, a formal tool", "list simulation tools only")),
+        ):
+            with (
+                mock.patch.dict(os.environ, self.site_env(f"[duts.dtp]\n{body}\n")),
+                self.assertRaises(ConfigError) as ctx,
+            ):
+                cli.load_registries(REPO_ROOT)
+            for needle in (*needles, "site layer"):
+                self.assertIn(needle, str(ctx.exception))
+
+    def test_selecting_a_dut_whose_site_sim_cfg_is_absent_names_the_pointer(self) -> None:
+        out, err = io.StringIO(), io.StringIO()
+        with (
+            mock.patch.dict(
+                os.environ, self.site_env('[duts.dtp]\nsim_cfg = "/absent/dtp_sim_cfg.toml"\n')
+            ),
+            redirect_stdout(out),
+            redirect_stderr(err),
+        ):
+            rc = cli.main(["--dut", "dtp", "--items", "smoke", "--dry-run"])
+        text = out.getvalue() + err.getvalue()
+        self.assertEqual(rc, 2, text)
+        self.assertIn("sim config not found: /absent/dtp_sim_cfg.toml", text)
+        self.assertIn("named by the site layer", text)
+        self.assertNotIn("unknown DUT", text)
+
     def test_doctor_names_the_site_file_and_probes_the_launcher(self) -> None:
         rc, out = self.run_doctor(
             "sby",
@@ -751,6 +802,52 @@ class ResolveDutTest(SiteCase):
         layer = self.load(f'[duts.smu]\nformal_cfg = "{cfg}"\n')
         flow = resolve_dut(REPO_ROOT, "smu_wrapper", mode="formal", site=layer)
         self.assertEqual(flow.path, cfg)
+        self.assertEqual(flow.name, "smu")
+
+    def test_site_sim_cfg_wins_for_sim_mode_only(self) -> None:
+        cfg = self.tmp / "dtp_sim_cfg.toml"
+        shutil.copy(REPO_ROOT / "hw/sys/dtp/dv/dtp_sim_cfg.toml", cfg)
+        layer = self.load(f'[duts.dtp]\nsim_cfg = "{cfg}"\n')
+        flow = resolve_dut(REPO_ROOT, "dtp", site=layer)
+        own = resolve_dut(REPO_ROOT, "dtp")
+        self.assertEqual(flow.path, cfg)
+        self.assertEqual((flow.name, flow.root), (own.name, own.root))
+        formal = resolve_dut(REPO_ROOT, "dtp", mode="formal", site=layer)
+        self.assertEqual(formal.path, REPO_ROOT / "hw/sys/dtp/dv/dtp_formal_cfg.toml")
+
+    def test_site_tools_join_the_views_whose_framework_they_serve(self) -> None:
+        layer = self.load(
+            """
+            [simulators.simtool]
+            kind = "simulation"
+            frameworks = ["uvm"]
+            license_env = ["SIMTOOL_LICENSE_FILE"]
+            [duts.dtp]
+            tools = ["simtool", "vcs"]
+            """
+        )
+        for framework in (None, "uvm"):
+            own = resolve_dut(REPO_ROOT, "dtp", framework=framework)
+            flow = resolve_dut(REPO_ROOT, "dtp", framework=framework, site=layer)
+            expected = [*own.tools, "simtool"] if own.framework == "uvm" else own.tools
+            self.assertEqual(flow.tools, expected, own.framework)
+            self.assertEqual(flow.default_tool, own.default_tool)
+        formal = resolve_dut(REPO_ROOT, "dtp", mode="formal", site=layer)
+        self.assertEqual(formal.tools, resolve_dut(REPO_ROOT, "dtp", mode="formal").tools)
+
+    def test_site_tools_for_the_canonical_dut_serve_its_alias(self) -> None:
+        layer = self.load(
+            """
+            [simulators.simtool]
+            kind = "simulation"
+            frameworks = ["cocotb"]
+            license_env = []
+            [duts.smu]
+            tools = ["simtool"]
+            """
+        )
+        flow = resolve_dut(REPO_ROOT, "smu_wrapper", site=layer)
+        self.assertEqual(flow.tools[-1], "simtool")
         self.assertEqual(flow.name, "smu")
 
 

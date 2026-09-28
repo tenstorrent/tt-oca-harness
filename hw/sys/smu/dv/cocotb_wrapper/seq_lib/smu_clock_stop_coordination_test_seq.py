@@ -63,7 +63,7 @@ class smu_clock_stop_coordination_test_seq:
         cocotb.log.info(msg)
 
     def _sim_ns(self) -> float:
-        return float(get_sim_time(units="ns"))
+        return float(get_sim_time(unit="ns"))
 
     def _mark_step(self, step_id: str, detail: str) -> None:
         now = self._sim_ns()
@@ -197,8 +197,8 @@ class smu_clock_stop_coordination_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "SETUP: bring SMU out of reset with clocks stable; ready bare "
-            "tb_top JTAG/xtrig for boot-stall/IC-reset/clkstop; record baseline",
+            "SETUP: bring SMU out of reset with clocks stable; ready the "
+            "JTAG/xtrig pins for boot-stall/IC-reset/clkstop; record baseline",
         )
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, self.SETTLE)

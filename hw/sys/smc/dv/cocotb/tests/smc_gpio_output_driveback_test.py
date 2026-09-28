@@ -15,6 +15,9 @@ from smc_base_test import smc_base_test
 class smc_gpio_output_driveback_test(smc_base_test):
     """Program GPIO wrap 0 as TX output and check the DUT pad outputs."""
 
+    required_evidence = ("CHK-GPIO-OUTPUT-DRIVEBACK",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:
