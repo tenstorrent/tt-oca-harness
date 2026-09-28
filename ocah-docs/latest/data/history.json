@@ -1890,6 +1890,31 @@
         }
       ],
       "test_pass_rate": 98.66
+    },
+    {
+      "failed_tests": 3,
+      "flaky_tests": 1,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-28T22:02:48+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.43,
+            "branch": 86.55,
+            "condition": 83.01,
+            "fsm_state": 71.68,
+            "functional": 100.0,
+            "line": 94.19,
+            "toggle": 83.07,
+            "user": 96.4211
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.03
     }
   ]
 }
