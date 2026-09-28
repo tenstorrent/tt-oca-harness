@@ -3,8 +3,9 @@
 
 = System Management Network (SMN)
 :description: System fabric access to and from the SMU.
+:page-aliases: smn.placeholder.adoc
 
-// Keep the published filename for existing links.
+// The page alias preserves the former URL and its fragment links.
 [[system-management-network]]
 
 The System Management Network (SMN) is the system fabric outside the SMU.

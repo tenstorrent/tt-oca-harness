@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="functional-blocks"></span>
@@ -21,7 +22,8 @@ implementation.
 .GPIO controller and technology-specific interface shim
 image::SMC_GPIO_FIG021.jpeg[alt="GPIO controller and technology-specific interface shim",width=100%,pdfwidth=100%]
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="control-path-and-mode-selection"></span>
@@ -91,7 +93,8 @@ Electrical effects depend on the connected pad implementation. The supplied
 strength, pull resistors or input conditioning. Do not interpret the
 `drive_strength` encoding as a portable current rating.
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="interrupts-flexible-and-responsive"></span>
@@ -122,7 +125,8 @@ the request. Edge pulses are not stretched; the receiving interrupt
 controller must capture them. Detection uses the synchronized input,
 independently of whether register readback is selected.
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="clocking-and-reset-safe-and-predictable"></span>

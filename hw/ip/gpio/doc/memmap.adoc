@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="address-space-organization"></span>
@@ -19,13 +20,15 @@ endif::backend-html5[]
 
 === Memory Map
 
-The controller's interface bank contains `DATA_CTRL` at offset `0x0`,
-`DATA_CTRL_ENABLE` at `0x4`, and `ACCESS_FILTER` at `0x8`. The shim's
-control bank contains `CONTROL` at its own offset `0x0`. The composite
-`gpio_wrap` map places the interface bank at `0x0` and control bank at
-`0x10`; the enclosing padring determines their system addresses.
+The controller's interface bank contains `DATA_CTRL`, `DATA_CTRL_ENABLE`
+and `ACCESS_FILTER`; the shim's control bank contains `CONTROL`.
+The generated `gpio_intf` and `gpio_ctrl` maps in
+<<gpio-detailed-register-map>> define their register offsets, and `gpio_wrap`
+defines the bank placement within the composite aperture. The enclosing
+padring determines their system addresses.
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="reset-behavior"></span>
@@ -46,6 +49,13 @@ pull, conditioning, configuration-enable and secondary-override controls
 to zero. The read-only strap fields reflect `INPUT_BY_DEFAULT` and the
 captured input, so the complete value is not a single fixed reset word.
 
+ifdef::backend-html5[]
+++++
+<span id="detailed-register-map"></span>
+++++
+endif::backend-html5[]
+
+[[gpio-detailed-register-map]]
 === Detailed Register Map
 
 ifdef::backend-html5[]

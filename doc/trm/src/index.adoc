@@ -59,7 +59,7 @@ endif::release[]
 *** xref:sep:index.adoc[Security Processor (SEP)]
 *** xref:smc:index.adoc[System Management Controller (SMC)]
 *** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
-** xref:smn.placeholder.adoc[System Management Network (SMN)]
+** xref:smn.adoc[System Management Network (SMN)]
 ** xref:aou.adoc[AXI-over-UCIe Bridge (AoU)]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
 * xref:dashboard.adoc[Verification Dashboard]
@@ -151,7 +151,7 @@ include::../../../hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloff
 include::../../../hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=+6]
 include::../../../hw/sys/dtp/doc/reference.adoc[leveloffset=+4]
 
-include::smn.placeholder.adoc[leveloffset=+2]
+include::smn.adoc[leveloffset=+2]
 include::aou.adoc[leveloffset=+2]
 
 include::ip-reference.adoc[leveloffset=+1]

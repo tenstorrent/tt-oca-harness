@@ -59,7 +59,11 @@ on either TRST_n or power-on reset.
 
 == IC_RESET Overrides
 
-The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
+The primary TAP exposes a reset-selection test data register (TDR) through
+`IC_RESET`. IEEE 1149.1-2013 defines the instruction in Clause 8.21 and the
+reset-selection register in Clause 17. The
+https://grouper.ieee.org/groups/1149/1/ieee-1149-1-2013-changes.pdf[IEEE working-group summary of the 2013 changes]
+identifies both clauses. In this implementation, per reset
 port it holds `reset_control`, the active-low reset value to drive, and
 `reset_enable`, which selects it. One `reset_hold` bit sits nearest TDO.
 

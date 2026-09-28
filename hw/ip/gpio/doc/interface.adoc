@@ -8,7 +8,13 @@ The tables distinguish the per-pad controller from its shim. Pad count and
 padring address allocation belong to the enclosing subsystem. The modules
 shown here expose AXI4-Lite; they do not contain an APB port.
 
-// Old section fragments remain valid in HTML.
+The SMC integration defines 65 GPIO wrappers: 61 bonded pads and four
+unbonded pads (`smc_pkg::NUM_BONDED_GPIO` and `NUM_UNBONDED_GPIO`).
+These are subsystem constants, not `NUM_GPIO` or `BUS_PROTOCOL` parameters
+of the per-pad controller. Address and data widths are both 32 bits.
+
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="configuration-parameters"></span>
@@ -32,7 +38,8 @@ its logarithm sets the register-address slice width.
 `INPUT_BY_DEFAULT = 1`, `ENABLE_PULL = 0`, and `USE_PULL_UP = 0`.
 These select strap capture and the default electrical settings.
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="signal-interface-definitions"></span>
@@ -53,7 +60,8 @@ endif::backend-html5[]
 controller and shim each have a separate pair.
 |===
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="lsio-interface"></span>
@@ -72,7 +80,8 @@ endif::backend-html5[]
 |`lsio_pad2core_data_o` |Output |Unsynchronized input returned under the conditions in Input Readback.
 |===
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="gpio-pad-interface"></span>
@@ -90,7 +99,8 @@ endif::backend-html5[]
 |`pad2core_en_o` |Output |Active-high RX enable; connects to shim `pad2core_en_i`.
 |===
 
-// Old section fragments remain valid in HTML.
+// Compatibility anchors preserve bookmarks and inbound links to headings
+// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="interrupt-interface"></span>
