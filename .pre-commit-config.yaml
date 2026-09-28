@@ -39,6 +39,12 @@ repos:
         language: system
         files: '\.(c|h|cpp)$'
 
+      - id: nix-format
+        name: Check Nix formatting with nix fmt
+        entry: sh -c 'make ocah-format-nix-check OCAH_FORMAT_NIX_FILES="$*"' --
+        language: system
+        files: '(\.nix|flake.lock)$'
+
       - id: tclfmt
         name: Check Tcl formatting with tclfmt
         entry: sh -c 'make ocah-format-tcl-check TCL_PATH="$*"' --
