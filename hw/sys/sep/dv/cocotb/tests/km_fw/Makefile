@@ -10,12 +10,12 @@ OUT_DIR := ..
 # its private scratch directory, so concurrent verifies share no written path.
 OBJ_DIR ?= $(CURDIR)
 ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault km_rom_crc \
-        km_rom_kpv_scrambler km_rom_iso
+        km_rom_kpv_scrambler km_rom_iso km_rom_otp_id
 
 # The KM PicoRV32 is built with ENABLE_REGS_16_31=0, so an image that runs on
 # it must be assembled for RV32E and may use x0-x15 only. Images that only feed
 # the tb keep the wider base ISA.
-RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler km_rom_iso
+RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler km_rom_iso km_rom_otp_id
 ARCH_FLAGS = -march=rv32i -mabi=ilp32
 $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
         ARCH_FLAGS := -march=rv32e -mabi=ilp32e
@@ -106,7 +106,7 @@ KM_CSR_H := $(KM_REG_INC)/km_csr.h
 KM_KPV_H := $(KM_REG_INC)/km_kpv.h
 KM_MBOX_KM_H := $(KM_REG_INC)/km_mailbox_km.h
 KM_FIELD_INC := $(OBJ_DIR)/km_fields.inc
-KM_CSR_DEFS := KM_CSR__IRQ_STATUS_REG__(AXI_SLVERR|AXI_DECERR|SRAM_WRITE_LOCK_ERR|DRBG_ERR|ROM_PARITY_ERR|SRAM_PARITY_ERR|ROM_WRITE_ERR)_bm
+KM_CSR_DEFS := KM_CSR__(IRQ_STATUS_REG__(AXI_SLVERR|AXI_DECERR|SRAM_WRITE_LOCK_ERR|DRBG_ERR|ROM_PARITY_ERR|SRAM_PARITY_ERR|ROM_WRITE_ERR)|OTP_READ_LOCK_REG__SEP_(CHIPLET|SIP|SYS)_ID)_bm
 KM_KPV_DEFS := KM_KPV__(CTRL_REG__(LOCK_WRITE|LOCK_USE|ERASE|SEAL)|KPV_SCRAMBLER_CTRL_REG__(ENABLE|LOCK))_bm
 KM_MBOX_KM_DEFS := KM_MAILBOX_KM__STATUS_REG__(INBOUND_EMPTY|OUTBOUND_FULL)_bm
 
