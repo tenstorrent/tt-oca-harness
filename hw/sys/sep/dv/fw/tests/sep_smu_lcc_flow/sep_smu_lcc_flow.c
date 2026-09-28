@@ -43,9 +43,9 @@
 #include "sep.h"
 #include "sep_outbound_filter.h"
 
-#define LCC_FEAT_CTRL OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR
-#define LCC_DEMOTE_1 OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR
-#define LCC_DEMOTE_2 OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR
+#define LCC_FEAT_CTRL SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR
+#define LCC_DEMOTE_1 SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR
+#define LCC_DEMOTE_2 SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR
 
 #define DEMOTE_BIT 0x1u
 #define LOCK_BIT 0x2u
@@ -53,7 +53,7 @@
 /* Results the testbench reads back out of SEP-local cold scratch, so the flow
  * is inspectable even when a later stage fails. Cold scratch is SEP-local: no
  * outbound window is needed for these, unlike the STDOUT mailbox. */
-#define SCRATCH(n) OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n)
+#define SCRATCH(n) SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(n)
 #define SC_FEAT_BASE_LO SCRATCH(1)
 #define SC_FEAT_D1_LO SCRATCH(2)
 #define SC_FEAT_D2_LO SCRATCH(3)

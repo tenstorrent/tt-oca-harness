@@ -119,6 +119,7 @@ module jtag2axi #(
 
   `include "axi/typedef.svh"
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   //--------------------------------------------------------------------------
   // Local Parameters and Constants
@@ -880,7 +881,7 @@ module jtag2axi #(
     end
   end
 
-`ifndef SYNTHESIS
+`ifdef OCAH_DEBUG_LIVE
   `OCAH_OT_ASSERT(AwValidStable_A, awvalid_o && !awready_i |=> awvalid_o && $stable(aw_buf),
                   aclk_i, !arst_ni)
   `OCAH_OT_ASSERT(WValidStable_A, wvalid_o && !wready_i |=> wvalid_o && $stable(w_buf), aclk_i,

@@ -63,7 +63,7 @@ static const uint32_t expected_ciphertext[3][4] = {
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+        aes__STATUS_t status = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (status.f.IDLE) {
             return 0;
         }
@@ -75,7 +75,7 @@ static int wait_for_idle(void) {
 static int wait_for_output_valid(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+        aes__STATUS_t status = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (status.f.OUTPUT_VALID) {
             return 0;
         }
@@ -85,7 +85,7 @@ static int wait_for_output_valid(void) {
 }
 
 static void print_status(const char *tag) {
-    aes__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+    aes__STATUS_t s = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
     printf("%s STATUS=0x%08x idle=%u stall=%u input_ready=%u output_valid=%u\n", tag, s.w, s.f.IDLE,
            s.f.STALL, s.f.INPUT_READY, s.f.OUTPUT_VALID);
 }
@@ -93,7 +93,7 @@ static void print_status(const char *tag) {
 static int wait_for_input_ready(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        aes__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+        aes__STATUS_t status = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
         if (status.f.INPUT_READY) {
             return 0;
         }
@@ -104,7 +104,7 @@ static int wait_for_input_ready(void) {
 
 static int aes_cbc_multi_block_test(void) {
     printf("\n=== AES-128 CBC Multi-Block Encryption Test ===\n");
-    printf("AES base=0x%08x\n", OCH_SEP_TOP_AES_BASE_ADDR);
+    printf("AES base=0x%08x\n", SEP_TOP_AES_BASE_ADDR);
     printf("Testing 3 blocks to demonstrate automatic operation\n\n");
 
     // Step 1: Wait for idle
@@ -123,21 +123,21 @@ static int aes_cbc_multi_block_test(void) {
     ctrl.f.MANUAL_OPERATION = 0x0; // Automatic mode - KEY FEATURE!
     ctrl.f.SIDELOAD = 0;           // Use SW key (KEY_SHARE0/1); deprecated, DV only
     // Write twice since it's shadowed
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
 
     // Step 3: Wait for idle before writing key
     if (wait_for_idle() != 0) return -1;
 
     // Step 4: Write key via KEY_SHARE0/1 (deprecated SW path for DV when key manager not present)
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
     }
     for (int i = 4; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
     // Step 5: Wait for idle and write IV (required for CBC mode)
@@ -145,7 +145,7 @@ static int aes_cbc_multi_block_test(void) {
 
     printf("\n[Step 4] Writing IV (required for CBC mode)\n");
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(i), test_iv[i]);
+        WRITE_REG(SEP_TOP_AES_IV_BASE_ADDR(i), test_iv[i]);
     }
 
     // Step 6: Wait for INPUT_READY
@@ -163,7 +163,7 @@ static int aes_cbc_multi_block_test(void) {
         printf("[Block %d] Writing plaintext (4 x 32-bit registers)\n", block);
         printf("  As soon as all 4 DATA_IN registers written, AES starts automatically!\n");
         for (int i = 0; i < 4; i++) {
-            WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_BASE_ADDR(i), test_plaintext[block][i]);
+            WRITE_REG(SEP_TOP_AES_DATA_IN_BASE_ADDR(i), test_plaintext[block][i]);
         }
 
         // After writing all 4 DATA_IN registers, AES starts automatically
@@ -180,7 +180,7 @@ static int aes_cbc_multi_block_test(void) {
         printf("  [AUTOMATIC] After all DATA_OUT reads, INPUT_READY will go high\n");
         uint32_t ciphertext[4];
         for (int i = 0; i < 4; i++) {
-            ciphertext[i] = READ_REG(OCH_SEP_TOP_AES_DATA_OUT_BASE_ADDR(i));
+            ciphertext[i] = READ_REG(SEP_TOP_AES_DATA_OUT_BASE_ADDR(i));
         }
 
         // After reading all 4 DATA_OUT registers, INPUT_READY goes high
@@ -216,14 +216,14 @@ static int aes_cbc_multi_block_test(void) {
     // Cleanup - switch to manual mode and clear registers
     printf("\n[Cleanup] Switching to manual mode and clearing registers\n");
     ctrl.f.MANUAL_OPERATION = 0x1;
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, ctrl.w);
 
     // Trigger clear operations
     aes__TRIGGER_t trigger = {.w = 0};
     trigger.f.KEY_IV_DATA_IN_CLEAR = 1;
     trigger.f.DATA_OUT_CLEAR = 1;
-    WRITE_REG(OCH_SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
+    WRITE_REG(SEP_TOP_AES_TRIGGER_BASE_ADDR, trigger.w);
 
     return pass ? 0 : -1;
 }

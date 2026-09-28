@@ -25,8 +25,8 @@ static inline uint32_t bswap32(uint32_t x) {
 static int wait_for_completion(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
             break;
         }
@@ -36,25 +36,25 @@ static int wait_for_completion(void) {
         return -1;
     }
 
-    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.hmac_done) {
         hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-        WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+        WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     }
     return 0;
 }
 
 static int feed_message_bytes(const uint8_t *msg, uint32_t len) {
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < len; i++) {
-        hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__STATUS_t s = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         int spins = 0;
         while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("  FIFO full timeout\n");
                 return -1;
             }
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
         *fifo8 = msg[i];
     }
@@ -64,7 +64,7 @@ static int feed_message_bytes(const uint8_t *msg, uint32_t len) {
 static void digest_to_hex(uint32_t nwords, char *hex_out) {
     static const char hex_chars[] = "0123456789abcdef";
     for (uint32_t word = 0; word < nwords; word++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(word));
+        uint32_t raw = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(word));
         uint32_t digest_word = bswap32(raw);
         for (int byte = 0; byte < 4; byte++) {
             uint8_t value = (uint8_t)(digest_word >> (byte * 8));
@@ -84,18 +84,18 @@ static int run_sha_case(const char *name, uint32_t digest_size, uint32_t nwords,
     cfg.f.hmac_en = 0;
     cfg.f.sha_en = 1;
     cfg.f.digest_size = digest_size;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x\n", cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
 
     const uint8_t msg[] = {'a', 'b', 'c'};
     if (feed_message_bytes(msg, 3) != 0) return -1;
 
     cmd.w = 0;
     cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Processing hash...\n");
 
     if (wait_for_completion() != 0) return -1;
@@ -125,7 +125,7 @@ int main(void) {
     int pass = 1;
 
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     /* NIST FIPS 180-4 SHA-384("abc") */
     const char *sha384_hex = "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed"
@@ -141,11 +141,11 @@ int main(void) {
         pass = 0;
     }
 
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     printf("\n====================================================\n");
     if (pass) {

@@ -35,7 +35,7 @@ workflows that run them.
 | [`docs/DTP_VPLAN.adoc`](docs/DTP_VPLAN.adoc) | Every scenario with its procedure, checkers, and pass criteria; the formal verification plan; the verification scope, the requirement-to-test matrix, the regression groups, and known limitations |
 | [`docs/DTP_TB_ARCH.adoc`](docs/DTP_TB_ARCH.adoc) | Testbench hierarchy, VIP selection and DUT-local model ownership, environment components, stimulus, checking (with the negative-validation knobs), and coverage strategies, the SV-UVM realization and its differences from cocotb, adding a scenario, overlaying a commercial VIP |
 | [`docs/DTP_FCOV.adoc`](docs/DTP_FCOV.adoc) | Functional coverage plan, coverage targets, and closure policy |
-| [`../doc/defines.adoc`](../doc/defines.adoc) | Every preprocessor define a DTP compile passes, including the assertion switches |
+| [`doc/integrator/src/defines.adoc`](../../../../doc/integrator/src/defines.adoc) | Project defines chapter of the Integrator Guide: the view, tool, assertion and DV defines a DTP compile reads |
 | [`../doc/index.adoc`](../doc/index.adoc) | Design specification, with the JTAG and cross-trigger IP chapters |
 | [`hw/common/dv/README.md`](../../../common/dv/README.md) | Shared VIPs, BFM ownership, and the promotion checklist |
 | [`hw/common/dv/docs/formal-property-style.adoc`](../../../common/dv/docs/formal-property-style.adoc) | Property style the `formal/` modules implement |

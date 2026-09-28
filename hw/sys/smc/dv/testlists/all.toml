@@ -16,10 +16,9 @@ schema_version = 1
 #           picolibc, or scripts/docker-run.sh)
 #   dual    the SMC_DUAL elaboration, loading a ROM or firmware image
 #
-# Every leaf outside `all` is in holdout.toml, with the reason: the
-# `rtl_issue` reproducers the weekly tier grades as expected failures, the two
-# runtime hold-outs (`occp_boot`, `occp_dual`), and `held_out`, the leaves
-# waiting on an RTL fix. docs/SMC_VPLAN.adoc (Known Limitations) records each.
+# Leaves outside `all` are either in holdout.toml, with the reason recorded
+# there, or in one of the standalone OCCP/ROM family groups selected explicitly.
+# docs/SMC_VPLAN.adoc (Known Limitations) records the hold-outs.
 #
 # python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 # python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
@@ -39,9 +38,13 @@ includes = [
     "irq.toml",
     "jtag.toml",
     "mailbox.toml",
+    "occp_payload_boot.toml",
+    "occp_rom_only.toml",
     "power.toml",
     "register.toml",
     "reset.toml",
+    "rom_lifecycle_dft.toml",
+    "sep_ring_buffer.toml",
     "spi.toml",
     "uart.toml",
 ]

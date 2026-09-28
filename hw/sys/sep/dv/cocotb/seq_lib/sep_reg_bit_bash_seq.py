@@ -49,7 +49,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 # (block, name) -> reason. name None = every register in the block.
 # kind is consulted by the cfg, not stored here: RESET_EXCLUDE vs WRITE_EXCLUDE.
 RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
-    ("OCH_SEP_TOP", None): "top container, not a register block",
+    ("SEP_TOP", None): "top container, not a register block",
     ("PIC", None): "CPU-internal PIC, not on the CPU-LSU splice",
     ("SEP_EXTERNAL", None): "adopter extension window",
     ("SEP_EXTERNAL_EFUSE_SHIM_CTRL", None): "adopter extension window",

@@ -53,11 +53,14 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 # stage-docs.sh, and only for the HTML build. They are not committed.
 .PHONY: ocah-doc-rtl-modules
 ocah-doc-rtl-modules: ocah-doc-trm-setup
-	@py="$(OCAH_ROOT)/.venv/bin/python3"; \
-	if [ ! -x "$$py" ] || ! "$$py" -c 'import svdoc' >/dev/null 2>&1; then py=python3; fi; \
-	"$$py" -c 'import svdoc' >/dev/null 2>&1 || { \
-		echo "error: python3 cannot import svdoc."; \
-		echo "install it (uv sync, or pip install svdoc) in the python that runs the doc build."; \
+	@py=; \
+	for c in "$(PYTHON)" "$(OCAH_ROOT)/.venv/bin/python3" python3; do \
+		[ -n "$$c" ] && "$$c" -c 'import svdoc, pyslang' >/dev/null 2>&1 && { py="$$c"; break; }; \
+	done; \
+	[ -n "$$py" ] || { \
+		echo "error: no python can import both svdoc and pyslang (tried \$$PYTHON, .venv, python3)."; \
+		echo "run uv sync, or on NixOS use the dev shell with the prebuilt venv:"; \
+		echo "  nix develop .#with_uv_deps"; \
 		exit 1; }; \
 	"$$py" "$(OCAH_ROOT)/tools/doc/rtl_modules_reference.py" \
 		--root "$(OCAH_ROOT)" \

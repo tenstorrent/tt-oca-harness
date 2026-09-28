@@ -30,7 +30,7 @@ static const uint32_t expected_sha3_test[8] = {
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t status = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (status.f.sha3_idle) {
             return 0;
         }
@@ -43,9 +43,9 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
+        kmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
         if (intr.f.kmac_done) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, intr.w);
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, intr.w);
             return 0;
         }
     }
@@ -56,19 +56,19 @@ static int wait_for_done(void) {
 
 static void seed_entropy(void) {
     for (int i = 0; i < 6; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xdeadbeefu + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xdeadbeefu + (uint32_t)i);
     }
 }
 
 static void write_cfg_shadowed(kmac__CFG_SHADOWED_t cfg) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 }
 
 static int read_digest(uint32_t digest_out[8]) {
     for (int i = 0; i < 8; i++) {
-        uint32_t s0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u);
-        uint32_t s1 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET +
+        uint32_t s0 = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u);
+        uint32_t s1 = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET +
                                (uint32_t)i * 4u);
         digest_out[i] = s0 ^ s1;
     }
@@ -94,10 +94,10 @@ static int run_sha3(uint32_t digest_out[8]) {
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574u); /* "test" LE */
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574u); /* "test" LE */
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) {
         return -1;
@@ -107,7 +107,7 @@ static int run_sha3(uint32_t digest_out[8]) {
     printf("  digest0=0x%08x\n", digest_out[0]);
 
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     for (int i = 0; i < 8; i++) {
         if (digest_out[i] != expected_sha3_test[i]) {
@@ -120,11 +120,11 @@ static int run_sha3(uint32_t digest_out[8]) {
 }
 
 static int pulse_kmac_reset(void) {
-    uint32_t sw_reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t sw_reset_n = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, sw_reset_n & ~RST_KMAC);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, sw_reset_n & ~RST_KMAC);
     /* Hold assert briefly then release; poll architecturally visible idle. */
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, sw_reset_n | RST_KMAC);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, sw_reset_n | RST_KMAC);
 
     if (wait_for_idle() != 0) {
         printf("  FAIL: timeout waiting for idle after KMAC SW reset release\n");
@@ -135,8 +135,8 @@ static int pulse_kmac_reset(void) {
 
 static int state_is_zero(void) {
     for (int i = 0; i < 8; i++) {
-        uint32_t s0 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u);
-        uint32_t s1 = READ_REG(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET +
+        uint32_t s0 = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + (uint32_t)i * 4u);
+        uint32_t s1 = READ_REG(SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET +
                                (uint32_t)i * 4u);
         if (s0 != 0u || s1 != 0u) {
             printf("  FAIL: post-wipe STATE word %d share0=0x%08x share1=0x%08x (expected 0)\n", i,
@@ -169,8 +169,8 @@ int main(void) {
         pass = 0;
     }
 
-    kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
-    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
+    kmac__STATUS_t status = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
     printf("  STATUS=0x%08x idle=%u empty=%u CFG_REGWEN=%u\n", status.w, status.f.sha3_idle,
            status.f.fifo_empty, regwen.f.en);
     if (!status.f.sha3_idle || !status.f.fifo_empty || !regwen.f.en) {

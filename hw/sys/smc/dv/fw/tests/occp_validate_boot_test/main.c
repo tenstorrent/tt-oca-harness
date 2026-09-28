@@ -2,11 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Validate and Boot Command Test
- *
- * This test sends the OCCP VALIDATE_AND_BOOT command to the ROM.
- * The ROM is expected to write the address from the command to SCRATCH_8
- * and set bit 1 of SCRATCH_9.
+ * Sends VALIDATE_AND_BOOT with a random manifest address inside the OCCP window. The ROM must
+ * publish it in its SCRATCH_8 and set bit 1 of SCRATCH_9; the harness checks both against the
+ * copy this firmware keeps in its own scratch 8.
  */
 
 #include "occp_test_common.h"
@@ -41,7 +39,6 @@ static void run_validate_boot_test(test_context_t *ctx) {
 }
 
 static void finalize_test_results(test_context_t *ctx) {
-    // Signal completion to cocotb by writing to the master's scratchpad
     if (ctx->overall_result) {
         simputs("\nVALIDATE AND BOOT C-TEST PASSED! Signaling cocotb.\n");
         test_pass(0);
@@ -61,17 +58,14 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;         // Start of valid range
-    test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR; // End of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
+    test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test
     run_validate_boot_test(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

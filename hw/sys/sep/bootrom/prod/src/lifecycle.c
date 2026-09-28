@@ -30,7 +30,7 @@
 // ---------------------------------------------------------------------------
 
 uint32_t lc_read_state(void) {
-    uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
     // The eFuse field is 8 bits, differentially encoded by the RTL; the low
     // nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
@@ -81,9 +81,9 @@ bool lc_state_is_rma(uint32_t lc_state) {
 uint32_t lc_read_feat_ctrl(uint32_t *hi) {
     // FEAT_CTRL is a 64-bit read-only register.
     // Read low 32 bits, then high 32 bits.
-    uint32_t lo = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
+    uint32_t lo = mmio_read32(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     if (hi) {
-        *hi = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
+        *hi = mmio_read32(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
     }
     return lo;
 }
@@ -92,14 +92,14 @@ void lc_write_demotion(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
     if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
 }
 
 void lc_write_demotion_2(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
     if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
 }
 
 // ---------------------------------------------------------------------------

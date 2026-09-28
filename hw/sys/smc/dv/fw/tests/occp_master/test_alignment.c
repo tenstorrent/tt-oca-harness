@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Address Alignment Test Module
- *
- * Tests for address alignment handling
+ * Checks that OCCP WRITE and READ at a misaligned address both return success.
  */
 
 #include "occp_test_common.h"
@@ -15,8 +13,7 @@ bool run_alignment_tests(test_context_t *ctx) {
 
     simputs("=== Address Alignment Tests ===\n");
 
-    // Test 6a: Misaligned address (should be auto-aligned)
-    const uint64_t misaligned_addr = ctx->test_base_addr + 0x305; // Not 8-byte aligned
+    const uint64_t misaligned_addr = ctx->test_base_addr + 0x305;
     uint16_t data16 = 0x5678;
     uint16_t recv_data16 = 0;
     simputs("Test 6a: Misaligned address auto-alignment\n");

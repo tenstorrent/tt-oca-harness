@@ -200,6 +200,7 @@ interface axi_if #(parameter integer AW = 32, parameter integer DW = 32, paramet
     `endif
 
     `ifndef SYNTHESIS
+    `ifndef EMULATION
     `ifndef XCELIUM
         task rst_mgr();
             araddr  `EQ__ '0;
@@ -443,6 +444,7 @@ interface axi_if #(parameter integer AW = 32, parameter integer DW = 32, paramet
                     .resp(resp),
                     .resp_user(resp_user));
         endtask
+    `endif
     `endif
     `endif
 
