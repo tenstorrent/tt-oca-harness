@@ -28,32 +28,32 @@ static inline uint32_t bswap32(uint32_t x) {
 static int wait_for_done_or_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) break;
     }
     if (timeout <= 0) {
         printf("Timeout waiting for HMAC completion\n");
         return -1;
     }
-    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.hmac_done) {
-        WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
+        WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, intr.w);
     }
     return 0;
 }
 
 static int feed_msg(const uint8_t *data, uint32_t len) {
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < len; i++) {
         int spins = 0;
-        hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__STATUS_t s = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("FIFO full timeout\n");
                 return -1;
             }
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
         *fifo8 = data[i];
     }
@@ -71,17 +71,17 @@ static void to_hex(const uint8_t *in, char *out, int len) {
 
 static void read_digest(uint8_t digest[32]) {
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
+        uint32_t raw = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
         ((uint32_t *)digest)[i] = bswap32(raw);
     }
 }
 
 static void cleanup(void) {
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 }
 
 int main(void) {
@@ -105,15 +105,15 @@ int main(void) {
     printf("[Single-pass] Hashing \"Hello World!\"...\n");
 
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg = {.w = 0};
     cfg.f.sha_en = 1;
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd_start = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
 
     if (feed_msg(full_msg, full_len) != 0) {
         printf("FAIL: Single-pass feed error\n");
@@ -124,7 +124,7 @@ int main(void) {
     }
 
     hmac__CMD_t cmd_proc = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
 
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Single-pass timeout\n");
@@ -145,15 +145,15 @@ int main(void) {
     /* ---- Multi-part hash with stop/continue ---- */
     printf("[Multi-part] Hashing \"Hello \" + \"World!\"...\n");
 
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     hmac__CFG_t cfg2 = {.w = 0};
     cfg2.f.sha_en = 1;
     cfg2.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg2.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg2.w);
 
     /* hash_start */
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
 
     /* Feed part 1 */
     if (feed_msg(part1, p1_len) != 0) {
@@ -166,7 +166,7 @@ int main(void) {
 
     /* hash_stop */
     hmac__CMD_t cmd_stop = {.f.hash_stop = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_stop.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_stop.w);
 
     /* hash_stop at a 64-byte boundary generates hmac_done then asserts hmac_idle.
      * Use wait_for_done_or_idle() to catch either signal. */
@@ -181,7 +181,7 @@ int main(void) {
 
     /* hash_continue */
     hmac__CMD_t cmd_cont = {.f.hash_continue = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_cont.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_cont.w);
 
     /* Feed part 2 */
     if (feed_msg(part2, p2_len) != 0) {
@@ -193,7 +193,7 @@ int main(void) {
     }
 
     /* hash_process */
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
 
     if (wait_for_done_or_idle() != 0) {
         printf("FAIL: Multi-part timeout\n");

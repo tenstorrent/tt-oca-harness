@@ -189,7 +189,9 @@ module efuse_shadow_regs
   logic sim_skip_fuse_sense;
   reg [31:0] shadow_reg_preload [0:NumShadowWords-1];
 
-`ifdef SIMULATION
+`ifdef EMULATION
+  assign sim_skip_fuse_sense = 1'b0;
+`elsif SIMULATION
   initial begin
     sim_skip_fuse_sense = 1'b0;
 
@@ -205,6 +207,7 @@ module efuse_shadow_regs
   assign sim_skip_fuse_sense = 1'b0;
 `endif
 `ifdef SIMULATION
+`ifndef EMULATION
   initial begin
     string sep_shadow_reg_preload;
     string smc_shadow_reg_preload;
@@ -245,6 +248,7 @@ module efuse_shadow_regs
 
     end
   end
+`endif
 `endif
 
   logic fuse_sense_done;

@@ -39,7 +39,7 @@
 uint32_t measurement_enroll(uint32_t slot, const uint8_t *record, uint32_t len);
 
 // Verify the build-time embedded ROM hash (g_rom_sha256_str) by recomputing
-// SHA-256 over the hashed ROM region ([OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR,
+// SHA-256 over the hashed ROM region ([SEP_TOP_SEP_BOOT_ROM_BASE_ADDR,
 // __metadata_end) -- the .text + .metadata bytes hashed by
 // tools/insert-rom-sha256.py), then enroll the verified hash in MEAS_SLOT_ROM
 // and record the raw value in bl0_state.rom_hash.

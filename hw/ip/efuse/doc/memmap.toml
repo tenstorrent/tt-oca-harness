@@ -6,7 +6,7 @@ version = 1
 [[sources]]
 name = "sep"
 rdl = "hw/sys/sep/regs/sep.rdl"
-top = "och_sep_top"
+top = "sep_top"
 
 [[sources]]
 name = "smc"

@@ -327,7 +327,7 @@ _dummy_int_handler:
 
     beqz    t0, .L_dummy_int_done
     slli    t2, t0, 2               # t2 = claimid * 4
-    li      t1, OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0)
+    li      t1, SEP_TOP_PIC_MEIE_BASE_ADDR(0)
     add     t1, t1, t2              # t1 = MEIE for this claim
     sw      zero, 0(t1)             # Disable interrupt source
 .L_dummy_int_done:

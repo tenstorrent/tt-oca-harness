@@ -19,7 +19,9 @@ module prim_sync3r #(
 
   logic [WIDTH-1:0] d_del;
 
-`ifdef SIMULATION
+`ifdef EMULATION
+  assign d_del = d_i;
+`elsif SIMULATION
   // prim_cdc_rand_delay needs the first stage's output, which the synchronizer
   // cell does not expose.
   logic [WIDTH-1:0] first_stage_q;

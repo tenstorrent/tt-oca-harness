@@ -104,6 +104,9 @@
 
 `ifdef VERILATOR
  `include "caliptra_prim_assert_dummy_macros.svh"
+`elsif EMULATION
+ `include "caliptra_prim_assert_standard_macros.svh"
+ `define CALIPTRA_INC_ASSERT
 `elsif SYNTHESIS
  `include "caliptra_prim_assert_dummy_macros.svh"
 `elsif YOSYS

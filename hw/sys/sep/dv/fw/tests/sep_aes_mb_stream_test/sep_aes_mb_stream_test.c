@@ -139,7 +139,7 @@ static uint32_t prng_next(void) {
 /* Per-block status check: OUTPUT_LOST + alert                        */
 /* ------------------------------------------------------------------ */
 static int check_block_status(uint32_t block, const char *phase) {
-    aes__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+    aes__STATUS_t st = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
     if (st.f.OUTPUT_LOST) {
         printf("  ERROR: OUTPUT_LOST at %s block %u (STATUS=0x%08x)\n", phase, block, st.w);
         return -1;
@@ -163,16 +163,16 @@ static int check_key_share_read_zero(void) {
         uint32_t s0_rb;
         uint32_t s1_rb;
 
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + i * 4u, s0_pattern);
-        s0_rb = READ_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + i * 4u);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + i * 4u, s0_pattern);
+        s0_rb = READ_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(0) + i * 4u);
         if (s0_rb != 0) {
             printf("  ERROR: KEY_SHARE0_%u read-as-zero violation: wrote=0x%08x read=0x%08x\n", i,
                    s0_pattern, s0_rb);
             return -1;
         }
 
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + i * 4u, s1_pattern);
-        s1_rb = READ_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + i * 4u);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + i * 4u, s1_pattern);
+        s1_rb = READ_REG(SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(0) + i * 4u);
         if (s1_rb != 0) {
             printf("  ERROR: KEY_SHARE1_%u read-as-zero violation: wrote=0x%08x read=0x%08x\n", i,
                    s1_pattern, s1_rb);
@@ -207,13 +207,13 @@ static int run_golden_anchor(void) {
 /* cocotb handshake: publish ready, read packed {total_chunks, seed}   */
 /* ------------------------------------------------------------------ */
 static int get_config(uint16_t *seed_o, uint32_t *chunks_o) {
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0); /* pre-clear */
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0); /* pre-clear */
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
 
     uint32_t word = 0;
     int to = HANDSHAKE_TIMEOUT;
     while (to-- > 0) {
-        word = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7));
+        word = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7));
         if (word != 0) break;
     }
     if (word == 0) {
@@ -301,7 +301,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_mb_stream_test (STRESS-003)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x  chunk=%u blocks (%u bytes), streaming\n", OCH_SEP_TOP_AES_BASE_ADDR,
+    printf("AES base=0x%08x  chunk=%u blocks (%u bytes), streaming\n", SEP_TOP_AES_BASE_ADDR,
            AES_MB_STREAM_CHUNK_BLOCKS, AES_MB_STREAM_CHUNK_BLOCKS * 16u);
 
     if (rc == 0) rc = check_key_share_read_zero();

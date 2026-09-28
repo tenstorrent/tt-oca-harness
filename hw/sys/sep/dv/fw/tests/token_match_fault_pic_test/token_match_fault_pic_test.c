@@ -40,7 +40,7 @@ void __attribute__((interrupt("machine"))) token_fault_isr(void) {
     uint32_t meihap;
     __asm__ volatile("csrr %0, %1" : "=r"(meihap) : "i"(CSR_MEIHAP));
     g_claim_id = (meihap >> 2) & 0xFFu;
-    g_fault = READ_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
+    g_fault = READ_REG(SEP_TOP_EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR);
     pic_disable_source(PIC_TOKEN_FAULT);
     g_isr_count++;
     __asm__ volatile("fence" ::: "memory");
@@ -48,8 +48,8 @@ void __attribute__((interrupt("machine"))) token_fault_isr(void) {
 
 static void present_sec_disable(void) {
     const uint32_t token[8] = {1u, 0, 0, 0, 0, 0, 0, 0};
-    efuse_write_8_words(OCH_SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), token);
-    WRITE_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR,
+    efuse_write_8_words(SEP_TOP_EFUSE_MMR_SEC_DISABLE_TOKEN_I_BASE_ADDR(0), token);
+    WRITE_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR,
               EFUSE_MMR__TOKEN_EOP__SECURE_DISABLE_TOKEN_GO_bm);
 }
 

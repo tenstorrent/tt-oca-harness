@@ -25,8 +25,8 @@ static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
 static int wait_hmac_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
             break;
         }
@@ -36,16 +36,16 @@ static int wait_hmac_done(void) {
         return -1;
     }
     hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     return 0;
 }
 
 static void hmac_cleanup(void) {
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 }
 
 int main(void) {
@@ -59,7 +59,7 @@ int main(void) {
 
     /* Step 1: Verify initial FIFO status (idle, empty, depth=0) */
     printf("Step 1: Verify initial FIFO status\n");
-    hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     if (!check_reg("STATUS.fifo_empty (initial)", sts.f.fifo_empty, 1)) pass = 0;
     if (!check_reg("STATUS.fifo_depth (initial)", sts.f.fifo_depth, 0)) pass = 0;
     printf("  STATUS.fifo_full=%u hmac_idle=%u\n", sts.f.fifo_full, sts.f.hmac_idle);
@@ -70,10 +70,10 @@ int main(void) {
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  hash_start issued\n");
 
     /*
@@ -83,19 +83,19 @@ int main(void) {
      * burst check, not a FW-only hard requirement.
      */
     printf("\nStep 3: Write words; prove MSG_FIFO accepts data\n");
-    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     const uint32_t words_written = 16u;
     uint32_t max_depth_seen = 0;
     int fifo_full_seen = 0;
 
     for (uint32_t i = 0; i < words_written; i++) {
         *fifo32 = (i == 0u) ? 0xDEADBEEFu : (0xA0000000u | i);
-        sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+        sts.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         if (sts.f.fifo_depth > max_depth_seen) max_depth_seen = sts.f.fifo_depth;
         if (sts.f.fifo_full) fifo_full_seen = 1;
     }
 
-    uint32_t msg_bits = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_bits = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     uint32_t expect_bits = words_written * 32u;
     printf("  MSG_LENGTH_LOWER=%u expected=%u max_depth=%u fifo_full_seen=%u\n", msg_bits,
            expect_bits, max_depth_seen, fifo_full_seen);
@@ -112,7 +112,7 @@ int main(void) {
     /* Step 6: hash_process and wait for completion */
     printf("\nStep 6: hash_process and wait for completion\n");
     hmac__CMD_t cmd_proc = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_proc.w);
 
     if (wait_hmac_done() != 0) {
         pass = 0;
@@ -120,7 +120,7 @@ int main(void) {
 
     /* Step 7: Verify FIFO is empty after processing */
     printf("\nStep 7: Verify FIFO empty after processing\n");
-    sts.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+    sts.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
     if (!check_reg("STATUS.fifo_empty (after process)", sts.f.fifo_empty, 1)) pass = 0;
     printf("  STATUS: fifo_depth=%u hmac_idle=%u\n", sts.f.fifo_depth, sts.f.hmac_idle);
 

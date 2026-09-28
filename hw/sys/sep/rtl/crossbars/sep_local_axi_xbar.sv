@@ -3,7 +3,7 @@
 
 // Route SEP local AXI traffic among CPU, DMA, debug, and subsystem targets.
 //
-// DMA and watchdog address bounds come from och_sep_top_addrmap_pkg; the remaining address
+// DMA and watchdog address bounds come from sep_top_addrmap_pkg; the remaining address
 // rules are explicit integration apertures in AddrMap below.
 // Initiator and target ports are AXI4 with 64-bit data; target IDs carry three more bits
 // than initiator IDs. Unmapped addresses and initiator-target pairs cleared in Connectivity
@@ -55,11 +55,11 @@ module sep_local_axi_xbar
   input  axi_out_resp_t sram_resp_i,          // Response from the SEP SRAM.
 
   output axi_out_req_t  dma_csr_req_o,        // Request for the secure DMA register extent from
-                                              // och_sep_top_addrmap_pkg.
+                                              // sep_top_addrmap_pkg.
   input  axi_out_resp_t dma_csr_resp_i,       // Response from the secure DMA registers.
 
   output axi_out_req_t  sep_wdt_req_o,        // Request for the watchdog timer register extent from
-                                              // och_sep_top_addrmap_pkg.
+                                              // sep_top_addrmap_pkg.
   input  axi_out_resp_t sep_wdt_resp_i,       // Response from the watchdog timer.
 
   output axi_out_req_t  sep_reset_ctrl_req_o,  // Request for sep_reset_ctrl,
@@ -115,24 +115,24 @@ module sep_local_axi_xbar
       // secure_dma_reg_top decodes 9 bits, so a wider window aliases.
       '{
           idx: 2,
-          start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR),
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR),
           end_addr:
           33'(
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_BASE_ADDR
+          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_BASE_ADDR
           +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_SECURE_DMA_SIZE
+          sep_top_addrmap_pkg::SEP_TOP_SECURE_DMA_SIZE
           )
       },
       // sep_wdt.main: wdt_timer register extent, not the 4 kB spec aperture --
       // aon_timer_reg_top decodes 6 bits, so a wider window aliases.
       '{
           idx: 3,
-          start_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR),
+          start_addr: 32'(sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR),
           end_addr:
           33'(
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR
+          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR
           +
-          och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_SIZE
+          sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_SIZE
           )
       },
       // sep_reset_ctrl.main: 0x10803000 - 0x10803008
