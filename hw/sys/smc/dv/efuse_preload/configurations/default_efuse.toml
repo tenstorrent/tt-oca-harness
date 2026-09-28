@@ -1,17 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# Default SMC eFuse contents for DV runs.
-#
-# Consumed by generate_efuse_preload.py together with ../efuse_schema.toml.
-# Every block the schema declares must appear here, with `write_locked`,
-# `read_locked`, and one `value` per field.
-#
-# Values are the unprogrammed state (0) except where a real default is needed.
-#
-# OCCP_TRANSPORT_TIMEOUT is 0 here. The ROM treats 0 as "not programmed"
-# and substitutes its own 10000-cycle default (bootrom/prod/lib/src/occp.c).
-# randomize_efuse.py is what overrides it per run.
+# Default SMC eFuse contents for DV runs, read by generate_efuse_preload.py.
+# Every block the schema declares must appear here, with its lock flags and fields.
 
 [LOCKS]
     write_locked = "False"

@@ -2,13 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Ring Buffer Advanced Test Suite
- *
- * Exercises the SMC/SEP status ring buffers through OCCP status commands:
- * - Message format validation
- * - Head/tail wrap-around by draining past the 512-entry boundary
- * - Interleaved SMC/SEP status reads
- * - Rapid status polling
+ * Reads the SMC and SEP status ring buffers through OCCP status commands: drains the SMC
+ * buffer, interleaves SMC/SEP reads, and polls repeatedly, checking each non-empty entry.
  */
 
 #include "occp_test_common.h"
