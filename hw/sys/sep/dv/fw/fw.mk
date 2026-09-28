@@ -12,7 +12,9 @@ SEP_BOOTROM_DIR := $(abspath $(FW_DIR)/../../bootrom/prod)
 include $(FW_DIR)/../../../../common/dv/fw/preamble.mk
 
 # Runtime sources. Tests supply their own main() and link against libsep.a.
-FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c)
+# fw_build_id.c is outside drivers/. The nonfree SEP firmware build compiles
+# every drivers/*.c and does not generate fw_build_id.h.
+FW_C_SRCS   := $(wildcard $(FW_DIR)/drivers/*.c) $(FW_DIR)/fw_build_id.c
 FW_ASM_SRCS := $(wildcard $(FW_DIR)/startup/*.s $(FW_DIR)/startup/*.S $(FW_DIR)/drivers/*.S)
 FW_INCLUDES := -I$(FW_DIR)/include
 
@@ -44,7 +46,7 @@ FW_BUILD_DIR    ?= $(FW_DIR)/build
 
 # Build identity. fw_src_digest.py hashes every source directory the images can
 # draw from and writes the digest to fw_build_id.h, touching the header only
-# when the digest changes. drivers/fw_build_id.c compiles it into each image as
+# when the digest changes. fw_build_id.c compiles it into each image as
 # "FW-BUILD-ID:<digest>"; sep_base_test reads it back out of the loaded TCM
 # image and compares it with the digest of the committed tree
 # (CHK-FW-IDENTITY), so an image built from other source fails a logged check.

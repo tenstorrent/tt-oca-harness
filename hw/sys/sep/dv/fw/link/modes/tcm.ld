@@ -40,7 +40,7 @@ SECTIONS {
         *(.text)
         *(.text.*)
         . = ALIGN(4);
-        /* Build identity, ICCM copy (drivers/fw_build_id.c): kept against
+        /* Build identity, ICCM copy (fw_build_id.c): kept against
          * --gc-sections so the instruction image carries it too. */
         KEEP(*(.fw_build_id_itcm))
         . = ALIGN(4);
@@ -71,7 +71,7 @@ SECTIONS {
         *(.sdata)
         *(.sdata.*)
         . = ALIGN(4);
-        /* Build identity, DCCM copy (drivers/fw_build_id.c). Nothing references
+        /* Build identity, DCCM copy (fw_build_id.c). Nothing references
          * it at run time, so it is kept explicitly against --gc-sections; the
          * host reads it out of the image (CHK-FW-IDENTITY). */
         KEEP(*(.fw_build_id_dtcm))
