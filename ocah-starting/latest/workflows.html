@@ -435,9 +435,9 @@ toolchain settings, and link scripts.</p>
 </li>
 <li>
 <p><code>prod/</code> — self-contained production boot ROM with its own includes and drivers
-(not shared with <code>dv/fw/</code>). It implements the OCCP target-side protocol and uses weak
-stubs so the open tree links cleanly; the nonfree drivers override them at link time
-via <code>NONFREE_DRIVER_SOURCES</code>.</p>
+  (not shared with <code>dv/fw/</code>). It implements the OCCP target-side protocol and uses weak
+stubs so the open tree links cleanly. Adopters can supply strong-symbol replacements as
+explicit command-line overlay sources with <code>OCAH_FW_OVERLAY_SOURCES_smc</code>.</p>
 </li>
 </ul>
 </div>

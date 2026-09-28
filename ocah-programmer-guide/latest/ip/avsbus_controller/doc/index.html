@@ -427,9 +427,11 @@ depth. Pointers cross between the two clock domains as Gray codes through
 three-stage synchronizers.</p>
 </div>
 <div class="paragraph">
-<p>While the readback FIFO is full the master launches no further commands, so a
-software reader that stops draining <code>AVS_READBACK</code> stalls the bus rather than
-losing responses.</p>
+<p>While the readback FIFO is full the master launches no further commands, but
+replies to commands already launched are still pushed as they arrive. A reply
+that meets a full FIFO is dropped and raises <code>READBACK_OVERFLOW_INT</code>, so a
+software reader that stops draining <code>AVS_READBACK</code> stalls new commands and can
+lose the responses to commands already on the bus.</p>
 </div>
 </div>
 <div class="sect2">
