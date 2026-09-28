@@ -8702,14 +8702,14 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>cacheable</ipxact:name>
-                <ipxact:description>If set, top two bits of a*cache will be tied high</ipxact:description>
-                <ipxact:bitOffset>62</ipxact:bitOffset>
+                <ipxact:description>Set to change the value of the axcache field of the transaction. One bit for each of the cache field</ipxact:description>
+                <ipxact:bitOffset>56</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:bitWidth>4</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
