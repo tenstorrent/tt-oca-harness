@@ -90,14 +90,13 @@ firmware.
 
 The eFuse SHIM control block is the exception. Its placement is fixed at the
 base of the window, `BASE + 0x040_0000`, and its size is the
-`EFUSE_SHIM_SIZE` parameter (`SMC_EFUSE_SHIM_SIZE` at the SMU, default
-`0x44`). The peripheral crossbar routes that range to the eFuse controller,
+`EFUSE_SHIM_SIZE` parameter (`SMC_EFUSE_SHIM_SIZE` at the SMU). The peripheral 
+crossbar routes that range to the eFuse controller,
 which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
 never appears on the external port. The adopter defines the SHIM's control
 registers at offset `0x0` of its own `smc_external` map.
 
-The rest of the window, from `BASE + 0x040_0000 + EFUSE_SHIM_SIZE` to the
-top, is passed through to the chip-level adopter external port.
+The rest of the window, is passed through to the chip-level adopter external port.
 
 === External Window Reference Maps
 
