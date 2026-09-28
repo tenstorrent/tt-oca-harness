@@ -4,161 +4,78 @@
 [[telemetry-receiver-interface]]
 == Interface
 
-The Telemetry Receiver component provides AXI4-Lite register access and
-Advanced Trace Bus (ATB) telemetry data reception interfaces.
-
 === Configuration Parameters
 
-<<telemetry-receiver-configuration-parameters-table>> lists the telemetry buffer
-dimensions and configuration parameters.
-
-ifdef::backend-html5[]
-++++
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver configuration parameters" tabindex="0">
-++++
-endif::backend-html5[]
-
 [[telemetry-receiver-configuration-parameters-table]]
-[width="100%",cols="32%,12%,56%",options="header",role="telemetry-table"]
-.Telemetry receiver configuration parameters
-|====================================================================================
-|Parameter |Default |Description
-|NUM_BUFFERS |2 |Number of telemetry buffers (dual-buffer architecture)
-|BUFFER_DEPTH |16 |Depth of each telemetry buffer (entries)
-|ATB_DATA_WIDTH |8 |ATB interface data width (bits)
-|PACKET_WIDTH |64 |Telemetry packet width (bits)
-|ADDR_WIDTH |32 |Register address width (bits)
-|DATA_WIDTH |32 |Data bus width (bits)
-|====================================================================================
+[cols="2,1,3",options="header",role="telemetry-table"]
+.Telemetry receiver configuration
+|===
+|Core parameter |Default |Meaning
+|`BUFFER_DEPTH` |8 |Decoded-message queue depth. Use a power-of-two depth of
+at least two: the RTL pointer wraps by its binary width.
+|`MAX_NUM_COUNTERS_PER_MESSAGE` |4 |Counter positions decoded per message;
+the software register bank exposes 32 positions. This also determines assembly
+capacity. Values beyond 32 cannot all be exposed through that register bank.
+|===
+
+The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
+and ATB ID width (7 bits) are package constants.
+The core register port has an 8-bit address and 32-bit data path.
+
+=== Signals
 
 ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
 ++++
-</div>
-++++
-endif::backend-html5[]
-
-=== Signal Interfaces
-
-=== Global Interface
-
-The global interface provides fundamental clock and reset signals
-required for basic operation.
-
-<<telemetry-receiver-global-interface-signals-table>> defines the receiver clock and
-reset interface.
-
-ifdef::backend-html5[]
-++++
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver global signals" tabindex="0">
+<span id="signal-interfaces"></span>
+<span id="global-interface"></span>
+<span id="atb-telemetry-interface"></span>
+<span id="telemetry-receiver-atb-interface-signals-table"></span>
+<span id="atb-protocol-specifications"></span>
+<span id="interrupt-interface"></span>
+<span id="telemetry-receiver-interrupt-interface-signals-table"></span>
+<span id="interrupt-specifications"></span>
 ++++
 endif::backend-html5[]
 
 [[telemetry-receiver-global-interface-signals-table]]
-.Telemetry receiver Global Interface Signals
-[width="100%",cols="18%,10%,16%,12%,44%",options="header",role="telemetry-table"]
-|=====================================================================================
-|Signal Name |Width |Direction |Active |Description
-|`clk_i` |1 |Input |Rising |System clock input. All synchronous
-operations are performed on the rising edge.
+[cols="2,1,3",options="header",role="telemetry-table"]
+.Telemetry receiver signals
+|===
+|Signal |Direction / width |Use
+|`clk_i`, `rst_ni` |Input / 1 each |Core and register clock; active-low reset.
+|`axil_req_i`, `axil_resp_o` |Input / output structs |AXI4-Lite register access.
+|`atdata_i` |Input / 8 |One byte per accepted ATB beat.
+|`atid_i` |Input / 7 |Present on the port but not used by the core decoder.
+|`atvalid_i`, `atready_o` |Input / output / 1 each |Beat accepted when both are
+high. The core lowers ready during receiver flush, not on message-queue full.
+|`afvalid_o`, `afready_i` |Output / input / 1 each |Upstream flush request and
+acknowledgement.
+|`irq_o` |Output / 1 |Active-high level interrupt; see the interrupt conditions.
+|`debug_o` |Output / 4 |Bits 0–3: missing-last event, message queue full,
+message queue empty, assembly buffer full.
+|===
 
-|`rst_ni` |1 |Input |Low |System reset input. Asynchronous assertion,
-synchronous deassertion.
-|=====================================================================================
+=== Subsystem Wrapper
 
 ifdef::backend-html5[]
+// Preserve incoming links to the consolidated sections.
 ++++
-</div>
+<span id="clock-and-reset-specifications"></span>
 ++++
 endif::backend-html5[]
 
-=== Clock and Reset Specifications
+`telemetry_receiver_wrap` defaults to three receivers. It configures their queue
+depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 8) and counter counts with
+`TELEMETRY_RECEIVER_MAX_NUM_COUNTERS_PER_MESSAGE` (default 4 per receiver).
+Actual subsystem values and aperture assignments come from the integration.
 
-* *Clock Frequency*: The component can operate at frequencies up to 200
-MHz
-* *Clock Jitter*: Maximum 100ps peak-to-peak jitter tolerance
-* *Reset Duration*: Minimum 10 clock cycles for complete reset
-* *Reset Recovery*: Component ready for operation 2 clock cycles after
-reset deassertion
+The wrapper receives ATB traffic on `clk_telemetry_i` / `rst_telemetry_ni` and
+crosses it into `clk_i` / `rst_ni` through an eight-entry asynchronous FIFO per
+receiver. Its external ready signal reflects crossing-FIFO capacity. This does
+not turn the core's decoded-message queue into a lossless backpressured queue.
+The wrapper also contains flush-handshake synchronizers and returns a decode
+error for register addresses outside its configured receiver apertures.
 
-=== ATB Telemetry Interface
-
-The ATB (Advanced Trace Bus) interface receives telemetry data using standard
-ATB protocol.
-
-<<telemetry-receiver-atb-interface-signals-table>> defines the incoming ATB data and
-handshake signals.
-
-ifdef::backend-html5[]
-++++
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver ATB signals" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[telemetry-receiver-atb-interface-signals-table]]
-.Telemetry receiver ATB Interface Signals
-[width="100%",cols="20%,10%,16%,54%",options="header",role="telemetry-table"]
-|=================================================================================
-|Signal Name |Width |Direction |Description
-|`atdata_i` |8 |Input |Telemetry data input (8-bit data beats)
-|`atid_i` |7 |Input |ATB ID field (trace source identification)
-|`atvalid_i` |1 |Input |ATB valid signal (data valid indication)
-|`atready_o` |1 |Output |ATB ready signal (receiver ready indication)
-|`afvalid_o` |1 |Output |ATB flush valid (flush request indication)
-|`afready_i` |1 |Input |ATB flush ready (flush acknowledgment)
-|=================================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-=== ATB Protocol Specifications
-
-* *Data Width*: 8 bits per beat
-* *ID Width*: 7 bits (128 unique trace sources)
-* *Flow Control*: Valid/ready handshaking for reliable data transfer
-* *Flush Support*: Bidirectional flush signaling for stream management
-* *Back-pressure*: Component can assert `atready_o` low to apply
-back-pressure
-* *Latency*: Zero-cycle latency when ready, immediate acceptance when
-`atready_o` is high
-
-=== Interrupt Interface
-
-The interrupt interface provides a single interrupt output for event
-notification.
-
-<<telemetry-receiver-interrupt-interface-signals-table>> defines the telemetry interrupt
-output.
-
-ifdef::backend-html5[]
-++++
-<div class="telemetry-table-scroll" role="region" aria-label="Telemetry receiver interrupt signals" tabindex="0">
-++++
-endif::backend-html5[]
-
-[[telemetry-receiver-interrupt-interface-signals-table]]
-.Telemetry receiver Interrupt Interface Signals
-[width="100%",cols="20%,10%,16%,54%",options="header",role="telemetry-table"]
-|=====================================================================
-|Signal Name |Width |Direction |Description
-|`irq_o` |1 |Output |Interrupt request output (active high)
-|=====================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
-endif::backend-html5[]
-
-=== Interrupt Specifications
-
-* *Polarity*: Active high (asserted when high)
-* *Duration*: Level-sensitive, remains asserted until cleared
-* *Sources*: Buffer threshold and error condition interrupts
-* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
-`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
-threshold or its test bit is set; it cannot be cleared by writing status.
-* *Latency*: Interrupt assertion within 2 clock cycles of triggering
-condition
+Clock frequency, jitter, reset duration and physical timing constraints must
+come from the integration timing specification.
