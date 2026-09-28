@@ -3613,8 +3613,10 @@ c_dbg_cla_ctrl_status:
     FIELDS_RANGE: '6:6'
     RESET_VALUE: '0'
     LEGAL_VALUE: ''
-    DESCRIPTION: Set this bit to 1 to enable CLA. If this bit is set, CLA is clock
-      gated (save pwr)
+    DESCRIPTION: Set this bit to 1 to enable the CLA functional clock; clear it to 0
+      to gate that clock (save pwr). The CLA register block runs on a clock whose
+      functional enable is tied high, so this bit can still be written while the
+      functional clock is gated
     MASKED_BY: ~cla_lock
     MASK_WRITES_ONLY?: 'True'
     RESET_PORT: ''

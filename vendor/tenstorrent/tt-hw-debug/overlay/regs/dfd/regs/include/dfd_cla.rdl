@@ -950,7 +950,7 @@ addrmap dfd_cla {
         field {
             sw = rw;
             hw = r;
-            desc = "Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)";
+            desc = "Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated";
         } EnableCla[6:6] = 0x0;
         field {
             sw = rw;

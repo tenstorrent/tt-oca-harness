@@ -44198,7 +44198,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>EnableCla</ipxact:name>
-                <ipxact:description>Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)</ipxact:description>
+                <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</ipxact:description>
                 <ipxact:bitOffset>6</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>

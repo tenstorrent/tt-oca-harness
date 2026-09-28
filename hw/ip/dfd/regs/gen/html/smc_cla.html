@@ -526,7 +526,7 @@
 <tr><td>15</td><td>DisableLocalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to local clocks</td></tr>
 <tr><td>14</td><td>DisableGlobalClockHalt</td><td>RW</td><td>0x0</td><td>If this bit is set, clock halt action is not applied to global clocks</td></tr>
 <tr><td>13:7</td><td>ClaChainLoopDelay</td><td>RW</td><td>0x36</td><td>Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal</td></tr>
-<tr><td>6</td><td>EnableCla</td><td>RW</td><td>0x0</td><td>Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)</td></tr>
+<tr><td>6</td><td>EnableCla</td><td>RW</td><td>0x0</td><td>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</td></tr>
 <tr><td>5</td><td>EnableEap</td><td>RW</td><td>0x0</td><td>Set Enable EAP to 1 after EAP programming is complete</td></tr>
 <tr><td>4:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1:0</td><td>CurrentNode</td><td>R</td><td>0x0</td><td>Read the current node.</td></tr>

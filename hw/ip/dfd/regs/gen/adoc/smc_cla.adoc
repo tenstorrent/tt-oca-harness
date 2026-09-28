@@ -673,7 +673,7 @@ Composite debug (DFD) MMR aperture mapping the DST sink, funnel, CLA, and DST bl
 | 15 | `DisableLocalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to local clocks
 | 14 | `DisableGlobalClockHalt` | RW | 0x0 a| If this bit is set, clock halt action is not applied to global clocks
 | 13:7 | `ClaChainLoopDelay` | RW | 0x36 a| Creates a window in which we don’t forward the incoming Xtrigger and Clock_Halt signal
-| 6 | `EnableCla` | RW | 0x0 a| Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)
+| 6 | `EnableCla` | RW | 0x0 a| Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated
 | 5 | `EnableEap` | RW | 0x0 a| Set Enable EAP to 1 after EAP programming is complete
 | 4:2 | `Reserved` | - | - a| Reserved
 | 1:0 | `CurrentNode` | R | 0x0 a| Read the current node.
