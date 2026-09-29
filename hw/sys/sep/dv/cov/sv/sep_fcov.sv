@@ -29,7 +29,7 @@
 // happens to be serial. A missed sample is a missed hit, never a false one.
 //
 // Encodings come from the generated register header (`sep_reg.svh`) and the
-// memory-window package (`och_sep_top_addrmap_pkg`). Where a vendored block exports no
+// memory-window package (`sep_top_addrmap_pkg`). Where a vendored block exports no
 // field symbol, the bit position is named in a comment against the driver that
 // programs it.
 
@@ -120,17 +120,17 @@ module sep_fcov (
   input wire        abr_km_isolated_i
 );
 
-  import och_sep_top_addrmap_pkg::*;
+  import sep_top_addrmap_pkg::*;
   `include "sep_reg.svh"
 
   // ------------------------------------------------------------------
-  // Apertures. Memory windows come from och_sep_top_addrmap_pkg; every CSR address
+  // Apertures. Memory windows come from sep_top_addrmap_pkg; every CSR address
   // and field mask below is a sep_reg.svh symbol.
   // ------------------------------------------------------------------
-  localparam logic [31:0] SramBase = 32'(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-  localparam logic [31:0] SramEnd = SramBase + 32'(OCH_SEP_TOP_SEP_SRAM_SIZE);
-  localparam logic [31:0] BootRomBase = 32'(OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
-  localparam logic [31:0] BootRomEnd = BootRomBase + 32'(OCH_SEP_TOP_SEP_BOOT_ROM_SIZE);
+  localparam logic [31:0] SramBase = 32'(SEP_TOP_SEP_SRAM_BASE_ADDR);
+  localparam logic [31:0] SramEnd = SramBase + 32'(SEP_TOP_SEP_SRAM_SIZE);
+  localparam logic [31:0] BootRomBase = 32'(SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
+  localparam logic [31:0] BootRomEnd = BootRomBase + 32'(SEP_TOP_SEP_BOOT_ROM_SIZE);
   localparam logic [31:0] SpiBase = SPI_CONTROLLER_REG_MAP_BASE_ADDR;
   localparam logic [31:0] SpiEnd = SpiBase + SPI_CONTROLLER_REG_MAP_SIZE;
   localparam logic [31:0] ColdBase = SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR;

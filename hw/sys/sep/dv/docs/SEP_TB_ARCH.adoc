@@ -294,10 +294,11 @@ test uses the AXI front door, and either readout can run any source:
   fresh image. Runs the default (random) source.
 
 Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
-different contract — lifecycle decode, inbound-filter `SEP_DBG` gating — and do
-not replace the shadow-compare pair: `sep_efuse_lcc_lc_state_stitch_test`,
-`sep_lcc_uvm_inbound_filter_gating_test`,
-`sep_fabric_inbound_filter_rule_matrix_test`.
+different contract — lifecycle decode, inbound-filter `SEP_DBG` gating, public-ID
+delivery to the Key Manager — and do not replace the shadow-compare pair:
+`sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`,
+`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`. The
+last reads the Key Manager's OTP input from the `km_otp_sep_*_id_o` ports.
 
 
 === Memory, eFuse, and SPI Models

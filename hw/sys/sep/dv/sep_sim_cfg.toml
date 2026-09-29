@@ -64,7 +64,7 @@ top_file = "hw/sys/sep/dv/tb/tb_top.sv"
 # Extra tb sources compiled alongside tb_top: the outbound mailbox console/PASS
 # monitor. The sep_wrapper DUT, its IP-integration models, and the eFuse
 # models come from the Bender closure (`sep_wrapper` plus the `any(sep, smc)`
-# groups). Excluded for OSS hygiene: proprietary IPs in nonfree. The wrapper
+# groups). The companion checkout is outside this open filelist. The wrapper
 # SPI uses struct ports; the pad-mux shim is not in this filelist.
 sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_regs.sv",
@@ -344,10 +344,11 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= oca-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
@@ -372,19 +373,6 @@ outputs = [
 # the cocotb flash BFM preloads -- sits beside the ROM it is read by, and a stale
 # default-variant image can never be picked up by mistake.
 #
-# NONFREE_ROOT= is load-bearing, not tidiness. reg_includes.mk puts the nonfree
-# register headers on the include path whenever a nonfree/ checkout exists.
-# The open-tree ROM must not compile against those headers: a workspace that
-# has both would otherwise pick up nonfree symbols the pure-open DUT does not
-# implement. Forcing NONFREE_ROOT= keeps the ROM image matched to this DUT.
-#
-# NONFREE_BOOTCODE_SOURCES= is load-bearing for the same reason, and separately:
-# the ROM Makefile takes it with ?=, so a companion-supplied value in the
-# environment survives NONFREE_ROOT= and links a driver for hardware outside this
-# DUT. The SPI pad mux is the case that bites -- its store lands in an
-# unimplemented sep_external aperture, the bus error raises NMI, and the CPU
-# leaves the boot flow through the reset NMI vector in ICCM. Clearing both keeps
-# the linked bootcode to what the open DUT implements.
 # DCCM_SCRUB_BYTES is left at the product default (0x20000, matching vector.S's
 # own #ifndef fallback). vector.S scrubs all 128KiB of DCCM before the C runtime
 # starts, and because a store writes its ECC, that scrub is what establishes
@@ -402,10 +390,11 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= oca-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" BUILD_DIR=build_ot key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
@@ -437,9 +426,9 @@ outputs = [
 # boot_flash.h resolves the drain at compile time, so this is a genuinely separate
 # binary: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma.
 #
-# Everything else -- RISCV_TOOLCHAIN-or-container, NONFREE_ROOT= and the
-# no-braces argv constraint -- matches [c_build.boot_rom_ot]. See that block
-# for why each part is the way it is.
+# Everything else -- RISCV_TOOLCHAIN-or-container and the no-braces argv
+# constraint -- matches [c_build.boot_rom_ot]. See that block for why each part
+# is the way it is.
 #
 # `oca-images` builds every variant in one go, so the PIO test gets the unsigned
 # image it boots along with the rest. The packed bytes are drain-agnostic and land
@@ -452,10 +441,11 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT-PIO boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= oca-images",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; make -C \"$ROM_DIR\" BUILD_DIR=build_ot_pio key-digests; if [ -n \"$RV_TC\" ]; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 SEP_ENTROPY_BRINGUP=1 toolchain-images-build GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OT-PIO boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 RISCV_PREFIX=riscv64-unknown-elf- GCC_PREFIX=riscv64-unknown-elf SEP_ENTROPY_BRINGUP=1 toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" oca-images",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.

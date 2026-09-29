@@ -16,10 +16,10 @@ module smu #(
   parameter int unsigned SEP_EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the vendor eFuse shim CSR
                                                      // block in the SEP external window; forwarded
                                                      // to the SEP EFUSE_SHIM_SIZE.
-  parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h44,  // Size in bytes of the vendor eFuse shim CSR
-                                                      // block carved off the base of the SMC
-                                                      // smc_external window; forwarded to the SMC
-                                                      // EFUSE_SHIM_SIZE.
+  parameter int unsigned SMC_EFUSE_SHIM_SIZE = 'h4,  // Size in bytes of the vendor eFuse shim CSR
+                                                     // block carved off the base of the SMC
+                                                     // smc_external window; forwarded to the SMC
+                                                     // EFUSE_SHIM_SIZE.
   parameter smu_pkg::smu_cfg_t Cfg = smu_pkg::DefaultCfg,  // SMU feature configuration. Each JTAG_*
                                                            // field is forwarded to the DTP
                                                            // parameter of the same name, except

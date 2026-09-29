@@ -277,8 +277,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:12</td><td>SAMPLE_CLK_DETUNE</td><td>RW</td><td>0x0</td><td>Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
-<tr><td>11:0</td><td>DETUNE</td><td>RW</td><td>0x0</td><td>Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>23:12</td><td>SAMPLE_CLK_DETUNE</td><td>RW</td><td>0x0</td><td>Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.</td></tr>
+<tr><td>11:0</td><td>DETUNE</td><td>RW</td><td>0x0</td><td>Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.</td></tr>
 </table>
 <h3 id="RING_OSC_CTRL">RING_OSC_CTRL</h3>
 <table>

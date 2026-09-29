@@ -15,7 +15,7 @@
 module smc_peripherals #(
   parameter int unsigned MAX_TRANS = 2,  // Maximum outstanding transactions of the padring
                                          // GPIO demux and of each GPIO interface.
-  parameter int unsigned EFUSE_SHIM_SIZE = 'h44  // Vendor eFuse shim CSR block carved off
+  parameter int unsigned EFUSE_SHIM_SIZE = 'h4   // Vendor eFuse shim CSR block carved off
                                                  // the base of the smc_external window;
                                                  // literal because the open smc_external
                                                  // map is opaque. Passed to the peripheral

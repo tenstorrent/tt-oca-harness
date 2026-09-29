@@ -16,10 +16,9 @@ schema_version = 1
 #           picolibc, or scripts/docker-run.sh)
 #   dual    the SMC_DUAL elaboration, loading a ROM or firmware image
 #
-# Every leaf outside `all` is in holdout.toml, with the reason: the
-# `rtl_issue` reproducers the weekly tier grades as expected failures, the two
-# runtime hold-outs (`occp_boot`, `occp_dual`), and `held_out`, the leaves
-# waiting on an RTL fix. docs/SMC_VPLAN.adoc (Known Limitations) records each.
+# Leaves outside `all` are either in holdout.toml, with the reason recorded
+# there, or in one of the standalone OCCP/ROM family groups selected explicitly.
+# docs/SMC_VPLAN.adoc (Known Limitations) records the hold-outs.
 #
 # python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 # python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
@@ -39,9 +38,13 @@ includes = [
     "irq.toml",
     "jtag.toml",
     "mailbox.toml",
+    "occp_payload_boot.toml",
+    "occp_rom_only.toml",
     "power.toml",
     "register.toml",
     "reset.toml",
+    "rom_lifecycle_dft.toml",
+    "sep_ring_buffer.toml",
     "spi.toml",
     "uart.toml",
 ]
@@ -52,7 +55,7 @@ includes = [
 # sep are: the loader errors when this list and the count diverge, so a leaf
 # cannot be added to a feature testlist and silently miss the regression.
 name = "all"
-expected_count = 297
+expected_count = 299
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -83,6 +86,8 @@ tests = [
     "smc_cg_test_mode_bypass_test",
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_multi_window_test",
+    "smc_clk_smc_slower_than_ref_test",
+    "smc_clk_smc_equal_ref_test",
     "smc_clk_running_test",
     "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
@@ -360,7 +365,7 @@ name = "hosted"
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 277
+expected_count = 279
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -391,6 +396,8 @@ tests = [
     "smc_cg_test_mode_bypass_test",
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_multi_window_test",
+    "smc_clk_smc_slower_than_ref_test",
+    "smc_clk_smc_equal_ref_test",
     "smc_clk_running_test",
     "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",

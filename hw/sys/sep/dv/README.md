@@ -95,10 +95,8 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
 builds the images with it (see [Prerequisites](#prerequisites)). `rom_fw` stays
 out of `all`; run it with `--items rom_fw`.
 
-`all` enrolls 111 leaves. `cpu_stub` (90) and `cpu` (20) are disjoint. The
-remaining leaf, `sep_periph_bus_err_misaligned_test`, is in neither class
-group. Its checker contract is the VPLAN card. The class commands below are the
-pre-merge gate.
+`all` enrolls 112 leaves. `cpu_stub` (92) and `cpu` (20) are disjoint and
+together hold all of them. The class commands below are the pre-merge gate.
 
 ### Scheduled tiers
 
@@ -215,11 +213,10 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --target default --sim-jobs 32 --build-jobs 32
 ```
 
-`all` is the coverage set: 111 leaves, `cpu_stub` (90) plus `cpu` (20) plus
-`sep_periph_bus_err_misaligned_test`, which is in neither class group.
+`all` is the coverage set: 112 leaves, `cpu_stub` (92) plus `cpu` (20).
 Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third RTL
 target, firmware rather than hardware contracts -- so reaching those tests
-means naming `rom_fw`. `expected_count` is 111.
+means naming `rom_fw`. `expected_count` is 112.
 
 `--target default` compiles the full CPU once. no_cpu leaves force-splice the
 LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
@@ -248,6 +245,25 @@ What the resulting number is not:
 * **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
   test contributes one sample. Pin seeds for any number that gets cited.
 
+### Boot ROM firmware coverage
+
+Boot ROM C source coverage is separate from simulator-native RTL coverage.
+Run the `rom_fw` group with `--plusarg +sep_rom_fw_coverage`; the existing
+CPU trace monitor then writes a Renode-format retired-PC trace into each
+simulation leaf. Generate the report from that exact run directory:
+
+```bash
+uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
+  --run-dir "$RUN_DIR"
+```
+
+The generator accepts only passing, complete traces and uses the leaf-local
+`boot_rom.elf` staged by the firmware profile. It reports `boot_rom`,
+`boot_rom_ot`, and `boot_rom_ot_pio` separately because their PCs cannot be
+interpreted with one shared ELF. See
+[`tools/dv/fw_coverage/README.md`](../../../../tools/dv/fw_coverage/README.md)
+for the complete command and tool prerequisites.
+
 ## Run modes, targets, and groups
 
 The run mode selects who owns the CPU master buses. The RTL target selects which
@@ -257,7 +273,7 @@ entries below are entry points — use `--items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate: `sep_axi_smoke_test` only |
-| `all` | 111 leaves: `cpu_stub` (90), `cpu` (20), and `sep_periph_bus_err_misaligned_test` in neither class group. `expected_count` is 111 |
+| `all` | 112 leaves: `cpu_stub` (92) and `cpu` (20). `expected_count` is 112 |
 | `cpu_stub` | CPU not alive (`sep_cpu` stub, `target = lsu_stub_all_live`) |
 | `cpu` | full-CPU firmware daily class (fallback `target = default`) |
 | `rom_fw` | production Boot ROM firmware; `rom_boot` target; not a member of `all` |

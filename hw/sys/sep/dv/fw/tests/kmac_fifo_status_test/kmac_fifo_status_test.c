@@ -18,7 +18,7 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -28,9 +28,9 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
+        kmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR)};
         if (intr.f.kmac_done) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -45,13 +45,13 @@ static void seed_sw_entropy(void) {
     cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L256;
     cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
     }
 }
 
@@ -60,7 +60,7 @@ static int test_fifo_status(void) {
 
     if (wait_for_idle() != 0) return -1;
 
-    kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+    kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
     if (s.f.fifo_empty) {
         printf("PASS: fifo_empty=1 initially\n");
     } else {
@@ -72,9 +72,9 @@ static int test_fifo_status(void) {
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
+    s.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR);
     uint32_t baseline_depth = s.f.fifo_depth;
     printf("  After START baseline depth=%u\n", baseline_depth);
 
@@ -85,9 +85,9 @@ static int test_fifo_status(void) {
      */
     printf("  Writing 48 words to MSG_FIFO (tight burst)...\n");
     for (int i = 0; i < 48; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0xA5A5A500u + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0xA5A5A500u + (uint32_t)i);
     }
-    s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
+    s.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR);
     printf("  After burst: depth=%u empty=%u full=%u baseline=%u\n", s.f.fifo_depth, s.f.fifo_empty,
            s.f.fifo_full, baseline_depth);
     /* Instant drain under CPU MMIO is expected; do not soft-skip. Accept proof is
@@ -95,11 +95,11 @@ static int test_fifo_status(void) {
     (void)baseline_depth;
 
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
-    s.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR);
+    s.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR);
     if (s.f.fifo_empty) {
         printf("PASS: fifo_empty=1 after completion\n");
     } else {
@@ -108,7 +108,7 @@ static int test_fifo_status(void) {
     }
 
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
     return 0;
 }
 

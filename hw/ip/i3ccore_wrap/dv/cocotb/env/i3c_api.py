@@ -1683,7 +1683,7 @@ class I3CTarget:
             if tgt_intr_status & TTI_IBI_DONE_STAT:
                 # Read TTI_STATUS for diagnostics
                 tgt_status = await self.h.read(self.base + I3C_EC_TTI_STATUS_REG_ADDR)
-                last_ibi_status = (tgt_status >> 14) & 0x3  # Bits [15:14]
+                last_ibi_status = (tgt_status >> 12) & 0x7  # Bits [14:12]
                 return True, last_ibi_status
             await ClockCycles(self.h.dut.clk, interval)
 

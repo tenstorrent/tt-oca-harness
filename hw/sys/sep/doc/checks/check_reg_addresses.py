@@ -52,9 +52,7 @@ def load_header():
     text = HEADER.read_text()
     return {
         m.group(1): int(m.group(2), 16)
-        for m in re.finditer(
-            r"#define\s+OCH_SEP_TOP_([A-Z0-9_]+)_BASE_ADDR\s+(0x[0-9A-Fa-f]+)", text
-        )
+        for m in re.finditer(r"#define\s+SEP_TOP_([A-Z0-9_]+)_BASE_ADDR\s+(0x[0-9A-Fa-f]+)", text)
     }
 
 

@@ -5,13 +5,10 @@
 #include "smc_defines.h"
 #include "smc_gpio.h"
 
-/* Register offsets within each per-GPIO sub-block.
- * DATA_CTRL is the first register in gpio_intf_t (offset 0x0).*/
+/* DATA_CTRL is the first register of gpio_intf_t. */
 static const uint32_t GPIO_INTF_DATA_CTRL_OFFSET = 0x0u;
 
-/* In DV simulation the clock is driven by the testbench; this stub satisfies
- * the call-site in initialize_i3c/i2c_controller without touching real PLL
- * registers. */
+/* The testbench drives the clocks, so no PLL programming is needed. */
 static void program_cgm0_functional(void) {
 }
 
@@ -21,9 +18,7 @@ bool is_secure_mode(void) {
 }
 
 #ifndef I3C_USE_HCI_CORE
-/* Only reachable from the non-HCI branch of enable_i3c_gpio_overrides() below; the guard keeps an
- * HCI-core build free of -Wunused warnings.
- * CONTROL is the first register in gpio_ctrl_t (offset 0x0). */
+/* CONTROL is the first register of gpio_ctrl_t. */
 static const uint32_t GPIO_CTRL_CONTROL_OFFSET = 0x0u;
 
 static bool enable_gpio_hw_override(uint8_t gpio_num) {
@@ -45,13 +40,9 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
 #ifdef I3C_USE_HCI_CORE
-    /* I3C_CORE=swap (OCA/HCI i3c-core as the OCCP controller): the OCA core reaches the i3c pads
-     * through the gpio LSIO path (lsio_interface_select, driven by smc_padring), not the
-     * smc_ip_integration hw2_ovrd override path. The override path's drive/input-enable signals
-     * are gated off for the OCA instance, so hw2_ovrd must stay 0 (reset default) for the
-     * controller to drive and sense the bus. Mirrors the target-side gating in
-     * hw/sys/smc/bootrom/prod/lib/src/occp.c. The #else branch serves a build without
-     * I3C_USE_HCI_CORE, whose controller reaches the pads through hw2_ovrd. */
+    /* The HCI core reaches the I3C pads through the LSIO interface select, and the hw2_ovrd
+     * path is gated off for it, so hw2_ovrd must stay 0, its reset value. The target ROM
+     * applies the same rule in hw/sys/smc/bootrom/prod/lib/src/occp.c. */
     return true;
 #else
     /* Enable hw2_ovrd on every I3C-related GPIO so the I3C HW function reaches the pads. */
@@ -115,8 +106,6 @@ bool initialize_i2c_controller(I2C_Driver **drv) {
     bool boot_recovery = smc_strap_is_set(SMC_STRAP_BOOT_RECOVERY);
     bool primary_chiplet = smc_strap_is_set(SMC_STRAP_PRIMARY_CHIPLET);
 
-    // Controller selection logic:
-    // Randomly choose between controllers 0 or 1
     uint32_t random_val = get_random_int() % 2;
     if (random_val == 0) {
         controller_id = I3C_RECOVERY_CONTROLLER_ID;
@@ -126,15 +115,13 @@ bool initialize_i2c_controller(I2C_Driver **drv) {
         simputs("Using I2C controller 1 (random selection)\n");
     }
 
-    // Get an instance of the I2C driver.
     *drv = I2C_GetDriverInstance(controller_id);
     if (!*drv) {
         simputs("Failed to get I2C driver instance\n");
         return false;
     }
 
-    // Initialize the controller as MASTER; scratch reg 4 carries both I2C target addresses,
-    // 8 bits each.
+    // Scratch register 4 holds one 7-bit target address per controller, controller 0 in byte 0.
     uint8_t i2c_addr =
         (random_val == 0) ? (read_scratch(4) & 0x7F) : ((read_scratch(4) >> 8) & 0x7F);
     if ((*drv)->init_i2c_ctrlr(*drv, i2c_addr) != I2C_OK) {
@@ -155,12 +142,9 @@ bool initialize_i3c_controller(I3C_Driver **drv) {
     // Pick the I3C controller at random.
     uint32_t controller_id;
 
-    // Check strap values for BOOT_RECOVERY and PRIMARY_CHIPLET
     bool boot_recovery = smc_strap_is_set(SMC_STRAP_BOOT_RECOVERY);
     bool primary_chiplet = smc_strap_is_set(SMC_STRAP_PRIMARY_CHIPLET);
 
-    // Controller selection logic:
-    // Randomly choose between controllers 0, 1 or 3
     uint32_t random_val = get_random_int() % 3;
     if (random_val == 0) {
         controller_id = I3C_RECOVERY_CONTROLLER_ID;
@@ -178,20 +162,17 @@ bool initialize_i3c_controller(I3C_Driver **drv) {
         return false;
     }
 
-    // Get an instance of the I3C driver.
     *drv = I3C_GetDriverInstance(controller_id);
     if (!*drv) {
         simputs("Failed to get I3C driver instance\n");
         return false;
     }
 
-    // Initialize the controller as MANAGER.
     if ((*drv)->init(*drv, controller_id, 0, MANAGER) != I3C_OK) {
         simputs("I3C init failed\n");
         return false;
     }
 
-    // Start the I3C core (configure interrupts, prescalers, etc.)
     if ((*drv)->start(*drv, 200) != I3C_OK) {
         simputs("I3C start failed\n");
         return false;
@@ -203,8 +184,7 @@ bool initialize_i3c_controller(I3C_Driver **drv) {
 bool discover_devices(I3C_Driver *drv, I3C_DeviceInfo *discovered_devices) {
     int done = 0;
 
-    // Kick off dynamic address assignment.
-    // Loop in case the BFM comes up faster than the DUT.
+    // Retry ENTDAA until it completes, in case the target is not yet ready to respond.
     while (done == 0) {
         simputs("Issuing ENTDAA command\n");
         if (drv->issue_entdaa(drv) != I3C_OK) {
@@ -213,7 +193,6 @@ bool discover_devices(I3C_Driver *drv, I3C_DeviceInfo *discovered_devices) {
         }
 
         simputs("ENTDAA command issued\n");
-        // Wait for the ENTDAA command to complete.
         if (drv->wait_command(drv, CMD_ID_ENTDAA, I3C_CMD_TIMEOUT_MS) != I3C_OK) {
             simputs("ENTDAA command timed out\n");
             continue;
@@ -221,7 +200,6 @@ bool discover_devices(I3C_Driver *drv, I3C_DeviceInfo *discovered_devices) {
         done = 1;
     }
 
-    // Process discovered devices.
     if (drv->process_devices(drv, discovered_devices, I3C_MAX_DEVICES) != I3C_OK) {
         simputs("Processing devices failed\n");
         return false;

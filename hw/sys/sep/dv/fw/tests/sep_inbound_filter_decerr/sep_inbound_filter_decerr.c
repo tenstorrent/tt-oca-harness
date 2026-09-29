@@ -56,7 +56,7 @@
 #define PROD_LC_STATE_DIFF_ENCODED 0xE1u
 
 static inline void enter_prod_lifecycle(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR, PROD_LC_STATE_DIFF_ENCODED);
+    WRITE_REG(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR, PROD_LC_STATE_DIFF_ENCODED);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     /* Let LC_STATE -> feat_ctrl.sep_debug -> inbound_filter_skip_i settle before
      * the allow-list is programmed and the TB starts driving external traffic. */
@@ -66,7 +66,7 @@ static inline void enter_prod_lifecycle(void) {
 }
 
 static inline void program_inbound_allow_entry0(void) {
-    uintptr_t base = (uintptr_t)OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
+    uintptr_t base = (uintptr_t)SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + FILTER_START_OFFSET, ALLOW_START_ADDR);
     WRITE_REG64(base + FILTER_END_OFFSET, ALLOW_END_ADDR);

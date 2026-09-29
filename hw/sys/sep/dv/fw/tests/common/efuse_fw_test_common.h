@@ -35,11 +35,11 @@
  * cumulative, and a stale literal does not fail to compile.
  */
 #define EFUSE_FW_BIT0(field_base_addr) \
-    (((uint32_t)(field_base_addr) - (uint32_t)OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR) * 8u)
+    (((uint32_t)(field_base_addr) - (uint32_t)SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR) * 8u)
 
-#define EFUSE_FW_CLASS_KEY_BIT0 EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR)
-#define EFUSE_FW_BL1_VERSION_BIT0 EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR)
-#define EFUSE_FW_CHIPLET_UID_BIT0 EFUSE_FW_BIT0(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR)
+#define EFUSE_FW_CLASS_KEY_BIT0 EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR)
+#define EFUSE_FW_BL1_VERSION_BIT0 EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR)
+#define EFUSE_FW_CHIPLET_UID_BIT0 EFUSE_FW_BIT0(SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR)
 
 typedef struct {
     uint32_t completed;
@@ -52,7 +52,7 @@ typedef struct {
 static inline int efuse_wait_sense_done(void) {
     for (int i = 0; i < EFUSE_FW_POLL_TIMEOUT; i++) {
         uint32_t status =
-            READ_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR);
+            READ_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR);
         if ((status & EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm) !=
             0) {
             return 0;
@@ -63,7 +63,7 @@ static inline int efuse_wait_sense_done(void) {
 }
 
 static inline void efuse_clear_req_error(void) {
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR,
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR,
               EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_CLEAR_bm);
 }
 
@@ -82,17 +82,17 @@ static inline int efuse_program_bit(uint32_t bit_addr) {
     ctrl |= EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm;
     ctrl |= EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm;
 
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, ctrl);
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, ctrl);
 
     uint32_t rb = 0;
     for (int i = 0; i < EFUSE_FW_POLL_TIMEOUT; i++) {
-        rb = READ_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR);
+        rb = READ_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR);
         if ((rb & EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm) != 0) {
             break;
         }
     }
 
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0);
 
     if ((rb & EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm) == 0) {
         printf("ERROR: OTP program timeout bit=%u\n", bit_addr);
@@ -116,16 +116,16 @@ static inline int efuse_program_bit_expect(uint32_t bit_addr, uint32_t expect_su
     ctrl |= EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__EFUSE_PROGRAM_READ_BACK_bm;
     ctrl |= EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_ENABLE_bm;
 
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, ctrl);
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, ctrl);
 
     for (int i = 0; i < EFUSE_FW_POLL_TIMEOUT; i++) {
-        rb = READ_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR);
+        rb = READ_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR);
         if ((rb & EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm) != 0) {
             break;
         }
     }
 
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0);
 
     if (expect_success) {
         if ((rb & EFUSE_INTERFACE_CTRL__EFUSE_PROGRAM_CTRL__PROGRAM_DONE_bm) == 0) {
@@ -169,12 +169,12 @@ static inline int efuse_read_word_raw(uint32_t bit_addr, efuse_fw_read_result_t 
     ctrl |= EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm;
     ctrl |= EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_ENABLE_bm;
 
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, ctrl);
-    WRITE_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR,
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR, ctrl);
+    WRITE_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR,
               ctrl & ~EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__EFUSE_READ_GO_bm);
 
     for (int i = 0; i < EFUSE_FW_POLL_TIMEOUT; i++) {
-        rb = READ_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR);
+        rb = READ_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_CTRL_BASE_ADDR);
         if ((rb & EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_DONE_bm) != 0) {
             break;
         }
@@ -189,10 +189,10 @@ static inline int efuse_read_word_raw(uint32_t bit_addr, efuse_fw_read_result_t 
     result->read_status = (rb & EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bm) >>
                           EFUSE_INTERFACE_CTRL__EFUSE_READ_CTRL__READ_STATUS_bp;
     result->data_word =
-        READ_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR);
+        READ_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_READ_INTERFACE_READ_DATA_BASE_ADDR);
     result->bit_value = (result->data_word >> (bit_addr & 31u)) & 1u;
     result->req_error =
-        (READ_REG(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR) &
+        (READ_REG(SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR) &
          EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bm) >>
         EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_REQ_ERROR_bp;
 
@@ -236,8 +236,8 @@ static inline int efuse_set_shadow_lock_bit(uint32_t lock_bit) {
         return -1;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR, 1u << lock_bit);
-    uint32_t locks = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR, 1u << lock_bit);
+    uint32_t locks = READ_REG(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
     if ((locks & (1u << lock_bit)) == 0) {
         printf("ERROR: LOCKS bit %u did not set, locks=0x%08x\n", lock_bit, locks);
         return -1;
@@ -297,7 +297,7 @@ static inline int efuse_token_poll(uint32_t match_addr, uint32_t expected) {
 
 static inline int efuse_token_trigger_and_poll(uint32_t eop_mask, uint32_t match_addr,
                                                uint32_t expected) {
-    WRITE_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR, eop_mask);
+    WRITE_REG(SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR, eop_mask);
 
     /*
      * The UVM sequence waits 10 us after TOKEN_EOP. A short CPU-side delay

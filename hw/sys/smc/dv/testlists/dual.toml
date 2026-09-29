@@ -48,25 +48,42 @@ args = [
 
 [[tests]]
 name = "smc_occp_sanity_test"
-module = "smc_occp_sanity_test"
+# smc_occp_rom_only_test is the shared driver for the whole rom-only OCCP family:
+# controller firmware drives, the target's production ROM answers, nothing is
+# transferred and nothing JUMPs. Members are separated by their +bfm_rom_hex image
+# and their plusargs, which is why `name` differs from `module` here.
+module = "smc_occp_rom_only_test"
 target = "dual"
 seed = 1
 # GET_VERSION plus one 4-byte OCCP WRITE -- no payload, no JUMP, so well under
 # a millisecond of sim time. The bound below is headroom for a stalled
 # exchange, not a target.
-timeout_sec = 7200
-tags = ["dual", "occp_boot"]
+timeout_sec = 3600
+tags = ["dual", "occp_boot", "bl0_small"]
 run_modes = ["dual"]
-firmware = { name = "occp_sanity", mode = "occp_sanity" }
+firmware = { name = "occp_sanity", mode = "occp_rom_only" }
 # Two images, one per role. Bare basenames because run_dv stages every declared
 # c_build output next to the simulator cwd.
-#   +rom_bin64     target: production boot ROM (loaded into BOTH instances by
-#                  OCAH4CORECluster_rom_ext, then overridden on u_bfm below)
-#   +bfm_rom_hex   controller: the occp_sanity DV image, applied to u_bfm only,
-#                  at #0.3 so it wins over the shared load
+#   +rom_bin64          target: production boot ROM (loaded into BOTH instances
+#                       by OCAH4CORECluster_rom_ext, then overridden on u_bfm)
+#   +bfm_rom_hex        controller: the occp_sanity DV image, applied to u_bfm
+#                       only, at #0.3 so it wins over the shared load
+#   +occp_case          label for the driver's log and assertion text
+#   +rom_test_timeout   the reference environment's value. occp_sanity names no
+#                       override, so it takes the 200 ms baseline that
+#                       smc_rom_test_template carries in `run_flags`
+#   +fuse_transport_timeout
+#                       the reference's +FORCE_MIN_TRANSPORT_TIMEOUT: pin the
+#                       OCCP transport timeout fuse at its minimum instead of
+#                       randomising it. This is the only BL0 member that asks
+#                       for it, and without it the fuse is unprogrammed on half
+#                       the runs, which is a different ROM path
 args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_sanity.rom.hex",
+    "+occp_case=smc_occp_sanity_test",
+    "+rom_test_timeout=200000000",
+    "+fuse_transport_timeout=400",
 ]
 
 [[groups]]

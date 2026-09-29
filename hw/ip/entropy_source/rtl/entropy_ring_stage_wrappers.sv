@@ -10,8 +10,10 @@
 // synthesis binds each stage to. The generic and technology-specific flavors are swapped
 // in as a group per build target, so every flavor keeps the same port list and none
 // carries a delay parameter. Each wrapper instances one unmodified prim and adds a #1
-// delay under `ifndef SYNTHESIS`, so synthesis and every other consumer of those prims
-// see the ordinary zero-delay cell.
+// delay only when neither SYNTHESIS nor EMULATION is defined, so synthesis, emulation and
+// every other consumer of those prims see the ordinary zero-delay cell. In the emulation
+// view the ring is a zero-delay combinational loop that the emulator compile must break
+// or model.
 
 module entropy_ring_nand2_wrapper (
   input  a1_i,                          // First NAND input.
@@ -26,10 +28,12 @@ module entropy_ring_nand2_wrapper (
     .y_o  (y_cell)
   );
 
-`ifndef SYNTHESIS
-  assign #1 y_o = y_cell;
-`else
+`ifdef EMULATION
   assign y_o = y_cell;
+`elsif SYNTHESIS
+  assign y_o = y_cell;
+`else
+  assign #1 y_o = y_cell;
 `endif
 endmodule
 
@@ -44,10 +48,12 @@ module entropy_ring_buf_wrapper (
     .out_o(y_cell)
   );
 
-`ifndef SYNTHESIS
-  assign #1 y_o = y_cell;
-`else
+`ifdef EMULATION
   assign y_o = y_cell;
+`elsif SYNTHESIS
+  assign y_o = y_cell;
+`else
+  assign #1 y_o = y_cell;
 `endif
 endmodule
 
@@ -66,9 +72,11 @@ module entropy_ring_mux2_wrapper (
     .y_o   (y_cell)
   );
 
-`ifndef SYNTHESIS
-  assign #1 y_o = y_cell;
-`else
+`ifdef EMULATION
   assign y_o = y_cell;
+`elsif SYNTHESIS
+  assign y_o = y_cell;
+`else
+  assign #1 y_o = y_cell;
 `endif
 endmodule

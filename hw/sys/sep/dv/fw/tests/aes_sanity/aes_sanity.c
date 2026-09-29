@@ -74,20 +74,20 @@ int main(void) {
     if (wait_for_idle() != 0) return -1;
     printf("INFO: Idle state - let's write some CSRs");
 
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, aes_ctrl.w);
-    WRITE_REG(OCH_SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, aes_ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, aes_ctrl.w);
+    WRITE_REG(SEP_TOP_AES_CTRL_SHADOWED_BASE_ADDR, aes_ctrl.w);
 
     // Write key via KEY_SHARE0/1 (deprecated SW path for DV)
     for (int i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), aes_key[i]);
-        WRITE_REG(OCH_SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE0_BASE_ADDR(i), aes_key[i]);
+        WRITE_REG(SEP_TOP_AES_KEY_SHARE1_BASE_ADDR(i), 0);
     }
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_DATA_IN_BASE_ADDR(i), aes_pt[i]);
+        WRITE_REG(SEP_TOP_AES_DATA_IN_BASE_ADDR(i), aes_pt[i]);
         printf("DEBUG: write pt[%d]: %08x\n", i, aes_pt[i]);
     }
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_AES_IV_BASE_ADDR(0) + 4 * i, aes_iv[i]);
+        WRITE_REG(SEP_TOP_AES_IV_BASE_ADDR(0) + 4 * i, aes_iv[i]);
         printf("DEBUG: write iv[%d]: %08x\n", i, aes_iv[i]);
     }
 

@@ -113,6 +113,17 @@ def _set_only_fixed(seed: int) -> dict[str, int]:
     return mod.SepEfuseSetOnlyCfg(seed).image_fixed()
 
 
+def _km_otp_id_fixed(seed: int) -> dict[str, int]:
+    """Same pins as ``sep_efuse_km_public_id_test``'s ``cfg.image_fixed()``.
+
+    ``_load_env_module`` returns ``Any``; the annotated local keeps this return out
+    of mypy's ``no-any-return`` check.
+    """
+    mod = _load_env_module("sep_km_otp_id", "sep_km_otp_id.py")
+    fixed: dict[str, int] = mod.SepKmOtpIdCfg(seed).image_fixed()
+    return fixed
+
+
 # Common LC-gated field pins shared by several PROD-lifecycle tests.
 _SIP_SYS_DIS_PINS = {
     "SIP_DIS": 0x0F0F_0F0F_0F0F_0F0F,
@@ -273,6 +284,13 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
     },
+    # KM public-ID readout. The three SEP_*_ID values and the one eFuse read
+    # lock among them come from SepKmOtpIdCfg(seed); see _km_otp_id_fixed().
+    "sep_efuse_km_public_id_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "km_otp_id",
+    },
 }
 
 
@@ -402,6 +420,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "km_otp_id":
+            fixed = _km_otp_id_fixed(seed + int(spec.get("seed_offset", 0)))
         extra = spec.get("fixed_extra")
         if extra:
             fixed = {**(fixed or {}), **extra}

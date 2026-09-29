@@ -481,8 +481,16 @@ counters, coverage, protocol SVA) shared between both realizations. The bare
 the harness block: the clock generator (period from `dtp_tb_if`), the
 `uvm_config_db` publication of every interface instance, the test classes,
 and `run_test()`.
-Preprocessor defines used by DTP compiles, including `UVM`, are listed in
-`hw/sys/dtp/doc/defines.adoc`. The class library mirrors the cocotb
+The Integrator Guide's Project Defines chapter
+(`doc/integrator/src/defines.adoc`) lists the preprocessor defines DTP
+compiles use, including `UVM`. `UVM` is the only source of the harness block:
+the simulator's `-ntb_opts` option selects which UVM library is compiled but
+does not set the name. The runner compiles `uvm-1.2` unless the sim config
+selects another library with `[build.vcs]` `uvm_lib`. `uvm-1.2` is the floor,
+because the vendored OpenTitan assertion macros do not compile against older
+libraries.
+
+The class library mirrors the cocotb
 conventions under `uvm/` with identical basenames, one class per file:
 
 [arabic]
