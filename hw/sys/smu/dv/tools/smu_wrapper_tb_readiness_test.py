@@ -38,6 +38,7 @@ SMOKE_TESTS = {
 EXPECTED_FW_BOOT_GROUP = {
     "smu_wrapper_elaboration_test",
     "smu_smc_smoke_test",
+    "smu_smc_fabric_test",
     "smu_sep_smoke_test",
 }
 

@@ -240,7 +240,9 @@ module zeroer #(
   axi_pkg::len_t cur_beats_to_transfer, nxt_beats_to_transfer;
 
   axi_pkg::len_t                    burst_len;
+  logic                     [64:0]  aligned_size;
   axi_data_t                        last_transfer_size;
+  axi_data_t                        single_beat_bytes;
   axi_data_t                        total_transfer_size;
   logic          [AXI_DATA_WIDTH:0] total_transfer_size_overflow;
   axi_strb_t                        last_strb;
@@ -265,7 +267,9 @@ module zeroer #(
     nxt_size_overflow = '0;
 
     burst_len = axi_pkg::len_t'(0);
+    aligned_size = '0;
     last_transfer_size = '0;
+    single_beat_bytes = '0;
     total_transfer_size = '0;
     total_transfer_size_overflow = '0;
     last_strb = axi_strb_t'(0);
@@ -303,12 +307,16 @@ module zeroer #(
           burst_len = axi_pkg::len_t'(('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE);
         end
 
+        // the range can start partway into the first beat, so the beat count and final-beat
+        // width follow the aligned end offset within the data width
+        aligned_size = {1'b0, cur_size} + {62'd0, cur_dest_addr[AXI_DATA_SIZE-1:0]};
+
         // check if data left to transfer can be done in less than the max burst length
         // if it can, check if size is not perfectly sized and a strobe is needed
-        if (cur_size[AXI_DATA_WIDTH-1:AXI_DATA_SIZE] <= {53'd0, burst_len}) begin
-          mst_awlen = axi_pkg::len_t'((cur_size - 64'd1) >> AXI_DATA_SIZE);
-          // last transfer can be not a full word
-          last_transfer_size = (|cur_size[AXI_DATA_SIZE-1:0]) ? {61'd0,cur_size[AXI_DATA_SIZE-1:0]} : {32'd0, AXI_STRB_WIDTH};
+        if (((aligned_size - 65'd1) >> AXI_DATA_SIZE) <= {57'd0, burst_len}) begin
+          mst_awlen = axi_pkg::len_t'((aligned_size - 65'd1) >> AXI_DATA_SIZE);
+          // final beat starts aligned; its width is the offset end address within the beat
+          last_transfer_size = (|aligned_size[AXI_DATA_SIZE-1:0]) ? {61'd0, aligned_size[AXI_DATA_SIZE-1:0]} : {32'd0, AXI_STRB_WIDTH};
         end else begin
           mst_awlen = burst_len;
           // if single beat of data allowed, check for address offsets
@@ -327,11 +335,15 @@ module zeroer #(
           // first wstrb depends on address offset
           nxt_strb = {AXI_STRB_WIDTH{1'b1}} << cur_dest_addr[AXI_DATA_SIZE-1:0];
         end else begin
-          // single beat of data
-          total_transfer_size = last_transfer_size;
-          // only enough strb bits for data size when it's a single beat
+          // single beat: cover [offset, offset+bytes), where bytes is bounded by both the
+          // remaining size and the space left in the beat after the offset
+          single_beat_bytes = (cur_size < (axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0])))
+                             ? cur_size[AXI_DATA_WIDTH-1:0]
+                             : axi_data_t'(AXI_STRB_WIDTH) - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0]);
+          total_transfer_size = single_beat_bytes;
+          // only enough strb bits for the covered bytes when it's a single beat
           for (int i = 0; i < AXI_STRB_WIDTH; i++) begin
-            last_strb[i] = last_transfer_size > axi_data_t'(i);
+            last_strb[i] = single_beat_bytes > axi_data_t'(i);
           end
           // shift strb to correct position based on address offset
           nxt_strb = last_strb << cur_dest_addr[AXI_DATA_SIZE-1:0];

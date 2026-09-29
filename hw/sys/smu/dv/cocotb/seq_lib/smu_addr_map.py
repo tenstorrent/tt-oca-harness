@@ -23,6 +23,10 @@ _RESET_UNIT_H = _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "bloc
 _AXIL_MAILBOX_H = (
     _REPO_ROOT / "hw" / "ip" / "axi_lite_mailbox_unit" / "regs" / "gen" / "c" / "axil_mailbox.h"
 )
+_SMC_CLA_H = _REPO_ROOT / "hw" / "ip" / "dfd" / "regs" / "gen" / "c" / "smc_cla.h"
+_DFX_CTRL_STATUS_H = (
+    _REPO_ROOT / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "dfx_ctrl_status.h"
+)
 # create_reg_c_header.py output from smc.rdl for the boot ROM. It flattens the
 # blocks inside the adopter external window, which smc_addr.h keeps opaque.
 _SMC_BOOTROM_REGS_H = (
@@ -211,6 +215,16 @@ def reset_unit_u32(symbol: str) -> int:
 def mailbox_u32(symbol: str) -> int:
     """Return an ``AXIL_MAILBOX__*`` integer ``#define`` from ``axil_mailbox.h``."""
     return c_header_u32(_AXIL_MAILBOX_H, symbol)
+
+
+def cla_u32(symbol: str) -> int:
+    """Return a ``DFD_CLA__*`` integer ``#define`` from ``smc_cla.h``."""
+    return c_header_u32(_SMC_CLA_H, symbol)
+
+
+def dfx_ctrl_status_u32(symbol: str) -> int:
+    """Return a ``DFX_CTRL_STATUS__*`` integer ``#define`` from ``dfx_ctrl_status.h``."""
+    return c_header_u32(_DFX_CTRL_STATUS_H, symbol)
 
 
 def smc_indexed_addr(symbol: str, idx: int = 0) -> int:

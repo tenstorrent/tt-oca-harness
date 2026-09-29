@@ -17,9 +17,9 @@ elaboration and carry no evidence token.
 On the `--dut smu` production wrapper (compile_smu_chiplet, +expected_sep=1):
 reads the 256-bit SEP_SEC_DISABLE_TOKEN at the wrapper, at `smu` and at the
 SEP eFuse controller that consumes it, the DTP's fixed SEP OTP pipeline
-depths, the one security_disable net from the SEP consumer through the `smu`
-wire into the SMC input, and each DTP and port parameter the build
-configuration sizes, at the instance that consumes it.
+depths and each DTP and port parameter the build configuration sizes, at the
+instance that consumes it, and records the security_disable net at the SEP
+eFuse controller that drives it, the `smu` wire and the SMC input.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_composition_parameter_test \\
