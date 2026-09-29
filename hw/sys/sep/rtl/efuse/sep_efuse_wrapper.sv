@@ -364,7 +364,6 @@ module sep_efuse_wrapper #(
     .HAS_LC_STATE               (1'b1), // SEP has LC state
     .CLASS1_SHADOW_RANGES       (sep_efuse_pkg::Class1ShadowRanges),
     .SECRET_SHADOW_RANGES       (sep_efuse_pkg::SecretShadowRanges),
-    .LC_STATE_WIDTH             (sep_pkg::LC_STATE_BIT_WIDTH),
     .LC_STATE_BIT_POSITION      (sep_pkg::LC_STATE_BIT_POSITION),
 
     .efuse_map_t                (sep_efuse_pkg::efuse_map_t)
@@ -416,8 +415,6 @@ module sep_efuse_wrapper #(
     .is_secure_tm_blocked_o             (sep_efuse_debug_o[9]),
     .is_rma_sip_token_match_debug_o     (sep_efuse_token_match_sip_debug_o),
     .is_rma_chiplet_token_match_debug_o (sep_efuse_token_match_chiplet_debug_o),
-
-    .sec_disable_token_o                (),
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 

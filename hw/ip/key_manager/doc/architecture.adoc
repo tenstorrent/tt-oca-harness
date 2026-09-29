@@ -59,6 +59,8 @@ image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
 
 The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
+The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
+`scrambler_8192x32`.
 
 ifdef::backend-html5[]
 The parameters of `key_manager` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].
@@ -111,6 +113,10 @@ SEP connections.
 |`cold_rst_ni` |Active-low |Asynchronous |SEP system cold reset (`sep_reset_n`).
 |`warm_rst_ni` |Active-low |Synchronous to `clk_i` |SEP KM sub-component software-reset CSR bit (`km_sw_rst_ni`).
 |===
+
+SEP isolates the Key Manager's AXI paths before asserting the warm reset; see
+ifdef::backend-html5[xref:sep:reset_controller.adoc#sep-km-reset[Resetting the Key Manager].]
+ifdef::backend-pdf[<<sep-km-reset>>.]
 
 The `km_reset_conditioner` submodule conditions these inputs and the
 KMCSR-sourced soft reset into two clean, glitch-free, active-low output
@@ -992,19 +998,22 @@ bit for testing.
 Write rejection: Write requests to the DRBG sampler receive an AXI
 SLVERR response.
 
-The configuration register is written by the KM firmware; the status
-register is read-only and updated by the sampler hardware. The
-configuration register has the following fields:
+The configuration register is written by the KM firmware and controls
+sampler behaviour (PREFETCH and TIMEOUT). The status register is updated by
+the sampler hardware; it is not wholly read-only, as its error bits and
+counters can be cleared via writes. The configuration register has the
+following fields:
 
 * PREFETCH[0]
 ** Enables prefetching. When disabled, the prefetch data register is
 cleared. Default: 0 (disabled).
 * TIMEOUT[31:16]
-** The number of cycles to wait for the DRBG before timing out an active
-CPU read. A value of 0 disables timeout. Default: 256. On timeout, the
-response is SLVERR with RDATA zero.
+** The timeout countdown threshold. The counter loads with `TIMEOUT - 1` and decrements,
+timing out after exactly `TIMEOUT` active cycles (visits values `TIMEOUT-1` down to 0).
+A value of 0 disables timeout. Default: 256. On timeout, the response is SLVERR with
+RDATA zero.
 
-The status register holds the following read-only fields:
+The status register holds the following fields:
 
 * DRBG_READY[0]
 ** TVALID is asserted on the AXI-Stream bus from the DRBG.
@@ -1040,7 +1049,7 @@ values. DRBG Sampler datapath registers (prefetch data register,
 assembled word buffer, response data slot) have no reset value: they
 power up with random (undefined) values.
 
-The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. The states and their transitions are summarised in <<key-manager-drbg-sampler-states-table>>.
+The sampler hardware is implemented as a six-state FSM in `km_drbg_sampler`. The states and their transitions are summarised in <<key-manager-drbg-sampler-states-table>>.
 
 [[key-manager-drbg-sampler-states-table]]
 [cols="<25%,<75%",options="header"]
@@ -1052,6 +1061,7 @@ The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. Th
 |`StByteAssembly` |Valid bytes indicated by `tstrb` are accumulated into a 32-bit word. When all four bytes have been collected (`tstrb` = `4'b1111` on a single beat, or multiple partial beats), the FSM proceeds to `StRespond`. Additional `tready` pulses are issued for each partial beat.
 |`StRespond` |The assembled word is returned on the AXI read data channel with OKAY. The `COUNT_GOOD` counter increments. If prefetch is enabled and no prefetched word is stored, the FSM re-enters `StRequest` to prefetch the next word; otherwise it returns to `StIdle`.
 |`StTimeout` |Entered from `StRequest` or `StByteAssembly` when the cycle counter exceeds `CFG.TIMEOUT` (and timeout is enabled). The read completes with SLVERR, `RDATA` = 0, `TIMEOUT_ERR` is set, and `COUNT_BAD` increments. The FSM returns to `StIdle`.
+|`StStreamErr` |Entered from `StRequest` or `StByteAssembly` when an AXI-Stream protocol violation is detected (e.g., `TVALID` deasserted before `TREADY`). The `STREAM_ERR` bit is set and `COUNT_BAD` increments. The FSM returns to `StIdle`.
 |===
 
 [[otp]]

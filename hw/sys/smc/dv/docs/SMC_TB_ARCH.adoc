@@ -297,7 +297,8 @@ A *multi-item-type dispatcher* (`write()` branches on item class), unlike SEP's
 single-item value scoreboard. Per type:
 
 * *SAMPLE items* (i2c/reset/clk/irq/gpio/axil): assert `resolvable` (no X/Z) and
-the type's idle invariants; emit `FUNC_COV_VALUE` coverage bins. (GPIO
+the type's idle invariants; emit `FUNC_COV_VALUE` log lines, a stimulus
+record and not a coverage metric (`SMC_FCOV.adoc`). (GPIO
 aggregates are checked for resolvability only — their level is a bus-aggregate
 artifact, not GPIO-diagnostic; isolated per-pad drive is proven by
 `smc_gpio_output_driveback_test`.)
@@ -487,8 +488,8 @@ class smc_register_sanity_test_seq(SmcCsrSeq):
 Key `SmcCsrSeq` helpers: `csr_read(expected=)`, `csr_write`,
 `csr_write_readback`, `csr_read_many`, `csr_read_err_signature` /
 `csr_read_decerr_zero` / `csr_read_expect_error` (strict negative),
-`csr_read_allow_error` (tolerant), `csr_read_bounded` (tolerates DECERR *and*
-timeout), `assert_all_reachable` / `assert_reachable_or_gated`.
+`csr_read_bounded` (tolerates timeout, and DECERR unless `allow_error=False`),
+`assert_all_reachable` / `assert_reachable_or_gated`.
 
 `smc_base_test_seq` is the minimal, agent-agnostic base for non-CSR sequences
 (gpio/clk/reset/irq item types), dispatched via `_OneShot` (below).
@@ -661,9 +662,9 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut smc --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 carry both implementations in their testlist `module` binding map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error at selection unless `--skip-unimplemented` is passed. The
-framework conventions and the bring-up walkthrough this realization follows
+(`module = { cocotb = "<name>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework
+conventions and the bring-up walkthrough this realization follows
 are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
 reference bench is DTP.
 

@@ -470,10 +470,9 @@ and CSR RTL selected by the subsystem source graph.
 The SV-UVM realization runs through the same native runner: `dtp_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut dtp --framework uvm` selects
-it on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
-carry both implementations in their testlist `module` binding map; those
-without a `uvm` entry error at selection unless `--skip-unimplemented` is
-passed.
+it on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Every
+scenario carries both implementations in its testlist `module` binding map,
+so any group runs unchanged under either framework.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
 a framework-neutral core with no ports (interface instances, DUT, adapters,

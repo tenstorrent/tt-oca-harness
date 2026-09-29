@@ -32,6 +32,7 @@
 |BASE + 0x400 – BASE + 0x7FF |1 KiB |36 B |Watchdog Timer Address Map |1 instance |- |Core 1 watchdog timer.
 |BASE + 0x800 – BASE + 0xBFF |1 KiB |36 B |Watchdog Timer Address Map |1 instance |- |Core 2 watchdog timer.
 |BASE + 0xC00 – BASE + 0xFFF |1 KiB |36 B |Watchdog Timer Address Map |1 instance |- |Core 3 watchdog timer.
+|BASE + 0x1000 – BASE + 0x1867 |2152 B |2152 B |Debug Module Hart Interface |1 instance |- |Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.
 |BASE + 0x2000 – BASE + 0x27FF |2 KiB |204 B |Reset Unit Address Map |1 instance |- |System reset control.
 |BASE + 0x2800 – BASE + 0x2FFF |2 KiB |524 B |SMC Miscellaneous Wrapper Address Map |1 instance |- |Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.
 |BASE + 0x3000 – BASE + 0x3FFF |4 KiB |1036 B |GPIO Interface Address Map |65 instances |16 B |GPIO interface configuration: pad/core routing, receive and transmit enables, and interrupt control.
@@ -68,5 +69,6 @@
 |BASE + 0x8011000 – BASE + 0x8011FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 1 bus-error unit.
 |BASE + 0x8012000 – BASE + 0x8012FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 2 bus-error unit.
 |BASE + 0x8013000 – BASE + 0x8013FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 3 bus-error unit.
+|BASE + 0x8014000 – BASE + 0x8014FFF |4 KiB |4 KiB |smc_cluster_error_device |1 instance |- |Error responder for unmapped cluster-bus accesses.
 |===
 // end::smc-components[]

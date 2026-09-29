@@ -21,12 +21,10 @@ __all__ = [
     "AXI_TIMEOUT_NS",
     "AXI_BOUND_LABEL",
     "make_smu_axi_master",
-    "axi_read32",
     "axi_read32_resp",
     "axi_read32_resp_ids",
     "axi_read32_resp_ids_bounded",
     "axi_read32_resp_bounded",
-    "axi_write32",
     "axi_write32_resp",
     "axi_write32_resp_bounded",
     "axi_write32_resp_ids",
@@ -52,20 +50,14 @@ async def make_smu_axi_master(
     flattens it as ``s_axi_*`` resolves too. The prefix is detected rather
     than passed.
 
-    The wrapper carries the required AXI4 signals but not the optional
-    qualifiers (prot/cache/qos/region/lock, and the user fields), which
-    cocotbext-axi treats as optional, so a master builds without them. A
-    test that asserts on those qualifiers needs them wired out first.
+    The bench wires the optional qualifiers (prot/cache/qos/region/lock and
+    the user fields) through to the wrapper, and cocotbext-axi drives them
+    when they are present.
     """
     agent = OcahAxiMasterAgent.from_prefix(dut, prefix or smu_axi_in_prefix(dut), clk, reset)
     await agent.start()
     await Timer(1, unit="ns")
     return agent.sequence
-
-
-async def axi_read32(master: OcahAxiMasterSequence, addr: int) -> int:
-    result = await master.read_bytes_result(addr, 4, check_response=False)
-    return result.data
 
 
 async def axi_read32_resp(
@@ -141,12 +133,6 @@ async def axi_read32_resp_bounded(
             f"TIMEOUT {label}: {AXI_BOUND_LABEL} last_state=no_rresp addr=0x{addr:08x}"
         )
     return result.data, result.resp
-
-
-async def axi_write32(master: OcahAxiMasterSequence, addr: int, value: int) -> None:
-    await master.write_bytes_result(
-        addr, value.to_bytes(4, byteorder="little"), check_response=False
-    )
 
 
 async def axi_write32_resp(

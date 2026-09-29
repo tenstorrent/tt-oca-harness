@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Control eFuse MAP/MMR/CTRL windows, shadow sense, and the fuse-command path to the SHIM.
+// Control eFuse MAP/CTRL/MMR windows, shadow sense, and the fuse-command path to the SHIM.
 //
 // Arbitrate the functional and JTAG AXI-Lite ports onto one path. Addresses from the MAP
 // base to the MMR end (the CTRL end without HAS_LC_STATE) are bridged to APB and decoded
@@ -10,7 +10,7 @@
 // MAP, CTRL, MMR.
 //
 // SEP_SEC_DISABLE_TOKEN is embedded in RTL. HAS_LC_STATE, CLASS1_SHADOW_RANGES,
-// SECRET_SHADOW_RANGES, and LC_STATE_* configure lifecycle and secret masking.
+// SECRET_SHADOW_RANGES, and LC_STATE_BIT_POSITION configure lifecycle and secret masking.
 //
 // Sequence sense/program/read through fuse_command_req/resp, with sensing first, then program, then
 // read; apply field locks and token processing, and export shadow_regs_o. ext_boot_seq_done_i gates
@@ -54,20 +54,18 @@ module efuse_interface_controller #(
   localparam bit [31:0] EFUSE_MAP_REG_MAP_END_ADDR = EFUSE_MAP_REG_MAP_BASE_ADDR + EFUSE_MAP_REG_MAP_SIZE - 32'd1,  // Last byte address of the MAP window.
   localparam bit [31:0] EFUSE_MAP_REG_MAP_WIDTH = $clog2(EFUSE_MAP_REG_MAP_SIZE),  // Offset address width of the MAP window.
 
-  parameter bit [31:0] EFUSE_MMR_REG_MAP_BASE_ADDR = 32'h1000,  // Base address of the MMR window
+  parameter bit [31:0] EFUSE_CTRL_REG_MAP_BASE_ADDR = 32'h1000,  // Base address of the CTRL window
+                                                                 // holding the interface control
+                                                                 // registers.
+  parameter bit [31:0] EFUSE_CTRL_REG_MAP_SIZE = 32'h1000,  // Size of the CTRL window in bytes.
+  localparam bit [31:0] EFUSE_CTRL_REG_MAP_END_ADDR = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,  // Last byte address of the CTRL window.
+
+  parameter bit [31:0] EFUSE_MMR_REG_MAP_BASE_ADDR = 32'h2000,  // Base address of the MMR window
                                                                 // holding the token registers;
                                                                 // decoded only when HAS_LC_STATE is
                                                                 // set.
   parameter bit [31:0] EFUSE_MMR_REG_MAP_SIZE = 32'h1000,  // Size of the MMR window in bytes.
   localparam bit [31:0] EFUSE_MMR_REG_MAP_END_ADDR = EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32'd1,  // Last byte address of the MMR window.
-  localparam bit [31:0] EFUSE_MMR_REG_MAP_WIDTH = $clog2(EFUSE_MMR_REG_MAP_SIZE),  // Offset address width of the MMR window; not used in this module.
-
-  parameter bit [31:0] EFUSE_CTRL_REG_MAP_BASE_ADDR = 32'h2000,  // Base address of the CTRL window
-                                                                 // holding the interface control
-                                                                 // registers.
-  parameter bit [31:0] EFUSE_CTRL_REG_MAP_SIZE = 32'h1000,  // Size of the CTRL window in bytes.
-  localparam bit [31:0] EFUSE_CTRL_REG_MAP_END_ADDR = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,  // Last byte address of the CTRL window.
-  localparam bit [31:0] EFUSE_CTRL_REG_MAP_WIDTH = $clog2(EFUSE_CTRL_REG_MAP_SIZE),  // Offset address width of the CTRL window; not used in this module.
 
   parameter int unsigned SHADOW_REG_BITS = 8192,  // Shadow register file size in bits; program and
                                                   // read CSR bit addresses at or above it are
@@ -85,7 +83,7 @@ module efuse_interface_controller #(
                                                                            // separately named storage for scan
                                                                            // exclusion.
   parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,  // Secret shadow ranges masked under secure_tm.
-  parameter int unsigned LC_STATE_WIDTH = 4,  // Lifecycle-state field width.
+  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width.
   parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
   parameter type efuse_map_t = logic    // Shadow eFuse map type.
@@ -167,9 +165,6 @@ module efuse_interface_controller #(
   output logic [5:0]                            is_rma_chiplet_token_match_debug_o,  // RMA chiplet token match status code; 6'b010101
                                                                                      // indicates a match and is tied there when
                                                                                      // HAS_LC_STATE is clear.
-
-  output logic [7:0][31:0]                      sec_disable_token_o,  // Security disable token written through the MMR window, as
-                                                                      // eight 32-bit words; zero when HAS_LC_STATE is clear.
 
   output logic                                  locked_field_access_interrupt_o,  // High during an APB access to the MAP
                                                                                   // window that a field lock blocks.
@@ -460,7 +455,6 @@ module efuse_interface_controller #(
 
       efuse_token_processing #(
         .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
-        .LC_STATE_WIDTH        (LC_STATE_WIDTH),
         .TOKEN_MATCH_CODE      (TOKEN_MATCH_CODE),
         .efuse_apb_req_t       (efuse_apb_req_t),
         .efuse_apb_resp_t      (efuse_apb_resp_t),
@@ -475,7 +469,7 @@ module efuse_interface_controller #(
         .apb_resp_o                 (apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP]),
         .rma_sip_token_match_q_o    (rma_sip_token_match),
         .rma_chiplet_token_match_q_o(rma_chiplet_token_match),
-        .sec_disable_token_o        (sec_disable_token_o),
+        .sec_disable_token_o        (),
 
         .security_disable_o         (security_disable_o),
 
@@ -493,7 +487,6 @@ module efuse_interface_controller #(
 
       assign rma_sip_token_match = 6'b010101;
       assign rma_chiplet_token_match = 6'b010101;
-      assign sec_disable_token_o = '0;
       assign security_disable_o = '0;
       assign token_match_fault_o = '0;
 
@@ -734,7 +727,6 @@ module efuse_interface_controller #(
     .HAS_LC_STATE        (HAS_LC_STATE),
     .CLASS1_SHADOW_RANGES(CLASS1_SHADOW_RANGES),
     .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
-    .LC_STATE_WIDTH      (LC_STATE_WIDTH),
 
     .TOKEN_MATCH_CODE    (TOKEN_MATCH_CODE),
 

@@ -6,7 +6,11 @@
 [#regmap-{regmap-instance}-axil_mailbox_smc_wrap]
 == SMC AXI-Lite Mailbox Wrapper Address Map
 
-SMC-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.
+SMC-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.
 
 [cols="1,4,1,6", options="header"]
 |===

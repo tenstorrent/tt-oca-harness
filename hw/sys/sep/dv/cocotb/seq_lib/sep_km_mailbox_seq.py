@@ -43,6 +43,9 @@ KM_MBOX_STATUS = sym("KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET")
 KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
+# Byte size of the SEP-side window. SEP_CTRL is its last register, so the
+# first offset past the window is the upper word of a 64-bit beat at SEP_CTRL.
+KM_MBOX_SIZE = sym("KM_MAILBOX_SEP_REG_MAP_SIZE")
 
 # SEP_STATUS bit positions, from the generated export like the offsets above.
 # km_mailbox_sep.rdl declares SEP_STATUS with the `status_reg` typedef, so the
@@ -90,7 +93,10 @@ KM_CTRL_INBOUND_OVERFLOW_RESP = _KM_MBOX("SEP_CTRL", "inbound_overflow_resp")
 KM_CTRL_OUTBOUND_UNDERFLOW_RESP = _KM_MBOX("SEP_CTRL", "outbound_underflow_resp")
 KM_CTRL_FLUSH = _KM_MBOX("SEP_CTRL", "flush")
 
-# Both FIFOs are 16 entries deep (the KM firmware's own frame-size bound).
+# Both FIFOs are 16 words deep. hw/ip/key_manager/doc/architecture.adoc
+# (mailbox) gives the inbound and outbound FIFOs a "minimum depth 16 words
+# each"; this DV-owned constant takes that minimum as the depth the full,
+# space-available and overflow goldens expect.
 KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------
