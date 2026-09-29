@@ -453,6 +453,8 @@ module efuse_interface_controller #(
   // Efuse MMR / Security Tokens - SEP Only
   ///////////////////////////////////////////////
 
+  // If it is SMC efuse interface, use the security disable from input port. 
+  // If it is sep's fuse interface, use internally generated sec_disable
   logic internal_security_disable;
   logic [5:0] rma_sip_token_match, rma_chiplet_token_match;
 
@@ -499,7 +501,6 @@ module efuse_interface_controller #(
       assign security_disable_o = '0;
       assign token_match_fault_o = '0;
 
-      // If it is SMC efuse interface, use the security disable from input port. If it is sep's fuse interface, use internally generated sec_disable
       assign internal_security_disable = security_disable_i;
 
       assign shadow_regs_o = (fuse_sense_done || internal_security_disable ) ? shadow_regs : efuse_map_t'(0);
