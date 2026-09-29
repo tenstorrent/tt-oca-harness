@@ -212,14 +212,29 @@ runs:
         username: ${{ github.actor }}
         password: ${{ github.token }}
 
-    # The native leg here never reaches for the image: the SMC/SMU firmware
-    # suites call the model's runners with plain make, so they have no
-    # fw_make picolibc fallback to cover. `ensure` reuses a matching local
-    # image, then the registry tag, then the cached tarball, then builds.
+    # Removing the precursor job made the registry the only source of this
+    # image; docker-run.sh would otherwise fall through a miss into a local
+    # build that outlives the job's timeout and produces nothing. Check the tag
+    # first, so a miss says which hash is unpublished instead of burning an hour.
     - name: Provision toolchain image
       if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
       shell: bash
-      run: ./scripts/docker-run.sh ensure
+      run: |
+        hash="$(./scripts/docker-run.sh image-hash)"
+        ref="${OCAH_CONTAINER_REGISTRY_IMAGE}:${hash}"
+        if ! docker manifest inspect "$ref" >/dev/null 2>&1; then
+          echo "::error::$ref is not published"
+          {
+            echo "### Toolchain image not published"
+            echo
+            echo "This tree resolves to \`$hash\`, which the container workflow has"
+            echo "not published. It runs on changes to the flake, \`nix/\`,"
+            echo "\`ocah_deps.nix\` and the uv workspace; if it has not run for this"
+            echo "commit, run it before dispatching this one."
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+        fi
+        ./scripts/docker-run.sh ensure
 
     - name: Check toolchains
       shell: bash
