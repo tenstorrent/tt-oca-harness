@@ -321,11 +321,11 @@ Bender RTL recipe, stubs, and shims), and `--dut sep --framework uvm` selects
 it. A testlist entry binds both implementations of one scenario
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
-the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-`sep_axi_smoke_test` is the scenario with a `uvm` binding. VCS only: Verilator
-has no SV-UVM support. The bench architecture is in `docs/SEP_TB_ARCH.adoc`
-("SystemVerilog UVM Realization"); the framework conventions it follows are in
+the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
+naming a scenario with no `uvm` entry errors. `sep_axi_smoke_test` is the
+scenario with a `uvm` binding. VCS only: Verilator has no SV-UVM support. The
+bench architecture is in `docs/SEP_TB_ARCH.adoc` ("SystemVerilog UVM
+Realization"); the framework conventions it follows are in
 `hw/common/dv/docs/uvm-framework.adoc`.
 
 `tb/tb_top.sv` is one module with two shapes: the cocotb pin port list by
@@ -336,16 +336,15 @@ the sole LSU driver and the shared `ocah_axi_vip` master drives the `s_axi_*`
 splice through it.
 
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# the group holds cocotb-only scenarios.
-python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only --skip-unimplemented
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
 
 # Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke
 
 # Negative validation: a corrupted scoreboard prediction must make the run FAIL
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \

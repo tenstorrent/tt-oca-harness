@@ -102,7 +102,7 @@ from .executors.manifest import (
 )
 from .junit import materialize_interruption_junit, materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
-from .models import ConfigError, Flow, StageResult, TestCatalog
+from .models import ConfigError, Flow, StageResult, TestCatalog, TestEntry
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
 from .results import (
     aggregate_status,
@@ -217,7 +217,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
               Pick a framework (same scenario names, different implementation):
                 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_sanity_test
                 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
-                python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+                python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke  # the group's uvm-bound subset
 
               Debug a failure:
                 python3 tools/dv/run_dv.py --dut smc --items smoke --waves-on-fail fst
@@ -263,15 +263,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--allow-duplicates",
         action="store_true",
         help="Keep duplicate items when selected groups overlap",
-    )
-    common.add_argument(
-        "--skip-unimplemented",
-        action="store_true",
-        help=(
-            "Skip group/tag-selected scenarios whose binding map has no entry for the selected "
-            "framework (default: error). Scenarios declaring the framework `false` skip without "
-            "this flag; an explicitly named --items test errors either way"
-        ),
     )
     common.add_argument(
         "--tool",
@@ -1791,16 +1782,11 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
     print(f"runnability: {flow.runnability}")
     print(f"stages     : {', '.join(flow_stages(flow))}")
     if catalog.tests:
-        # Scenarios implemented beyond the default framework are marked (+fw) and frameworks
-        # declared `false` are marked (-fw): the compact human view of the binding matrix
-        # (--json carries the full per-scenario map).
         default = flow.default_framework or flow.framework
         names = []
         for name in sorted(catalog.tests):
-            test = catalog.tests[name]
-            marks = [f"+{fw}" for fw in sorted(set(test.bindings) - {default})]
-            marks += [f"-{fw}" for fw in sorted(test.excluded)]
-            names.append(name + (f" ({','.join(marks)})" if marks else ""))
+            marks = _binding_marks(catalog.tests[name], default)
+            names.append(name + (f" ({', '.join(marks)})" if marks else ""))
         print("tests      : " + ", ".join(names))
     if catalog.groups:
         print(
@@ -1809,6 +1795,20 @@ def list_flow_detail(flow: Flow, root: Path) -> None:
                 f"{name}={','.join(items)}" for name, items in sorted(catalog.groups.items())
             )
         )
+
+
+def _binding_marks(test: TestEntry, default: str) -> list[str]:
+    """The compact human view of one scenario's binding map (--json carries the full map).
+
+    `+fw` marks a framework beyond the default the scenario is implemented in, `-fw` one its
+    map declares `false`, and `no <default>` a map that omits the default framework, which an
+    unmarked name would otherwise be read as binding.
+    """
+    marks = [f"+{fw}" for fw in sorted(set(test.bindings) - {default})]
+    marks += [f"-{fw}" for fw in sorted(test.excluded)]
+    if default and default not in test.bindings and default not in test.excluded:
+        marks.append(f"no {default}")
+    return marks
 
 
 def _flow_view_dict(flow: Flow) -> dict[str, Any]:
@@ -2750,10 +2750,28 @@ def selected_stages(flow: Flow, args: argparse.Namespace) -> list[str]:
     return requested
 
 
-def requested_items(catalog: TestCatalog, args: argparse.Namespace) -> list[str]:
+def requested_items(
+    catalog: TestCatalog, args: argparse.Namespace, framework: str = ""
+) -> list[str]:
+    """The `--items` list, or the implicit selection when it is absent.
+
+    Without `--items` the `smoke` group runs when the catalog has one; otherwise the first
+    scenario the selected framework implements, since one it does not implement would be
+    skipped and leave nothing to run.
+    """
     if args.items:
         return list(args.items)
-    return ["smoke"] if "smoke" in catalog.groups else list(catalog.tests)[:1]
+    if "smoke" in catalog.groups:
+        return ["smoke"]
+    if not framework:
+        return list(catalog.tests)[:1]
+    bound = [name for name, test in catalog.tests.items() if test.module]
+    if not bound:
+        raise ConfigError(
+            f"no `smoke` group and no scenario implemented for framework `{framework}`; "
+            "select with --items"
+        )
+    return bound[:1]
 
 
 def expand_items(
@@ -2792,13 +2810,13 @@ def expand_items(
 def validate_item_bindings(
     flow: Flow, catalog: TestCatalog, items: list[str], args: argparse.Namespace
 ) -> list[str]:
-    """Enforce that every selected scenario is implemented in the selected framework.
+    """Drop the selected scenarios the selected framework does not implement, and name them.
 
-    A selected scenario with no `module` entry for the selected framework is a config error.
-    Two escapes apply to group/tag-derived scenarios only, and both are printed and recorded in
-    run metadata: a scenario whose binding map declares the framework `false` is skipped
-    without any flag, and `--skip-unimplemented` skips the scenarios whose map has no entry.
-    An explicitly named `--items` test errors in both cases.
+    A scenario runs under the frameworks its binding map names. A group- or tag-derived
+    scenario with no entry for the selected framework is skipped, as is one whose map declares
+    the framework `false`; the two are printed and recorded in run metadata apart, matching
+    the `missing` and `excluded` counts of `--list`. An explicitly named `--items` test errors
+    in both cases: the caller asked for a scenario that cannot run here.
     """
     if not flow.framework:
         return items
@@ -2807,22 +2825,24 @@ def validate_item_bindings(
     ]
     if not unimplemented:
         return items
-    explicit = set(args.items or [])
+    blocking = [name for name in unimplemented if name in set(args.items or [])]
+    if blocking:
+        raise ConfigError(_unimplemented_message(flow, catalog, blocking))
     excluded = [name for name in unimplemented if flow.framework in catalog.tests[name].excluded]
     missing = [name for name in unimplemented if name not in set(excluded)]
-    blocking = [
-        name
-        for name in unimplemented
-        if name in explicit or (name in set(missing) and not args.skip_unimplemented)
-    ]
-    if blocking:
-        raise ConfigError(_unimplemented_message(flow, catalog, blocking, explicit))
     dropped = set(unimplemented)
     kept = [name for name in items if name not in dropped]
     if not kept:
+        if getattr(args, "build_only", False):
+            fix = (
+                "a build-only run selects scenarios to pick the build target; name one "
+                f"implemented for `{flow.framework}` with --items"
+            )
+        else:
+            fix = f"select a group or scenario implemented for `{flow.framework}`"
         raise ConfigError(
             "selection left no runnable scenarios: none of the selected tests are implemented "
-            f"for framework `{flow.framework}`"
+            f"for framework `{flow.framework}`\n  fix: {fix}"
         )
     setattr(args, "_skipped_excluded", excluded)
     setattr(args, "_skipped_unimplemented", missing)
@@ -2872,10 +2892,8 @@ def validate_item_tools(
     return kept
 
 
-def _unimplemented_message(
-    flow: Flow, catalog: TestCatalog, blocking: list[str], explicit: set[str]
-) -> str:
-    """Error text naming each blocking scenario, how its map treats the framework, and a fix."""
+def _unimplemented_message(flow: Flow, catalog: TestCatalog, blocking: list[str]) -> str:
+    """Error text naming each explicitly selected scenario the framework does not implement."""
     fw = flow.framework
     width = max(len(name) for name in blocking)
     lines = []
@@ -2884,17 +2902,11 @@ def _unimplemented_message(
         state = f"{fw} = false" if fw in test.excluded else f"no {fw} entry"
         implemented = ", ".join(sorted(test.bindings)) or "none"
         lines.append(f"  {name:<{width}}  ({state}; implemented: {implemented})")
-    if any(name in explicit for name in blocking):
-        fix = f"  fix: add a `{fw}` module entry or narrow the selection"
-    else:
-        fix = (
-            f"  fix: add a `{fw}` module entry, declare `{fw} = false` in the binding map, "
-            "narrow the selection, or pass --skip-unimplemented"
-        )
     return (
         f"{len(blocking)} selected scenario(s) are not implemented for framework `{fw}`:\n"
         + "\n".join(lines)
-        + f"\n{fix}"
+        + f"\n  fix: add a `{fw}` module entry, narrow the selection, or pass --framework for "
+        "one they implement"
     )
 
 
@@ -3194,7 +3206,7 @@ def run_flow(
             # Tag-only selection starts from the whole catalog (in definition order).
             items = list(catalog.tests)
         else:
-            requested = requested_items(catalog, args)
+            requested = requested_items(catalog, args, flow.framework)
             items = expand_items(
                 catalog, requested, need_items, allow_duplicates=args.allow_duplicates
             )
