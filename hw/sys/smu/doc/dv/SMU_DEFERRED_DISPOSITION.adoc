@@ -25,7 +25,7 @@ Buckets:
 * `SEP1-enrolled` — has a body and runs in the wrapper `all` group with real SEP instruction retirement (`sep_real_fw`, `sep_entropy`, or `fw_boot` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
 * `SEP1-blocked` — written against the wrapper bench, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in `all` the day the SMC SRAM path exists.
 * `not-runnable` — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the `smu #(.SEP(0))` elaboration, which this package does not build. The row names the condition.
-* `OUT-until-SEP1` — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.
+* `OUT-until-SEP1` — no body; a scenario driven by SEP firmware. The bench elaborates the real SEP and `smu_sep_smoke_test` retires its instructions, so a leaf written for one of these names runs SEP firmware, needs the RISC-V toolchain for its `c_build` stage, and joins the groups outside `hosted` (`fw_boot`, `sep_real_fw`) that no workflow schedules.
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
 * `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
 
@@ -67,37 +67,37 @@ Enrolled names outside this catalog:
 |Enrolled in `all`, `sep_real_fw`.
 |smu_sep_wdt_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_aes_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_otbn_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_xbar_programmable_addr_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_wdt_reset_to_smc_test
 |SEP1-blocked
 |Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_sep_spi_bridge_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_external_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_external_irq_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_alias_mailbox_interrupt_probe_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_ext_axi_combined_probe_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_km_otbn_memory_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_debug_bus_test
 |SEP1-blocked
 |Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
@@ -109,82 +109,82 @@ Enrolled names outside this catalog:
 |Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_fuse_sense_handshake_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_lifecycle_security_handoff_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_feat_ctrl_monitor_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_cla_sep_cpu_debug_control_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_filter_rule_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_filter_skip_wire_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_ap_stee_output_remap_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_ap_stee_remap_region_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_outbound_demux_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_outbound_demux_full_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_alias_remap_consistency_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_egress_unfiltered_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_addr_route_bug_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_spi_mux_ctrl_wire_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_wdt_cdc_path_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_ic_reset_sep_ext_slice_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_memory_integrity_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_otbn_execute_flow_probe_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_interrupt_error_recovery_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_interoperability_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_xbar_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_bidirect_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_interoperability_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_xbar_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_bidirect_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_smc_stall_sep_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_interop_negative_recovery_test
 |OUT-until-SEP1
 |Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
@@ -238,10 +238,10 @@ Enrolled names outside this catalog:
 |Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
 |smu_axi_xbar_address_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_axi_xbar_connectivity_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_axi_crossbar_performance_test
 |waived
 |The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
@@ -304,7 +304,7 @@ Enrolled names outside this catalog:
 |DTP-under-SMU depth beyond the enrolled DTP-under-SMU slice (`dtp_under_smu`). Child DTP TB owns protocol completeness.
 |smu_dtp_sep_stap_reset_smoke_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_basic_verification_test
 |child-TB-owned
 |DTP-under-SMU depth beyond the enrolled DTP-under-SMU slice (`dtp_under_smu`). Child DTP TB owns protocol completeness.
@@ -328,16 +328,16 @@ Enrolled names outside this catalog:
 |Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
 |smu_dtp_dual_cpu_bringup_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_dual_cpu_jtag2axi_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_jtag2axi_sep_otp_path_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_sep_ic_reset_hold_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_cpu_traffic_ext_axi_test
 |OUT-until-SEP1
 |Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.

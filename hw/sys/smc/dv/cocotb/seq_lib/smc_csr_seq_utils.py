@@ -87,16 +87,6 @@ class SmcCsrSeq(smc_base_test_seq):
         for name, addr, expected in regs:
             await self.csr_read(name, addr, expected)
 
-    async def csr_read_many_allow_error(self, regs: list[tuple[str, int, int | None]]) -> None:
-        """Read a list of windows that are terminated as AXI error
-        slaves. ``allow_error`` lets the DECERR/SLVERR response count as a
-        completed access, so the sequence still proves the fabric decodes/
-        routes to the window and the bus never hangs, without asserting a real
-        register value the terminator cannot provide. The per-entry ``expected``
-        field is ignored here (the reg tables stay uniform)."""
-        for name, addr, _expected in regs:
-            await self.csr_read_allow_error(name, addr)
-
     # Data word an AXI error slave returns alongside its error response. The
     # one place the value is specified is the eFuse architecture document
     # (``hw/ip/efuse/doc/architecture.adoc``, JTAG access control: "When a
@@ -217,32 +207,29 @@ class SmcCsrSeq(smc_base_test_seq):
         )
         return item.resp_code
 
-    async def csr_read_allow_error(self, name: str, addr: int, length: int = 4) -> int:
-        item = SmcSysAxiItem(f"rd_{name}")
-        item.op = SmcSysAxiOp.READ
-        item.addr = addr
-        item.length = length
-        item.allow_error = True
-        await self.start_item(item)
-        await self.finish_item(item)
-        self.accesses += 1
-        return item.rdata
-
     async def csr_read_bounded(
-        self, name: str, addr: int, length: int = 4, timeout_ns: int = 200
+        self,
+        name: str,
+        addr: int,
+        length: int = 4,
+        timeout_ns: int = 200,
+        allow_error: bool = True,
     ) -> int:
-        """Bounded read: tolerates DECERR **and** timeout (no-decode).
+        """Bounded read: tolerates timeout (no-decode), and DECERR unless
+        ``allow_error=False``.
 
         Intended for coverage-gap CSR probes where the block may be
         clock-gated or absent from this bench and there is no
         AXI responder to send back OKAY/DECERR. Increments `timeouts` on
-        no-response, `accesses` unconditionally.
+        no-response, `accesses` unconditionally. A positive control that must
+        be answered passes ``allow_error=False`` so the scoreboard holds the
+        completed read to OKAY.
         """
         item = SmcSysAxiItem(f"rd_{name}")
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = length
-        item.allow_error = True
+        item.allow_error = allow_error
         # allow_timeout: helper for unreachable CSR windows; caller must score
         # timeouts/accesses (second evidence). Default csr_read stays strict.
         item.allow_timeout = True
