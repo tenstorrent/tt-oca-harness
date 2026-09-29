@@ -195,6 +195,50 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
             self.assertEqual(km[f"main:{node}"].base, base)
             self.assertEqual(km[f"main:{node}"].aperture_size, end - base + 1)
 
+    def test_response_cells(self):
+        def hole(row):
+            ((_label, response),) = row.hole_responses
+            return response.text
+
+        km_view = one_view(
+            "hw/ip/key_manager/regs/key_manager.rdl",
+            "hw/ip/key_manager/doc/memmap.toml",
+            "key_manager",
+        )
+        km = rows_by_key(km_view)
+        self.assertEqual(hole(km["main:kmcsr"]), "SLVERR, 0x0 / SLVERR")
+        self.assertEqual(km["main:mailbox_km"].past_response.text, "SLVERR, 0x0 / SLVERR")
+        reserved = [row for row in km_view.rows if row.kind == "reserved"]
+        self.assertTrue(reserved)
+        for row in reserved:
+            self.assertEqual(hole(row), "DECERR, 0xBADCAB1E / DECERR")
+
+        sep = rows_by_key(
+            next(
+                view
+                for view in configured_views("hw/sys/sep/doc/memmap.toml")
+                if view.name == "sep-components"
+            )
+        )
+        self.assertEqual(
+            sep["main:km_mailbox_sep"].past_response.text, "DECERR, 0xBADCAB1E / DECERR"
+        )
+
+        smc = rows_by_key(
+            next(
+                view
+                for view in configured_views(
+                    "hw/sys/smc/doc/memmap.toml",
+                    "hw/sys/smc/regs/smc.rdl",
+                    "smc_top",
+                )
+                if view.name == "smc-components"
+            )
+        )
+        self.assertEqual(hole(smc["main:smc_external"]), "Adopter-defined")
+        self.assertEqual(hole(smc["main:mmode_region"]), "Forwarded")
+        self.assertEqual(hole(smc["main:ecam_region"]), "DECERR, 0xBADCAB1E / DECERR")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -60,3 +60,58 @@ property ocah_aperture_size {
     component = addrmap | regfile | reg | mem;
     type = longint unsigned;
 };
+
+property ocah_full_stride_extent {
+    component = addrmap | regfile | reg | mem;
+    type = boolean;
+};
+
+enum ocah_resp_e {
+    OKAY = 0;
+    SLVERR = 2;
+    DECERR = 3;
+    ALIAS = 4 { name = "Aliases registers"; };
+    FORWARD = 5 { name = "Forwarded"; };
+    ADOPTER = 6 { name = "Adopter-defined"; };
+};
+
+struct ocah_resp {
+    ocah_resp_e rresp;
+    longint unsigned rdata;
+    ocah_resp_e bresp;
+};
+
+property ocah_hole_resp {
+    component = addrmap | regfile | mem;
+    type = ocah_resp;
+};
+
+property ocah_past_extent_resp {
+    component = addrmap | regfile | reg | mem;
+    type = ocah_resp;
+};
+
+property ocah_gap_resp {
+    component = addrmap | regfile;
+    type = ocah_resp;
+};
+
+property ocah_hole_note {
+    component = addrmap | regfile | mem;
+    type = string;
+};
+
+property ocah_past_extent_note {
+    component = addrmap | regfile | reg | mem;
+    type = string;
+};
+
+property ocah_gap_note {
+    component = addrmap | regfile;
+    type = string;
+};
+
+property ocah_following_gap_note {
+    component = addrmap | regfile | reg | mem;
+    type = string;
+};

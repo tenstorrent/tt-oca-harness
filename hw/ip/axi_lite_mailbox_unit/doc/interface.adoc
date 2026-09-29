@@ -102,8 +102,14 @@ access and no error flag
 |Write to a read-only register (`READ_DATA`, `STATUS`, `ERROR_FLAGS`, `IRQP`)
 |Write is ignored, responds SLVERR
 
-|Access to an unmapped offset inside an aperture (0x50 and above) |Read returns
-0 with SLVERR; write is ignored with SLVERR
+|Access to an unmapped offset inside an aperture (0x50 and above) |Stated in the
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[SMC] and
+xref:sep:memory_map.adoc#sep-memory-map[SEP] memory maps
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map,SMC>> and <<sep-memory-map,SEP>> memory maps
+endif::backend-pdf[]
 
 |Read of ERROR_FLAGS |Both flags clear on read; an error raised in the same cycle as
 the clearing read is retained

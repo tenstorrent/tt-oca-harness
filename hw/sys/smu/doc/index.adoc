@@ -109,8 +109,9 @@ image::smu-aperture-decode.svg[alt="SMU aperture decode and routing",width=100%,
 <<smu-crossbar-decode-diagram>> shows the independent SEP and SMC address
 comparisons for each read or write request. Each aperture includes its base
 address and excludes `base + size`; the addition uses 57 bits to preserve
-carry from the 56-bit address. An aperture with a zero base and a zero size
-matches every address.
+carry from the 56-bit address. An aperture whose size is zero is disabled: it
+matches no address, whatever its base, so each request is decoded against the
+other aperture alone.
 
 The decoded aperture and the connectivity in
 <<smu-crossbar-connectivity-diagram>> together determine where each request
