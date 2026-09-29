@@ -69,9 +69,8 @@ module cross_trigger_port_core (
                                         // invert_i.
   output logic        status_req_in_o,  // Synchronized CT_Req_in pad input, polarity-corrected by
                                         // invert_i.
-  output logic        status_ack_out_o  // Registered CT_Ack_out pad data with invert_i undone; in
-                                        // wire-OR mode it equals invert_i because the pad data is
-                                        // held low without inversion.
+  output logic        status_ack_out_o  // Registered CT_Ack_out pad data with invert_i undone;
+                                        // always low in wire-OR mode.
 );
 
   // Synchronizer module
@@ -276,6 +275,7 @@ module cross_trigger_port_core (
   assign status_req_out_o = invert_i ? ~ct_req_out_dout_q : ct_req_out_dout_q;
   assign status_ack_in_o = ct_ack_in_din_sync_inv;
   assign status_req_in_o = ct_req_in_din_sync_inv;
-  assign status_ack_out_o = invert_i ? ~ct_ack_out_dout_q : ct_ack_out_dout_q;
+  assign status_ack_out_o = mode_wire_or_i ? 1'b0 :
+                            (invert_i ? ~ct_ack_out_dout_q : ct_ack_out_dout_q);
 
 endmodule : cross_trigger_port_core

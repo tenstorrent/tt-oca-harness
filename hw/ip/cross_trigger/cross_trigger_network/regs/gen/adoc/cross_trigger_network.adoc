@@ -103,10 +103,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -140,10 +140,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -177,10 +177,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -214,10 +214,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -251,10 +251,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -288,10 +288,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -325,10 +325,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -362,10 +362,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -399,10 +399,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -436,10 +436,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -473,10 +473,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -510,10 +510,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -547,10 +547,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -584,10 +584,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -621,10 +621,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
@@ -658,10 +658,10 @@ this register to all-zero to disable that output.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value.
+| 7 | `ACK_OUT` | R | 0x0 a| Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.
 | 6 | `REQ_IN` | R | 0x0 a| Readout of the current synchronized CT_Req_in signal value.
 | 5 | `ACK_IN` | R | 0x0 a| Readout of the current synchronized CT_Ack_in signal value.
-| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value.
+| 4 | `REQ_OUT` | R | 0x0 a| Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress
 |===
