@@ -35,6 +35,13 @@ on:
       - 'scripts/docker.md'
   workflow_dispatch:
 
+# A superseded pull-request run can only rebuild what the run replacing it will
+# build, so cancel it. Pushes to main are never cancelled: each one publishes
+# the revision some consumer goes on to pull.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
   packages: write
@@ -124,35 +131,27 @@ jobs:
           GIT_CONFIG_KEY_4: url.file://${{ github.workspace }}/virtual_platform/tt-oca-harness-model.insteadOf
           GIT_CONFIG_VALUE_4: ssh://git@github.com/tenstorrent/tt-oca-harness-model.git
         run: |
-          archive=$(nix build \
-            .#dockerContainers.x86_64-linux.with_uv_deps \
-            --no-link \
-            --print-out-paths)
+          # The content-hash tag is write-once: the first build to publish a
+          # given closure hash is canonical, and the published bytes are what
+          # consumers pull and what verify runs against. Resolving that hash is
+          # a pure evaluation, so ask the registry before building -- on a hit
+          # there is nothing to publish, and building only to discard the result
+          # costs hours. It also means the image is never compared against a
+          # local rebuild, which the Nix image build could not match anyway: it
+          # is not bit-reproducible, so identical closures differ byte for byte.
           image_hash=$(nix eval --raw .#containerHashes.with_uv_deps)
           echo "image_hash=${image_hash}" >> "$GITHUB_OUTPUT"
 
           registry_ref="${REGISTRY_IMAGE}:${image_hash}"
 
-          # The content-hash tag is write-once: the first build to publish a
-          # given closure hash is canonical, and a later build of the same hash
-          # reuses it rather than overwriting it. The Nix image build is not
-          # bit-reproducible, so a rebuilt archive can differ byte-for-byte from
-          # the published image while denoting the same closure. Reuse the
-          # published bytes -- which consumers already pull and which verify runs
-          # against -- and never push over them.
-          if remote_digest=$(skopeo inspect --insecure-policy \
+          if digest=$(skopeo inspect --insecure-policy \
               --format '{{.Digest}}' "docker://${registry_ref}" 2>/dev/null); then
-            local_digest=$(skopeo inspect --insecure-policy \
-              --format '{{.Digest}}' "docker-archive:${archive}")
-            if [ "${remote_digest}" = "${local_digest}" ]; then
-              echo "already published (identical bytes): ${registry_ref}"
-            else
-              echo "::notice::${registry_ref} already published as ${remote_digest};" \
-                   "reusing it (local rebuild ${local_digest} differs: the image" \
-                   "build is not bit-reproducible)"
-            fi
-            digest="${remote_digest}"
+            echo "already published: ${registry_ref} (${digest}); skipping the build"
           else
+            archive=$(nix build \
+              .#dockerContainers.x86_64-linux.with_uv_deps \
+              --no-link \
+              --print-out-paths)
             # docker-archive reads the gzip archive; skopeo relays its compressed
             # layers to the registry without unpacking them to disk. --digestfile
             # records the digest of the manifest it actually pushed.
