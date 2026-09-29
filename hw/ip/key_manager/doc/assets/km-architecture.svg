@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="934" viewBox="0 0 1040 934" role="img" aria-labelledby="title desc">
 <title id="title">Key Manager architecture</title>
-<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core with its PCPI CRC unit, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_mailbox, u_drbg_sampler and u_kpv, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller through an address remap. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The SEP host reaches u_mailbox through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream, u_kpv receives wipe_state_i, and u_cpu drives unrecoverable_err_o. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i and scan_rst_ni into the cold and warm resets of every instance.</desc>
+<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_mailbox, u_drbg_sampler and u_kpv, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller through an address remap. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The SEP host reaches u_mailbox through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream, u_kpv receives wipe_state_i, and u_cpu drives unrecoverable_err_o. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i and scan_rst_ni into the cold and warm resets of every instance.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -94,7 +94,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="410" y="178" text-anchor="middle">scramble, parity</text>
 <rect class="core" x="225" y="198" width="240" height="56" rx="6"/>
 <text class="bs" x="345" y="221" text-anchor="middle">u_picorv32</text>
-<text class="s" x="345" y="240" text-anchor="middle">RV32EMC, PCPI CRC unit</text>
+<text class="s" x="345" y="240" text-anchor="middle">RV32EMC</text>
 <text class="bs" x="222" y="287" text-anchor="start">u_cpu</text>
 <text class="s" x="272" y="287" text-anchor="start">picorv32_wrapper</text>
 <path class="sig" d="M280,79 L280,138"/>
@@ -136,11 +136,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M210,410 L14,410"/>
 <text class="s" x="14" y="404" text-anchor="start">recoverable_err_o</text>
 <path class="axi" d="M22,480 L198,480"/>
-<text class="s" x="14" y="472" text-anchor="start">mbox_sep_req_i</text>
+<text class="s" x="14" y="456" text-anchor="start">mbox_sep_req_i,</text>
+<text class="s" x="14" y="472" text-anchor="start">mbox_sep_resp_o</text>
 <path class="sigo" d="M210,510 L14,510"/>
 <text class="s" x="14" y="504" text-anchor="start">mbox_irq_to_sep_o</text>
 <path class="axi" d="M22,590 L198,590"/>
-<text class="s" x="14" y="582" text-anchor="start">drbg_axis_req_i</text>
+<text class="s" x="14" y="566" text-anchor="start">drbg_axis_req_i,</text>
+<text class="s" x="14" y="582" text-anchor="start">drbg_axis_resp_o</text>
 <path class="sigo" d="M10,668 L206,668"/>
 <text class="s" x="14" y="662" text-anchor="start">wipe_state_i</text>
 <rect class="core" x="210" y="726" width="220" height="86" rx="6"/>
@@ -162,33 +164,34 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="950" y="237" text-anchor="middle">Adams Bridge</text>
 <text class="s" x="950" y="254" text-anchor="middle">key CSRs</text>
 <path class="axi" d="M642,240 L858,240"/>
-<text class="s" x="750" y="233" text-anchor="middle">abr_req_o</text>
+<text class="s" x="750" y="233" text-anchor="middle">abr_req_o, abr_resp_i</text>
 <rect class="external" x="870" y="278" width="160" height="44" rx="6"/>
 <text class="bs" x="950" y="297" text-anchor="middle">OTBN</text>
 <text class="s" x="950" y="314" text-anchor="middle">key CSRs</text>
 <path class="axi" d="M642,300 L858,300"/>
-<text class="s" x="750" y="293" text-anchor="middle">otbn_req_o</text>
+<text class="s" x="750" y="293" text-anchor="middle">otbn_req_o, otbn_resp_i</text>
 <rect class="external" x="870" y="338" width="160" height="44" rx="6"/>
 <text class="bs" x="950" y="357" text-anchor="middle">AES</text>
 <text class="s" x="950" y="374" text-anchor="middle">key CSRs</text>
 <path class="axi" d="M642,360 L858,360"/>
-<text class="s" x="750" y="353" text-anchor="middle">aes_req_o</text>
+<text class="s" x="750" y="353" text-anchor="middle">aes_req_o, aes_resp_i</text>
 <rect class="external" x="870" y="398" width="160" height="44" rx="6"/>
 <text class="bs" x="950" y="417" text-anchor="middle">KMAC</text>
 <text class="s" x="950" y="434" text-anchor="middle">key CSRs</text>
 <path class="axi" d="M642,420 L858,420"/>
-<text class="s" x="750" y="413" text-anchor="middle">kmac_req_o</text>
+<text class="s" x="750" y="413" text-anchor="middle">kmac_req_o, kmac_resp_i</text>
 <rect class="external" x="870" y="458" width="160" height="44" rx="6"/>
 <text class="bs" x="950" y="477" text-anchor="middle">HMAC</text>
 <text class="s" x="950" y="494" text-anchor="middle">key CSRs</text>
 <path class="axi" d="M642,480 L858,480"/>
-<text class="s" x="750" y="473" text-anchor="middle">hmac_req_o</text>
-<rect class="fabric" x="680" y="545" width="96" height="50" rx="6"/>
-<text class="s" x="728" y="567" text-anchor="middle">addr[31:12]</text>
-<text class="s" x="728" y="584" text-anchor="middle">remap</text>
-<path class="axi" d="M642,570 L668,570"/>
-<path class="axi" d="M788,570 L858,570"/>
-<text class="s" x="823" y="591" text-anchor="middle">efuse_req_o</text>
+<text class="s" x="750" y="473" text-anchor="middle">hmac_req_o, hmac_resp_i</text>
+<rect class="fabric" x="664" y="545" width="84" height="50" rx="6"/>
+<text class="s" x="706" y="567" text-anchor="middle">addr[31:12]</text>
+<text class="s" x="706" y="584" text-anchor="middle">remap</text>
+<path class="axi" d="M642,570 L664,570"/>
+<path class="axi" d="M748,570 L858,570"/>
+<text class="s" x="803" y="591" text-anchor="middle">efuse_req_o,</text>
+<text class="s" x="803" y="607" text-anchor="middle">efuse_resp_i</text>
 <rect class="external" x="870" y="548" width="160" height="44" rx="6"/>
 <text class="bs" x="950" y="567" text-anchor="middle">SEP eFuse</text>
 <text class="s" x="950" y="584" text-anchor="middle">controller</text>
