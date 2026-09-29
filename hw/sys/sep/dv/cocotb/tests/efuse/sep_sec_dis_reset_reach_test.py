@@ -22,7 +22,8 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import RisingEdge, Timer
+from cocotb.handle import Immediate
+from cocotb.triggers import ReadWrite, RisingEdge, Timer
 from env.sep_axi_agent import SepAxiOp
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected
 from sep_base_test import sep_base_test
@@ -126,7 +127,9 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         dut.jtag_ic_reset_rst_n_i.value = 1
         dut.jtag_ic_reset_trst_n_i.value = 1
         await Timer(5, unit="ns")
-        dut.jtag_ic_reset_tdr_en_i.value = 1
+        # A queued deposit on this input is not the value a later read returns.
+        dut.jtag_ic_reset_tdr_en_i.value = Immediate(1)
+        await ReadWrite()
 
     @staticmethod
     def _pack(*, enable_port: int | None) -> int:
