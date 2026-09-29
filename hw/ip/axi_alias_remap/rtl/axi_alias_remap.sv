@@ -4,11 +4,11 @@
 // Remap AXI addresses that hit configured alias regions onto their target bases.
 //
 // Each remap_regions_i entry supplies a valid bit, a region_start and exclusive region_end
-// bound, an offset, and a cacheable bit. The module is combinational. When AW or AR hits
+// bound, an offset, and a cacheable field. The module is combinational. When AW or AR hits
 // valid regions, the lowest-numbered one applies: a carry-select adder adds its offset to the
 // address bits from ALIAS_REMAP_IDX_START upward, modulo their width, the bits below pass
-// through, and every AxCACHE bit takes the region's cacheable value. Misses pass through
-// unchanged, and all other channels are wired straight through.
+// through, and AxCACHE is replaced by the region's cacheable value, bit for bit. Misses pass
+// through unchanged, and all other channels are wired straight through.
 
 module axi_alias_remap #(
   parameter type          axi_req_t                       = logic, // AXI request channel type.
@@ -59,7 +59,7 @@ module axi_alias_remap #(
 
   remap_addr_t aw_addr_modified, ar_addr_modified;
   addr_t aw_remapped_addr, ar_remapped_addr;
-  logic aw_remapped_cacheable, ar_remapped_cacheable;
+  axi_pkg::cache_t aw_remapped_cacheable, ar_remapped_cacheable;
 
   // Check if access is within a valid remap region
   always_comb begin
@@ -134,7 +134,7 @@ module axi_alias_remap #(
   assign axi_out_req_o.aw.size    = axi_in_req_i.aw.size;
   assign axi_out_req_o.aw.burst   = axi_in_req_i.aw.burst;
   assign axi_out_req_o.aw.lock    = axi_in_req_i.aw.lock;
-  assign axi_out_req_o.aw.cache   = no_write_hit ? axi_in_req_i.aw.cache : {(axi_pkg::CacheWidth){aw_remapped_cacheable}};
+  assign axi_out_req_o.aw.cache   = no_write_hit ? axi_in_req_i.aw.cache : aw_remapped_cacheable;
   assign axi_out_req_o.aw.prot    = axi_in_req_i.aw.prot;
   assign axi_out_req_o.aw.qos     = axi_in_req_i.aw.qos;
   assign axi_out_req_o.aw.region  = axi_in_req_i.aw.region;
@@ -159,7 +159,7 @@ module axi_alias_remap #(
   assign axi_out_req_o.ar.size    = axi_in_req_i.ar.size;
   assign axi_out_req_o.ar.burst   = axi_in_req_i.ar.burst;
   assign axi_out_req_o.ar.lock    = axi_in_req_i.ar.lock;
-  assign axi_out_req_o.ar.cache   = no_read_hit ? axi_in_req_i.ar.cache : {(axi_pkg::CacheWidth){ar_remapped_cacheable}};
+  assign axi_out_req_o.ar.cache   = no_read_hit ? axi_in_req_i.ar.cache : ar_remapped_cacheable;
   assign axi_out_req_o.ar.prot    = axi_in_req_i.ar.prot;
   assign axi_out_req_o.ar.qos     = axi_in_req_i.ar.qos;
   assign axi_out_req_o.ar.region  = axi_in_req_i.ar.region;
