@@ -1258,7 +1258,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |CHK-KM-MEM
 |SRAM word 0 holds the image's marker within a fixed cycle bound after release. The KM ROM request count, the KM SRAM request count and the KM SRAM write count are each non-zero, and word 0 holds exactly the marker the image stores last. A processor held in reset fetches nothing and fails.
 |CHK-KM-SRAM-SCR-RT
-|Four consecutive loads of four different SRAM words, each written with a different plaintext through the enabled scrambler, return exactly those plaintexts (SRAM words 1..4). At least four SRAM reads are accepted while the KMCSR scrambler enable is set, so the loads went through the descrambler. The scrambler tweaks its key with the word address (`hw/ip/scrambler/doc/architecture.adoc`, Address Tweaking), so a response descrambled with another read's address returns a different word and fails the compare.
+|Four consecutive loads of four different SRAM words, each written with a different plaintext through the enabled scrambler, return exactly those plaintexts (SRAM words 1..4). At least four SRAM reads are accepted while the KMCSR scrambler enable is set, so the loads went through the descrambler. The scrambler tweaks its key with the word address (`hw/ip/scrambler/doc/architecture.adoc`, Address Tweaking), so a response descrambled with another read's address returns a different word and fails the compare. On this image no response arrives in the same cycle as a new accepted read of a different address (the logged back-to-back count), so a descramble that takes the address at response time instead of at accept is not exercised.
 |CHK-KM-SRAM-SCR-STORED
 |With the scrambler enabled, "all write data transactions will have both the address and data scrambled" (`hw/ip/scrambler/doc/architecture.adoc`). The tb_top scrambled-write monitor keeps the physical word address and data of each KM SRAM write accepted at the wrapper port while the scrambler enable is set, and the macro array word at each kept address. Exactly the four plaintext stores are kept. They reach four different physical rows, and not every row is its logical word (`0x40`, `0x41`, `0xffe`, `0x1fff`). No kept write carries one of the four plaintexts, and the array word at each kept row equals the kept data, so the check reads the rows the stores reached. No probed SRAM word (words 0..97) other than the result words 1..4 holds a plaintext. A scrambler that passes the data through writes a plaintext and fails.
 |===
@@ -1267,7 +1267,7 @@ The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM S
 
 *Evidence*: `CHK-KM-MEM`, `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are each their own record (`cocotb/tests/km/sep_km_mem_smoke_test.py`); `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), and the scrambled-store rows come from the scrambled-write monitor (`km_sram_scr_wr_*_o`): observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets, the KM scrambler enable and the macro array.
 
-*Not claimed*: a KM SRAM read latency. No specification states it; the test logs the measured value. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
+*Not claimed*: a KM SRAM read latency. No specification states it; the test logs the measured value. The descramble address under back-to-back reads of different words: this image produces none. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -7846,6 +7846,7 @@ the wipe security contract.
 . The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_slverr_test>> for the clear-then-poll rule of each row).
 . Control: a KM load from the Reserved ROM-growth row (ROM base + ROM size) of the `key_manager.rdl` memory-map summary.
 . The image loads from, then stores a fixed value to, the first word after the MMR aperture.
+. Control: the image loads from the mapped `OTP_EFUSE_MMR` `SEC_DISABLE_TOKEN_MATCH` register in the same OTP window.
 . The host reads `EFUSE_BANK_INIT_TIME` again on its SEP-side window.
 
 *Checkers*:
@@ -7859,6 +7860,8 @@ the wipe security contract.
 |Control. The host read of `EFUSE_BANK_INIT_TIME` is OKAY at its RDL reset, and the seeded value the host writes reads back, so the no-alias rows below can fail.
 |CHK-KM-DECERR-LIVE
 |Control. A KM load from the Reserved ROM-growth row sets `IRQ_STATUS.AXI_DECERR`, so the bit and the image's poll work.
+|CHK-KM-OTP-WINDOW-LIVE
+|Control. A KM load from the mapped `OTP_EFUSE_MMR` `SEC_DISABLE_TOKEN_MATCH` register sets no AXI error bit, so the OTP window answers a mapped offset and a SLVERR below is about the offset past the MMR aperture.
 |CHK-KM-OTP-SHIM-EXCLUDED
 |The KM load and the KM store each set `AXI_SLVERR` and not `AXI_DECERR`; the load does not return the host value; the shim register still holds the host value after the KM store. All four observations are logged before the verdict. The accesses reach the shim, so this checker fails.
 |===

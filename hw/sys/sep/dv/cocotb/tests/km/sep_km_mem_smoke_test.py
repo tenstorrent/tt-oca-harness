@@ -18,7 +18,11 @@ Checkers:
                      is set, so the loads go through the descrambler.
                      km_sram_interface descrambles a response with the address
                      of the read it accepted; a descramble with the address of
-                     the previous read returns a different word
+                     the previous read returns a different word. This image
+                     issues no read in the same cycle as a response to a read
+                     of a different word (KM-SRAM-RD-LAT logs that count), so
+                     a descramble that takes the address at response time is
+                     not exercised here
   CHK-KM-SRAM-SCR-STORED
                      with the scrambler enabled, a store does not leave its
                      plaintext in the SRAM array. The scrambler moves the

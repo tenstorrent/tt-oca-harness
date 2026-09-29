@@ -47,9 +47,11 @@ W_OTP_RD_DATA = 10
 W_OTP_RD_IRQ = 11
 W_OTP_WR_CLEAN = 12
 W_OTP_WR_IRQ = 13
-W_VROM_CLEAN = 14
-W_VROM_DATA = 15
-W_VROM_IRQ = 16
+W_OTP_OK_CLEAN = 14
+W_OTP_OK_IRQ = 15
+W_VROM_CLEAN = 16
+W_VROM_DATA = 17
+W_VROM_IRQ = 18
 DUMP_WORDS = W_VROM_IRQ + 1
 
 # Stimulus constants the image carries. They are what the image stores, not

@@ -26,9 +26,11 @@
 #      it again.
 #   4. OTP window past the MMR aperture: load from, then store to, the first
 #      word of the Reserved rows after OTP_EFUSE_MMR's 0x100-byte aperture.
-#   5. Store PRE_MARKER to KM SRAM word 0 (the km_sram_word0_o probe). Every
+#   5. OKAY control in the same OTP window: load from the mapped
+#      OTP_EFUSE_MMR SEC_DISABLE_TOKEN_MATCH register.
+#   6. Store PRE_MARKER to KM SRAM word 0 (the km_sram_word0_o probe). Every
 #      dump word above is complete when the host sees it.
-#   6. Load from the testbench virtual ROM base, store the data and the
+#   7. Load from the VROM base, store the data and the
 #      polled IRQ_STATUS, then store POST_MARKER to KM SRAM word 0.
 #
 # Build (output committed as ../km_rom_bus_err.parhex):
@@ -77,9 +79,11 @@
     .equ W_OTP_RD_IRQ,   0x2C
     .equ W_OTP_WR_CLEAN, 0x30
     .equ W_OTP_WR_IRQ,   0x34
-    .equ W_VROM_CLEAN,   0x38
-    .equ W_VROM_DATA,    0x3C
-    .equ W_VROM_IRQ,     0x40
+    .equ W_OTP_OK_CLEAN, 0x38
+    .equ W_OTP_OK_IRQ,   0x3C
+    .equ W_VROM_CLEAN,   0x40
+    .equ W_VROM_DATA,    0x44
+    .equ W_VROM_IRQ,     0x48
 
     .equ PRE_MARKER,     0xB0E1A000
     .equ POST_MARKER,    0xB0E1A0FF
@@ -151,13 +155,22 @@ _start:
     jal   x13, irq_poll
     sw    x5, W_OTP_WR_IRQ(x2)
 
-    # 5. Every dump word above is written.
+    # 5. OKAY control in the OTP window: a mapped MMR register.
+    jal   x13, irq_clean
+    sw    x5, W_OTP_OK_CLEAN(x2)
+    li    x3, KEY_MANAGER_OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR
+    lw    x6, 0(x3)
+    li    x7, IRQ_AXI_ERR
+    jal   x13, irq_poll
+    sw    x5, W_OTP_OK_IRQ(x2)
+
+    # 6. Every dump word above is written.
     jal   x13, irq_clean
     sw    x5, W_VROM_CLEAN(x2)
     li    x6, PRE_MARKER
     sw    x6, W_MARKER(x2)
 
-    # 6. Testbench virtual ROM load.
+    # 7. VROM load.
     li    x3, VROM_BASE
     lw    x6, 0(x3)
     sw    x6, W_VROM_DATA(x2)

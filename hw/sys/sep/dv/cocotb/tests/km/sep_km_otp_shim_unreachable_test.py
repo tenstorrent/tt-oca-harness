@@ -23,6 +23,9 @@ The KM image loads from, then stores OTP_WR_VALUE to, the first word after the
                           there reads back.
   CHK-KM-DECERR-LIVE      control: a KM load from the Reserved ROM-growth row
                           sets AXI_DECERR, so the bit and the image's poll work.
+  CHK-KM-OTP-WINDOW-LIVE  control: a KM load from the mapped OTP_EFUSE_MMR
+                          SEC_DISABLE_TOKEN_MATCH register sets no AXI error
+                          bit, so the window does not refuse every offset.
   CHK-KM-OTP-SHIM-EXCLUDED
                           the KM load and the KM store each set AXI_SLVERR
                           and not AXI_DECERR; the load does not return the shim
@@ -45,6 +48,8 @@ from seq_lib.sep_km_bus_err_seq import (
     OTP_WR_VALUE,
     W_DEC_CLEAN,
     W_DEC_IRQ,
+    W_OTP_OK_CLEAN,
+    W_OTP_OK_IRQ,
     W_OTP_RD_CLEAN,
     W_OTP_RD_DATA,
     W_OTP_RD_IRQ,
@@ -69,6 +74,7 @@ class sep_km_otp_shim_unreachable_test(sep_base_test):
     required_evidence = (
         "CHK-KM-SHIM-HOST-PATH",
         "CHK-KM-DECERR-LIVE",
+        "CHK-KM-OTP-WINDOW-LIVE",
         "CHK-KM-OTP-SHIM-EXCLUDED",
     )
 
@@ -134,6 +140,22 @@ class sep_km_otp_shim_unreachable_test(sep_base_test):
             "CHK-KM-DECERR-LIVE PASS: load from the Reserved ROM-growth row set "
             "IRQ_STATUS.AXI_DECERR (IRQ_STATUS=0x%08x)",
             dec,
+        )
+
+        img.require_clean(
+            words, W_OTP_OK_CLEAN, "the OTP MMR register load", "CHK-KM-OTP-WINDOW-LIVE"
+        )
+        ok = words[W_OTP_OK_IRQ]
+        assert ok & IRQ_AXI_ERR == 0, (
+            f"CHK-KM-OTP-WINDOW-LIVE FAIL: IRQ_STATUS=0x{ok:08x} ({irq_names(ok)}) after "
+            "a KM load from the mapped OTP_EFUSE_MMR SEC_DISABLE_TOKEN_MATCH register; "
+            "the OTP window refuses a mapped offset, so a SLVERR below would not be about "
+            "the offset past the MMR aperture"
+        )
+        self.logger.info(
+            "CHK-KM-OTP-WINDOW-LIVE PASS: KM load from the mapped OTP_EFUSE_MMR "
+            "SEC_DISABLE_TOKEN_MATCH register set no AXI error bit (IRQ_STATUS=0x%08x)",
+            ok,
         )
 
         img.require_clean(words, W_OTP_RD_CLEAN, "the OTP load", "CHK-KM-OTP-SHIM-EXCLUDED")
