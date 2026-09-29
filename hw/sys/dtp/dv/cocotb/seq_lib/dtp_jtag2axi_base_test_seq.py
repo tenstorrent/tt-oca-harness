@@ -1601,10 +1601,13 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         data: int,
         *,
         size: int,
+        target: str,
         increment: int | None = None,
         back_to_rti: bool = False,
     ) -> tuple[int, int]:
-        value, width = pack_series_data(data, size, increment=increment)
+        value, width = pack_series_data(
+            data, size, increment=increment, target=self.target_cfg(target)
+        )
         await self.load_ir(instr, back_to_rti=True)
         item = await self.shift_dr(value, width, back_to_rti=back_to_rti)
         for _ in range(5):
@@ -1624,6 +1627,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             cfg.series_data_incr_instr,
             data,
             size=size,
+            target=target,
             back_to_rti=back_to_rti,
         )
         return result
@@ -1641,6 +1645,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             cfg.series_data_no_incr_instr,
             data,
             size=size,
+            target=target,
             back_to_rti=back_to_rti,
         )
         return result
@@ -1659,10 +1664,11 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             cfg.series_data_with_status_instr,
             data,
             size=size,
+            target=target,
             increment=increment,
             back_to_rti=back_to_rti,
         )
-        return unpack_series_data(result, size, with_status=True)
+        return unpack_series_data(result, size, with_status=True, target=cfg)
 
     # --- plain series beats -----------------------------------------------------
     async def series_write_beat(
@@ -1674,8 +1680,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         judges the request (CHK-J2A-BUS-REQ) and the subordinate must hold
         ``data`` at ``addr`` (CHK-AXI-WMEM).
         """
-        payload = data & self.data_mask(size)
-        lane = addr % self.target_cfg(target).beat_bytes
+        cfg = self.target_cfg(target)
+        eff = cfg.axsize(size)
+        payload = data & self.data_mask(eff)
+        lane = addr % cfg.beat_bytes
         completed = self.port_history(target).count(read=False)
         before = await self.target_activity_counts(target)
         if increment:
@@ -1691,12 +1699,12 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             target,
             read=False,
             addr=addr,
-            size=size,
+            size=eff,
             context=context,
             data=payload << (8 * lane),
-            wstrb=self.full_wstrb(size) << lane,
+            wstrb=self.full_wstrb(eff) << lane,
         )
-        self.check_target_word(target, addr, payload, size=size, context=f"{context}.mem")
+        self.check_target_word(target, addr, payload, size=eff, context=f"{context}.mem")
 
     async def series_read_beat(
         self, target: str, *, addr: int, size: int, increment: bool, context: str
@@ -1717,9 +1725,12 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         )
         if not await self.wait_port_completion(target, read=True, above=completed):
             raise AssertionError(f"{context}: {target} read did not complete")
-        await self.expect_bus_request(target, read=True, addr=addr, size=size, context=context)
+        cfg = self.target_cfg(target)
+        await self.expect_bus_request(
+            target, read=True, addr=addr, size=cfg.axsize(size), context=context
+        )
         raw = await shift(0, size=size, target=target, back_to_rti=True)
-        payload, _ = unpack_series_data(raw, size)
+        payload, _ = unpack_series_data(raw, size, target=cfg)
         return payload
 
     async def series_reread_fixed(
