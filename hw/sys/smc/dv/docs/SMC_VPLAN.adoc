@@ -107,9 +107,10 @@ counted twice.
 |DUT |`--dut smc` → `smc_wrapper` under `smc_uvm_top`
 |Spec / plan |`hw/sys/smc/dv/docs/SMC_VPLAN.adoc` plus the groups
 `hw/sys/smc/dv/testlists/all.toml` resolves
-|Coverage intent |`hw/sys/smc/dv/docs/SMC_FCOV.adoc` (Python counters; no
-Verilator covergroup)
-|Checker |`SmcScoreboard` non-vacuous SAMPLE/AXI/VIP counts + `results.xml`
+|Coverage intent |`hw/sys/smc/dv/docs/SMC_FCOV.adoc`: the `cov/sv` cover
+properties in the `user` family, collected by `run_dv --dut smc --items
+hosted fw --tool verilator --cov`
+|Checker |The leaf's named `CHK-*` cocotb checkers on its card below + `results.xml`
 |CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `hosted`
 |===
 
@@ -135,8 +136,8 @@ is in `hosted` but not `smoke`, and receives no feature credit.
 [[smc-credit-rules]]
 ==== Credit rules
 
-* Feature credit requires active CSR/fabric/pin stimulus and a
-  non-vacuous `SmcScoreboard` count. SAMPLE-only bring-up stays in
+* Feature credit requires active CSR/fabric/pin stimulus and a named
+  `CHK-*` checker that can fail. SAMPLE-only bring-up stays in
   `hosted` (`smc_cold_reset_test` is also in `smoke`) and is not a
   requirement row.
 * `smc_i3c_to_fabric_test` is HCI_VERSION decode (`proxy=True`). It
@@ -156,34 +157,37 @@ is in `hosted` but not `smoke`, and receives no feature credit.
 ==== Matrix (feature-credit subset)
 
 Requirement IDs are the VPLAN TC rows or the canonical scenario those
-tests actually run. Coverage bins are the `hw/sys/smc/dv/docs/SMC_FCOV.adoc`
-families the scoreboard can hit; Verilator does not close SV covergroups.
+tests actually run. Coverage intent names the `cov/sv` collector modules and
+representative `user` cover points that measure the feature
+(`hw/sys/smc/dv/docs/SMC_FCOV.adoc`); which leaf reaches each point is the
+measured table in `hw/sys/smc/dv/docs/SMC_FCOV_OWNERS.adoc`. The covergroups
+under `ifndef VERILATOR` are the VCS `group` metric and are not part of it.
+Checker evidence names the cocotb `CHK-*` checkers on the leaf's card.
 
 The Groups column is resolved membership, not intent. Every feature-credit row
-below is in `all` and `hosted`, and every one but `smc_cpu_to_sep_axi_test` is
-the column names the feature groups that also carry it, so a
-reviewer can run one feature without the whole regression.
+below is in `all` and `hosted`; the column names the feature groups that also
+carry it, so a reviewer can run one feature without the whole regression.
 
 [cols="2,3,2,2,3,1",options="header",]
 |===
 |Requirement |Test |Feature groups besides `all` and its class |Coverage intent |Checker evidence |Credit
-|Reset / power-good bring-up |`smc_canonical_smoke_test` |combined, smoke |reset + combined SAMPLE |Scoreboard SAMPLE counts; `results.xml` |YES
-|SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |smoke |axil_csr |AXI readback vs expected; non-vacuous AXI |YES
-|Default / RO register read |`smc_default_reg_rd_test` |-- |axil_csr |AXI RO data match |YES
-|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |-- |mailbox |IRQ observe + mailbox CSR |YES
-|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |-- |fabric |AXI wr/rd on input+output windows |YES
-|Function-level reset |`smc_flr_sanity_test` |-- |reset |FLR then CSR recover |YES
-|I2C master/target active |`smc_i2c_master_target_test` |i2c |i2c (active, not SAMPLE-only) |I2C agent + scoreboard |YES
-|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |-- |jtag |JTAG VIP / CSR precheck |YES
-|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |-- |cpu_traffic |AXI to CPU_CTRL window |YES
-|eFuse / OTP clock observe |`smc_efuse_otp_clock_test` |-- |efuse_otp |Clock/CSR observe (not burn) |YES
-|GPIO IRQ active |`smc_gpio_irq_active_test` |gpio |gpio + interrupt |Active GPIO IRQ, not SAMPLE-only |YES
-|AVSBus / sideband smoke |`smc_sideband_protocol_smoke_test` |-- |avsbus |Sideband CSR/status |YES
-|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |-- |uart_spi (CSR; not loopback) |CSR window; protocol loopback is a P2 intake row |YES
-|Zeroer payload clear |`smc_zeroer_dma_timeout_test` |-- |zeroer datapath |Output-fabric responder readback of the zeroed region; CTRL_STATUS follows the zeroer (no timeout path is exercised) |YES
-|Outbound filter / remap |`smc_output_filter_remap_security_test` |-- |fabric filter |AXI filter/remap |YES
-|ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |-- |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
-|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |-- |reset |Scratch persist across reset classes |YES
+|Reset / power-good bring-up |`smc_canonical_smoke_test` |combined, smoke |`smc_reset_fcov` (`c_release_powergood_stable`, `c_release_primary_smc`, `c_reset_state_all_released`); `smc_rst_seq_fcov` (`c_powergood_rise_stretched`, `c_cold_reset_released_after_powergood`, `c_fabric_held_in_primary_reset`) |`CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT-PG_ASSERTED`, `CHK-RESET-WAIT-PG_RELEASED`, `CHK-RESET-WAIT-COLD_RELEASED`, `CHK-RESET-WAIT-COOL_RELEASED`; `results.xml` |YES
+|SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |smoke |`smc_map_fcov` (`c_scratch_write_readback`, `c_scratch_all_zeros`, `c_misc_wrap_decode`, `c_chip_config_read`) |`CHK-CSR-SCRATCH-RW-RESTORE` |YES
+|Default / RO register read |`smc_default_reg_rd_test` |-- |`smc_map_fcov` (`c_chip_config_read`, `c_misc_wrap_base_decodes`, `c_misc_wrap_decode`) |`CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` |YES
+|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |-- |`smc_periph_fcov` (`c_irq_mailbox`, `c_single_entry_message`, `c_mailbox_count_32`); `smc_map_fcov` (`c_mailbox_pair_0`, `c_mailbox_pair_31`, `c_mailbox_region`) |`CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-IN-RANGE`, `CHK-MAILBOX-IRQT-CLAMP` |YES
+|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |-- |`smc_map_fcov` (`c_config_reg_write`, `c_config_reg_read`, `c_base_config_read`, `c_inbound_entry_0`, `c_outbound_entry_0`) |`CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-NONVAC` |YES
+|Function-level reset |`smc_flr_sanity_test` |-- |`smc_iso_fcov` (`c_flr_isolate_enabled`, `c_flr_isolate_disabled`); `smc_reset_fcov` (`c_reset_op_flr_pf_active`, `c_reset_op_cool_from_flr`) |`CHK-FLR-COOL-CSR-RECOVERY` |YES
+|I2C master/target active |`smc_i2c_master_target_test` |i2c |`smc_periph_fcov` (`c_controller_write`, `c_controller_read`, `c_controller_repeated_start`, `c_i2c0_start_condition`, `c_i2c0_stop_condition`); `smc_clk_fcov` (`c_i2c_cg_open`, `c_i2c_cg_closed`) |`CHK-I2C0-HOST-WRITE`, `CHK-I2C0-HOST-REPEATED-START`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` |YES
+|iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |-- |`smc_map_fcov` (`c_jtag_axi_in_read`, `c_jtag_axi_in_write`); `smc_filt_fcov` (`c_jtag2axi_remapped`, `c_jtag2axi_filtered`); no point on the CPU TAP itself |`CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-SCAN-ACTIVITY` |YES
+|CPU-control / SEP_IN path |`smc_cpu_to_sep_axi_test` |-- |`smc_map_fcov` (`c_sep_axi_in_read`, `c_sep_axi_in_write`); `smc_cpu_fcov` (`c_cpu_to_sram_read`, `c_cpu_to_sram_write`, `c_mmio_write_peripheral`) |`CHK-CPU-BFM-OBSERVABILITY` |YES
+|eFuse / OTP clock observe |`smc_efuse_otp_clock_test` |-- |`smc_efuse_fcov` (`c_bank_ctrl_read`, `c_bank_ctrl_response_returned`, `c_shim_command_issued`, `c_shim_response_consumed`); `smc_map_fcov` (`c_efuse_shim_decodes`); `smc_fabric_fcov` (`c_axil_efuse_bank_active`) |`CHK-EFUSE-OTP-CSR`, `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` |YES
+|GPIO IRQ active |`smc_gpio_irq_active_test` |gpio |`smc_gpio_fcov` (`c_pad_output_low`, `c_per_instance_default_matches_map`); `smc_periph_fcov` (`c_irq_gpio`, `c_gpio_output_value_driven`, `c_gpio_core2pad_active`) |`CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK` |YES
+|AVSBus / sideband smoke |`smc_sideband_protocol_smoke_test` |-- |`smc_map_fcov` (`c_avsbus_decode`, `c_avsbus_aperture_decode`); `smc_periph_fcov` (`c_irq_avsbus`); `smc_clk_domain_fcov` (`c_avsbus_on_clk_periph`) |`CHK-AVS-SLAVE-STATUS`, `CHK-AVS-NORMAL-STATUS`, `CHK-AVS-FIFOS-STATUS`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C` |YES
+|UART/SPI/log-engine CSR |`smc_uart_spi_log_engine_test` |-- |`smc_map_fcov` (`c_uart_decode`, `c_uart_instance_0`); `smc_periph_fcov` (`c_tx_single_char`, `c_tx_multi_char`, `c_irq_uart`); `smc_clk_domain_fcov` (`c_uart_on_clk_periph`); CSR, not loopback |`CHK-UART-LOG-COUNT`, `CHK-UART-LOG-UART_LSR`, `CHK-UART-LOG-UART_IIR`, `CHK-UART-LOG-LOG_ENGINE_CTRL`, `CHK-UART-MSR-FIRST`, `CHK-UART-MSR-DELTA-CLEAR`; protocol loopback is a P2 intake row |YES
+|Zeroer payload clear |`smc_zeroer_dma_timeout_test` |-- |`smc_zeroer_fcov` (`c_trigger_write_starts_operation`, `c_busy_set_on_start`, `c_every_beat_is_zero`, `c_busy_cleared_on_completion`, `c_completion_status_updated`) |`CHK-ZEROER-TRIGGER-STARTS`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-LIFECYCLE`, `CHK-ZEROER-CTRL-STATUS` (no timeout path is exercised) |YES
+|Outbound filter / remap |`smc_output_filter_remap_security_test` |-- |`smc_filt_fcov` (`c_awprot_exact_match`, `c_arprot_one_bit_off`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`); `smc_map_fcov` (`c_outbound_entry_0`, `c_inbound_entry_0`) |`CHK-OUTBOUND-PASS-ALL`, `CHK-OUTBOUND-BLOCK-WRITE`, `CHK-NONVAC-PHASE-FENCE` |YES
+|ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |-- |`smc_map_fcov` (`c_dfx_status_decode`, `c_ndm_reset_block_decode`, `c_cla_decode`, `c_cla_region`); `smc_cpu_fcov` (`c_custom_action_output_driven`); no ECC point |`CHK-DIAG-CSR-DFX_DEBUG_CTRL`, `CHK-DIAG-CSR-DFX_DEBUG_BUS_MUX`, `CHK-DIAG-CSR-NDMRESET_PROCESS`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO`; fault-inject is deferred |YES
+|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |-- |`smc_reset_fcov` (`c_reset_op_warm_asserted`, `c_reset_op_cool_asserted`, `c_release_warm_smc`); `smc_iso_fcov` (`c_warm_from_internal_wdt`, `c_warm_from_external_wdt`); `smc_rst_seq_fcov` (`c_warm_cascaded_from_primary`) |`CHK-MULTI-RESET-CSR-SWEEP`, `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-RELEASED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-CSR-POST-COOL-RECOVERY` |YES
 |I3C window decode |`smc_i3c_to_fabric_test` |-- |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
 |PLL/PVT clock config |none; `smc_pll_pvt_clock_config_test` is dispositioned in <<smc-deferred-disposition>> |none |macro handshake |OKAY+0 wrap |NO
 |I3C CCC/IBI |none; `smc_i3c_ccc_ibi_full_test` is dispositioned in <<smc-deferred-disposition>> |none |— |child I3C TB |NO
@@ -8578,6 +8582,9 @@ Drive `smc_cpu_l2_read_wedge_test_seq`. Each checker below is a named compare th
 |===
 
 *Pass Criteria*: all five checkers hold. Enrolled in: `all`, `hosted`, `cpu`.
+The leaf passes `+smc_front_port_r_arb_assertoff`, which holds off the
+front-port R arbiter's request-stability assertions for this leaf only; the
+withdrawal they would report is recorded under <<smc-known-limitations,Known Limitations>>.
 
 '''''
 
@@ -11818,7 +11825,7 @@ checked by inverting one assertion. `--validate-configs` then lists
 |Group |Meaning
 |`smoke` |CI gate on every pull request and push (`sim.yml`): three toolchain-free bring-up leaves
 |`all` |Every test this plan grades and the coverage set: `hosted` + `fw` + `dual`, no overlap, nothing left over; `expected_count` is the membership gate
-|`hosted` |Toolchain-free class of `all`, single-instance model; the nightly and weekly tiers on the hosted runners, three seeds per leaf
+|`hosted` |Toolchain-free class of `all`, single-instance model; the nightly and weekly tiers on the hosted runners, one seed per leaf (`reseed: 1` in `regress.yml`)
 |`fw` |Firmware class of `all`: the fifteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
 |`dual` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
 |`axil`, `clock`, `combined`, `cpu`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
@@ -11864,18 +11871,23 @@ runs, and why, are recorded in <<smc-deferred-disposition>>.
 |===
 |Tier |Command |Seeds |Blocks
 |PR |`--dut smc --tool verilator --items smoke` |1 |PR merge (`sim.yml`)
-|Nightly |`--dut smc --tool verilator --items hosted` |3 |Release qualification (`regress.yml`)
-|Weekly |`--dut smc --tool verilator --items hosted` |3 |Coverage / dashboard; same group
+|Nightly |`--dut smc --tool verilator --items hosted` |1 |Release qualification (`regress.yml`)
+|Weekly |`--dut smc --tool verilator --items hosted` |1 |Dashboard (`dashboard.yml`); same group, no coverage (`coverage: false` in `regress.yml`)
 |===
 
 Group sizes are the `expected_count` guards: `all` and `hosted` in
 `hw/sys/smc/dv/testlists/all.toml`.
 
+No scheduled tier collects coverage: every SMC row of `regress.yml` carries
+`coverage: false`. The coverage run of record is a developer or self-hosted
+`run_dv --dut smc --items hosted fw --tool verilator --cov`, as
+`SMC_FCOV.adoc` states.
+
 [[smc-release-credit]]
 ===== Credit versus the CI group
 
 `smoke` and `hosted` are debug breadth. Feature credit is the SCOPE YES rows,
-not every SAMPLE observe name in the group. `smc_i3c_to_fabric_test` is
+not every leaf in the group. `smc_i3c_to_fabric_test` is
 HCI_VERSION decode (`proxy=True`) and is not in `smoke`.
 
 The coverage gate is defined in `SMC_FCOV.adoc` (Coverage Policy); this chapter does
@@ -12032,6 +12044,7 @@ The cool-reset OUT names (`smc_cool_reset_from_primary_chiplet_test`,
 `smc_cool_reset_from_bmc_test`, `smc_cool_reset_x_cool_reset_test`) have rows
 in <<smc-deferred-disposition>>.
 
+[[smc-known-limitations]]
 === Known Limitations
 
 [cols=",,",options="header",]
@@ -12043,7 +12056,7 @@ in <<smc-deferred-disposition>>.
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Add a DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port: PRIORITY[1] accepts a write with OKAY and stores nothing, and the +2 MB context pages return non-OKAY. The measurement is recorded against `smc_cluster_plic_csr_test` in <<smc-deferred-disposition>>; the four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- need a write path. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
-|SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
+|Verilator does not implement SV covergroups |The covergroups under `ifndef VERILATOR` in `cov/sv/` are the VCS `group` metric; on Verilator, functional coverage is the `cov/sv` cover properties in the `user` family |See `SMC_FCOV.adoc`
 |A write queued right behind the write that locks a filter reaches `filter_ctrl` after `locked = 1` |`smc_filter_lock_window_test` shows it: of two writes queued behind the locking write, the first is answered OKAY and lands, the second is refused. The leaf runs weekly in `rtl_issue` under `expect_fail` |Gate the lock select after the AW spill in `smc_internal_regs.sv:306` and `:471`, or hold the next AW until the locking write's B; the leaf then moves to its feature testlist
 |`ISOLATE_REQ_SMC_REG` clears its FLR-latched request on any write with a byte enable anywhere in the register, whatever the data (`smc_cool_reset_wrap.sv:272-276`), where `reset_unit.rdl:130-135` makes the request a `sw = rw` field at bit 0 |`smc_isolate_req_smc_lane_test` shows it: a one-byte write of 0 at byte 1 clears the request. The leaf runs weekly in `rtl_issue` under `expect_fail` |Qualify the clear by bit 0's byte enable and a written 0; the leaf then moves to its feature testlist with the `ci` tag
 |`smc_state_fault_inject_test` reaches the illegal eFuse and Zeroer state encodings only by forcing the state flops through the `tb_*_state_inject` hooks in `tb_top` |The stimulus is a testbench force, not a product-port access. The leaf runs in `all` and `hosted` and scores the DUT's reaction over the CSRs, so its PASS is evidence for the fail-closed behaviour and not for the reachability of an illegal encoding from any port |Reach an illegal encoding from a product port, or accept the force as the only stimulus for this property, recorded here
@@ -12053,6 +12066,7 @@ in <<smc-deferred-disposition>>.
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 (#2121) |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description under #2121, then drop the admitted alternative so the two formats are held to one count
 |`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
+|A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`, #2449) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, and the leaf's five checkers are unchanged |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect. Re-arm the checks if force mode ever holds or flushes the beat under `ready`
 |===
 
 [[smc-held-out-testcases]]

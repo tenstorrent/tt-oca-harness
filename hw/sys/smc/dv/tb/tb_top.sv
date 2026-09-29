@@ -456,6 +456,21 @@ module smc_uvm_top
     end
 `endif
 
+    // The force-mode CPU reset withdraws the R beat the CPU is presenting to
+    // the front-port demux without `ready`
+    // (cocotb/seq_lib/README_cpu_isolate_flush.md), and the R arbiter's
+    // request-stability assertions report that withdrawal. Only the leaf that
+    // reaches the state on purpose asks for that arbiter's checks off; the
+    // scope is the one arbiter instance, so every other assertion stays armed.
+`ifndef VERILATOR
+    initial begin
+        if ($test$plusargs("smc_front_port_r_arb_assertoff")) begin
+            $assertoff(0, u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux
+                .i_demux_simple.genblk1.i_r_mux);
+        end
+    end
+`endif
+
     localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
     localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
 
@@ -3348,21 +3363,6 @@ module smc_uvm_top
 
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
-    assign tb_cpu_isolate_req       = 1'b0;
-    assign tb_cpu_drained           = 1'b0;
-    assign tb_cpu_reset_timeout     = 1'b0;
-    assign tb_cpu_reset_applied     = 1'b0;
-    assign tb_cpu_uncore_reset_n    = 1'b0;
-    assign tb_cpu_l2_isolated       = 1'b0;
-    assign tb_cpu_l2_pending_aw     = '0;
-    assign tb_cpu_l2_pending_w      = '0;
-    assign tb_cpu_l2_pending_ar     = '0;
-    assign tb_cpu_l2_flush_active   = 1'b0;
-    assign tb_cpu_mmio_isolated     = 1'b0;
-    assign tb_cpu_mmio_pending_aw   = '0;
-    assign tb_cpu_mmio_pending_w    = '0;
-    assign tb_cpu_mmio_pending_ar   = '0;
-    assign tb_cpu_mmio_flush_active = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.

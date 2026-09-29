@@ -138,7 +138,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o` — observation-only unless listed as an inject exception
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o` — observation-only unless listed as an inject exception
 |===
 
 Exceptions (a closed set):
@@ -602,11 +602,11 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut sep --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 carry both implementations in their testlist `module` binding map
-(`module = { cocotb = "<module>", uvm = "<name>" }`); those without a `uvm`
-entry error at selection unless `--skip-unimplemented` is passed. The
-framework conventions and the bring-up walkthrough this realization follows
-are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
-reference benches are DTP and SMC.
+(`module = { cocotb = "<module>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework
+conventions and the bring-up walkthrough this realization follows are the
+shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the reference
+benches are DTP and SMC.
 
 There is exactly ONE testbench top module: `sep_uvm_top` in `tb/tb_top.sv`,
 shared between both realizations (<<sep-hdl-top>>). Under `UVM` the harness
@@ -692,7 +692,7 @@ PASSED` is emitted only in the base test's `report_phase` when the global
 UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
 
 `--framework uvm` selects this `uvm/` shape on VCS. How to invoke it, including
-`--skip-unimplemented` and `+SEP_CSR_SCOREBOARD_NEGATIVE`, is in `README.md`.
+`+SEP_CSR_SCOREBOARD_NEGATIVE`, is in `README.md`.
 
 To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
 `sep_base_test_seq` (operations through the `csr_*` wrappers or a new

@@ -1,4 +1,5 @@
-# Build SystemC and other dependencies of Virtual Platform
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   systemc,
   yq-go,

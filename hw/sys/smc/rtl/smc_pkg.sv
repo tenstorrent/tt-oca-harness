@@ -218,7 +218,7 @@ package smc_pkg;
     logic [AXI_ADDR_WIDTH-1:0] region_start;
     logic [AXI_ADDR_WIDTH-1:0] region_end;
     logic [AXI_ADDR_WIDTH-1:0] offset;
-    logic cacheable;
+    axi_pkg::cache_t cacheable;
     logic region_valid;
   } remap_region_t;
 

@@ -15,7 +15,7 @@
         <ipxact:displayName>SMC Top-Level Address Map</ipxact:displayName>
         <ipxact:description>Top-level SMC address map exposing the resources accessible to external agents.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'hc8013030</ipxact:range>
+        <ipxact:range>'hc8015000</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>
@@ -906,6 +906,192 @@ KEY reg must be written to before any other register in this addrmap can be writ
               </ipxact:resets>
               <ipxact:bitWidth>16</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>debug_module</ipxact:name>
+          <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
+          <ipxact:range>'h868</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>HALTED</ipxact:name>
+            <ipxact:addressOffset>'h100</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>GOING</ipxact:name>
+            <ipxact:addressOffset>'h104</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>RESUMING</ipxact:name>
+            <ipxact:addressOffset>'h108</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>EXCEPTION</ipxact:name>
+            <ipxact:addressOffset>'h10c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>WHERETO</ipxact:name>
+            <ipxact:addressOffset>'h300</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ABSTRACT</ipxact:name>
+            <ipxact:dim>5</ipxact:dim>
+            <ipxact:addressOffset>'h328</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Instruction generated by the Debug Module for the current abstract command.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PROGBUF</ipxact:name>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'h33c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Program buffer word shared with the debugger. Byte accesses are supported.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>IMPEBREAK</ipxact:name>
+            <ipxact:addressOffset>'h37c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Implicit EBREAK instruction following the program buffer.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h100073</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DATA</ipxact:name>
+            <ipxact:dim>4</ipxact:dim>
+            <ipxact:addressOffset>'h380</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Abstract command data word shared with the debugger. Byte accesses are supported.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>FLAGS</ipxact:name>
+            <ipxact:description>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</ipxact:description>
+            <ipxact:addressOffset>'h400</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>flags_0</ipxact:name>
+              <ipxact:description>Hart 0 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_1</ipxact:name>
+              <ipxact:description>Hart 1 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_2</ipxact:name>
+              <ipxact:description>Hart 2 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_3</ipxact:name>
+              <ipxact:description>Hart 3 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>24</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ROM</ipxact:name>
+            <ipxact:dim>26</ipxact:dim>
+            <ipxact:addressOffset>'h800</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
@@ -8702,14 +8888,14 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>cacheable</ipxact:name>
-                <ipxact:description>If set, top two bits of a*cache will be tied high</ipxact:description>
-                <ipxact:bitOffset>62</ipxact:bitOffset>
+                <ipxact:description>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</ipxact:description>
+                <ipxact:bitOffset>56</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:bitWidth>4</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
@@ -8910,7 +9096,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9088,7 +9278,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9150,7 +9344,11 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
         <ipxact:registerFile>
           <ipxact:name>smc_mailbox</ipxact:name>
           <ipxact:displayName>SMC AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
-          <ipxact:description>SMC-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.</ipxact:description>
+          <ipxact:description>SMC-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
           <ipxact:addressOffset>'hc0018000</ipxact:addressOffset>
           <ipxact:range>'h1f850</ipxact:range>
           <ipxact:registerFile>
@@ -42051,7 +42249,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>ResetOnTarget</ipxact:name>
-                <ipxact:description>When Counter = {upper_targe,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</ipxact:description>
+                <ipxact:description>When Counter = {upper_target,target}, reset to 0.  With this bit set, counter will provide a periodic tick w/ frequency of (target +1) if the action is set to Auto Incr. The periodic tick will continue till Stop Auto Incr or Clear Counter action.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42248,7 +42446,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h120</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42325,7 +42523,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42337,7 +42535,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42422,7 +42620,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h128</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42499,7 +42697,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42511,7 +42709,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42596,7 +42794,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h130</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42673,7 +42871,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42685,7 +42883,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42770,7 +42968,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h138</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -42847,7 +43045,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42859,7 +43057,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -42944,7 +43142,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h140</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43021,7 +43219,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43033,7 +43231,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43118,7 +43316,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h148</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43195,7 +43393,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43207,7 +43405,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43292,7 +43490,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap0</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h150</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43369,7 +43567,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43381,7 +43579,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43466,7 +43664,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap1</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h158</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -43543,7 +43741,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43555,7 +43753,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -43766,7 +43964,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgEapStatus</ipxact:name>
-              <ipxact:description>Register to indicate if EAP Pair was activated. Use the corresponding w2c register to reset the status. There are 2 bits for each EAP. The bit corresponds to action-0 and action-1 of the EAP. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
+              <ipxact:description>Register to indicate if an EAP was activated. There is one status bit per EAP in bits [15:0] (Node0Eap0..Node3Eap3, 4 EAPs per Node across 4 Nodes) and one write-to-clear bit per EAP in bits [47:32] (Node0Eap0W2C..Node3Eap3W2C); write the matching w2c bit to reset a status bit. The register is used by SW to know if an action was taken (ex: NMI ISR needs to know which of the EAP triggered the NMI)</ipxact:description>
               <ipxact:addressOffset>'h188</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44198,7 +44396,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>EnableCla</ipxact:name>
-                <ipxact:description>Set this bit to 1 to enable CLA. If this bit is set, CLA is clock gated (save pwr)</ipxact:description>
+                <ipxact:description>Set this bit to 1 to enable the CLA functional clock; clear it to 0 to gate that clock (save pwr). The CLA register block runs on a clock whose functional enable is tied high, so this bit can still be written while the functional clock is gated</ipxact:description>
                 <ipxact:bitOffset>6</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44258,7 +44456,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>ClaLock</ipxact:name>
-                <ipxact:description>If this bit is set, then CLA is locked and the enbale_cla is latched forever</ipxact:description>
+                <ipxact:description>If this bit is set, then CLA is locked and the enable_cla is latched forever</ipxact:description>
                 <ipxact:bitOffset>63</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44786,7 +44984,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h248</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -44863,7 +45061,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44875,7 +45073,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -44960,7 +45158,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode0Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h250</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45037,7 +45235,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45049,7 +45247,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45134,7 +45332,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h258</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45211,7 +45409,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45223,7 +45421,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45308,7 +45506,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode1Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h260</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45385,7 +45583,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45397,7 +45595,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45482,7 +45680,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h268</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45559,7 +45757,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45571,7 +45769,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45656,7 +45854,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode2Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h270</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45733,7 +45931,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45745,7 +45943,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45830,7 +46028,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap2</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h278</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -45907,7 +46105,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -45919,7 +46117,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46004,7 +46202,7 @@ reaches termination value.</ipxact:description>
             </ipxact:register>
             <ipxact:register>
               <ipxact:name>CDbgNode3Eap3</ipxact:name>
-              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of he 8 EAPs (4 EAPs per Node).</ipxact:description>
+              <ipxact:description>CLA Action(s) are tied to events(s) using &quot;event-action pairing&quot; registers. One of the 16 EAPs (4 EAPs per Node, 4 Nodes).</ipxact:description>
               <ipxact:addressOffset>'h280</ipxact:addressOffset>
               <ipxact:size>64</ipxact:size>
               <ipxact:field>
@@ -46081,7 +46279,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction0</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>28</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -46093,7 +46291,7 @@ reaches termination value.</ipxact:description>
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>CustomAction1</ipxact:name>
-                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specifc action for a given bit.</ipxact:description>
+                <ipxact:description>Select the bit position of custom action bus to be set when EAP trigger is met. External blocks can define and implement the specific action for a given bit.</ipxact:description>
                 <ipxact:bitOffset>32</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>

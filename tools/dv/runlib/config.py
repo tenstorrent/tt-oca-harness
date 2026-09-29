@@ -2291,9 +2291,9 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
 
     A bare-string `module` is normalized to a binding for the DUT's default framework; a binding
     map is looked up by the selected framework. A scenario with no binding for the selected
-    framework keeps `module = ""`; selection decides before it can run: a framework the map
-    declares `false` is skipped from group and tag selections, a framework the map omits is an
-    error unless --skip-unimplemented is given.
+    framework keeps `module = ""`; selection decides before it can run: group and tag
+    selections skip the scenario under a framework its map declares `false` or omits, and
+    naming it with --items under that framework is an error.
     """
     if not flow.framework:
         for test in tests.values():

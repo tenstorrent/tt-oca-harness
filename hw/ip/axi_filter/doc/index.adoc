@@ -140,5 +140,15 @@ suggest. Size protected regions in whole granules, and prefer
 
 A blocked transaction is not dropped. It is steered to an AXI error
 subordinate that terminates it with a `DECERR` response on `BRESP` or
-`RRESP`, so the initiator always receives a response and the fabric
-never stalls on a filter denial.
+`RRESP`, so the initiator always receives a response.
+
+[[axi-traffic-filter-lock]]
+== Locking a Filter Entry
+
+Setting `FILTER_CONFIG.locked` freezes a filter entry. The bit is
+write-once (`woset`): once set it cannot be cleared. While it is set,
+every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR`
+registers is steered to the same AXI error subordinate as a blocked
+transaction and terminates with a `DECERR` response; reads still return
+the locked configuration. This holds for the SMC and SEP filter
+instances alike.

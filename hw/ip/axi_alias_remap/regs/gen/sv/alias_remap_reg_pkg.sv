@@ -31,7 +31,7 @@ package alias_remap_reg_pkg;
     } alias_remap__remap_region__REGION_ATTRS__offset__out_t;
 
     typedef struct {
-        logic value;
+        logic [3:0] value;
     } alias_remap__remap_region__REGION_ATTRS__cacheable__out_t;
 
     typedef struct {

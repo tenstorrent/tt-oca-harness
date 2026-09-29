@@ -8,8 +8,15 @@ bench of its own leaves as an instance tree. What remains is the SMU's own
 logic: `smu_wrapper`, `smu`, `smu_axi_xbar`, `axi_window_remap` and every
 other unit instantiated under `u_smu` outside the SMC, DTP and SEP trees.
 
-The `cov/sv` functional-coverage modules leave the code and toggle metrics
-only. Their `cover property` statements stay in the assertion metric and their
+Every unit compiled from a `dv/` directory is bench -- testbench tops, models,
+VIP, and the shims under `hw/common/dv/shims/` that stand in for board wiring
+such as the open-drain cross-trigger wire -- and leaves every metric, whether
+the bench instantiates it at the top or beside the DUT. No DUT source lives
+under `dv/`, so the rule is by path rather than a list of instances a new
+bench block would have to be added to.
+
+The `cov/sv` functional-coverage modules are the one `dv/` exception: they
+leave the code and toggle metrics only. Their `cover property` statements stay in the assertion metric and their
 covergroups are outside `-cm_hier` altogether, so the functional figures still
 read them.
 
@@ -37,17 +44,15 @@ OUT = HERE / "smu_wrapper_cov_scope.hier"
 TOP = "smu_wrapper_uvm_top"
 
 # (reason, source-path matcher). A unit compiled from a matching path leaves
-# every metric under that reason. The library and interconnect classes are the
+# every metric under that reason; FCOV below is tested first, so the cov/sv
+# collectors are not caught by the bench rule. The library and interconnect classes are the
 # ones hw/sys/smc/dv/cov/config/vcs/gen_smc_cov_scope.py names, so a cell that
 # leaves the SMC figure leaves this one too.
 DROPPED: tuple[tuple[str, re.Pattern[str]], ...] = (
-    (
-        "bench",
-        re.compile(r"/hw/sys/(smu|smc)/dv/(tb|models)/|/hw/common/dv/vip/|/hw/ip/[^/]+/dv/"),
-    ),
+    ("bench", re.compile(r"/dv/")),
     ("library cells", re.compile(r"/vendor/pulp-platform/common_cells/")),
     ("library cells", re.compile(r"/vendor/lowRISC/opentitan/.*/prim[^/]*/")),
-    ("library cells", re.compile(r"/hw/common/och_prim/")),
+    ("library cells", re.compile(r"/hw/common/ocah_prim/")),
     (
         "interconnect cells",
         re.compile(r"/vendor/pulp-platform/(axi|apb|register_interface|axi_stream|obi)/"),
@@ -143,6 +148,10 @@ def classify(sources: list[Path]) -> tuple[dict[str, list[str]], list[str]]:
             units[reason] |= units_in(src)
     for reason, unit in DROPPED_UNITS:
         units.setdefault(reason, set()).add(unit)
+    # A bench stand-in shares its name with the product cell it replaces on the
+    # simulators that take the stub; the cell is listed once, as the product.
+    claimed = set().union(*(n for r, n in units.items() if r != "bench"))
+    units["bench"] -= claimed
     return {r: sorted(n) for r, n in units.items() if n}, sorted(fcov)
 
 

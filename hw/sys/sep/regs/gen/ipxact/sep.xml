@@ -6232,7 +6232,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>DETUNE</ipxact:name>
-              <ipxact:description>Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
+              <ipxact:description>Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -6244,7 +6244,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>SAMPLE_CLK_DETUNE</ipxact:name>
-              <ipxact:description>Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
+              <ipxact:description>Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
               <ipxact:bitOffset>12</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -12351,7 +12351,11 @@ Setting this bit to 1 will copy the result to the keyvault when it is ready.</ip
         <ipxact:registerFile>
           <ipxact:name>axil_mailbox</ipxact:name>
           <ipxact:displayName>SEP AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
-          <ipxact:description>SEP-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.</ipxact:description>
+          <ipxact:description>SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
           <ipxact:addressOffset>'h10a00000</ipxact:addressOffset>
           <ipxact:range>'h7850</ipxact:range>
           <ipxact:registerFile>
@@ -18018,14 +18022,14 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>cacheable</ipxact:name>
-                <ipxact:description>If set, top two bits of a*cache will be tied high</ipxact:description>
-                <ipxact:bitOffset>62</ipxact:bitOffset>
+                <ipxact:description>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</ipxact:description>
+                <ipxact:bitOffset>56</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:bitWidth>4</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
@@ -18226,7 +18230,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -18404,7 +18412,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>

@@ -6,7 +6,7 @@ Subscribes to the AXI agent's completed-transaction stream and checks:
   * every access reports an OKAY AXI response (no SLVERR/DECERR), except a
     write with ``allow_unverified_write_resp`` or a read with
     ``allow_ungraded_read_resp``, whose caller grades the outcome another way
-    (a timed-out read still fails);
+    (a timed-out read still fails, unless that read also sets ``allow_timeout``);
   * reads carrying an ``expected`` value return it exactly (value-specific
     positive evidence, not a "no-X" cross-check);
   * a negative-path probe (``item.expect_error``) is the inverse: it must return a
@@ -71,6 +71,17 @@ class SepScoreboard(uvm_subscriber):
             if item.op is SepAxiOp.WRITE and item.allow_unverified_write_resp:
                 self.logger.info(
                     "write @ 0x%08x response not classified OKAY; sequence verifies by readback",
+                    item.addr,
+                )
+                return
+            if (
+                item.op is SepAxiOp.READ
+                and item.allow_ungraded_read_resp
+                and item.allow_timeout
+                and item.timed_out
+            ):
+                self.logger.info(
+                    "read @ 0x%08x timed out; sequence grades the wedge",
                     item.addr,
                 )
                 return

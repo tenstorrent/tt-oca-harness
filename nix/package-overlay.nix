@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 final: prev: let
   lib = prev.lib;
   # Returns package names by listing .nix files in a directory, stripping the .nix suffix.

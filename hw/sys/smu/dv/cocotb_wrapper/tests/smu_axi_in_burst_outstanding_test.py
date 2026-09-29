@@ -19,4 +19,5 @@ class smu_axi_in_burst_outstanding_test(smu_base_test):
         self.logger.info("DUT_TAG=WRAPPER smu_axi_in_burst_outstanding_test AXI-IN")
         seq = smu_axi_in_burst_outstanding_test_seq(self)
         await seq.run()
-        assert seq.s1_ok and seq.s2_ok, f"axi-in incomplete s1={seq.s1_ok} s2={seq.s2_ok}"
+        steps = (seq.s1_ok, seq.s2_ok, seq.s3_ok)
+        assert all(steps), f"axi-in incomplete s1..s3={steps}"
