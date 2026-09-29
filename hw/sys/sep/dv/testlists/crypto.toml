@@ -343,3 +343,18 @@ tags = ["crypto", "abr", "axi", "rand_rep", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Adams Bridge compiled out (lsu_stub_abr_absent model, SEP_ABR_EN not
+# defined): host reads and writes of the ABR aperture answer DECERR, and KM
+# CPU stores and loads of the ABR wrapper key aperture set AXI_DECERR, with
+# live HMAC controls on both paths. no_cpu; +skip_fuse_sense.
+name = "sep_abr_absent_decerr_test"
+module = "crypto.sep_abr_absent_decerr_test"
+firmware = { name = "km_rom_abr_absent", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["crypto", "abr", "km", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_abr_absent"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_abr_absent.parhex"]

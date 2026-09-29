@@ -385,6 +385,10 @@ never when it was written.
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
 |Seeded interleaved reads and writes from both TB masters at once, several outstanding on each and both response channels throttled, graded by a scoreboard that bounds each read by its register owner's write window and checks each register's final value.
+|`sep_abr_absent_decerr_test`
+|no_cpu, +skip_fuse_sense, `lsu_stub_abr_absent` model
+|ocah_axi_vip, KM CPU image
+|The build without Adams Bridge (`SEP_ABR_EN` not defined): host reads and writes of the ABR aperture answer DECERR, and KM CPU stores and loads of the ABR wrapper key aperture set AXI_DECERR, with HMAC controls on both paths answering clean.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -664,6 +668,11 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
 |What a Key Manager MASTER transaction receives when its own AXI-Lite path is isolated. Every other isolation entry drives the SEP host port and so reaches the `host_*` paths only; the KM masters the `km_*` paths, so a KM-CPU image is the vehicle. The same store to the HMAC key aperture is clean, then raises an AXI error while `km_hmac` is isolated, then is clean again.
+
+|`sep_km_ic_reset_release_test`
+|no_cpu, +skip_fuse_sense, VCS only
+|ocah_axi_vip, IC_RESET TDR, KM CPU image
+|Stage, apply and release of the IC_RESET `km_jtag_rst_n` override while the KM fetches from its ROM. The override holds the KM and the release restarts it; `prim_rom` `noXOnCsI` grades the ROM request on every cycle of the window after the release.
 
 |`sep_km_key_policy_vault_test`
 |no_cpu, +skip_fuse_sense
@@ -3842,6 +3851,62 @@ a waiting write, and two masters writing the same register.
 
 '''''
 
+[[sep_abr_absent_decerr_test]]
+===== `sep_abr_absent_decerr_test`
+
+*Phase*: 2
+
+*Bucket*: Crypto and entropy
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_abr_absent.parhex`, target `lsu_stub_abr_absent`
+
+*Source Module*: `sep_abr_absent_decerr_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image
+
+*Randomization*: RAND-NONE.
+
+*Objective*: The Adams Bridge build option. `doc/integrator/src/defines.adoc` (Adams Bridge defines) says that without `SEP_ABR_EN`, `sep_crypto` terminates the ABR AXI aperture and the Key Manager's ABR key bus with DECERR subordinates. The `lsu_stub_abr_absent` target in `sep_sim_cfg.toml` is the `lsu_stub_all_live` model with the `+define+SEP_ABR_EN` line dropped from its generated bender filelist; every other target keeps the define.
+
+*Test Coverage*: host read and write of the ABR aperture; KM CPU store and load of the ABR wrapper key aperture.
+
+*Test Procedure*:
+
+[arabic]
+. Bring-up. Require the ABR reset released and the host ABR path not isolated, so a DECERR is not the isolation answer.
+. Read an HMAC register over the same crypto interconnect (control), then read `MLDSA_NAME` and write `MLDSA_CTRL`.
+. Release the KM and wait for the KM ABR path to open. The image `km_rom_abr_absent` W1Cs the `IRQ_STATUS` AXI error bits before each access and reports which bits the access set: a store to the HMAC wrapper key aperture (control), then a store and a load at the ABR wrapper key aperture.
+
+*Checkers*:
+
+[cols="2,6",options="header"]
+|===
+|Checker |What it proves
+|CHK-ABR-ABSENT-OPEN
+|ABR reset released; the host ABR path is not isolated during the host legs and the KM ABR path is not isolated before the KM legs.
+|CHK-ABR-ABSENT-CONTROL
+|An HMAC `STATUS` read answers OKAY on the crypto interconnect.
+|CHK-ABR-ABSENT-HOST-RD
+|A read of `MLDSA_NAME` answers DECERR.
+|CHK-ABR-ABSENT-HOST-WR
+|A write of `MLDSA_CTRL` answers DECERR.
+|CHK-KM-ABR-ABSENT-PRECOND
+|Every KM leg started with both AXI error bits clear.
+|CHK-KM-ABR-ABSENT-CONTROL
+|The KM store to the HMAC wrapper key aperture sets neither error bit.
+|CHK-KM-ABR-ABSENT-WR
+|The KM store to the ABR wrapper key aperture sets AXI_DECERR and not AXI_SLVERR.
+|CHK-KM-ABR-ABSENT-RD
+|The KM load from the same address sets AXI_DECERR and not AXI_SLVERR.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Anti-vacuity*: the same leaf run on the `lsu_stub_all_live` model (ABR present) fails `CHK-ABR-ABSENT-HOST-RD` with OKAY, so the host checkers discriminate the two builds. The HMAC controls on both paths answer clean in the same run.
+
+*Not claimed*: the ABR memory tie-off and the held-low ABR interrupts of the ABR-absent build. The image also loads the first KMCSR address past the generated block; the answer is logged and not graded (see Known Limitations, "KMCSR extent").
+
+'''''
+
 [[sep_entropy_pool_aperture_test]]
 ===== `sep_entropy_pool_aperture_test`
 
@@ -6805,6 +6870,59 @@ two codes as one field.
 
 '''''
 
+[[sep_km_ic_reset_release_test]]
+===== `sep_km_ic_reset_release_test`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom.parhex`. VCS only (`tools = ["vcs"]` in `testlists/km.toml`).
+
+*Source Module*: `sep_km_ic_reset_release_test`
+
+*BFM / Model*: ocah_axi_vip, IC_RESET TDR (`jtag_ic_reset_reg` in `tb_top`), KM CPU image
+
+*Randomization*: RAND-NONE -- one directed walk.
+
+*Objective*: The Key Manager ROM request stays known across an IC_RESET override of the Key Manager. `hw/top/sep_ip_integration.sv` connects that request to the `prim_rom` chip select, and `prim_rom` asserts `noXOnCsI` on it on every clock (`vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv`). The port is `km_jtag_rst_n`, the TDO-end port of the SEP slice (`doc/integrator/src/smu.adoc`, SEP slice). The walk follows the IC_RESET field table in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`: stage `reset_control=0` with `reset_enable=1`, apply `reset_enable=0`, release to the idle word.
+
+*Test Coverage*: stage, apply and release of the `km_jtag_rst_n` override while the KM fetches from its ROM; the request through a window that starts at the first fetch after the release.
+
+*Test Procedure*:
+
+[arabic]
+. Bring-up with the KM held in software reset. TRST the TDR, select it, and require the shifted-out word to be the TDR reset value.
+. Release the KM through `SW_RESET_N`. The smoke image stores its SRAM marker and spins, so every loop turn is a ROM fetch.
+. Stage, apply and release the override, one Update-DR each. The host samples the KM ROM request counter (`km_rom_req_count_o`) after each.
+. After the release, count the cycles to the first ROM request, then run a 4000-cycle fetch window.
+
+*Checkers*:
+
+[cols="2,6",options="header"]
+|===
+|Checker |What it proves
+|CHK-TDR-SELECT
+|The TDR drives the reset-control port, and it shifts out its reset value (every `reset_enable` and `reset_control` at 1).
+|CHK-KM-LIVE
+|The KM left software reset: the ROM request count rises and KM SRAM word0 holds the smoke marker.
+|CHK-TDR-STAGE
+|`reset_control=0` with `reset_enable=1` does not stop the KM: the count still rises.
+|CHK-TDR-APPLY
+|`reset_enable=0`, `reset_control=0` holds the KM: the count does not move over 64 cycles.
+|CHK-TDR-RELEASE
+|The release restarts the KM: a ROM request comes within 64 cycles of the Update-DR, and the log gives the latency. The window below starts at that first request, so it follows any request hold after the KM reset release.
+|CHK-KM-ROM-WINDOW
+|At least 64 ROM requests in the 4000-cycle window after the release. `noXOnCsI` grades the request on every cycle of it; a firing prints `Error:` and the run fails.
+|===
+*Pass Criteria*: Every named checker PASSes, and the VCS log has no `noXOnCsI` failure.
+
+*Anti-vacuity*: `noXOnCsI` is live in the VCS `lsu_stub_all_live` model: a diagnostic run that forced the request to X for three cycles printed the assertion failure and the run graded FAIL while every cocotb checker passed. The cocotb checkers cannot see X; they only prove the override reached the KM and that the KM fetches through the graded window.
+
+*Not claimed*: any four-state property on Verilator, which is two-state and compiles no RTL assertions (see Known Limitations, "RTL assertions are backend-dependent"). The other seven SEP-slice ports. The KM ROM image is always loaded on this bench; a request that is X because the ROM array holds X is a bench condition and is not graded here.
+
+'''''
+
 [[sep_km_key_policy_vault_test]]
 ===== `sep_km_key_policy_vault_test`
 
@@ -7826,6 +7944,12 @@ constraint is not an open defect.
 |ABR unpopulated offsets complete OKAY (vendored collateral)
 |`hw/sys/sep/doc/adams_bridge.adoc` `[[abr-aperture-decode]]` documents that the vendored ABR register block has no address check: a word access past the register map (`0xC018`) completes OKAY, a read returns zero and a write is discarded, while a partial-word write answers SLVERR. `sep_abr_access_size_test` `CHK-ABR-UNPOP-RD` / `-WR` / `-PARTIAL` grade that documented behaviour, so an RTL change that refuses these accesses turns them red until the document changes with it.
 
+|KMCSR extent (RDL comment)
+|`hw/ip/key_manager/regs/km_csr.rdl` says "Size: 4KB (0x1000)" in its header comment. The generated register block is `KEY_MANAGER_KMCSR_SIZE` = `0x4C0` (`hw/ip/key_manager/regs/gen/c/key_manager_addr.h`). `sep_abr_absent_decerr_test` loads `KMCSR base + 0x4C0` from the KM CPU and logs the answer: AXI_SLVERR with data 0. The 4 KB is the decode window, and the registers end at `0x4C0`. No checker grades this; the header comment is the item to correct.
+
+|Adams Bridge absent build
+|Only `sep_abr_absent_decerr_test` runs on the `lsu_stub_abr_absent` model. Every other leaf runs with `SEP_ABR_EN` defined. The ABR memory tie-off and the held-low ABR interrupts of that build have no checker.
+
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.
 
@@ -7843,7 +7967,7 @@ constraint is not an open defect.
 |JTAG MMR token-block access
 |`hw/sys/sep/doc/otp_fuse_controller.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
 |RTL assertions are backend-dependent
-|What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA expand to nothing, and the SEP Verilator targets pass no `--assert`, so the two-state `ocah_axi_sva` rules are dropped as well. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
+|What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA expand to nothing, and the SEP Verilator targets pass no `--assert`, so the two-state `ocah_axi_sva` rules are dropped as well. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there. `sep_km_ic_reset_release_test` is the exception by design: its contract is the `prim_rom` `noXOnCsI` assertion, so its testlist entry runs on VCS only, and a Verilator regression drops it.
 
 |Entropy-pool interrupt numbering (spec)
 |`hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs are 1-based, so aggregation index 36/37 is PIC source 37/38; firmware following `crypto.adoc` would enable and mask the wrong two sources. No checker asserts this; do not XFAIL it.

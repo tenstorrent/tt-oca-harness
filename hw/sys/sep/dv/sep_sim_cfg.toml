@@ -669,6 +669,30 @@ sources = [
 [targets.lsu_stub_all_live.tools.verilator]
 flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
 
+# The lsu_stub_all_live model built without Adams Bridge. SEP_ABR_EN comes
+# from the `sep` Bender target, and `bender script flist-plus` emits it as one
+# `+define+SEP_ABR_EN` line of the generated bender filelist. `exclude_files`
+# drops every filelist line that contains a listed string, so the entry below
+# removes that one define line for this target only. CALIPTRA stays defined;
+# the vendored Adams Bridge sources still compile, and nothing instantiates
+# them. sep_crypto then terminates the ABR aperture and the Key Manager ABR key
+# bus with DECERR subordinates, and sep_ip_integration drives the ABR memory
+# response to zero (doc/integrator/src/defines.adoc, Adams Bridge defines).
+[targets.lsu_stub_abr_absent]
+description = "lsu_stub_all_live without Adams Bridge (SEP_ABR_EN not defined); for no_cpu tests of the ABR-absent build"
+build_dir = "hw/sys/sep/dv/build/cocotb"
+defines = ["SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
+exclude_files = [
+  "hw/sys/sep/rtl/sep_cpu.sv",
+  "+define+SEP_ABR_EN",
+]
+sources = [
+  "hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv",
+]
+
+[targets.lsu_stub_abr_absent.tools.verilator]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+
 # SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe
 # (Bender targets, stubs) with the shared framework library and AXI VIP
 # manifests ahead of the DUT sources, the
