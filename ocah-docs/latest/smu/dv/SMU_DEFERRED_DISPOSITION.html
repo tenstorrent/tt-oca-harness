@@ -1396,7 +1396,7 @@ elaboration leaves — are not in this table: each is carded in
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Seven sit on proof paths of enrolled SMU tests. Each has one entry of six
+Nine sit on proof paths of enrolled SMU tests. Each has one entry of six
 fields. The first three&#8201;&#8212;&#8201;the claim that is accepted with the stand-in in
 place, why the real path cannot be used, and the exact scope&#8201;&#8212;&#8201;are filled
 from the tree. The last three&#8201;&#8212;&#8201;approver, approval date against a revision,
@@ -1442,6 +1442,11 @@ ran.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">every <code>--dut smu</code> leaf</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP assertion-ignore patterns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> <code>[pass_fail] extra_ignore_patterns</code>, the seven entries under <code>u_dut.u_smu.gen_sep.u_sep</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">every <code>--dut smu</code> leaf on a four-state simulator</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code> / <code>COMMON_CELLS_ASSERTS_OFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">every Verilator target of <code>smu_sim_cfg.toml</code> and <code>hw/common/dv/configs/profiles/native.toml</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">every leaf on Verilator</p></td>
@@ -1450,6 +1455,11 @@ ran.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scan-chain loopbacks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> (five host scan chains and the I/O and extra STAP TDO-to-TDI returns)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_dtp_bsr_extest_loopback_test</code>, <code>smu_dtp_scan_chain_boundary_test</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP data-input tie-offs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> (the <code>xtrig_ctp_*_din_i</code> bindings of <code>u_dut</code>), <code>cocotb_wrapper/tests/smu_base_test.py</code> (<code>IDLE_INPUTS</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_boundary_port_composition_test</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</p></td>
@@ -1469,7 +1479,7 @@ ran.</p>
 <div class="paragraph">
 <p>Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
-first five are static reads of the tree, and the last two pair a static read
+first seven are static reads of the tree, and the last two pair a static read
 with a line any run of the named group prints. A row that prints nothing is an entry that has gone
 stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what needs the edit.</p>
 </div>
@@ -1504,6 +1514,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 <td class="tableblock halign-left valign-top"><p class="tableblock">One <code>extra_ignore_patterns</code> entry, <code>'abr_reg\.sv.*assert_bad_ext_(wr|rd)_ack'</code>; the only other hits are the comment lines above it that describe the waiver.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP assertion-ignore patterns</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'gen_sep' hw/sys/smu/dv/smu_sim_cfg.toml</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Seven <code>extra_ignore_patterns</code> entries: <code>u_sep_trng</code>, <code>u_axis_edn_(crypto|pool)_s3c_scan</code>, the eFuse token processing&#8217;s <code>ValidDigestModeFlag_A</code>, the OTBN wrapper&#8217;s <code>UrndNoReseedOnReset_A</code>, the SPI host at a time of at most nine digits of femtoseconds, <code>u_key_manager_s3c_scan</code> and the DMA wrapper&#8217;s <code>u_secure_dma</code> and <code>gen_alert_receivers</code>; no entry takes <code>u_sep</code> whole.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'ASSERTS_OFF' hw/sys/smu/dv/smu_sim_cfg.toml hw/common/dv/configs/profiles/native.toml</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>+define+ASSERTS_OFF</code> on every Verilator target of the config and <code>COMMON_CELLS_ASSERTS_OFF</code> in the shared profile; any run&#8217;s recorded <code>build_args</code> carries both.</p></td>
@@ -1512,6 +1527,11 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 <td class="tableblock halign-left valign-top"><p class="tableblock">Scan-chain loopbacks</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'host_scan_in_i|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Seven bindings and no <code>1&#8217;b0</code> tie: the five <code>*_host_scan_in_i</code> on <code>bsr_scan_loop</code>, <code>stap_scan_loop</code>, <code>dfd_scan_loop</code>, <code>dft_sec_scan_loop</code> and <code>dft_scan_loop</code>, plus <code>jtag_stap_io_host_tdi_i</code> on <code>stap_io_tdo_w</code> and <code>jtag_stap_extra_host_tdi_i</code> on <code>stap_extra_tdi_w</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP data-input tie-offs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>grep -n 'xtrig_ctp_\(req_in|ack_in|ack_out\)<em>din_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv</code> and <code>grep -n 'tb_xtrig_ctp</em>\(req|ack\)_in_din' hw/sys/smu/dv/cocotb_wrapper/tests/smu_base_test.py</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Three bindings: <code>req_in</code> on <code>tb_xtrig_ctp_req_in_din</code>, <code>ack_in</code> on <code>tb_xtrig_ctp_ack_in_din</code> and <code>ack_out</code> on <code>'0</code>; both bench nets listed in <code>IDLE_INPUTS</code>, which <code>drive_idle_inputs</code> sets to 0.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</p></td>
@@ -1575,7 +1595,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Claim accepted</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">On the leaves that pass it, the SMC eFuse shadow registers&#8201;&#8212;&#8201;and on the <code>sep_rtl</code> profile the SEP ones&#8201;&#8212;&#8201;hold the image the preload file supplies, and the sense FSM that would have earned that image from the eFuse macro is skipped. The consumers of the sensed image are under test on those leaves: the lifecycle controller, <code>lc_state</code> at the SMC and <code>dbg_disable</code> at the DTP, the OTP word the JTAG2AXI leaves read, and the reset and boot state downstream of the fuse-reset release. The sense FSM is not. The five boot-stall leaves (<code>smu_boot_stall_jtag_cold_reset_matrix_test</code>, <code>smu_boot_stall_vs_ic_reset_priority_test</code>, <code>smu_clock_stop_coordination_test</code> S1/S2, <code>smu_dft_dtp_boot_stall_test</code>, <code>smu_dft_gpio_boot_stall_test</code>) are not on this scope: they run without the plusarg, so the <code>smc_fuse_reset_n_delayed_o</code> release they gate is the SMC eFuse controller&#8217;s own sense completion against the <code>+smc_efuse_hex</code> image, and their gate claim is judged on that run. <code>smu_smc_reset_ctrl_test</code>, <code>smu_ext_boot_seq_gate_test</code> and <code>smu_smc_smoke_test</code> read the reset and boot state downstream of the release the boot-stall leaves prove; the OTP leaves (<code>smu_dtp_otp_smc_map_rw_test</code>, <code>smu_dtp_otp_smc_complete_rw_test</code>, <code>smu_dtp_otp_smc_series_error_test</code>, <code>smu_otp_vs_fabric_map_race_test</code>) compare against a shadow word that was preloaded. The lifecycle leaves (<code>sep_lifecycle</code>, <code>sep_chain</code>) declare their <code>+sep_shadow_reg_preload</code> image as the stimulus, so for them the preload is setup, not a stand-in. <code>smu_sep_lcc_flow_test</code> is not on this scope either: it runs without the plusarg, the SEP shadow registers it observes are the SEP eFuse controller&#8217;s own sense of the <code>+sep_efuse_hex</code> image, and its sense claim is judged on that run.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On the leaves that pass it, the SMC eFuse shadow registers&#8201;&#8212;&#8201;and on the <code>sep_rtl</code> profile the SEP ones&#8201;&#8212;&#8201;hold the image the preload file supplies, and the sense FSM that would have earned that image from the eFuse macro is skipped. The consumers of the sensed image are under test on those leaves: the lifecycle controller, <code>lc_state</code> at the SMC and <code>dbg_disable</code> at the DTP, the OTP word the JTAG2AXI leaves read, and the reset and boot state downstream of the fuse-reset release. The sense FSM is not. The five boot-stall leaves (<code>smu_boot_stall_jtag_cold_reset_matrix_test</code>, <code>smu_boot_stall_vs_ic_reset_priority_test</code>, <code>smu_clock_stop_coordination_test</code> S1/S2, <code>smu_dft_dtp_boot_stall_test</code>, <code>smu_dft_gpio_boot_stall_test</code>) are not on this scope: they run without the plusarg, so the <code>smc_fuse_reset_n_delayed_o</code> release they gate is the SMC eFuse controller&#8217;s own sense completion against the <code>+smc_efuse_hex</code> image, and their gate claim is judged on that run. <code>smu_smc_reset_ctrl_test</code> and <code>smu_smc_smoke_test</code> read the reset and boot state downstream of the release the boot-stall leaves prove. On <code>smu_ext_boot_seq_gate_test</code> the skip supplies sense completion, a precondition of the fuse-reset release the leaf checks: its claim is that <code>ext_boot_seq_done_i</code> holds that release and then frees it, judged with sense completion supplied by the skip, and sense completion itself is the boot-stall leaves' claim, not this leaf&#8217;s; the OTP leaves (<code>smu_dtp_otp_smc_map_rw_test</code>, <code>smu_dtp_otp_smc_complete_rw_test</code>, <code>smu_dtp_otp_smc_series_error_test</code>, <code>smu_otp_vs_fabric_map_race_test</code>) compare against a shadow word that was preloaded. The lifecycle leaves (<code>sep_lifecycle</code>, <code>sep_chain</code>) declare their <code>+sep_shadow_reg_preload</code> image as the stimulus, so for them the preload is setup, not a stand-in. <code>smu_sep_lcc_flow_test</code> is not on this scope either: it runs without the plusarg, the SEP shadow registers it observes are the SEP eFuse controller&#8217;s own sense of the <code>+sep_efuse_hex</code> image, and its sense claim is judged on that run.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Why the real path cannot be used</p></td>
@@ -1639,9 +1659,46 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 <p class="block-references">Figures and tables: <a href="#trm-table-6">Table 6</a>.</p>
 </div>
 <div class="sect3">
-<h4 id="defineasserts_off"><a class="anchor" href="#defineasserts_off"></a><a class="link" href="#defineasserts_off">1.1.5. <code>+define+ASSERTS_OFF</code></a></h4>
+<h4 id="sep-assertion-ignore-patterns"><a class="anchor" href="#sep-assertion-ignore-patterns"></a><a class="link" href="#sep-assertion-ignore-patterns">1.1.5. SEP assertion-ignore patterns</a></h4>
 <table id="trm-table-7" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 7. &lt;code&gt;+define+ASSERTS_OFF&lt;/code&gt;</caption>
+<caption class="title">Table 7. SEP assertion-ignore patterns</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Claim accepted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A failure of an assertion in one of the SEP scopes the patterns name is not a verdict on any enrolled SMU claim: the entropy source&#8217;s and the EDN endpoints' <code>prim_count</code> and sparse-FSM <code>AssertConnected_A</code> checks, which ask for an OpenTitan alert the SEP does not have; <code>ValidDigestModeFlag_A</code> on the SHA-256-only <code>prim_sha2_32</code> instances of the eFuse token processing; <code>otbn_rnd&#8217;s `UrndNoReseedOnReset_A</code>; the SPI host&#8217;s checks inside the first microsecond, before its reset completes; and the known-value checks of the key manager, the secure DMA and its alert receivers, blocks no wrapper leaf programs, which fire on their quiescent X. What is not proven is whatever those assertions would have caught in the named scopes. Every other SEP assertion, the SEP SRAM interface&#8217;s included, fails the run, and so does an SPI host check after the first microsecond.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Why the real path cannot be used</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The SEP bench turns the same classes off as outside its contract (<code>hw/sys/sep/dv/tb/tb_top.sv</code> 205-210, 245-280, 301). Under the wrapper the SEP core is elaborated but most leaves never bring it up, so the key manager, the secure DMA and their alert paths stay at X, and the alert checks have no OpenTitan alert to see; making them hold is SEP work outside this package.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smu_sim_cfg.toml</code> <code>[pass_fail] extra_ignore_patterns</code>, the seven entries that begin <code>u_dut\.u_smu\.gen_sep\.u_sep\.</code>: every <code>--dut smu</code> leaf on a four-state simulator; on Verilator <code>+define+ASSERTS_OFF</code> (its own entry) already compiles the assertions out. Each pattern names a scope, and the SPI host&#8217;s pattern also a time below one microsecond; no pattern takes the whole SEP. The Key Manager ROM&#8217;s <code>noXOnCsI</code> sits in <code>hw/top/sep_ip_integration.sv</code>, outside <code>u_dut.u_smu</code>, and no pattern takes it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pending</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pending</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pending</p></td>
+</tr>
+</tbody>
+</table>
+<p class="block-references">Figures and tables: <a href="#trm-table-7">Table 7</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="defineasserts_off"><a class="anchor" href="#defineasserts_off"></a><a class="link" href="#defineasserts_off">1.1.6. <code>+define+ASSERTS_OFF</code></a></h4>
+<table id="trm-table-8" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. &lt;code&gt;+define+ASSERTS_OFF&lt;/code&gt;</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -1673,12 +1730,12 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#trm-table-7">Table 7</a>.</p>
+<p class="block-references">Figures and tables: <a href="#trm-table-8">Table 8</a>.</p>
 </div>
 <div class="sect3">
-<h4 id="scan-chain-loopbacks"><a class="anchor" href="#scan-chain-loopbacks"></a><a class="link" href="#scan-chain-loopbacks">1.1.6. Scan-chain loopbacks</a></h4>
-<table id="trm-table-8" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. Scan-chain loopbacks</caption>
+<h4 id="scan-chain-loopbacks"><a class="anchor" href="#scan-chain-loopbacks"></a><a class="link" href="#scan-chain-loopbacks">1.1.7. Scan-chain loopbacks</a></h4>
+<table id="trm-table-9" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 9. Scan-chain loopbacks</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -1710,12 +1767,49 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#trm-table-8">Table 8</a>.</p>
+<p class="block-references">Figures and tables: <a href="#trm-table-9">Table 9</a>.</p>
 </div>
 <div class="sect3">
-<h4 id="prim_sync2-prim_sync3-stand-ins"><a class="anchor" href="#prim_sync2-prim_sync3-stand-ins"></a><a class="link" href="#prim_sync2-prim_sync3-stand-ins">1.1.7. <code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</a></h4>
-<table id="trm-table-9" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. &lt;code&gt;prim_sync2&lt;/code&gt; / &lt;code&gt;prim_sync3&lt;/code&gt; stand-ins</caption>
+<h4 id="ctp-data-input-tie-offs"><a class="anchor" href="#ctp-data-input-tie-offs"></a><a class="link" href="#ctp-data-input-tie-offs">1.1.8. CTP data-input tie-offs</a></h4>
+<table id="trm-table-10" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 10. CTP data-input tie-offs</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 80%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Claim accepted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The resting level of the <code>req_in</code>, <code>ack_in</code> and <code>ack_out</code> CTP data inputs that <code>smu_boundary_port_composition_test</code> reads at the SMU boundary and at the DTP consumer is zero because the bench holds it there, acting as the integrator the port table&#8217;s "Tie to '0 if unused" note (<code>hw/sys/smu/doc/port_table.adoc</code>) addresses. <code>smu_wrapper</code> passes these inputs through to <code>smu</code>; nothing in the product ties them. The bench zero is stimulus for <code>CHK-SMU-XTRIG-CTP-S6</code>: the inertness verdict reads DUT outputs, and the <code>din_i</code> compares prove only that the bench&#8217;s rest level reaches the DTP. What is not proven is any tie-off inside the product.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Why the real path cannot be used</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The tie belongs to the integrator&#8217;s pad ring, which the open-source tree does not model; the bench stands where the integrator would.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scope</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tb/tb_wrapper_top.sv</code> binds <code>xtrig_ctp_ack_out_din_i</code> to <code>'0</code> and <code>xtrig_ctp_req_in_din_i</code> / <code>xtrig_ctp_ack_in_din_i</code> to <code>tb_xtrig_ctp_req_in_din</code> / <code>tb_xtrig_ctp_ack_in_din</code>, which <code>smu_base_test.drive_idle_inputs</code> sets to 0 (<code>IDLE_INPUTS</code>). Load-bearing for <code>smu_boundary_port_composition_test</code> only; <code>smu_xtrig_ctp_pad_test</code> drives the two bench nets itself and does not rest on the tie.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Approver</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pending</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Date, revision</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pending</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Review or expiry</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pending</p></td>
+</tr>
+</tbody>
+</table>
+<p class="block-references">Figures and tables: <a href="#trm-table-10">Table 10</a>.</p>
+</div>
+<div class="sect3">
+<h4 id="prim_sync2-prim_sync3-stand-ins"><a class="anchor" href="#prim_sync2-prim_sync3-stand-ins"></a><a class="link" href="#prim_sync2-prim_sync3-stand-ins">1.1.9. <code>prim_sync2</code> / <code>prim_sync3</code> stand-ins</a></h4>
+<table id="trm-table-11" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 11. &lt;code&gt;prim_sync2&lt;/code&gt; / &lt;code&gt;prim_sync3&lt;/code&gt; stand-ins</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -1747,12 +1841,12 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#trm-table-9">Table 9</a>.</p>
+<p class="block-references">Figures and tables: <a href="#trm-table-11">Table 11</a>.</p>
 </div>
 <div class="sect3">
-<h4 id="efuse-models-in-the-product-composition"><a class="anchor" href="#efuse-models-in-the-product-composition"></a><a class="link" href="#efuse-models-in-the-product-composition">1.1.8. eFuse models in the product composition</a></h4>
-<table id="trm-table-10" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. eFuse models in the product composition</caption>
+<h4 id="efuse-models-in-the-product-composition"><a class="anchor" href="#efuse-models-in-the-product-composition"></a><a class="link" href="#efuse-models-in-the-product-composition">1.1.10. eFuse models in the product composition</a></h4>
+<table id="trm-table-12" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 12. eFuse models in the product composition</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 80%;">
@@ -1784,7 +1878,7 @@ stale, and the entry&#8201;&#8212;&#8201;not the run&#8201;&#8212;&#8201;is what
 </tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#trm-table-10">Table 10</a>.</p>
+<p class="block-references">Figures and tables: <a href="#trm-table-12">Table 12</a>.</p>
 </div>
 </div>
 </div>
