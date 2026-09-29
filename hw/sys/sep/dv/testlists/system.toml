@@ -161,9 +161,12 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # accepted pop; status fifo_level / pool_err; irq-cause is {fill_stall,pool_low}
 # only; writes SLVERR; unmapped in-window SLVERR+RDATA=0; aggregator [36]
 # high-low-high and [37] first stall after ESRC disable for StallThresh.
-# RANDCFG: extra pops and one unique-dead offset from the run seed; every
-# seed walks the high-bit mirrors of the live registers. Drain-under-fill
-# and stall-duration are not claimed. no_cpu; +skip_fuse_sense +esrc_noise_force.
+# RANDCFG: extra pops from the run seed; every seed walks the high-bit mirrors
+# of the live registers and all three unique-dead offsets. A 32-bit read of each
+# register's upper word is SLVERR+RDATA=0 and neither pops nor disturbs the FIFO.
+# [37] stays set when the stall is held past StallThresh (stall duration is
+# graded). Drain-under-fill is not claimed. no_cpu; +skip_fuse_sense
+# +esrc_noise_force.
 name = "sep_entropy_pool_aperture_test"
 module = "system.sep_entropy_pool_aperture_test"
 seed = 1
@@ -273,6 +276,8 @@ args = ["+skip_fuse_sense"]
 # depends on the sensed lc_state); the host then writes DEMOTE_1 to flip
 # PROD -> PROD_DBG_1 and proves the SMN-inbound external master (m_axi, which
 # traverses u_inbound_filter) is blocked at sep_debug=0 and allowed at sep_debug=1.
+# With the filter bypassed the port reaches Scratch SRAM and gets DECERR at the
+# Boot ROM, Reset Ctrl, ICCM, DCCM, PIC and AP/STEE remap regions.
 # no_cpu (host drives both the CPU-LSU control bus and the external probe master).
 name = "sep_lcc_uvm_inbound_filter_gating_test"
 module = "lcc.sep_lcc_uvm_inbound_filter_gating_test"
@@ -363,13 +368,28 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Intra-block dead-space decode on CSR windows larger than REG_MAP_SIZE
-# (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI).
+# (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI), and the
+# adopter TRNG window, whose refusal flavour is logged, not graded.
 # An access past allocated size must be refused and must not change a
 # live register; do not XFAIL. CHK-DEADSPACE-BURST asserts the same refusal
 # on a later beat of a burst that ends past the window's extent.
 # no_cpu; +skip_fuse_sense.
 name = "sep_fabric_deadspace_decode_test"
 module = "system.sep_fabric_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "decode", "negative", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# A write burst that starts on the last live word of sep_reset_ctrl, wdt_timer
+# or secure_dma and runs past the extent must not change a live register in
+# that block (memory_map.adoc: an access past the extent never reaches a
+# unit). Do not XFAIL. no_cpu; +skip_fuse_sense.
+name = "sep_fabric_burst_wrap_test"
+module = "system.sep_fabric_burst_wrap_test"
 seed = 1
 timeout_sec = 1800
 tags = ["fabric", "decode", "negative", "system", "subsystem"]
@@ -388,6 +408,21 @@ seed = 1
 reseed = 3
 timeout_sec = 1800
 tags = ["fabric", "axi", "decode", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# Unmapped points next to live registers: system-CSR holes, the reserved row
+# above SEP CPU control, the mailbox page's upper half, past each eFuse sibling
+# block, and every remap / filter array slot tail. Refused, or zero inside an
+# extent, and never aliased onto a live word. The refusal code is logged, not
+# graded. Addresses come from the generated register export.
+name = "sep_unmapped_access_policy_test"
+module = "system.sep_unmapped_access_policy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "decode", "negative", "system", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

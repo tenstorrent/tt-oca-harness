@@ -1,4 +1,5 @@
-# Build riscv-toolchain matching the versions installed within Previous Debian Docker Container
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   lib,
   symlinkJoin,
@@ -8,6 +9,7 @@
   bash,
   ...
 }:
+# Build riscv-toolchain matching the versions installed within Previous Debian Docker Container
 symlinkJoin {
   name = "riscv-toolchain";
   paths = [

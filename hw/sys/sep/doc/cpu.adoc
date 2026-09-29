@@ -167,7 +167,7 @@ against fault attacks.
 [[dual-scratch-register-banks]]
 == Dual Scratch Register Banks
 
-There shall be two sets of 16 x 32-bit scratch register banks
+There shall be two sets of eight 32-bit scratch registers at 8-byte stride
 instantiated at the SEP top level. Both are designed as simple SystemRDL
 defined configuration registers with AXI4-lite slave interfaces. The
 configuration registers have the following properties:
@@ -238,8 +238,13 @@ to its AXI fabric as described below.
 [[och-modifications]]
 === OCAH Modifications
 
-* 64-bit AXI4-lite slave interface (replaces or translates the 32-bit
-TL-UL bus protocol)
+The DMA exposes full AXI4 at both external boundaries:
+
+* 64-bit AXI4 register slave interface (for control and status)
+* 64-bit AXI4 data master interface (for memory transfers)
+
+Internally, the DMA core uses the TL-UL protocol, which is translated to/from AXI4
+by protocol converters at the boundary.
 
 [[future-enhancements]]
 === Future Enhancements

@@ -18,6 +18,9 @@ addrmap uart_wrap #(
 
     uart_log_engine_wrap    uart_log_engine_wrap[MAX_NUM_UARTS]    @0x0 += 0x400;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
 };
 
 `endif

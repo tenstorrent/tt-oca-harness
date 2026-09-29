@@ -140,8 +140,7 @@ suggest. Size protected regions in whole granules, and prefer
 
 A blocked transaction is not dropped. It is steered to an AXI error
 subordinate that terminates it with a `DECERR` response on `BRESP` or
-`RRESP`, so the initiator always receives a response and the fabric
-never stalls on a filter denial.
+`RRESP`, so the initiator always receives a response.
 
 [[axi-traffic-filter-lock]]
 == Locking a Filter Entry

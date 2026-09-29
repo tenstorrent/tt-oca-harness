@@ -91,10 +91,10 @@ int main(void) {
         pass = 0;
     }
 
-    attrs = (1ULL << 63) | (1ULL << 62);
+    attrs = (1ULL << 63) | ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm;
     write64_split(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15), attrs);
     if (!check_eq32(
-            "Alias cacheable=1 attrs hi",
+            "Alias cacheable=0xf attrs hi",
             READ_REG(SEP_TOP_LOCAL_MASTER_ALIAS_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(15) + 4),
             (uint32_t)(attrs >> 32))) {
         pass = 0;
