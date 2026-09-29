@@ -512,22 +512,25 @@ cocotb-only DUT — is the SystemVerilog UVM Framework section of
 than one (a DUT implements a framework by declaring a `[frameworks.<name>]`
 table in its sim config); without the flag the DUT's `default_framework` runs.
 In this model each testlist entry is a _scenario_: a framework-neutral test
-name that maps to a concrete implementation per framework. Error messages and
-`--skip-unimplemented` say "scenario" with exactly this meaning; `--items`
-takes the same names it always has. A scenario binds its per-framework entry
-points through `module` — a bare string binds the DUT's default framework
-only, a map (`module = { cocotb = "...", uvm = "..." }`) binds each framework
-explicitly. A map value of `false` (`module = { cocotb = "...", uvm = false }`)
-declares the scenario out of scope for that framework: group and tag
-selection skips it with no flag, and the skipped names are printed and
-recorded in `result.json` under `selection.skipped_excluded`. Selecting a
-scenario whose map has no entry at all for the chosen framework is an error;
-`--skip-unimplemented` skips group/tag-derived scenarios of that kind instead
-(printed, and recorded under `selection.skipped_unimplemented`), which is the
-bring-up aid while a framework port is incomplete. An explicitly named
-`--items` test errors in both cases. `--list` reports the three counts per
-framework (`uvm 151/153 (2 excluded)`); a nonzero `missing` count names
-scenarios that have neither a binding nor a `false` for that framework.
+name that maps to a concrete implementation per framework. Error messages
+say "scenario" with exactly this meaning; `--items` takes the same names it
+always has. A scenario binds its per-framework entry points through `module`
+— a bare string binds the DUT's default framework only, a map
+(`module = { cocotb = "...", uvm = "..." }`) binds each framework explicitly,
+and a scenario need not exist in every framework: a framework view runs the
+scenarios bound to it. Group and tag selection under a framework skips a
+scenario whose map has no entry for it, printed on the `selection` line and
+recorded in `result.json` under `selection.skipped_unimplemented`. A map
+value of `false` (`module = { cocotb = "...", uvm = false }`) says the
+scenario is out of scope for that framework by decision; selection skips it
+the same way and records it apart, under `selection.skipped_excluded`. An
+explicitly named `--items` test errors in both cases, since the caller asked
+for a scenario that cannot run there, and a group with no member bound to
+the selected framework is an error rather than a passing run of nothing.
+`--list` reports the three counts per framework (`uvm 151/153 (2 excluded)`,
+`uvm 6/302 (296 missing)`), so how much of a catalog a view covers stays
+visible; `missing` counts scenarios that have neither a binding nor a `false`
+for that framework.
 
 === Tests, groups, and tags
 
@@ -536,7 +539,8 @@ Groups expand in definition order. Overlapping selections are de-duplicated in
 first-seen order unless `--allow-duplicates` is present.
 
 If `--items` is omitted, the runner selects the `smoke` group when it exists;
-otherwise it selects the first test in the catalog.
+otherwise it selects the first test in the catalog that the selected
+framework implements.
 
 `--tag` is repeatable and uses OR semantics across tags:
 
@@ -3235,17 +3239,17 @@ on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 Hosted invocations omit `--framework`, so every DUT runs its default
 framework (cocotb) — adding a second framework to a DUT changes
 nothing for existing jobs. The canonical invocation for a licensed SV-UVM
-job selects a group under the UVM view. A group whose cocotb-only members
-declare `uvm = false` runs its UVM-implemented subset with no flag; a DUT
-whose scenarios lack a `uvm` entry rides `--skip-unimplemented`:
+job selects a group under the UVM view, and the group runs whatever subset
+of its members is bound to `uvm`, whether the rest declare `uvm = false` or
+carry no `uvm` entry:
 
 [source,bash]
 ----
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
 python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework uvm --items smoke
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT

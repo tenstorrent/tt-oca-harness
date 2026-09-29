@@ -312,11 +312,11 @@ Bender RTL recipe), and `--dut smc --framework uvm` selects it. A testlist
 scenario carries both implementations in its `module` binding map
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
-the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-VCS only: Verilator has no SV-UVM support. The bench architecture is in
-`docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
-conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
+naming a scenario with no `uvm` entry errors. VCS only: Verilator has no
+SV-UVM support. The bench architecture is in `docs/SMC_TB_ARCH.adoc`
+("SystemVerilog UVM Realization"); the framework conventions it follows are
+in `hw/common/dv/docs/uvm-framework.adoc`.
 
 The first bound scenario is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
@@ -328,16 +328,15 @@ through the scoreboard's `expected=` compares on each read and emits no
 `CHK-*` line of its own.
 
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# without it the runner selects the cocotb-only scenarios and stops before compiling.
-python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut smc --items smc_register_sanity_test --tool verilator
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test --seed 1
 
 # Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke
 
 # Scoreboard negative validation: a corrupted scratch readback prediction
 # must FAIL the run
@@ -348,7 +347,7 @@ python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity
 # every looped test runs at least 16 seeded passes by default
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test \
   --plusarg +SMC_REGISTER_SANITY_TEST_LOOPS=4
-python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented \
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke \
   --plusarg +SMC_TEST_LOOPS=1
 ```
 

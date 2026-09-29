@@ -34,6 +34,7 @@
 -module gpio_model
 -module ocah_axi_if
 -module ocah_axi_struct_bridge
+-module ocah_open_drain_bus
 -module pll_wrap
 -module pvt_wrap
 -module smc_cpu_mem_dv
@@ -280,7 +281,9 @@
 -module prim_clk_gater_hysteresis
 -module prim_clkmux4
 -module prim_clock_buf
+-module prim_clock_gating
 -module prim_clock_inv
+-module prim_clock_mux2
 -module prim_count
 -module prim_crc32
 -module prim_diff_decode
@@ -303,6 +306,7 @@
 -module prim_gf_mult
 -module prim_gray2bin
 -module prim_intr_hw
+-module prim_inv
 -module prim_jtag_scan_reg
 -module prim_jtag_sib_mux_post
 -module prim_jtag_sib_mux_pre
@@ -319,6 +323,7 @@
 -module prim_onehot_mux
 -module prim_packer
 -module prim_packer_fifo
+-module prim_pad_shim
 -module prim_pad_wrapper
 -module prim_pipe_stage
 -module prim_pipe_stages
@@ -339,11 +344,10 @@
 -module prim_reg_cdc
 -module prim_reg_cdc_arb
 -module prim_reg_we_check
+-module prim_rev_cell
 -module prim_rom
--module prim_rom_bank_swap
 -module prim_rst_mux2_hf_n
 -module prim_rst_sync
--module prim_rstbypass_stdmux2
 -module prim_sec_anchor_buf
 -module prim_sec_anchor_flop
 -module prim_secded_inv_39_32_dec
@@ -361,8 +365,6 @@
 -module prim_subreg_shadow
 -module prim_subst_perm
 -module prim_sum_tree
--module prim_sync2
--module prim_sync2r
 -module prim_sync3
 -module prim_sync3_pulse
 -module prim_sync3_pulse_dest
@@ -371,7 +373,6 @@
 -module prim_sync4
 -module prim_sync4r
 -module prim_sync_data_autohs
--module prim_sync_randomized_delay
 -module prim_sync_reqack
 -module prim_sync_reqack_data
 -module prim_sync_reset

@@ -52,10 +52,9 @@ async def make_smu_axi_master(
     flattens it as ``s_axi_*`` resolves too. The prefix is detected rather
     than passed.
 
-    The wrapper carries the required AXI4 signals but not the optional
-    qualifiers (prot/cache/qos/region/lock, and the user fields), which
-    cocotbext-axi treats as optional, so a master builds without them. A
-    test that asserts on those qualifiers needs them wired out first.
+    The bench wires the optional qualifiers (prot/cache/qos/region/lock and
+    the user fields) through to the wrapper, and cocotbext-axi drives them
+    when they are present.
     """
     agent = OcahAxiMasterAgent.from_prefix(dut, prefix or smu_axi_in_prefix(dut), clk, reset)
     await agent.start()

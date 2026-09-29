@@ -225,6 +225,9 @@
 // Observables the shared seq_lib reads by name, matching tb/tb_top.sv.
 `SMU_TB_OUT(jtag_tap_pkg::tap_state_e, jtag_ptap_state)
 `SMU_TB_OUT(jtag_inst_reg_pkg::jtag_instruction_decoded_e, jtag_ptap_inst_decoded)
+// The decoded instruction as a plain vector: VCS hands an enum-typed port
+// to cocotb as a 32-bit integer.
+`SMU_TB_OUT(logic [jtag_inst_reg_pkg::DECODED_IR_WIDTH-1:0], tb_ptap_inst_decoded)
 `SMU_TB_OUT(logic [55:0], sep_global_base_o)
 `SMU_TB_OUT(logic [55:0], sep_region_size_o)
 `SMU_TB_OUT(logic [55:0], smc_global_base_o)
@@ -361,13 +364,13 @@
 `SMU_TB_OUT(logic, tb_stap_extra0_tms)
 `SMU_TB_OUT(logic, tb_stap_extra0_tdo)
 `SMU_TB_OUT(logic, tb_stap_extra0_tdo_oen)
-// ATB telemetry source for receiver 0. Receivers 1 and 2 stay idle.
-`SMU_TB_IN(logic [7:0], tb_telemetry_atdata)
-`SMU_TB_IN(logic [6:0], tb_telemetry_atid)
-`SMU_TB_IN(logic, tb_telemetry_atvalid)
-`SMU_TB_IN(logic, tb_telemetry_afready)
-`SMU_TB_OUT(logic, tb_telemetry_atready)
-`SMU_TB_OUT(logic, tb_telemetry_afvalid)
+// ATB telemetry sources, one lane per receiver; lane 0 is the low bits.
+`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][7:0], tb_telemetry_atdata)
+`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0][6:0], tb_telemetry_atid)
+`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_atvalid)
+`SMU_TB_IN(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_afready)
+`SMU_TB_OUT(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_atready)
+`SMU_TB_OUT(logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0], tb_telemetry_afvalid)
 // SMC boundary inputs, and the outputs they and the SMC CSRs drive.
 `SMU_TB_IN(logic [smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1:0], tb_smc_ext_interrupts)
 `SMU_TB_IN(logic [3:0], tb_smc_ndmreset_request)
@@ -413,6 +416,8 @@
 // the rising edge of its fuse-sense-done, so a leaf drives it across a cold
 // reset rather than at an arbitrary time.
 `SMU_TB_IN(logic, tb_secure_tm_req)
+// Clears the SRAM auto-initialisation strap the scratch-RAM preload raises.
+`SMU_TB_IN(logic, tb_smc_sram_auto_init_restore)
 `SMU_TB_OUT(logic, tb_secure_tm)
 // Cross-trigger port pads. The DTP is the pad controller on all four
 // groups. CT_Req_out sits on an ocah_open_drain_bus shared wire, a private

@@ -241,9 +241,9 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut smu --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 carry both implementations in their testlist `module` binding map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error at selection unless `--skip-unimplemented` is passed. The
-framework conventions this realization follows are the shared adopter guide,
+(`module = { cocotb = "<name>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework conventions
+this realization follows are the shared adopter guide,
 `hw/common/dv/docs/uvm-framework.adoc`; the reference bench is DTP, and the
 SMC and SEP benches carry the same shape.
 

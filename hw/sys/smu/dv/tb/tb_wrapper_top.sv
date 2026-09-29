@@ -214,11 +214,15 @@ module smu_wrapper_uvm_top
   // +smc_scratch_ram_hex load, so an image placed there does not survive to
   // first fetch. Hold the FSM off whenever a test supplies such an image;
   // hw/sys/smc/dv holds it off unconditionally.
-  logic smc_disable_sram_auto_init = 1'b0;
+  // tb_smc_sram_auto_init_restore returns the input low, so a later cold reset
+  // runs the zeroing sweep over the image.
+  logic smc_scratch_preloaded = 1'b0;
+  logic smc_disable_sram_auto_init;
   initial begin : smc_scratch_preload_gates_auto_init
     string scratch_hex_path;
-    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+    smc_scratch_preloaded = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
   end
+  assign smc_disable_sram_auto_init = smc_scratch_preloaded & ~tb_smc_sram_auto_init_restore;
 
   // CPU memory macros live inside smc_ip_integration, so the ROM request is
   // observed hierarchically.
@@ -307,25 +311,22 @@ module smu_wrapper_uvm_top
   assign tb_stap_extra0_tdo     = stap_extra_tdo_w[0];
   assign tb_stap_extra0_tdo_oen = stap_extra_tdo_oen_w[0];
 
-  // ATB telemetry: the bench is the source for receiver 0 only.
+  // ATB telemetry: the bench is the source for every receiver.
   localparam int unsigned NUM_TEL = smc_config_pkg::NUM_TELEMETRY_RECEIVERS;
   telemetry_receiver_pkg::telemetry_data_t [NUM_TEL-1:0] tel_atdata_w;
   telemetry_receiver_pkg::atb_id_t         [NUM_TEL-1:0] tel_atid_w;
   logic [NUM_TEL-1:0] tel_atvalid_w, tel_afready_w, tel_atready_w, tel_afvalid_w;
 
   always_comb begin
-    tel_atdata_w     = '0;
-    tel_atid_w       = '0;
-    tel_atvalid_w    = '0;
-    tel_afready_w    = '0;
-    tel_atdata_w[0]  = tb_telemetry_atdata;
-    tel_atid_w[0]    = tb_telemetry_atid;
-    tel_atvalid_w[0] = tb_telemetry_atvalid;
-    tel_afready_w[0] = tb_telemetry_afready;
+    for (int r = 0; r < NUM_TEL; r++) begin
+      tel_atdata_w[r] = tb_telemetry_atdata[r];
+      tel_atid_w[r]   = tb_telemetry_atid[r];
+    end
   end
-
-  assign tb_telemetry_atready = tel_atready_w[0];
-  assign tb_telemetry_afvalid = tel_afvalid_w[0];
+  assign tel_atvalid_w        = tb_telemetry_atvalid;
+  assign tel_afready_w        = tb_telemetry_afready;
+  assign tb_telemetry_atready = tel_atready_w;
+  assign tb_telemetry_afvalid = tel_afvalid_w;
 
   // SMC boundary: the external interrupt vector is NUM_INT_TO_SMC wide and the
   // bench drives its low 32 lanes.
@@ -951,15 +952,20 @@ module smu_wrapper_uvm_top
   // smu_wrapper brings out a real bidirectional pad bus -- smc_ip_integration
   // puts a prim_pad_shim on every pin -- so TB stimulus goes onto the wire
   // itself. A weak pull-down on every pad gives an idle pin a defined 0 on a
-  // four-state simulator without contending with a core output; Verilator
-  // ignores the primitive and reads an undriven pad as 0, so both simulators
-  // see the same idle bus. A pull-up would stall boot: pad 57 is the
+  // four-state simulator without contending with a core output, which the
+  // pad drives at pull strength at its default drive setting. Verilator
+  // accepts no strength on the primitive, ignores it and reads an undriven
+  // pad as 0, so both simulators see the same idle bus. A pull-up would stall boot: pad 57 is the
   // active-high boot-stall input (smc_padring: boot_stall_o =
   // lsio_pad2core_data[57]).
   for (
       genvar gpio_idx = 0; gpio_idx < smc_pkg::NUM_GPIO_WRAPS; gpio_idx++
   ) begin : gen_gpio_pad_pull
+`ifdef VERILATOR
     pulldown u_pad_pulldown (gpio_pad_io[gpio_idx]);
+`else
+    pulldown (weak0) u_pad_pulldown (gpio_pad_io[gpio_idx]);
+`endif
   end
 
   // One testbench driver per pad: the pin-0 and boot-stall straps merge into
@@ -1177,9 +1183,16 @@ module smu_wrapper_uvm_top
   sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
+  // SEP_SEC_DISABLE_TOKEN is the metal expected digest. Product RTL defaults it
+  // to 0, which no SHA-256 output matches; the SHA-256 of the all-zero 32-byte
+  // token stands in for the metal value so a frontdoor token can take the match.
+  localparam bit [255:0] SEC_DIS_TB_DIGEST =
+      256'h66687aad_f862bd77_6c8fc18b_8e9f8e20_08971485_6ee233b3_902a591d_0d5f2925;
+
   smu_wrapper #(
-    .Cfg (SMU_CFG),
-    .SEP (SEP_ENABLED[0])
+    .Cfg                   (SMU_CFG),
+    .SEP                   (SEP_ENABLED[0]),
+    .SEP_SEC_DISABLE_TOKEN (SEC_DIS_TB_DIGEST)
   ) u_dut (
     .clk_smu_i,
     .clk_ref_i,
@@ -1348,6 +1361,7 @@ module smu_wrapper_uvm_top
   // reads a window smu_wrapper keeps inside itself.
   // ------------------------------------------------------------------
   assign jtag_ptap_state_w = 32'(jtag_ptap_state);
+  assign tb_ptap_inst_decoded = jtag_ptap_inst_decoded;
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
     if (!rst_cold_ni) begin
@@ -1843,8 +1857,8 @@ module smu_wrapper_uvm_top
   // Telemetry ATB channel 0 idle.
   assign tb_telemetry_atdata  = '0;
   assign tb_telemetry_atid    = '0;
-  assign tb_telemetry_atvalid = 1'b0;
-  assign tb_telemetry_afready = 1'b0;
+  assign tb_telemetry_atvalid = '0;
+  assign tb_telemetry_afready = '0;
 
   // SMC boundary controls idle.
   assign tb_smc_ext_interrupts   = '0;
@@ -1858,6 +1872,7 @@ module smu_wrapper_uvm_top
   assign tb_chiplet_secondary    = 1'b0;
   assign tb_cool_reset_pin       = 1'b0;
   assign tb_secure_tm_req        = 1'b0;
+  assign tb_smc_sram_auto_init_restore = 1'b0;
 
   // GPIO pads undriven by the bench (the boot-stall pad follows smu_tb_if).
   assign tb_gpio0_drive_en  = 1'b0;

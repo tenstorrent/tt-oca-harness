@@ -215,6 +215,8 @@ one-line intent.
 |`smu_xtrig_ctm_remap_test` |fabric |product-pin CTM remap
 |`smu_axi_in_burst_outstanding_test` |fabric |The inbound SMN port carries several transfers in flight and refuses the burst types the register targets do not support.
 |`smu_axi_in_attribute_sweep_test` |fabric |Every AW/AR attribute the inbound SMN port carries is answered as the traffic-filter specification assigns, and one SMC write leaves the chiplet on `smu_axi_out`.
+|`smu_axi_in_sep_aperture_test` |fabric |Inbound SMN traffic into the SEP aperture: SEP SRAM round trips under every id, qualifier, size, offset and burst swept, the SEP error responses, and every aperture address bit
+|`smu_smc_inbound_window_sweep_test` |fabric |Inbound SMN traffic into the SMC eFuse shim, external target and DTP control window under every AxPROT, the external target at every size and low address bit, and SMC SPM writes under distinct IDs held in flight.
 |`smu_axi_out_addr_len_size_test` |fabric |What the SMC masters a bench can drive send out of the chiplet crosses smu_axi_out with the address, AxSIZE and AxLEN they were given.
 |`smu_aperture_map_walk_test` |fabric |The SMU crossbar decodes the SMC aperture at every base and size BASE_CONFIG admits and JTAG2AXI can follow.
 |`smu_xbar_connectivity_matrix_test` |fabric |An `ext_in` access that matches neither programmed aperture is answered DECERR by the crossbar and never reaches `ext_out`.
@@ -228,6 +230,8 @@ one-line intent.
 |`smu_ic_reset_smc_multi_domain_test` |reset |IC_RESET SMC multi-domain
 |`smu_ic_reset_ss_domain_matrix_test` |reset |IC_RESET SS cold/warm domains
 |`smu_jtag_reset_override_test` |reset |IC_RESET TDR override of EXT/SMC slices
+|`smu_dtp_ptap_ir_walk_test` |dtp |Every PTAP IR encoding decodes to its own bit, and the Pause and Exit2 TAP states reach the boundary
+|`smu_dtp_jtag2axi_address_walk_test` |dtp |Every address bit of the SMC fabric and both OTP JTAG2AXI bridges, and of the adopter and DTP CSR windows behind the SMC, reaches its target
 |`smu_smc_reset_ctrl_test` |reset |primary/cold/periph reset release under the SMU wrapper
 |`smu_reset_release_sync_test` |reset |Cold and primary reset deassertions land on a clock edge of the domain each output is synchronised to.
 |`smu_sram_auto_init_done_test` |reset |With SRAM auto-initialisation enabled, a cold reset clears `smc_init_mem_done_o`, the zeroing sweep runs, and the output asserts and holds when it completes.
@@ -243,10 +247,12 @@ one-line intent.
 |`smu_composition_parameter_test` |smu |The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 |`smu_smc_boundary_io_test` |smu |The SMC-facing wrapper boundary signals that `port_table.adoc` declares are proved through the SMC register map or, for the external interrupts, the SMC CPU interrupt vector `interrupts.adoc` defines, each leg comparing a DUT-produced value against the contract.
 |`smu_smc_cool_reset_pin_test` |smu |A 28-`clk_ref` pulse on `rst_cool_n_from_pin_i` is filtered and a hold past that pulse asserts the SMC primary reset; the four DFT done/pass straps are paired with their set-only DFX_CTRL.STATUS_SMU fields through that reset.
+|`smu_smc_gpio_pad_output_test` |smu |Every GPIO pad driven from its own DATA_CTRL, with a code no other pad shares, follows CORE2PAD and loops it back to its own interrupt lane, and transmit alone drives the pad with its interrupt lane low
 |`smu_smc_boundary_lane_sweep_test` |smu |Every lane of the multi-lane SMC-facing wrapper buses is driven both ways and compared against the SMC register or interrupt vector that owns it, and each aggregate names the lane count it expects.
 |`smu_smc_efuse_shadow_sense_reset_test` |smu |After a real SMC fuse sense, `smc_shadow_regs_o` carries the sensed eFuse image at every register offset `smc_addr.h` gives the map, and it reads the zero every `smc_efuse_map.rdl` field resets to while `rst_cold_ni` is held; the image programs every fuse bit, so both samples are taken on the full width of the port.
-|`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by receiver 0 and read back, and the ATB flush handshake completes at the pins.
+|`smu_telemetry_atb_capture_test` |smu |One complete ATB telemetry message entered at the wrapper pins is captured by each receiver and read back, the ATB flush handshake completes at the pins, and the port applies backpressure when its receiver stops.
 |`smu_smc_peripheral_irq_test` |smu |The raw GPIO and UART interrupt vectors `port_table.adoc` brings out of the wrapper follow their sources both ways.
+|`smu_cla_action_test` |smu |The SMC CLA node 0 custom actions, cross-trigger outputs and clock-halt report, programmed over JTAG2AXI, reach the SMU nets they drive and clear again.
 |`smu_dtp_bsr_extest_loopback_test` |dtp |EXTEST BSR scan loopback
 |`smu_dtp_bsr_ijtag_scan_test` |dtp |BSR .select gating (EXTEST / SAMPLE_PRELOAD)
 |`smu_dtp_io_stap_smoke_test` |dtp |DTP-IO-STAP host TCK observe
@@ -261,10 +267,16 @@ one-line intent.
 |`smu_dtp_otp_smc_series_error_test` |dtp |OTP series NO_INCR + decode-hole SLVERR
 |`smu_dtp_smc_stap_smoke_test` |dtp |DTP-SMC-STAP TRST + TAP_3DCR select
 |`smu_dtp_sep_dm_dmi_test` |dtp |DTP TAP → SEP debug-module `dmstatus` over the SEP TAP's `dmi` register
+|`smu_dtp_sep_dm_sba_test` |dtp |DTP TAP → SEP debug-module system-bus writes of the SEP aperture base and DEMOTE_2, and a SEP read and write through the crossbar, observed at the SMU boundary
+|`smu_sep_sba_fabric_sweep_test` |dtp |SEP debug system bus over every path that leaves the SEP: the SMU aperture, the alias and output remaps, responder errors, the SMC window and the external and TRNG apertures
+|`smu_sep_lsu_fabric_test` |dtp |The SEP load/store unit, run by the debug module from an ICCM probe, against the SMU aperture under responder backpressure, the SMC SPM and the external aperture
+|`smu_efuse_command_test` |dtp |SEP and SMC eFuse read and program commands on the fuse-command ports, driven from the SEP debug system bus
+|`smu_sep_sba_peripheral_test` |dtp |The SEP mailbox interrupts, SPI host quad lanes and interrupt, security-disable token and watchdog reset request, driven from the SEP debug system bus and compared at the SMU.
 |`smu_jtag_chain_enhanced_test` |dtp |IDCODE/BYPASS at 1/5/10/20 MHz TCK
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=1, no Force)
 |`smu_dtp_scan_chain_boundary_test` |dtp |The iJTAG SIB hosts and the secondary TAPs leave and re-enter `smu_wrapper` at the pads, and the shift path runs through those boundary pins.
 |`smu_otp_bridges_under_dbg_disable_test` |dtp |The SMC and SEP OTP JTAG2AXI bridges complete while the lifecycle posture has closed the SMC fabric bridge.
+|`smu_otp_prod_error_resp_test` |dtp |Under PROD the SMC and SEP eFuse JTAG policies refuse OTP bridge accesses with DECERR, and the accesses PROD keeps complete.
 |`smu_xtrig_ctp_pad_test` |dtp |The four CTP pad groups of `smu_wrapper` follow the cross-trigger network's mode, handshake and matrix routing at the pads, and a wire-OR port receives cycle-exactly on its shared wire's assertion edge.
 |`smu_xtrig_mode_composition_test` |dtp |The per-internal-CT mode vector reaches the DTP, and a handshake lane acknowledges where a pulse-sync lane does not.
 |`smu_sep_smoke_test` |sep |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
@@ -273,6 +285,7 @@ one-line intent.
 |`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A
 |`smu_smc_smoke_test` |smc |wrapper SMC ROM boot to PASS; ROM-read and scratch-write floors (no_sep)
+|`smu_smc_fabric_test` |smc |SMC ROM firmware on all four harts stores to and reads back SEP SRAM over `smc_out` and an `ext_out` address, with the bench cross-checking every word
 |`smu_smc_wdt_sanity_test` |smc |CORE0 WDT unlock + CMP via J2A
 |`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
 |`smu_smc_fuse_sense_sequence_test` |smc |SMC fuse sense completes once after the primary reset released and after eFuse read traffic appeared, and the delayed fuse reset releases after that rise rather than with the cold reset.
@@ -862,7 +875,9 @@ row's EXPECT sentence is worth, read the check.
 * With the SMC local aperture routed and an INBOUND0 window opened over JTAG2AXI, sixty-four reads of `VERSION_LO` under distinct ARIDs are launched while RREADY is held low. The AR handshakes the port accepts before its first R handshake are counted on the `ext_in_*` pins, and at least two must be accepted: a port that serialises accepts one and fails here. Every read must then return the VERSION_LO RDL reset value with OKAY, so a dropped transfer fails on its bounded wait.
 * Sixty-four writes under one AWID are launched against `SCRATCH_COLD` while BREADY is held low; the AW handshakes accepted before the first B handshake are counted the same way and at least two are required. The last value written is what a later read returns, which is the ordering AXI requires of same-ID transfers.
 * No specification document states the inbound port's outstanding depth (`doc/integrator/src/smu.adoc` "SMU Default Parameters" sizes no such queue), so the floor of two is a DV-owned rule and the accepted count the port reaches is logged with each depth check rather than compared against a stated depth.
-* A WRAP burst read and a multi-beat FIXED burst write at a register target are refused with SLVERR; the passing response is the error, and the preceding OKAY probes on the same window are the live control that shows the path is open.
+* A four-beat 32-bit INCR burst read from VERSION_LO, covering the four CHIP_CONFIG registers, and one written to the first four SCRATCH_COLD words are OKAY, and a WRAP burst read and a FIXED burst write of the same address, length and size are refused with SLVERR, so the refusal follows the burst type and not the length.
+* Spec gap: no SMC chapter states how the register path answers a non-incrementing or a multi-beat INCR burst (`hw/sys/smc/doc/fabric.adoc` names only the decode error of a deny entry); the SLVERR and OKAY expectations are the documentation item.
+* S3 takes the same window into the SMC SPM (`SMC_TOP_SPM_MEMORY_BASE_ADDR`/`_SIZE` in `smc_addr.h`): every AxSIZE with each of address bits [2:0] set and cleared between transfers, and a 32-bit write and read at every address bit the SPM leaves free, read back what was written; an eight-beat INCR burst reads back its beats, and a WRAP write followed by an INCR write complete, the INCR one OKAY.
 
 *Test Procedure*:
 
@@ -870,7 +885,8 @@ row's EXPECT sentence is worth, read the check.
 . Route the SMC local aperture and open an INBOUND0 window over JTAG2AXI, checking each write's status.
 . Arm an AR/R accept counter on the `ext_in_*` pins, hold RREADY low, issue sixty-four reads of `VERSION_LO` with distinct ARIDs; require at least two AR handshakes before the first R handshake, then compare each data word and response.
 . Arm an AW/B accept counter, hold BREADY low, issue sixty-four writes to `SCRATCH_COLD` under one AWID; require at least two AW handshakes before the first B handshake, then read the register back and compare against the last value written.
-. Issue a WRAP burst read and a FIXED multi-beat burst write at the same window and require SLVERR on each.
+. Issue an INCR burst read and write at the register targets and require OKAY, then a WRAP burst read and a FIXED multi-beat burst write of the same shape and require SLVERR on each.
+. Write and read the SPM at every size cell and address-walk cell, write and read an INCR burst, then issue a WRAP write and an INCR write.
 
 *Checkers*:
 
@@ -879,8 +895,9 @@ row's EXPECT sentence is worth, read the check.
 |Checker |Description
 |`CHK-AXIIN-DEPTH` |the inbound port accepts at least two address handshakes before it returns the first response, on the read train and on the write train, and every read returns the VERSION_LO RDL reset value with OKAY
 |`CHK-AXIIN-DEPTH-ORDER` |sixty-four inbound writes in flight under one AWID leave the last value written in SCRATCH_COLD
-|`CHK-AXIIN-BURST` |an inbound WRAP burst read at a register target is refused with SLVERR
+|`CHK-AXIIN-BURST` |an inbound INCR burst read and write at the register targets are OKAY, and a WRAP burst read of the same shape is refused with SLVERR
 |`CHK-AXIIN-BURST-FIXED` |an inbound multi-beat FIXED burst write at a register target is refused with SLVERR
+|`CHK-AXIIN-SPM-SWEEP` |every SPM size and address cell reads back OKAY with the bytes written, the INCR burst reads back its beats, and the INCR write after the WRAP write is OKAY
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
@@ -1184,6 +1201,7 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 * Sequence for smu_ext_boot_seq_gate_test (SMU_006).
 * Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
 * rst_primary_smc_clk_no is NOT gated by this pin (negative control CHK-PRIMARY-NOT-GATED).
+* With the pin lowered again across a cold reset, the gate holds the fuse reset asserted after the new release, and raising the pin releases it.
 
 *Test Procedure*:
 
@@ -1214,6 +1232,7 @@ gated window fails the scoreboard as well as the sequence.
 |`CHK-BOOT-SEQ-GATE` |Evidence token, emitted only after the compares it names have held
 |`CHK-TIMEOUT-PATHS` |Both bounded waits (primary release while gated; fuse release after ungate) completed within RELEASE_BOUND clk_smu_i cycles and none expired: the compare is the list of (label, expired, bound) records against the expected list, so a missing, expired or differently bounded wait fails
 |`CHK-NONVAC` |Ordered fence from DUT edges, simulation-time stamped: the first rise of `rst_primary_smc_clk_no` precedes the `ext_boot_seq_done_i` drive, and the first rise of `smc_fuse_reset_n_delayed_o` follows both the end of the gated sample window and the ungate drive; a fuse release inside the gated or pre-ungate window fails
+|`CHK-BOOT-SEQ-REGATE` |with `ext_boot_seq_done_i` low across a second cold reset, `smc_fuse_reset_n_delayed_o` stays low for the whole gated sample window after the release and rises within RELEASE_BOUND cycles of raising the pin
 |`CHK-BOOT-SEQ-GATE` |SV-UVM shape only (`--framework uvm`): the sense is done before the gated window, the gate reads 0 and the fuse reset reads 0 on every one of the 64 gated samples, and the fuse reset releases within the gate-path bound after the ungate
 |`CHK-PRIMARY-NOT-GATED` |SV-UVM shape only (`--framework uvm`): the primary reset is low under the cold reset, its 0 -> 1 is observed by the tracker with the gate reading 0 in that clock, and it reads 1 within the bound while the gate still reads 0
 |`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): the three bounded waits (the sense done before the gated window, the primary release while gated, the fuse release after the ungate within the gate-path bound) name a finite bound and their last level; none expired
@@ -1343,10 +1362,13 @@ gated window fails the scoreboard as well as the sequence.
 *Test Coverage*:
 
 * The TDR is 155 bits on this wrapper: 68 SMC + 8 SEP + 1 EXT ports, two bits each, plus `reset_hold` (`doc/integrator/src/smu.adoc` "IC_RESET TDR Structure"). The EXT port sits nearest TDO, so a helper geometry short of the TDR lands the EXT fields in the SEP slice and the EXT leg below fails; this is the leaf that catches a wrong slice width.
-* Default IC_RESET readback is all-ones over the whole DR, with TDO required resolvable on every readback.
-* EXT enable=0/control=0 asserts ext ovrd=1 and ctrl_n=0 while the SMC slice stays idle.
-* SMC cold_reset port override updates the hierarchical SMC slice while the EXT override is released.
+* Default IC_RESET readback is all-ones over the whole DR, with TDO required resolvable on every readback: the JTAG VIP reads an X/Z TDO bit as 0, so during each IC_RESET readback the leaf samples the bench's `jtag_tdo` on every TCK rising edge while `jtag_tdo_oen` (high in Shift-IR and Shift-DR) is high, and an X/Z bit, an X/Z enable, or fewer driven bits than the 155-bit DR fails the run. Verilator is two-state, so there the guard cannot fire; it bites on a four-state simulator.
+* The EXT override is applied and released in two Update-DRs each, `reset_control` first and `reset_enable` second, the order the DTP JTAG chapter (`hw/sys/dtp/doc/jtag.adoc`) gives so a hazard-free consumer multiplexer never sees its select and data move together. `.ovrd` is active high and `.val` carries `reset_control`, so each staging update is visible on the EXT slice alone.
+* EXT control=0 staged under enable=1 drives ctrl_n=0 with ovrd still 0; enable=0 then asserts ovrd=1 with ctrl_n=0 while the whole override half of both the SMC and the SEP slice reads 0; control=1 staged under enable=0 drives ctrl_n=1 with ovrd still 1.
+* SMC cold_reset port override updates the hierarchical SMC slice while the EXT override is released: the SMC slice's override half reads exactly the cold-reset bit, the SEP slice's override half reads 0 and the EXT override reads 0.
 * Clearing the TDR restores both overrides to 0.
+* Every managed-subsystem cold and warm port and every SEP slice port but the Key Manager's is then walked in the same two-update order: control staged under enable=1, enable cleared to apply the override, control released under the override, then the TDR cleared. After each update, the clearing one included, the TDR reads back as written, `ic_reset_smc_ovrd_o` carries exactly the ovrd bits of the SS ports, and the SMC and SEP slices are read whole: each is a packed struct whose `.ovrd` half sits above its `.val` half, the first field of each half nearest TDI, carrying the inverse of reset_enable and reset_control (`doc/integrator/src/smu.adoc`, "IC_RESET TDR Structure"; fuse is the SMC port nearest TDO, the Key Manager the SEP port nearest TDO). Every port's override and value are compared: override on the applied ports only, value equal to the control written, and every other port at its default.
+* The Key Manager port (`km_jtag_rst_n`, the SEP port nearest the external slice) has its control staged and released without the override being applied. With the override applied and lifted, the Key Manager's ROM request (`hw/top/sep_ip_integration.sv` `u_km_rom.req_i`) reads X on a four-state simulator and `prim_rom`'s `noXOnCsI` assertion fires; that is reported as an open design question rather than walked here.
 
 *Test Procedure*:
 
@@ -1372,8 +1394,11 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-IC-DEFAULT` |Evidence token `IC_RESET_DEFAULT`: IC_RESET default all-ones
-|`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: single domain override exclusive
+|`CHK-IC-DEFAULT` |Evidence token `IC_RESET_DEFAULT`: IC_RESET default all-ones, every driven TDO bit of the scan resolvable
+|`CHK-IC-EXT-STAGED` |Evidence token `IC_RESET_EXT_STAGED`: EXT control staged low reaches `jtag_ic_reset_ext_o.val` while `.ovrd` stays 0
+|`CHK-IC-EXT-RELEASE-STAGED` |Evidence token `IC_RESET_EXT_RELEASE_STAGED`: EXT control staged high reaches `.val` while `.ovrd` stays 1
+|`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: with the EXT override applied, the EXT override is 1 and the SMC and SEP slices' whole override halves are 0; with the SMC cold override applied, the SMC override half is exactly the cold-reset bit and the EXT override and the SEP override half are 0
+|`CHK-IC-SS-SEP-WALK` |Evidence token `IC_RESET_SS_SEP_WALK`: the SS and SEP ports staged, applied, released and cleared, with every SMC and SEP slice port's override and value following each update
 |`CHK-IC-DEFAULT` |SV-UVM shape only (`--framework uvm`): the reset image (all ones over the whole 155-bit register) reads back and both override exports are idle
 |`CHK-IC-EXT-OVERRIDE` |SV-UVM shape only (`--framework uvm`): the external port overridden with reset_control 0 asserts `jtag_ic_reset_ext_ovrd` and drives `jtag_ic_reset_ext_ctrl_n` low, within a bounded wait
 |`CHK-IC-READBACK` |SV-UVM shape only (`--framework uvm`): the written EXT image reads back whole
@@ -1497,7 +1522,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 *Source Module*: `smu_sram_auto_init_disabled_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode with a `+smc_scratch_ram_hex` image, which is what drives `smc_disable_sram_auto_init_i` high
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode with a `+smc_scratch_ram_hex` image, which is what drives `smc_disable_sram_auto_init_i` high until `tb_smc_sram_auto_init_restore` lowers it
 
 *Objective*: With SRAM auto-initialisation held off, no zeroing sweep starts and no zeroing write reaches the scratch RAM; what `smc_init_mem_done_o` does in that state is recorded, not claimed.
 
@@ -1512,8 +1537,9 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 [arabic]
 . Read `smc_disable_sram_auto_init_i` high at the SMU boundary, record what `smc_init_mem_done_o` reads, then assert a cold reset and require the output to read low while it is asserted.
-. Release the reset and watch the zeroing consumer: the enable stays low, the address counter does not advance, no zeroing write reaches the scratch RAM.
+. Release the reset and watch the zeroing consumer: the enable stays low and no zeroing write reaches the scratch RAM.
 . Record what `smc_init_mem_done_o` does over the same window (rose or not, held or not); no compare.
+. Lower the input through `tb_smc_sram_auto_init_restore`, run a second cold reset, which must reach the primary SMC reset within the bound, and require the enable to rise and zeroing writes to reach the scratch RAM.
 
 *Checkers*:
 
@@ -1521,6 +1547,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |===
 |Checker |Description
 |`CHK-SMU-MEMINIT-DISABLED` |with smc_disable_sram_auto_init_i high the zeroing sweep never starts and no zeroing write reaches the scratch RAM, and smc_init_mem_done_o reads low while the cold reset is asserted; what it read beforehand and how it behaves after the release is recorded, not compared
+|`CHK-SMU-MEMINIT-RESTORED` |with smc_disable_sram_auto_init_i lowered again, the next cold reset raises the initialisation enable and zeroing writes reach the scratch RAM
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
@@ -1707,6 +1734,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 * S1: SMC_ATTRIBUTES.chiplet_is_primary vs tb_top hardwire.
 * S2: PRESET + TIMER_START → STATUS.RUNNING; tb_timer_count advances.
 * S3: Larger PRESET + START; pin reloads to the new PRESET then advances.
+* S4: TIMER_PRESET_HI/LO is a read-write 64-bit preset (generated `system_timer_octs` description), so START loads it whole: a preset with every bit from 13 up set, 8192 counts short of the wrap, then a preset of zero, each followed by START, put `timer_count_o` at the preset within the reload slack, so bits 13..63 rise and fall on the pin. The count then free-runs from zero, and `timer_count_o` updates every cycle while the timer runs (`hw/ip/system_timer_octs/doc/interface.adoc`); it is sampled every clock until each of bits 0..12 has been seen at 0 and at 1.
 * TIMER_COUNT_{HI,LO} is read over J2A and required to land between two samples of the product pin `tb_timer_count` (`timer_count_o`) taken either side of that read, so the CSR view and the pin view of the same counter are compared. The bracket is as tight as the J2A read latency allows; a COUNT CSR left at its reset value, or one aliasing another register, falls below the lower sample.
 * 32-bit CSRs at addr[2]=1 use the upper 64b J2A lane (wstrb=0xF0), matching `wdt_unlock`.
 
@@ -1728,7 +1756,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |`CHK-OCTS-CSR-COUNT` |Evidence token, emitted only after the compares it names have held
 |`CHK-OCTS-PRESET-RELOAD` |Evidence token, emitted only after the compares it names have held
 |`CHK-OCTS-PRESET-RELOAD-ADVANCE` |Evidence token, emitted only after the compares it names have held
-|assertion |octs incomplete s1=<value> s2=<value> s3=<value>
+|`CHK-OCTS-PRESET-EXTREMES` |after each extreme PRESET and START, `tb_timer_count` sits between the preset and the preset plus the reload slack, and in the free run after the zero preset each of its bits 0..12 is seen at 0 and at 1
+|assertion |octs incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |assertion |tb_timer_count pin observe missing or not advancing
 |===
 
@@ -1775,7 +1804,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 *Source Module*: `smu_boundary_port_composition_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode; SMC eFuse image `hw/sys/smu/dv/assets/smc_efuse_all_ones.hex`, sensed by the SMC eFuse controller (no `+skip_fuse_sense`)
 
 *Objective*: The SEP=1 SMU boundary ports are present at the widths the specifications state, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
 
@@ -1785,7 +1814,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 * Each tokened width compare takes its expected value from a specification: the port table's literal widths (`lcc_demote_state_*_o` `[1:0]`, `ss_reset_ctrl_o` `[31:0]`, `skip_mem_repair_o` 1); `lc_state_o` as 8 bits (port table tie value `8'hf0`; `hw/sys/smc/doc/port_table.adoc` `lc_state_i` "(8 bits)"; `hw/sys/sep/doc/otp_fuse_controller.adoc` life-cycle state width 4); `XTRIG_NUM_CTP` = 16 from `doc/integrator/src/smu.adoc` "SMU Default Parameters"; 256 external interrupts from `hw/sys/smc/doc/port_table.adoc` `smc_ext_interrupts_i`; the 6-bit ID from that table's `sys_axi_in_req_i` row and `smu.adoc` "AXI Interface Configuration"; the `SS_CONFIG` width and reset value from the generated `hw/sys/smc/regs/gen/c/blocks/reset_unit.h`. `cocotb/seq_lib/smu_compose_helpers.py` names the source of each constant.
 * The SMN request/response struct widths, the crossbar-side ID width of both ID-width converters and the SEP-side ID width have no specification in this tree. Those compares are untokened drift checks against a recorded elaboration; no checker row rests on them.
 * The idle-value compares read an output after bring-up against the value the specification gives for that state: `ss_config_o` equals the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear while no isolation request is pending (`smu.adoc`, memory repair: a cold reset without isolation executes repair), with the wrapper FLR pin sampled low as the precondition. Each can fail on a wrong idle value; neither distinguishes an undriven output from one driven to that value. Write-through of `SS_CONFIG` to `ss_config_o` and the FLR path onto `skip_mem_repair_o` are proven by `smu_smc_boundary_io_test`.
-* The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer: the wrapper ties `req_in`, `ack_in` and `ack_out` to zero, and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed.
+* `smc_shadow_regs_o`: `port_table.adoc` types it `smc_efuse_pkg::efuse_map_t` and states no width, so the `smu_wrapper` port and the bench net are compared at width with the `smu` port. After `smc_fuse_sense_done_o` rises for the cold boot, the `smu` port, the `smu_wrapper` port and the bench net each carry the image `+smc_efuse_hex` names, fuse word `i` at shadow bits `32i+31..32i`; the image programs every bit, and the leaf requires it to program at least one, so a disconnected or narrowed wrapper port reads a zero where the image has a one.
+* The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer. `smu_wrapper` passes them through; the bench, as the integrator the port table's "Tie to '0 if unused" note addresses, holds `req_in`, `ack_in` and `ack_out` at zero (`tb/tb_wrapper_top.sv` ties `ack_out`, and `req_in` and `ack_in` follow bench nets `smu_base_test` drives to zero; stand-in entry "CTP data-input tie-offs" in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`), and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed. A cross-trigger block held in reset, unclocked or disconnected would also stay static, so `smu_xtrig_ctp_pad_test` (<<sec-063-smu_xtrig_ctp_pad_test>>) is the live control for this leg: on the same bench a request on `xtrig_ctp_req_in_din_i[0]` raises `xtrig_ctp_ack_out_dout_o[0]` at the pads.
 
 *Test Procedure*:
 
@@ -1794,6 +1824,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 . Read the subsystem-side ID width of the SMC ID-width converter and compare it with the specified 6-bit SMC system AXI input ID; read the SMN struct widths and the crossbar-side ID widths as untokened drift.
 . Sample the CTP data inputs at the SMU boundary and the DTP consumer and require their resting levels, then require every CTP output and the CTM boundary static at zero over the inert window.
 . Sample `ss_config_o` and `skip_mem_repair_o` after bring-up and compare them with their specified idle values.
+. Compare the widths of the `smu_wrapper` `smc_shadow_regs_o` port and the bench net with the `smu` port, wait for `smc_fuse_sense_done_o` to rise, and compare all three with the image.
 
 *Checkers*:
 
@@ -1801,14 +1832,14 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |===
 |Checker |Description
 |`CHK-SMU-EXT-SMN-S4` |the SMC-side ID-width converter presents the specified 6-bit subsystem ID
-|`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count, and its tie-off reads zero
+|`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count
 |`CHK-SMU-XTRIG-CTP-S1` |all four CTP groups are 16 wide, the XTRIG_NUM_CTP default
-|`CHK-SMU-XTRIG-CTP-S6` |resting CTP data inputs leave the CTP outputs static
+|`CHK-SMU-XTRIG-CTP-S6` |bench-held resting CTP data inputs leave the CTP outputs static (live control: `smu_xtrig_ctp_pad_test`)
 |`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LC_STATE_WIDTH
 |`CHK-SMU-LC-DEMOTE-S1` |both lcc_demote_state outputs are 2 bits
-|`CHK-SMU-EFUSE-SHIM-SMC-S3` |smc_shadow_regs reaches the boundary at full width and value
+|`CHK-SMU-EFUSE-SHIM-SMC-S3` |the smu_wrapper smc_shadow_regs_o port and the bench net are as wide as the smu port, and after the sense completes all three carry the non-zero image +smc_efuse_hex names
 |`CHK-SMU-FUSE-SENSE-S4` |skip_mem_repair_o is one bit and clear with no isolation request pending
-|`CHK-SMU-SSRESET-S2` |ss_reset_ctrl_o has 32 elements that share one width
+|`CHK-SMU-SSRESET-S2` |ss_reset_ctrl_o has 32 elements
 |`CHK-SMU-SSRESET-S4` |ss_config_o is 32 bits and presents the SS_CONFIG reset value
 |===
 
@@ -1820,7 +1851,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 *Source Module*: `smu_composition_parameter_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode, `+expected_sep=1`, `+xtrig_int_ct_mode=0x80`
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode, `+expected_sep=1`, `+xtrig_int_ct_mode=0x80`; the bench overrides `SEP_SEC_DISABLE_TOKEN` with the SHA-256 of the all-zero 32-byte token (`tb_wrapper_top.sv`), standing in for the metal digest so that a frontdoor token can take the match
 
 *Objective*: The build parameters the wrapper passes down reach the instances that consume them at the values the specification states.
 
@@ -1828,8 +1859,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 * The goldens are specification values. `doc/integrator/src/smu.adoc` "SMU Default Parameters" and "Cross Trigger Parameters": 16 external CTPs, 8 exposed internal CT lanes and 8 exposed clock-stop requests, with the DTP carrying 10 and 9 once the SMC reservation is added ("Debug & Test Ports (DTP) Integration"); `SMC_OTP_*_PL_DEPTH` `2'h3`; `JTAG_NUM_EXTRA_STAPS` 1 with the port array as wide as the parameter. "Pipeline Depth Parameters": `SEP_OTP_*_PL_DEPTH` fixed to `2'h3`. `hw/sys/smc/doc/port_table.adoc`: 256 external interrupts. `hw/sys/sep/doc/security_disable.adoc`: the 256-bit token. `+xtrig_int_ct_mode` is the bench's declared elaboration input; the DTP is required to present it above zeroed SMC-reserved bits ("SMC-reserved DTP mode bits are 0 (pulse-sync)").
 * Plumbing compares read one parameter at the wrapper and at the instance that consumes it: `Cfg` at the wrapper and at `smu`; the token at the wrapper, at `smu` and at the SEP eFuse controller.
-* No specification in this tree states the packed layout of the build configuration struct or the token parameter's default. The per-field `Cfg` decode compares and the token-is-zero compare are untokened drift checks; `SEP_KM_LATCHED_MEM_RDATA` has no specified default and is decoded and logged only. No checker row rests on these.
-* The security_disable leg reads nodes that are constant zero on this composition; it proves the wire, not the function, and says so.
+* The token the wrapper carries is compared against the SHA-256 of the all-zero 32-byte token, computed in the sequence, which is the value the bench binds in place of the metal digest; the product default is not what this composition elaborates. No specification in this tree states the packed layout of the build configuration struct. The per-field `Cfg` decode compares are untokened drift checks; `SEP_KM_LATCHED_MEM_RDATA` has no specified default and is decoded and logged only. No checker row rests on these.
+* The security_disable net is constant zero while no token is written, so this leaf only records it at the SEP eFuse controller that drives it, the `smu` wire and the SMC input, untokened. `smu_sep_sba_peripheral_test` S6 carries the claim: it reads the same three nodes at 0 before the token and at 1 after the matching token (`CHK-SEP-SECURITY-DISABLE`).
 
 *Test Procedure*:
 
@@ -1838,7 +1869,7 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 . Read the DTP SEP OTP pipeline depth parameters at the instance and compare against the specified fixed depth.
 . Require the wrapper's `Cfg` to reach `smu` unchanged; decode it field by field as untokened drift.
 . Read each consumer parameter (`u_dtp.XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, `XTRIG_NUM_CLK_STOP_REQ`, `XTRIG_INT_CT_MODE` and its width, `SMC_OTP_*_PL_DEPTH`; the `smc_ext_interrupts_i` and `jtag_stap_extra_host_tdi_i` port widths) and compare against the specified value.
-. Read security_disable at the SEP consumer, the `smu` wire and the SMC input and require them equal.
+. Record security_disable at the SEP eFuse controller's output, the `smu` wire and the SMC input.
 
 *Checkers*:
 
@@ -1904,9 +1935,9 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 
 *Source Module*: `smu_telemetry_atb_capture_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive of the wrapper telemetry ATB pins; `ocah_jtag_vip` (SMC fabric JTAG2AXI) to read the receiver registers; `elaboration` firmware mode
+*BFM / Model*: TB pin drive of the wrapper telemetry ATB pins, one lane per receiver; `ocah_jtag_vip` (SMC fabric JTAG2AXI) to read the receiver registers; `elaboration` firmware mode
 
-*Objective*: One complete ATB telemetry message entered at the wrapper pins is captured by receiver 0 and read back, and the ATB flush handshake completes at the pins.
+*Objective*: One complete ATB telemetry message entered at the wrapper pins is captured by each receiver and read back, the ATB flush handshake completes at the pins, and the ATB port applies backpressure when its receiver stops.
 
 *Test Coverage*:
 
@@ -1914,7 +1945,8 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 * With the telemetry clock gate proved open, a complete last-flagged message whose every beat handshook on `telemetry_atready_o` leaves the buffer non-empty, reports the framed probe id, one valid bit for the one counter's worth of valid blocks sent and that counter reassembled from the byte every valid block carried, and CTRL.BUFFER_POP returns it to empty.
 * The frame is a DV-owned table in `seq_lib/smu_telemetry_atb_capture_seq.py` transcribed from the "Message Format" table of `hw/ip/telemetry_receiver/doc/index.adoc` (eight little-endian beats per 64-bit packet, `last_packet` at bit 63, `probe_id` at bits [60:56] of the first packet, seven 9-bit valid-plus-data blocks per packet, a counter as four consecutive blocks valid only when all four are valid), `doc/interface.adoc` (ATB_DATA_WIDTH 8, PACKET_WIDTH 64) and the generated `regs/gen/c/telemetry_receiver.h` (PROBE_ID width, COUNTER_VLDS bit `i` is counter `i`). The probe-id and last-packet compares therefore test the receiver against the documented format, not against itself.
 * Specification gap: the document does not state which of the seven block positions is block 0, whether a block's valid bit is its top or bottom bit, or which block begins counter 0. The frame is built independent of all three (header block invalid under either orientation, every other block all ones), so what is proven for the counter is the round trip of a DV-chosen byte through COUNTER_VLDS and TELEMETRY_COUNTER[0]; most-significant-byte-first order and block placement are not discriminated until the specification fixes them.
-* CTRL.TELEMETRY_TX_FLUSH raises `telemetry_afvalid_o`; the request holds while `telemetry_afready_i` is low and retires when it is raised, at the pin and in the register field. The expected behaviour is the `TELEMETRY_TX_FLUSH` field description in `regs/telemetry_receiver.rdl` (self-clearing on flush completion over the ATB AF interface) with `afvalid_o` / `afready_i` as request and acknowledgment in `doc/interface.adoc`.
+* S5 to S7 repeat the capture on every receiver, each on its own lane with every ATB ID bit raised and then lowered, repeat the flush handshake on receivers 1 and 2, and run `clk_telemetry_i` (10 ns) faster than the receiver's `clk_smu_i` (12 ns) so that back-to-back beats outrun the ATB crossing FIFO and `telemetry_atready_o` falls after at least one accepted beat (`doc/interface.adoc`, "Back-pressure"); the number of beats accepted before the fall is recorded, since no document gives the crossing FIFO depth (spec gap). A complete message is queued before the beats, and CTRL.TELEMETRY_RX_FLUSH "discards queued messages and resets the assembly write pointer" (`telemetry_receiver.rdl`), so after the flush the buffer reads empty and a complete message sent afterwards is captured with its own probe id.
+* CTRL.TELEMETRY_TX_FLUSH raises `telemetry_afvalid_o`; the request holds while `telemetry_afready_i` is low and retires when it is raised, at the pin and in the register field: `telemetry_afvalid_o` reads 1 after the register read that shows the field held, in the same step as `telemetry_afready_i` is raised, and 0 after it, so the pin's fall follows the acknowledgment. Lowering `telemetry_afready_i` again, read back at the wrapper port, leaves the request retired, so every receiver's acknowledgment both rises and falls at the pin. The expected behaviour is the `TELEMETRY_TX_FLUSH` field description in `regs/telemetry_receiver.rdl` (self-clearing on flush completion over the ATB AF interface) with `afvalid_o` / `afready_i` as request and acknowledgment in `doc/interface.adoc`.
 
 *Test Procedure*:
 
@@ -1922,7 +1954,10 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 . Read receiver 0 STATUS, PROBE_ID, COUNTER_VLDS and TELEMETRY_COUNTER[0] at reset.
 . Prove the telemetry clock gate open, drive the message framed per the DV-owned table beat by beat on the wrapper ATB pins, requiring `telemetry_atready_o` on each beat.
 . Read the receiver registers, compare the probe id, the valid bits and counter 0 against the framed message, pop the buffer and read it empty again.
-. Set CTRL.TELEMETRY_TX_FLUSH, hold `telemetry_afready_i` low and read the request held; raise it and read the request retired.
+. Set CTRL.TELEMETRY_TX_FLUSH, hold `telemetry_afready_i` low and read the request held; sample `telemetry_afvalid_o` high, raise `telemetry_afready_i` and read the request retired; lower it and read it low at the wrapper port with the request still retired.
+. For each receiver, drive a message framed with its own probe id on its own ATB lane with every ATB ID bit high, return the lane to zero data and ID, read the probe id, pop the buffer and read it empty.
+. Repeat the flush handshake on receivers 1 and 2.
+. With `clk_telemetry_i` running faster than `clk_smu_i`, on each receiver's lane in turn send a complete message and read the buffer non-empty, hold `telemetry_atvalid_i` high until `telemetry_atready_o` falls while counting accepted beats, drop it and wait for ready to rise; pulse CTRL.TELEMETRY_RX_FLUSH and read the buffer empty; send a complete message again, read its probe id and pop it.
 
 *Checkers*:
 
@@ -1931,7 +1966,9 @@ TAP resets it observes, and the always-on scoreboard pairs the two.
 |Checker |Description
 |`CHK-SMU-TEL-RESET` |receiver 0 reads STATUS.BUFFER_EMPTY set with PROBE_ID, COUNTER_VLDS and TELEMETRY_COUNTER[0] clear before any beat is driven
 |`CHK-SMU-TEL-CAPTURE` |a complete last-flagged ATB message framed per the documented format, whose every beat handshook on telemetry_atready_o, leaves the buffer non-empty, reports the framed probe id, one valid bit for the one counter's worth of valid blocks sent and counter 0 equal to the byte that filled them, and CTRL.BUFFER_POP returns it to empty
-|`CHK-SMU-TEL-FLUSH` |CTRL.TELEMETRY_TX_FLUSH raises telemetry_afvalid_o and the request holds while telemetry_afready_i is low; raising it retires the request at the pin and clears the register field
+|`CHK-SMU-TEL-FLUSH` |CTRL.TELEMETRY_TX_FLUSH raises telemetry_afvalid_o and the request holds while telemetry_afready_i is low, with the pin still 1 when telemetry_afready_i rises; raising it retires the request at the pin and clears the register field, and lowering it again at the wrapper port leaves the request retired, on every receiver
+|`CHK-SMU-TEL-EVERY-RECEIVER` |each receiver takes a message on its own ATB lane, reports the probe id framed for it, and pops back to empty
+|`CHK-SMU-TEL-BACKPRESSURE` |on every receiver, with a message queued, back-to-back beats on a telemetry clock faster than the receiver clock make `telemetry_atready_o` fall after at least one accepted beat, it rises again once the beats stop, the RX flush empties the buffer, and a message sent after the flush reads back its own probe id
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
@@ -2720,6 +2757,7 @@ with the completion the bus returned.
 * Spec gap: the signal interface table calls `ct_ack_out_dout` "unused" in wire-OR mode and describes the two point-to-point data outputs only in terms of the request or acknowledge that drives them. The DV rule reads every data output as 0 while no trigger is in flight.
 * The CTM port of the internal lane follows the port-indexing table (external CTPs at 0..N-1, internal lanes after; `hw/ip/cross_trigger/cross_trigger_matrix/doc/architecture.adoc`) and the SMU integrator statement that the low DTP internal-CT lanes are reserved for the SMC and the SMU exposes the lanes above them, with the SMU default of 8 exposed lanes (`doc/integrator/src/smu.adoc`, DTP configuration table; `hw/sys/smu/doc/port_table.adoc`). The DTP internal-lane count is the CTM port count less the CTP count from the header, and the `xtrig_ctm_src_req` width is required to equal the exposed count before the port is walked.
 * The four-phase handshake runs in both directions at the pads, and a trigger is routed through the cross-trigger matrix to a second port and to an internal cross-trigger lane at `xtrig_ctm_src_req_o`, so the routing is observed at a different pin from the one that sourced it.
+* S8 and S9 repeat the point-to-point handshake with matrix routing, and the wire-OR receive, on every one of the `CROSS_TRIGGER_NETWORK_CTP_NUM` lanes, so every lane of every pad group toggles at the pads; S10 routes a trigger into each of the DTP's internal lanes.
 * A wire-OR port's `ct_dst` is CT_DST_LATENCY (3 clk_smu: the CTP synchronizer's one 2-FF synchronizer, i.e. two flop stages, plus the registered `ct_dst` output; the same constant as `DTP_CT_DST_LATENCY`) after its shared wire is first seen asserted, never at the release, and never through a reset with the wire resting. A per-clk_smu-cycle activity sampler records the cycle each observable first went high and how many times it rose, so the latency and the one-pulse-per-assertion bound are both cycle-exact.
 
 *Test Procedure*:
@@ -2731,6 +2769,9 @@ with the completion the bus returned.
 . Drive a point-to-point request in, require the acknowledge out and STATUS, release and require it retired.
 . Point CT_SRC[1].CT_DST_SELECT at lane 0 and require the trigger on lane 1's request out; route lane 0 into the CT_SRC port of the first SMU-exposed internal lane and require `xtrig_ctm_src_req_o[0]`, then the same from a chiplet pull of lane 2's shared wire, held and released, requiring the receive latency, one pulse, and the routed request following the pull rather than the release.
 . Put three wire-OR lanes on the group wire; require one chiplet pull reaches every member's `ct_dst` once at the same latency and leaves every non-member lane quiet, and that two members pulled in overlapping windows still reach every member exactly once and leave every non-member lane quiet, with the mismatch flag clear throughout both windows.
+. For every lane in turn, with its successor as the sink, put both in point-to-point, require the pad controls of the point-to-point column on those two lanes alone, route the lane's destination to the sink, drive a request in, require the lane's acknowledge out and the sink's request out, retire it with the sink's acknowledge in, and return the lane to wire-OR.
+. With every lane back at wire-OR, pull each lane's private wire in turn and require that lane's `ct_dst` once at CT_DST_LATENCY and no other lane's.
+. With lane 0 in point-to-point, route its destination into the CT_SRC port of each DTP internal lane in turn, drive a request, and require that internal lane to rise once and no other, acknowledging it when its mode bit selects the handshake; then pulse each exposed lane's acknowledge input with no request in flight, sampling every cycle of the pulse and of the settle after it, and require no lane to move.
 
 *Checkers*:
 
@@ -2746,6 +2787,9 @@ with the completion the bus returned.
 |`CHK-SMU-CTP-WIRE-IDLE` |with every CT_Req_out wire resting at its pull after reset, no wire-OR lane's `ct_dst` rises and the wire-mismatch flag is 0
 |`CHK-SMU-CTP-WIRE-RX` |a chiplet pull of lane 2's private wire (held >= PULSE_BOUND clk_smu) raises `tb_xtrig_ctp_ct_dst[2]` exactly CT_DST_LATENCY clocks after the wire is first seen asserted, once, and the release raises nothing further
 |`CHK-SMU-CTP-WIRE-SHARED` |three wire-OR lanes on one group wire: one chiplet pull reaches every member's `ct_dst` once at the same latency and leaves every non-member lane quiet; two members pulled in overlapping windows still reach every member exactly once and leave every non-member lane quiet
+|`CHK-SMU-CTP-EVERY-LANE` |every lane in point-to-point moves its own pad controls, acknowledges a request in, and routes it through the matrix to its successor's request out, which the successor's acknowledge in retires
+|`CHK-SMU-CTP-WIRE-RX-EVERY-LANE` |a chiplet pull of each lane's private wire raises that lane's `ct_dst` once at CT_DST_LATENCY and no other lane's
+|`CHK-SMU-CTM-EVERY-LANE` |routed into each of the ten DTP internal lanes, the two the SMC keeps and the eight the SMU exposes, a lane-0 request raises that internal lane once and no other, and an acknowledge on an idle exposed lane moves no request on any cycle of the pulse or the settle after it
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
@@ -3169,19 +3213,22 @@ with the completion the bus returned.
 
 *BFM / Model*: `ocah_jtag_vip` (SMC fabric JTAG2AXI for the watchdog and CPU_CTRL registers); `elaboration` firmware mode
 
-*Objective*: The CORE0 watchdog's first and second timeouts reach the SMU pins and the second one drops the SMC warm reset.
+*Objective*: The CORE0 watchdog's first and second timeouts reach the SMU pins, the watchdog timeout drops the SMC warm reset, and the warm reset clears the first timeout.
 
 *Test Coverage*:
 
-* <<sec-074-smu_smc_wdt_timeout_irq_test>> stops at the watchdog's pending bit because it never sets WDOGRSTEN, which is what gates the cluster's reset output; this leaf sets it and follows the timeout out to `smc_wdt_first_timeout_o`, with WDOGIP0 set at the same time and both clear beforehand.
-* The held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter down to `smc_wdt_second_timeout_o`, and the SMC warm reset must drop with it.
+* <<sec-074-smu_smc_wdt_timeout_irq_test>> stops at the watchdog's pending bit because it never sets WDOGRSTEN, which "enables a sticky reset signal to outputted to top level" (`wdt.rdl`); this leaf sets it and follows the timeout out to `smc_wdt_first_timeout_o`, with WDOGIP0 set at the same time and both clear beforehand.
+* The held first timeout runs the CPU_CTRL.WDT_TIMEOUT count (`cpu_ctrl.rdl`: "Cycle count value that 2nd stage watchdog timer timeout should occur at") out to `smc_wdt_second_timeout_o`. A watchdog timeout is a warm reset source (`hw/sys/smc/doc/clk_rst.adoc`, "Watchdog Timeout"; `hw/sys/smc/doc/cpu.adoc`: "a Warm Reset from a watchdog timeout"), so the SMC warm reset must drop; the cycles of the second timeout and of the drop are recorded.
+* The warm reset covers the per-core watchdog timers (`clk_rst.adoc`, "Warm Reset"), so the first timeout must fall. The levels the second timeout, the SMC warm reset and the SMC watchdog reset settle at, and whether the watchdog reset asserted, are recorded.
+* Spec gap: the SMC chapters do not state which watchdog stage asserts the warm reset, what the second timeout does after the warm reset, or whether the warm reset releases without the cold reset that `cpu.adoc` says follows a watchdog timeout; those are observations.
 
 *Test Procedure*:
 
 [arabic]
 . Read both timeout pins and WDOGIP0 clear; arm CORE0 with WDOGRSTEN, WDOGENALWAYS and WDOGZEROCMP.
 . Wait for `smc_wdt_first_timeout_o` and read WDOGIP0 set at the same time.
-. Hold the first timeout, wait for `smc_wdt_second_timeout_o`, and require the SMC warm reset to drop with it.
+. Hold the first timeout, wait for `smc_wdt_second_timeout_o` and for the SMC warm reset to drop, recording both cycles.
+. Wait for the first timeout to fall, and record the second timeout and both SMC resets.
 
 *Checkers*:
 
@@ -3189,7 +3236,8 @@ with the completion the bus returned.
 |===
 |Checker |Description
 |`CHK-SMU-WDT-FIRST` |CORE0 armed with WDOGRSTEN as well as WDOGENALWAYS and WDOGZEROCMP raises smc_wdt_first_timeout_o, with WDOGIP0 set at the same time and both clear beforehand
-|`CHK-SMU-WDT-SECOND` |the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out to smc_wdt_second_timeout_o, and the SMC warm reset drops with it
+|`CHK-SMU-WDT-SECOND` |the held first timeout runs the CPU_CTRL.WDT_TIMEOUT counter out to smc_wdt_second_timeout_o, and the SMC warm reset, released before, drops within the same window
+|`CHK-SMU-WDT-RELEASE` |after the warm reset, smc_wdt_first_timeout_o falls
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
@@ -4356,7 +4404,7 @@ Two things are worth reading before the entries:
 * Every step reconciles its cell count against the AR and AW handshakes the port accepted, counted on the `ext_in_*` pins rather than in the master.
 * AxATOP is not driven. `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package carries no ATOP driver, so this leaf makes no ATOP claim, as `smu_axi_atomic_operation_test` records for the same reason.
 * Shrinking BASE_CONFIG.REGION_SIZE so the local aperture ends at the adopter external window puts that window outside the chiplet, and a JTAG2AXI write to it crosses `smu_axi_out`. The outbound write count moves by exactly one, the boundary carries the address the SMC was given with `w.last` and an OKAY `b.resp`, and the bench responder's memory holds the word.
-* Regrowing REGION_SIZE to its reset value is the reprogram state of the SMC aperture map (`smu_xbar_fcov` `c_map_smc_size_reprogrammed`). The zero-window state (`c_map_smc_size_zero`) is not driven: `smu_axi_xbar` forms the crossbar rule as `end = base + size`, so a zero size gives `start == end`, which the decoder's own map check (`addr_decode_dync` `check_start`) rejects; on VCS that assertion fails the leaf, and on the wrapper boundary the closed aperture routes even BASE_CONFIG writes out on `smu_axi_out`, so the aperture would reopen only by reset. Whether zero is a legal state is open with the SMU owner and carried in the coverage policy.
+* Regrowing REGION_SIZE to its reset value is the reprogram state of the SMC aperture map (`smu_xbar_fcov` `c_map_smc_size_reprogrammed`). A zero REGION_SIZE is not driven: `smc_base_config` requires a non-zero power of two, and zero leaves no reachable local aperture, so the closed aperture would route even BASE_CONFIG writes out on `smu_axi_out` and reopen only by reset. The zero-window point is in the <<smu-fcov-phase2,Phase 2 set>> of the coverage plan.
 
 *Test Procedure*:
 
@@ -4596,13 +4644,18 @@ Two things are worth reading before the entries:
 
 *BFM / Model*: `ocah_jtag_vip` for the SMC JTAG2AXI bridge, the outbound filter and the iDMA registers; the shared responder on `u_axi_out_if`, whose address phases the sequence records; `elaboration` firmware mode
 
-*Objective*: What the SMC masters a bench can drive send out of the chiplet crosses `smu_axi_out` with the address, AxSIZE and AxLEN they were given.
+*Objective*: What the SMC masters a bench can drive send out of the chiplet crosses `smu_axi_out` with the address and AxSIZE they were given, and a copy crosses whole.
 
 *Test Coverage*:
 
-* `smu_axi_xbar_pkg` `Connectivity` connects `smc_out` and `sep_out` to `ext_out` and gives `ext_in` no path there, so every outbound transfer is issued by the SMC or the SEP. Without firmware the bench drives two SMC masters: the JTAG2AXI bridge, whose requests carry the programmed address and AxSIZE with ID 0, AxLEN 0, INCR and fixed AxCACHE, AxPROT, AxQOS, AxREGION and AxLOCK (`hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv`), and the iDMA register frontend, which issues INCR bursts sized by the transfer with a fixed AxCACHE (`vendor/pulp-platform/idma/upstream/src/frontend/reg/tpl/idma_reg.sv.tpl`). The fixed fields are therefore not walked here.
-* JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper bits are the `0xAA..` and `0x55..` patterns, outside the SMC local window and the SEP aperture, and reads each back; each transfer crosses the boundary exactly once with that address, AxSIZE, AxLEN 0 and INCR, the responder holds the bytes and the read returns them.
-* With outbound filter entry 0 passing every address, the iDMA copies a 2 KiB block between two further such addresses; the reads and writes at the boundary are INCR, together cover the block exactly, and the longest reaches AxLEN 255. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
+* The SMU crossbar connects `smc_out` and `sep_out` to `ext_out` and gives `ext_in` no path there (`hw/sys/smu/doc/index.adoc`), so every outbound transfer is issued by the SMC or the SEP. Without firmware the bench drives two SMC masters: the JTAG2AXI bridge, whose single operation carries the programmed address and uses its size field as AxSIZE (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI single-operation fields"), and the iDMA register frontend, which moves LENGTH bytes from SRC_ADDRESS to DST_ADDRESS (`dma_ctrl.rdl`).
+* Spec gap: neither document states the AxLEN, AxBURST or other fixed request fields these masters drive, and `dma_ctrl.rdl` describes every CONFIG field as "Not used" although the copies below set `enabled_nd` and `src/dst_reduce_len`. Burst lengths, burst types and address-phase counts are recorded as observations, not compared.
+* JTAG2AXI writes 1, 2, 4 and 8 bytes at two 56-bit addresses whose upper bits are the `0xAA..` and `0x55..` patterns, outside the SMC local window and the SEP aperture, and 1, 2 and 4 bytes at byte offsets 1, 2, 4, 7 and 6 of one doubleword, and reads each back; each transfer crosses the boundary exactly once with that address and AxSIZE, the responder holds the bytes and the read returns them; AxLEN and AxBURST are recorded.
+* With outbound filter entry 0 passing every address, the iDMA copies a 2 KiB block between two further such addresses; the reads and writes at the boundary together cover the block exactly, and their burst types and longest AxLEN are recorded. The destination holds the source bytes and DONE reports the id the launch read from NEXT_ID.
+* S3 repeats the copy with CONFIG `src_reduce_len` and `dst_reduce_len` set and `max_llen` 0 while the bench responder stalls every AW, W and AR handshake; the copy completes intact, and the number of address phases and their AxLEN are recorded. A second such copy stalls only the write handshakes, 24 cycles each; it completes intact too.
+* S4: the responder returns a one-shot SLVERR and then DECERR on a JTAG2AXI read and on a write; the bridge's op field reads 1 for the SLVERR and 2 for the DECERR (`architecture.adoc`), and the next access at the address succeeds.
+* S5: the SMC zeroer (`zeroer_ctrl` register description) writes zeros over 512 bytes outside both apertures; the responder holds zeros there and the busy bit falls.
+* S6: the M-mode and Xvisor output remaps (`output_remap` register description, 1 MiB regions) put region 0 of their windows at a programmed target; a JTAG2AXI write and read of region 0 cross the boundary once each at the target and read back, and a following write and read outside both windows leave by the default path at their own address.
 
 *Test Procedure*:
 
@@ -4610,18 +4663,595 @@ Two things are worth reading before the entries:
 . Bring up the primary TAP and start recording the outbound address phases.
 . For each address and AxSIZE, write over JTAG2AXI, wait for the outbound write count, read back, wait for the outbound read count, and compare the recorded phases, the responder's bytes and the returned data.
 . Fill the source block in the responder, zero the destination, program outbound filter entry 0 to pass all, program the iDMA descriptor, launch it by reading NEXT_ID once, and poll DONE.
-. Compare the destination with the source and the recorded bursts with the block.
+. Compare the destination with the source and the bytes the recorded bursts cover with the block.
+. Enable responder backpressure on AW, W and AR, run a second copy, disable it, and compare the destination; repeat with backpressure on AW and W only.
+. Arm a one-shot SLVERR and DECERR on a read and on a write at one address, compare the JTAG2AXI statuses, then write and read the address.
+. Program the zeroer destination and size, start it, poll busy, and compare the responder's bytes.
+. Program M-mode and then Xvisor output remap region 0, write and read region 0 of each window, clear the remap, then write and read an address outside both windows; compare the recorded phases, the responder's bytes and the returned data.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-AXIOUT-SIZE` |each of the eight JTAG2AXI writes and reads crosses `smu_axi_out` exactly once with its address, AxSIZE, AxLEN 0 and INCR; the responder holds every byte written and every read returns it
-|`CHK-AXIOUT-LEN` |the iDMA copy completes with the launched id, the destination holds the source block, and the boundary's INCR reads and writes cover the block exactly with the longest at AxLEN 255
+|`CHK-AXIOUT-SIZE` |each of the thirteen JTAG2AXI writes and reads crosses `smu_axi_out` exactly once with its address and AxSIZE; the responder holds every byte written and every read returns it
+|`CHK-AXIOUT-LEN` |the iDMA copy completes with the launched id, the destination holds the source block, and the boundary's reads and writes cover the block exactly
+|`CHK-AXIOUT-BACKPRESSURE` |the copy through a responder stalling every AW, W and AR completes with the launched id and the destination holds the source block; the copy with only the write handshakes stalled does the same
+|`CHK-AXIOUT-ERROR-RESP` |a responder SLVERR and DECERR on a read and a write reach JTAG2AXI as `J2A_STATUS_SLVERR` and `J2A_STATUS_DECERR`, and the next write and read at the address succeed
+|`CHK-AXIOUT-ZEROER` |the zeroer's 512 bytes are zero in the responder and its busy bit returns low
+|`CHK-AXIOUT-OUTPUT-REMAP` |the M-mode and Xvisor region 0 write and read each cross once at the programmed target and read back, and the following write and read cross once each at their own address
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-114-smu_dtp_sep_dm_sba_test]]
+===== 114 `smu_dtp_sep_dm_sba_test`
+
+*Source Module*: `smu_dtp_sep_dm_sba_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_dtp_sep_dm_dmi_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip`; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: program SEP registers that only the SEP side can write -- the SEP aperture and the demotion controls -- from the product JTAG pins through the SEP debug module's system bus and observe each at the SMU boundary, send a SEP read and write out through the crossbar, and show a cold reset clearing the demotion.
+
+*Test Coverage*:
+
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`: the TEST_DEV posture leaves every SEP debug path open, the SEP STAP is selected over TAP_3DCR, and `dmcontrol.dmactive` brings the debug module out of reset.
+* S4: the RISC-V Debug Specification 0.13 system-bus access (`sbcs` with a 32-bit `sbaccess`, `sbaddress0`, `sbdata0`) writes `sep_cpu_ctrl` SEP_GLOBAL_BASE_ADDR at the address `sep_addr.h` gives it. The SEP aperture base leaves the SMU on `sep_global_base_o` (`hw/sys/smu/doc/port_table.adoc`), so the port carries the written base and a system-bus read returns it. The base is four times the SEP_REGION_SIZE reset value: aligned to the region and ending below the `smc_base_config` GLOBAL_BASE reset value, so the SEP and SMC apertures the crossbar decodes stay disjoint. Writing the RDL reset value back returns the port to it.
+* S5: DEMOTE_1 and DEMOTE_2 are independent, and either may be asserted without the other (`hw/sys/sep/doc/lifecycle_controller.adoc`, "Demotion 1 and Demotion 2"); each leaves the SMU through a differential encoder (`otp_fuse_controller.adoc`). With both registers at their RDL reset value and both lanes presenting the same differential code, a system-bus write of DEMOTE_2.demote complements `lcc_demote_state_2_o` while `lcc_demote_state_1_o` holds, and the registers read back DEMOTE_1 clear and DEMOTE_2 set. `smu_sep_lcc_flow_test` writes DEMOTE_1 before DEMOTE_2 and so never presents lane 2 demoted alone.
+* S6: SEP traffic that is neither SEP-local nor in the SMC aperture goes out to the SMN fabric (`hw/sys/sep/doc/fabric.adoc`), and the crossbar connects `sep_out` to `ext_out` (`smu_axi_xbar_pkg` `Connectivity`). The outbound filter blocks by default, so entry 1 is opened over one page at `0x9000_0000` for secure reads and writes (`filter_ctrl.h` field masks; ALLOW_NS clear, since the match on `prot[1]` is exact). That page is outside the SEP-local map (`memory_map.adoc`), outside the SMC window at its GLOBAL_BASE reset value and clear of the console word the bench snoops at `0x8000_0000`. A system-bus write and read of it each cross `smu_axi_out` exactly once at that address, and the read returns the written word from the bench responder. `smu_sep_bidirect_test` walks the dedicated SEP-to-SMC port; the SEP firmware images write the console word through the crossbar but never read through it.
+* S7: SEP_GLOBAL_BASE_ADDR.addr and SEP_REGION_SIZE.size are read-write fields of 56 and 32 bits with no alignment rule in the generated `sep_cpu_ctrl` description, so every bit of each is walked to 1 and back to 0: the size drops to 1, the base goes to every bit above bit 31 set, which puts those bits in the aperture's end as well, then to all-ones and then to 4 GiB, the size goes to all-ones and back to its reset value, and the base returns to its reset value. The crossbar decodes the SEP and SMC rules together, so every intermediate window is non-empty and is checked, before the write, to be disjoint from the SMC window read off `smc_global_base_o` / `smc_region_size_o`. Each step compares both ports and a 64-bit system-bus readback (`sbaccess` 3, `sbdata1` carrying the upper word).
+* S8: the demote fields are write-one-to-set (`sep_lifecycle_ctrl` DEMOTE_1/DEMOTE_2), so firmware cannot clear them, and SEP cold reset clears all four demote registers (`hw/sys/sep/doc/lifecycle_controller.adoc`, "Reset Behavior"). The leaf sets DEMOTE_1 as well, sees both lanes at the complement of their pre-S5 codes, drives a cold reset on `rst_cold_ni` until the SEP reset asserts, releases it, and requires both lanes back at their pre-S5 codes.
+* Not claimed: abstract commands, the lock bits, and any traffic through the moved aperture.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
+. Write SEP_GLOBAL_BASE_ADDR over the system bus, wait for `sep_global_base_o`, read the register back; write the reset value and wait for the port again.
+. Read both lanes and both demote registers, write DEMOTE_2.demote over the system bus, wait for lane 2, and read the lanes and registers again.
+. Open SEP outbound filter entry 1 over the egress page, record the outbound boundary, write and read the page over the system bus, and compare the recorded address phases and the returned word.
+. Walk SEP_REGION_SIZE and SEP_GLOBAL_BASE_ADDR through the S7 windows with 64-bit system-bus writes, checking each window against the SMC window before writing and comparing the ports and the readbacks after.
+. Set DEMOTE_1, drive a cold reset, release it, and compare both lanes with their pre-S5 codes.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SEP-SBA-GLOBAL-BASE` |the system-bus write of SEP_GLOBAL_BASE_ADDR reaches `sep_global_base_o` within 200 `clk_smu` cycles and the system-bus read returns it
+|`CHK-SEP-SBA-GLOBAL-BASE-RESTORE` |writing the RDL reset value returns `sep_global_base_o` to it
+|`CHK-SEP-SBA-DEMOTE2-ALONE` |DEMOTE_2 alone complements `lcc_demote_state_2_o`, `lcc_demote_state_1_o` holds, and DEMOTE_1 reads clear while DEMOTE_2 reads set
+|`CHK-SEP-SBA-EGRESS` |the egress write and read each cross `smu_axi_out` exactly once at the page address, and the read returns the written word
+|`CHK-SEP-SBA-APERTURE-WALK` |at every walk step `sep_global_base_o`, `sep_region_size_o` and the two 64-bit readbacks carry the values written
+|`CHK-SEP-SBA-DEMOTE-COLD-RESET` |with DEMOTE_1 and DEMOTE_2 set both lanes carry the complement of their pre-S5 codes, and after the cold reset both carry their pre-S5 codes again
+|assertion |sep_sba incomplete s1..s8=<values>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-115-smu_dtp_ptap_ir_walk_test]]
+===== 115 `smu_dtp_ptap_ir_walk_test`
+
+*Source Module*: `smu_dtp_ptap_ir_walk_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip`; `elaboration` firmware mode
+
+*Objective*: every primary-TAP instruction encoding and every TAP controller state is presented at the SMU boundary.
+
+*Test Coverage*:
+
+* S1: Pause-DR, Exit2-DR, Pause-IR and Exit2-IR (IEEE 1149.1), the states the other leaves pass through without stopping, are each entered from Run-Test/Idle, and `jtag_ptap_state_o` carries that state's one-hot code.
+* S2: the PTAP decoded-instruction output is one-hot, one bit per six-bit encoding (`hw/ip/jtag/jtag_intf_unit/doc/interface.adoc`, "Instruction Encodings"; the encodings without a row decode as BYPASS functions of their own). All 64 encodings are shifted in turn, and after each Update-IR `jtag_ptap_inst_decoded_o` carries exactly that encoding's bit. Test-Logic-Reset then loads IDCODE.
+* No DR is shifted after any instruction, so no test register, boundary cell or bridge is updated.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP, enter each of the four states from Run-Test/Idle and sample the state output.
+. Shift each IR encoding, idle four TCKs, and sample the decoded output; reset the TAP and sample it again.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PTAP-STATE-WALK` |the four states reach `jtag_ptap_state_o` with their one-hot codes
+|`CHK-PTAP-IR-DECODE-WALK` |each of the 64 encodings decodes to its own bit, and Test-Logic-Reset loads IDCODE
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-116-smu_axi_in_sep_aperture_test]]
+===== 116 `smu_axi_in_sep_aperture_test`
+
+*Source Module*: `smu_axi_in_sep_aperture_test` (`cocotb_wrapper/tests/`; the sequence extends the SEP debug-bus sequence for its system-bus access)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins; `ocah_jtag_vip` for the SEP debug module; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: inbound SMN traffic reaches the SEP through the crossbar's SEP port across every attribute, id, length and address bit that port carries, reaches the SEP external and TRNG apertures as the local crossbar's external initiator, and shares the port with the SMC's traffic to the SEP.
+
+*Test Coverage*:
+
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`. With SEP-scope debug enabled the SEP inbound filter admits all inbound traffic (`hw/sys/sep/doc/fabric.adoc`, "Traffic Filter Decode").
+* S4: over the SEP debug module's system bus the SEP aperture becomes SEP_REGION_SIZE 0x1100_0000 at SEP_GLOBAL_BASE_ADDR 0x0400_0000, non-empty and clear of the SMC window; the SEP inbound path subtracts the base, so global 0x1400_0000 is SEP SRAM (local 0x1000_0000, 256 KiB, `sep_addr.h`).
+* S5: ext_in writes a 64-bit word into SEP SRAM and reads it back under AxID 0x00, 0xFF, 0x55 and 0xAA, under AxCACHE, AxQOS and AxREGION at 0x0 and 0xF with AxLOCK 0 and 1, and under all eight AxPROT encodings; it also reads at AxSIZE 0..3 and at the eight byte offsets of the last word written. Every transfer is OKAY, and every read returns the bytes of the word written; the response ids route each response back to its request in the VIP, so a wrong id times out.
+* S6: INCR bursts of AxLEN 0x00, 0x55, 0xAA and 0xFF write a byte pattern and read it back OKAY, and the 256-beat INCR burst writes and reads back OKAY again while the master holds RREADY and BREADY back four cycles before each response beat. WRAP and FIXED bursts are not sent to SEP SRAM: no specification states how the SEP fabric or the SRAM port answers them, and the SRAM port asserts against them (<<smu-fcov-phase2>>).
+* S7: a write to the entropy pool drain aperture is SLVERR (`fabric.adoc`: "Writes to it terminate with BRESP=SLVERR"); a read and a write of SEP-local 0x0, which no component owns, are not OKAY.
+* S8: with the aperture at [4 GiB, 8 GiB), a byte is read and written back unchanged at 4 GiB and at 4 GiB + 2^k for each k below 32, and with the aperture at the single byte 2^56 - 1 the same there; each completes, and the aperture then returns to its RDL reset values, where a byte at the reset base completes too. Every aperture change is followed by `sep_global_base_o` and `sep_region_size_o` settling at the programmed values. A passive tap on the SEP inbound port (`smu` net `sep_smn_inbound_axi_req`/`resp`) records every AR and AW address handshaken there during the walk: each walked address arrives on both channels, and no other address does. Two walked offsets decode to units the map names, and their answer is compared: SEP-local 0x1000_0000 is SEP SRAM, whose first byte is still the first byte of the S6 backpressure pattern, and SEP-local 0x2000_0000 is the eFuse SHIM control word, both read and written back OKAY. The responses at the other offsets are recorded. Together with S5 each address bit of the SEP port rises and falls on both channels.
+
+* S9: with the aperture grown to 0x2100_0000 so that it covers SEP-local 0x2000_0000, inbound traffic reaches the SEP external aperture and the external TRNG window. Offset 0x100 of the external aperture lies between the eFuse SHIM control block and the execute-in-place window of `hw/sys/sep/dv/models/regs/sep_external.rdl`, and the fabric refuses an address between unit windows (`hw/sys/sep/doc/memory_map.adoc`), which names no response code for it, so at that offset the check is that the response is not OKAY. A passive tap on the `ext_in` pins records every AR handshake (ARID, ARADDR, ARLEN) and every R beat (RID, RRESP, RLAST) and pairs each beat with its AR in per-ID order, so a read is graded beat by beat rather than by the one response code the VIP keeps per read: each AR draws ARLEN + 1 beats with RLAST on the last only, and the reads tapped at the external aperture and at the TRNG window are exactly the (address, beat count) pairs offered there. Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE with a byte offset, and INCR, WRAP and FIXED burst up to 256 beats offered at the external aperture, write and read, ends in an error response, on every R beat of a read, and so does each read of an eight-read train under distinct IDs held in flight by RREADY, every access of sixty-four reads, alternately single and eight-beat bursts, and sixty-four writes over four IDs launched together there with RREADY and BREADY held low for 20000 cycles, and each of four writes launched together whose W trails the first AW by 64 cycles. No external TRNG is connected, and `doc/integrator/src/smu.adoc:1123` ("External TRNG") says to terminate `ext_trng_axil` with a DECERR slave then; the crypto demux answers a burst in the crypto region with DECERR on every beat (`hw/sys/sep/doc/crypto.adoc`, "Single-Beat Access Only"). Every beat of every TRNG-window read is DECERR: each AxPROT encoding and each AxSIZE with a byte offset, and each of sixty-four reads, alternately single and eight-beat bursts, launched with sixty-four writes over four IDs and held in flight. The TRNG-window writes (each AxPROT encoding and AxSIZE, the sixty-four held with those reads, sixty-four held writes alone and four W-lagged writes) are a recorded observation: the log line `OBSERVE-AXIIN-SEP-TRNG-WRITE` counts their response codes and nothing is graded on them. That they are refused with DECERR is Phase 2 (<<smu-fcov-phase2>>): the integrator guide names a DECERR slave, the writes are observed to return SLVERR, and the disagreement is unresolved. The eFuse shim word at the base of the external aperture is the one target there that answers: under each AxPROT, under sixty-four reads and sixty-four writes over four IDs launched together with RREADY and BREADY held low for 20000 cycles, and in a sweep of a write whose W trails its AW by 64 cycles against a read whose AR is delayed by 40 to 86 cycles, so that for some delay the read and the write data reach the shim together, it reads and writes back OKAY. With the S4 aperture restored, a system-bus read and a write of the external aperture each report a bus error.
+* S10: sixteen writes and then sixteen reads into SEP SRAM, each under its own ID, are launched before the first response is taken while the master holds RREADY and BREADY low for 600 cycles; every write is OKAY and every read returns its word.
+* S11: the SEP debug module's system bus opens SMC inbound filter entry 0 over the whole address space, and ext_in reads the SMC's VERSION_LO at its global address, which returns the RDL reset value. The system bus then sets SMC outbound filter entry 0 to pass all and programs the SMC iDMA through the SEP view of the SMC window to copy a block from SEP SRAM, over the crossbar's `smc_out` to `sep_in` route, to an address outside both apertures, which the crossbar sends to `ext_out`. The bench responder holds the block ext_in wrote; a second copy brings it back from `ext_out` into SEP SRAM over the same route, where ext_in reads it; a system-bus write and read then leave on `ext_out` from the SEP, where the responder holds the word written, and a further ext_in read of the source is OKAY.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`, then program the S4 aperture over the system bus.
+. Drive the S5 and S6 round trips and bursts on `ext_in`, then the S7 error accesses.
+. Grow the aperture and drive the S9 accesses into the external aperture and the TRNG window; restore the S4 aperture.
+. Launch the S10 write and read trains with response backpressure.
+. Write the S11 source block over ext_in, open SMC inbound filter entry 0 over the system bus and read VERSION_LO over ext_in, program the SMC outbound filter and the iDMA over the system bus, launch it, poll DONE, compare the responder's destination; reprogram the addresses to copy it back into SEP SRAM, launch, poll DONE and read it over ext_in; send a SEP egress write and read, and read the source again over ext_in.
+. Move the aperture through the S8 windows, reading once per address bit, and restore it.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXIIN-SEP-ROUND-TRIP` |every S5 cell is OKAY and every read, narrow ones included, returns the bytes of the word written
+|`CHK-AXIIN-SEP-BURST` |every INCR burst reads back its pattern OKAY, with and without response backpressure
+|`CHK-AXIIN-SEP-ERRORS` |the entropy pool write is SLVERR and both SEP-local 0x0 accesses are not OKAY
+|`CHK-AXIIN-SEP-ADDRESS-BITS` |every one of the 35 walked addresses arrives at the SEP inbound port on both the read and the write channel and no other address arrives there, the SEP SRAM offset returns the S6 pattern byte OKAY and the eFuse SHIM offset reads and writes OKAY
+|`CHK-AXIIN-SEP-EXTERNAL` |every S9 write into the external aperture, every held write there and every W-lagged write there ends in an error response; the `ext_in` tap pairs every R beat with its AR, every AR draws ARLEN + 1 beats closed by RLAST, the tapped reads at the external aperture and at the TRNG window are exactly the reads offered there (S9 cells, ID train, held trains), no R beat of an external-aperture read is OKAY, and every R beat of every S9 read of the TRNG window is DECERR (`doc/integrator/src/smu.adoc:1123`; bursts `hw/sys/sep/doc/crypto.adoc`). TRNG-window writes are recorded, not graded (<<smu-fcov-phase2>>)
+|`CHK-AXIIN-SEP-SHIM` |the eFuse shim word reads and writes back OKAY under all eight AxPROT encodings, in the held trains and in the collision sweep, and the system-bus read and write of the external aperture each report `sberror` != 0
+|`CHK-AXIIN-SEP-ID-TRAIN` |every write of the S10 train is OKAY and every read returns the word written at its address
+|`CHK-AXIIN-SEP-SMC-DMA` |the ext_in source write is OKAY, the ext_in VERSION_LO read is OKAY with the RDL reset value, DONE reports each launched id, the responder's destination holds the source block, the block copied back reads back over ext_in, the SEP egress read returns its word and the responder holds it, and the ext_in read after the copies is OKAY
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-117-smu_dtp_jtag2axi_address_walk_test]]
+===== 117 `smu_dtp_jtag2axi_address_walk_test`
+
+*Source Module*: `smu_dtp_jtag2axi_address_walk_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_jtag_vip`; the bench's AXI-Lite responders behind the adopter window; address-handshake taps on the SMC external bus and eFuse SHIM bank-control link in the wrapper, and on the SMC-to-DTP CSR link and both DTP-to-OTP links in the SMU; `elaboration` firmware mode
+
+*Objective*: every address bit the three DTP JTAG2AXI bridges can carry crosses the nets the SMU wires between the DTP, the SMC and the SEP, and on through the SMC to the adopter window, the eFuse SHIM and the DTP CSR window, arriving at the far end at the address issued.
+
+*Test Coverage*:
+
+* A JTAG2AXI single op carries its own write strobe (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, "JTAG2AXI single-operation fields"), and a zero strobe is a legal AXI write that changes no byte, so every walked write that could land on a live register or fuse carries a zero strobe.
+* Each walk records the address handshakes on the AXI-Lite link at the far end of its path, and every address issued has to arrive there, in order, on the channel it was issued on; the AXI-Lite request packing the taps decode is checked against the link width.
+* S1: the SMC fabric bridge writes a distinct byte at byte offsets 1, 2 and 3 of SCRATCH_COLD, a read-write register; each reads back at its offset, and the word read afterwards holds all three over the byte at offset 0. SCRATCH_COLD is then restored, and a zero-strobe write to 0x1000, outside the SMC map, completes.
+* S2: a write and a read at the base of the adopter window (`smc_addr.h` SMC_EXTERNAL_REGION, 4 MiB at 0xC040_0000) plus 2^k for every k below 22 each arrive at their window offset: the SMC forwards every access in the window to `smc_external_req_o` except the eFuse SHIM range at its base, which it diverts to the eFuse controller, and that reaches the SHIM on `efuse_bank_ctrl_req_o` (`doc/integrator/src/smu.adoc`, "AXI-Lite External Window"). The responses depend on what the integration attaches at each offset and are recorded.
+* S3: a read and a zero-strobe write at the DTP CSR window (DTP_CTRL_REG, 2 KiB at 0xC000_B000) plus 2^k for every k below 11 each arrive on the SMC-to-DTP CSR link at their window offset. The responses are recorded: the SMC map gives the block a 2 KiB decoded extent, inside which an offset that owns no register answers OKAY (`memmap.adoc`), and the accesses at offset 0x400 are answered DECERR (read) and SLVERR (write).
+* S4, S5: the SMC and SEP OTP bridges each read and zero-strobe write address 0, 2^k for every k below 32, and 0xFFFF_FFFF; every operation completes and arrives on the DTP-to-OTP link with the address issued.
+* S6: a cold reset on `rst_cold_ni` takes `rst_primary_smc_clk_n_o` low and releases it again.
+
+*Test Procedure*:
+
+[arabic]
+. Reset the TAP; write and read the S1 bytes of SCRATCH_COLD, read the word, restore it, and write off the map.
+. With the taps running, walk S2 to S5 with single ops, polling each to completion, and compare the arrival list of each link set with the addresses issued.
+. Drive the S6 cold reset.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-J2A-WALK-FABRIC` |each S1 byte reads back at its offset, the word holds all three over the unchanged byte 0, and the off-map write completes
+|`CHK-J2A-WALK-EXTERNAL` |all 44 adopter-window accesses arrive, in order, at their window offsets on the external bus or the eFuse SHIM link, and none is left busy
+|`CHK-J2A-WALK-DTP-CSR` |all 22 DTP CSR window accesses arrive, in order, at their window offsets on the DTP CSR link, and none is left busy
+|`CHK-J2A-WALK-SMC-OTP` |all 68 SMC OTP bridge operations complete and arrive with their addresses on the DTP-to-SMC-OTP link
+|`CHK-J2A-WALK-SEP-OTP` |all 68 SEP OTP bridge operations complete and arrive with their addresses on the DTP-to-SEP-OTP link
+|`CHK-J2A-WALK-COLD-RESET` |the primary SMC reset reads low during the cold reset and high after it
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-118-smu_smc_gpio_pad_output_test]]
+===== 118 `smu_smc_gpio_pad_output_test`
+
+*Source Module*: `smu_smc_gpio_pad_output_test` (`cocotb_wrapper/tests/`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins for the GPIO CSRs; `ocah_jtag_vip` for the SMC aperture and SYS_IN entry 0; the bench's GPIO pad drivers held off; `elaboration` firmware mode
+
+*Objective*: every GPIO pad is driven from the SMC, so `core2pad_o`, `core2pad_en_o` and `pad2core_en_o` cross the SMU on every lane.
+
+*Test Coverage*:
+
+* `smu_smc_boundary_lane_sweep_test` drives the pads from the bench and reads them in; this leaf drives them from the SMC and reads them back.
+* With the bench's pad drivers off, each pad's `DATA_CTRL` takes the pad from its LSIO owner (`INTERFACE_ENABLE`, `LSIO_DISABLE`) with `INTERRUPT_ENABLE` at the reset interrupt type (active-high level) (`hw/ip/gpio` register description). Each pad carries a code of its own: in phase `k` its field is set when bit `k` of (pad index + 1) is 1, which over seven phases is a distinct word for each of the 65 pads, never all zeros and never all ones, so every pad is high in some phase and low in another. A pad answering another pad's `DATA_CTRL`, an interrupt lane taken from another pad, or one pad's enable fanned out to others reads a different code on some phase.
+* In the seven receive phases each pad has both `ENABLE_RX_TX` enables and `CORE2PAD` from its code; every pad follows its own `CORE2PAD` and loops the value back to its own receiver, so the 65 pads and the 65 lanes of `gpio_interrupt_o` both equal the phase mask bit for bit. The vector is read on the wrapper pin: a 32-bit `DATA_CTRL` read returns an undriven upper lane on the 64-bit inbound port. The pads are read on the bench's pad nets, which a pulldown holds low when nothing drives them.
+* `ENABLE_RX_TX` at 2'b01 is "TX enabled" alone (`gpio_intf.rdl`). In the seven transmit phases every pad has `CORE2PAD` at 1, with 2'b01 where its code bit is set and 2'b11 elsewhere: every pad is driven high while exactly the lanes outside the phase mask raise their interrupt, so each pad's `pad2core_en_o` crosses apart from its `core2pad_en_o` and apart from every other pad's.
+* The `DATA_CTRL` reset value is written back last and the pads it leaves are recorded; which LSIO function owns each pad then is not a register fact, so it is not compared.
+
+*Test Procedure*:
+
+[arabic]
+. Route the SMC aperture to its local alias and open SYS_IN entry 0 over the GPIO_INTF block over JTAG2AXI, so the CSR walk runs on the inbound SMN port.
+. For each of the seven code bits, write every pad's DATA_CTRL with both enables, the level interrupt and CORE2PAD from its code bit, and sample the pads and `gpio_interrupt_o`; a register whose value does not change between phases is not rewritten.
+. For each of the seven code bits, write every pad's DATA_CTRL with the level interrupt, CORE2PAD at 1 and transmit alone where its code bit is set, both enables elsewhere, and sample the pads and `gpio_interrupt_o`.
+. Write every pad's DATA_CTRL to its reset value and record the pads.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-LANE-GPIO-OUT` |on every receive phase the pads and `gpio_interrupt_o` equal the phase's per-pad code mask bit for bit, on every transmit phase every pad is high and exactly the lanes outside the mask are high, and every CSR write is OKAY
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `hosted`.
+
+'''''
+
+[[sec-119-smu_sep_sba_fabric_sweep_test]]
+===== 119 `smu_sep_sba_fabric_sweep_test`
+
+*Source Module*: `smu_sep_sba_fabric_sweep_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_dtp_sep_dm_sba_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip`; the shared responder on `u_axi_out_if`, used as backing memory and for one-shot error responses, and whose address handshakes the sequence records; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: drive every path that leaves the SEP -- the SMU aperture, the alias and output remaps, the SMC window, and the external and TRNG apertures -- from the SEP debug module's system bus, with every access size and the address bits each path leaves free.
+
+*Test Coverage*:
+
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`. Every later access is a RISC-V Debug Specification 0.13 system-bus access, which takes 8-, 16-, 32- and 64-bit accesses at any address aligned to the size and reports a bus error in `sbcs.sberror`. Seven accesses of 8, 1, 2, 4, 1, 2 and 8 bytes at offsets 0, 1, 2, 4, 7, 6 and 0 of one doubleword set and clear each of address bits [2:0] and each AxSIZE bit.
+* S4: a SEP address in `[SMU_GLOBAL_BASE_ADDR, SMU_GLOBAL_BASE_ADDR + SMU_REGION_SIZE)` (`sep_cpu_ctrl` reset values) goes to the outbound filter and the SMN (`hw/sys/sep/doc/fabric.adoc`), whose crossbar sends it to `ext_out`. With outbound filter entry 1 open over the whole 56-bit space, the size sweep and a 32-bit write and read at every address bit the aperture leaves free are held by the responder and read back.
+* S5: a local-master alias region adds its offset to address bits [55:12] of a request inside `[region_start, region_end)` (`alias_remap` register description). One page at `0x7000_0000`, which the local crossbar sends to the peripheral fabric and which is in neither the SMC window nor the SMU aperture, is remapped by each power of two from 2^32 to 2^55 in turn; each write and read reaches the responder at the remapped address. With `cacheable` set, the write and the read leave with AxCACHE[3:2] high. An offset that wraps the 44-bit page field moves the page down into the SEP view of the SMC SPM, where a word written through the remap reads back both through it and directly. The AP and STEE output remaps put region 0 of their windows at a programmed 512 KiB target (`output_remap` register description), and a write and read there reach the responder at the target.
+* Spec gap: the `alias_remap` description says `cacheable` ties the top two AxCACHE bits high and says nothing of the other two; the checker grades only the top two.
+* S6: a one-shot SLVERR and DECERR from the responder on an outbound read and write each come back as `sberror` 2, and the next access at that address completes.
+* S7: a SEP address in the SMC window goes to the SMC's resources (`hw/sys/sep/doc/fabric.adoc`: "Neighboring SMC resources are accessed through the SMC global aperture"). The size sweep and a 32-bit write and read at every SPM address bit read back through the SEP view of the window. A read and a write in the ECAM region are sent and their `sberror` is recorded as an observation.
+* Spec gap: the SMC map names the ECAM region only as "Remapped regions, either ECAM, M-Mode or XVisor" (`hw/sys/smc/regs/gen/adoc/memory_map.adoc`), and no specification states what an access there answers with no remap programmed; the run records `sberror` 2 for both.
+* S8: no adopter peripheral is attached to the SEP extension port, whose response the SMU port table ties to DECERR when unused (`hw/sys/smu/doc/port_table.adoc`, `sep_external_resp_i`), and the eFuse SHIM control word is the one target in `0x2000_0000`-`0x3FFF_FFFF` that answers (`hw/sys/sep/dv/models/regs/sep_external.rdl`). No external TRNG is connected, and `doc/integrator/src/smu.adoc` ("External TRNG") terminates `ext_trng_axil` at `0x1091_7000`-`0x1091_7FFF` in a DECERR slave then. `sberror` 2 is "a bad address was accessed" (Debug Specification 0.13, `sbcs`). The size sweep, every free address bit of the external aperture and an access back below the walk's base, and every address bit and byte offset of the TRNG window, return `sberror` 2 for both reads and writes.
+* Not claimed: traffic from the SEP load/store unit or DMA (`smu_sep_lsu_fabric_test` runs the load/store unit), and responder backpressure.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
+. Open SEP outbound filter entry 1 over the 56-bit space; run the size sweep and the address walk in the SMU aperture, comparing each read and the responder's bytes with the pattern written.
+. Program alias region 0 over the `0x7000_0000` page; for each power of two from 2^32 to 2^55 set the offset, write and read the page, and compare the read and the responder's bytes at the remapped address. Record the AxCACHE of a write and read with `cacheable` clear and set. Set a wrapping offset, write and read through the remap, and read the SPM word directly. Program AP and STEE output remap region 0, write and read region 0, and compare with the responder at the target.
+. Arm a one-shot SLVERR and DECERR on a read and on a write, compare `sberror`, then write and read the address.
+. Run the size sweep and the SPM address walk through the SEP view of the SMC window, and read and write the ECAM region, recording its `sberror`.
+. Run the size sweep and the address walks in the external and TRNG apertures and compare every `sberror`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SEP-SBA-OUT-SWEEP` |every size, offset and free SMU-aperture address bit written is held by the responder and reads back, with no `sberror`
+|`CHK-SEP-SBA-REMAP-HIGH` |for each power of two from 2^32 to 2^55 the remapped write lands in the responder at the remapped address and reads back
+|`CHK-SEP-SBA-REMAP-CACHEABLE` |the plain and cacheable remapped write and read each cross `smu_axi_out` once at the remapped address, and with `cacheable` set each carries AxCACHE[3:2] = 0b11
+|`CHK-SEP-SBA-REMAP-SMC` |a word written through a wrapping alias offset reads back through the remap and directly from the SEP view of the SMC SPM
+|`CHK-SEP-SBA-OUTPUT-REMAP` |a write and read of AP and STEE region 0 reach the responder at the programmed target and read back
+|`CHK-SEP-SBA-OUT-ERROR` |responder SLVERR and DECERR on a read and on a write each return `sberror` 2, and the next write and read complete
+|`CHK-SEP-SBA-SMC-WINDOW` |every size, offset and SPM address bit reads back through the SEP view of the SMC window, with no `sberror`
+|`CHK-SEP-SBA-EXTERNAL-DECERR` |every external-aperture and TRNG-window read and write returns `sberror` 2
+|assertion |sep_sba_sweep incomplete s1..s8=<values>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-120-smu_sep_lsu_fabric_test]]
+===== 120 `smu_sep_lsu_fabric_test`
+
+*Source Module*: `smu_sep_lsu_fabric_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_sep_sba_fabric_sweep_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip`; the shared responder on `u_axi_out_if`, with READY backpressure on AW, W and AR in S5 and S6; `elaboration` firmware mode with the SEP ICCM image `hw/sys/smu/dv/assets/sep_lsu_probe.itcm.hex`, generated by `assets/gen_sep_lsu_probe_itcm.py`; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: put SEP load/store-unit traffic -- several transfers in flight, each bus-buffer ID, both memory types -- on the paths that leave the SEP, without firmware.
+
+*Test Coverage*:
+
+* The ICCM image is ten stores of every width into a 64-byte window at `a0`, six word loads back from it into `t0`..`t5`, their sum in `a2`, and `ebreak`, with a second `ebreak` at the SEP_NMI_VEC reset value (`sep_cpu_ctrl.h`). The debug module halts the hart, sets `dcsr.ebreakm`, `mtvec`, `a0`, `a1`, `a2`, the six load registers and `dpc` through abstract register writes, and resumes it; either `ebreak` returns the hart to debug mode, where each load register, `a2`, `dpc`, `dcsr.cause` and `mcause` are read back.
+* Spec gap: no specification in the tree states the AxCACHE the VeeR EL2 load/store unit drives in either memory type, whether it merges posted stores, or what a load that gets an error response leaves in its destination register. The AxCACHE and write addresses of S5 and S6 and the load values, halt address and `mcause` of S8 are recorded as observations, not compared.
+* S5: the SMU aperture with the responder stalling every AW, W and AR handshake: the probe completes, each of the six loads returns the store word and `a2` holds their sum, and the responder holds every byte stored; the AxCACHE of each address phase is recorded.
+* S6: the same with the region's side-effect bit set; the AxCACHE and the address of each write phase are recorded.
+* S7: the SEP view of the SMC SPM: the probe completes and each load returns the store word.
+* S8: offset 0x1000 of the external aperture lies between the eFuse SHIM control block and the execute-in-place window (`hw/sys/sep/dv/models/regs/sep_external.rdl`), so the fabric refuses it and the access never reaches a unit (`hw/sys/sep/doc/memory_map.adoc`). A run entered at the loads with the side-effect bit clear, and the full probe with the bit set and then clear, each halt the hart at one of the image's two `ebreak` instructions, and no load of any run returns the store word, since no unit holds it.
+* S9: before the first probe run and after the last, a system-bus write and read on the SMU aperture and the SMC SPM view complete, and on the external aperture each reports `sberror` 2, "a bad address was accessed" (Debug Specification 0.13, `sbcs`), so the debug module and the load/store unit take each path in turn.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`, halt the hart, set `dcsr.ebreakm` and `mtvec`, and open SEP outbound filter entry 1 over the 56-bit space.
+. With responder backpressure on, run the probe in the SMU aperture with `mrac` clear and then with the region's side-effect bit set, recording the boundary address phases; compare the report and the responder's bytes, and record the AxCACHE values and write addresses.
+. Run the probe against the SEP view of the SMC SPM and compare the report.
+. Run the probe against the external aperture from its loads with `mrac` clear, then whole with `mrac` set and clear; compare where each run halts and the first run's loads, and record every report and `mcause`.
+. Before the first probe run and after the last, write and read the SMU aperture, the SMC SPM view and the external aperture over the system bus.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SEP-LSU-HALT` |a halt request halts the SEP hart
+|`CHK-SEP-LSU-OUT` |the probe halts at its `ebreak`, each load returns the store word and `a2` their sum, and the stalling responder holds every byte stored
+|`CHK-SEP-LSU-OUT-SIDE-EFFECT` |with the side-effect bit set the same holds
+|`CHK-SEP-LSU-SMC` |the probe against the SEP view of the SMC SPM halts at its `ebreak`, each load returns the store word and `a2` their sum
+|`CHK-SEP-LSU-EXTERNAL` |each of the three external-aperture runs halts on an `ebreak` at the SEP_NMI_VEC reset value or the probe's `ebreak`, and none of their loads returns the store word
+|`CHK-SEP-LSU-SBA-MIX` |the system-bus write and read on the SMU aperture and the SMC SPM view complete, and on the external aperture return `sberror` 2, before and after the probe runs
+|assertion |sep_lsu_fabric incomplete s1..s8=<values>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-121-smu_efuse_command_test]]
+===== 121 `smu_efuse_command_test`
+
+*Source Module*: `smu_efuse_command_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_sep_sba_fabric_sweep_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip`; the wrapper's eFuse shims and fuse-bank models; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: start eFuse read and program commands on the SEP and SMC fuse-command ports, which leave the SMU for the wrapper's eFuse shims, over every fuse address bit.
+
+*Test Coverage*:
+
+* Both subsystems carry an `efuse_interface_ctrl` block (`hw/ip/efuse` register description): EFUSE_READ_CTRL and EFUSE_PROGRAM_CTRL each start one fuse command at a fuse bit address, and an address at or beyond the fuse array -- the `*_efuse_map` size in bits from the generated address headers -- is rejected with the sticky address error. The SEP block is on the SEP map; the SMC block is reached through the SEP view of the SMC window. Every register address and field mask comes from the generated headers.
+* S4: a read at bit address 0, and at the middle of the array with each address bit set in turn, completes with `read_done` and no `read_status` error. The middle of the array is spare space that no lock field of the shadow preloads covers, so no read there is blocked.
+* S5: programs of four bits of the fuse word at the middle of the array, alternately with read-back, complete without error, and a read of that word returns every programmed bit on top of its earlier value; a program with `efuse_data` 0, which the description says is ignored, changes nothing. `program_enable` is cleared before the read-back, since while it is set the controller gives the fuse-command port to the program interface (`efuse_interface_controller.sv`).
+* S6: a read and a program one bit past the array complete with an error and set the sticky read and program address errors, and the clear strobes clear both.
+* S7: the bench fuse-bank models run with `+sep_efuse_prog_fail_count=1` and `+smc_efuse_prog_fail_count=1`, so the first program each bank takes leaves the fuse unblown. A program with read-back at a fresh bit then reads the bit back unset and reports `program_status` 1 (`efuse_interface_shim.sv`), and the word reads 0.
+* S8: programs of all 32 bits of a fresh word complete without error, the word reads back `0xFFFF_FFFF`, and the word after it still reads 0.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
+. For the SEP block and then the SMC block: read at every walk address; program one bit with read-back at a fresh word and read the word; read the middle fuse word, program four of its bits and a zero-data program, and read it again; program all 32 bits of a fresh word and read it and the next word; read and program one bit past the array, read and clear the sticky errors.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-EFUSE-CMD-READ` |on both blocks every walk read completes with `read_done` and no error
+|`CHK-EFUSE-CMD-PROGRAM` |on both blocks the four programs complete without error and the middle fuse word reads back with every programmed bit set
+|`CHK-EFUSE-CMD-OOB` |on both blocks the out-of-range read and program complete with an error, set both sticky address errors, and the clear strobes clear them
+|`CHK-EFUSE-CMD-PROGRAM-FAIL` |on both blocks the program with read-back against a failing bank reports `program_status` 1 and the word reads 0
+|`CHK-EFUSE-CMD-WORD` |on both blocks the all-ones word reads back `0xFFFF_FFFF` and the next word reads 0
+|assertion |efuse_command incomplete s1..s3,sep,smc=<values>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-122-smu_smc_inbound_window_sweep_test]]
+===== 122 `smu_smc_inbound_window_sweep_test`
+
+*Source Module*: `smu_smc_inbound_window_sweep_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_axi_in_burst_outstanding_test_seq`)
+
+*BFM / Model*: `ocah_axi_vip` master on the flat `ext_in_*` pins; `ocah_jtag_vip` for the SMC JTAG2AXI bridge; `elaboration` firmware mode
+
+*Objective*: inbound SMN traffic reaches the SMC peripheral windows -- the base word and an external target of the SMC external window, the DTP control window and the SMC eFuse map -- under every AxPROT encoding, and reaches the SMC SPM and those windows under distinct IDs held in flight.
+
+*Test Coverage*:
+
+* The SMC local aperture is routed to its local alias as in `smu_axi_in_burst_outstanding_test`. SYS_IN entry 0 passes non-secure and entry 1 secure traffic over the whole address space, since the entry match on AxPROT[1] is exact (`hw/ip/axi_filter/doc/index.adoc`, "Match, Then Permit"). The SMC peripheral crossbar decodes each request (`smc_periph_axi_lite_xbar.sv`).
+* S1: under each of the eight AxPROT encodings ext_in reads the word at the base of the SMC external window, the external target 4 KiB above it, cross-trigger port 7's CONFIG register in the DTP control window and eFuse MAP SPARE[0], and writes each word read back to it. The window-base and DTP accesses are OKAY and their words read back unchanged; the external target's and the eFuse accesses complete. The eFuse controller's demux passes each access's address phase to its bank-control port as well (`efuse_interface_controller.sv`).
+* S2: every AxSIZE, with each of address bits [6:0] set and then cleared between accesses, writes and reads the external target; each completes.
+* S3: sixteen writes into the SMC SPM, each under its own AWID, are launched before the first response is taken while the master holds BREADY back 600 cycles; each is OKAY and every word reads back.
+* S4: sixty-four reads, alternately single and eight-beat INCR bursts, and sixty-four writes over sixteen IDs are launched together at the external target, and then at the DTP CONFIG word, before the first response is taken, with RREADY and BREADY held low for 20000 cycles from the start of each train; every one completes, and the DTP word written back is unchanged. A read and write-back of eFuse SPARE[0] at AxPROT 0 follow.
+* S5: holding the cool reset pin asserts the SMC primary reset, which the SMU crossbar and its ID converters also run on (`smu.sv`), and releasing it releases the SMC.
+
+*Test Procedure*:
+
+[arabic]
+. Route the SMC aperture to its local alias and open SYS_IN entries 0 and 1 over JTAG2AXI; wait for an inbound read of VERSION_LO to be OKAY.
+. For each AxPROT, read, write back and read again the window-base word, the external target, the DTP CONFIG word and eFuse SPARE[0].
+. Write and read the external target at each AxSIZE and offset.
+. Launch the sixteen-write train with BREADY held back, collect the responses, and read every word back.
+. Launch the sixty-four-read and sixty-four-write trains together at the external target and then at the DTP CONFIG word with RREADY and BREADY held low, collect the responses, read the DTP word, and read and write back eFuse SPARE[0].
+. Hold the cool reset pin, sample the SMC primary reset, release the pin and wait for the reset to release.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMC-WINDOW-PROT` |under every AxPROT the window-base and DTP reads and write-backs are OKAY and the words read back unchanged, and the external target's and eFuse accesses complete
+|`CHK-SMC-WINDOW-EXTERNAL-SIZE` |all ten size and offset cells at the external target complete
+|`CHK-SMC-WINDOW-AWID-TRAIN` |every write of the train is OKAY and every word reads back
+|`CHK-SMC-WINDOW-HELD-TRAIN` |all 128 held accesses at each target complete and the DTP word reads back unchanged
+|`CHK-SMC-WINDOW-COOL-RESET` |the SMC primary reset is low while the cool reset pin is held and high after its release
+|assertion |window sweep incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `hosted`.
+
+'''''
+
+[[sec-123-smu_sep_sba_peripheral_test]]
+===== 123 `smu_sep_sba_peripheral_test`
+
+*Source Module*: `smu_sep_sba_peripheral_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_sep_sba_fabric_sweep_test_seq`)
+
+*BFM / Model*: `ocah_jtag_vip`; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`; the bench binds the SHA-256 of the all-zero 32-byte token as the SEP's expected security-disable digest (`tb_wrapper_top.sv`), standing in for the metal value
+
+*Objective*: drive the SEP peripherals whose outputs cross the SMU -- the SEP-to-SMC mailboxes, the SPI host, the security-disable token and the watchdog -- from the SEP debug module's system bus, and compare each output at the SMU.
+
+*Test Coverage*:
+
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`. Every later access is a system-bus access (RISC-V Debug Specification 0.13); register addresses and fields come from the generated headers.
+* S4: each outbound mailbox raises its interrupt while its write FIFO holds more words than WIRQT with the write-threshold interrupt enabled (`axil_mailbox` register description). For each of the eight mailboxes, with WIRQT 0 and IRQEN.wtirq set and the write FIFO empty, `sep_mailbox_interrupts` reads 0; a word written then raises that lane alone, and flushing the FIFO, acknowledging IRQS and clearing IRQEN drop it.
+* S5: with the SPI host enabled and its outputs driven (`spi_host.hjson`), the data lanes are sampled once before any command as the idle baseline; two quad-speed transmits of four bytes then drive all four data lanes high, move every lane off its idle level, and raise every output enable, and a quad-speed receive of four bytes (COMMAND.LEN 3), which completes with STATUS.ACTIVE low, takes STATUS.RXQD from 0 to one 32-bit word and leaves every enable low. With EVENT_ENABLE.IDLE and INTR_ENABLE.SPI_EVENT set and the host idle, INTR_STATE.SPI_EVENT and the interrupt line are high; a write of 1 to INTR_STATE.SPI_EVENT, which the RDL makes read-only (`spi_controller.rdl`), leaves both high, and clearing EVENT_ENABLE.IDLE drops both, since SPI_EVENT "follows the level of the events selected by EVENT_ENABLE" (`hw/sys/sep/doc/spi.adoc`). The LSIO trigger with the TX FIFO empty, and the values 0xF, 0x0, 0x5, 0xA and 0x0 the bench drives on GPIO pads 0..3 as seen on `sep_spi_rxd[3:0]`, are recorded as observations.
+* S6: the bench-bound digest is the hash of the all-zero token, so writing that token and the GO strobe reports the match code in SEC_DISABLE_TOKEN_MATCH and raises `sep_security_disable` (`hw/sys/sep/doc/security_disable.adoc`, "Token Activation"), read at the SEP eFuse controller's `security_disable_o`, the `smu` wire and the SMC input `u_smc.sep_security_disable_i`, all 0 before the token and all 1 after the match; a token one bit off then reports the mismatch code (`efuse_mmr.rdl`: "Match = 6'b010101, Mismatch = 6'b101010"). The disable level after the mismatch is recorded.
+* S6 stand-in: on a four-state simulator S6 runs with `ValidDigestModeFlag_A` on the eFuse token processing's SHA-256 `prim_sha2_32` instances ignored by `smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` (the "SEP assertion-ignore patterns" record in `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`); on Verilator `+define+ASSERTS_OFF` compiles it out. The verdict is the match and mismatch codes read over the system bus and the security-disable levels, not the assertion. The record's approval fields are `pending`, so until a person fills them `CHK-SEP-SECURITY-DISABLE` is graded as if the stand-in were undeclared. Approver: pending. Date, revision: pending. Review or expiry: pending.
+* S7: `sep_wdt_timer_rst_req` is low; with WDOG_CTRL.enable set and bark and bite thresholds of 0x20 (OpenTitan `aon_timer`), the watchdog bites and the request rises (`aon_timer.hjson`: "A bite triggers a reset"). The request level after the cool reset pin is held and released is recorded.
+* S8: the bench drives GPIO pads 4..7, 10 and 54 high and records SPI lanes 4..7, DQS and the rebar loopback while the chip runs, in cold reset and after the release.
+* Spec gaps: no specification states when the SPI host's LSIO trigger rises; the GPIO pin table (`doc/integrator/meta/ocah_gpio_table.adoc`) assigns pads 0..7, 10 and 54 to the SMC SPI and gives the SEP SPI no pad, so nothing states what the SEP SPI receive lanes read; no specification states whether a security-disable token mismatch withdraws an earlier match, or what clears the SEP watchdog reset request. Those values are observations until the specification states them.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`.
+. For each mailbox, set WIRQT and IRQEN, sample the interrupt vector, write a word, wait for its interrupt lane, flush, acknowledge, disable, and wait for the vector to clear.
+. Enable the SPI host with outputs, write two words each followed by a quad transmit command, then a quad receive command with STATUS.RXQD read before and after it, waiting for STATUS.ACTIVE to fall after each and recording the data lanes and enables throughout; read INTR_STATE and the interrupt line, write INTR_STATE.SPI_EVENT and read both, clear EVENT_ENABLE and read both, then clear INTR_ENABLE; drive each value on GPIO pads 0..3 and record the receive lanes; disable the host.
+. Write the zero token and GO, poll the match status and sample `sep_security_disable`; repeat with a one-bit token, and record the disable level.
+. Program the watchdog thresholds, enable it, wait for the reset request to rise, hold and release the cool reset pin, and record the request.
+. Drive GPIO pads 4..7, 10 and 54 high, record the unused SPI inputs, hold and release the cold reset while recording them, and release the pads.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SEP-MBOX-IRQ` |the mailbox interrupt vector is 0 after IRQEN.wtirq is set with the FIFO empty, each mailbox's word then raises exactly its own lane, and every lane is low again after flush, acknowledge and disable
+|`CHK-SEP-SPI-QUAD` |the transmits drive data lanes 0xF, every data lane leaves the level sampled before the first command (lanes moved off idle 0xF), enables 0xF, every command completes with STATUS.ACTIVE low, STATUS.RXQD reads 0 before the receive and 1 after it, the receive leaves the enables at 0, and INTR_STATE.SPI_EVENT and the interrupt read (1, 1) with the idle event selected, (1, 1) after the INTR_STATE write and (0, 0) after EVENT_ENABLE.IDLE is cleared
+|`CHK-SEP-SECURITY-DISABLE` |the zero token reports the match code with the disable output high, and the one-bit token the mismatch code; the security-disable net reads 0 at the SEP eFuse controller's output, the `smu` wire and the SMC input before the token and 1 at all three after the match; a read error or a status still 0 after the poll fails
+|`CHK-SEP-WDT-BITE` |the watchdog reset request is low before the watchdog is enabled and high after it bites
+|assertion |sep_sba_peripheral incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-124-smu_cla_action_test]]
+===== 124 `smu_cla_action_test`
+
+*Source Module*: `smu_cla_action_test` (`cocotb_wrapper/tests/`; the sequence extends `smu_axi_out_addr_len_size_test_seq` for its TAP bring-up)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC JTAG2AXI bridge and the SMU DEBUG_CONTROL register; `elaboration` firmware mode
+
+*Objective*: the SMC core logic analyzer's node 0 actions, programmed over JTAG2AXI, reach the SMU nets they drive: the sixteen custom actions, the cross-trigger outputs behind the halt mask and the clock-halt request behind the clock-stop enable.
+
+*Test Coverage*:
+
+* Register addresses and fields come from the generated `smc_cla.h`, `dfx_ctrl_status.h` and `smc_addr.h`. CDBGCLACTRLSTATUS enables the CLA and the event-action pairs, and node 0's pair evaluates LogicalOp NOR over the two "none" event types, as `smc_cla_boot.h` programs it, so its actions hold while the pair is programmed.
+* Spec gap: the CLA register description (`dfd_cla.rdl`) gives the ACTION0/ACTION1, LOGICALOP and EVENTTYPE fields' positions but not their encodings, so the pair's trigger condition and the action codes 1 (clock halt), 7 and 8 (cross-trigger outputs) have no documented source. No compare depends on what an action code means: the nets the codes drive are recorded as observations. The description also does not say whether the clock halt is sticky or what a pulse width of 0 does.
+* S1: CUSTOMACTION0/1 "select the bit position of custom action bus to be set when EAP trigger is met" (`dfd_cla.rdl`), so each custom action k, programmed alone on both custom slots with both custom enables, drives exactly bit k of `cla_ext_action_custom`; a pair with neither custom enable clears the bus.
+* S2: DEBUG_CTRL.XTRIG_CLK_HALT_MASK is "Mask==0 (default) -> disabled" (`dfx_ctrl_status.rdl`): with every mask bit clear and a 64-cycle pulse width in CDBGCLAXTRIGGERTIMESTRETCH, the pair programmed with the two cross-trigger action codes leaves both lanes of `smc_xtrigger_ss_o` and of DTP `xtrig_ctm_dst_req[1:0]` low throughout. With mask bit 0 set, the lanes the same pair raises, and their level once it is cleared, are recorded.
+* S3: DEBUG_CONTROL.cla_clock_stop_en gates the CLA clock stop: "the clocks will actually have been stopped only when cla_clock_stop_en is set" (`hw/ip/jtag/jtag_ptap/doc/architecture.adoc`, PTAP DEBUG_CONTROL fields). With local clock halt disabled and the enable set, a pair with no action leaves `tdr_dbg_ctrl_clocks_stopped_by_cla` and DTP clock-stop request lane 0 low. The clock-halt action code is then programmed and both are recorded; clearing the enable with the action still programmed drops the request lane, and the report after the enable and then the action are cleared is recorded.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up the primary TAP.
+. For each k, program CDBGCLACTRLSTATUS, node 0 EAP0 for custom action k and EAP1 0, and sample the custom action bus; program a pair with no custom enable and sample it again.
+. Program the pulse width, clear every halt mask bit, program the cross-trigger actions while recording both lane sets, and clear them; set mask bit 0 and repeat, recording the lanes and their level after the clear.
+. Set the CLA clock-stop enable, program a pair with no action with local halt disabled and sample the report and lane 0; program the clock-halt action and record both; clear the enable and sample; clear the action and record; restore DEBUG_CTRL.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-CLA-CUSTOM-ACTION` |each custom action drives exactly its own bit of the custom action bus, and the bus is 0 with no custom enable
+|`CHK-CLA-XTRIGGER` |with every halt mask bit clear, both cross-trigger lanes stay low at the SMC output and the DTP input while the cross-trigger pair is programmed
+|`CHK-CLA-CLOCK-HALT` |with the enable set and no action the clock-halt report and DTP clock-stop lane 0 are low, and with the enable cleared lane 0 is low while the clock-halt action is still programmed
+|assertion |CLA action sweep incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `hosted`, `smc_under_smu`.
+
+'''''
+
+[[sec-125-smu_otp_prod_error_resp_test]]
+===== 125 `smu_otp_prod_error_resp_test`
+
+*Source Module*: `smu_otp_prod_error_resp_test` (`cocotb_wrapper/tests/`; the sequence extends the `smu_otp_bridges_under_dbg_disable_test` sequence)
+
+*BFM / Model*: `ocah_jtag_vip` for the SMC and SEP OTP JTAG2AXI bridges; `elaboration` firmware mode; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload`
+
+*Objective*: under the PROD lifecycle state the SMC and SEP eFuse JTAG policies refuse the OTP bridges' accesses with an error response, while the accesses PROD keeps still complete.
+
+*Test Coverage*:
+
+* In PROD the eFuse JTAG policy blocks every JTAG write and every JTAG read except the chiplet identity, and a blocked request gets an error response with the data word `0xbadcab1e` (`hw/ip/efuse/doc/architecture.adoc`, "eFuse lifecycle-based JTAG permissions"). On the SMC the admitted read range is JTAG_PUBLIC_IDENTITY, "the JTAG-public exception window" (`smc_efuse_map.rdl`), and the wrapper "admits no writes at all" (`hw/sys/sep/doc/lifecycle_controller.adoc`). On the SEP, JTAG may reach only the eFuse MMR token block -- the token-input arrays, TOKEN_EOP and the match-status registers -- and every other access completes with an error response (`hw/sys/sep/doc/otp_fuse_controller.adoc`). Addresses come from the generated `smc_addr.h` and `sep_addr.h`.
+* Spec gap: neither chapter names the AXI response code of a refusal, so the checkers accept SLVERR or DECERR (JTAG2AXI status 1 or 2) and the status is recorded as an observation.
+* S1: an SMC OTP read and write of MAP SPARE[0] are refused, the read with `0xBADCAB1E`, and a read of JTAG_PUBLIC_IDENTITY word 0 returns SUCCESS.
+* S2: a SEP OTP read and write of MAP SPARE0 are refused, the read with `0xBADCAB1E`; a write of security-disable token word 0 and a read of the token match status, both in the eFuse MMR token block, return SUCCESS.
+* S3: the SMC reset observation is low while the cool reset pin is held, and after the release an SMC OTP read of JTAG_PUBLIC_IDENTITY word 0 again returns SUCCESS.
+* S4: an SMC OTP series read of JTAG_PUBLIC_IDENTITY word 0 with pipeline depth 3, so the bridge issues reads ahead of the data shifts, completes with SUCCESS.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for the lifecycle posture to leave its pre-sense value and bring up the primary TAP.
+. Issue the S1 SMC OTP single operations and compare each status and the read data.
+. Issue the S2 SEP OTP single operations, compare each status and the read data, and write the token word back to 0.
+. Hold the cool reset pin, sample the SMC reset observation, release the pin, wait for the SMC to leave reset, and read JTAG_PUBLIC_IDENTITY again.
+. Program an SMC OTP series read of JTAG_PUBLIC_IDENTITY with pipeline depth 3, shift one data word, poll the status and read the data.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OTP-PROD-SMC-REFUSED` |the SMC SPARE[0] read returns SLVERR or DECERR with `0xBADCAB1E`, the write SLVERR or DECERR, and the JTAG_PUBLIC_IDENTITY read SUCCESS
+|`CHK-OTP-PROD-SEP-REFUSED` |the SEP SPARE0 read returns SLVERR or DECERR with `0xBADCAB1E`, the write SLVERR or DECERR, and the MMR token write and match-status read SUCCESS
+|`CHK-OTP-PROD-SMC-RESET` |the SMC reset observation is 0 while the cool reset pin is held, and the JTAG_PUBLIC_IDENTITY read after the release returns SUCCESS
+|`CHK-OTP-PROD-SMC-SERIES` |the pipelined series read completes with SUCCESS
+|assertion |OTP PROD error sweep incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+
+'''''
+
+[[sec-126-smu_smc_fabric_test]]
+===== 126 `smu_smc_fabric_test`
+
+*Source Module*: `smu_smc_fabric_test` (`cocotb_wrapper/tests/`; the sequence extends the `smu_axi_in_sep_aperture_test` sequence for its system-bus access)
+
+*BFM / Model*: `ocah_jtag_vip` for the SEP debug module; the shared responder on `u_axi_out_if`, used as backing memory and whose address phases the sequence records; `smc_smoke` firmware mode with the SMC ROM image `smu_smc_fabric` (`hw/sys/smu/dv/fw/tests/smu_smc_fabric`, built by `fw/build_firmware.py` through the toolchain container); eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: SMC firmware running on all four SMC harts stores to and loads from SEP SRAM over the crossbar's `smc_out`-to-`sep_in` route, an address that leaves on `ext_out`, and the SMC-local scratch words, so those paths carry SMC-CPU-issued transfers.
+
+*Test Coverage*:
+
+* The image enters at the SMC ROM on every hart; each hart takes its own stack (`fw/common/smc_mp_start.S`) and runs `main(mhartid)`. Hart 0 publishes READY in scratch word 0, and every hart polls scratch word 1 for GO (`smu_smc_fabric_protocol.h`, which the sequence parses). The SMC CPU reaches everything outside its caches through its MMIO port and the SMC input fabric.
+* S0..S3 are the steps of `smu_dtp_sep_dm_dmi_test`.
+* S4: the SEP debug module's system bus opens the SEP aperture at 0x0400_0000, so SEP SRAM is at global 0x1400_0000, sets SMC outbound filter entry 0 to pass all through the SEP view of the SMC window, and writes GO.
+* S5: each hart stores four doublewords tagged with its hart id into SEP SRAM and into 0x2A00_0000 plus its hart offset, outside the SEP aperture and the SMC one at its RDL reset, before loading any back; it compares every read-back and re-reads GO, posts its result in scratch word 4 + hart, and hart 0 posts TEST_PASS once all four pass.
+* S6: all four hart words pass; the responder holds each hart's `ext_out` words and a system-bus read of SEP SRAM returns each hart's SEP words; `ext_out` carried writes and reads from every hart. The SMC zeroer, started over the system bus, then writes zeros past the harts' words and the responder holds them.
+
+*Test Procedure*:
+
+[arabic]
+. Run the S0..S3 steps of `smu_dtp_sep_dm_dmi_test`; wait for READY.
+. Open the SEP aperture and SMC outbound filter entry 0 over the system bus, start recording the outbound address phases, and write GO.
+. Wait for TEST_PASS or TEST_FAIL in scratch word 0.
+. Read the four hart words, compare the responder's words and SEP SRAM over the system bus, run the zeroer and compare its target.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DMI-DMSTATUS` |the `dmi` read of `dmstatus` completes with status 0 and `version=2` (Debug Specification 0.13)
+|`CHK-SMC-FW-FABRIC-PASS` |the image posts READY, and after GO scratch word 0 reads TEST_PASS
+|`CHK-SMC-FW-FABRIC-CROSSCHECK` |the zeroer finishes with its target zero, all four hart words pass, the responder and SEP SRAM hold every hart's words, and `ext_out` carried writes and reads from every hart
+|assertion |smc fabric firmware incomplete <steps>
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fw_boot`.
 
 '''''
 
@@ -4642,19 +5272,19 @@ not SMU integration evidence. Every row of this plan is simulation credit.
 [cols="2,1,4",options="header",]
 |===
 |Group |Leaves |Notes
-|`fw_boot` |3 |The firmware boot smokes plus the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
+|`fw_boot` |4 |The firmware boot smokes, the SMC firmware fabric leaf and the elaboration leaf; needs the RISC-V toolchain, so no workflow schedules it
 |`elaboration` |1 |The elaboration leaf alone
-|`fabric` |16 |The fabric and filter leaves; every member is in `hosted`
-|`smc_under_smu` |21 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
-|`dtp_under_smu` |30 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
+|`fabric` |18 |The fabric and filter leaves; every member is in `hosted`
+|`smc_under_smu` |23 |The SMC-facing leaves reached through the SMU; every member is in `hosted`
+|`dtp_under_smu` |38 |The DTP-facing leaves reached through the SMU; every member is in `hosted`
 |`smoke` |2 |The PR gate: `sim.yml` runs `--items smoke` on every hardware diff. Toolchain-free by construction
-|`hosted` |72 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
-|`all` |104 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
+|`hosted` |84 |The toolchain-free nightly and weekly set (`regress.yml`); every leaf uses `elaboration` firmware. The name records the runner class the scheduled tiers run on, not a feature
+|`all` |120 |Every test in `testlists/all.toml`; the regression, and the denominator of this plan's wrapper cards
 |`sep_real_fw` |14 |Wrapper leaves that boot real SEP DV firmware images
 |`sep_entropy` |1 |The firmware-driven entropy stack
 |`sep_probe` |1 |The probe leaf that keeps SEP instruction retirement live while the TAP answers
 |`sep_chain` |2 |Lifecycle-gated JTAG-to-SMC chain leaves
-|`sep_lifecycle` |6 |Wrapper leaves that run one lifecycle state's eFuse image each
+|`sep_lifecycle` |9 |Wrapper leaves that run one lifecycle state's eFuse image each
 |===
 
 `smoke` ⊂ `hosted` ⊂ `all` and `elaboration` ⊂ `fw_boot` ⊂ `all`; `hosted`
@@ -4741,6 +5371,9 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dft_gpio_boot_stall_test` |F3 |dtp_under_smu, hosted |`STALL_COLD_STICKY`
 |`smu_clock_stop_coordination_test` |F6 |dtp_under_smu, hosted |`CHK-DTP-BOOT-STALL-S1`
 |`smu_jtag_reset_override_test` |F3 |dtp_under_smu, hosted |`IC_RESET_DEFAULT`
+|`smu_dtp_ptap_ir_walk_test` |F3 |dtp_under_smu, hosted |`CHK-PTAP-IR-DECODE-WALK`
+|`smu_dtp_jtag2axi_address_walk_test` |F3 |dtp_under_smu, hosted |`CHK-J2A-WALK-SMC-OTP`
+|`smu_axi_in_sep_aperture_test` |F4 |fabric, hosted |`CHK-AXIIN-SEP-ROUND-TRIP`
 |`smu_xtrig_ctm_remap_test` |F6 |dtp_under_smu, hosted |`XT_CTM_REMAP`
 |`smu_sep_smoke_test` |F1 observe / F6 |fw_boot, all |`SEP_BOOT_ROM_OK` (SEP=1 wrapper; not F2 credit)
 |`smu_axi_id_width_conversion_test` |F4 |fabric, hosted |`AXI_ID_WIDTH_OK`
@@ -4760,6 +5393,14 @@ emits; the map must not invent a checkbox the body cannot prove.
 |`smu_dtp_io_stap_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-IO-STAP-SCAN`
 |`smu_dtp_smc_stap_smoke_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-SMC-STAP-IDCODE`
 |`smu_dtp_sep_dm_dmi_test` |F3 |dtp_under_smu, hosted |`CHK-SEP-DMI-DMSTATUS`
+|`smu_dtp_sep_dm_sba_test` |F3 |dtp_under_smu, hosted |`CHK-SEP-SBA-GLOBAL-BASE`
+|`smu_sep_sba_fabric_sweep_test` |F3/F4 |dtp_under_smu, hosted |`CHK-SEP-SBA-OUT-SWEEP`
+|`smu_sep_lsu_fabric_test` |F3/F4 |dtp_under_smu, hosted |`CHK-SEP-LSU-OUT`
+|`smu_efuse_command_test` |F3 |dtp_under_smu, hosted |`CHK-EFUSE-CMD-READ`
+|`smu_sep_sba_peripheral_test` |F3/F4 |dtp_under_smu, hosted |`CHK-SEP-MBOX-IRQ`
+|`smu_otp_prod_error_resp_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-PROD-SMC-REFUSED`
+|`smu_smc_inbound_window_sweep_test` |F4 |fabric, hosted |`CHK-SMC-WINDOW-PROT`
+|`smu_cla_action_test` |F6 |smc_under_smu, hosted |`CHK-CLA-CUSTOM-ACTION`
 |`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp_under_smu, hosted |`CHK-DTP-BSR-EXTEST-SELECT`
 |`smu_dtp_otp_smc_map_rw_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-MAP-RW`
 |`smu_dtp_otp_smc_series_error_test` |F3 |dtp_under_smu, hosted |`CHK-OTP-SMC-DECODE-SLVERR`
@@ -4954,10 +5595,9 @@ covered above. SEP=1 3×3 xbar receives no release credit.
 * *Cross-trigger and iJTAG have no OCAH-local model*, so the coverage those
   interfaces get is what the DTP-under-SMU tests reach through JTAG and the
   bench's pad loopbacks.
-* *No functional coverage closure target is set.* Coverage intent, the
-  metric choice and what this plan may claim from a database are in
-  `SMU_FCOV.adoc`; the wrapper's policy file is
-  `cov/config/verilator/smu_wrapper_coverage_policy.toml`.
+* *Functional coverage closes at 100 percent of its Phase 1 population
+  and no CI gate enforces it.* The phases, the collectors and what this plan
+  may claim from a database are in <<smu-dv-functional-coverage-plan>>.
 * *Verilator replaces the `ocah_prim` `prim_sync3`
   cell with the behavioural stand-in in
   `hw/sys/smc/dv/tb/verilator_stubs/`.* VCS drops it. Xcelium receives
