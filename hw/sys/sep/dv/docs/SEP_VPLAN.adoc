@@ -1223,6 +1223,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *Phase*: 1
 
+*Bucket*: Key Manager vault
+
 *Run mode*: `no_cpu`
 
 *Source Module*: `sep_km_mem_smoke_test`
@@ -1251,10 +1253,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-ROM-FETCH
-|The Key Manager processor fetches from its ROM — a non-zero request count, so a processor held in reset fails.
-|CHK-SRAM-WRITE
-|The processor writes to its SRAM, and the stored first word is the value the ROM program was built to write.
+|CHK-KM-MEM
+|SRAM word 0 holds the image's marker within a fixed cycle bound after release. The KM ROM request count, the KM SRAM request count and the KM SRAM write count are each non-zero, and word 0 holds exactly the marker the image stores last. A processor held in reset fetches nothing and fails.
 |CHK-KM-SRAM-SCR-RT
 |Four consecutive loads of four different SRAM words, each written with a different plaintext through the enabled scrambler, return exactly those plaintexts (SRAM words 1..4). At least four SRAM reads are accepted while the KMCSR scrambler enable is set, so the loads went through the descrambler. The scrambler tweaks its key with the word address (`hw/ip/scrambler/doc/architecture.adoc`, Address Tweaking), so a response descrambled with another read's address returns a different word and fails the compare.
 |CHK-KM-SRAM-SCR-STORED
@@ -1263,7 +1263,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM SRAM reads the wrapper accepts (`req && !we && gnt`), the count that return `rvalid` exactly one cycle later, the count of cycles where `rvalid` and the one-cycle-earlier accept disagree, and the count of `rvalid` cycles that also accept a read of a different address.
 
-*Evidence*: `CHK-KM-MEM` (`cocotb/tests/km/sep_km_mem_smoke_test.py`) covers CHK-ROM-FETCH (`rom_count > 0`) and CHK-SRAM-WRITE (`sram_writes > 0` and the exact `word0` compare). `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are their own records; `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets and the KM scrambler enable.
+*Evidence*: `CHK-KM-MEM`, `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are each their own record (`cocotb/tests/km/sep_km_mem_smoke_test.py`); `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets and the KM scrambler enable.
 
 *Not claimed*: a KM SRAM read latency. No specification states it; the test logs the measured value. A ciphertext value: the physical word of each scrambled store is not known to the test, so CHK-KM-SRAM-SCR-STORED shows only that no probed word holds a plaintext. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
 
@@ -3986,7 +3986,7 @@ a waiting write, and two masters writing the same register.
 |CHK5_pool
 |Native EDN beats reached the pool adapter (observe-mode floor). Bit-exact per-beat routing stays with `sep_esrc_e2e_smoke_test`, not this row.
 |CHK-ALERTS-ZERO
-|CSRNG/EDN error and recoverable-alert status are clear after the aperture walk.
+|After the aperture walk, CSRNG `ERR_CODE` and `RECOV_ALERT_STS` and EDN `ERR_CODE` and `RECOV_ALERT_STS` each read zero. The shared base-test step `check_entropy_alerts_zero` (`cocotb/tests/sep_base_test.py`) reads and grades them.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4056,6 +4056,8 @@ recovery attempt.
 |Allow and block were both observed under one lifecycle state.
 |CHK-SRC-ID
 |A non-zero `FILTER_CONFIG.src_id` matches only the external master's `user[3:0]`. The match cells keep r/w-allow gating; the mismatch cell DECERRs with both allow bits set.
+|CHK-CELL
+|One line per cell of the 16-cell walk. With every other entry disabled and only the cell's entry programmed: an allowed read returns OKAY and the staged value; a read with `read_allowed=0` returns DECERR and read data that is not the staged value; an allowed write returns OKAY and lands on a CPU-LSU readback; a write with `write_allowed=0` returns DECERR; on the source-ID mismatch cell the read and the write both return DECERR. A read of the blocked address in the same page returns DECERR in every cell.
 |CHK-RAND-REP
 |Entries 0 and 7, two address windows, `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch — 16 cells in one invocation. Entry 15 carries the granule, bound, and lock cells.
 |CHK-BURST-DENY
@@ -4066,14 +4068,18 @@ recovery attempt.
 |The write-side `traffic_filter` (`aw.len`) with `allow_burst=0`: a single-beat external write is OKAY and lands; a 2-beat INCR write is DECERR and does not land.
 |CHK-BURST-WRITE-ALLOW
 |With `allow_burst=1` and the same two-page window, a 2-beat INCR write is OKAY and the poke lands on a CPU-LSU readback. START/END stay the programmed range.
+|CHK-BURST-WALK
+|Summary of the `allow_burst` walk: `CHK-BURST-DENY`, `CHK-BURST-ALLOW`, `CHK-BURST-WRITE-DENY`, `CHK-BURST-WRITE-ALLOW` and the `CHK-BURST-TO-SINGLE` read and write legs all passed, so the deny and the allow side were walked on AR and on AW of the scratch window. It grades nothing of its own.
 |CHK-BURST-TO-SINGLE
 |A filter-allowed 2-beat INCR (AxLEN=1) becomes two AXI-Lite singles on the system-CSR bridge (`u_system_csr_a2l_1`): AR/AW at start and start+4. A denied AxLEN=1 produces zero Lite handshakes (filter before the converter). `hw/sys/sep/doc/fabric.adoc`: convert burst to single.
+|CHK-WIDEN-GUARD
+|Stimulus guard in `program_rule` (`seq_lib/sep_inbound_filter_rule_seq.py`). A rule programmed with `allow_burst=1` and START and END inside one 4 KB page must be requested as a page widen, or the leaf fails before the entry is written. This keeps a cell that wants a narrow window from getting the whole-page grant by accident. The DUT cannot fail this checker, and it has no PASS line.
 |CHK-PAGE-WIDEN
 |A same-page `allow_burst=1` window grants the whole 4 KB page (`hw/ip/axi_filter/doc/index.adoc`: `START_ADDR` rounds down, `END_ADDR` rounds up, `allow_burst` selects 4 KB). Measured on the bus rather than in a register mirror: an external access to an address inside the granted page but outside the programmed `START..END` answers OKAY for read and write and carries the staged value. The hardware-adjusted `START_ADDR`/`END_ADDR` readback is the setup step showing the rewrite took effect; a CSR mirror is not evidence of what the filter passes.
 |CHK-PAGE-BOUND
 |The 4 KB grant stops at both page edges. Under a scratch-page grant an access one page below is refused; with that page granted instead it answers OKAY while the scratch address turns DECERR. Both probes are proven reachable first, so neither refusal can be a decode hole rather than a filter decision. This is the security contract: 4 KB is the block pitch for the DMA CSR, watchdog and scratch-bank blocks, so a page-crossing grant would reach a neighbouring block.
 |CHK-CONFIG-LOCK
-|`FILTER_CONFIG.locked` freezes `allow_burst`. `hw/sys/sep/doc/fabric.adoc` specifies the lock bit as write-once, so the field must not change once set; it does not state how a write to a locked entry completes, so the completion code is not graded: once locked, writes clearing `allow_burst` and clearing `locked` must complete (no timeout), the field keeps its value, and the frozen granule still grants the widened page. The freeze is not in the register block -- `locked` is a W1S bit with no write-enable over other fields -- but a per-entry demux routes a locked entry's writes to an error slave while reads pass through. Asserting the response alone would not prove the field held, so the readback and the still-granted access are checked with it.
+|`FILTER_CONFIG.locked` freezes `allow_burst`. `hw/sys/sep/doc/fabric.adoc` specifies the lock bit as write-once, so the field must not change once set. It does not state how a write to a locked entry completes, so the response code is not graded. With `allow_burst` set, a write of 1 to `locked` (the high word of `FILTER_CONFIG`) reads back set. Then a low-word write that clears `allow_burst` must complete (no timeout), and the low word reads back unchanged. A high-word write of 0 must complete, and `locked` reads back set. Last, an external read inside the widened page but outside the programmed `START..END` answers OKAY with the staged value, so the frozen bit still drives the filter and not only the CSR readback.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4628,13 +4634,12 @@ claimed.
 |CHK-BT-CONTROL
 |Single-beat background writes read back, so the region can show where a burst landed.
 |CHK-BT-WRITE
-|After the write burst the region equals the background with a non-OKAY BRESP, or the AXI4 image of the named burst type with OKAY. The log names the INCR image when the DUT produced it.
+|After the write burst the region equals the background with a non-OKAY BRESP, or the AXI4 image of the named burst type with OKAY. The log names the INCR image when the DUT produced it. The FIXED and the WRAP write burst each answer OKAY and write the INCR image, so this checker fails.
 |CHK-BT-READ
-|The read burst answers non-OKAY on every beat, or every OKAY beat returns the word the named burst type addresses. A mix of OKAY and error beats fails.
+|The read burst answers non-OKAY on every beat, or every OKAY beat returns the word the named burst type addresses. A mix of OKAY and error beats fails. The FIXED and the WRAP read burst each answer OKAY and return the words at INCR beat addresses, so this checker fails.
 |===
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Current result*: red on the current RTL. Both bursts answer OKAY and run with INCR beat addresses on write and read. See <<known-limitations>>.
+*Pass Criteria*: `CHK-BT-WRITE` and `CHK-BT-READ` fail. Every other named checker PASSes. The leaf's failure is those two checkers. See <<known-limitations>>.
 
 *Not claimed*: that a non-INCR burst must be refused. No SEP document says so; the checker accepts refusal or AXI4 semantics.
 
@@ -4787,14 +4792,18 @@ the register description — are unproven here.
 |Both banks are writable again after the reset releases.
 |CHK-COLD-REINIT
 |A cold reset clears the cold bank too.
-|CHK-WARM-CLEAR / CHK-WARM-RETAIN
-|The warm-reset scratch bank clears while the cold bank retains its value across the same event — the pair that makes the domain split real.
+|CHK-WARM-CLEAR
+|After the warm reset, `SCRATCH_WARM[0]` reads its reset default of zero. With CHK-WARM-RETAIN it is the pair that makes the domain split real.
+|CHK-WARM-RETAIN
+|After the same warm reset, `SCRATCH_COLD[0]` reads its written pattern on the CPU-LSU read, and `scratch_cold_probe_o` agrees.
 |CHK-BANK-ALIAS
 |Each of the sixteen implemented registers (eight per bank, `SCRATCH[8]` in `hw/sys/sep/regs/blocks/sep_scratch/sep_scratch.rdl`) holds its own pattern, so an index-to-index or bank-to-bank alias fails.
 |CHK-WARM-BANK
 |A warm reset clears every warm register and leaves every cold register at its pattern.
+|CHK-COLD-ARM
+|Immediately before the cold reset, all eight registers of each bank are written with their non-reset patterns and read back, so no CHK-COLD-REINIT or CHK-COLD-BANK compare can pass on a register the earlier warm reset had already cleared.
 |CHK-COLD-BANK
-|A cold reset clears every register of both banks. Both banks are re-armed with non-reset values immediately before the cold reset, so no assertion in the sweep compares a zero against a register the earlier warm reset had already cleared.
+|A cold reset clears every register of both banks, each armed by CHK-COLD-ARM.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -6274,6 +6283,8 @@ reported as such rather than counted as a pass.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-DEADSPACE-RAND
+|Stimulus precondition. Each watched window supplies its full quota of two seed-selected, word-aligned dead-offset probes. No two probes, and no probe and directed anchor, share both address and operation. A window with no dead span counts as zero of two. The probe count is the random-coverage claim, so a short window fails the leaf before bring-up and is not absorbed into a smaller probe set. The checker has no PASS line; the `deadspace config` line records the probe count per seed.
 |CHK-WINDOW-LIVE
 |Each of the eleven watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller, and trng against the neighbouring entropy_src registers) has a non-empty register snapshot and at least one register armed for the change compare, so both no-alias compares can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count, and a window with none armed fails.
 |CHK-DEADSPACE-REFUSE
@@ -6331,11 +6342,10 @@ reported as such rather than counted as a pass.
 |CHK-WRAP-STIM
 |The AW handshake on the testbench port is one INCR burst with the anchor's start address, AxLEN and AxSIZE, so the burst was not split into bursts that stay inside the extent.
 |CHK-WRAP-NO-ALIAS
-|After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst and the specification names no refusal flavour.
+|After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst and the specification names no refusal flavour. In all three blocks the burst changes the target register, so this checker fails.
 |===
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Current result*: red on the current RTL. All three blocks change the target register. `sep_reset_ctrl` answers OKAY; `wdt_timer` and `secure_dma` answer SLVERR and still store the aliased beat. See <<known-limitations>>.
+*Pass Criteria*: `CHK-WRAP-NO-ALIAS` fails. Every other named checker PASSes. The leaf's failure is that checker. See <<known-limitations>>.
 
 '''''
 
@@ -7540,7 +7550,7 @@ flush) walks in one invocation.
 |CHK-OVR-RESP
 |`SEP_CTRL.inbound_overflow_resp` turns the next overrun into OKAY; the sticky bit stays; depth stays 16 (the word is dropped).
 |CHK-IRQ
-|Enabling the two error IRQs raises aggregator `[14]`. Clearing the enable drops the pin while `IRQ_STATUS` stays. Write-1-to-clear drops both.
+|With the `inbound_overflow` sticky set, enabling the two error IRQs raises aggregator `[14]`. Clearing the enable drops the pin while `IRQ_STATUS` stays unchanged, and setting it again raises the pin. With the enable still set, a write-1-to-clear of the two sticky error bits in `STATUS` and then in `IRQ_STATUS` drops the pin. `STATUS` and `IRQ_STATUS` then match the golden with both stickies clear and inbound depth 16; `CHK-IRQ-W1C` labels a failure of that compare.
 |CHK-FLUSH
 |`CTRL.FLUSH` empties the full inbound FIFO, self-clears, and leaves both sticky errors -- `inbound_overflow` and `outbound_underflow`, each latched just before the flush -- set in STATUS and `IRQ_STATUS` until W1C. The outbound FIFO is empty before and after, so its flush is not claimed; see Known Limitations, "KM mailbox outbound flush".
 |===
@@ -7780,6 +7790,8 @@ the wipe security contract.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-KM-BUS-ERR-LIVE
+|Precondition, shared by the three `km_rom_bus_err` leaves (`seq_lib/sep_km_bus_err_seq.py`). KM SRAM word 0 holds the image's pre-load or post-load marker within a fixed cycle bound after release. The image stores the pre-load marker after every dump word except the data and `IRQ_STATUS` words of the virtual ROM load, so the image ran and the rows before that load are written. The checker has no PASS line: when the marker does not appear, the leaf stops with this FAIL and the KM ROM fetch count.
 |CHK-KM-SLVERR-LIVE
 |Control. A store past the KPV register map sets `IRQ_STATUS.AXI_SLVERR`, so the bit and the image's poll work.
 |CHK-KM-ROM-UNCHANGED
@@ -7829,6 +7841,8 @@ the wipe security contract.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-KM-BUS-ERR-LIVE
+|Precondition, shared by the three `km_rom_bus_err` leaves (`seq_lib/sep_km_bus_err_seq.py`). KM SRAM word 0 holds the image's pre-load or post-load marker within a fixed cycle bound after release. The image stores the pre-load marker after every dump word except the data and `IRQ_STATUS` words of the virtual ROM load, so the image ran and the rows before that load are written. The checker has no PASS line: when the marker does not appear, the leaf stops with this FAIL and the KM ROM fetch count.
 |CHK-KM-SHIM-HOST-PATH
 |Control. The host read of `EFUSE_BANK_INIT_TIME` is OKAY at its RDL reset, and the seeded value the host writes reads back, so the no-alias rows below can fail.
 |CHK-KM-DECERR-LIVE
@@ -7877,6 +7891,8 @@ the wipe security contract.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-KM-BUS-ERR-LIVE
+|Precondition, shared by the three `km_rom_bus_err` leaves (`seq_lib/sep_km_bus_err_seq.py`). KM SRAM word 0 holds the image's pre-load or post-load marker within a fixed cycle bound after release. The image stores the pre-load marker after every dump word except the data and `IRQ_STATUS` words of the virtual ROM load, so the image ran and the rows before that load are written. The checker has no PASS line: when the marker does not appear, the leaf stops with this FAIL and the KM ROM fetch count.
 |CHK-KM-DECERR-LIVE
 |Control. A KM load from the Reserved ROM-growth row sets `IRQ_STATUS.AXI_DECERR`, so an erroring load completes on this bus and the bit reports it.
 |CHK-KM-VROM-PRE
