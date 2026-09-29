@@ -27,10 +27,11 @@ The cocotb checks prove the path each window exercises:
                      image stored its SRAM marker.
 * CHK-TDR-STAGE      the staged reset value alone does not stop the KM.
 * CHK-TDR-APPLY      the applied override holds the KM: no ROM request.
-* CHK-TDR-RELEASE    the release restarts the KM: a ROM request comes within
-                     64 cycles of the Update-DR. The log gives the latency.
-                     The window below starts at that first request, so it
-                     follows any request hold after the KM reset release.
+* CHK-TDR-RELEASE    the control-first release restarts the KM: a ROM request
+                     comes within 64 cycles of that Update-DR. A second
+                     Update-DR disables the override without stopping it.
+                     The log gives the latency. The window below starts after
+                     both updates.
 * CHK-KM-ROM-WINDOW  the KM fetches through a bounded window after that
                      first request. ``noXOnCsI`` grades every cycle of it.
 """
@@ -163,11 +164,12 @@ class sep_km_ic_reset_release_test(sep_base_test):
             _SETTLE_CYCLES,
         )
 
-        # Release: back to the idle word. The KM reset follows SW_RESET_N again,
-        # which releases the KM.
-        self._stamp("release km_jtag_rst_n")
+        # Release control while the override remains selected. IC_RESET requires
+        # control and enable to move in separate Update-DR operations so the
+        # downstream reset mux never changes its value and select together.
+        self._stamp("release km_jtag_rst_n control")
         held = self._count()
-        await tdr.capture_shift_update(IC_RESET_IDLE)
+        await tdr.capture_shift_update(tdr_word(apply=(_PORT,)))
         first = None
         for cycle in range(1, _SETTLE_CYCLES + 1):
             await RisingEdge(dut.clk_i)
@@ -176,13 +178,24 @@ class sep_km_ic_reset_release_test(sep_base_test):
                 break
         assert first is not None, (
             f"CHK-TDR-RELEASE FAIL: no ROM request within {_SETTLE_CYCLES} cycles of the "
-            "Update-DR that released the override"
+            "Update-DR that released reset_control"
+        )
+        before_disable = self._count()
+        self._stamp("disable km_jtag_rst_n override")
+        await tdr.capture_shift_update(IC_RESET_IDLE)
+        await self._cycles(_SETTLE_CYCLES)
+        after_disable = self._count()
+        assert after_disable > before_disable, (
+            f"CHK-TDR-RELEASE FAIL: ROM requests {before_disable}->{after_disable} after "
+            "reset_enable returned to 1; disabling the override stopped the KM"
         )
         self.logger.info(
-            "CHK-TDR-RELEASE PASS: override released; first ROM request %d cycles after "
-            "Update-DR. The fetch window starts at that request, so it follows any "
-            "request hold after the KM reset release",
+            "CHK-TDR-RELEASE PASS: reset_control released first; the first ROM request "
+            "came %d cycles after Update-DR, then reset_enable returned to 1 in a "
+            "separate Update-DR and ROM requests advanced %d->%d",
             first,
+            before_disable,
+            after_disable,
         )
 
         self._stamp("ROM request window start")

@@ -646,7 +646,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_sec_dis_reset_reach_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, `jtag_ic_reset_reg`
-|Before any match, the SEP IC_RESET TDR releases `sep_reset_n` while sensing is still open. `SW_RESET_N` returns its reset default once the TDR releases it, and the same read does not complete after the TDR holds the reset again. Feature control stays closed.
+|Before any match, the SEP IC_RESET TDR releases `sep_reset_n` while sensing is still open. `SW_RESET_N` returns its reset default once the TDR releases it. Restoring the TDR enable holds the reset again, and sense-done releases it. Feature control stays closed.
 |`sep_efuse_illegal_state_fail_closed_test`
 |no_cpu, real fuse sense
 |DUT probes and a one-cycle state force
@@ -6731,7 +6731,7 @@ error path works.
 
 *Objective*: `hw/sys/sep/doc/security_disable.adoc` says the IC_RESET `sep_reset_n` override alone releases the SEP reset and leaves life-cycle control closed. `hw/sys/sep/doc/reset_controller.adoc` says JTAG drives `sep_reset_n` through the SEP slice of the IC_RESET TDR. This leaf shifts `jtag_ic_reset_reg`, sized to `jtag_sep_reset_ctrl_t` and packed the way `jtag_ptap` packs the SEP slice. The TAP instruction that selects the TDR is outside this DUT. The per-port override pins stay 0. `SW_RESET_N` is in the `sep_reset_n` domain (`hw/sys/sep/rtl/sep_reset_ctrl.sv`). No token is written.
 
-*Test Coverage*: TDR reset value, held-reset read, control-then-enable programming, `SW_RESET_N` readback, closed feature control, TDR re-hold, and sense completing the release.
+*Test Coverage*: TDR reset value, control-then-enable programming, `SW_RESET_N` readback, closed feature control, TDR re-hold, sense completing the release, and `SW_RESET_N` readback after that release.
 
 *Test Procedure*:
 
@@ -6743,8 +6743,8 @@ error path works.
 . Read `SW_RESET_N`. The access returns AXI OKAY and the register reset default.
 . `FEAT_CTRL` equals the withheld-map golden and `sec_dis` stays 0.
 . Shift the all-ones word again. Both probes read 0 while sensing is still open.
-. Read `SW_RESET_N` again. The access does not complete. This is the last bus access. The OKAY read above is the allow leg of that non-completion.
 . Wait for sense-done. Both probes read 1 with the TDR override off.
+. Read `SW_RESET_N` again. The access returns AXI OKAY and the register reset default.
 
 *Checkers*:
 
@@ -6753,8 +6753,6 @@ error path works.
 |Checker |Contract
 |CHK-TDR-IDLE
 |Selecting the TDR at its reset value, with `sep_fuse_sense_done_o=0`, leaves both reset probes at 0. `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` stay 0.
-|CHK-HELD
-|After the TDR restores `reset_enable`, with both probes at 0 and sensing still open, the same `SW_RESET_N` read does not complete. The allow leg is the AXI OKAY read of that address while the override was on.
 |CHK-TDR-CAPTURE
 |The word shifted out of the TDR after reset is all ones: `reset_hold` and every `reset_enable` and `reset_control` are 1.
 |CHK-TDR-CTRL
@@ -6769,6 +6767,8 @@ error path works.
 |Restoring `reset_enable` makes both probes read 0 while sensing is still open.
 |CHK-SENSE-RELEASE
 |After sense-done, with the TDR override off, both probes read 1.
+|CHK-SENSE-REACH
+|After that release, a read of `SW_RESET_N` returns AXI OKAY and the register reset default, with both probes at 1.
 |===
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
@@ -6902,7 +6902,7 @@ two codes as one field.
 
 *Randomization*: RAND-NONE -- one directed walk.
 
-*Objective*: The Key Manager ROM request stays known across an IC_RESET override of the Key Manager. `hw/top/sep_ip_integration.sv` connects that request to the `prim_rom` chip select, and `prim_rom` asserts `noXOnCsI` on it on every clock (`vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv`). The port is `km_jtag_rst_n`, the TDO-end port of the SEP slice (`doc/integrator/src/smu.adoc`, SEP slice). The walk follows the IC_RESET field table in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`: stage `reset_control=0` with `reset_enable=1`, apply `reset_enable=0`, release to the idle word.
+*Objective*: The Key Manager ROM request stays known across an IC_RESET override of the Key Manager. `hw/top/sep_ip_integration.sv` connects that request to the `prim_rom` chip select, and `prim_rom` asserts `noXOnCsI` on it on every clock (`vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_rom.sv`). The port is `km_jtag_rst_n`, the TDO-end port of the SEP slice (`doc/integrator/src/smu.adoc`, SEP slice). The walk follows the IC_RESET field table in `hw/ip/jtag/jtag_ptap/doc/architecture.adoc`: stage `reset_control=0` with `reset_enable=1`, apply `reset_enable=0`, then release control and disable the override in separate Update-DR operations.
 
 *Test Coverage*: stage, apply and release of the `km_jtag_rst_n` override while the KM fetches from its ROM; the request through a window that starts at the first fetch after the release.
 
@@ -6911,7 +6911,7 @@ two codes as one field.
 [arabic]
 . Bring-up with the KM held in software reset. TRST the TDR, select it, and require the shifted-out word to be the TDR reset value.
 . Release the KM through `SW_RESET_N`. The smoke image stores its SRAM marker and spins, so every loop turn is a ROM fetch.
-. Stage, apply and release the override, one Update-DR each. The host samples the KM ROM request counter (`km_rom_req_count_o`) after each.
+. Stage and apply the override, one Update-DR each. Release `reset_control` while the override remains enabled, then disable the override in a second Update-DR. The host samples the KM ROM request counter after each operation.
 . After the release, count the cycles to the first ROM request, then run a 4000-cycle fetch window.
 
 *Checkers*:
@@ -6928,7 +6928,7 @@ two codes as one field.
 |CHK-TDR-APPLY
 |`reset_enable=0`, `reset_control=0` holds the KM: the count does not move over 64 cycles.
 |CHK-TDR-RELEASE
-|The release restarts the KM: a ROM request comes within 64 cycles of the Update-DR, and the log gives the latency. The window below starts at that first request, so it follows any request hold after the KM reset release.
+|Releasing `reset_control` while the override remains enabled restarts the KM: a ROM request comes within 64 cycles of that Update-DR. Returning `reset_enable` to 1 in a separate Update-DR does not stop the requests. The log gives the latency and both counter values.
 |CHK-KM-ROM-WINDOW
 |At least 64 ROM requests in the 4000-cycle window after the release. `noXOnCsI` grades the request on every cycle of it; a firing prints `Error:` and the run fails.
 |===
