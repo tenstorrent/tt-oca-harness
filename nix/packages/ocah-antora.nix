@@ -1,4 +1,5 @@
-# Bundle Antora with extensions to build documentation
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   lib,
   antora,
@@ -15,6 +16,7 @@
     asciidoctor-kroki
   ];
   nodePath = lib.concatMapStringsSep ":" (p: "${p}/lib/node_modules") pkgList;
+  # Bundle Antora with extensions to build documentation
   wrapper = writeShellScript "antora" ''
     export NODE_PATH="${nodePath}"
     extra=()
