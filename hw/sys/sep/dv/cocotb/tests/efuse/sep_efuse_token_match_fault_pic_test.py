@@ -8,7 +8,9 @@ LSU conflict). Firmware proves the ISR claim id, the SEC_DISABLE sticky
 bit, and that masking meie[40] stops re-entry. TOKEN_MATCH_FAULT is sw=r;
 there is no W1C.
 
-+skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
+Real fuse sense on a blank OTP image, staged with write_efuse_image before
+bring-up, so the base test's post-sense shadow compare runs. The SEC_DISABLE
+compare is not fuse-gated.
 """
 
 from __future__ import annotations
@@ -20,6 +22,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_boot_scoreboard import SepBootScoreboard
+from env.sep_efuse_image import SepEfuseImage
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 from seq_lib.sep_efuse_rma_token_seq import (
@@ -53,7 +56,7 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         self.sb = SepBootScoreboard("sb", self)
 
     def _scratch0(self) -> int:
-        return self.rd(cocotb.top.scratch_cold_probe_o) & 0xFFFF_FFFF
+        return self.rd(cocotb.top.scratch_cold_probe_o, mask=0xFFFF_FFFF)
 
     async def _inject_after_ready(self) -> None:
         for _ in range(_READY_POLL):
@@ -66,6 +69,9 @@ class sep_efuse_token_match_fault_pic_test(sep_base_test):
         raise AssertionError("firmware never published READY for the PIC inject")
 
     async def run_scenario(self) -> None:
+        # Blank OTP image: the golden for the post-sense shadow compare.
+        # dv_sim_prestage.py stages the same blank image for the t=0 load.
+        self.write_efuse_image(SepEfuseImage())
         self.sb.expected_line = _BANNER
         cocotb.start_soon(self._inject_after_ready())
         await self.boot_firmware(

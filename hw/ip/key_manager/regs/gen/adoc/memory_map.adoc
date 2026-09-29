@@ -13,9 +13,9 @@
 |0x00008000 |0x0000FFFF |32 KiB |32 KiB |Key Manager SRAM |Key Manager data and executable SRAM
 |0x00010000 |0x0001001F |32 B |28 B |Key Manager Mailbox KM Side |Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)
 |0x00010020 |0x00010FFF |4064 B |4064 B |Reserved |Reserved
-|0x00011000 |0x000113FF |1 KiB |1 KiB |otp_efuse_map |SEP eFuse shadow-register pass-through.
-|0x00011400 |0x000114FF |256 B |28 B |otp_efuse_ctrl |SEP eFuse command and status pass-through.
-|0x00011500 |0x000115FF |256 B |116 B |otp_efuse_mmr |SEP eFuse security-token pass-through.
+|0x00011000 |0x000113FF |1 KiB |1 KiB |SEP eFuse Map Address Map |SEP eFuse shadow-register pass-through.
+|0x00011400 |0x000114FF |256 B |28 B |eFuse Interface Control Address Map |SEP eFuse command and status pass-through.
+|0x00011500 |0x000115FF |256 B |116 B |eFuse Token Registers Address Map |SEP eFuse security-token pass-through.
 |0x00011600 |0x00011FFF |2560 B |2560 B |Reserved |Reserved
 |0x00012000 |0x00013FFF |8 KiB |4360 B |Key and Policy Vault (KM Port) |Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.
 |0x00014000 |0x000147FF |2 KiB |1216 B |Key Manager Control and Status Registers |Control and status registers for the Key Manager subsystem

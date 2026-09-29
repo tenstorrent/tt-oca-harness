@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// OCH SEP Top-Level Address Map
-// This file defines the complete address map for the OCH SEP subsystem
+// OCAH SEP Top-Level Address Map
+// This file defines the complete address map for the OCAH SEP subsystem
 // Base addresses are derived from hw/sep/sep_crypto_pkg.sv and hw/sep/sep_pkg.sv
 
 // Include all peripheral RDL files
@@ -45,11 +45,11 @@
 `include "sep_scratch.rdl"
 `include "el2_pic.rdl"
 
-addrmap och_sep_top #(
+addrmap sep_top #(
     longint unsigned BASE_ADDR = 0x0000_0000
 ) {
-    name = "OCH SEP Top-Level Address Map";
-    desc = "Complete address map for OCH Security Processor subsystem";
+    name = "OCAH SEP Top-Level Address Map";
+    desc = "Complete address map for OCAH Security Processor subsystem";
 
     // =========================================================================
     // System Resources (0x1010_0000 - 0x1090_0000)

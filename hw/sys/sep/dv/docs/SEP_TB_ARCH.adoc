@@ -138,7 +138,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o` — observation-only unless listed as an inject exception
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o` — observation-only unless listed as an inject exception
 |===
 
 Exceptions (a closed set):
@@ -182,7 +182,8 @@ Exceptions (a closed set):
 
 ==== `SepEnv` / `SepEnvCfg`
 
-`SepEnvCfg` holds clock periods (seed-randomized `sys_clk_period_ns`), the AXI
+`SepEnvCfg` holds clock periods (`sys_clk_period_ns` is 1.25 ns, the 800 MHz
+silicon target, and `ref_clk_period_ns` is 10 ns), the AXI
 access timeout, and the `reset_done` event the AXI driver waits on. `SepEnv`
 builds both AXI agents, the value scoreboard, and the two passive monitors.
 
@@ -226,6 +227,14 @@ CPU tests call `boot_firmware()`, which stages ITCM/DTCM hex, loads via
 `tcm_load_i`, brings up with `+cpu_boot`, and polls PC-advance / console /
 PASS magic. The trace monitor reconstructs a shadow call stack from EL2
 retirement ports; see <<env-cpu-trace>>.
+
+Before the boot, `RUN-IDENTITY-FW` logs the sha256 of both images and
+`CHK-FW-IDENTITY` checks where they came from. The firmware build (`fw/fw.mk`)
+compiles `FW-BUILD-ID:<digest>` into every image, with `<digest>` from
+`fw/fw_src_digest.py` over the firmware source directories, once in ICCM and
+once in DCCM. The test reads the string out of both loaded images and requires
+each to equal the digest of the tree it runs from, which `RUN-IDENTITY` binds to a commit. An image built from other
+source, or left over from an older build, fails the check.
 
 ==== Register metadata
 
@@ -285,10 +294,11 @@ test uses the AXI front door, and either readout can run any source:
   fresh image. Runs the default (random) source.
 
 Other enrolled tests also run *real* fuse sense (no `+skip_fuse_sense`) for a
-different contract — lifecycle decode, inbound-filter `SEP_DBG` gating — and do
-not replace the shadow-compare pair: `sep_efuse_lcc_lc_state_stitch_test`,
-`sep_lcc_uvm_inbound_filter_gating_test`,
-`sep_fabric_inbound_filter_rule_matrix_test`.
+different contract — lifecycle decode, inbound-filter `SEP_DBG` gating, public-ID
+delivery to the Key Manager — and do not replace the shadow-compare pair:
+`sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_uvm_inbound_filter_gating_test`,
+`sep_fabric_inbound_filter_rule_matrix_test`, `sep_efuse_km_public_id_test`. The
+last reads the Key Manager's OTP input from the `km_otp_sep_*_id_o` ports.
 
 
 === Memory, eFuse, and SPI Models
@@ -564,10 +574,11 @@ Tests that boot the production KM ROM (`sep_km_*_sideload_kat_test`,
 `firmware = { name = "rom_main", mode = "km_rom_main" }`
 
 so `c_compile` builds `hw/sys/sep/dv/cocotb/tests/rom_main.rom.parhex` from
-tracked `hw/ip/key_manager/dv/fw` source. The parhex is gitignored. The
+tracked `hw/ip/key_manager/approm/prod` source. The parhex is gitignored. The
 profile drives `make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main`, which
-passes `ROM_KM_BOOT_WIPE_DEFAULT=0` / `ROM_KM_UNREC_WIPE_DEFAULT=0`. A
-default KM build wipes SRAM at boot and halts before `RESP_KM_READY`.
+builds the application ROM with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` into its own
+`build/sep_dv` directory. A default KM build wipes SRAM at boot and halts before
+`RESP_KM_READY`.
 
 `--stage sim` without that output fails with `firmware outputs missing`
 rather than hanging the KM. A named `+km_rom_hex` that does not resolve is
@@ -591,16 +602,16 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut sep --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 carry both implementations in their testlist `module` binding map
-(`module = { cocotb = "<module>", uvm = "<name>" }`); those without a `uvm`
-entry error at selection unless `--skip-unimplemented` is passed. The
-framework conventions and the bring-up walkthrough this realization follows
-are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
-reference benches are DTP and SMC.
+(`module = { cocotb = "<module>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework
+conventions and the bring-up walkthrough this realization follows are the
+shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the reference
+benches are DTP and SMC.
 
 There is exactly ONE testbench top module: `sep_uvm_top` in `tb/tb_top.sv`,
 shared between both realizations (<<sep-hdl-top>>). Under `UVM` the harness
-adds the three clocks (periods from `sep_tb_if`, the system clock
-randomized over the cocotb `SepEnvCfg.randomize_timing` range), the shared
+adds the clocks (periods from `sep_tb_if`: `clk_i` at 1.25 ns and
+`clk_ref_i` at 10 ns), the shared
 AXI VIP master interface driving the `s_axi_*` request side of the CPU-LSU
 splice and a passive mirror interface for the VIP monitor, quiescent
 tie-offs for every other cocotb-driven pin at the idle value
@@ -681,7 +692,7 @@ PASSED` is emitted only in the base test's `report_phase` when the global
 UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
 
 `--framework uvm` selects this `uvm/` shape on VCS. How to invoke it, including
-`--skip-unimplemented` and `+SEP_CSR_SCOREBOARD_NEGATIVE`, is in `README.md`.
+`+SEP_CSR_SCOREBOARD_NEGATIVE`, is in `README.md`.
 
 To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
 `sep_base_test_seq` (operations through the `csr_*` wrappers or a new

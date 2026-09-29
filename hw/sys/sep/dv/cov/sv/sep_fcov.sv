@@ -29,7 +29,7 @@
 // happens to be serial. A missed sample is a missed hit, never a false one.
 //
 // Encodings come from the generated register header (`sep_reg.svh`) and the
-// memory-window package (`och_sep_top_addrmap_pkg`). Where a vendored block exports no
+// memory-window package (`sep_top_addrmap_pkg`). Where a vendored block exports no
 // field symbol, the bit position is named in a comment against the driver that
 // programs it.
 
@@ -106,6 +106,10 @@ module sep_fcov (
   input wire        cpu_reset_n_i,
   input wire        spi_cs_n_i,
   input wire        spi_sck_i,
+  // IC_RESET sep_reset_n override as SEP receives it, after the TB mux.
+  // ovrd selects val in place of the sense-gated reset.
+  input wire        jtag_sep_reset_n_ovrd_i,
+  input wire        jtag_sep_reset_n_val_i,
 
   // Crypto isolate / per-IP reset sequencing for the HMAC domain. An
   // accelerator reset waits on BOTH the SEP host path and the Key Manager
@@ -120,17 +124,17 @@ module sep_fcov (
   input wire        abr_km_isolated_i
 );
 
-  import och_sep_top_addrmap_pkg::*;
+  import sep_top_addrmap_pkg::*;
   `include "sep_reg.svh"
 
   // ------------------------------------------------------------------
-  // Apertures. Memory windows come from och_sep_top_addrmap_pkg; every CSR address
+  // Apertures. Memory windows come from sep_top_addrmap_pkg; every CSR address
   // and field mask below is a sep_reg.svh symbol.
   // ------------------------------------------------------------------
-  localparam logic [31:0] SramBase = 32'(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-  localparam logic [31:0] SramEnd = SramBase + 32'(OCH_SEP_TOP_SEP_SRAM_SIZE);
-  localparam logic [31:0] BootRomBase = 32'(OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
-  localparam logic [31:0] BootRomEnd = BootRomBase + 32'(OCH_SEP_TOP_SEP_BOOT_ROM_SIZE);
+  localparam logic [31:0] SramBase = 32'(SEP_TOP_SEP_SRAM_BASE_ADDR);
+  localparam logic [31:0] SramEnd = SramBase + 32'(SEP_TOP_SEP_SRAM_SIZE);
+  localparam logic [31:0] BootRomBase = 32'(SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
+  localparam logic [31:0] BootRomEnd = BootRomBase + 32'(SEP_TOP_SEP_BOOT_ROM_SIZE);
   localparam logic [31:0] SpiBase = SPI_CONTROLLER_REG_MAP_BASE_ADDR;
   localparam logic [31:0] SpiEnd = SpiBase + SPI_CONTROLLER_REG_MAP_SIZE;
   localparam logic [31:0] ColdBase = SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR;
@@ -789,6 +793,47 @@ module sep_fcov (
   logic [3:0] lc_prev_q;
   logic       lc_prev_valid_q;
   wire        lc_transition = lc_diff_ok && lc_prev_valid_q && (lc_raw != lc_prev_q);
+
+  // --- SEC_DIS while sensing is open ------------------------------------
+  // A match leaves the sense-gated reset held. The sep_reset_n override
+  // releases it, and clearing the override holds it again. The LC_STATE
+  // shadow read in that window is sampled on its AXI response, including a
+  // non-OKAY response (rd_ev is OKAY only).
+  wire sense_open = !in_reset && !skip_fuse_sense_q && (fuse_sense_done_i === 1'b0);
+  wire sec_dis_on = (sec_dis_i === 1'b1);
+  wire sep_reset_ovrd = (jtag_sep_reset_n_ovrd_i === 1'b1) &&
+      (jtag_sep_reset_n_val_i === 1'b1);
+  logic sec_dis_cpu_reset_n_q;
+  logic sec_dis_on_q;
+  logic sec_dis_release_seen_q;
+  wire sep_reset_rise = !sec_dis_cpu_reset_n_q && (cpu_reset_n_i === 1'b1);
+  wire sep_reset_fall = sec_dis_cpu_reset_n_q && (cpu_reset_n_i === 1'b0);
+  // Sampled on the SEC_DIS rise, while the reset is held and the override is clear.
+  wire sec_dis_hold_ev = sense_open && sec_dis_on && !sec_dis_on_q &&
+      (cpu_reset_n_i === 1'b0) && !sep_reset_ovrd;
+  wire sec_dis_release_ev = sense_open && sep_reset_ovrd && sep_reset_rise;
+  wire sec_dis_rehold_ev = sense_open && !sep_reset_ovrd && sep_reset_fall &&
+      sec_dis_release_seen_q;
+  wire rd_cmpl = !in_reset && r_hs && (ar_out_q == 4'd1);
+  wire sec_dis_map_rd = rd_cmpl && sense_open && sec_dis_on &&
+      (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
+  // SW_RESET_N is in the sep_reset_n domain. An OKAY read while sensing is
+  // still open means the override has released that domain.
+  wire sec_dis_reach_rd = rd_okay && sense_open && (cpu_reset_n_i === 1'b1) &&
+      (ar_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR);
+
+  always_ff @(posedge clk_i) begin
+    if (in_reset) begin
+      sec_dis_cpu_reset_n_q  <= 1'b0;
+      sec_dis_on_q           <= 1'b0;
+      sec_dis_release_seen_q <= 1'b0;
+    end else begin
+      sec_dis_cpu_reset_n_q <= (cpu_reset_n_i === 1'b1);
+      sec_dis_on_q          <= sec_dis_on;
+      if (fuse_sense_done_i === 1'b1) sec_dis_release_seen_q <= 1'b0;
+      if (sec_dis_release_ev) sec_dis_release_seen_q <= 1'b1;
+    end
+  end
 
   // --- Mailbox / PIC -----------------------------------------------------
   logic irq_mailbox_q, irq_km_mbox_q;
@@ -1669,6 +1714,31 @@ module sep_fcov (
     }
   endgroup
 
+  // Sampled on the window edges, not on a held level. The map coverpoint
+  // records the LC_STATE read response while sensing is still open.
+  // reach records an OKAY SW_RESET_N read in that window.
+  covergroup sep_sec_dis_boot_cg with function sample (
+      logic hold,
+      logic released,
+      logic rehold,
+      logic sec_dis,
+      logic [1:0] map_resp,
+      logic map_hit,
+      logic reach
+  );
+    option.per_instance = 1;
+    option.name = "sep_sec_dis_boot_cg";
+    cp_hold: coverpoint hold {bins match_holds_reset = {1'b1};}
+    cp_release: coverpoint released {bins override_releases = {1'b1};}
+    cp_rehold: coverpoint rehold {bins override_reholds = {1'b1};}
+    // The override sampled while SEC_DIS is still off: feature control stays closed.
+    cp_alone: coverpoint sec_dis iff (released) {
+      bins override_closed = {1'b0};
+    }
+    cp_map_resp: coverpoint map_resp iff (map_hit) {bins okay = {AxiOkay}; bins slverr = {2'b10};}
+    cp_reach: coverpoint reach {bins sw_reset_n_while_open = {1'b1};}
+  endgroup
+
   covergroup sep_lc_demote_cg with function sample (logic [3:0] lc, logic d1, logic d2);
     option.per_instance = 1;
     option.name = "sep_lc_demote_cg";
@@ -1756,6 +1826,7 @@ module sep_fcov (
   sep_lc_transition_cg        u_sep_lc_transition_cg        = new();
   sep_dma_completion_route_cg u_sep_dma_completion_route_cg = new();
   sep_feat_ctrl_cg            u_sep_feat_ctrl_cg            = new();
+  sep_sec_dis_boot_cg         u_sep_sec_dis_boot_cg         = new();
   sep_lc_demote_cg            u_sep_lc_demote_cg            = new();
   sep_mailbox_pic_cg          u_sep_mailbox_pic_cg          = new();
   sep_wdt_bark_cg             u_sep_wdt_bark_cg             = new();
@@ -1782,6 +1853,11 @@ module sep_fcov (
         u_sep_feat_ctrl_cg.sample(lc_sensed, feat_dbg_class, (sec_dis_i === 1'b1),
                                   (secure_tm_i === 1'b1));
         u_sep_lc_demote_cg.sample(lc_sensed, demote_1_set, demote_2_set);
+      end
+      if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev || sec_dis_map_rd ||
+          sec_dis_reach_rd) begin
+        u_sep_sec_dis_boot_cg.sample(sec_dis_hold_ev, sec_dis_release_ev, sec_dis_rehold_ev,
+                                     sec_dis_on, lsu_r_resp_i, sec_dis_map_rd, sec_dis_reach_rd);
       end
       if (dma_copy_done || dma_hash_done) begin
         u_sep_dma_completion_route_cg.sample(dma_irq_done, dma_hs_q);

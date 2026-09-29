@@ -11,6 +11,8 @@ addrmap telemetry_receiver_wrap #(
     // longint unsigned MAX_NUM_TELEMETRY_RECEIVERS = 16
     longint unsigned NUM_TELEMETRY_RECEIVERS = 3
 ) {
+    name = "Telemetry Receiver Wrapper Address Map";
+    desc = "Wrapper address map instantiating the telemetry receiver channels.";
 
     /////////////////
     // Address Map //

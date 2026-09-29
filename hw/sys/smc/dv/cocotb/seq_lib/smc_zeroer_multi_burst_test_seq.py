@@ -41,6 +41,7 @@ import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import DMA_CONFIG_ENABLED_ND, smc_addr
 from .smc_output_fabric_vip_utils import (
     OUTPUT_FABRIC_ADDR,
     OUTPUT_FABRIC_MODEL_BASE,
@@ -86,6 +87,21 @@ _WORD_BYTES = 8
 _BUSY_ASSERT_CYCLES = 4000
 _BUSY_CLEAR_CYCLES = 40000
 _BURST_WAIT_CYCLES = 40000
+# READY-low window the responder repeats on AW and W during the back-pressured job.
+_BP_STALL_CYCLES = 8
+# The contending DMA job: eight-byte repetitions between two SYS_OUT buffers
+# clear of the zeroer's region and witness.
+_DMA_REPS = 64
+_DMA_BYTES = 8
+_DMA_SRC = OUTPUT_FABRIC_ADDR + 0x8000
+_DMA_DST = OUTPUT_FABRIC_ADDR + 0x9000
+_DMA_SEED = 0x5EED_0000_0000_0000
+_DMA_DONE_POLLS = 4000
+assert _DMA_SRC >= OUTPUT_FABRIC_ADDR + _WITNESS_OFFSET + _WORD_BYTES
+
+
+def _dma(reg: str) -> int:
+    return smc_addr(f"SMC_TOP_DMA_CTRL_{reg}_BASE_ADDR")
 
 
 class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
@@ -100,6 +116,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         #: attached to the level; the check is that the field leaves it and
         #: comes back.
         self.status_idle_level = -1
+        self.aw_stall_cycles = 0
 
     def _ensure_model_region(self) -> None:
         if OUTPUT_FABRIC_MODEL_REGION not in self.memory_model.regions:
@@ -141,6 +158,125 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         raise AssertionError(
             f"CTRL_STATUS.STATUS never {what} within {cycles} clk_smc_i cycles of a "
             f"{_JOB_BYTES}-byte job; the field does not follow the zeroer's activity"
+        )
+
+    async def _await_rerun(self, what: str) -> None:
+        """A CTRL_STATUS write is the trigger: STATUS must leave idle, then return."""
+        await self._await_status(
+            1 - self.status_idle_level, _BUSY_ASSERT_CYCLES, f"left its idle level after {what}"
+        )
+        await self._await_status(
+            self.status_idle_level, _BUSY_CLEAR_CYCLES, f"returned to its idle level after {what}"
+        )
+
+    async def _program_dma(self) -> None:
+        """One DMA job of _DMA_REPS eight-byte repetitions through SYS_OUT memory."""
+        await self.csr_write("DMA_CONFIG", _dma("CONFIG"), DMA_CONFIG_ENABLED_ND)
+        for reg, value in (
+            ("SRC_ADDRESS", _DMA_SRC),
+            ("DST_ADDRESS", _DMA_DST),
+            ("LENGTH", _DMA_BYTES),
+            ("SRC_STRIDE", _DMA_BYTES),
+            ("DST_STRIDE", _DMA_BYTES),
+            ("NUM_REPETITIONS", _DMA_REPS),
+        ):
+            await self.csr_write(f"DMA_{reg}_LO", _dma(f"{reg}_LO"), value & 0xFFFF_FFFF)
+            await self.csr_write(f"DMA_{reg}_HI", _dma(f"{reg}_HI"), value >> 32)
+
+    async def _await_dma_done(self, before: int) -> None:
+        for _ in range(_DMA_DONE_POLLS):
+            if await self.csr_read("DMA_DONE_0_POLL", _dma("DONE_0")) != before:
+                return
+            await cocotb.triggers.ClockCycles(cocotb.top.clk_smc_i, 16)
+        raise AssertionError(
+            f"DMA_DONE_0 stayed 0x{before:x} for {_DMA_DONE_POLLS} polls; the contending DMA "
+            f"job did not complete"
+        )
+
+    async def _backpressured_job(self) -> None:
+        """The same job while a DMA job shares its master port and the output stalls.
+
+        zeroer.adoc (Outstanding Transaction Management): AWREADY and WREADY
+        provide the zeroer's downstream back-pressure. A DMA job on the same
+        accelerator master port runs alongside, and the responder stalls AW and
+        W in bounded repeating windows; the zeroer must be seen holding an
+        address phase with AWVALID up and AWREADY low, the job must still clear
+        both halves without touching the witness, and every DMA repetition must
+        land.
+        """
+        responder = self.cfg.sys_out_mem
+        assert responder is not None, "SYS_OUT responder not bound"
+        for _name, offset, poison in _PROBES:
+            await self._fabric_write(OUTPUT_FABRIC_ADDR + offset, poison)
+        for name, offset, poison in _PROBES:
+            got = await self._fabric_read(OUTPUT_FABRIC_ADDR + offset)
+            assert got == poison, (
+                f"probe {name} @ 0x{OUTPUT_FABRIC_ADDR + offset:08x} reads 0x{got:016x} after "
+                f"its re-poison of 0x{poison:016x}; a later zero would prove nothing"
+            )
+        dut = cocotb.top
+        stalled = [0]
+
+        async def _count_aw_stalls() -> None:
+            while True:
+                await cocotb.triggers.RisingEdge(dut.clk_smc_i)
+                valid, ready = dut.tb_zeroer_awvalid.value, dut.tb_zeroer_awready.value
+                if valid.is_resolvable and ready.is_resolvable and int(valid) and not int(ready):
+                    stalled[0] += 1
+
+        # A DMA job on the same accelerator master port keeps write addresses
+        # queued ahead of the zeroer's, so the stalled output channel reaches it.
+        for rep in range(_DMA_REPS):
+            responder.write_int(_DMA_SRC + rep * _DMA_BYTES, _DMA_SEED + rep, 8)
+        await self._program_dma()
+        dma_done_before = await self.csr_read("DMA_DONE_0_BEFORE", _dma("DONE_0"))
+        responder.enable_backpressure(channels=("aw", "w"), stall_cycles=_BP_STALL_CYCLES)
+        sampler = cocotb.start_soon(_count_aw_stalls())
+        try:
+            dma_id = await self.csr_read("DMA_NEXT_ID_0_START", _dma("NEXT_ID_0"))
+            assert dma_id != 0, "the DMA did not accept the contending job"
+            await self.csr_write("ZEROER_CTRL_STATUS_BP_START", ZEROER_CTRL_STATUS, 0, length=8)
+            await self._await_status(
+                1 - self.status_idle_level, _BUSY_ASSERT_CYCLES, "left its idle level"
+            )
+            await self._await_status(
+                self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
+            )
+            await self._await_dma_done(dma_done_before)
+        finally:
+            sampler.cancel()
+            responder.disable_backpressure()
+        self.aw_stall_cycles = stalled[0]
+        for rep in range(_DMA_REPS):
+            got = responder.read_int(_DMA_DST + rep * _DMA_BYTES, 8)
+            assert got == _DMA_SEED + rep, (
+                f"DMA repetition {rep} left 0x{got:016x} at its destination, expected "
+                f"0x{_DMA_SEED + rep:016x}"
+            )
+        assert self.aw_stall_cycles > 0, (
+            "the zeroer never held AWVALID high with AWREADY low while the output responder "
+            "stalled its AW channel, so the back-pressure did not reach the address phase"
+        )
+        for name, offset, poison in _PROBES:
+            got = await self._fabric_read(OUTPUT_FABRIC_ADDR + offset)
+            assert got == 0, (
+                f"probe {name} @ 0x{OUTPUT_FABRIC_ADDR + offset:08x} reads 0x{got:016x} after "
+                f"the back-pressured job (poison 0x{poison:016x})"
+            )
+        witness = await self._fabric_read(OUTPUT_FABRIC_ADDR + _WITNESS_OFFSET)
+        assert witness == _WITNESS_POISON, (
+            f"the witness word reads 0x{witness:016x} after the back-pressured job"
+        )
+        cocotb.log.info(
+            "CHK-ZEROER-BACKPRESSURE: with a %d-repetition DMA job contending for the "
+            "accelerator master port and the output responder stalling AW and W for %d-cycle "
+            "windows, the zeroer held AWVALID high against AWREADY low for %d clk_smc_i "
+            "cycle(s); the job still zeroed all %d probe words with the witness word intact, "
+            "and every DMA repetition landed",
+            _DMA_REPS,
+            _BP_STALL_CYCLES,
+            self.aw_stall_cycles,
+            len(_PROBES),
         )
 
     async def body(self) -> None:
@@ -248,9 +384,7 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
         # Any write of this register is also the zeroer's trigger, so the leg
         # waits the operation out before reading.
         await self.csr_write("ZEROER_CTRL_STATUS_UPPER_HALF", ZEROER_CTRL_STATUS + 4, 0, length=4)
-        await self._await_status(
-            self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
-        )
+        await self._await_rerun("the upper-half write with INT_EN set")
         word = await self.csr_read("ZEROER_CTRL_STATUS_INT_EN", ZEROER_CTRL_STATUS, length=8)
         assert word & ZEROER_CTRL_STATUS_START, (
             f"CTRL_STATUS reads 0x{word:x} after a four-byte write at its upper half; that "
@@ -279,34 +413,46 @@ class smc_zeroer_multi_burst_test_seq(output_fabric_pass_all_cfg_seq):
             f"CTRL_STATUS reads 0x{armed & ~STATUS_BM:x} outside the STATUS bit, the RDL "
             f"contract for the armed register is 0x{ZEROER_CTRL_STATUS_ARMED:x}"
         )
-        # The same two halves with INT_EN clear. A four-byte write at the low
-        # half selects INT_EN's lane and clears it; one at the upper half then
-        # leaves the cleared bit's lane deasserted, and it has to stay clear.
-        # Both writes are triggers too, and DEST_ADDR and SIZE still describe
-        # this leaf's own job, so each re-runs the job over the region it has
-        # already zeroed and is waited out. INT_EN ends at its RDL reset of 0.
-        for tag, addr in (
-            ("LOW_HALF_CLEAR", ZEROER_CTRL_STATUS),
-            ("UPPER_HALF_CLEAR", ZEROER_CTRL_STATUS + 4),
+        # INT_EN clear, then held clear. A four-byte write of 0 at the low half
+        # selects INT_EN's lane and clears it. A four-byte write of all ones at
+        # the upper half then carries a one in the bit position INT_EN takes in
+        # its own half; the only upper-half field is STATUS (sw = r), so a DUT
+        # that steered the upper word onto the low lanes or decoded +4 onto the
+        # low word would set INT_EN, and it has to stay clear. Both writes are
+        # triggers too, and DEST_ADDR and SIZE still describe this leaf's own
+        # job, so each re-runs the job over the region it has already zeroed.
+        # INT_EN ends at its RDL reset of 0.
+        for tag, addr, data, why in (
+            (
+                "LOW_HALF_CLEAR",
+                ZEROER_CTRL_STATUS,
+                0,
+                "a write of 0 at its low half, which selects INT_EN",
+            ),
+            (
+                "UPPER_HALF_ONES",
+                ZEROER_CTRL_STATUS + 4,
+                0xFFFF_FFFF,
+                "a write of all ones at its upper half, which does not select INT_EN",
+            ),
         ):
-            await self.csr_write(f"ZEROER_CTRL_STATUS_{tag}", addr, 0, length=4)
-            await self._await_status(
-                self.status_idle_level, _BUSY_CLEAR_CYCLES, "returned to its idle level"
-            )
+            await self.csr_write(f"ZEROER_CTRL_STATUS_{tag}", addr, data, length=4)
+            await self._await_rerun(why)
             word = await self.csr_read(f"ZEROER_CTRL_STATUS_{tag}_RB", ZEROER_CTRL_STATUS, length=8)
             assert word & ZEROER_CTRL_STATUS_START == 0, (
-                f"CTRL_STATUS reads 0x{word:x} after a four-byte write of 0 at "
-                f"{'its low half, which selects INT_EN' if addr == ZEROER_CTRL_STATUS else 'its upper half, with INT_EN already clear'}; "
-                f"INT_EN has to read clear"
+                f"CTRL_STATUS reads 0x{word:x} after {why}; INT_EN has to read clear"
             )
         self.int_en_held = 2
         cocotb.log.info(
             "CHK-ZEROER-INT-EN-HALF-WRITE: CTRL_STATUS.INT_EN held a one across a "
-            "four-byte write at the half of the 64-bit register it does not occupy, was "
-            "cleared by a four-byte write at the half it does, and stayed clear across a "
-            "second write at the other half; every write re-ran this leaf's own job and was "
-            "waited out, and INT_EN ended at its RDL reset",
+            "four-byte write of 0 at the half of the 64-bit register it does not occupy, was "
+            "cleared by a four-byte write of 0 at the half it does, and held a zero across a "
+            "four-byte write of all ones at the other half; each write started this leaf's "
+            "own job (STATUS left its idle level and returned), and INT_EN ended at its RDL "
+            "reset",
         )
+        await self._backpressured_job()
+
         # SIZE and DEST_ADDR carry no write side effect, so clearing them cannot
         # start a job. CTRL_STATUS is written above, while they still describe
         # this leaf's own job, and not after.

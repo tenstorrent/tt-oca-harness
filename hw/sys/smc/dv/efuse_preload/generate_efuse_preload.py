@@ -3,24 +3,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Turn an SMC eFuse configuration TOML into a simulator preload image.
 
-    generate_efuse_preload.py <config.toml> --output_file <path> [--notation hex|binary]
-
-The layout comes from efuse_schema.toml next to this script, which transcribes
-hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl. Blocks are concatenated
-in schema order, LSB first within each block, to produce one 8192-bit image.
-
-Two output notations, because two consumers want different things:
-
-  hex     one 32-bit word per line, 8 lowercase hex digits. This is what
-          hw/ip/efuse/dv/models/efuse_bank_model.sv reads through
-          +smc_efuse_hex (it uses $readmemh), and what the shadow-register
-          preload in hw/sys/smc/dv/assets/ uses.
-  binary  one bit per line, 8192 lines. Not consumed by anything in this
-          tree; a bit-level diff is sometimes the fastest way to see what a
-          config changed.
-
-No third-party packages: stdlib tomllib (3.11+) with a tomli fallback, and
-plain integers rather than a bitarray dependency.
+Blocks from efuse_schema.toml are concatenated in schema order, LSB first, into one
+8192-bit image; hex output is one 32-bit word per line for $readmemh.
 """
 
 from __future__ import annotations
@@ -30,13 +14,11 @@ import sys
 from pathlib import Path
 
 try:
-    import tomllib  # Python 3.11+
+    import tomllib
 except ModuleNotFoundError:  # pragma: no cover - older interpreters
     import tomli as tomllib  # type: ignore[no-redef]
 
-# smc_efuse_pkg::SHADOW_REG_BITS. Asserted against the schema below rather than
-# trusted, so a schema edit that changes the total fails here instead of
-# producing a silently short image.
+# Must match smc_efuse_pkg::SHADOW_REG_BITS.
 EFUSE_SIZE_BITS = 8192
 EFUSE_WORD_SIZE_BITS = 32
 
@@ -54,7 +36,6 @@ def _load_toml(path: Path) -> dict:
 
 
 def _coerce_int(value, where: str) -> int:
-    """Accept an int, or a '0x...' string for values wider than TOML's int64."""
     if isinstance(value, int):
         return value
     if isinstance(value, str):
@@ -67,14 +48,6 @@ def _coerce_int(value, where: str) -> int:
 
 
 def build_image(config: dict, schema: dict) -> int:
-    """Concatenate every schema block into one integer, block 0 at bit 0.
-
-    Returns the image as a single int; bit i of the return value is bit i of
-    the eFuse array. LOCKS is synthesised from the per-block write_locked /
-    read_locked flags rather than read from the configuration, matching what
-    the lock field means: bit 2*i is block i's write lock, bit 2*i+1 its read
-    lock, in schema order.
-    """
     if "LOCKS" not in schema:
         sys.exit("error: schema has no LOCKS block")
 
@@ -87,7 +60,7 @@ def build_image(config: dict, schema: dict) -> int:
         width = block_schema["regwidth"]
 
         if block == "LOCKS":
-            # Filled in after every other block has contributed its flags.
+            # Built from the blocks' lock flags; any LOCKS value in the configuration is ignored.
             lock_offset, lock_width = offset, width
             offset += width
             continue
@@ -133,9 +106,7 @@ def build_image(config: dict, schema: dict) -> int:
     return image
 
 
-# The readers ($readmemh / $readmemb and the DV Python parsers) drop `//`
-# comments, so the image carries the same header as every other tracked file
-# and a regenerated image diffs clean against the committed one.
+# Every image reader skips `//` lines; a header in any other syntax is read as data.
 _SPDX_HEADER = (
     "// SPDX-License-Identifier: Apache-2.0",
     "// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.",
@@ -175,8 +146,5 @@ def main() -> None:
     write_image(build_image(config, schema), args.output_file, args.notation)
 
 
-# The schema is not cross-checked against smc_efuse_map.rdl: a divergence is
-# caught only by the total-bits assertion above, which misses a re-ordering
-# that preserves the total.
 if __name__ == "__main__":
     main()

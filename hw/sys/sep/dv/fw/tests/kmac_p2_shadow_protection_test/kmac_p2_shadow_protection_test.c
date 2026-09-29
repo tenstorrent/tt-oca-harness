@@ -19,14 +19,14 @@
 #include "test_completion.h"
 
 static void write_cfg_shadowed_twice(uint32_t val) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, val);
 }
 
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t status = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (status.f.sha3_idle) {
             return 0;
         }
@@ -48,7 +48,7 @@ int main(void) {
         pass = 0;
     }
 
-    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
+    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
     printf("  CFG_REGWEN.en=%u\n", regwen.f.en);
     if (regwen.f.en != 1) {
         printf("  FAIL: CFG_SHADOWED is not writable at idle\n");
@@ -63,7 +63,7 @@ int main(void) {
     valid.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     write_cfg_shadowed_twice(valid.w);
 
-    uint32_t committed = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    uint32_t committed = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     printf("  wrote=0x%08x read=0x%08x\n", valid.w, committed);
     if (committed != valid.w) {
         printf("  FAIL: matching shadowed write did not commit\n");
@@ -79,11 +79,11 @@ int main(void) {
     second.f.mode = SEP_KMAC_MODE_SHAKE;
     second.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, first.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, second.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, first.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, second.w);
 
-    uint32_t after_bad = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
-    kmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+    uint32_t after_bad = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    kmac__STATUS_t status = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
     printf("  first=0x%08x second=0x%08x after=0x%08x\n", first.w, second.w, after_bad);
     printf("  STATUS=0x%08x alert_recov_ctrl_update_err=%u alert_fatal_fault=%u\n", status.w,
            status.f.ALERT_RECOV_CTRL_UPDATE_ERR, status.f.ALERT_FATAL_FAULT);
@@ -108,16 +108,16 @@ int main(void) {
 
     printf("\nStep 3: Restore valid configuration after mismatch\n");
     write_cfg_shadowed_twice(valid.w);
-    uint32_t restored = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    uint32_t restored = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     printf("  restored read=0x%08x\n", restored);
     if (restored != valid.w) {
         printf("  FAIL: CFG_SHADOWED did not accept valid write after mismatch\n");
         pass = 0;
     }
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 
     printf("\n========================================\n");
     if (pass) {

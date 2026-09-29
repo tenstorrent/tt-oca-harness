@@ -29,11 +29,18 @@ Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):
   CHK-WSTRB    : every contiguous WSTRB mask changes ONLY its byte lanes; all
                  neighbor lanes preserved (independent ``apply_wstrb`` golden).
-  CHK-PATTERN  : each cfg data pattern reads back exactly.
+  CHK-PATTERN  : each cfg data pattern reads back exactly: 0xAAAA/0x5555, a
+                 walking one and a walking zero over all 64 bit positions, and
+                 seed-random extras.
   CHK-BOUNDARY : the base word and the top valid word R/W read back exactly.
   CHK-SEQ      : a run of consecutive single-beat 64-bit words, per-word integrity.
   CHK-NONVAC   : two addresses hold complementary written values, so a
                  stuck read path fails.
+  CHK-ADDR-LINES: the base word, a word at every power-of-two offset up to
+                 half the generated SRAM size, and the top word each hold their
+                 own value after all are written, so every SRAM address bit
+                 selects distinct storage; the offsets at or above 0x1_0000
+                 are the upper 192 KiB of the 256 KiB SRAM.
 
 no_cpu / +skip_fuse_sense (SRAM reached via the xbar sram port; no OTP read).
 """
@@ -43,6 +50,8 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_sram_breadth_seq import (
+    WALKING_ONE_PATTERNS,
+    WALKING_ZERO_PATTERNS,
     SepSramBreadth,
     SepSramBreadthCfg,
 )
@@ -62,9 +71,10 @@ class sep_sram_datapath_breadth_test(sep_base_test):
         await self._chk_boundary()
         await self._chk_seq()
         await self._chk_nonvac()
+        await self._chk_addr_lines()
         self.logger.info(
             "SRAM datapath breadth PASS: SRAM datapath breadth verified "
-            "(wstrb / pattern / boundary / seq / nonvac)"
+            "(wstrb / pattern / boundary / seq / nonvac / addr lines)"
         )
 
     async def _chk_wstrb(self) -> None:
@@ -94,14 +104,22 @@ class sep_sram_datapath_breadth_test(sep_base_test):
     async def _chk_pattern(self) -> None:
         cfg = self.scfg
         addr = cfg.base_addr + cfg.pattern_offset
+        walked = set(WALKING_ONE_PATTERNS) | set(WALKING_ZERO_PATTERNS)
+        missing = walked - set(cfg.pattern_values)
+        assert not missing, (
+            f"CHK-PATTERN FAIL: {len(missing)} walking-one/zero words are not in the pattern set"
+        )
         for p in cfg.pattern_values:
             await self.sram.write(addr, p, length=8)
             rb = await self.sram.read(addr, length=8)
             assert rb == p, f"CHK-PATTERN 0x{p:016x} readback 0x{rb:016x}"
         self.logger.info(
-            "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x",
+            "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x, "
+            "including a walking one (%d positions) and a walking zero (%d positions)",
             len(cfg.pattern_values),
             addr,
+            len(WALKING_ONE_PATTERNS),
+            len(WALKING_ZERO_PATTERNS),
         )
 
     async def _chk_boundary(self) -> None:
@@ -164,4 +182,25 @@ class sep_sram_datapath_breadth_test(sep_base_test):
             "(0x%016x / 0x%016x), so the read path is not a stuck constant",
             got_wr,
             got_rd,
+        )
+
+    async def _chk_addr_lines(self) -> None:
+        cfg = self.scfg
+        pairs = list(zip(cfg.addr_line_offsets, cfg.addr_line_values))
+        for off, val in pairs:
+            await self.sram.write(cfg.base_addr + off, val, length=8)
+        bad = []
+        for off, val in pairs:
+            got = await self.sram.read(cfg.base_addr + off, length=8)
+            if got != val:
+                bad.append(f"+0x{off:05x} read 0x{got:016x} want 0x{val:016x}")
+        assert not bad, "CHK-ADDR-LINES FAIL: " + "; ".join(bad)
+        upper = [off for off in cfg.addr_line_offsets if off >= 0x1_0000]
+        assert upper, "CHK-ADDR-LINES FAIL: no offset reached the upper 192 KiB"
+        self.logger.info(
+            "CHK-ADDR-LINES PASS: %d words at +0 / power-of-two offsets / top of "
+            "the 0x%x-byte SRAM hold distinct values; upper-SRAM offsets %s",
+            len(pairs),
+            cfg.size,
+            ", ".join(f"+0x{off:05x}" for off in upper),
         )

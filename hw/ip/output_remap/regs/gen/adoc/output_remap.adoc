@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-output_remap]
-== Address Map: output_remap
+== Output Remap Address Map
+
+Address-translation registers that remap outbound transactions and tag their attributes.
 
 [cols="1,4,1,6", options="header"]
 |===

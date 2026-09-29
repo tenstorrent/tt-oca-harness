@@ -58,7 +58,7 @@ static const uint32_t expected_sw_digest[8] = {
 static int wait_idle(void) {
     int t = 2000000;
     while (t-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("  ERROR: KMAC idle timeout\n");
@@ -67,9 +67,9 @@ static int wait_idle(void) {
 
 /* Clear every KMAC interrupt status bit (all are W1C). */
 static void clear_intr_state(void) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
-                                                         KMAC__INTR_STATE__FIFO_EMPTY_bm |
-                                                         KMAC__INTR_STATE__KMAC_ERR_bm);
+    WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm |
+                                                     KMAC__INTR_STATE__FIFO_EMPTY_bm |
+                                                     KMAC__INTR_STATE__KMAC_ERR_bm);
 }
 
 /*
@@ -83,14 +83,14 @@ static void clear_intr_state(void) {
 static int wait_squeeze(void) {
     int t = 2000000;
     while (t-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & KMAC__INTR_STATE__KMAC_ERR_bm) {
-            uint32_t err = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
+            uint32_t err = READ_REG(SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
             printf("  ERROR: kmac_err while waiting squeeze (ERR_CODE=0x%08x code=0x%02x)\n", err,
                    SEP_KMAC_ERR_CODE_BYTE(err));
             return -2;
         }
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_squeeze) return 0;
     }
     printf("  ERROR: KMAC squeeze timeout\n");
@@ -108,7 +108,7 @@ static int wait_squeeze(void) {
 static int kmac_recover_from_error(void) {
     kmac__CMD_t ec = {.w = 0};
     ec.f.err_processed = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, ec.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, ec.w);
 
     if (wait_idle() != 0) return -1;
 
@@ -125,7 +125,7 @@ static int kmac_recover_from_error(void) {
  * to configure rather than let that happen.
  */
 static int kmac_configure(int sideload) {
-    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
+    kmac__CFG_REGWEN_t regwen = {.w = READ_REG(SEP_TOP_KMAC_CFG_REGWEN_BASE_ADDR)};
     if (!regwen.f.en) {
         printf("  ERROR: CFG_REGWEN=0, CFG_SHADOWED write would be dropped silently\n");
         return -1;
@@ -138,14 +138,14 @@ static int kmac_configure(int sideload) {
     cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.sideload = sideload ? 1 : 0;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xA5A5A500u + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xA5A5A500u + (uint32_t)i);
     }
     return 0;
 }
@@ -154,18 +154,18 @@ static int kmac_configure(int sideload) {
 static void write_sw_key(void) {
     kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.len = 0x0; /* Key128 */
-    WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
+    WRITE_REG(SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), sw_key[i]);
-        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), zero_mask[i]);
+        WRITE_REG(SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), sw_key[i]);
+        WRITE_REG(SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), zero_mask[i]);
     }
 }
 
 /* Set KMAC custom prefix = encode_string("KMAC") */
 static void write_kmac_prefix(void) {
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001U);
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341U);
-    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001U);
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341U);
+    for (int i = 2; i < 11; i++) WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 }
 
 /* Run one KMAC-128("test", 256) operation; store 8-word digest into out[] */
@@ -176,28 +176,27 @@ static int run_kmac_op(uint32_t out[8]) {
 
     /* START */
     cmd.f.cmd = SEP_KMAC_CMD_START; /* CmdStart */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     /* Write message "test" (4 bytes LE) */
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574U);
+    WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574U);
     /* right_encode(256) = 0x01 0x00 0x02 */
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001U);
+    WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001U);
 
     /* PROCESS */
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS; /* CmdProcess */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_squeeze() != 0) return -1;
 
     /* Read digest: XOR two masked shares */
     for (int i = 0; i < 8; i++)
-        out[i] =
-            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
-            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        out[i] = READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
+                 READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
     /* DONE */
     cmd.f.cmd = SEP_KMAC_CMD_DONE; /* CmdDone */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
 }
@@ -218,7 +217,7 @@ int main(void) {
         ie.f.kmac_done = 1;
         ie.f.fifo_empty = 1;
         ie.f.kmac_err = 1;
-        WRITE_REG(OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, ie.w);
+        WRITE_REG(SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, ie.w);
     }
 
     int errors = 0;
@@ -232,7 +231,7 @@ int main(void) {
      * -------------------------------------------------------------- */
     printf("=== Phase 1: CFG.sideload register control ===\n");
 
-    kmac__CFG_SHADOWED_t cfg_rd_u = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR)};
+    kmac__CFG_SHADOWED_t cfg_rd_u = {.w = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR)};
     uint32_t cfg_rd = cfg_rd_u.w;
     int default_sideload = cfg_rd_u.f.sideload;
     printf("  Default CFG=0x%08x sideload=%d\n", cfg_rd, default_sideload);
@@ -246,9 +245,9 @@ int main(void) {
     /* Write sideload=0, read back */
     kmac__CFG_SHADOWED_t cfg_test = {.w = cfg_rd};
     cfg_test.f.sideload = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    cfg_rd_u.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    cfg_rd_u.w = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     cfg_rd = cfg_rd_u.w;
     int rb0 = cfg_rd_u.f.sideload;
     printf("  After write 0: CFG=0x%08x sideload=%d\n", cfg_rd, rb0);
@@ -261,9 +260,9 @@ int main(void) {
 
     /* Write sideload=1, read back */
     cfg_test.f.sideload = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
-    cfg_rd_u.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg_test.w);
+    cfg_rd_u.w = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR);
     cfg_rd = cfg_rd_u.w;
     int rb1 = cfg_rd_u.f.sideload;
     printf("  After write 1: CFG=0x%08x sideload=%d\n", cfg_rd, rb1);
@@ -356,13 +355,13 @@ int main(void) {
         write_kmac_prefix();
         kmac__CMD_t cmd = {.w = 0};
         cmd.f.cmd = SEP_KMAC_CMD_START;
-        WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+        WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
         int saw_err = 0;
         for (int i = 0; i < 100000 && !saw_err; i++) {
-            uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+            uint32_t intr = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
             if (intr & KMAC__INTR_STATE__KMAC_ERR_bm) saw_err = 1;
         }
-        uint32_t err = READ_REG(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
+        uint32_t err = READ_REG(SEP_TOP_KMAC_ERR_CODE_BASE_ADDR);
         printf("  INFO: sideload START ERR_CODE=0x%08x code=0x%02x kmac_err=%d (ENV)\n", err,
                SEP_KMAC_ERR_CODE_BYTE(err), saw_err);
         injected_err = saw_err;

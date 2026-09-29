@@ -53,9 +53,9 @@ static const uint32_t kAesZeroIv[4] = {0, 0, 0, 0};
 
 // SRAM staging area for the round trip. Clear of the HMAC/KMAC legs, which do
 // not touch SRAM at all.
-#define AES_SRAM_PT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x400u)
-#define AES_SRAM_CT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x410u)
-#define AES_SRAM_RT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x420u)
+#define AES_SRAM_PT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x400u)
+#define AES_SRAM_CT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x410u)
+#define AES_SRAM_RT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x420u)
 
 static void sram_store_block(uint32_t addr, const uint32_t blk[4]) {
     volatile uint32_t *p = (volatile uint32_t *)addr;
@@ -91,8 +91,7 @@ static int aes_ecb_via_sram(uint32_t op, uint32_t src_addr, uint32_t dst_addr, u
 
 // Compare one HMAC SHA-256 against an independent software SHA-256 golden.
 // ``chk`` is the VPLAN checker id printed on the [PASS] line.
-static int hmac_check(const char *chk, const char *name, const uint8_t *msg,
-                      uint32_t len) {
+static int hmac_check(const char *chk, const char *name, const uint8_t *msg, uint32_t len) {
     uint32_t hw[8];
     int rc = sep_hmac_sha256(msg, len, hw);
     if (rc != 0) {

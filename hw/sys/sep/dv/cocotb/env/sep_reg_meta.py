@@ -138,15 +138,16 @@ class RegBlock:
             alias = f"{self.block}_{_TYPE_ALIAS[name]}"
             if hasattr(sep_reg, f"{alias}_REG_DEFAULT"):
                 return alias
+        # Suffix match. A hit is accepted only when it also carries one of this
+        # block's own name tokens -- a single hit included -- so an instance
+        # can never take the reset of an unrelated block's type that merely
+        # shares a register name. "SEP" is on every block and says nothing.
         norm = _normalize_inst_name(name)
         hits = [key for key in _default_type_keys() if key.endswith("_" + norm) or key == norm]
-        if len(hits) == 1:
-            return hits[0]
-        if len(hits) > 1:
-            tokens = [t for t in self.block.split("_") if t and not t.isdigit()]
-            scored = [h for h in hits if any(tok in h for tok in tokens)]
-            if len(scored) == 1:
-                return scored[0]
+        tokens = [t for t in self.block.split("_") if t and not t.isdigit() and t != "SEP"]
+        scored = [h for h in hits if any(tok in h for tok in tokens)]
+        if len(scored) == 1:
+            return scored[0]
         return None
 
     def _sym(self, name: str, suffix: str, *, alias_ok: bool):
@@ -569,6 +570,22 @@ def block_size(block: str) -> int:
             f"{key} not found in the generated register header "
             f"({_GEN_PY}/sep_reg.py); regenerate it or check the block name"
         ) from exc
+
+
+_SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
+
+
+def sep_addr_define(name: str) -> int:
+    """Integer value of ``#define <name>`` in the generated ``sep_addr.h``.
+
+    The C address header carries the RDL array geometry (``_NUM``, ``_STRIDE``,
+    ``_TOTAL_SIZE``) that the Python export does not.
+    """
+    for line in _SEP_ADDR_H.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[0] == "#define" and parts[1] == name:
+            return int(parts[2], 0)
+    raise KeyError(f"{name} not found in {_SEP_ADDR_H}; regenerate it or check the symbol name")
 
 
 def _load_py_module(path: Path, name: str):

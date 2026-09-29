@@ -33,7 +33,7 @@
 static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
         timeout--;
     }
@@ -44,7 +44,7 @@ static int wait_for_ready(int timeout) {
 static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
         timeout--;
     }
@@ -71,7 +71,7 @@ int main(void) {
     ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure: freq-robust 25 MHz SCLK (spi_clkdiv), CPOL=0, CPHA=0, CS timing */
     cfg.w = 0;
@@ -81,13 +81,13 @@ int main(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     /* Set CSID=0 */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
 
     /* Clear errors */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* Step 1: Simple TX command */
     printf("Step 1: Single byte TX (Standard SPI)\n");
@@ -97,7 +97,7 @@ int main(void) {
     }
 
     /* Load TX data: 1 word with command byte 0x9F (JEDEC READ ID) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x9F000000);
 
     /* Issue CMD: TX, Standard speed, 1 byte (LEN=0 means 1 byte) */
     cmd.w = 0;
@@ -105,7 +105,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
 
     printf("  CMD issued: DIR=TX, SPEED=Standard, LEN=0 (1 byte)\n");
 
@@ -116,7 +116,7 @@ int main(void) {
         goto done;
     }
 
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS after TX: 0x%08x\n", err_status.w);
     if (err_status.w != 0) {
         printf("  FAIL: Unexpected ERROR_STATUS after TX (0x%08x)\n", err_status.w);
@@ -126,24 +126,24 @@ int main(void) {
 
     /* Step 2: Multi-byte TX */
     printf("\nStep 2: Multi-byte TX (4 bytes, CSAAT=1)\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x03001000);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x03001000);
 
     cmd.w = 0;
     cmd.f.LEN = 3;
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD issued: DIR=TX, LEN=3 (4 bytes), CSAAT=1\n");
 
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS: ACTIVE=%u, TXQD=%u, CMDQD=%u\n", status.f.ACTIVE, status.f.TXQD,
            status.f.CMDQD);
 
@@ -159,7 +159,7 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD issued: DIR=RX, LEN=3 (4 bytes), CSAAT=0\n");
 
     /* Wait for completion */
@@ -170,7 +170,7 @@ int main(void) {
     }
 
     /* Check RX FIFO — require data after successful RX command */
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS: RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
     /* RXQD counts words; 4-byte RX packs into one RXDATA word */
@@ -182,14 +182,14 @@ int main(void) {
     {
         /* No SPI-peer golden exists for this standard RX path, so only FIFO
          * occupancy is checked (above); the payload is logged, not compared. */
-        uint32_t rxdata = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
+        uint32_t rxdata = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         printf("  RXDATA[0]: 0x%08x (4-byte RX packed; no peer golden)\n", rxdata);
         (void)i;
     }
 
     /* Step 4: Verify no sticky ERROR_STATUS bits after the directed sequence */
     printf("\nStep 4: Final error check\n");
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x\n", err_status.w);
     printf("  CMDBUSY=%u, OVERFLOW=%u, UNDERFLOW=%u, CMDINVAL=%u, CSIDINVAL=%u\n",
            err_status.f.CMDBUSY, err_status.f.OVERFLOW, err_status.f.UNDERFLOW,

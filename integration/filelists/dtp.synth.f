@@ -17,7 +17,6 @@
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/cla
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/mmr
 +incdir+vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace
-+define+SYNTHESIS=1
 +define+TARGET_APB_RTL
 +define+TARGET_AXI_RTL
 +define+TARGET_COMMON_CELLS_RTL
@@ -26,14 +25,11 @@
 +define+TARGET_FLIST
 +define+TARGET_REGISTER_INTERFACE_L1
 +define+TARGET_SYNTH
-// Package(common_cells) Target(*)
++define+SYNTHESIS=1
 vendor/pulp-platform/common_cells/upstream/src/cf_math_pkg.sv
-// Package(common_cells) Target(any(sep_wrapper, smu_wrapper, all(common_cells_rtl, not(all(vivado_ipx, xilinx)))))
 vendor/pulp-platform/common_cells/upstream/src/fifo_v3.sv
 vendor/pulp-platform/common_cells/upstream/src/counter.sv
-// Package(common_cells) Target(common_cells_rtl)
 vendor/pulp-platform/common_cells/upstream/src/binary_to_gray.sv
-// Package(common_cells) Target(all(common_cells_rtl, not(all(vivado_ipx, xilinx))))
 vendor/pulp-platform/common_cells/upstream/src/cb_filter_pkg.sv
 vendor/pulp-platform/common_cells/upstream/src/cc_onehot.sv
 vendor/pulp-platform/common_cells/upstream/src/cdc_reset_ctrlr_pkg.sv
@@ -105,15 +101,11 @@ vendor/pulp-platform/common_cells/upstream/src/mem_to_banks_detailed.sv
 vendor/pulp-platform/common_cells/upstream/src/stream_arbiter.sv
 vendor/pulp-platform/common_cells/upstream/src/stream_omega_net.sv
 vendor/pulp-platform/common_cells/upstream/src/mem_to_banks.sv
-// Package(apb) Target(*)
 vendor/pulp-platform/apb/upstream/apb_pkg.sv
-// Package(apb) Target(apb_rtl)
 vendor/pulp-platform/apb/upstream/apb_intf.sv
 vendor/pulp-platform/apb/upstream/apb_cdc.sv
 vendor/pulp-platform/apb/upstream/apb_demux.sv
-// Package(axi) Target(*)
 vendor/pulp-platform/axi/upstream/src/axi_pkg.sv
-// Package(axi) Target(axi_rtl)
 vendor/pulp-platform/axi/upstream/src/axi_demux_id_counters.sv
 vendor/pulp-platform/axi/upstream/src/axi_intf.sv
 vendor/pulp-platform/axi/upstream/src/axi_atop_filter.sv
@@ -182,17 +174,13 @@ vendor/pulp-platform/axi/upstream/src/axi5_lite_demux_brcst.sv
 vendor/pulp-platform/axi/upstream/src/axi5_lite_xbar.sv
 vendor/pulp-platform/axi/upstream/src/axi5_lite_xbar_brcst.sv
 vendor/pulp-platform/axi/upstream/src/axi_hidestrb.sv
-// Package(axi) Target(any(axi_rtl, sep_wrapper, smu_wrapper))
 vendor/pulp-platform/axi/upstream/src/axi_err_slv.sv
-// Package(axi_stream) Target(*)
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_intf.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_cut.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_downsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_dw_upsizer.sv
 vendor/pulp-platform/axi_stream/upstream/src/axi_stream_multicut.sv
-// Package(obi) Target(*)
 vendor/pulp-platform/obi/upstream/src/obi_pkg.sv
-// Package(register_interface) Target(register_interface_l1)
 vendor/pulp-platform/register_interface/../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_pkg.sv
 vendor/pulp-platform/register_interface/../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_mubi_pkg.sv
 vendor/pulp-platform/register_interface/upstream/src/reg_intf.sv
@@ -200,7 +188,6 @@ vendor/pulp-platform/register_interface/upstream/src/reg_demux.sv
 vendor/pulp-platform/register_interface/upstream/src/reg_mux.sv
 vendor/pulp-platform/register_interface/upstream/src/periph_to_reg.sv
 vendor/pulp-platform/register_interface/upstream/src/axi_to_reg_v2.sv
-// Package(opentitan) Target(any(cross_trigger, dtp, entropy_source, key_manager, opentitan_smu, sep, smc, smu, system_timer_octs, uart))
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_util_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count_pkg.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_pkg.sv
@@ -208,12 +195,9 @@ vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_count.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_edge_detector.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync.sv
 vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_sync_cnt.sv
-// Package(tt-oca-harness) Target(all(dtp, not(sep)))
 hw/sys/sep/regs/gen/sv/sep_addrmap_pkg.sv
-// Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
-hw/common/och_prim/rtl/prim_jtag_pkg.sv
-hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
-// Package(tt-oca-harness) Target(any(cross_trigger, dtp))
+hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
+hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_addrmap_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg_pkg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix_pkg.sv
@@ -221,71 +205,56 @@ hw/ip/cross_trigger/cross_trigger_network/regs/gen/sv/cross_trigger_network_addr
 hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
 hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
-// Package(tt-oca-harness) Target(any(dtp, sep, smc))
 hw/ip/efuse/rtl/efuse_pkg.sv
-// Package(tt-oca-harness) Target(dtp)
 hw/ip/jtag/jtag_ptap/rtl/jtag_inst_reg_pkg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tap_pkg.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_tmp_pkg.sv
 hw/sys/dtp/rtl/dtp_pkg.sv
-// Package(tt-oca-harness) Target(any(dtp, sep))
 hw/sys/sep/rtl/sep_lifecycle_ctrl_pkg.sv
 hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv
-// Package(tt-oca-harness) Target(any(dtp, key_manager, sep, smc, system_timer_octs, uart))
-hw/common/och_prim/rtl/prim_ag_clk_mux.sv
-hw/common/och_prim/rtl/prim_apb_arb.sv
-hw/common/och_prim/rtl/prim_axi_addr_fixer.sv
-hw/common/och_prim/rtl/prim_axi_id_converter.sv
-hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
-hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
-hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-hw/common/och_prim/rtl/prim_axi_snoop.sv
-hw/common/och_prim/rtl/prim_axi_user_override.sv
-hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-hw/common/och_prim/rtl/prim_axil_err_slv.sv
-hw/common/och_prim/rtl/prim_axil_prot_filter.sv
-hw/common/och_prim/rtl/prim_bin2gray.sv
-hw/common/och_prim/rtl/prim_carry_select_adder.sv
-hw/common/och_prim/rtl/prim_cg_req.sv
-hw/common/och_prim/rtl/prim_clk_counter.sv
-hw/common/och_prim/rtl/prim_clk_counter_fifo_sync.sv
-hw/common/och_prim/rtl/prim_clk_gater_hysteresis.sv
-hw/common/och_prim/rtl/prim_clkmux4.sv
-hw/common/och_prim/rtl/prim_diff_decode_multi.sv
-hw/common/och_prim/rtl/prim_diff_encode_multi.sv
-hw/common/och_prim/rtl/prim_fair_rr_arb.sv
-hw/common/och_prim/rtl/prim_fifo_sync_parity.sv
-hw/common/och_prim/rtl/prim_gray2bin.sv
-hw/common/och_prim/rtl/prim_jtag_scan_reg.sv
-hw/common/och_prim/rtl/prim_jtag_sib_mux_post.sv
-hw/common/och_prim/rtl/prim_jtag_sib_mux_pre.sv
-hw/common/och_prim/rtl/prim_pipe_stages.sv
-hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
-hw/common/och_prim/rtl/prim_pulse_signal.sv
-hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
-hw/common/och_prim/rtl/prim_rom_bank_swap.sv
-hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
-hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-hw/common/och_prim/rtl/prim_sync2.sv
-hw/common/och_prim/rtl/prim_sync2r.sv
-hw/common/och_prim/rtl/prim_sync3.sv
-hw/common/och_prim/rtl/prim_sync3_pulse.sv
-hw/common/och_prim/rtl/prim_sync3r.sv
-hw/common/och_prim/rtl/prim_sync4.sv
-hw/common/och_prim/rtl/prim_sync4r.sv
-hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
-hw/common/och_prim/rtl/prim_sync_reset.sv
-hw/common/och_prim/rtl/prim_updown_counter.sv
-hw/common/och_prim/rtl/prim_zero_counter.sv
-hw/common/och_prim_generic/rtl/prim_and3.sv
-hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-hw/common/och_prim_generic/rtl/prim_rev_cell.sv
+hw/common/ocah_prim/rtl/prim_axi_snoop.sv
+hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
+hw/common/ocah_prim/rtl/prim_apb_arb.sv
+hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
+hw/common/ocah_prim/rtl/prim_axi_id_converter.sv
+hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
+hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
+hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
+hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
+hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
+hw/common/ocah_prim/rtl/prim_bin2gray.sv
+hw/common/ocah_prim/rtl/prim_carry_select_adder.sv
+hw/common/ocah_prim/rtl/prim_cg_req.sv
+hw/common/ocah_prim/rtl/prim_clk_counter.sv
+hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
+hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
+hw/common/ocah_prim/rtl/prim_clkmux4.sv
+hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
+hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
+hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv
+hw/common/ocah_prim/rtl/prim_fifo_sync_parity.sv
+hw/common/ocah_prim/rtl/prim_gray2bin.sv
+hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv
+hw/common/ocah_prim/rtl/prim_jtag_sib_mux_post.sv
+hw/common/ocah_prim/rtl/prim_jtag_sib_mux_pre.sv
+hw/common/ocah_prim/rtl/prim_pipe_stages.sv
+hw/common/ocah_prim/rtl/prim_prog_clk_div_posedge.sv
+hw/common/ocah_prim/rtl/prim_pulse_signal.sv
+hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv
+hw/common/ocah_prim/rtl/prim_rev_cell.sv
+hw/common/ocah_prim/rtl/prim_rst_mux2_hf_n.sv
+hw/common/ocah_prim/rtl/prim_sync3.sv
+hw/common/ocah_prim/rtl/prim_sync3_pulse.sv
+hw/common/ocah_prim/rtl/prim_sync3r.sv
+hw/common/ocah_prim/rtl/prim_sync4.sv
+hw/common/ocah_prim/rtl/prim_sync4r.sv
+hw/common/ocah_prim/rtl/prim_sync_data_autohs.sv
+hw/common/ocah_prim/rtl/prim_sync_reset.sv
+hw/common/ocah_prim/rtl/prim_updown_counter.sv
+hw/common/ocah_prim/rtl/prim_zero_counter.sv
 hw/common/sync.sv
-// Package(tt-oca-harness) Target(synth)
 hw/common/defs/ocah_vendor_defines.svh
-// Package(tt-oca-harness) Target(any(cross_trigger, dtp))
 hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/sv/cross_trigger_matrix_reg.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/cross_trigger_matrix.sv
 hw/ip/cross_trigger/cross_trigger_matrix/rtl/ctm_src_selector.sv
@@ -298,7 +267,6 @@ hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_edge_detector.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
 hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
-// Package(tt-oca-harness) Target(dtp)
 hw/ip/jtag/jtag2axi/rtl/jtag2axi.sv
 hw/ip/jtag/jtag_intf_unit/rtl/jtag_intf_unit.sv
 hw/ip/jtag/jtag_ptap/rtl/jtag_3dcr_reg.sv

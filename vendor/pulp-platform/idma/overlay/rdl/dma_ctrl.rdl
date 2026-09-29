@@ -5,6 +5,8 @@
 `define DMA_CTRL_RDL_DEFINED
 
 addrmap dma_ctrl {
+    name = "iDMA Controller Address Map";
+    desc = "Source, destination, length, and control registers for the iDMA data-mover engine.";
 
     reg SRC_ADDRESS_LO {
         field  {

@@ -28,11 +28,13 @@
 
 // Generic cells and primitives
 // Note: Ring oscillators use asynchronous logic - requires special synthesis constraints
-../../../../common/och_prim_generic/rtl/prim_clock_nand2.sv
-../../../../common/och_prim_generic/rtl/prim_dffrxq.sv
-../../../../common/och_prim_generic/rtl/prim_inv.sv
-../../../../common/och_prim_generic/rtl/prim_stdbuf.sv
-../../../../common/och_prim_generic/rtl/prim_stdmux2.sv
++incdir+../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl
+../../../../common/ocah_prim_generic/rtl/prim_clock_nand2.sv
+../../../../common/ocah_prim_generic/rtl/prim_stdmux2.sv
+../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_buf.sv
+../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_clock_gating.sv
+../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_flop.sv
+../../../../../vendor/lowRISC/opentitan/upstream/hw/ip/prim_generic/rtl/prim_inv.sv
 
 // Clock manipulation utilities
 // Note: Ripple dividers use asynchronous ripple chains - requires special synthesis constraints

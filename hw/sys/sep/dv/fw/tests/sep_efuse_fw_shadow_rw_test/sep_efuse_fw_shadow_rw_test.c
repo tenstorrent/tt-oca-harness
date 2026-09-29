@@ -30,24 +30,24 @@ int main(void) {
     }
 
     printf("Checking normal shadow RW fields\n");
-    if (efuse_shadow_rw32(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR, chiplet_pattern,
+    if (efuse_shadow_rw32(SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR, chiplet_pattern,
                           "CHIPLET_UID[31:0]") != 0) {
         test_fail(1);
     }
-    if (efuse_shadow_rw32(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, class_pattern,
+    if (efuse_shadow_rw32(SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, class_pattern,
                           "CLASS_KEY[31:0]") != 0) {
         test_fail(1);
     }
 
     printf("Checking secure_tm-sensitive shadow behavior with RMA_SIP_TOKEN_DIGEST\n");
-    original_token = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR, token_pattern);
-    token_after = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR);
+    original_token = READ_REG(SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR, token_pattern);
+    token_after = READ_REG(SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR);
 
     if (token_after == token_pattern) {
         printf("secure_tm-sensitive write allowed in current context; restoring token digest\n");
-        WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR, original_token);
-        rb = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR);
+        WRITE_REG(SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR, original_token);
+        rb = READ_REG(SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR);
         if (rb != original_token) {
             printf("ERROR: RMA_SIP_TOKEN_DIGEST restore expected=0x%08x got=0x%08x\n",
                    original_token, rb);
@@ -63,13 +63,13 @@ int main(void) {
     }
 
     printf("Checking shadow write lock on CLASS_KEY\n");
-    original_class = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR);
+    original_class = READ_REG(SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR);
     if (efuse_set_shadow_lock_bit(EFUSE_FW_WRITE_LOCK_BIT(EFUSE_FW_FIELD_CLASS_KEY)) != 0) {
         test_fail(1);
     }
 
-    WRITE_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, ~original_class);
-    rb = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, ~original_class);
+    rb = READ_REG(SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR);
     if (rb != original_class) {
         printf("ERROR: CLASS_KEY write lock failed original=0x%08x readback=0x%08x\n",
                original_class, rb);
@@ -81,7 +81,7 @@ int main(void) {
         test_fail(1);
     }
 
-    rb = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR);
+    rb = READ_REG(SEP_TOP_SEP_EFUSE_MAP_CHIPLET_UID_BASE_ADDR);
     if (rb != EFUSE_FW_DENY_WORD) {
         printf("ERROR: CHIPLET_UID read lock expected 0x%08x got=0x%08x\n", EFUSE_FW_DENY_WORD, rb);
         test_fail(1);

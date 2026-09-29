@@ -1,34 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// CTN Clock Stop Control Module
+// OR clock-stop requests and register a glitch-free chiplet halt.
 //
-// Description:
-// Aggregates multiple clock stop request signals using an OR tree.
-// The OR-reduced CLA status is exported directly and also registered
-// for a glitch-free chiplet clock stop output.
-//------------------------------------------------------------------------------
-
+// clk_stop_req_i are CLA (or other) requests in the ck_feedthru domain; jtag_clock_stop_i
+// is quasi-static from JTAG_TCK.
+// cla_clock_stop_o is the combinational OR of CLA requests for JTAG status; stop_clks_o
+// passes the OR of those and the JTAG request through a two-flop synchronizer and an output
+// register in clk_i, so it follows the requests after three clk_i cycles.
 
 module ctn_clock_stop_ctrl #(
-  parameter int unsigned NUM_CLK_STOP_REQ = 1  // Number of clock stop request inputs
+  parameter int unsigned NUM_CLK_STOP_REQ = 1  // Number of clock stop request inputs.
 ) (
-  // Global Interface
-  input  wire logic                          clk_i,
-  input  wire logic                          rst_ni,
+  input  wire logic                          clk_i,  // System clock.
+  input  wire logic                          rst_ni,  // Active-low asynchronous reset; clears
+                                                      // stop_clks_o.
 
-  // Clock stop request inputs (from CLAs or other devices, ck_feedthru domain)
-  input  wire logic [NUM_CLK_STOP_REQ-1:0]   clk_stop_req_i,
+  input  wire logic [NUM_CLK_STOP_REQ-1:0]   clk_stop_req_i,  // Clock-stop requests from individual
+                                                              // CLAs or other on-chip sources,
+                                                              // active-high and asynchronous to
+                                                              // clk_i.
 
-  // JTAG DEBUG_CONTROL direct clock stop (JTAG_TCK domain, quasi-static)
-  input  wire logic                          jtag_clock_stop_i,
+  input  wire logic                          jtag_clock_stop_i,  // Clock stop from the JTAG
+                                                                 // DEBUG_CONTROL register,
+                                                                 // active-high.
 
-  // Clock stop output (registered, clk_i domain)
-  output logic                          stop_clks_o,
+  output logic                          stop_clks_o,  // Registered functional halt in the clk_i
+                                                      // domain: the OR of the JTAG and CLA
+                                                      // requests, after a two-flop synchronizer.
+                                                      // Drives chiplet clock gating.
 
-  // CLA clock stop status output (for JTAG status reporting, combinational)
-  output logic                          cla_clock_stop_o
+  output logic                          cla_clock_stop_o  // OR of the clk_stop_req_i requests only,
+                                                          // for JTAG DEBUG_CONTROL status readback.
 );
 
   // CLA clock stop status for JTAG readback (CLA requests only, no sync needed —

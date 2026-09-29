@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-hmac]
-== Address Map: hmac
+== HMAC Accelerator
+
+Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function
 
 [NOTE]
 ======

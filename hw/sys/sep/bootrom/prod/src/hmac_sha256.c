@@ -47,16 +47,16 @@
 static int wait_for_completion(void) {
     for (int i = 0; i < HMAC_TIMEOUT; ++i) {
         hmac__INTR_STATE_t intr;
-        intr.w = mmio_read32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
+        intr.w = mmio_read32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
         if (intr.f.hmac_done) {
             // Clear hmac_done (write-1-to-clear).
             hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-            mmio_write32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+            mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
             return 0;
         }
 
         hmac__STATUS_t sts;
-        sts.w = mmio_read32(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+        sts.w = mmio_read32(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         if (sts.f.hmac_idle) {
             return 0;
         }
@@ -74,12 +74,12 @@ static int wait_for_completion(void) {
 // ERR_CODE names the cause (SwInvalidConfig, SwHashStartWhenShaDisabled, ...).
 static int check_no_error(void) {
     hmac__INTR_STATE_t intr;
-    intr.w = mmio_read32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
+    intr.w = mmio_read32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR);
     if (!intr.f.hmac_err) return 0;
 
-    simputshex32("HMAC_ERR_CODE=", mmio_read32(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR));
+    simputshex32("HMAC_ERR_CODE=", mmio_read32(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR));
     hmac__INTR_STATE_t clear = {.f.hmac_err = 1};
-    mmio_write32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     return -1;
 }
 
@@ -93,9 +93,9 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
         // Poll fifo_full before each write.
         hmac__STATUS_t s;
         do {
-            s.w = mmio_read32(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = mmio_read32(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         } while (s.f.fifo_full);
-        mmio_write8(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, data[i]);
+        mmio_write8(SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, data[i]);
         ++i;
     }
 
@@ -122,7 +122,7 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
         if (credit == 0u) {
             hmac__STATUS_t s;
             do {
-                s.w = mmio_read32(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+                s.w = mmio_read32(SEP_TOP_HMAC_STATUS_BASE_ADDR);
                 // fifo_depth is a 6-bit field, so it can encode values above
                 // the real capacity. Clamp rather than let the unsigned
                 // subtraction wrap into a huge credit.
@@ -139,7 +139,7 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
         word |= (uint32_t)p[1] << 8;
         word |= (uint32_t)p[2] << 16;
         word |= (uint32_t)p[3] << 24;
-        mmio_write32(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word);
+        mmio_write32(SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word);
         i += 4u;
         --credit;
     }
@@ -148,9 +148,9 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
     while (i < len) {
         hmac__STATUS_t s;
         do {
-            s.w = mmio_read32(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = mmio_read32(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         } while (s.f.fifo_full);
-        mmio_write8(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, data[i]);
+        mmio_write8(SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, data[i]);
         ++i;
     }
 }
@@ -161,7 +161,7 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
 
 int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
     // 1. Clear any pending interrupt state.
-    mmio_write32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u); // clear all 3 bits
+    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u); // clear all 3 bits
 
     // 2. Configure: SHA-256, no HMAC, no endian swap, no digest swap.
     hmac__CFG_t cfg = {.w = 0};
@@ -170,11 +170,11 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
     cfg.f.endian_swap = 0; // Little-endian input
     cfg.f.digest_swap = 0; // No digest byte swap
     cfg.f.digest_size = HMAC_DIGEST_SIZE_SHA2_256;
-    mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // 3. Start a new hash operation.
     hmac__CMD_t cmd_start = {.f.hash_start = 1};
-    mmio_write32(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
+    mmio_write32(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
 
     if (check_no_error() != 0) {
         simputs("SHA_START_REJECTED\n");
@@ -186,7 +186,7 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
 
     // 5. Signal end of message → hardware computes final digest.
     hmac__CMD_t cmd_process = {.f.hash_process = 1};
-    mmio_write32(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_process.w);
+    mmio_write32(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_process.w);
 
     // 6. Wait for completion, then confirm nothing was rejected.
     if (wait_for_completion() != 0) goto fail;
@@ -199,7 +199,7 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
     //    Hardware digest registers hold big-endian words (MSB at bits[31:24]).
     //    Extract bytes MSB-first for standard SHA-256 byte order.
     for (int i = 0; i < 8; ++i) {
-        uint32_t raw = mmio_read32(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (uint32_t)(i * 4));
+        uint32_t raw = mmio_read32(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (uint32_t)(i * 4));
         digest[i * 4 + 0] = (uint8_t)(raw >> 24);
         digest[i * 4 + 1] = (uint8_t)(raw >> 16);
         digest[i * 4 + 2] = (uint8_t)(raw >> 8);
@@ -208,15 +208,15 @@ int sha256(const uint8_t *data, uint32_t len, uint8_t *digest) {
 
     // 8. Cleanup: disable SHA engine and wipe internal state.
     cfg.f.sha_en = 0;
-    mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    mmio_write32(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
 
     return 0;
 
 fail:
     cfg.f.sha_en = 0;
-    mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    mmio_write32(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
     return -1;
 }
 
@@ -225,7 +225,7 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     if (key_len > 32u) return -1; // IP supports 256-bit key max.
 
     // 1. Clear any pending interrupt state.
-    mmio_write32(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u);
+    mmio_write32(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, 0x7u);
 
     // 2. Write HMAC key to KEY_0..KEY_7 (before enabling HMAC).
     //    Big-endian per word: key[0] is KEY_0[31:24]. The IP applies
@@ -241,7 +241,7 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
                 word |= (uint32_t)key[idx] << (24 - b * 8);
             }
         }
-        mmio_write32(OCH_SEP_TOP_HMAC_KEY_BASE_ADDR(0) + (uint32_t)(w * 4), word);
+        mmio_write32(SEP_TOP_HMAC_KEY_BASE_ADDR(0) + (uint32_t)(w * 4), word);
     }
 
     // 3. Configure: HMAC + SHA-256 mode.
@@ -265,11 +265,11 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     cfg.f.digest_swap = 0; // No digest byte swap
     cfg.f.digest_size = HMAC_DIGEST_SIZE_SHA2_256;
     cfg.f.key_length = key_length_field;
-    mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // 4. Start HMAC operation.
     hmac__CMD_t cmd_start = {.f.hash_start = 1};
-    mmio_write32(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
+    mmio_write32(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_start.w);
 
     // A bad CFG is reported at hash_start and blocks the operation outright, so
     // this must be checked before feeding the message.
@@ -283,7 +283,7 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
 
     // 6. Signal end of message.
     hmac__CMD_t cmd_process = {.f.hash_process = 1};
-    mmio_write32(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_process.w);
+    mmio_write32(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd_process.w);
 
     // 7. Wait for completion, then confirm the IP did not reject anything along
     //    the way (a rejected message push also lands here).
@@ -295,7 +295,7 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
 
     // 8. Read 256-bit HMAC digest.
     for (int i = 0; i < 8; ++i) {
-        uint32_t raw = mmio_read32(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (uint32_t)(i * 4));
+        uint32_t raw = mmio_read32(SEP_TOP_HMAC_DIGEST_BASE_ADDR(0) + (uint32_t)(i * 4));
         digest[i * 4 + 0] = (uint8_t)(raw >> 24);
         digest[i * 4 + 1] = (uint8_t)(raw >> 16);
         digest[i * 4 + 2] = (uint8_t)(raw >> 8);
@@ -305,15 +305,15 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     // 9. Cleanup.
     cfg.f.hmac_en = 0;
     cfg.f.sha_en = 0;
-    mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    mmio_write32(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
 
     return 0;
 
 fail:
     cfg.f.hmac_en = 0;
     cfg.f.sha_en = 0;
-    mmio_write32(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    mmio_write32(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    mmio_write32(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    mmio_write32(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
     return -1;
 }

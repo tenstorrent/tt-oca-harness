@@ -26,6 +26,9 @@ _ABR_RDL = (
     / "abr_reg.rdl"
 )
 
+# Key-Vault control register types instantiated by abr_reg.rdl.
+_KV_RDL = _ABR_RDL.with_name("kv_def.rdl")
+
 _ABR_CLOSE = re.compile(
     r"^    \} ([A-Za-z0-9_]+)(?:\[(\d+)\])?(?:\s*@(0x[0-9A-Fa-f]+))?;",
     re.M,
@@ -105,11 +108,11 @@ MAILBOX_WRITE_DATA_RD_SENTINEL = 0xFEEDC0DE
 OUTPUT_REMAP_REGIONS = 16
 
 # DV-owned concurrency depth for the crypto CSR apertures. This is how hard
-# the wide-access leaf pushes a converted aperture, NOT a hardware parameter
+# the wide-access leaf pushes each crypto host path, NOT a hardware parameter
 # and NOT a scored contract: the claim graded against it is that concurrent
 # reads each return their own data, which holds at any depth. Deliberately not
-# read from the converter's AxiMaxReads -- scoring "every read slot was
-# occupied" against the RTL's own slot count is the DUT agreeing with itself.
+# read from a hardware slot count -- scoring "every read slot was occupied"
+# against the RTL's own slot count is the DUT agreeing with itself.
 # Eight is chosen because it is the most a single SEP master holds outstanding
 # on this path today; raising it only strengthens the stimulus.
 CRYPTO_CONCURRENT_READS = 8
@@ -163,45 +166,6 @@ def fabric_output_remap_regions() -> int:
     return OUTPUT_REMAP_REGIONS
 
 
-def mldsa_name_words(label: str = "MLDSA-87") -> tuple[int, int]:
-    """NAME registers: 8-char ASCII, each 32-bit word half-word swapped.
-
-    crypto.adoc names ML-DSA-87. Caliptra NAME endian stores each
-    four-character group as a 16-bit-swapped word.
-    """
-    raw = label.encode("ascii")
-    if len(raw) != 8:
-        raise ValueError(f"NAME label must be 8 ASCII chars, got {label!r}")
-
-    def word(chunk: bytes) -> int:
-        x = int.from_bytes(chunk, "big")
-        return ((x & 0xFFFF) << 16) | (x >> 16)
-
-    return word(raw[:4]), word(raw[4:])
-
-
-# DV-owned ABR identity goldens. crypto.adoc names ML-DSA-87 and ML-KEM-1024;
-# the Caliptra NAME field stores each 8-char label as two 16-bit-swapped words.
-# Version is the Adams Bridge 2.0.1 identity this package grades — the RDL
-# declares NAME/VERSION ``sw = r`` with no reset, so the register sweep cannot
-# supply them. A compare against a design parameter package would ask the DUT
-# to agree with itself.
-ABR_ID_WORDS: dict[str, tuple[int, int]] = {
-    "MLDSA_CORE_NAME": mldsa_name_words("MLDSA-87"),
-    "MLDSA_CORE_VERSION": mldsa_name_words("2.0.1\0\0\0"),
-    "MLKEM_CORE_NAME": mldsa_name_words("KEM-1024"),
-    "MLKEM_CORE_VERSION": mldsa_name_words("2.0.1\0\0\0"),
-}
-
-
-def abr_id_golden(param: str) -> tuple[int, int]:
-    """The DV-owned expected words for one ABR identity register pair."""
-    try:
-        return ABR_ID_WORDS[param]
-    except KeyError as exc:
-        raise KeyError(f"unknown ABR identity {param!r}") from exc
-
-
 @lru_cache(maxsize=1)
 def abr_offsets() -> dict[str, int]:
     """CSR offsets from ``abr_reg.rdl``."""
@@ -233,10 +197,25 @@ def abr_offsets() -> dict[str, int]:
             off = addr + entries * (width // 8)
         else:
             off = addr + n * 4
+    # `type name @addr;` instances. An instance without @addr is packed 4 bytes
+    # after the previous one only when nothing but blank or comment lines lies
+    # between them (a run such as the KV control block at @0xC000).
+    prev_addr: int | None = None
+    prev_end = 0
     for m in _ABR_NAMED.finditer(text):
         _kind, name, at = m.group(1), m.group(2), m.group(3)
+        gap = re.sub(r"//[^\n]*", "", text[prev_end : m.start()]).strip()
         if at:
-            out[name] = int(at, 16)
+            prev_addr = int(at, 16)
+        elif prev_addr is not None and not gap:
+            prev_addr += 4
+        else:
+            prev_addr = None
+        prev_end = m.end()
+        if at:
+            out[name] = prev_addr
+        elif prev_addr is not None:
+            out.setdefault(name, prev_addr)
     if "intr_block_rf" not in out:
         raise RuntimeError("intr_block_rf missing from abr_reg.rdl")
     # First nine packed 32-bit instances in `regfile intr_block_t`, relative
@@ -343,6 +322,45 @@ def abr_field_lsb(reg: str, field: str) -> int:
         return abr_reg_fields()[reg][field][0]
     except KeyError as exc:
         raise KeyError(f"{reg}.{field} missing from abr_reg.rdl") from exc
+
+
+_KV_REG = re.compile(r"reg (\w+)\s*(?:#\([^)]*\))?\s*\{\n(?P<body>.*?)\n    \};", re.S)
+
+
+@lru_cache(maxsize=1)
+def kv_reg_fields() -> dict[str, dict[str, tuple[int, int]]]:
+    """``reg type -> field -> (lsb, width)`` for the flat types in ``kv_def.rdl``.
+
+    Fields pack from bit 0 in declaration order; ``name[N]`` is N bits wide.
+    A width given by a parameter takes the parameter default from the type
+    header. A type whose fields carry nested braces (an enum) is skipped.
+    """
+    text = _KV_RDL.read_text(encoding="utf-8")
+    out: dict[str, dict[str, tuple[int, int]]] = {}
+    for m in _KV_REG.finditer(text):
+        header = text[m.start() : m.start("body")]
+        params = dict(re.findall(r"(\w+)\s*=\s*(\d+)", header))
+        body = m.group("body")
+        lsb = 0
+        fields: dict[str, tuple[int, int]] = {}
+        for f in re.finditer(
+            r"field\s*\{[^{}]*\}\s*(?P<name>\w+)(?:\[(?P<w>\w+)\])?\s*=", body, re.S
+        ):
+            w = f.group("w")
+            width = 1 if w is None else int(params[w]) if w in params else int(w)
+            fields[f.group("name")] = (lsb, width)
+            lsb += width
+        if fields and lsb == 32:
+            out[m.group(1)] = fields
+    return out
+
+
+def kv_field_mask(reg_type: str, field: str) -> int:
+    try:
+        lsb, width = kv_reg_fields()[reg_type][field]
+    except KeyError as exc:
+        raise KeyError(f"{reg_type}.{field} missing from kv_def.rdl") from exc
+    return ((1 << width) - 1) << lsb
 
 
 def abr_field_mask(reg: str, field: str) -> int:
@@ -541,16 +559,13 @@ def aon_timer_wkup_ticks_per_count(prescaler: int) -> int:
 # means.
 AXI_BUS_BYTES = 8
 
-# Deny-path read payload this package grades. AMBA IHI 0022 names DECERR
-# (RRESP=2'b11) but not the data. The marker is a DV-owned convention so an
-# allow (staged CSR value) and a deny cannot collide on the data conjunct.
-# A 32-bit beat returns the half that addr[2] selects.
-DENY_READ_SENTINEL = 0xCA11_AB1E_BADC_AB1E
-
-
-def deny_read_rdata(addr: int) -> int:
-    """The deny-path half-word a 32-bit beat at ``addr`` must return."""
-    return ((DENY_READ_SENTINEL >> 32) if addr & 0x4 else DENY_READ_SENTINEL) & 0xFFFF_FFFF
+# Read data of a JTAG access the eFuse lifecycle demux blocks:
+# hw/ip/efuse/doc/architecture.adoc "the error slave returns an error response
+# with data value 0xbadcab1e". Only the eFuse error slave has a specified read
+# payload. The axi_filter spec (hw/ip/axi_filter/doc/index.adoc, Blocked
+# Transactions) names DECERR and no data, so an inbound-filter deny is graded
+# on the response and on not returning the protected value.
+EFUSE_ERR_SLV_RDATA = 0xBADC_AB1E
 
 
 def axi_lane_strobe(addr: int, access_bytes: int = 4, bus_bytes: int = AXI_BUS_BYTES) -> int:
@@ -601,15 +616,6 @@ def _selftest() -> None:
     assert CRYPTO_EDN_SINKS == ("aes", "kmac", "otbn_rnd", "otbn_urnd")
     assert kpv_scrambler_ctrl_mask("ENABLE") == 1
     assert kpv_scrambler_ctrl_mask("LOCK") == 2
-    name0, name1 = mldsa_name_words()
-    assert name0 == 0x44534D4C
-    assert name1 == 0x3837412D
-    assert abr_id_golden("MLDSA_CORE_NAME") == (name0, name1)
-    assert abr_id_golden("MLKEM_CORE_NAME") == mldsa_name_words("KEM-1024")
-    assert abr_id_golden("MLDSA_CORE_VERSION") == (0x302E322E, 0x00003100)
-    assert abr_id_golden("MLKEM_CORE_VERSION") == (0x302E322E, 0x00003100)
-    assert deny_read_rdata(0x0) == 0xBADC_AB1E
-    assert deny_read_rdata(0x4) == 0xCA11_AB1E
     locked = esrc_fips_locked_fields()
     # A parse that silently matched nothing would empty the post-lock walk.
     assert len(locked) >= 10, locked

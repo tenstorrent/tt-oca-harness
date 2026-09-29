@@ -6,10 +6,11 @@ With the SEP inbound filter ACTIVE (feat_ctrl.sep_debug=0, real PROD fuse), the
 CPU-LSU master programs inbound FILTER_CONFIG allow-entries, then the EXTERNAL
 SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
-    match) -> the access traverses the filter + identity global->local remap
-    (smc_global_base=0) and reaches the SEP-local CSR -> OKAY + exact value;
+    match) -> the access traverses the filter and reaches the SEP-local CSR
+    -> OKAY + exact value (no inbound global-to-local remap sits inside this
+    DUT, so the external master presents the SEP-local address);
   * any other address (block-by-default) -> the filter's err-slave ->
-    DECERR + ERR_SLV_RDATA;
+    DECERR, and the read data is not the value staged at that address;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
 
 This stays sep_debug=0 and proves PER-ENTRY rule enforcement (vs the global
@@ -32,17 +33,15 @@ START/END in one 4 KB page, axi_filter_wrap.sv rewrites the window to that
 whole page and traffic_filter.sv compares only addr[AddrWidth-1:12], so the
 grant is the page, not the programmed range. FILTER_CONFIG.locked (bit 63)
 is write-once per fabric.adoc, so the field must not change once set. That
-document does not say how a write to a locked entry completes; SEP refuses it
-with BRESP=SLVERR, steering AW/W to a separate AXI-Lite error slave, so the
-frozen allow_burst keeps governing the granule. The held field is the
-specified contract, the SLVERR is SEP's choice of completion code.
+document does not say how a write to a locked entry completes, so the
+completion code is not graded: the write must complete (no timeout), and the
+held field plus the still-granted page are the contract.
 """
 
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from env.sep_spec_tables import DENY_READ_SENTINEL, deny_read_rdata
 from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -89,14 +88,6 @@ RESP_OKAY = 0
 RESP_SLVERR = 2
 # AMBA AXI4-Lite encodings (IHI 0022): OKAY=0, SLVERR=2, DECERR=3.
 RESP_DECERR = 3
-# DV-owned deny-path marker (env.sep_spec_tables.DENY_READ_SENTINEL).
-ERR_SLV_RDATA = deny_read_rdata(0)
-ERR_SLV_WORD = DENY_READ_SENTINEL
-
-
-def err_slv_rdata(addr: int) -> int:
-    """The deny-path half a 32-bit beat at ``addr`` must return."""
-    return deny_read_rdata(addr)
 
 
 # Entry count from the generated export, not a literal: the bank is an RDL
@@ -401,10 +392,11 @@ class SepInboundFilter(SepAxiRegDriver):
         return await self._rd(addr)
 
     async def write_tolerant(self, addr: int, data: int) -> int:
-        """Write tolerating a non-OKAY response; return the AXI resp_code.
+        """Write accepting any AXI response; return the resp_code.
 
-        A locked entry refuses further writes, which SEP completes as
-        SLVERR, so the proof is the resp code plus the read-back.
+        fabric.adoc does not specify how a write to a locked entry completes,
+        so the caller proves the lock by read-back. A timeout is not a
+        completion and fails here.
         """
         seq = SepAxiAccessSeq(
             "infilt_wr_tol",
@@ -415,6 +407,7 @@ class SepInboundFilter(SepAxiRegDriver):
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
+        assert not seq.timed_out, f"write 0x{addr:08x} to a locked entry timed out (no BRESP)"
         return seq.resp_code
 
     async def lock_entry(self, entry: int) -> None:
@@ -503,7 +496,11 @@ def ext_read_seq(addr: int, *, user: int = 0) -> SepAxiAccessSeq:
 
 
 def ext_burst_read_seq(addr: int, *, user: int = 0, expect_error: bool = False) -> SepAxiAccessSeq:
-    """Two-beat INCR read (AxLEN=1) on the external master."""
+    """Two-beat INCR read (AxLEN=1) on the external master.
+
+    The scoreboard is not connected to the external master, so it does not grade
+    ``expect_error`` here; the caller asserts the response code itself.
+    """
     return SepAxiAccessSeq(
         "infilt_ext_burst_rd",
         op=SepAxiOp.READ,
@@ -519,7 +516,11 @@ def ext_burst_read_seq(addr: int, *, user: int = 0, expect_error: bool = False) 
 def ext_burst_write_seq(
     addr: int, data: int, *, user: int = 0, expect_error: bool = False
 ) -> SepAxiAccessSeq:
-    """Two-beat INCR write (AxLEN=1) on the external master."""
+    """Two-beat INCR write (AxLEN=1) on the external master.
+
+    The scoreboard is not connected to the external master, so it does not grade
+    ``expect_error`` here; the caller asserts the response code itself.
+    """
     return SepAxiAccessSeq(
         "infilt_ext_burst_wr",
         op=SepAxiOp.WRITE,

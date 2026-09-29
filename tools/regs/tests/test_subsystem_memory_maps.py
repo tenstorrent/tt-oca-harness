@@ -129,7 +129,7 @@ class SubsystemMemoryMapsTest(unittest.TestCase):
         self.assertEqual(sep["main:abr"].base, sv_hex(sep_crypto, "ABR_REG_MAP_BASE_ADDR"))
         self.assertEqual(
             sep["main:entropy_pool"].base,
-            sv_hex(sep_addrmap, "OCH_SEP_TOP_ENTROPY_POOL_BASE_ADDR"),
+            sv_hex(sep_addrmap, "SEP_TOP_ENTROPY_POOL_BASE_ADDR"),
         )
 
         smc = rows_by_key(

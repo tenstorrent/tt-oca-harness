@@ -1,37 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Triple-Redundant Token Digest Comparator Wrapper
+// Wrap three hard-cell token digest comparators and encode a fail-closed match code.
 //
-// Wraps three efuse_token_digest_comparator instances to maintain triple
-// redundancy. Each instance performs an independent 256-bit comparison using
-// hard-cell primitives (XNOR/XOR + NAND/NOR/OR reduction trees), preventing
-// synthesis from optimizing the three compare cones into one.
-//
-// Output encoding:
-//   token_match_o = {match_n[2], match_p[2], match_n[1], match_p[1], match_n[0], match_p[0]}
-//   Match    = 6'b010101  (compute_vld=1, tokens equal)
-//   No match = 6'b101010  (compute_vld=1, tokens differ)
-//   Error    = 6'b111111  (compute_vld=1, redundancy fault)
-//   Idle     = 6'b000000  (compute_vld=0)
-//
-// This is not a majority vote: all three instances must agree and each must
-// drive a legal differential pair. Any deviation raises redundancy_fault_o,
-// which may indicate a fault injection or FIB attack, and forces the error
-// code onto every output bit so downstream feature gating fails closed.
-//-----------------------------------------------------------------------------
+// token_match_o packs {match_n,match_p} for instances 2,1,0.
+// Match=6'b010101, no-match=6'b101010, error=6'b111111 when compute_comparison_vld_i is
+// 1; idle=6'b000000 when valid is 0.
+// Not a majority vote: all three instances must agree with legal differential pairs; any
+// deviation asserts redundancy_fault_o and forces the error code so feature gating fails
+// closed.
 
 `include "prim_assert.sv"
 
 module efuse_triple_redundant_comparator #(
-  localparam int TokenWidth = 256
+  localparam int TokenWidth = 256  // Token digest width in bits.
 ) (
-  input  logic                   compute_comparison_vld_i,
-  input  logic [TokenWidth-1:0]  token_digest_i,
-  input  logic [TokenWidth-1:0]  token_expected_i,
-  output logic [5:0]             token_match_o,
-  output logic                   redundancy_fault_o
+  input  logic                   compute_comparison_vld_i,  // 1 publishes match codes; 0 forces
+                                                            // idle 6'b000000.
+  input  logic [TokenWidth-1:0]  token_digest_i,  // Computed 256-bit token digest.
+  input  logic [TokenWidth-1:0]  token_expected_i,  // Expected 256-bit token digest.
+  output logic [5:0]             token_match_o,  // Encoded {match_n,match_p}×3 match/fault/idle
+                                                 // code.
+  output logic                   redundancy_fault_o  // High when the three comparators disagree or
+                                                     // pair illegally; held low while
+                                                     // compute_comparison_vld_i is low.
 );
 
   logic [2:0] match_p_raw, match_n_raw;

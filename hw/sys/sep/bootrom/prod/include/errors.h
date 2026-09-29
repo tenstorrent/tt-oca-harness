@@ -45,7 +45,7 @@
 #include "rom_virt_console.h"
 #include "status_ring.h"
 
-#define STATUS_OUT(code) mmio_write32(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1), (code))
+#define STATUS_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1), (code))
 
 // ── Final verdict channel: cold_scratch[0] ──
 // Only the terminal outcome goes here, so one read gives one answer. It is
@@ -54,7 +54,7 @@
 #define TEST_PASS_CODE 0xACAFACA1u
 #define TEST_FAIL_CODE 0xDEADBEEFu
 
-#define VERDICT_OUT(code) mmio_write32(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (code))
+#define VERDICT_OUT(code) mmio_write32(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0), (code))
 
 // The ROM only ever reports FAIL. A successful boot ends in BL1, which reports
 // PASS itself.

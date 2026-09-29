@@ -5,6 +5,10 @@
 Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i
 (port_table: gates reset release). rst_primary_smc_clk_no is NOT gated by this pin
 (negative control CHK-PRIMARY-NOT-GATED).
+
+S6 lowers ext_boot_seq_done_i again and pulses the cold reset: the gate holds the
+fuse reset asserted across the new release, and raising the gate releases it
+(CHK-BOOT-SEQ-REGATE).
 """
 
 from __future__ import annotations
@@ -174,11 +178,7 @@ class smu_ext_boot_seq_gate_test_seq:
             label=self.WAIT_LABELS[0],
             first_high=self.PRIMARY,
         )
-        self._log(
-            "CHK-PRIMARY-NOT-GATED: rst_primary_smc_clk_no releases to 1'b1 while "
-            "ext_boot_seq_done_i=0; only fuse_reset_n_delayed_o is boot-gated "
-            f"(primary={primary})"
-        )
+        self._log(f"CHK-PRIMARY-NOT-GATED observed rst_primary_smc_clk_no={primary}")
         sb.expect_eq(
             "CHK-PRIMARY-NOT-GATED primary released while gated",
             primary,
@@ -201,10 +201,8 @@ class smu_ext_boot_seq_gate_test_seq:
             first_high=self.FUSE,
         )
         self._log(
-            "CHK-BOOT-SEQ-GATE: with ext_boot_seq_done_i=0, smc_fuse_reset_n_delayed_o "
-            f"remains 1'b0 across >={self.GATED_SAMPLES} samples; after "
-            f"ext_boot_seq_done_i=1, smc_fuse_reset_n_delayed_o becomes 1'b1 within the "
-            f"bounded release window (gated_samples={gated_samples} released={released})"
+            f"CHK-BOOT-SEQ-GATE observed gated_samples={gated_samples} of "
+            f">={self.GATED_SAMPLES} and smc_fuse_reset_n_delayed_o={released} after the ungate"
         )
         sb.expect_eq(
             "CHK-BOOT-SEQ-GATE fuse_reset released after ungate",
@@ -220,8 +218,7 @@ class smu_ext_boot_seq_gate_test_seq:
                 f"expired={wait.expired} last={wait.last}"
             )
         self._log(
-            "CHK-TIMEOUT-PATHS: every bounded wait completed inside its bound "
-            f"(waits={len(self._waits)} expect={len(self.WAIT_LABELS)})"
+            f"CHK-TIMEOUT-PATHS observed waits={len(self._waits)} expected={len(self.WAIT_LABELS)}"
         )
         sb.expect_eq(
             "CHK-TIMEOUT-PATHS every bounded wait completed inside its bound",
@@ -255,4 +252,31 @@ class smu_ext_boot_seq_gate_test_seq:
             [True] * len(fence),
             evidence="CHK-NONVAC",
         )
+        self._step("S6", "RE-GATE: ext_boot_seq_done_i=0 across a cold reset")
+        dut.ext_boot_seq_done_i.value = 0
+        dut.rst_cold_ni.value = 0
+        await ClockCycles(dut.clk_ref_i, 64)
+        dut.rst_cold_ni.value = 1
+        await ClockCycles(dut.clk_ref_i, self.SETTLE_REF_CYCLES)
+        held = 0
+        for _ in range(self.GATED_SAMPLES):
+            await RisingEdge(dut.clk_smu_i)
+            held += self._sample(dut.smc_fuse_reset_n_delayed_o, self.FUSE) == 0
+        dut.ext_boot_seq_done_i.value = 1
+        rereleased = 0
+        for _ in range(self.RELEASE_BOUND):
+            await RisingEdge(dut.clk_smu_i)
+            if self._sample(dut.smc_fuse_reset_n_delayed_o, self.FUSE):
+                rereleased = 1
+                break
+        self._log(f"CHK-BOOT-SEQ-REGATE held={held}/{self.GATED_SAMPLES} released={rereleased}")
+        sb.expect_eq(
+            "CHK-BOOT-SEQ-REGATE the gate holds the fuse reset across a cold reset and releases it",
+            (held, rereleased),
+            (self.GATED_SAMPLES, 1),
+            evidence="CHK-BOOT-SEQ-REGATE",
+        )
+        # The poll sees the release on the edge that made it; the cov/sv monitors
+        # sample it on the next one, which the simulation has to reach.
+        await ClockCycles(self.dut.clk_smu_i, 2)
         self._log("SMU_006 sequence complete")

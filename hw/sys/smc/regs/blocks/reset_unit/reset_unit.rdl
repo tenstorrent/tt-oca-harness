@@ -5,6 +5,8 @@
 `define RESET_UNIT_REG_RDL
 
 addrmap reset_unit {
+    name = "Reset Unit Address Map";
+    desc = "Subsystem reset control, hold and isolation controls, and reset-sequencing status registers.";
 
     reg SS_CONFIG {
         field {

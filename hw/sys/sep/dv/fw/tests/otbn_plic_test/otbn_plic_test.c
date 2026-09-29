@@ -74,12 +74,12 @@ __attribute__((interrupt("machine"))) void otbn_done_isr(void) {
     g_otbn_claimid = read_claimid();
 
     /* Clear OTBN INTR_STATE.done via W1C */
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u);
+    WRITE_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u);
 }
 
 static int otbn_wait_for_idle(void) {
     for (int t = OTBN_IDLE_TIMEOUT; t > 0; --t) {
-        uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
         if (status == OTBN_STATUS_IDLE) return 0;
         for (volatile int i = 0; i < 256; ++i)
             ;
@@ -135,9 +135,9 @@ int main(void) {
      * Step 4: Enable OTBN done interrupt
      * ---------------------------------------------------------------- */
     printf("[STEP 4/8] Enabling OTBN done interrupt (INTR_ENABLE=1)...\n");
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x1u);
+    WRITE_REG(SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x1u);
     /* Clear any pending interrupt */
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
     g_otbn_isr_fired = 0;
     g_otbn_isr_count = 0;
     printf("[STEP 4/8] OTBN done interrupt enabled\n");
@@ -146,7 +146,7 @@ int main(void) {
      * Step 5: Issue SEC_WIPE_DMEM
      * ---------------------------------------------------------------- */
     printf("[STEP 5/8] Issuing SEC_WIPE_DMEM command...\n");
-    WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_SEC_WIPE_DMEM);
+    WRITE_REG(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_SEC_WIPE_DMEM);
 
     /* ----------------------------------------------------------------
      * Step 6: Require the ISR (CPU trap). This is the actual PIC->CPU
@@ -170,8 +170,8 @@ int main(void) {
      * Step 7: Clear interrupt
      * ---------------------------------------------------------------- */
     printf("[STEP 7/8] Clearing OTBN done interrupt...\n");
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u); /* W1C */
-    uint32_t intr_after_clear = READ_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u); /* W1C */
+    uint32_t intr_after_clear = READ_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR);
     if (intr_after_clear & 0x1u) {
         printf("WARNING: INTR_STATE.done still set after W1C (=0x%08x)\n", intr_after_clear);
         errors++;
@@ -190,8 +190,8 @@ int main(void) {
     /* === Second wipe (SEC_WIPE_IMEM) for additional coverage === */
     printf("\n--- Additional coverage: SEC_WIPE_IMEM ---\n");
     g_otbn_isr_fired = 0;
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_SEC_WIPE_IMEM);
+    WRITE_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_SEC_WIPE_IMEM);
 
     for (volatile int i = 0; i < 10000; ++i)
         ;
@@ -202,7 +202,7 @@ int main(void) {
         printf("ERROR: SEC_WIPE_IMEM ISR did not fire — PIC->CPU delivery BROKEN\n");
         errors++;
     }
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u);
+    WRITE_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0x1u);
 
     if (otbn_wait_for_idle() != 0) {
         fail_and_halt(9, "OTBN did not return to IDLE after IMEM wipe");

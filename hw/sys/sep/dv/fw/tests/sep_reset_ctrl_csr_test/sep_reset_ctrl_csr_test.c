@@ -49,8 +49,8 @@
 #define ABR_GLOBAL_INTR_ENABLE (ABR_BASE + 0x8100u)
 
 void reset_ctrl_nmi_handler(void) {
-    uint32_t prev = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), prev + 1);
+    uint32_t prev = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), prev + 1);
 
     uint32_t mdseac;
     __asm__ volatile("csrr %0, 0xFC0" : "=r"(mdseac));
@@ -60,7 +60,7 @@ void reset_ctrl_nmi_handler(void) {
 }
 
 static uint32_t nmi_count(void) {
-    return READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
+    return READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
 }
 
 int main(void) {
@@ -72,7 +72,7 @@ int main(void) {
     // setup nmi handler
     printf("//Set up NMI handler\n");
 
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), 0);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), 0);
     nmi_register_handler(reset_ctrl_nmi_handler);
     nmi_set_vector_reg();
     nmi_lock_vector_reg();
@@ -82,7 +82,7 @@ int main(void) {
      * Step 1: Read the SW_RESET_N register and print the values
      */
     printf("Reading SW_RESET_N register...\n");
-    uint32_t sw_reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t sw_reset_n = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("SW_RESET_N value: 0x%08x\n", sw_reset_n);
 
     if (sw_reset_n != SW_RESET_N_DEFAULT) {
@@ -107,20 +107,20 @@ int main(void) {
         uint32_t cross_addr;    // other accelerator, must stay live
         uint32_t cross_default;
     } accels[] = {
-        {"otbn", (1u << 1), OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x00000001,
-         OTBN__INTR_ENABLE__DONE_reset, OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR,
+        {"otbn", (1u << 1), SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, 0x00000001,
+         OTBN__INTR_ENABLE__DONE_reset, SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR,
          KMAC__INTR_ENABLE__KMAC_DONE_reset},
-        {"aes", (1u << 2), OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
-         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset, OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR,
+        {"aes", (1u << 2), SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR, 0x00000000,
+         AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset, SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR,
          OTBN__INTR_ENABLE__DONE_reset},
-        {"hmac", (1u << 3), OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
-         HMAC__INTR_ENABLE__HMAC_DONE_reset, OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR,
+        {"hmac", (1u << 3), SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         HMAC__INTR_ENABLE__HMAC_DONE_reset, SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR,
          AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset},
-        {"kmac", (1u << 4), OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
-         KMAC__INTR_ENABLE__KMAC_DONE_reset, OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR,
+        {"kmac", (1u << 4), SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, 0x00000007,
+         KMAC__INTR_ENABLE__KMAC_DONE_reset, SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR,
          HMAC__INTR_ENABLE__HMAC_DONE_reset},
         {"abr", (1u << 6), ABR_GLOBAL_INTR_ENABLE, 0x00000003, 0x00000000,
-         OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, HMAC__INTR_ENABLE__HMAC_DONE_reset},
+         SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, HMAC__INTR_ENABLE__HMAC_DONE_reset},
     };
 
     uint32_t expected_nmi = 0;
@@ -150,8 +150,8 @@ int main(void) {
          */
         printf("Step 2.%u.b: %s - asserting reset (SW_RESET_N <- 0x%08x)...\n", (unsigned)i, name,
                asserted);
-        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, asserted);
-        uint32_t rd_rst = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+        WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, asserted);
+        uint32_t rd_rst = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
         if (rd_rst != asserted) {
             printf("ERROR: SW_RESET_N readback - got 0x%08x, expected 0x%08x\n", rd_rst, asserted);
             test_fail(1);
@@ -209,8 +209,8 @@ int main(void) {
          * its default (reset reached the IP) without an NMI (port reopened).
          */
         printf("Step 2.%u.e: %s - releasing reset...\n", (unsigned)i, name);
-        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
-        (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+        WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
+        (void)READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
         uint32_t rd_after = READ_REG(accels[i].probe_addr);
         if (rd_after != accels[i].probe_default) {
@@ -237,9 +237,9 @@ int main(void) {
         uint32_t probe_addr;
         uint32_t write_val;
     } trng_ports[] = {
-        {"esrc", OCH_SEP_TOP_ENTROPY_SOURCE_DEBUG_CTRL_BASE_ADDR, 0x00000001u},
-        {"csrng", OCH_SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR, 0x00000001u},
-        {"edn", OCH_SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR, 0x00000001u},
+        {"esrc", SEP_TOP_ENTROPY_SOURCE_DEBUG_CTRL_BASE_ADDR, 0x00000001u},
+        {"csrng", SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR, 0x00000001u},
+        {"edn", SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR, 0x00000001u},
     };
 
     for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
@@ -253,10 +253,10 @@ int main(void) {
     }
 
     uint32_t trng_asserted = SW_RESET_N_DEFAULT & ~SW_RESET_N_TRNG_BIT;
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, trng_asserted);
-    (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, trng_asserted);
+    (void)READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
-    uint32_t aes_live = READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
+    uint32_t aes_live = READ_REG(SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
     if (aes_live != AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset || nmi_count() != expected_nmi) {
         printf("ERROR: AES sibling was affected by TRNG-only reset\n");
         test_fail(1);
@@ -280,8 +280,8 @@ int main(void) {
         }
     }
 
-    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
-    (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
+    (void)READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
         uint32_t rd = READ_REG(trng_ports[i].probe_addr);
         if (rd != 0u || nmi_count() != expected_nmi) {
@@ -295,7 +295,7 @@ int main(void) {
     /*
      * Step 4: Sanity-check SW_RESET_N ended at its default
      */
-    uint32_t sw_reset_n_restored = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    uint32_t sw_reset_n_restored = READ_REG(SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("Final SW_RESET_N value: 0x%08x\n", sw_reset_n_restored);
     if (sw_reset_n_restored != SW_RESET_N_DEFAULT) {
         printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n", SW_RESET_N_DEFAULT);
@@ -307,7 +307,7 @@ int main(void) {
      * The xbar window is 0x8 bytes, so this access should be caught by
      * the xbar's decode-error path.
      */
-    const uint32_t bad_addr = OCH_SEP_TOP_SEP_RESET_CTRL_BASE_ADDR + 0x8;
+    const uint32_t bad_addr = SEP_TOP_SEP_RESET_CTRL_BASE_ADDR + 0x8;
 
     printf("Step 5: probing unmapped gap at 0x%08x...\n", bad_addr);
     printf("Step 5: WRITE 0xDEADBEEF -> 0x%08x\n", bad_addr);

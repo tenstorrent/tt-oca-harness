@@ -281,10 +281,12 @@ module = { cocotb = "<dut>_sanity_test", uvm = "<dut>_sanity_test" }
 ----
 
 A scenario that is cocotb-only by design declares it in the same map
-(`module = { cocotb = "<dut>_x_test", uvm = false }`); group selections skip
-it under `--framework uvm` with no flag. A scenario without any `uvm` entry
-errors when selected under `--framework uvm`; during bring-up, group
-selections can ride `--skip-unimplemented` until the port is complete.
+(`module = { cocotb = "<dut>_x_test", uvm = false }`). A scenario without
+any `uvm` entry needs nothing: the UVM view runs the scenarios bound to it,
+and group selections under `--framework uvm` skip the rest, printed on the
+`selection` line. `--list` counts the two states apart, as `excluded` and
+`missing`, so the `false` is a statement for the reader rather than a
+switch. Naming either kind with `--items` under `--framework uvm` errors.
 
 ==== Step 8: Run and verify
 

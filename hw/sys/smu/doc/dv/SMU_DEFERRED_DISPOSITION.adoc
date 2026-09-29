@@ -25,7 +25,7 @@ Buckets:
 * `SEP1-enrolled` — has a body and runs in the wrapper `all` group with real SEP instruction retirement (`sep_real_fw`, `sep_entropy`, or `fw_boot` for the SEP smoke). Not `hosted` credit, and no CI workflow schedules those groups.
 * `SEP1-blocked` — written against the wrapper bench, enrolled in no testlist: the SEP-driven SMC bring-up polls SMC SRAM that no sys-inbound master can reach, so the leaf cannot pass by construction. Re-enrols in `all` the day the SMC SRAM path exists.
 * `not-runnable` — has a body in git history, enrolled in no testlist: the claim it checks is not met by the RTL as built, the bench cannot produce the condition it needs, or it needs the `smu #(.SEP(0))` elaboration, which this package does not build. The row names the condition.
-* `OUT-until-SEP1` — no body; needs real SEP instruction retirement under SMU and SEP=1 TB ports.
+* `OUT-until-SEP1` — no body; a scenario driven by SEP firmware. The bench elaborates the real SEP and `smu_sep_smoke_test` retires its instructions, so a leaf written for one of these names runs SEP firmware, needs the RISC-V toolchain for its `c_build` stage, and joins the groups outside `hosted` (`fw_boot`, `sep_real_fw`) that no workflow schedules.
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
 * `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
 
@@ -67,37 +67,37 @@ Enrolled names outside this catalog:
 |Enrolled in `all`, `sep_real_fw`.
 |smu_sep_wdt_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_aes_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_otbn_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_xbar_programmable_addr_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_wdt_reset_to_smc_test
 |SEP1-blocked
 |Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_sep_spi_bridge_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_external_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_external_irq_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_alias_mailbox_interrupt_probe_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_ext_axi_combined_probe_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_km_otbn_memory_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_debug_bus_test
 |SEP1-blocked
 |Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
@@ -109,82 +109,82 @@ Enrolled names outside this catalog:
 |Enrolled in no testlist; the body is in git history. Dual-firmware image: needs the SMC image visible in SMC SRAM to a sys-inbound master.
 |smu_fuse_sense_handshake_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_lifecycle_security_handoff_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_feat_ctrl_monitor_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_cla_sep_cpu_debug_control_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_filter_rule_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_filter_skip_wire_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_ap_stee_output_remap_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_ap_stee_remap_region_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_outbound_demux_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_outbound_demux_full_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_alias_remap_consistency_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_egress_unfiltered_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_smc_addr_route_bug_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_spi_mux_ctrl_wire_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_wdt_cdc_path_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_ic_reset_sep_ext_slice_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_memory_integrity_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_otbn_execute_flow_probe_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_sep_interrupt_error_recovery_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_interoperability_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_xbar_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_bidirect_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_interoperability_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_sep_xbar_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_bidirect_strict_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_smc_stall_sep_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_interop_negative_recovery_test
 |OUT-until-SEP1
 |Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
@@ -238,10 +238,10 @@ Enrolled names outside this catalog:
 |Real SMC/SEP interop needs SEP retire plus mailbox/console paths.
 |smu_axi_xbar_address_decode_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_axi_xbar_connectivity_matrix_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_axi_crossbar_performance_test
 |waived
 |The enrolled hosted fabric set covers this scenario; the name stays catalog-only.
@@ -304,7 +304,7 @@ Enrolled names outside this catalog:
 |DTP-under-SMU depth beyond the enrolled DTP-under-SMU slice (`dtp_under_smu`). Child DTP TB owns protocol completeness.
 |smu_dtp_sep_stap_reset_smoke_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_basic_verification_test
 |child-TB-owned
 |DTP-under-SMU depth beyond the enrolled DTP-under-SMU slice (`dtp_under_smu`). Child DTP TB owns protocol completeness.
@@ -328,16 +328,16 @@ Enrolled names outside this catalog:
 |Superseded by an enrolled near-relative, or toggle-as-pass OUT. Do not re-enroll this name.
 |smu_dtp_dual_cpu_bringup_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_dual_cpu_jtag2axi_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_jtag2axi_sep_otp_path_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smu_dtp_sep_ic_reset_hold_test
 |OUT-until-SEP1
-|Needs real SEP instruction retirement and SEP=1 TB ports.
+|No body; a SEP-firmware scenario, which would sit in the toolchain-gated groups outside `hosted` (bucket `OUT-until-SEP1`).
 |smc_cpu_traffic_ext_axi_test
 |OUT-until-SEP1
 |Needs the SEP=1 lifecycle controller: `smu #(.SEP(0))` instantiates no LCC (`gen_no_sep` in `smu.sv`), so lifecycle-driven debug feature control cannot be exercised.
@@ -461,7 +461,7 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Seven sit on proof paths of enrolled SMU tests. Each has one entry of six
+Nine sit on proof paths of enrolled SMU tests. Each has one entry of six
 fields. The first three -- the claim that is accepted with the stand-in in
 place, why the real path cannot be used, and the exact scope -- are filled
 from the tree. The last three -- approver, approval date against a revision,
@@ -482,8 +482,10 @@ ran.
 |`+esrc_noise_force` |`tb/tb_wrapper_top.sv` (the `force` block in the SEP observation section), driver `cocotb_wrapper/seq_lib/esrc_noise.py` |`smu_sep_entropy_test`, `smu_sep_modules_test`, `smu_sep_aes_test`
 |`+skip_fuse_sense` with the shadow preload |per-test `args` of 85 of the 101 `testlists/all.toml` entries; live only under the `SIMULATION` define |every `--dut smu` leaf except the fifteen that sense: the five boot-stall leaves, `smu_sep_lcc_flow_test`, the two `sep_rtl_fuse_sense` leaves (`smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`), and the seven composition leaves that carry no eFuse plusarg (`smu_boundary_port_composition_test`, `smu_clock_domain_composition_test`, `smu_composition_parameter_test`, `smu_reset_release_sync_test`, `smu_sram_auto_init_done_test`, `smu_xbar_connectivity_matrix_test`, `smu_xtrig_mode_composition_test`); load-bearing for the reset, boot-gate and OTP leaves named below
 |`abr_reg.sv` external-ack waiver |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns` |every `--dut smu` leaf
+|SEP assertion-ignore patterns |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns`, the seven entries under `u_dut.u_smu.gen_sep.u_sep` |every `--dut smu` leaf on a four-state simulator
 |`+define+ASSERTS_OFF` / `COMMON_CELLS_ASSERTS_OFF` |every Verilator target of `smu_sim_cfg.toml` and `hw/common/dv/configs/profiles/native.toml` |every leaf on Verilator
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (five host scan chains and the I/O and extra STAP TDO-to-TDI returns) |`smu_dtp_bsr_extest_loopback_test`, `smu_dtp_scan_chain_boundary_test`
+|CTP data-input tie-offs |`tb/tb_wrapper_top.sv` (the `xtrig_ctp_*_din_i` bindings of `u_dut`), `cocotb_wrapper/tests/smu_base_test.py` (`IDLE_INPUTS`) |`smu_boundary_port_composition_test`
 |`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of `smu_sim_cfg.toml`, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
 |eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves, and the eight leaves whose real sense they answer: the five boot-stall leaves, `smu_sep_lcc_flow_test`, `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`
 |===
@@ -493,7 +495,7 @@ ran.
 
 Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
-first five are static reads of the tree, and the last two pair a static read
+first seven are static reads of the tree, and the last two pair a static read
 with a line any run of the named group prints. A row that prints nothing is an entry that has gone
 stale, and the entry -- not the run -- is what needs the edit.
 
@@ -513,6 +515,10 @@ stale, and the entry -- not the run -- is what needs the edit.
 |`grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml`
 |One `extra_ignore_patterns` entry, `'abr_reg\.sv.*assert_bad_ext_(wr\|rd)_ack'`; the only other hits are the comment lines above it that describe the waiver.
 
+|SEP assertion-ignore patterns
+|`grep -n 'gen_sep' hw/sys/smu/dv/smu_sim_cfg.toml`
+|Seven `extra_ignore_patterns` entries: `u_sep_trng`, `u_axis_edn_(crypto\|pool)_s3c_scan`, the eFuse token processing's `ValidDigestModeFlag_A`, the OTBN wrapper's `UrndNoReseedOnReset_A`, the SPI host at a time of at most nine digits of femtoseconds, `u_key_manager_s3c_scan` and the DMA wrapper's `u_secure_dma` and `gen_alert_receivers`; no entry takes `u_sep` whole.
+
 |`+define+ASSERTS_OFF`
 |`grep -n 'ASSERTS_OFF' hw/sys/smu/dv/smu_sim_cfg.toml hw/common/dv/configs/profiles/native.toml`
 |`+define+ASSERTS_OFF` on every Verilator target of the config and `COMMON_CELLS_ASSERTS_OFF` in the shared profile; any run's recorded `build_args` carries both.
@@ -520,6 +526,10 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Scan-chain loopbacks
 |`grep -n 'host_scan_in_i\|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv`
 |Seven bindings and no `1'b0` tie: the five `*_host_scan_in_i` on `bsr_scan_loop`, `stap_scan_loop`, `dfd_scan_loop`, `dft_sec_scan_loop` and `dft_scan_loop`, plus `jtag_stap_io_host_tdi_i` on `stap_io_tdo_w` and `jtag_stap_extra_host_tdi_i` on `stap_extra_tdi_w`.
+
+|CTP data-input tie-offs
+|`grep -n 'xtrig_ctp_\(req_in\|ack_in\|ack_out\)_din_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv` and `grep -n 'tb_xtrig_ctp_\(req\|ack\)_in_din' hw/sys/smu/dv/cocotb_wrapper/tests/smu_base_test.py`
+|Three bindings: `req_in` on `tb_xtrig_ctp_req_in_din`, `ack_in` on `tb_xtrig_ctp_ack_in_din` and `ack_out` on `'0`; both bench nets listed in `IDLE_INPUTS`, which `drive_idle_inputs` sets to 0.
 
 |`prim_sync2` / `prim_sync3` stand-ins
 |`grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml`, then any run's `hdl_compile.log`
@@ -553,7 +563,7 @@ stale, and the entry -- not the run -- is what needs the edit.
 [cols="1,4"]
 |===
 |Claim accepted
-|On the leaves that pass it, the SMC eFuse shadow registers -- and on the `sep_rtl` profile the SEP ones -- hold the image the preload file supplies, and the sense FSM that would have earned that image from the eFuse macro is skipped. The consumers of the sensed image are under test on those leaves: the lifecycle controller, `lc_state` at the SMC and `dbg_disable` at the DTP, the OTP word the JTAG2AXI leaves read, and the reset and boot state downstream of the fuse-reset release. The sense FSM is not. The five boot-stall leaves (`smu_boot_stall_jtag_cold_reset_matrix_test`, `smu_boot_stall_vs_ic_reset_priority_test`, `smu_clock_stop_coordination_test` S1/S2, `smu_dft_dtp_boot_stall_test`, `smu_dft_gpio_boot_stall_test`) are not on this scope: they run without the plusarg, so the `smc_fuse_reset_n_delayed_o` release they gate is the SMC eFuse controller's own sense completion against the `+smc_efuse_hex` image, and their gate claim is judged on that run. `smu_smc_reset_ctrl_test`, `smu_ext_boot_seq_gate_test` and `smu_smc_smoke_test` read the reset and boot state downstream of the release the boot-stall leaves prove; the OTP leaves (`smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_otp_vs_fabric_map_race_test`) compare against a shadow word that was preloaded. The lifecycle leaves (`sep_lifecycle`, `sep_chain`) declare their `+sep_shadow_reg_preload` image as the stimulus, so for them the preload is setup, not a stand-in. `smu_sep_lcc_flow_test` is not on this scope either: it runs without the plusarg, the SEP shadow registers it observes are the SEP eFuse controller's own sense of the `+sep_efuse_hex` image, and its sense claim is judged on that run.
+|On the leaves that pass it, the SMC eFuse shadow registers -- and on the `sep_rtl` profile the SEP ones -- hold the image the preload file supplies, and the sense FSM that would have earned that image from the eFuse macro is skipped. The consumers of the sensed image are under test on those leaves: the lifecycle controller, `lc_state` at the SMC and `dbg_disable` at the DTP, the OTP word the JTAG2AXI leaves read, and the reset and boot state downstream of the fuse-reset release. The sense FSM is not. The five boot-stall leaves (`smu_boot_stall_jtag_cold_reset_matrix_test`, `smu_boot_stall_vs_ic_reset_priority_test`, `smu_clock_stop_coordination_test` S1/S2, `smu_dft_dtp_boot_stall_test`, `smu_dft_gpio_boot_stall_test`) are not on this scope: they run without the plusarg, so the `smc_fuse_reset_n_delayed_o` release they gate is the SMC eFuse controller's own sense completion against the `+smc_efuse_hex` image, and their gate claim is judged on that run. `smu_smc_reset_ctrl_test` and `smu_smc_smoke_test` read the reset and boot state downstream of the release the boot-stall leaves prove. On `smu_ext_boot_seq_gate_test` the skip supplies sense completion, a precondition of the fuse-reset release the leaf checks: its claim is that `ext_boot_seq_done_i` holds that release and then frees it, judged with sense completion supplied by the skip, and sense completion itself is the boot-stall leaves' claim, not this leaf's; the OTP leaves (`smu_dtp_otp_smc_map_rw_test`, `smu_dtp_otp_smc_complete_rw_test`, `smu_dtp_otp_smc_series_error_test`, `smu_otp_vs_fabric_map_race_test`) compare against a shadow word that was preloaded. The lifecycle leaves (`sep_lifecycle`, `sep_chain`) declare their `+sep_shadow_reg_preload` image as the stimulus, so for them the preload is setup, not a stand-in. `smu_sep_lcc_flow_test` is not on this scope either: it runs without the plusarg, the SEP shadow registers it observes are the SEP eFuse controller's own sense of the `+sep_efuse_hex` image, and its sense claim is judged on that run.
 |Why the real path cannot be used
 |The real path is available -- `hw/top/smc_ip_integration.sv` instantiates `efuse_interface_shim` and `efuse_bank_model`, and the boot-stall leaves use it -- so for the remaining leaves the skip is a run-time and stimulus convenience: the SMC sense of the 768-word image takes 2280-2330 `clk_smu` after primary reset release on Verilator, and the preloaded shadow image, not a sensed one, is the value the OTP and lifecycle leaves declare as their input.
 |Scope
@@ -582,6 +592,24 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-09-21, on the tree that carries this record (`main` at `bc4a6834a` with the sign-off changes applied). Re-confirmed: `grep -n 'abr_reg' hw/sys/smu/dv/smu_sim_cfg.toml` printed the single `extra_ignore_patterns` entry and the two comment lines that describe it, matching the *Scope* field.
 |Review or expiry
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
+|===
+
+==== SEP assertion-ignore patterns
+
+[cols="1,4"]
+|===
+|Claim accepted
+|A failure of an assertion in one of the SEP scopes the patterns name is not a verdict on any enrolled SMU claim: the entropy source's and the EDN endpoints' `prim_count` and sparse-FSM `AssertConnected_A` checks, which ask for an OpenTitan alert the SEP does not have; `ValidDigestModeFlag_A` on the SHA-256-only `prim_sha2_32` instances of the eFuse token processing; `otbn_rnd`'s `UrndNoReseedOnReset_A`; the SPI host's checks inside the first microsecond, before its reset completes; and the known-value checks of the key manager, the secure DMA and its alert receivers, blocks no wrapper leaf programs, which fire on their quiescent X. What is not proven is whatever those assertions would have caught in the named scopes. Every other SEP assertion, the SEP SRAM interface's included, fails the run, and so does an SPI host check after the first microsecond.
+|Why the real path cannot be used
+|The SEP bench turns the same classes off as outside its contract (`hw/sys/sep/dv/tb/tb_top.sv` 205-210, 245-280, 301). Under the wrapper the SEP core is elaborated but most leaves never bring it up, so the key manager, the secure DMA and their alert paths stay at X, and the alert checks have no OpenTitan alert to see; making them hold is SEP work outside this package.
+|Scope
+|`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns`, the seven entries that begin `u_dut\.u_smu\.gen_sep\.u_sep\.`: every `--dut smu` leaf on a four-state simulator; on Verilator `+define+ASSERTS_OFF` (its own entry) already compiles the assertions out. Each pattern names a scope, and the SPI host's pattern also a time below one microsecond; no pattern takes the whole SEP. The Key Manager ROM's `noXOnCsI` sits in `hw/top/sep_ip_integration.sv`, outside `u_dut.u_smu`, and no pattern takes it.
+|Approver
+|pending
+|Date, revision
+|pending
+|Review or expiry
+|pending
 |===
 
 ==== `+define+ASSERTS_OFF`
@@ -620,12 +648,30 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
 |===
 
+==== CTP data-input tie-offs
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The resting level of the `req_in`, `ack_in` and `ack_out` CTP data inputs that `smu_boundary_port_composition_test` reads at the SMU boundary and at the DTP consumer is zero because the bench holds it there, acting as the integrator the port table's "Tie to '0 if unused" note (`hw/sys/smu/doc/port_table.adoc`) addresses. `smu_wrapper` passes these inputs through to `smu`; nothing in the product ties them. The bench zero is stimulus for `CHK-SMU-XTRIG-CTP-S6`: the inertness verdict reads DUT outputs, and the `din_i` compares prove only that the bench's rest level reaches the DTP. What is not proven is any tie-off inside the product.
+|Why the real path cannot be used
+|The tie belongs to the integrator's pad ring, which the open-source tree does not model; the bench stands where the integrator would.
+|Scope
+|`tb/tb_wrapper_top.sv` binds `xtrig_ctp_ack_out_din_i` to `'0` and `xtrig_ctp_req_in_din_i` / `xtrig_ctp_ack_in_din_i` to `tb_xtrig_ctp_req_in_din` / `tb_xtrig_ctp_ack_in_din`, which `smu_base_test.drive_idle_inputs` sets to 0 (`IDLE_INPUTS`). Load-bearing for `smu_boundary_port_composition_test` only; `smu_xtrig_ctp_pad_test` drives the two bench nets itself and does not rest on the tie.
+|Approver
+|pending
+|Date, revision
+|pending
+|Review or expiry
+|pending
+|===
+
 ==== `prim_sync2` / `prim_sync3` stand-ins
 
 [cols="1,4"]
 |===
 |Claim accepted
-|Every synchroniser output the bench observes on Verilator is produced by a two- or three-stage flop pipe that starts at a defined `0` with no reset, not by the `och_prim` cells the product elaborates; the product cells are on no Verilator proof path. The claims downstream -- power-good stability, primary and cold reset release, the boot-stall gate, `i2c_enable` into the LSIO mux -- are accepted as proven over the stand-in's behaviour.
+|Every synchroniser output the bench observes on Verilator is produced by a two- or three-stage flop pipe that starts at a defined `0` with no reset, not by the `ocah_prim` cells the product elaborates; the product cells are on no Verilator proof path. The claims downstream -- power-good stability, primary and cold reset release, the boot-stall gate, `i2c_enable` into the LSIO mux -- are accepted as proven over the stand-in's behaviour.
 |Why the real path cannot be used
 |The product `prim_sync2` / `prim_sync3` start with X on the first stage and the wrapper port exposes no `rst_ni` to clear it, so on a four-state view the X persists into every consumer; the stand-ins add `initial '0` on each stage and change nothing else about the pipe.
 |Scope

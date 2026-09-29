@@ -20,6 +20,7 @@ package:
     - "Kai Qin <kqin@tenstorrent.com>"
     - "Paul Scheidt <pscheidt@tenstorrent.com>"
     - "Adam Taback <ataback@tenstorrent.com>"
+    - "Grace Chang <gchang@tenstorrent.com>"
 
 # Path dependencies on the vendored trees (transitive pins in Bender.local).
 dependencies:
@@ -383,8 +384,8 @@ sources:
       - hw/common/defs
       - hw/ip/efuse/rtl/svh
     files:
-      - hw/common/och_prim/rtl/prim_jtag_pkg.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_pkg.sv
+      - hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext_pkg.sv
   - target: smc
     include_dirs:
       - hw/sys/smc/rtl/smc_cpu
@@ -410,8 +411,6 @@ sources:
       - hw/ip/dfd/regs/gen/sv/smc_cla_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
-      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_addrmap_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_addrmap_pkg.sv
   - target: any(sep, entropy_source)
@@ -419,9 +418,7 @@ sources:
       - hw/ip/entropy_source/regs/gen/sv/entropy_source_addrmap_pkg.sv
   - target: smc
     files:
-      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_addrmap_pkg.sv
-      - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_addrmap_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_wrap_addrmap_pkg.sv
@@ -463,13 +460,8 @@ sources:
   - target: smc
     files:
       - hw/ip/zeroer/regs/gen/sv/zeroer_ctrl_addrmap_pkg.sv
-  - target: sep
-    files:
-      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
   - target: smc
     files:
-      - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
-      - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
       - hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv
   - target: any(sep, smc)
     files:
@@ -489,15 +481,13 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_network/rtl/cross_trigger_network_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_reg_pkg.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/cross_trigger_port_pkg.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/ip/drbg/rtl/drbg_pkg.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg_pkg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg_pkg.sv
-      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
   - target: any(dtp, sep, smc)
     files:
       - hw/ip/efuse/rtl/efuse_pkg.sv
@@ -507,11 +497,8 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_source_pkg.sv
   - target: smc
     files:
-      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg_pkg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg_pkg.sv
-      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
       - hw/ip/gpio/rtl/gpio_pkg.sv
-      - hw/ip/gpio/rtl/gpio_shim_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_reg_pkg.sv
       - hw/ip/i2c/rtl/i2c_pkg.sv
       - hw/ip/i2c/regs/gen/sv/i2c_ctrl_reg_pkg.sv
@@ -593,12 +580,10 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg_pkg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/ndm_reset_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
@@ -623,74 +608,67 @@ sources:
   - target: any(sep, axi_lite_to_ahb)
     files:
       - hw/common/axi/axi_lite_to_ahb.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/common/axi/axi_lite_to_tlul.sv
       - hw/common/axi/tlul_to_axi_lite.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs, axi_hang_detector)
     files:
-      - hw/common/och_prim/rtl/prim_axi_snoop.sv
+      - hw/common/ocah_prim/rtl/prim_axi_snoop.sv
   - target: any(dtp, sep, smc, key_manager, uart, system_timer_octs)
     files:
-      - hw/common/och_prim/rtl/prim_ag_clk_mux.sv
-      - hw/common/och_prim/rtl/prim_apb_arb.sv
+      - hw/common/ocah_prim/rtl/prim_ag_clk_mux.sv
+      - hw/common/ocah_prim/rtl/prim_apb_arb.sv
       # prim_apb_mux_struct.sv is deliberately not listed. It sizes its localparams
       # with $bits(req_t'(0).paddr); VCS rejects that cast-then-member-select in a
       # parameter port list, in both V-2023.12-SP2-9 and X-2025.06, though slang and
       # Verilator accept it. Nothing in this tree or nonfree instantiates the
       # module, and the file is intentionally kept unpatched, so listing it here
       # would only break every VCS flow that consumes bender's raw output.
-      - hw/common/och_prim/rtl/prim_axi_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axi_id_converter.sv
-      - hw/common/och_prim/rtl/prim_axi_id_prepend_wrap.sv
-      - hw/common/och_prim/rtl/prim_axi_lite_err_slv.sv
-      - hw/common/och_prim/rtl/prim_axi_lite_to_apb_single.sv
-      - hw/common/och_prim/rtl/prim_axi_user_override.sv
-      - hw/common/och_prim/rtl/prim_axil_addr_fixer.sv
-      - hw/common/och_prim/rtl/prim_axil_prot_filter.sv
-      - hw/common/och_prim/rtl/prim_bin2gray.sv
-      - hw/common/och_prim/rtl/prim_carry_select_adder.sv
-      - hw/common/och_prim/rtl/prim_cg_req.sv
-      - hw/common/och_prim/rtl/prim_clk_counter.sv
-      - hw/common/och_prim/rtl/prim_clk_counter_fifo_sync.sv
-      - hw/common/och_prim/rtl/prim_clk_gater_hysteresis.sv
-      - hw/common/och_prim/rtl/prim_clkmux4.sv
-      - hw/common/och_prim/rtl/prim_diff_decode_multi.sv
-      - hw/common/och_prim/rtl/prim_diff_encode_multi.sv
-      - hw/common/och_prim/rtl/prim_fair_rr_arb.sv
-      - hw/common/och_prim/rtl/prim_fifo_sync_parity.sv
-      - hw/common/och_prim/rtl/prim_gray2bin.sv
-      - hw/common/och_prim/rtl/prim_jtag_scan_reg.sv
-      - hw/common/och_prim/rtl/prim_jtag_sib_mux_post.sv
-      - hw/common/och_prim/rtl/prim_jtag_sib_mux_pre.sv
-      - hw/common/och_prim/rtl/prim_pipe_stages.sv
-      - hw/common/och_prim/rtl/prim_prog_clk_div_posedge.sv
-      - hw/common/och_prim/rtl/prim_pulse_signal.sv
-      - hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv
-      - hw/common/och_prim/rtl/prim_rom_bank_swap.sv
-      - hw/common/och_prim/rtl/prim_rst_mux2_hf_n.sv
-      - hw/common/och_prim/rtl/prim_rstbypass_stdmux2.sv
-      - hw/common/och_prim/rtl/prim_sync2.sv
-      - hw/common/och_prim/rtl/prim_sync2r.sv
-      - hw/common/och_prim/rtl/prim_sync3.sv
-      - hw/common/och_prim/rtl/prim_sync3_pulse.sv
-      - hw/common/och_prim/rtl/prim_sync3r.sv
-      - hw/common/och_prim/rtl/prim_sync4.sv
-      - hw/common/och_prim/rtl/prim_sync4r.sv
-      - hw/common/och_prim/rtl/prim_sync_data_autohs.sv
-      - hw/common/och_prim/rtl/prim_sync_randomized_delay.sv
-      - hw/common/och_prim/rtl/prim_sync_reset.sv
-      - hw/common/och_prim/rtl/prim_updown_counter.sv
-      - hw/common/och_prim/rtl/prim_zero_counter.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2_gf.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_or2.sv
-      - hw/common/och_prim_generic/rtl/prim_rev_cell.sv
+      - hw/common/ocah_prim/rtl/prim_axi_addr_fixer.sv
+      - hw/common/ocah_prim/rtl/prim_axi_id_converter.sv
+      - hw/common/ocah_prim/rtl/prim_axi_id_prepend_wrap.sv
+      - hw/common/ocah_prim/rtl/prim_axi_lite_err_slv.sv
+      - hw/common/ocah_prim/rtl/prim_axi_lite_to_apb_single.sv
+      - hw/common/ocah_prim/rtl/prim_axi_user_override.sv
+      - hw/common/ocah_prim/rtl/prim_axil_addr_fixer.sv
+      - hw/common/ocah_prim/rtl/prim_axil_prot_filter.sv
+      - hw/common/ocah_prim/rtl/prim_bin2gray.sv
+      - hw/common/ocah_prim/rtl/prim_carry_select_adder.sv
+      - hw/common/ocah_prim/rtl/prim_cg_req.sv
+      - hw/common/ocah_prim/rtl/prim_clk_counter.sv
+      - hw/common/ocah_prim/rtl/prim_clk_counter_fifo_sync.sv
+      - hw/common/ocah_prim/rtl/prim_clk_gater_hysteresis.sv
+      - hw/common/ocah_prim/rtl/prim_clkmux4.sv
+      - hw/common/ocah_prim/rtl/prim_diff_decode_multi.sv
+      - hw/common/ocah_prim/rtl/prim_diff_encode_multi.sv
+      - hw/common/ocah_prim/rtl/prim_fair_rr_arb.sv
+      - hw/common/ocah_prim/rtl/prim_fifo_sync_parity.sv
+      - hw/common/ocah_prim/rtl/prim_gray2bin.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_sib_mux_post.sv
+      - hw/common/ocah_prim/rtl/prim_jtag_sib_mux_pre.sv
+      - hw/common/ocah_prim/rtl/prim_pipe_stages.sv
+      - hw/common/ocah_prim/rtl/prim_prog_clk_div_posedge.sv
+      - hw/common/ocah_prim/rtl/prim_pulse_signal.sv
+      - hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv
+      - hw/common/ocah_prim/rtl/prim_rev_cell.sv
+      - hw/common/ocah_prim/rtl/prim_rst_mux2_hf_n.sv
+      - hw/common/ocah_prim/rtl/prim_sync3.sv
+      - hw/common/ocah_prim/rtl/prim_sync3_pulse.sv
+      - hw/common/ocah_prim/rtl/prim_sync3r.sv
+      - hw/common/ocah_prim/rtl/prim_sync4.sv
+      - hw/common/ocah_prim/rtl/prim_sync4r.sv
+      - hw/common/ocah_prim/rtl/prim_sync_data_autohs.sv
+      - hw/common/ocah_prim/rtl/prim_sync_reset.sv
+      - hw/common/ocah_prim/rtl/prim_updown_counter.sv
+      - hw/common/ocah_prim/rtl/prim_zero_counter.sv
       - hw/common/sync.sv
   # Scrambled-RAM primitives: dtp has no scrambled memory, so excluded here.
   - target: any(sep, smc, key_manager)
     files:
-      - hw/common/och_prim/rtl/prim_ram_1p_adv_ext.sv
-      - hw/common/och_prim/rtl/prim_ram_1p_scr_ext.sv
+      - hw/common/ocah_prim/rtl/prim_ram_1p_adv_ext.sv
+      - hw/common/ocah_prim/rtl/prim_ram_1p_scr_ext.sv
   # Adopter synthesis flows read `+define+` lines from the generated filelist;
   # SYNTHESIS selects the implementation view in every source it compiles.
   # Bender drops a fileless group's defines, so the group carries the vendor
@@ -702,31 +680,23 @@ sources:
       - hw/common/defs/ocah_vendor_defines.svh
   - target: all(any(dtp, sep, smc, key_manager, uart, system_timer_octs, entropy_source), not(synth))
     files:
-      - hw/common/och_prim_generic/rtl/prim_and3.sv
-      - hw/common/och_prim_generic/rtl/prim_ao222.sv
-      - hw/common/och_prim_generic/rtl/prim_clkgater.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_mux2.sv
-      - hw/common/och_prim_generic/rtl/prim_clock_nand2.sv
-      - hw/common/och_prim_generic/rtl/prim_dffrxq.sv
-      - hw/common/och_prim_generic/rtl/prim_dffsxq.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_2sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_2sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_3sync.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_3sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_3sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_4sync.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_4sync_r.sv
-      - hw/common/och_prim_generic/rtl/prim_flop_4sync_s.sv
-      - hw/common/och_prim_generic/rtl/prim_inv.sv
-      - hw/common/och_prim_generic/rtl/prim_latch_n.sv
-      - hw/common/och_prim_generic/rtl/prim_metastab_hardened_dffr.sv
-      - hw/common/och_prim_generic/rtl/prim_nand4.sv
-      - hw/common/och_prim_generic/rtl/prim_nor4.sv
-      - hw/common/och_prim_generic/rtl/prim_or2.sv
-      - hw/common/och_prim_generic/rtl/prim_or4.sv
-      - hw/common/och_prim_generic/rtl/prim_stdbuf.sv
-      - hw/common/och_prim_generic/rtl/prim_stdmux2.sv
-  - target: sep
+      - hw/common/ocah_prim_generic/rtl/prim_and3.sv
+      - hw/common/ocah_prim_generic/rtl/prim_ao222.sv
+      - hw/common/ocah_prim_generic/rtl/prim_clock_nand2.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_3sync.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_3sync_r.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_3sync_s.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_4sync.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_4sync_r.sv
+      - hw/common/ocah_prim_generic/rtl/prim_flop_4sync_s.sv
+      - hw/common/ocah_prim_generic/rtl/prim_latch_n.sv
+      - hw/common/ocah_prim_generic/rtl/prim_metastab_hardened_dffr.sv
+      - hw/common/ocah_prim_generic/rtl/prim_nand4.sv
+      - hw/common/ocah_prim_generic/rtl/prim_nor4.sv
+      - hw/common/ocah_prim_generic/rtl/prim_or2.sv
+      - hw/common/ocah_prim_generic/rtl/prim_or4.sv
+      - hw/common/ocah_prim_generic/rtl/prim_stdmux2.sv
+  - target: any(drbg, sep)
     files:
       - hw/common/tlul/rtl/tlul_adapter_host.sv
       - hw/common/tlul/rtl/tlul_adapter_reg.sv
@@ -776,7 +746,7 @@ sources:
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_handshake_ctrl.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_pulse_stretcher.sv
       - hw/ip/cross_trigger/cross_trigger_port/rtl/ctp_synchronizer.sv
-  - target: sep
+  - target: any(drbg, sep)
     files:
       - hw/ip/drbg/rtl/drbg.sv
       - hw/ip/drbg/rtl/drbg_axil64_lane_adapter.sv
@@ -785,14 +755,10 @@ sources:
       - hw/ip/drbg/rtl/drbg_edn_axis_adapter.sv
   - target: any(sep, smc)
     files:
-      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_interface_ctrl_reg.sv
       - hw/ip/efuse/regs/gen/sv/efuse_mmr_reg.sv
-      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
       - hw/ip/efuse/rtl/efuse_guard.sv
       - hw/ip/efuse/rtl/efuse_interface_controller.sv
-      - hw/ip/efuse/rtl/efuse_interface_shim.sv
-      - hw/ip/efuse/dv/models/efuse_bank_model.sv
       - hw/ip/efuse/rtl/efuse_program_interface.sv
       - hw/ip/efuse/rtl/efuse_read_interface.sv
       - hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv
@@ -824,13 +790,9 @@ sources:
       - hw/ip/entropy_source/rtl/gf_muladd.sv
   - target: smc
     files:
-      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg.sv
       - hw/ip/gpio/regs/gen/sv/gpio_intf_reg.sv
-      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
       - hw/ip/gpio/rtl/gpio.sv
       - hw/ip/gpio/rtl/gpio_filter.sv
-      - hw/ip/gpio/dv/models/gpio_model.sv
-      - hw/ip/gpio/rtl/gpio_shim.sv
       - hw/ip/i2c/regs/gen/sv/i2c_reg.sv
       - hw/ip/i2c/rtl/i2c.sv
       - hw/ip/i2c/rtl/i2c_bus_monitor.sv
@@ -974,7 +936,6 @@ sources:
       - hw/ip/scrambler/rtl/scrambler_512x32.sv
       - hw/ip/scrambler/rtl/scrambler_8192x32.sv
       - hw/ip/scrambler/rtl/scrambler_addr_tweak.sv
-      - hw/ip/scrambler/rtl/scrambler_rotator.sv
   - target: any(smc, system_timer_octs)
     files:
       - hw/ip/system_timer_octs/regs/gen/sv/system_timer_octs_reg.sv
@@ -1053,7 +1014,7 @@ sources:
       #                therefore always brings CALIPTRA along; sep_crypto.sv also
       #                carries an elaboration check that rejects the mismatch.
       #   TECH_SPECIFIC_ICG - skip the latch in abr_icg.sv; overlay abr_clk_gate
-      #                instantiates prim_clkgater (foundry cell under `-t synth`).
+      #                instantiates prim_clock_gating (foundry cell under `-t synth`).
       # File order follows vendor/chipsalliance/adams-bridge/upstream/src/abr_top/config/abr_top.vf.
       # =====================================================================
       - defines:
@@ -1255,12 +1216,10 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/chip_config_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/cpu_ctrl_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/dfx_ctrl_status_reg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/ndm_reset_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
-      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv
@@ -1578,9 +1537,37 @@ sources:
       - hw/sys/smu/rtl/smu.sv
       - hw/sys/smu/rtl/smu_axi_xbar.sv
   # Reference wrappers are additive to their corresponding subsystem targets.
+  - target: any(sep_wrapper, smc_wrapper, smu_wrapper)
+    files:
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_addrmap_pkg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg_pkg.sv
+      - hw/ip/efuse/dv/models/regs/gen/sv/efuse_shim_ctrl_reg.sv
+      - hw/ip/efuse/dv/models/efuse_bank_reg.sv
+      - hw/ip/efuse/rtl/efuse_interface_shim.sv
+      - hw/ip/efuse/dv/models/efuse_bank_model.sv
+  - target: any(sep_wrapper, smu_wrapper)
+    files:
+      - hw/sys/sep/dv/models/regs/gen/sv/sep_external_addrmap_pkg.sv
   - target: any(smc_wrapper, smu_wrapper)
     files:
-      - hw/common/och_prim_generic/rtl/prim_pad_shim.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg_pkg.sv
+      - hw/ip/gpio/rtl/gpio_shim_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pll_wrap_addrmap_pkg.sv
+      - hw/sys/smc/dv/models/regs/gen/sv/pvt_wrap_addrmap_pkg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_ctrl_reg.sv
+      - hw/ip/gpio/regs/gen/sv/gpio_wrap_reg.sv
+      - hw/ip/gpio/dv/models/gpio_model.sv
+      - hw/ip/gpio/rtl/gpio_shim.sv
+      - hw/sys/smc/regs/gen/sv/blocks/gpio_poc_pbias_ctrl_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
+      - hw/common/ocah_prim/rtl/prim_pad_shim.sv
       - hw/sys/smc/dv/models/axil_okay_slv.sv
       - hw/sys/smc/dv/models/pll_wrap.sv
       - hw/sys/smc/dv/models/pvt_wrap.sv

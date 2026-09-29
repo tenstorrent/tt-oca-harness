@@ -331,7 +331,13 @@ mode delivering a trigger from its shared wire.
 *Description*: Covers the routes the matrix carried. A destination rise is
 credited to each source that rose within the preceding 32 system clocks and
 that the destination's `CT_SRC` `CONFIG_0` `CT_DST_SELECT` mask, shadowed from
-the CSR writes, selects.
+the CSR writes, selects. A source event is a CTP delivering a trigger into the
+matrix (`ct_dst`, either mode) or a CLA request; a destination event is a CTP
+starting to assert `CT_Req_out` or the matrix requesting a CLA. A CTP asserts
+by driving its wire in wire-OR mode and by driving the request level, high
+unless `CONFIG.INVERT` is set, in point-to-point mode. The random-route mixes
+walk every route of their classes within one test, so each seed closes both
+crosses.
 
 [cols=",",options="header",]
 |===
@@ -447,10 +453,10 @@ actionable hole without a tracker link.
 ==== Waiver fields
 
 Every `pass:[[[holes]]]` entry carries `id`, `title`, `category`, `disposition`,
-`status`, `confidence`, `rationale`, `owner`, `reviewer`, `date`, and at
-least one `pass:[[[holes.native]]]` selector (`tool`, `metric_family`,
-`hierarchy`); an accepted entry also carries `expires` and, where the
-selector is a pattern, `expected_matches`. The rationale states the design
+`status`, `confidence`, `rationale`, `owner`, `reviewer`, and at least one
+`pass:[[[holes.native]]]` selector (`tool`, `metric_family`, `hierarchy`); an
+entry whose selector is a pattern also carries `expected_matches`. The
+rationale states the design
 or bench fact that makes the point unreachable, in words the reviewer of a
 later design or bench change can recognize; a rationale that restates the
 point's name is not one. `issues` carries the tracker link of the defect or
@@ -465,13 +471,11 @@ takes design review; a `fix_model` or `cover` entry takes DV review; a
 review. Every entry change is graded against a named finished run with the
 runner's `--waive` re-grade.
 
-==== Expiry and reopen triggers
+==== Reopen triggers
 
-Every accepted waiver carries an `expires` date. Past it the waiver grades
-as open, its point returns to the effective denominator, the report carries
-a lapsed-waiver warning, and the entry is either renewed by a fresh review
-or closed by the scenario that fires the point. A waiver also reopens, by
-the entry's status returning to `open` or the entry being removed, when:
+An accepted waiver stays accepted until the policy changes; the calendar does
+not reopen it. It reopens, by the entry's status returning to `open` or the
+entry being removed, when:
 
 * the runner rejects it because its selector matches a covered point;
 * the policy's `scope_epoch` changes, which restarts every dashboard
