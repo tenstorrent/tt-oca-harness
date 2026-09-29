@@ -559,7 +559,7 @@ module jtag_intf_unit
       jtag_stap #(
         .SCAN_IN_PIPE        (0),
         .TDI_LOCKUP          (0),  // No lockup latch needed for on-chip connections
-        .SCAN_OUT_LOCKUP     (NUM_EXTRA_STAPS-1),
+        .SCAN_OUT_LOCKUP     (0),
         .jtag_scan_ctrl_t    (jtag_scan_ctrl_t),
         .jtag_tap_ctrl_t     (jtag_tap_ctrl_t)
       ) u_stap_extra (
