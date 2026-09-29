@@ -12,32 +12,46 @@ needs a measured database first.
 |===
 |Field |Value
 |Release group |`--dut smu --items all` on VCS, the coverage set
-(`cov/config/vcs/README.md`); `hosted` is its toolchain-free subset (live
-sizes in the Release Qualification section of
-`hw/sys/smu/dv/docs/SMU_VPLAN.adoc`)
+(`cov/config/vcs/README.md`); `hosted` is its toolchain-free subset, 84 of
+the 120 leaves (`testlists/all.toml`; the Regression Groups section of
+`hw/sys/smu/dv/docs/SMU_VPLAN.adoc` lists every group)
 |Metrics |the runner's native families: `user` (the `cov/sv` cover
 properties) on Verilator and VCS; on VCS also line, condition, branch and
 `toggle` over the SMU's own logic, where `toggle` is every bit of every net of
-`smu_wrapper`, `smu`, `smu_axi_xbar` and `axi_window_remap` in both
-directions after the exclusion files have left the population, and
+`smu_wrapper`, `smu`, `smu_axi_xbar`, `axi_window_remap` and every other
+SMU-owned unit under `u_smu` outside the SMC, DTP and SEP trees
+(`cov/config/vcs/gen_smu_cov_scope.py`), in both directions after the
+exclusion files have left the population, and
 `assertion`, where urg reads the cover properties and the one
 `smu_axi_xbar` assertion
-|Numeric target |VCS `toggle` 80 percent effective and `assertion` 80 percent
-effective, both gated by `cov/config/vcs/smu_wrapper_coverage_policy.toml`;
-`user` 95 percent effective on Verilator, reported and not yet gated
-|Measured (VCS, scope epoch `smu-vcs-cov-v2`) |`all`, 102 leaves: toggle
-57.54 raw / 81.62 effective, condition 76.92, branch 100.00, line 100.00,
-assertion 90.74, `user` 90.65 (97 of 107 cover properties). `hosted`, 70
-leaves: toggle 54.07 raw / 75.04 effective, condition 38.46, branch 50.00,
-assertion 85.19, `user` 85.05
+|Numeric target |VCS `user` 100 percent effective, `toggle` 80 percent
+effective and `assertion` 80 percent effective, the three `[[thresholds]]`
+rows of `cov/config/vcs/smu_wrapper_coverage_policy.toml`; on Verilator
+`user` is reported and not gated:
+`cov/config/verilator/smu_wrapper_coverage_policy.toml` carries no
+`[[thresholds]]` row
+|Measured (Verilator, the `cov/sv` cover properties) |`all`, 120 leaves,
+Verilator 5.050: `user` 101 of 101 collected points hit
+(`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`, which names the commit). No
+`hosted`-only figure is recorded
+|Measured (VCS) |None for the current scope epoch, `smu-vcs-cov-v3`
+(`cov/config/vcs/smu_wrapper_coverage_policy.toml`): no VCS run of this epoch
+is recorded in the tree, so no toggle, condition, branch, line, assertion or
+covergroup figure exists for the population above. The last recorded VCS
+figures are of epoch `smu-vcs-cov-v2`, on a population of 107 cover
+properties and 102 leaves: `all`, toggle 57.54 raw / 81.62 effective,
+condition 76.92, branch 100.00, line 100.00, assertion 90.74, `user` 90.65
+(97 of 107); `hosted`, then 70 leaves, toggle 54.07 raw / 75.04 effective,
+condition 38.46, branch 50.00, assertion 85.19, `user` 85.05
 |===
 
-`cov/sv/` carries ten cover-property modules, 111 points in all; the counts
+`cov/sv/` carries ten cover-property modules, 109 points in all; the counts
 are the `OCAH_FCOV_COVER` invocations in each file. `tb/tb_wrapper_top.sv`
-instantiates all ten, and 107 points elaborate on its single target,
-`compile_smu_chiplet`, which has SEP present: the four inside `g_nosep`
-generate blocks exist only on a SEP=0 elaboration, which this package does
-not build.
+instantiates all ten, and 101 points enter the database on its single
+target, `compile_smu_chiplet`, which has SEP present: four points sit behind
+`SMU_FCOV_PHASE2`, which no configuration defines, and the four inside
+`g_nosep` generate blocks exist only on a SEP=0 elaboration, which this
+package does not build (`hw/sys/smu/dv/docs/SMU_FCOV.adoc`).
 
 [cols="2,1,4",options="header",]
 |===
@@ -71,8 +85,11 @@ integration shells, vendored and generated RTL. Toggle is not collected on
 Verilator, as the DTP set does not collect it: `coverage_off -file` does not
 apply to a source file whose last line has no newline, and the vendored and
 `hw/common` files in that state would carry subsystem toggle points into the
-wrapper's database |weekly `--cov` on the large runner (`regress.yml`).
-Nightly does not collect.
+wrapper's database |a developer or self-hosted run,
+`python3 tools/dv/run_dv.py --dut smu --tool verilator --items all --cov`,
+followed by `tools/dv/fcov_owners.py` over its run directory, which writes
+`hw/sys/smu/dv/docs/SMU_FCOV_OWNERS.adoc`. No `regress.yml` tier collects
+coverage: both `smu` rows carry `coverage: false`
 |Commercial |line / condition / branch / toggle / assertion databases under
 the licensed flow. `smu_wrapper_cov_scope.hier`, written by
 `gen_smu_cov_scope.py`, follows the rule the SEP and SMC scopes state: SMC,
@@ -86,8 +103,9 @@ tied-off nets out. `cov/config/vcs/smu_wrapper_toggle_exclusions.el` and
 reads or writes, and the policy applies them at report time.
 `cov/config/vcs/smu_wrapper_coverage_policy.toml` floors `toggle` and
 `assertion` at 80 percent; `run_dv.py` grades both and prints them on its
-`coverage` line (see `cov/config/vcs/README.md`) |not a public CI job; not a
-substitute for the public weekly
+`coverage` line (see `cov/config/vcs/README.md`) |a licensed host,
+`python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov`
+(`cov/config/vcs/README.md`); no public CI job runs it
 |===
 
 The VCS figure is the SMU's own logic: the wrapper's wiring, `smu.sv` with
@@ -140,12 +158,13 @@ wrapper's own `toggle`), `hierarchy` or file selector (`[[holes.native]]`)
 * `issues` when the disposition is actionable
 
 `max_unclassified_points = 0` is the fail-on-new-hole knob. It is not
-set here; it is set together with the threshold, from a measured weekly
+set here; it is set together with the threshold, from a measured
 `--cov` database.
 
 A waiver reaches a finished run without a simulator:
 `python3 tools/dv/run_dv.py --dut smu --run-dir <run> --waive` re-grades
 the run's report against this policy and rewrites its coverage grade in
-place. A dispatch of `dashboard.yml` with the weekly's regress run id does
-the same for the published weekly. Both are described on the runner and
+place. A dispatch of `dashboard.yml` with a regress run id does the same
+for that run's published record when it carries a coverage grade; the
+scheduled weekly carries none. Both are described on the runner and
 dashboard pages under `tools/dv/doc/`.
