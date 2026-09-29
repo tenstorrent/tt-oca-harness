@@ -507,7 +507,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-AXIIN-SEP-EXTERNAL",
             "CHK-AXIIN-SEP-EXTERNAL",
-            "inbound accesses to the SEP external aperture and TRNG window end in error responses",
+            "inbound accesses to the SEP external aperture end in error responses and every "
+            "TRNG-window read beat is DECERR; TRNG-window writes are recorded, not graded",
         ),
         (
             "CHK-AXIIN-SEP-ID-TRAIN",

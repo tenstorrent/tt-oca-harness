@@ -41,23 +41,30 @@ S9 (before S8): with the aperture grown to cover SEP-local 0x2000_0000, inbound
     Offset 0x100 of the external aperture lies between the eFuse SHIM control
     block at its base and the execute-in-place window
     (``hw/sys/sep/dv/models/regs/sep_external.rdl``), and the fabric refuses
-    an address between unit windows (``hw/sys/sep/doc/memory_map.adoc``). No
-    external TRNG is connected, and the integrator guide terminates
-    ``ext_trng_axil`` in a DECERR slave then (``doc/integrator/src/smu.adoc``,
-    "External TRNG"). Neither text names the response code of a refused
-    access, so the check is that it is not OKAY. Every AxID, AxCACHE/AxQOS/AxREGION/
-    AxLOCK corner, AxPROT encoding, AxSIZE and burst type ext_in offers there,
-    and each read of an eight-read train under distinct IDs held in flight,
-    completes with an error response, as do sixty-four reads (alternately
-    single and eight-beat bursts) and sixty-four writes over four IDs
-    launched together and held in flight at each, sixty-four held writes alone
-    at the TRNG window, and four writes launched together whose W trails the
-    first AW by 64 cycles. The eFuse shim word at the base of the external
-    aperture reads and writes back OKAY under every AxPROT, under sixty-four
-    reads and sixty-four writes over four IDs launched together and held in
-    flight, and in a sweep of a W-lagged write against a read whose AR is
-    delayed around the same lag. With the aperture restored a system-bus read
-    and write of the external aperture
+    an address between unit windows (``hw/sys/sep/doc/memory_map.adoc``),
+    which names no response code, so there the check is that it is not OKAY.
+    No external TRNG is connected, and the integrator guide terminates
+    ``ext_trng_axil`` with a DECERR slave then (``doc/integrator/src/smu.adoc``,
+    "External TRNG"), and the crypto demux answers a burst there with DECERR
+    on every beat (``hw/sys/sep/doc/crypto.adoc``, "Single-Beat Access
+    Only"), so every beat of every TRNG-window read is DECERR.
+    Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE
+    and burst type ext_in offers at the external aperture, and each read of an
+    eight-read train under distinct IDs held in flight, completes with an
+    error response, as do sixty-four reads (alternately single and eight-beat
+    bursts) and sixty-four writes over four IDs launched together and held in
+    flight there, and four writes launched together whose W trails the first
+    AW by 64 cycles. At the TRNG window every AxPROT and AxSIZE read, and
+    each of sixty-four held reads launched with sixty-four held writes, is
+    DECERR on every beat. The TRNG-window writes (each AxPROT and AxSIZE,
+    the sixty-four held with those reads, sixty-four held alone and four
+    W-lagged) are recorded by response code and not graded (``SMU_FCOV.adoc``,
+    Phase 2, states why). The eFuse shim word at the base of the external
+    aperture reads and writes back OKAY under every AxPROT, under
+    sixty-four reads and sixty-four writes over four IDs launched together and
+    held in flight, and in a sweep of a W-lagged write against a read whose AR
+    is delayed around the same lag. With the aperture restored a system-bus
+    read and write of the external aperture
     each report a bus error.
 S10: sixteen reads and sixteen writes, each under its own ID, are launched into SEP
     SRAM before the first response is taken, with RREADY and BREADY held back;
@@ -80,7 +87,14 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge, with_timeout
-from ocah_axi_vip import RESP_OKAY, RESP_SLVERR, AxiTimingProfile, worst_resp
+from ocah_axi_vip import (
+    RESP_DECERR,
+    RESP_OKAY,
+    RESP_SLVERR,
+    AxiTimingProfile,
+    resp_name,
+    worst_resp,
+)
 
 from seq_lib.smu_addr_map import (
     INBOUND0_END,
@@ -135,6 +149,7 @@ SRAM_SIZE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_SRAM_SIZE")
 ENTROPY_POOL_LOCAL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_ENTROPY_POOL_BASE_ADDR")
 SEP_EXTERNAL_LOCAL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EXTERNAL_BASE_ADDR")
 TRNG_LOCAL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_TRNG_BASE_ADDR")
+TRNG_WINDOW = c_header_u32(_SEP_ADDR_H, "SEP_TOP_TRNG_SIZE")
 EFUSE_SHIM_LOCAL = c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_BASE_ADDR")
 SMC_LOCAL_BASE = smc_base_config_u32("SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset")
 DMA_REGS = {
@@ -220,6 +235,15 @@ SEP_IN_ADDR_BITS = 56
 W_LAG_CYCLES = 64
 W_LAG_WRITES = 4
 COLLIDE_SPAN = 24
+
+
+def _beat_codes(resp) -> tuple[int, ...]:
+    """The response code of every beat, in order; empty if none is readable."""
+    if resp is None:
+        return ()
+    if isinstance(resp, (list, tuple)):
+        return tuple(int(code) for code in resp)
+    return (int(resp),)
 
 
 class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
@@ -511,6 +535,10 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         cells += [(trng, {"prot": p, "size": 2}) for p in range(8)]
         cells += [(trng + off, {"size": size}) for size, off in ((0, 1), (1, 2), (0, 3), (2, 4))]
         observed = []
+        # Every beat code of each TRNG-window read, and the response of each
+        # TRNG-window write.
+        trng_reads: list[tuple[int, ...]] = []
+        trng_writes: list[int] = []
         for n, (addr, attrs) in enumerate(cells):
             attrs = dict(attrs)
             beats = attrs.pop("beats", 1)
@@ -524,7 +552,12 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                     label=f"ext{n}{'w' if write else 'r'}",
                     **attrs,
                 )
-                observed.append(resp != RESP_OKAY)
+                if not trng <= addr < trng + TRNG_WINDOW:
+                    observed.append(resp != RESP_OKAY)
+                elif write:
+                    trng_writes.append(resp)
+                else:
+                    trng_reads.append((resp,))
         # A read train under eight IDs, all in flight at once, so the SEP's
         # inbound ID remap hands out every index it has.
         master.driver.set_timing(AxiTimingProfile(r_ready_delay=TRAIN_HOLD_CYCLES))
@@ -575,6 +608,10 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                 ]
                 for event in held + held_w:
                     await with_timeout(event.wait(), HELD_WAIT_NS, "ns")
+                if addr == trng:
+                    trng_reads += [_beat_codes(e.data.resp) for e in held]
+                    trng_writes += [worst_resp(e.data.resp) for e in held_w]
+                    continue
                 pick = max if name == "shim" else min
                 held_resp[name] = (
                     pick((worst_resp(e.data.resp) for e in held), default=RESP_SLVERR),
@@ -594,7 +631,10 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                 ]
                 for event in events:
                     await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
-                lagged += [worst_resp(e.data.resp) for e in events]
+                if addr == trng:
+                    trng_writes += [worst_resp(e.data.resp) for e in events]
+                else:
+                    lagged += [worst_resp(e.data.resp) for e in events]
         finally:
             master.driver.set_timing(AxiTimingProfile())
         observed += [resp != RESP_OKAY for resp in lagged]
@@ -633,11 +673,26 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
             ([(RESP_OKAY, RESP_OKAY)] * 10, True, True),
             evidence="CHK-AXIIN-SEP-SHIM",
         )
-        self._log(f"CHK-AXIIN-SEP-EXTERNAL {len(observed)} accesses errors={sum(observed)}")
+        # An unconnected ext_trng_axil is terminated with a DECERR slave
+        # (doc/integrator/src/smu.adoc, "External TRNG") and a crypto-region
+        # burst is DECERR on every beat (hw/sys/sep/doc/crypto.adoc). The
+        # write responses are recorded and not graded; SMU_FCOV.adoc, Phase 2,
+        # states why.
+        write_codes = {resp_name(c): trng_writes.count(c) for c in sorted(set(trng_writes))}
+        self._log(
+            f"OBSERVE-AXIIN-SEP-TRNG-WRITE {len(trng_writes)} TRNG-window writes "
+            f"responses={write_codes} (recorded, not graded)"
+        )
+        trng_decerr = [set(codes) == {RESP_DECERR} for codes in trng_reads]
+        self._log(
+            f"CHK-AXIIN-SEP-EXTERNAL {len(observed)} external-aperture accesses "
+            f"errors={sum(observed)}; {len(trng_reads)} TRNG-window reads "
+            f"DECERR={sum(trng_decerr)}"
+        )
         sb.expect_eq(
             "CHK-AXIIN-SEP-EXTERNAL",
-            observed,
-            [True] * len(observed),
+            (observed, trng_decerr),
+            ([True] * len(observed), [True] * len(trng_reads)),
             evidence="CHK-AXIIN-SEP-EXTERNAL",
         )
         self.steps["S9"] = True

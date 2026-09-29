@@ -382,6 +382,16 @@ where the fabric refuses them. They come back when the SEP fabric or SEP SRAM
 chapter states whether the fabric refuses non-incrementing bursts or the SRAM
 port serves them.
 
+The claim that inbound writes to the SEP TRNG window are refused with DECERR
+is Phase 2. `doc/integrator/src/smu.adoc` ("External TRNG") terminates an
+unconnected `ext_trng_axil` with a DECERR slave, and `hw/sys/sep/doc/memory_map.adoc`
+says every access in the window reaches the TRNG slave. The writes
+`smu_axi_in_sep_aperture_test` sends there are observed to return SLVERR, while
+its reads there return DECERR, and no specification text names SLVERR for
+them. The test checks the reads for DECERR and records the write responses
+without grading them. The claim comes back when the design answers those
+writes with DECERR or a specification states the code they return.
+
 === Closure Policy
 
 Coverage closes against a finished `all` run, not against a waiver. Every
