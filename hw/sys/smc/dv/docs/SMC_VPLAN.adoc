@@ -8578,6 +8578,9 @@ Drive `smc_cpu_l2_read_wedge_test_seq`. Each checker below is a named compare th
 |===
 
 *Pass Criteria*: all five checkers hold. Enrolled in: `all`, `hosted`, `cpu`.
+The leaf passes `+smc_front_port_r_arb_assertoff`, which holds off the
+front-port R arbiter's request-stability assertions for this leaf only; the
+withdrawal they would report is recorded under <<smc-known-limitations,Known Limitations>>.
 
 '''''
 
@@ -12032,6 +12035,7 @@ The cool-reset OUT names (`smc_cool_reset_from_primary_chiplet_test`,
 `smc_cool_reset_from_bmc_test`, `smc_cool_reset_x_cool_reset_test`) have rows
 in <<smc-deferred-disposition>>.
 
+[[smc-known-limitations]]
 === Known Limitations
 
 [cols=",,",options="header",]
@@ -12053,6 +12057,7 @@ in <<smc-deferred-disposition>>.
 |`feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by SMC |The lifecycle-gated JTAG eFuse matrix cannot observe that bit; the connection stays a negative item |Cover the bit once SMC consumes it
 |UART0 transmits two stop bits for a 5-bit word with `LCR.STB` set, where `uart_16550_main.rdl` describes 1.5 (#2121) |`smc_uart_baud_word_parity_format_test` measures the frame length on the TX pad for every format; for the two 5-bit `STB = 1` formats it admits either 1.5 or 2 stop bits, records which one was measured, and so does not claim the RDL count for them (one stop bit still fails). Every other format is held to the RDL count |Fix the transmitter or the RDL description under #2121, then drop the admitted alternative so the two formats are held to one count
 |`INTR_STATUS.LOG_WRITE_ERR` has no firmware-reachable stimulus in this wrap |The log-write AXI-Lite master targets the wrapper's own `uart_16550` block, which ties write-error to 0 and answers every write OKAY. `smc_fw_uart_log_engine_boundary_backpressure_test` covers length and TX backpressure only; `INTR_TEST.LOG_WRITE_ERR` proves the interrupt plumbing, not error detection |A bench-side fault injector on the log-write AXI-Lite B channel
+|A force-mode CPU reset withdraws the R beat the CPU is presenting to the front-port demux without `ready` (`cocotb/seq_lib/README_cpu_isolate_flush.md`, #2449) |`smc_cpu_l2_read_wedge_test` reaches that state on purpose, and the front-port R arbiter's request-stability assertions (`rr_arb_tree` `req1` and `lock_req`) report the withdrawal on the reset cycle. The leaf passes `+smc_front_port_r_arb_assertoff` and `tb_top` holds off that one arbiter instance's assertions for that leaf only; every other leaf keeps them, and the leaf's five checkers are unchanged |A CPU reset cannot preserve a beat the fabric side has stopped accepting, and the design owner records this as a limitation of force mode rather than a defect. Re-arm the checks if force mode ever holds or flushes the beat under `ready`
 |===
 
 [[smc-held-out-testcases]]
