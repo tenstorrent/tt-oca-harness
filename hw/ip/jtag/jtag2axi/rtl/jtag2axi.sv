@@ -210,6 +210,11 @@ module jtag2axi #(
     return 1 << size_val;  // 2^size_val
   endfunction
 
+  // READ and WRITE are the only op codes that issue an AXI transfer.
+  function automatic logic is_axi_op(input logic [1:0] op);
+    return (op == JTAG_OP_READ) || (op == JTAG_OP_WRITE);
+  endfunction
+
   localparam int SHARED_SR_LEN = max4(
       AXISINGLEOP_LEN,
       AXISERIESCTRL_LEN,
@@ -460,12 +465,14 @@ module jtag2axi #(
   //   replaced). Its AXI response must complete normally on the bus but
   //   must not be pushed into the freshly flushed series-rsp FIFO.
   logic                            current_tx_stale_tclk;
-  // Combinational pulse asserted on a CTRL Update-DR with a non-NOP op.
-  // A new CTRL programming flushes all queued series request/response
+  // Combinational pulse asserted on a CTRL Update-DR with a READ or WRITE
+  // op. A new CTRL programming flushes all queued series request/response
   // state from any prior programming.
   logic                            ctrl_flush_pulse_tclk;
+  logic [1:0]                      series_ctrl_update_op_tclk;
+  logic                            series_mode_is_axi_tclk;
   // `series_reads_pushed_tclk`: total series read requests enqueued via
-  //   JTAG Update-DR since the last non-NOP CTRL programming. Bounded at
+  //   JTAG Update-DR since the last READ or WRITE CTRL programming. Bounded at
   //   `pipeline_depth + 1` so that a host that issues more SeriesData
   //   scans than the configured pipeline depth (e.g. the standard
   //   "1 issue + N readback" pattern) does not over-queue requests and
@@ -895,9 +902,11 @@ module jtag2axi #(
   //--------------------------------------------------------------------------
   // Series Request FIFO Storage (TCK)
   //--------------------------------------------------------------------------
+  assign series_ctrl_update_op_tclk =
+        update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW];
+  assign series_mode_is_axi_tclk = is_axi_op(series_ctrl_op_mode_tclk_r);
   assign ctrl_flush_pulse_tclk = update_en_i && !security_disable_i &&
-        select_AXISeriesCtrl_i &&
-        (update_register_q_tclk[AXISERIESCTRL_OP_HIGH:AXISERIESCTRL_OP_LOW] != JTAG_OP_NOP);
+        select_AXISeriesCtrl_i && is_axi_op(series_ctrl_update_op_tclk);
 
   localparam int unsigned ReqFifoDepth = FIFO_DEPTH + 1;
   localparam int unsigned ReqFifoWidth = $bits(series_request_fifo_entry_t);
@@ -1387,12 +1396,12 @@ module jtag2axi #(
                          FIFO_DEPTH[PIPELINE_DEPTH_FIELD_BITS-1:0] :
                          update_register_q_tclk[AXISERIESCTRL_PD_HIGH:AXISERIESCTRL_PD_LOW];
 
-        // Only reprogram series CTRL state (including the read
-        // preload counter) on a real op. A NO_OP update (issued by
-        // CTRL TDR read-backs) must not clobber preload/address/
-        // pipeline-depth state accumulated by the in-flight series
-        // operation.
-        if (op_val != JTAG_OP_NOP) begin
+        // Only a READ or WRITE op reprograms series CTRL state
+        // (including the read preload counter). A NOP or reserved
+        // update, which CTRL TDR read-backs issue, leaves the
+        // preload/address/pipeline-depth state accumulated by the
+        // in-flight series operation intact.
+        if (is_axi_op(op_val)) begin
           series_ctrl_size_tclk_r_d           = update_register_q_tclk[AXISERIESCTRL_SIZE_HIGH:AXISERIESCTRL_SIZE_LOW];
           series_ctrl_pipeline_depth_tclk_r_d = pd_val;
           series_ctrl_address_tclk_r_d        = update_register_q_tclk[AXISERIESCTRL_ADDR_HIGH:AXISERIESCTRL_ADDR_LOW];
@@ -1410,8 +1419,8 @@ module jtag2axi #(
           sticky_axi_status_tclk_d      = CAPTURE_STATUS_SUCCESS;
           sticky_axi_status_full_tclk_d = 1'b0;
         end
-      end else if (select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i ||
-                         select_AXISeriesDataWithErrorStatus_i) begin
+      end else if ((select_AXISeriesDataIncr_i || select_AXISeriesDataNoIncr_i ||
+                          select_AXISeriesDataWithErrorStatus_i) && series_mode_is_axi_tclk) begin
         automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] current_mapped_data_len_local;
         automatic int num_bytes_to_copy;
         automatic logic [DATA_WIDTH-1:0] data_val;
