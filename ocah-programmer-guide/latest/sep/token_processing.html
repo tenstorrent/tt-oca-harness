@@ -213,7 +213,7 @@ transitions as well as disable security features. Tokens are:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Security Disable (SEC_DIS) bypasses fuse sensing</p>
+<p>Security Disable (SEC_DIS) opens debug access without waiting for fuse sensing</p>
 </li>
 <li>
 <p>Package RMA (RMA_SIP) used in LC state machine</p>
@@ -224,12 +224,11 @@ transitions as well as disable security features. Tokens are:</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The tokens directly affect the life cycle state machine processing and
-fuse sensing. so token processing is naturally done in the OTP
-Controller. Tokens are entered via the JTAG port into a dedicated
-eight-word register array per token, held in the eFuse MMR block, for
-match processing described in the next section. Those arrays have the
-following important properties:</p>
+<p>The tokens directly affect the life cycle state machine processing, so
+token processing is naturally done in the OTP Controller. Tokens are
+entered via the JTAG port into a dedicated eight-word register array per
+token, held in the eFuse MMR block, for match processing described in the
+next section. Those arrays have the following important properties:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -394,7 +393,9 @@ report idle rather than a stale result while a digest is in flight.</p>
 because their expected digests come from the OTP shadow registers. The
 SEC_DIS comparison does not, because its expected digest comes from
 gates. That is what lets SEC_DIS unlock a part whose fuse sensing is
-broken.</p>
+broken. This applies only to the token compare and the feature-control
+override. SEP reset still waits for fuse sensing, or for the IC_RESET
+<code>sep_reset_n</code> override.</p>
 </div>
 </div>
 </div>

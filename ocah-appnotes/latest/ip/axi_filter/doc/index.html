@@ -434,6 +434,20 @@ never stalls on a filter denial.</p>
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="axi-traffic-filter-lock"><a class="anchor" href="#axi-traffic-filter-lock"></a><a class="link" href="#axi-traffic-filter-lock">5. Locking a Filter Entry</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Setting <code>FILTER_CONFIG.locked</code> freezes a filter entry. The bit is
+write-once (<code>woset</code>): once set it cannot be cleared. While it is set,
+every write to that entry&#8217;s <code>FILTER_CONFIG</code>, <code>START_ADDR</code> and <code>END_ADDR</code>
+registers is steered to the same AXI error subordinate as a blocked
+transaction and terminates with a <code>DECERR</code> response; reads still return
+the locked configuration. This holds for the SMC and SEP filter
+instances alike.</p>
+</div>
+</div>
+</div>
 </article>
   </div>
 </main>

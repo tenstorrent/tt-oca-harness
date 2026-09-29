@@ -227,8 +227,16 @@ into the SEP via the JTAG port, hashed, and redundantly compared against an
 embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
 SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
 debug access, and the feature-control output follows the SEC_DIS rules in the
-Life Cycle Controller chapter. Once SEC_DIS is active,
-the SEP can boot even if the fuse sense logic never completes.</p>
+Life Cycle Controller chapter.</p>
+</div>
+<div class="paragraph">
+<p>A match does not release the SEP reset, which stays held until fuse sensing
+completes. To boot a part whose fuse sensing does not complete, override
+<code>sep_reset_n</code> through the SEP slice of the IC_RESET TDR (see
+<a href="../dtp/jtag.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter). The override and the token
+match are independent JTAG steps: the override alone releases the reset but
+leaves the life-cycle control closed, so recovering such a part for debug
+takes both.</p>
 </div>
 </div>
 </div>

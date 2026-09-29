@@ -251,10 +251,14 @@ allowing for logging capabilities.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-registers"><a class="anchor" href="#sec-registers"></a><a class="link" href="#sec-registers">4. Registers</a></h2>
+<h2 id="sec-registers"><a class="anchor" href="#sec-registers"></a><a class="link" href="#sec-registers">4. Registers — LCR.DLAB=0, Read Direction</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The tables below describe the register map and each register in detail.</p>
+<p>The UART 16550 follows the 8250 layout: single offsets map to different registers by
+access direction and by <code>LCR.DLAB</code>. This table is the <code>LCR.DLAB=0</code> read view at wrapper
+offset <code>+0x100</code>; write-only and divisor-latch aliases at the same offsets are in the
+next section. When this wrapper is arrayed by <code>uart_wrap</code>, instance <em>N</em> adds a further
+<code>N * 0x400</code>.</p>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
@@ -455,7 +459,81 @@ allowing for logging capabilities.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-interrupts"><a class="anchor" href="#sec-interrupts"></a><a class="link" href="#sec-interrupts">5. Interrupts</a></h2>
+<h2 id="sec-register-aliases"><a class="anchor" href="#sec-register-aliases"></a><a class="link" href="#sec-register-aliases">5. Registers — Write-Only and LCR.DLAB=1 Views</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><code>THR</code> (write) shares <code>+0x100</code> with <code>RBR</code> (read); <code>FCR</code> (write) shares <code>+0x108</code> with
+<code>IIR</code> (read); <code>DLL</code>/<code>DLM</code> occupy <code>+0x100</code>/<code>+0x104</code> when <code>LCR.DLAB=1</code>.</p>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_main_wo">UART 16550 Main Write-Only Address Map</h2>
+<p>Contains the write-only registers accessible only when `LCR.DLAB = 0`.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#THR">THR</a></td><td>W</td><td>Transmitter Holding Register</td></tr>
+<tr><td>0x8</td><td><a href="#FCR">FCR</a></td><td>W</td><td>FIFO Control Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="THR">THR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DATA</td><td>W</td><td>0x0</td><td>Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this<br>field points to the top of the TX FIFO. Otherwise, this field points to a<br>single-byte Transmitter Holding Register.</td></tr>
+</table>
+<h3 id="FCR">FCR</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:6</td><td>RCVR_TRIGGER</td><td>W</td><td>0x0</td><td>Receiver FIFO Trigger Level (Least Significant 2 Bits). To configure the most<br>significant 2 bits, use the `CTRL.RCVR_TRIGGER_MS2B` register field. The<br>configurations for the trigger levels are:<br>* `0x0` -    1 character<br>* `0x1` -    4 characters<br>* `0x2` -    8 characters<br>* `0x3` -   14 characters<br>* `0x4` -   32 characters<br>* `0x5` -   64 characters<br>* `0x6` -  128 characters<br>* `0x7` -  256 characters<br>* `0x8` -  512 characters<br>* `0x9` - 1024 characters<br>* `0xA` - 2048 characters<br>* `0xB` - 4096 characters</td></tr>
+<tr><td>5:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>3</td><td>DMA_MODE_SELECT</td><td>W</td><td>0x0</td><td>DMA mode select:<br>* `0` - DMA Mode 0<br>* `1` - DMA Mode 1</td></tr>
+<tr><td>2</td><td>XMIT_FIFO_RESET</td><td>W</td><td>0x0</td><td>Transmitter FIFO Reset. Writing `1` clears the TX FIFO.</td></tr>
+<tr><td>1</td><td>RCVR_FIFO_RESET</td><td>W</td><td>0x0</td><td>Receiver FIFO Reset. Writing `1` clears the RX FIFO.</td></tr>
+<tr><td>0</td><td>FIFO_ENABLE</td><td>W</td><td>0x0</td><td>FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,<br>disables the FIFOs (Non-FIFO Mode).</td></tr>
+</table>
+</div>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<div class="ocah-reg-html">
+<style>
+.ocah-reg-html table{width:100%;border-collapse:collapse;background:#f4f4f4}
+.ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
+.ocah-reg-html th{background:#81BCE5;text-align:left}
+</style>
+<h2 id="regmap-uart_16550_dl">UART 16550 Divisor Latch Address Map</h2>
+<p>Contains the registers accessible only when `LCR.DLAB = 1`.</p>
+<p><strong>Register List:</strong></p>
+<table>
+<tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
+<tr><td>0x0</td><td><a href="#DLL">DLL</a></td><td>RW</td><td>Divisor Latch Least Significant Byte Register</td></tr>
+<tr><td>0x4</td><td><a href="#DLM">DLM</a></td><td>RW</td><td>Divisor Latch Most Significant Byte Register</td></tr>
+</table>
+<p><strong>Register Details:</strong></p>
+<h3 id="DLL">DLL</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DLL</td><td>RW</td><td>0x0</td><td>Divisor Latch Least Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
+</table>
+<h3 id="DLM">DLM</h3>
+<table>
+<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
+<tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>7:0</td><td>DLM</td><td>RW</td><td>0x0</td><td>Divisor Latch Most Significant Byte. Baud rate is calculated as<br>`baud_rate = system_clock_frequency / (16 * (divisor + 1))`. When the divisor is set<br>to `0`, the transmitter and receiver logic are disabled.</td></tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sec-interrupts"><a class="anchor" href="#sec-interrupts"></a><a class="link" href="#sec-interrupts">6. Interrupts</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>TODO</p>
@@ -463,10 +541,20 @@ allowing for logging capabilities.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sec-programmers-guide"><a class="anchor" href="#sec-programmers-guide"></a><a class="link" href="#sec-programmers-guide">6. Programmer&#8217;s Guide</a></h2>
+<h2 id="sec-programmers-guide"><a class="anchor" href="#sec-programmers-guide"></a><a class="link" href="#sec-programmers-guide">7. Programmer&#8217;s Guide</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>TODO</p>
+<p>When the Log Engine is enabled (<code>GEN_LOG_ENGINE=1</code>, the default), the UART transmit
+holding register (<code>THR</code>, at wrapper offset <code>0x100</code>) is written by two initiators: the
+CPU through the register interface, and the Log Engine through an internal 2:1 AXI4-Lite
+arbiter. The Log Engine&#8217;s write target is not fixed in hardware — it is taken from
+<code>LOG_WRITE_ADDR</code> (offset <code>0x210</code>), which firmware must program to the <code>THR</code> address for
+log output to reach the UART.</p>
+</div>
+<div class="paragraph">
+<p>The arbiter serialises the two initiators, but no hardware lock protects the shared
+register. Firmware must not write <code>THR</code> directly while the Log Engine is active, or CPU
+writes and log output will interleave on the transmit path.</p>
 </div>
 </div>
 </div>

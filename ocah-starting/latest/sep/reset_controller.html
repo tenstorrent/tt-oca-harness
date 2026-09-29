@@ -329,7 +329,10 @@ reset with a transaction in flight.</p>
 </div>
 <div class="paragraph">
 <p>The sequenced resets are ANDed with <code>sep_reset_n</code>, which holds every IP in reset
-until eFuse sensing completes during boot. The per-IP JTAG override muxes are
+until eFuse sensing completes during boot. JTAG can drive <code>sep_reset_n</code> in
+place of the eFuse reset through the SEP slice of the IC_RESET TDR (see
+<a href="../dtp/jtag.html#dtp-ic-reset-overrides" class="xref page">IC_RESET Overrides</a> in the DTP chapter), which releases it on a part
+whose fuse sensing does not complete. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.</p>
 </div>
 </div>
