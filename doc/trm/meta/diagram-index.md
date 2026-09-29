@@ -74,7 +74,7 @@ and token-processing figures remain canonical.
 
 | Figure | Description | Authored page | Asset | Notes |
 | --- | --- | --- | --- | --- |
-| FIG001 | SMC top-level microarchitecture | [hw/sys/smc/doc/overview.adoc](../../../hw/sys/smc/doc/overview.adoc) | [hw/sys/smc/doc/assets/smc_top.png](../../../hw/sys/smc/doc/assets/smc_top.png) | Existing image has identical pixels to the supplied draw.io export |
+| FIG001 | SMC top-level microarchitecture | [hw/sys/smc/doc/overview.adoc](../../../hw/sys/smc/doc/overview.adoc) | [hw/sys/smc/doc/assets/smc-top-level.svg](../../../hw/sys/smc/doc/assets/smc-top-level.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG004 | Input fabric topology and routing | [hw/sys/smc/doc/fabric.adoc](../../../hw/sys/smc/doc/fabric.adoc) | [hw/sys/smc/doc/assets/smc-input-fabric.svg](../../../hw/sys/smc/doc/assets/smc-input-fabric.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG005 | Local fabric topology and CSR/peripheral islands | [hw/sys/smc/doc/fabric.adoc](../../../hw/sys/smc/doc/fabric.adoc) | [hw/sys/smc/doc/assets/smc-local-fabric.svg](../../../hw/sys/smc/doc/assets/smc-local-fabric.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG006 | Output fabric topology and routing | [hw/sys/smc/doc/fabric.adoc](../../../hw/sys/smc/doc/fabric.adoc) | [hw/sys/smc/doc/assets/smc-output-fabric.svg](../../../hw/sys/smc/doc/assets/smc-output-fabric.svg) | Redrawn as hand-authored SVG from the imported figure |
