@@ -1854,7 +1854,7 @@ module smu_wrapper_uvm_top
   assign xtrig_ctm_src_ack  = '0;
   assign xtrig_clk_stop_req = 1'b0;
 
-  // Telemetry ATB channel 0 idle.
+  // Every telemetry ATB receiver idle.
   assign tb_telemetry_atdata  = '0;
   assign tb_telemetry_atid    = '0;
   assign tb_telemetry_atvalid = '0;
