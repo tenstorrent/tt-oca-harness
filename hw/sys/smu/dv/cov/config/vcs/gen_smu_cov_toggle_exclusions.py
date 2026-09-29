@@ -35,16 +35,17 @@ writes, and each class below states that fact and what would retire it:
   registers make unreachable by re-encoding the word they export; its
   condition rows in `smu.sv` go with it.
 * ATOP-DISABLED: AWATOP, which the crossbar is built not to carry.
-* FIXED-OUTBOUND-ATTRIBUTES: the AXI attributes on the SMC's outbound path,
-  up to the crossbar port only the SMC feeds, that both SMC masters a bench
-  can drive hold constant. Past that port the channel also carries SEP
+* FIXED-OUTBOUND-ATTRIBUTES: bench scope: the AXI attributes on the SMC's
+  outbound path, up to the crossbar port only the SMC feeds, that both SMC
+  masters a bench can drive hold constant; SMC CPU traffic retires it. Past that port the channel also carries SEP
   traffic, so it stays graded.
 * SEP-INITIATOR-FIXED: AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID
   bits 2 and 5 on the SEP's outbound and SMC channels, which every SEP
   initiator that reaches them drives as constants.
-* OUTBOUND-FIXED-ATTRIBUTES: AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the
-  crossbar's ext_out port, which the SEP initiators and the SMC masters a
-  bench can drive all hold constant.
+* OUTBOUND-FIXED-ATTRIBUTES: bench scope for the SMC half: AxQOS, AxLOCK,
+  AxBURST[1] and AxPROT[2:1] on the crossbar's ext_out port, which the SEP
+  initiators and the SMC masters a bench can drive all hold constant; SMC CPU
+  traffic retires it.
 * DECERR-SLAVE-RESPONSE, SEP-EXTERNAL-WINDOW, TRNG-WINDOW, SMC-EXTERNAL-WINDOW:
   the response code of the DECERR slaves on the SEP external and TRNG ports, and
   the address bits the decode that feeds each window holds fixed.
@@ -58,7 +59,8 @@ writes, and each class below states that fact and what would retire it:
 * EFUSE-SHIM-CSR-OKAY: the response code of the eFuse bank-control CSR port,
   which the shim's register block never makes an error.
 * EFUSE-SHIM-DEBUG: the eFuse shim debug-bus bits that only a read state the
-  machine lacks or a counter fault would set.
+  machine lacks (bit 3, a design fact) or a counter fault would set (bits 4
+  and 12, bench scope: this bench injects no counter fault).
 * DTP-CSR-OFFSET: the DTP CSR address bits the window rebase keeps 0.
 * TRNG-R-ACCEPT: RREADY on the external TRNG port, which the width converter
   above it keeps high.
@@ -367,6 +369,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         None,
         None,
     ),
+    # Bench scope: the leaves reach this path only through the two SMC masters
+    # named in the fact; SMC CPU traffic retires the class.
     (
         "FIXED-OUTBOUND-ATTRIBUTES",
         re.compile(
@@ -470,6 +474,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         None,
         ((2, 2), (5, 5)),
     ),
+    # Bench scope for the SMC half: the leaves reach ext_out from the SMC only
+    # through the two masters named in the fact; SMC CPU traffic retires it.
     (
         "OUTBOUND-FIXED-ATTRIBUTES",
         re.compile(rf"^{EXT_OUT}\.(aw|ar)\.(qos|lock)$"),
@@ -483,6 +489,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         None,
         None,
     ),
+    # Bench scope for the SMC half: the leaves reach ext_out from the SMC only
+    # through the two masters named in the fact; SMC CPU traffic retires it.
     (
         "OUTBOUND-FIXED-ATTRIBUTES",
         re.compile(rf"^{EXT_OUT}\.(aw|ar)\.burst$"),
@@ -496,6 +504,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         None,
         ((1, 1),),
     ),
+    # Bench scope for the SMC half: the leaves reach ext_out from the SMC only
+    # through the two masters named in the fact; SMC CPU traffic retires it.
     (
         "OUTBOUND-FIXED-ATTRIBUTES",
         re.compile(rf"^{EXT_OUT}\.(aw|ar)\.prot$"),
@@ -621,6 +631,8 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         None,
         None,
     ),
+    # Bit 3 is a design fact; bits 4 and 12 are bench scope, since this bench
+    # injects no prim_count fault.
     (
         "EFUSE-SHIM-DEBUG",
         re.compile(r"^(sep|smc)_efuse_debug_bus_o$"),

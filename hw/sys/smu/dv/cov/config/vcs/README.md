@@ -82,16 +82,16 @@ from urg's `-dump full_exclusions tgl` template of the merged database, so the
 module checksum and every field signature come from urg, and `--check` tells
 whether the committed file is stale.
 
-| Class | Fields | Why they are not the wrapper's to toggle |
-|---|---|---|
-| `AXI-USER` | `aw/ar/w/r/b.user` on both crossbar ports | the SMU neither reads nor writes the user sideband |
-| `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through untouched; address and id stay graded because the crossbar decodes and remaps them |
-| `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | consumed by the SMC telemetry receivers, graded there |
-| `DFT` | `test_en_i`, `scan_rst_ni` | held at their functional value in simulation |
-| `RTL-CONSTANT` | `lsio_interface_select_o` | driven from a constant inside the SMU |
-| `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union; urg lists the same 8192 flops under three views, and `values` carries every bit once |
-| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | no wrapper-level observable; each is graded on the SEP bench |
-| `REGISTER-WIDTH` | `sep_region_size_o[55:32]` | `sep_cpu_ctrl` SEP_REGION_SIZE carries its size in [31:0] and reserves [63:32], so the port's upper bits are zero-extension; `smu_toggle_exclusions.el` takes the same bits of `smu`'s port |
+| Class | Fields | Why they are not the wrapper's to toggle | Retired by |
+|---|---|---|---|
+| `AXI-USER` | `aw/ar/w/r/b.user` on both crossbar ports | the SMU neither reads nor writes the user sideband: the 12-bit user word (`smu_axi_xbar_pkg.sv` 50) rides beside each channel through the pulp crossbar (`smu_axi_xbar.sv` 102-134) and the ID converters (`smu.sv` 1125-1171), and no SMU unit reads it | an SMU decode or remap that reads the user sideband |
+| `AXI-DATA` | `w.data`, `w.strb`, `r.data` on both crossbar ports | the data path passes through the crossbar (`smu_axi_xbar.sv` 102-134) and the ID converters (`smu.sv` 1125-1171) untouched; address and id stay graded because the crossbar decodes and remaps them | an SMU unit that inspects or rewrites data or strobe |
+| `ATB-PAYLOAD` | `telemetry_atdata_i`, `telemetry_atid_i` | `smu_wrapper.sv` (456-457) and `smu.sv` (834-835) connect both words straight to the SMC telemetry receivers, which consume them and are graded on the SMC bench | SMU logic that reads the ATB data or id, or the receivers moving out of the SMC |
+| `DFT` | `test_en_i`, `scan_rst_ni` | bench scope: `tb_wrapper_top.sv` (1703-1704) ties them to their functional values 0 and 1, and no leaf exercises scan insertion or the scan-mode reset bypass | a DFT bench that drives scan enable and scan reset |
+| `RTL-CONSTANT` | `lsio_interface_select_o` | driven from a constant inside the SMU: the LSIO select follows the SPI enable `smu.sv` (1193) assigns 1 with SEP present; `-cm_noconst` keeps it because the constant is assigned inside the SMU | the SPI enable becoming programmable |
+| `UNION-ALIAS` | `smc_shadow_regs_o.locks.*`, `smc_shadow_regs_o.fields.*` | `efuse_map_t` is a packed union (`smc_efuse_pkg.sv` 170-174); urg lists the same 8192 flops under three views, and `values` carries every bit once | `efuse_map_t` ceasing to be a union |
+| `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, `sep_lockstep_*`, `sep_ext_interrupts_i`, `entropy_rosc_sample_clk_i`, `lc_sigint_err_o` | `smu.sv` only routes them between `u_sep` and its ports (989-998, 1028, 1049, 1185-1188); each is graded on the SEP bench. Bench scope beside that: the SPI host and CPU trace move only under SEP firmware that drives them, the lockstep pair is inert unless the SEP CPU is built with `RV_LOCKSTEP_ENABLE` (`sep_cpu.sv` 110-115), and `lc_sigint_err_o` needs a fault injected in the SEP (`LC-SIGINT-ENCODED` below) | SMU logic that consumes one of them |
+| `REGISTER-WIDTH` | `sep_region_size_o[55:32]` | `sep_cpu_ctrl` SEP_REGION_SIZE carries its size in [31:0] and reserves [63:32], so the port's upper bits are zero-extension; `smu_toggle_exclusions.el` takes the same bits of `smu`'s port | SEP_REGION_SIZE.size widening past bit 31 |
 
 Everything else on the port list is graded per field, both directions, and a
 field that stays uncovered is a stimulus gap for a leaf on this bench.
@@ -125,16 +125,23 @@ is taken only where the report says Not Covered. Fields
 | Class | Fact | Retired by |
 |---|---|---|
 | `MEM-MACRO` | data, mask, strobe, parity and ECC words of the SMC and SEP RAM, ROM and TCM interfaces; `smu.sv` connects each such `u_smc`/`u_sep` port straight to its own port and `smu_wrapper.sv` connects that to `hw/top/smc_ip_integration.sv` or `hw/top/sep_ip_integration.sv`, where the macros are; no SMU logic reads or writes the words | an SMU process on these words, or the macros moving under `u_smu` |
+| `MEM-MACRO-CONTROL` | address, request, enable, write-enable, mode and handshake fields of the same interfaces; `smu.sv` (867-920, 1000-1041) connects each interface whole between `u_smc` or `u_sep` and its own port, `smu_wrapper.sv` carries it whole to the macros, and no SMU logic reads or drives a field; the rows left uncovered record which rows the owning CPU or controller touched, which the SMC and SEP benches grade | an SMU process on one of these interfaces, or a macro moving under `u_smu` |
+| `AXSIZE-BUS-WIDTH` | AxSIZE[2] of every AXI4 channel in scope: each carries a 64-bit data bus (`smu_axi_xbar_pkg.sv` 31 and the `smc_pkg`/`sep_pkg` channel types), and AXI4 allows no transfer size wider than the bus, so AxSIZE stays at or below 3 | an AXI4 channel wider than 64 bits |
+| `SEP-OTP-DBG-TIED` | the SMC and SEP OTP bridge terms of the SEP debug-disable vector in `smu`; `sep_lifecycle_ctrl.sv` (264-265) assigns both 1'b0 | `sep_lifecycle_ctrl` driving either term from the lifecycle state |
+| `EXT-TRNG-STREAM-TIED` | the external TRNG AXI-stream requests into the SEP; `hw/top/sep_ip_integration.sv` (773) assigns every stream `'{default: '0}` | an integration shell that connects an external TRNG stream source |
+| `SEP-DEBUG-LANES` | bits [383:0] of the external debug bus in `smu`, the SEP half: `sep.sv` (1186-1275) packs SEP-internal status into 24 sixteen-bit lanes and `smu.sv` (1382-1385) only concatenates it under the adopter's bits for the SMC debug mux; the SEP bench grades each source | SMU logic that reads a SEP debug lane |
+| `JTAG2AXI-FIXED` | the AXI attributes the DTP JTAG2AXI bridges drive as constants -- AxID 0, AxLEN 0, INCR, AxLOCK 0, AxCACHE 4'b0010, AxPROT 3'b000, AxQOS and AxREGION 0 (`jtag2axi.sv` 141-142, 1185-1219, and 76/104 for the AXI4-Lite prot outputs) -- on the nets `smu.sv` (711-716, 791-794, 963) connects straight from each bridge to its target; only the bits those constants hold at 0 are taken | a JTAG2AXI bridge that programs any of these attributes |
 | `AXI-USER` | the user sideband, which the pulp crossbar and the ID converters copy beside the channel | an SMU decode or remap that reads it |
 | `AXI-DATA` | write data, write strobe and read data of every AXI and AXI-Lite channel; the SMU decodes addresses and converts ids and passes data through | an SMU unit that inspects or rewrites data or strobe |
 | `RTL-CONSTANT` | `lsio_interface_select_o` following the SPI enable `smu.sv` assigns 1 with SEP present | the SPI enable becoming programmable |
 | `UNION-ALIAS` | the `locks` and `fields` views of the packed-union eFuse shadow map; `values` stays graded | `efuse_map_t` ceasing to be a union |
 | `SEP-OWNED` | `sep_io_spi_req_o`, `sep_cpu_trace_o`, the lockstep pair, `sep_ext_interrupts_i` and `entropy_rosc_sample_clk_i`, which `smu.sv` only routes and the SEP bench grades | SMU logic consuming one of them |
+| `REGISTER-WIDTH` | bits [55:32] of `smu`'s `sep_region_size_o`: `sep_cpu_ctrl` SEP_REGION_SIZE carries its size in [31:0] and reserves [63:32], so the 56-bit port is that field zero-extended, and `smu.sv` hands the crossbar only [31:0] | SEP_REGION_SIZE.size widening past bit 31 |
 | `LC-SIGINT-ENCODED` | design fact: `efuse_shadow_regs.sv` (282-285, 350) keeps the raw 4-bit LC_STATE and re-encodes it with `prim_diff_encode_multi`, so the word the SEP exports is always a valid differential pair and the decoders in `sep_lifecycle_ctrl.sv` and `smc_efuse_wrapper.sv` fire only on corruption in flight. Takes `lc_sigint_err_o`, `sep_lc_sigint_err` and `efuse_lc_sigint_err` in `smu`, and the uncovered rows of the `smu.sv` assignments to `lc_sigint_err_o`, which the generator finds in the source | a fault-injection bench that corrupts the exported pair |
 | `ATOP-DISABLED` | `smu_axi_xbar.sv` (131) builds the crossbar with `ATOPs(1'b0)` and `tb_wrapper_top.sv` ties the inbound AWATOP to 0; takes every `aw.atop` field | a crossbar built with ATOPs enabled |
-| `FIXED-OUTBOUND-ATTRIBUTES` | AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smc_output_axi_req` and the crossbar's `smc_out` port; both SMC masters a toolchain-free leaf drives hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159). On the crossbar's `ext_out` side and `smu_axi_out` SEP traffic moves AxCACHE and AxREGION, so only the fields `OUTBOUND-FIXED-ATTRIBUTES` names are taken there | outbound traffic from the SMC CPU |
+| `FIXED-OUTBOUND-ATTRIBUTES` | bench scope: AxCACHE, AxPROT, AxQOS, AxREGION, AxLOCK and AxBURST on `smc_output_axi_req` and the crossbar's `smc_out` port; the leaves reach that path only through the two SMC masters a toolchain-free leaf drives, which hold them constant (`jtag2axi.sv` 1184-1216, the iDMA frontend `idma_reg.sv.tpl` 155-159). On the crossbar's `ext_out` side and `smu_axi_out` SEP traffic moves AxCACHE and AxREGION, so only the fields `OUTBOUND-FIXED-ATTRIBUTES` names are taken there | outbound traffic from the SMC CPU |
 | `SEP-INITIATOR-FIXED` | AxLEN, AxLOCK, AxQOS, AxBURST[1], AxPROT[2:1] and ID bits 2 and 5 on the SEP's outbound channel up to the crossbar's `sep_out` port and on the dedicated SEP-to-SMC channel. Only the load/store unit, the debug system bus and the secure DMA reach them (`sep_local_axi_xbar_pkg.sv` 140-146); the load/store unit issues AxLEN 0, INCR, AxLOCK 0, AxQOS 0, AxPROT 3'b001 and a bus-buffer index below four as ID (`el2_lsu_bus_buffer.sv` 213, 519, 878-904), the system bus the same attributes with ID 0 (`el2_dbg.sv` 736-770), the DMA AxPROT 0 (`tlul_to_axi_lite.sv` 158) with FIXED and zero AxLEN, AxLOCK, AxQOS and ID (`axi_lite_to_axi.sv` 38-66); the crossbar puts an initiator index of at most 3 in ID bits [5:3] | a SEP initiator on these channels that issues bursts, locks, QoS, non-secure or instruction accesses, or IDs of four or more |
-| `OUTBOUND-FIXED-ATTRIBUTES` | AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the crossbar's `ext_out` port and `smu_axi_out`, which carry only SMC and SEP traffic; the two SMC masters a toolchain-free leaf drives hold them at 0 (`jtag2axi.sv` 1184-1216, `idma_reg.sv.tpl` 134 and 155-159) and so does every SEP initiator | outbound traffic from the SMC CPU |
+| `OUTBOUND-FIXED-ATTRIBUTES` | bench scope for the SMC half: AxQOS, AxLOCK, AxBURST[1] and AxPROT[2:1] on the crossbar's `ext_out` port and `smu_axi_out`, which carry only SMC and SEP traffic; the two SMC masters a toolchain-free leaf drives hold them at 0 (`jtag2axi.sv` 1184-1216, `idma_reg.sv.tpl` 134 and 155-159) and so does every SEP initiator | outbound traffic from the SMC CPU |
 | `DECERR-SLAVE-RESPONSE` | the response code of the SEP external aperture and the external TRNG window: `hw/top/sep_ip_integration.sv` (760-795) terminates both in DECERR slaves, which drive the code as a constant (`axi_err_slv.sv` 145, 197) | an integration that connects a peripheral to either port |
 | `SEP-EXTERNAL-WINDOW` | address bits [31:29] of the SEP external aperture: the local crossbar sends only `0x2000_0000`-`0x3FFF_FFFF` there (`sep_local_axi_xbar.sv` 192-196), so bits 31:30 stay 0 and bit 29, 1 on every request, never falls; only that direction of bit 29 is taken | a local crossbar rule that widens the aperture |
 | `TRNG-WINDOW` | address bits [31:12] of the external TRNG window: the crypto interconnect sends only single-beat accesses to `0x1091_7000`-`0x1091_7FFF` there (`sep_crypto_pkg.sv` 113-121, `sep_crypto_axi_interconnect.sv` 205-214); a 0 bit of the base is taken in both directions, a 1 bit only falling | a TRNG window that moves or grows past 4 KiB |
@@ -143,7 +150,7 @@ is taken only where the report says Not Covered. Fields
 | `SEP-EXTERNAL-ID` | ID bit 2 on the SEP external aperture port: the local crossbar prepends the initiator index above a 3-bit ID (`sep_local_axi_xbar_pkg.sv` 22-23, 141-145), and the load/store unit (bus-buffer index below four, `el2_lsu_bus_buffer.sv` 213), system bus and DMA (ID 0, `el2_dbg.sv` 736-770, `sep_dma_wrap.sv` 274-285) and the inbound remapper (four IDs, `sep_system_peripherals.sv` 642) never set it | an initiator of the external aperture with IDs of four or more |
 | `ZEROER-WRITE-ONLY` | read ID bit 3 on the SMC's outbound path: the data accelerator mux puts the accelerator index there (`smc_data_accelerator_wrap.sv` 234-249; the zeroer is 1, `smc_pkg.sv` 334-335), the other input-fabric ports zero-extend into it (`prim_axi_id_prepend_wrap.sv` 35, 54; `axi_lite_to_axi.sv` 57-64), and the zeroer never reads (`zeroer.sv` 445-446) | a data accelerator at index 1 that reads |
 | `EFUSE-SHIM-CSR-OKAY` | the response code of the eFuse bank-control CSR port: the shim answers from its register block (`efuse_interface_shim.sv` 78), which ties the write and readback errors to 0 (`efuse_shim_ctrl_reg.sv` 207-214, 307, 327, 332) | a shim register block that can report an access error |
-| `EFUSE-SHIM-DEBUG` | bits 3, 4 and 12 of the eFuse shim debug bus (`efuse_interface_shim.sv` 577-584): the six read states (156-163) never set bit 3, and bits 4 and 12 are `prim_count` redundancy errors (118-137, 289-308) this bench does not inject | a read state machine with more than eight states, or counter fault injection |
+| `EFUSE-SHIM-DEBUG` | bits 3, 4 and 12 of the eFuse shim debug bus (`efuse_interface_shim.sv` 577-584): design fact for bit 3, which none of the six read states (156-163) sets; bench scope for bits 4 and 12, the `prim_count` redundancy errors (118-137, 289-308), which rise only when the redundant counters disagree, a fault this bench does not inject | a read state machine with more than eight states, or counter fault injection |
 | `DTP-CSR-OFFSET` | address bits 11, 13, 15, 30 and 31 of the DTP CSR port: `smc_peripherals.sv` (546-548) subtracts the window base and the peripheral crossbar registers the port (`smc_periph_axi_lite_xbar_pkg.sv` 103), so it holds its reset value `0x3FFF_5000` or an offset below the 2 KiB window (`smc_periph_axi_lite_xbar.sv` 133-136), which both leave those bits 0 | a DTP window of 2 KiB or more, or a rebase other than the window base |
 | `TRNG-R-ACCEPT` | RREADY on the external TRNG port, the cut's R ready (`sep_crypto_axi_interconnect.sv` 1042-1058): only single-beat reads reach the port (144, 236-241), each on its own tracker of the width converter above (1012), which takes a beat whenever it holds none unforwarded (`axi_dw_downsizer.sv` 569-572), so the cut never holds two | a TRNG read path that admits bursts, or a buffering stage between the converter and the port |
 | `OUTBOUND-B-ACCEPT` | BREADY on `ext_out` and past it, the ready of the crossbar port's B spill register (`smu_axi_xbar_pkg.sv` 112): every outbound initiator takes write responses as they arrive (`el2_lsu_bus_buffer.sv` 906, `el2_dbg.sv` 772, `tlul_to_axi_lite.sv` 245, `zeroer.sv` 280, `jtag2axi.sv` 767-770, `idma_axi_write.sv` 272 with `idma_nd_midend.sv` 207 and `idma_frontend_wrapper.sv` 280), the SMC CPU into a two-entry queue on its MMIO port (`OCAH4CORECluster_AXI4Buffer.sv` 207-216) | an outbound initiator that holds write responses back |
@@ -205,19 +212,20 @@ half and are read under `assertion`.
 python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov
 ```
 
-`all` is the coverage set, as it is for SEP: the 108 leaves of the package
+`all` is the coverage set, as it is for SEP: the 120 leaves of the package
 regression, including the SEP firmware and lifecycle leaves whose images the
 `c_compile` stage builds with the RISC-V toolchain. `hosted` is the
 toolchain-free subset the workflows run and leaves that stimulus out.
 
 The runner compiles with the scope, runs the group, merges, writes the urg
 report with the exclusion files, and prints one `coverage` line with every
-family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `toggle`
-and `assertion` at 80 percent and the result carries `coverage=PASS` or
-`FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column after the
-exclusions; `assertion` is where urg reads the cov/sv `cover property` points,
-together with the `assert property` statements left in scope, and
-`cov/report/asserts.txt` splits the two. Per-port detail is in the `Port
+family as raw/effective; `smu_wrapper_coverage_policy.toml` floors `user` at
+100 percent and `toggle` and `assertion` at 80 percent, and the result carries
+`coverage=PASS` or `FAIL`. Nothing else is run. `toggle` is urg's TOGGLE column
+after the exclusions; `user` is the cov/sv `cover property` points, which the
+runner reads from the cover-property summary of `cov/report/asserts.txt`;
+`assertion` is urg's ASSERT column, those points together with the
+`assert property` statements left in scope. Per-port detail is in the `Port
 Details` rows of the module's section in `cov/report/modinfo.txt`, with
 `Excluded` and the class annotation on every field the exclusion file dropped.
 The same payload, sideband and SEP-owned fields reappear as ports and nets of
