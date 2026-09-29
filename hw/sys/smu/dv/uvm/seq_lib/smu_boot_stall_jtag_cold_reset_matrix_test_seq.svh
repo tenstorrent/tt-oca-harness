@@ -32,7 +32,7 @@
 //      the SMC combines the two as ovrd ? jtag_val : pad
 //      (CHK-STALL-OVRD-MASKS-PAD);
 //   TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS) and the ordered
-//      step fence (CHK-NONVAC).
+//      step fence with a DUT change inside every step S1..S8 (CHK-NONVAC).
 //
 // Independently, the always-on scoreboard's debug_control_tdr feature
 // predicts the capture of every DEBUG_CONTROL scan from the register shadow
@@ -76,6 +76,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     seed_scenario_rng();
     attach_evidence('{ChkBaseline, ChkReadback, ChkSticky, ChkTrst, ChkReassert, ChkPadOnly,
                     ChkBothSources, ChkOvrdMasksPad, ChkTimeoutPaths, ChkNonvac, ChkSbMinAct});
+    start_step_anchor();
     check_min_activity(SmuFeatureDebugControlTdr, DebugControlScansPerPass);
     check_min_activity(SmuFeatureBootGate, FuseReleasesPerPass);
     `uvm_info(get_type_name(), $sformatf(
@@ -95,8 +96,10 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
     mark_step("PASS", "scenario complete (PASS term recorded for the NONVAC fence)");
+    stop_step_anchor();
     check_evidence(ChkNonvac, "ordered step-delta count", 64'(ordered_step_deltas()),
                    64'(ExpectedStepDeltas), $sformatf("steps=%0d", m_step_order.size()));
+    check_step_anchors(ChkNonvac);
     finalize_evidence();
   endtask
 

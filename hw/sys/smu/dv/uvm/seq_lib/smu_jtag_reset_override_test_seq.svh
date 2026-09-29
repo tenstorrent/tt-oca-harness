@@ -17,7 +17,8 @@
 // OVERRIDE, CHK-IC-DOMAIN); S5 the default image restores both exports and
 // the SMC comes back out of the reset the override held it in (CHK-IC-
 // CLEAR); TIMEOUT the bounded-wait inventory (CHK-TIMEOUT-PATHS) and the
-// ordered step fence (CHK-NONVAC). The external port sits nearest TDO, so a
+// ordered step fence with a DUT change inside every step S1..S5
+// (CHK-NONVAC). The external port sits nearest TDO, so a
 // geometry short of the TDR lands its fields in the SEP slice and S3 fails:
 // this is the scenario that catches a wrong slice width. Independently, the
 // always-on scoreboard's ic_reset_tdr feature predicts the capture of every
@@ -55,6 +56,7 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     seed_scenario_rng();
     attach_evidence('{ChkIcDefault, ChkIcReadback, ChkIcExt, ChkIcSmcCold, ChkIcDomain, ChkIcClear,
                     ChkTimeoutPaths, ChkNonvac, ChkSbMinAct});
+    start_step_anchor();
     check_min_activity(SmuFeatureIcResetTdr, IcResetScansPerPass);
     `uvm_info(get_type_name(), $sformatf(
               {"SMU SV-UVM IC_RESET override (smu_jtag_reset_override_test): TDR %0d bits, ",
@@ -70,8 +72,10 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
     mark_step("PASS", "scenario complete (PASS term recorded for the NONVAC fence)");
+    stop_step_anchor();
     check_evidence(ChkNonvac, "ordered step-delta count", 64'(ordered_step_deltas()),
                    64'(ExpectedStepDeltas), $sformatf("steps=%0d", m_step_order.size()));
+    check_step_anchors(ChkNonvac);
     finalize_evidence();
   endtask
 
