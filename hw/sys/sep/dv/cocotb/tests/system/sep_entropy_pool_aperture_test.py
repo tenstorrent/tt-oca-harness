@@ -6,12 +6,13 @@ no_cpu host-AXI. The pool fills from the native EDN endpoint after the
 shared entropy bring-up. Empty-pop SLVERR is taken only after at least one
 accepted pop. Bit [36] is observed high, then low, then high; bit [37] is
 the first fill-stall after ESRC disable plus EDN_ENABLE=False for
-StallThresh cycles with the pool not full. Drain-under-fill and stall-duration
-stress are not claimed.
+StallThresh cycles with the pool not full. CHK-STALL-DURATION holds the same
+stall three times past StallThresh and requires [37] and the fill-stall cause
+to stay set. Drain-under-fill is not claimed.
 
-RANDCFG: extra accepted pops and one unique-dead offset come from the
-run seed. Every seed walks the high-bit mirrors of the live registers
-(the offsets that catch a truncated decode). no_cpu / +skip_fuse_sense /
+RANDCFG: extra accepted pops come from the run seed. Every seed walks the
+high-bit mirrors of the live registers (the offsets that catch a truncated
+decode) and all three unique-dead offsets. no_cpu / +skip_fuse_sense /
 +esrc_noise_force.
 """
 

@@ -616,12 +616,24 @@ class SepUnmappedAccess:
             res.changed = tuple(await self.compare(self.cfg.probe_watch))
         return res
 
-    async def tail(self, t: TailWord, op: str) -> tuple[int, int, bool, tuple[str, ...]]:
+    async def tail(
+        self, t: TailWord, op: str
+    ) -> tuple[int, int, bool, tuple[str, ...], tuple[int, int, bool] | None]:
+        """One access to a tail word.
+
+        After a write, re-read the words of this slot and of the next slot. After
+        a write inside the array extent, also re-read the tail word itself and
+        return that ``(resp, rdata, timed_out)``: the extent rule discards the
+        write, so the re-read must answer OKAY with zero.
+        """
         resp, rdata, to = await self.access(op, t.addr, wdata=PROBE_WDATA, may_refuse=True)
         changed: tuple[str, ...] = ()
+        reread: tuple[int, int, bool] | None = None
         if op == "w":
             changed = tuple(await self.compare(t.neighbours))
-        return resp, rdata, to, changed
+            if t.in_extent:
+                reread = await self.access("r", t.addr, may_refuse=True)
+        return resp, rdata, to, changed, reread
 
     async def restore(self) -> None:
         """Write back the pre-test value of every programmed word."""

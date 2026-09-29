@@ -70,9 +70,12 @@ class SepAxiItem(uvm_sequence_item):
         # The driver then sets timed_out=True and resp_ok=False rather than raising.
         self.allow_timeout: bool = False
         # Negative-path probe: this access expects a non-OKAY response and the
-        # sequence/test asserts the exact resp_code itself. The scoreboard then
+        # sequence/test asserts the exact resp_code itself. On the s_axi agent,
+        # the only one sep_env connects to the scoreboard, the scoreboard then
         # tolerates resp_ok=False (instead of failing) and, conversely, fails if a
-        # probe marked expect_error returns OKAY (the access was NOT blocked).
+        # probe marked expect_error returns OKAY (the access was NOT blocked). On
+        # the m_axi (external) agent nothing grades this flag, so the caller must
+        # assert the response itself.
         # Independent of allow_timeout: an expect_error probe still requires a real
         # error response, not a wedge, unless allow_timeout is also set.
         self.expect_error: bool = False

@@ -22,7 +22,7 @@ this leaf; the testlist entry pins it to VCS.
 
 The cocotb checks prove the path each window exercises:
 
-* CHK-TDR-SELECT     the TDR drives the reset-control port.
+* CHK-TDR-SELECT     the TDR shifts out its reset value after TRST.
 * CHK-KM-LIVE        the KM left SW reset: ROM requests count up and the
                      image stored its SRAM marker.
 * CHK-TDR-STAGE      the staged reset value alone does not stop the KM.
@@ -86,14 +86,13 @@ class sep_km_ic_reset_release_test(sep_base_test):
 
         await tdr.reset_and_select()
         await self._cycles(_SETTLE_CYCLES)
-        assert tdr.selected() == 1, "CHK-TDR-SELECT FAIL: jtag_ic_reset_tdr_en_i did not read 1"
         captured = await tdr.capture_shift_update(IC_RESET_IDLE)
         assert captured == IC_RESET_IDLE, (
             f"CHK-TDR-SELECT FAIL: shifted-out 0x{captured:x}, want the TDR reset value "
             f"0x{IC_RESET_IDLE:x}"
         )
         self.logger.info(
-            "CHK-TDR-SELECT PASS: TDR drives the reset-control port; shifted-out 0x%x "
+            "CHK-TDR-SELECT PASS: TDR shifted out its reset value 0x%x "
             "(every reset_enable and reset_control at 1); %s is port %d",
             captured,
             _PORT,

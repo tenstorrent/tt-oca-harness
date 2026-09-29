@@ -196,7 +196,7 @@ never when it was written.
 |`sep_km_mem_smoke_test`
 |no_cpu
 |ocah_axi_vip, KM path / golden
-|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that every SRAM read response arrives one cycle after its accept.
+|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that a store through the enabled scrambler does not leave its plaintext in the probed SRAM words. The SRAM read latency is measured and logged, not graded.
 |`sep_otbn_mem_smoke_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -1233,9 +1233,9 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *Objective*: Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, and that the SRAM read path descrambles each response with the address of its own read.
 
-*Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; SRAM read-response latency.
+*Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; the stored representation of a scrambled store; SRAM read-response latency (measured, not graded).
 
-*Why the latency is graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. The integrated `prim_ram_1p_adv` KM SRAM has a one-cycle read latency, and this entry records that as a measured precondition rather than an assumption.
+*Why the latency is logged, not graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. No specification states the KM SRAM read latency, so the test does not grade it. The `KM-SRAM-RD-LAT` log line records the accept, one-cycle-later and mismatch counts as the measured precondition. The verdict on the read path is the data round trip in CHK-KM-SRAM-SCR-RT: a response descrambled with the wrong address fails that compare.
 
 *Test Procedure*:
 
@@ -1244,7 +1244,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 . Release the Key Manager from software reset.
 . The image writes the KMCSR SRAM scrambler key, sets `SCRAMBLER_CTRL.ENABLE` (LOCK clear), stores four different plaintexts to four different SRAM words (two adjacent, one mid-window, the last word of the window), and loads them back with four consecutive loads. It clears ENABLE, stores the four loaded values to SRAM words 1..4, and stores the marker to word 0 last.
 . Poll SRAM word 0 for the marker, bounded, or fail.
-. Read the traffic counters, SRAM words 0..4, and the tb read-latency monitor at the wrapper SRAM port.
+. Read the traffic counters, SRAM words 0..97 (`km_sram_probe_o`), and the tb read-latency monitor at the wrapper SRAM port.
 
 *Checkers*:
 
@@ -1257,13 +1257,15 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |The processor writes to its SRAM, and the stored first word is the value the ROM program was built to write.
 |CHK-KM-SRAM-SCR-RT
 |Four consecutive loads of four different SRAM words, each written with a different plaintext through the enabled scrambler, return exactly those plaintexts (SRAM words 1..4). At least four SRAM reads are accepted while the KMCSR scrambler enable is set, so the loads went through the descrambler. The scrambler tweaks its key with the word address (`hw/ip/scrambler/doc/architecture.adoc`, Address Tweaking), so a response descrambled with another read's address returns a different word and fails the compare.
-|CHK-KM-SRAM-RD-LAT
-|Every KM SRAM read the wrapper accepts (`req && !we && gnt`) returns `rvalid` exactly one cycle later, and no `rvalid` arrives without an accept one cycle earlier: the one-cycle-latency count equals the accept count and the mismatch count is 0. The number of `rvalid` cycles that also accept a read of a different address is logged, not graded.
+|CHK-KM-SRAM-SCR-STORED
+|With the scrambler enabled, "all write data transactions will have both the address and data scrambled" (`hw/ip/scrambler/doc/architecture.adoc`). No probed SRAM word (words 0..97) other than the result words 1..4 holds one of the four plaintexts. The two adjacent cells (byte offsets `0x100` and `0x104`, words 64 and 65) are inside the probe window, so a scrambler that passes the address and the data through leaves their plaintexts there and fails. The same probe reads the plaintexts at result words 1..4 for CHK-KM-SRAM-SCR-RT, which is the positive control that the probe sees stored data. The address is scrambled too, so the test does not know which physical word holds each ciphertext, and does not compare a ciphertext value.
 |===
 
-*Evidence*: `CHK-KM-MEM` (`cocotb/tests/km/sep_km_mem_smoke_test.py`) covers CHK-ROM-FETCH (`rom_count > 0`) and CHK-SRAM-WRITE (`sram_writes > 0` and the exact `word0` compare). `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-RD-LAT` are their own records. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets and the KM scrambler enable.
+The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM SRAM reads the wrapper accepts (`req && !we && gnt`), the count that return `rvalid` exactly one cycle later, the count of cycles where `rvalid` and the one-cycle-earlier accept disagree, and the count of `rvalid` cycles that also accept a read of a different address.
 
-*Not claimed*: a KM SRAM with a zero-cycle read response. This integration has none, and CHK-KM-SRAM-RD-LAT fails if one appears. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
+*Evidence*: `CHK-KM-MEM` (`cocotb/tests/km/sep_km_mem_smoke_test.py`) covers CHK-ROM-FETCH (`rom_count > 0`) and CHK-SRAM-WRITE (`sram_writes > 0` and the exact `word0` compare). `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are their own records; `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets and the KM scrambler enable.
+
+*Not claimed*: a KM SRAM read latency. No specification states it; the test logs the measured value. A ciphertext value: the physical word of each scrambled store is not known to the test, so CHK-KM-SRAM-SCR-STORED shows only that no probed word holds a plaintext. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -3682,7 +3684,7 @@ and strobe pattern, and every directed dead word, is walked on every seed.
 
 *Objective*: Proves the ABR access-size rules in
 `hw/sys/sep/doc/adams_bridge.adoc`. Every ABR register is 32 bits wide: an
-8-byte-aligned 64-bit access is two 32-bit accesses, low address first, and one
+8-byte-aligned 64-bit access is two 32-bit accesses, and one
 at `addr[2]=1` reaches only the upper register; a write whose strobe covers
 only one of the two words writes that word alone; a word whose strobe is partial
 is not written and the access answers SLVERR, while the other word of a 64-bit
@@ -3773,7 +3775,10 @@ dropped write, a write on the wrong lane or a zero-extended partial write each
 change a readback.
 
 *Not claimed*: concurrency, which <<sep_abr_pipelined_read_matrix_test>> and
-<<sep_abr_concurrent_rw_test>> own, and `m_axi`. Unpopulated offsets between
+<<sep_abr_concurrent_rw_test>> own, and `m_axi`. The order of the two 32-bit
+accesses of a 64-bit access (`adams_bridge.adoc`: low address first): the test
+records only the host `s_axi` pins, and every outcome it grades is the same in
+either order. Unpopulated offsets between
 populated objects below `0xC018` are not walked; the no-alias compare covers
 the graded registers only, not every populated ABR register.
 
@@ -3975,7 +3980,7 @@ a waiting write, and two masters writing the same register.
 |CHK-POOL-LOW-REHIGH
 |`[36]` high again after drain (high-low-high).
 |CHK-POOL-LOW-EDGE
-|On every status read the test makes, the `[36]` aggregate agrees with `status[6]`. Occupancy is not compared against a FIFO watermark. The high-low-high walk of `[36]` is the live-flag evidence.
+|On the fill read and on each drain-leg status read down to empty, the `[36]` aggregate agrees with `status[6]`. Other status reads (poll, refusal and stall legs) are not compared to `[36]`. Occupancy is not compared against a FIFO watermark. The high-low-high walk of `[36]` is the live-flag evidence.
 |CHK-EMPTY-SLVERR
 |Pop at `0x10` on empty returns SLVERR, after an accepted pop.
 |CHK5_pool
@@ -6270,13 +6275,13 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-WINDOW-LIVE
-|Each of the eleven watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller, and trng against the neighbouring entropy_src registers) has a non-empty register snapshot, so the no-alias compare can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count.
+|Each of the eleven watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller, and trng against the neighbouring entropy_src registers) has a non-empty register snapshot and at least one register armed for the change compare, so both no-alias compares can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count, and a window with none armed fails.
 |CHK-DEADSPACE-REFUSE
 |Every probed address past the allocated size is refused (not OKAY), including the directed wrap anchors (KM `0x10920ff8`, DMA `0x108008a8`). A single accepted probe fails the checker; there is no tolerated count.
 |CHK-DEADSPACE-NO-ALIAS
 |No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access past a unit's extent never reaches a unit, so a refused read that still hands back live data has reached it. Inside the extent the same passage grounds non-aliasing in exact-match register decode rather than in refusal, so an accepted read that returns a live value is the failure there. A single aliased probe fails the checker.
 |CHK-DEADSPACE-BURST
-|A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
+|A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A beat past the extent is held to the single-beat no-alias rule: its data must not equal a value in the window snapshot, whatever its response code, and every audited window must have its past-extent beat data compared. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
 |CHK-DEADSPACE-BEAT
 |Each beat of the burst carries its own `RRESP`, kept in order by the bus monitor, so the refusal can be attributed to a beat rather than to the burst. No beat past a block extent may answer OKAY. The rule is asserted in that direction only: refusing the whole burst is legal AXI and stricter than the specification, so a window that refuses every beat is recorded, not failed. A second assertion requires at least one window that serves its in-extent beats and refuses only the tail — without one, the checker shows that nothing past an extent is served but not that the fabric can tell the beats apart. A captured vector whose length does not match the beats issued is treated as no evidence, since unrelated traffic on the bus would lengthen it. Read bursts only; see <<known-limitations>> for why writes cannot be.
 |CHK-TRNG-UNOWNED
@@ -6370,7 +6375,7 @@ reported as such rather than counted as a pass.
 . Program a distinct non-zero value into one live word of every array slot, the first and last AP / STEE output-remap entries, `SEP_NMI_VEC`, three mailbox thresholds, both eFuse timeouts and two eFuse token inputs, and read each back. Snapshot every other word of those slots, every mailbox `STATUS` and `TOKEN_MATCH_FAULT`.
 . Read `TOKEN_MATCH_FAULT` through its generated symbol.
 . Read and write each probe with 32-bit singles. After each write, re-read every programmed word and the non-array snapshot words. For system-CSR and reserved-row probes, record whether the access reached the system-CSR AXI-Lite port.
-. Read and write each array slot tail and the first word past each filter array, and after each write re-read the words of that slot and of the next slot.
+. Read and write each array slot tail and the first word past each filter array, and after each write re-read the words of that slot and of the next slot. After each write to a tail inside the array extent, read that tail again.
 . Re-read every live word, then restore the programmed words.
 
 *Checkers*:
@@ -6393,7 +6398,7 @@ reported as such rather than counted as a pass.
 |CHK-TOKEN-FAULT-EXTENT
 |`TOKEN_MATCH_FAULT`, the last register `hw/ip/efuse/regs/efuse_mmr.rdl` places in the token MMR (`@0x70`), reads OKAY with its RDL reset value, and the first word after it (`EFUSE_MMR` base + `REG_MAP_SIZE`) is refused. The extent therefore ends at `0x1093_0573`, where the RDL ends it. That the register holds live fault state is graded by `sep_efuse_rma_token_rand_test`, which reads a raised fault bit through the same address.
 |CHK-ARRAY-TAIL
-|The array extent is base + `TOTAL_SIZE` from `sep_addr.h`, per `hw/sys/sep/doc/memory_map.adoc`. Every tail inside it, the last slot's tail included, answers OKAY, and a read of it returns zero. The first word past the extent is refused. A tail write never changes a word of its own slot or of the next slot. The walk must grade at least one word of each kind. A failure names the tail address, the response and the extent.
+|The array extent is base + `TOTAL_SIZE` from `sep_addr.h`, per `hw/sys/sep/doc/memory_map.adoc`. Every tail inside it, the last slot's tail included, answers OKAY, and a read of it returns zero. A re-read of such a tail after its write answers OKAY with zero, so the write was discarded. The first word past the extent is refused. A tail write never changes a word of its own slot or of the next slot. The walk must grade at least one word of each kind. A failure names the tail address, the response and the extent.
 |CHK-UNMAPPED-NO-ALIAS
 |No refused read returns the value of a programmed word. No probe write changes a watched live word. A closing re-read of every live word matches the snapshot.
 |CHK-UNMAPPED-PINS
@@ -6905,7 +6910,7 @@ two codes as one field.
 |===
 |Checker |What it proves
 |CHK-TDR-SELECT
-|The TDR drives the reset-control port, and it shifts out its reset value (every `reset_enable` and `reset_control` at 1).
+|After TRST the TDR shifts out its reset value (every `reset_enable` and `reset_control` at 1). That the TDR word reaches the Key Manager reset is shown by CHK-TDR-APPLY.
 |CHK-KM-LIVE
 |The KM left software reset: the ROM request count rises and KM SRAM word0 holds the smoke marker.
 |CHK-TDR-STAGE

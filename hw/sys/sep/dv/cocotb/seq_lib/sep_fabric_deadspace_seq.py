@@ -463,7 +463,7 @@ class SepDeadspace:
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
         # Single-beat the same four addresses. Beats 0-1 are inside the extent
         # and must match; beats 2-3 are past it and are refused on their own, so
-        # a non-zero burst word there is data the single-beat path cannot reach.
+        # the test holds a burst word there to the single-beat no-alias rule.
         singles = []
         for i in range(beats):
             past = start + 4 * i >= win.dead_lo

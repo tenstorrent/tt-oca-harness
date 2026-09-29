@@ -103,10 +103,6 @@ class SepIcResetTdr:
         self._set("jtag_ic_reset_tdr_en_i", 1)
         await ReadWrite()
 
-    def selected(self) -> int:
-        """1 when the TDR drives the DUT reset-control port."""
-        return self._rd(self.dut.jtag_ic_reset_tdr_en_i)
-
     async def capture_shift_update(self, value: int) -> int:
         """Capture-DR, shift ``value`` LSB first, Update-DR. Returns the captured word."""
         self._set("jtag_ic_reset_select_i", 1)

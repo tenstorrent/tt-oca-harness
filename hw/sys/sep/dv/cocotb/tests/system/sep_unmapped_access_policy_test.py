@@ -29,8 +29,9 @@ the slot's registers) follows the extent rule. The array extent is base +
 SEP_TOP_<ARRAY>_TOTAL_SIZE from the generated sep_addr.h, the size the RDL
 allocates. Every tail inside it, the last slot's tail included, reads zero and
 accepts a write with OKAY. The first word past it is refused where no other
-RDL block owns that word. A tail write never moves a word of its own slot or of
-the next slot.
+RDL block owns that word. A re-read of an in-extent tail after its write answers
+OKAY with zero, so the write was discarded. A tail write never moves a word of
+its own slot or of the next slot.
 
 CHK-UNMAPPED-NO-ALIAS: no refused read returns a programmed value, no probe
 write moves a watched live word, and a closing re-read of every live word
@@ -183,10 +184,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
         # --- array tails ----------------------------------------------------
         tail_fails: list[str] = []
         tail_codes: Counter = Counter()
-        n_in = n_past = 0
+        n_in = n_past = n_reread = 0
         for t in cfg.tails:
             for op in ("r", "w"):
-                resp, rdata, to, changed = await ua.tail(t, op)
+                resp, rdata, to, changed, reread = await ua.tail(t, op)
                 where = f"{t.label} {op} 0x{t.addr:08x}"
                 ext_base, ext_size = cfg.array_extent[t.array]
                 extent = (
@@ -212,6 +213,19 @@ class sep_unmapped_access_policy_test(sep_base_test):
                         hit = ua.read_alias(rdata)
                         if hit is not None:
                             alias_fails.append(f"{where} returned the value of {hit}")
+                if reread is not None:
+                    n_reread += 1
+                    r_resp, r_data, r_to = reread
+                    if r_to or r_resp != RESP_OKAY:
+                        tail_fails.append(
+                            f"{where} re-read after the write answered {_code(r_resp)} "
+                            f"timed_out={r_to} inside the {extent}"
+                        )
+                    elif r_data != 0:
+                        tail_fails.append(
+                            f"{where} re-read after the write returned 0x{r_data:08x} inside "
+                            f"the {extent}; the write was not discarded"
+                        )
                 if changed:
                     alias_fails.append(f"{where} moved " + ", ".join(changed))
         if n_in == 0 or n_past == 0:
@@ -219,6 +233,8 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 f"tail walk graded {n_in} in-extent and {n_past} past-extent access(es); "
                 "both kinds are needed"
             )
+        if n_reread == 0:
+            tail_fails.append("no in-extent tail was re-read after its write")
         for (in_ext, op, code), n in sorted(tail_codes.items()):
             self.logger.info(
                 "UNMAPPED-CODE: array tail %s %s: %s=%d",
@@ -254,8 +270,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 f"and 0x{cfg.mmr_end:08x}, the first word after it, was refused"
             ),
             "CHK-ARRAY-TAIL": (
-                f"{n_in} in-extent tail access(es) answered OKAY (reads zero) and "
-                f"{n_past} past-extent tail access(es) were refused over "
+                f"{n_in} in-extent tail access(es) answered OKAY (reads zero), "
+                f"{n_reread} re-read(s) after an in-extent write answered OKAY with zero, "
+                f"and {n_past} past-extent tail access(es) were refused over "
                 f"{len(cfg.tails)} tail words"
             ),
             "CHK-UNMAPPED-NO-ALIAS": (

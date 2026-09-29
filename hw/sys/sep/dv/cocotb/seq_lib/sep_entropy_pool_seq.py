@@ -104,10 +104,11 @@ EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~_EDN_ENABLE["bm"]) | (
 
 
 class SepEntropyPoolCfg:
-    """RANDCFG: extra accepted pops, plus one unique-dead offset.
+    """RANDCFG: extra accepted pops.
 
     Every seed walks ``alias_offs`` (high-bit mirrors of the live
-    registers). The seed only picks the extra unique-dead offset.
+    registers) and all three unique-dead offsets (``unmapped_offs``). The
+    seed only picks the extra pop count.
     """
 
     def __init__(self, seed: int) -> None:

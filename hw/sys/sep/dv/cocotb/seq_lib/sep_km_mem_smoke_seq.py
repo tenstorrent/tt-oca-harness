@@ -33,6 +33,10 @@ KM_SMOKE_SRAM_WORD0 = 0x0000_005A
 KM_SMOKE_SCRAMBLER_KEY = 0x6C8E_3A5B
 KM_SMOKE_SCR_PLAINTEXT = (0x1E2D_3C4B, 0xA596_8778, 0x0F1E_2D3C, 0xC3B4_A596)
 KM_SMOKE_SCR_RESULT_WORDS = (1, 2, 3, 4)
+# The four cells km_rom.S (.equ CELL0..CELL3) stores the plaintexts to with the
+# scrambler enabled, as byte offsets from KEY_MANAGER_SRAM_BASE_ADDR. The
+# km_sram_probe_o word index of an offset is offset // 4.
+KM_SMOKE_SCR_CELL_OFFSETS = (0x0100, 0x0104, 0x3FF8, 0x7FFC)
 
 
 class sep_km_release_seq(uvm_sequence):

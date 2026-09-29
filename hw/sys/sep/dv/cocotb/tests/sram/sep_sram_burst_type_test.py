@@ -46,6 +46,32 @@ from seq_lib.sep_sram_burst_type_seq import (
 )
 
 
+def _w(v: int) -> str:
+    """A 64-bit word as 0xHHHHHHHH_LLLLLLLL."""
+    s = f"{v:016x}"
+    return f"0x{s[:8]}_{s[8:]}"
+
+
+def _tag(word: int, low: int) -> str:
+    """Upper half of ``word`` once its lower half ``low`` is removed."""
+    return f"0x{(word ^ low) >> 32:08x}"
+
+
+def _beat_ids(case) -> range:
+    return range(len(beat_addrs(case.burst, case.start)))
+
+
+def _which(case, v: int) -> str:
+    """Name the stimulus word ``v`` equals: a beat's data or a background word."""
+    for i in _beat_ids(case):
+        if v == burst_word(case, i):
+            return f"d{i}"
+    for a in case.region:
+        if v == background(a):
+            return f"the word @0x{a:08x}"
+    return "no stimulus word"
+
+
 @pyuvm.test()
 class sep_sram_burst_type_test(sep_base_test):
     """A FIXED or WRAP burst into SRAM is refused or honoured, never run as INCR."""
@@ -57,7 +83,20 @@ class sep_sram_burst_type_test(sep_base_test):
         bt = SepSramBurstType(self)
         fails: list[str] = []
 
-        for case in burst_cases():
+        cases = burst_cases()
+        self.logger.info(
+            "burst-type data encoding: beat i writes d<i> = <tag>_<burst start> with tag %s; "
+            "an untouched word holds <tag>_<addr> with tag %s",
+            " ".join(
+                f"{c.name}=["
+                + ",".join(_tag(burst_word(c, i), c.start) for i in _beat_ids(c))
+                + "]"
+                for c in cases
+            ),
+            _tag(background(cases[0].region[0]), cases[0].region[0]),
+        )
+
+        for case in cases:
             named = [f"0x{a:08x}" for a in beat_addrs(case.burst, case.start)]
             self.logger.info(
                 "burst-type config: %s start=0x%08x AXI4 beat addresses %s",
@@ -88,6 +127,32 @@ class sep_sram_burst_type_test(sep_base_test):
             incr = dict(bg)
             for i, a in enumerate(beat_addrs(BURST_INCR, case.start)):
                 incr[a] = burst_word(case, i)
+            beats = beat_addrs(case.burst, case.start)
+            for a in case.region:
+                hits = [i for i, b in enumerate(beats) if b == a]
+                if not hits:
+                    what = "untouched in AXI4"
+                elif len(hits) == 1:
+                    what = f"wrote beat{hits[0]} d{hits[0]}={_w(golden[a])} (AXI4 target)"
+                else:
+                    what = (
+                        f"wrote beat{hits[-1]} d{hits[-1]}={_w(golden[a])} (AXI4 target of "
+                        f"beats {','.join(str(i) for i in hits)}; the last beat stays)"
+                    )
+                exp = golden[a] if resp == RESP_OKAY else bg[a]
+                note = "" if resp == RESP_OKAY else f" (BRESP={resp}, refused)"
+                ok = after[a] == exp
+                (self.logger.info if ok else self.logger.error)(
+                    "CHK-BT-WRITE %s 0x%08x: %s | read back %s (%s) | expected %s%s %s",
+                    case.name,
+                    a,
+                    what,
+                    _w(after[a]),
+                    _which(case, after[a]),
+                    _w(exp),
+                    note,
+                    "PASS" if ok else "FAIL",
+                )
             if timed_out:
                 verdict = "timed out"
             elif resp != RESP_OKAY and after == bg:
@@ -140,6 +205,22 @@ class sep_sram_burst_type_test(sep_base_test):
                     f"beat(s), expected {len(want)}; no per-beat evidence"
                 )
             else:
+                for i, (b, w, e, r) in enumerate(
+                    zip(beat_addrs(case.burst, case.start), words, want, resps)
+                ):
+                    ok = r != RESP_OKAY or w == e
+                    (self.logger.info if ok else self.logger.error)(
+                        "CHK-BT-READ %s beat%d: expected word @0x%08x = %s | returned %s (%s) "
+                        "RRESP=%d %s",
+                        case.name,
+                        i,
+                        b,
+                        _w(e),
+                        _w(w),
+                        _which(case, w),
+                        r,
+                        "PASS" if ok else "FAIL",
+                    )
                 bad = [
                     f"beat{i}=0x{w:016x} want 0x{e:016x}"
                     for i, (w, e, r) in enumerate(zip(words, want, resps))

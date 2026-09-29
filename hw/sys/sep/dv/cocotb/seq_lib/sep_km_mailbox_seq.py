@@ -93,7 +93,10 @@ KM_CTRL_INBOUND_OVERFLOW_RESP = _KM_MBOX("SEP_CTRL", "inbound_overflow_resp")
 KM_CTRL_OUTBOUND_UNDERFLOW_RESP = _KM_MBOX("SEP_CTRL", "outbound_underflow_resp")
 KM_CTRL_FLUSH = _KM_MBOX("SEP_CTRL", "flush")
 
-# Both FIFOs are 16 entries deep (the KM firmware's own frame-size bound).
+# Both FIFOs are 16 words deep. hw/ip/key_manager/doc/architecture.adoc
+# (mailbox) gives the inbound and outbound FIFOs a "minimum depth 16 words
+# each"; this DV-owned constant takes that minimum as the depth the full,
+# space-available and overflow goldens expect.
 KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------

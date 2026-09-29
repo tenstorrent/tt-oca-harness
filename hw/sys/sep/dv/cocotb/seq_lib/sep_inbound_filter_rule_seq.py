@@ -496,7 +496,11 @@ def ext_read_seq(addr: int, *, user: int = 0) -> SepAxiAccessSeq:
 
 
 def ext_burst_read_seq(addr: int, *, user: int = 0, expect_error: bool = False) -> SepAxiAccessSeq:
-    """Two-beat INCR read (AxLEN=1) on the external master."""
+    """Two-beat INCR read (AxLEN=1) on the external master.
+
+    The scoreboard is not connected to the external master, so it does not grade
+    ``expect_error`` here; the caller asserts the response code itself.
+    """
     return SepAxiAccessSeq(
         "infilt_ext_burst_rd",
         op=SepAxiOp.READ,
@@ -512,7 +516,11 @@ def ext_burst_read_seq(addr: int, *, user: int = 0, expect_error: bool = False) 
 def ext_burst_write_seq(
     addr: int, data: int, *, user: int = 0, expect_error: bool = False
 ) -> SepAxiAccessSeq:
-    """Two-beat INCR write (AxLEN=1) on the external master."""
+    """Two-beat INCR write (AxLEN=1) on the external master.
+
+    The scoreboard is not connected to the external master, so it does not grade
+    ``expect_error`` here; the caller asserts the response code itself.
+    """
     return SepAxiAccessSeq(
         "infilt_ext_burst_wr",
         op=SepAxiOp.WRITE,

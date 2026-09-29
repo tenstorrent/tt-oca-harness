@@ -21,8 +21,9 @@
 # store, so a host that sees it knows the results are in place.
 #
 # This image decides nothing. The host compares words 1..4 with the
-# plaintexts and word0 with the marker. The plaintexts, the marker and the
-# scrambler key are mirrored by KM_SMOKE_* in
+# plaintexts and word0 with the marker, and checks that no other probed SRAM
+# word (CELL0 and CELL1 included) holds a plaintext. The plaintexts, the
+# cell offsets, the marker and the scrambler key are mirrored by KM_SMOKE_* in
 # cocotb/seq_lib/sep_km_mem_smoke_seq.py; a divergence between the two fails
 # the test's value-compare loudly.
 #
