@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="860" viewBox="0 0 1040 860" role="img" aria-labelledby="title desc">
+<title id="title">SMC reset unit</title>
+<desc id="desc">Internals of smc_reset_unit. Reset inputs enter on the left and the synchronised resets, isolation requests and subsystem controls leave on the right. In u_smc_reset_ctrl, powergood_i is stretched 32 reference clock cycles into powergood_stable, which leaves as powergood_stable_o and holds the cold-reset extender. rst_cold_ni passes a JTAG override mux, a 32-cycle de-glitcher and a 255-cycle extender to form the stable cold reset; the cool-reset pin rst_cool_ni passes a 32-cycle de-glitcher. The primary reset is the AND of the stable cold reset, the de-glitched cool-reset pin and the FLR cool reset. The watchdog reset is the AND of rst_ext_wdt_ni and the inverted SMC watchdog second timeout. The warm reset is the AND of the watchdog reset, the primary reset and fuse_reset_ni after its JTAG override mux, and it passes a further JTAG override mux. u_smc_reset_sync synchronises the watchdog and warm resets to clk_smc_i, the primary reset to clk_ref_i, clk_smc_i and clk_periph_i, and the stable cold reset to clk_ref_i and clk_smc_i. In u_smc_cool_reset_wrap, the rising edge of the synchronised cfg_flr_pf_active_i starts the FLR counters on clk_ref_i, whose FLR cool reset passes a JTAG override mux into the primary reset AND and leaves as rst_cool_no for other chiplets; the same edge sets ISOLATE_REQ_SMC. The isolation logic ORs ISOLATE_REQ_REG, the pin-enabled bits while the synchronised isolate_req_pin_i is high and the SMC-enabled bits while ISOLATE_REQ_SMC is set into isolate_req_o[31:0], and raises skip_mem_repair_o. u_reset_unit_reg, reached over AXI-Lite, holds these registers, drives sync_irq_o and feeds u_smc_subsystem_resets, whose 32 per-subsystem cold and warm resets pass JTAG override muxes into ss_reset_ctrl_o[31:0]; it also drives ss_config_o and samples ss_reset_complete_i. jtag_reset_ctrl_i drives every JTAG override mux, and in test mode scan_rst_ni replaces the stretched powergood, the de-glitched cold reset and every synchroniser output.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-cool" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#b2566c"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.n-cool { fill: none; stroke: #b2566c; stroke-width: 1.8; }
+.a-cool { fill: none; stroke: #b2566c; stroke-width: 1.8; marker-end: url(#m-cool); }
+.a-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
+.jovr { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.8; }
+.bubble { fill: #ffffff; stroke: #5b6670; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="860" fill="#ffffff"/>
+<rect class="smu" x="200" y="14" width="632" height="772" rx="8"/>
+<rect class="core" x="306" y="40" width="290" height="292" rx="6"/>
+<text class="bs" x="316" y="60" text-anchor="start">u_smc_reset_ctrl</text>
+<rect class="fabric" x="320" y="76" width="90" height="28" rx="4"/>
+<text class="s" x="365" y="95" text-anchor="middle">Stretch 32</text>
+<text class="s" x="14" y="84" text-anchor="start">powergood_i</text>
+<path class="a-pg" d="M17,90 L316,90"/>
+<path class="n-pg" d="M410,90 L832,90"/>
+<path class="a-pg" d="M832,90 L1026,90"/>
+<text class="s" x="842" y="84" text-anchor="start">powergood_stable_o</text>
+<circle cx="464" cy="90" r="4" fill="#336633"/>
+<path class="a-pg" d="M464,90 L464,137 M464,147 L464,171 M464,181 L464,233"/>
+<text class="si" x="458" y="214" text-anchor="end">powergood_stable</text>
+<rect class="fabric" x="320" y="118" width="52" height="48" rx="4"/>
+<text class="s" x="346" y="147" text-anchor="middle">AND</text>
+<text class="s" x="14" y="124" text-anchor="start">rst_ext_wdt_ni</text>
+<path class="a-tel" d="M17,130 L316,130"/>
+<text class="s" x="14" y="148" text-anchor="start">smc_wdt_second_timeout_i</text>
+<path class="sigplain" d="M17,154 L308,154"/>
+<path class="sigo" d="M300,154 L308,154"/>
+<circle class="bubble" cx="314" cy="154" r="4"/>
+<path class="n-tel" d="M372,142 L544,142"/>
+<path class="a-tel" d="M540,142 L544,142"/>
+<circle cx="500" cy="142" r="4" fill="#664488"/>
+<rect class="jovr" x="240" y="164" width="52" height="24" rx="4"/>
+<text class="s" x="266" y="181" text-anchor="middle">JTAG</text>
+<text class="s" x="14" y="170" text-anchor="start">fuse_reset_ni</text>
+<path class="a-slate" d="M17,176 L236,176"/>
+<path class="a-slate" d="M292,176 L544,176"/>
+<rect class="fabric" x="548" y="124" width="36" height="66" rx="4"/>
+<text class="s" x="566" y="162" text-anchor="middle">AND</text>
+<rect class="jovr" x="240" y="238" width="52" height="24" rx="4"/>
+<text class="s" x="266" y="255" text-anchor="middle">JTAG</text>
+<text class="s" x="14" y="244" text-anchor="start">rst_cold_ni</text>
+<path class="a-ref" d="M17,250 L236,250"/>
+<rect class="fabric" x="320" y="236" width="90" height="28" rx="4"/>
+<text class="s" x="365" y="255" text-anchor="middle">De-glitch 32</text>
+<rect class="fabric" x="420" y="236" width="76" height="28" rx="4"/>
+<text class="s" x="458" y="255" text-anchor="middle">Extend 255</text>
+<path class="a-ref" d="M292,250 L316,250"/>
+<path class="a-ref" d="M410,250 L416,250"/>
+<path class="a-ref" d="M496,250 L512,250"/>
+<circle cx="504" cy="250" r="4" fill="#2f7f79"/>
+<text class="s" x="14" y="294" text-anchor="start">rst_cool_ni</text>
+<path class="a-cool" d="M17,300 L316,300"/>
+<rect class="fabric" x="320" y="286" width="90" height="28" rx="4"/>
+<text class="s" x="365" y="305" text-anchor="middle">De-glitch 32</text>
+<path class="a-cool" d="M410,300 L512,300"/>
+<rect class="fabric" x="516" y="236" width="36" height="82" rx="4"/>
+<text class="s" x="534" y="282" text-anchor="middle">AND</text>
+<circle cx="566" cy="278" r="4" fill="#103525"/>
+<path class="a-smu" d="M566,278 L566,194"/>
+<rect class="core" x="660" y="98" width="162" height="242" rx="6"/>
+<text class="bs" x="670" y="333" text-anchor="start">u_smc_reset_sync</text>
+<rect class="fabric" x="680" y="104" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="119" text-anchor="middle">sync clk_smc_i</text>
+<path class="a-tel" d="M804,114 L1026,114"/>
+<text class="s" x="842" y="108" text-anchor="start">rst_wdt_smc_clk_no</text>
+<rect class="fabric" x="680" y="140" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="155" text-anchor="middle">sync clk_smc_i</text>
+<path class="a-per" d="M804,150 L1026,150"/>
+<text class="s" x="842" y="144" text-anchor="start">rst_warm_smc_clk_no</text>
+<rect class="fabric" x="680" y="174" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="189" text-anchor="middle">sync clk_ref_i</text>
+<path class="a-smu" d="M804,184 L1026,184"/>
+<text class="s" x="842" y="178" text-anchor="start">rst_primary_ref_clk_no</text>
+<rect class="fabric" x="680" y="204" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="219" text-anchor="middle">sync clk_smc_i</text>
+<path class="a-smu" d="M804,214 L1026,214"/>
+<text class="s" x="842" y="208" text-anchor="start">rst_primary_smc_clk_no</text>
+<rect class="fabric" x="680" y="234" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="249" text-anchor="middle">sync clk_periph_i</text>
+<path class="a-smu" d="M804,244 L1026,244"/>
+<text class="s" x="842" y="238" text-anchor="start">rst_primary_periph_clk_no</text>
+<rect class="fabric" x="680" y="264" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="279" text-anchor="middle">sync clk_ref_i</text>
+<path class="a-ref" d="M804,274 L1026,274"/>
+<text class="s" x="842" y="268" text-anchor="start">rst_cold_stable_ref_clk_no</text>
+<rect class="fabric" x="680" y="294" width="124" height="20" rx="4"/>
+<text class="s" x="742" y="309" text-anchor="middle">sync clk_smc_i</text>
+<path class="a-ref" d="M804,304 L1026,304"/>
+<text class="s" x="842" y="298" text-anchor="start">rst_cold_stable_smc_clk_no</text>
+<path class="n-tel" d="M500,142 L500,114 L676,114"/>
+<path class="a-tel" d="M674,114 L676,114"/>
+<rect class="jovr" x="604" y="138" width="52" height="24" rx="4"/>
+<text class="s" x="630" y="155" text-anchor="middle">JTAG</text>
+<path class="a-per" d="M584,150 L600,150"/>
+<path class="a-per" d="M656,150 L676,150"/>
+<path class="n-smu" d="M552,278 L607,278 M617,278 L632,278"/>
+<path class="n-smu" d="M632,184 L632,244"/>
+<path class="a-smu" d="M632,184 L676,184"/>
+<path class="a-smu" d="M632,214 L676,214"/>
+<path class="a-smu" d="M632,244 L676,244"/>
+<circle cx="632" cy="278" r="4" fill="#103525"/>
+<circle cx="632" cy="214" r="4" fill="#103525"/>
+<path class="n-ref" d="M504,250 L504,226"/>
+<path class="n-ref" d="M504,226 L561,226 M571,226 L612,226"/>
+<path class="n-ref" d="M612,226 L612,304"/>
+<path class="a-ref" d="M612,274 L676,274"/>
+<path class="a-ref" d="M612,304 L676,304"/>
+<circle cx="612" cy="274" r="4" fill="#2f7f79"/>
+<rect class="jovr" x="508" y="356" width="52" height="24" rx="4"/>
+<text class="s" x="534" y="373" text-anchor="middle">JTAG</text>
+<path class="a-cool" d="M534,356 L534,322"/>
+<circle cx="534" cy="347" r="4" fill="#b2566c"/>
+<path class="a-cool" d="M534,347 L1026,347"/>
+<text class="s" x="842" y="341" text-anchor="start">rst_cool_no</text>
+<rect class="core" x="306" y="392" width="290" height="140" rx="6"/>
+<text class="bs" x="316" y="412" text-anchor="start">u_smc_cool_reset_wrap</text>
+<text class="s" x="14" y="434" text-anchor="start">cfg_flr_pf_active_i</text>
+<path class="sigo" d="M17,440 L316,440"/>
+<rect class="fabric" x="320" y="424" width="90" height="32" rx="4"/>
+<text class="s" x="365" y="445" text-anchor="middle">Sync, edge</text>
+<rect class="fabric" x="490" y="424" width="90" height="32" rx="4"/>
+<text class="s" x="535" y="445" text-anchor="middle">FLR counters</text>
+<path class="sigo" d="M410,440 L486,440"/>
+<path class="a-cool" d="M534,424 L534,384"/>
+<circle cx="450" cy="440" r="3.5" fill="#5b6670"/>
+<text class="s" x="14" y="488" text-anchor="start">isolate_req_pin_i</text>
+<path class="sigo" d="M17,494 L316,494"/>
+<rect class="fabric" x="320" y="480" width="90" height="28" rx="4"/>
+<text class="s" x="365" y="499" text-anchor="middle">Sync</text>
+<rect class="fabric" x="430" y="474" width="150" height="46" rx="4"/>
+<text class="s" x="505" y="494.5" text-anchor="middle">ISOLATE_REQ_*</text>
+<text class="s" x="505" y="509.5" text-anchor="middle">per-bit OR</text>
+<path class="sigo" d="M410,494 L426,494"/>
+<path class="sigo" d="M450,440 L450,470"/>
+<path class="sigo" d="M580,486 L1026,486"/>
+<text class="s" x="842" y="480" text-anchor="start">isolate_req_o[31:0]</text>
+<path class="sigo" d="M580,510 L1026,510"/>
+<text class="s" x="842" y="504" text-anchor="start">skip_mem_repair_o</text>
+<rect class="core" x="306" y="560" width="118" height="70" rx="4"/>
+<text class="s" x="365" y="592.5" text-anchor="middle">u_reset_unit_reg</text>
+<text class="s" x="365" y="607.5" text-anchor="middle">AXI-Lite registers</text>
+<rect class="core" x="436" y="560" width="176" height="70" rx="4"/>
+<text class="s" x="524" y="592.5" text-anchor="middle">u_smc_subsystem_resets</text>
+<text class="s" x="524" y="607.5" text-anchor="middle">32 subsystems</text>
+<text class="s" x="14" y="589" text-anchor="start">reg_axi_lite_req_i</text>
+<path class="axi" d="M17,595 L302,595"/>
+<path class="sigo" d="M424,595 L432,595"/>
+<path class="sigo" d="M368,560 L368,536"/>
+<text class="si" x="376" y="550" text-anchor="start">ISOLATE_REQ_*, FLR counts</text>
+<rect class="jovr" x="632" y="574" width="52" height="30" rx="4"/>
+<rect class="jovr" x="629" y="577" width="52" height="30" rx="4"/>
+<rect class="jovr" x="626" y="580" width="52" height="30" rx="4"/>
+<text class="s" x="652" y="600" text-anchor="middle">JTAG</text>
+<path class="sigo" d="M612,595 L622,595"/>
+<path class="sigo" d="M678,595 L1026,595"/>
+<text class="s" x="842" y="589" text-anchor="start">ss_reset_ctrl_o[31:0]</text>
+<path class="sigo" d="M612,568 L1026,568"/>
+<text class="s" x="842" y="562" text-anchor="start">ss_config_o</text>
+<path class="sigo" d="M1026,636 L616,636"/>
+<text class="s" x="842" y="630" text-anchor="start">ss_reset_complete_i[31:0]</text>
+<path class="sigo" d="M368,630 L368,662 L1026,662"/>
+<text class="s" x="842" y="656" text-anchor="start">sync_irq_o</text>
+<text class="s" x="652" y="628" text-anchor="middle">×32</text>
+<text class="s" x="14" y="694" text-anchor="start">jtag_reset_ctrl_i</text>
+<path class="jtag" d="M17,700 L300,700"/>
+<text class="s" x="310" y="705" text-anchor="start">Drives every JTAG override mux</text>
+<text class="s" x="14" y="718" text-anchor="start">scan_rst_ni</text>
+<path class="a-slate" d="M17,724 L300,724"/>
+<text class="s" x="14" y="742" text-anchor="start">test_en_i</text>
+<path class="a-dash" d="M17,748 L300,748"/>
+<text class="s" x="310" y="741" text-anchor="start">Test mode: scan_rst_ni replaces powergood_stable, the de-glitched</text>
+<text class="s" x="310" y="759" text-anchor="start">cold reset and every synchroniser output</text>
+<text class="b" x="822" y="774" text-anchor="end">smc_reset_unit</text>
+<path class="n-pg" d="M14,812 L48,812"/>
+<text class="s" x="56" y="817" text-anchor="start">powergood</text>
+<path class="n-ref" d="M144.60000000000002,812 L178.60000000000002,812"/>
+<text class="s" x="186.6" y="817" text-anchor="start">cold</text>
+<path class="n-cool" d="M238.20000000000002,812 L272.20000000000005,812"/>
+<text class="s" x="280.2" y="817" text-anchor="start">cool</text>
+<path class="n-smu" d="M331.8,812 L365.8,812"/>
+<text class="s" x="373.8" y="817" text-anchor="start">primary</text>
+<path class="n-tel" d="M447.6,812 L481.6,812"/>
+<text class="s" x="489.6" y="817" text-anchor="start">watchdog</text>
+<path class="n-per" d="M570.8000000000001,812 L604.8000000000001,812"/>
+<text class="s" x="612.8" y="817" text-anchor="start">warm</text>
+<path class="n-slate" d="M664.4000000000001,812 L698.4000000000001,812"/>
+<text class="s" x="706.4" y="817" text-anchor="start">fuse</text>
+<rect class="core" x="14" y="829" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="843" text-anchor="start">Instance</text>
+<rect class="fabric" x="140" y="829" width="40" height="18" rx="4"/>
+<text class="s" x="188" y="843" text-anchor="start">Reset logic</text>
+<rect class="jovr" x="290" y="829" width="40" height="18" rx="4"/>
+<text class="s" x="338" y="843" text-anchor="start">JTAG override mux</text>
+<path class="sigo" d="M480,838 L516,838"/>
+<text class="s" x="524" y="843" text-anchor="start">Control or status</text>
+<path class="sigplain" d="M660,838 L700,838"/>
+<path class="sigplain" d="M680,826 L680,833 M680,843 L680,850"/>
+<text class="s" x="710" y="843" text-anchor="start">Crossing, not connected</text>
+<path class="sigplain" d="M880,838 L920,838 M900,838 L900,850"/>
+<circle cx="900" cy="838" r="3.5" fill="#5b6670"/>
+<text class="s" x="930" y="843" text-anchor="start">Fan-out</text>
+</svg>
