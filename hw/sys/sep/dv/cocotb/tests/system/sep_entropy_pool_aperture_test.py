@@ -230,8 +230,19 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             ("data", POOL_POP),
             ("unmapped", POOL_STATUS + cfg.unmapped_offs[0]),
         )
+        # These writes are the same-cycle arm of the AW/W arrival orders graded
+        # below, so the order is taken from the s_axi monitor, as for the other
+        # two arms, not assumed from the backend default.
         for label, addr in write_cells:
+            mon.arm_write_order()
             wr = await pool.access(addr, write=True, wdata=0xFFFF, expect_error=True)
+            seen = mon.last_write_stim
+            aw_cyc, w_cyc = mon.write_order_cycles[0], mon.write_order_cycles[1]
+            assert seen == "same-cycle", (
+                f"CHK-WRITE-SLVERR FAIL: {label} write was meant to present AW and W "
+                f"in the same cycle, but the s_axi monitor saw {seen} (AWVALID cycle "
+                f"{aw_cyc}, WVALID cycle {w_cyc})"
+            )
             assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
                 f"{label} write @0x{addr:08x} resp={wr.resp_code} "
                 f"timed_out={wr.timed_out}, expected SLVERR"
@@ -241,8 +252,8 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 f"{label} write changed fifo_level {level_room} -> {pool_level(st_after_wr)}"
             )
         self.logger.info(
-            "CHK-WRITE-SLVERR PASS: %d live/unmapped write cells returned "
-            "SLVERR, level unchanged (%d < depth %d)",
+            "CHK-WRITE-SLVERR PASS: %d live/unmapped write cells, AW and W observed "
+            "in the same cycle, returned SLVERR, level unchanged (%d < depth %d)",
             len(write_cells),
             level_room,
             FIFO_DEPTH,
@@ -258,7 +269,6 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # while the profile is armed; ESRC is already disabled, so the FIFO
         # cannot overflow meanwhile.
         drv = self.env.axi_agent.driver.axi.driver
-        mon = self.env.axi_monitor
         await self.stop_fifo_drain()
         for order, profile in (
             ("aw-first", AxiTimingProfile(w_delay=4)),
