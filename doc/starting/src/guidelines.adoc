@@ -97,7 +97,7 @@ For SystemVerilog (`.sv`, `.svh`, `.v`, `.vh`) and SystemRDL (`.rdl`):
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 ```
 
-For Python, shell, Makefile, and YAML files:
+For Python, shell, Makefile, Nix and YAML files:
 
 ```makefile
 # SPDX-License-Identifier: Apache-2.0
