@@ -18,10 +18,9 @@ provenance in [their README](../../../hw/sys/sep/doc/assets/upstream/README.md).
 
 The SMC top-level/reset filenames in the sheet omit `.drawio`; the Drive files
 match the repository images. SMU FIG002 repeats the decode filename in the sheet;
-both the connectivity and decode files are included. SEP FIG004 links to its PNG
-by Drive ID; the companion SVG is used. Entries marked "Needed" in the sheet are
-included when an actual asset is present. Existing revised JTAG, DTP, lifecycle,
-and token-processing figures remain canonical.
+both the connectivity and decode files are included. Entries marked "Needed" in
+the sheet are included when an actual asset is present. Existing revised JTAG
+and DTP figures remain canonical.
 
 ## OCAH Top
 
@@ -64,11 +63,11 @@ and token-processing figures remain canonical.
 | FIG020 | KMAC block diagram | [hw/sys/sep/doc/kmac.adoc](../../../hw/sys/sep/doc/kmac.adoc) | [hw/sys/sep/doc/assets/upstream/opentitan_kmac.svg](../../../hw/sys/sep/doc/assets/upstream/opentitan_kmac.svg) | Imported |
 | FIG021 | OTBN block diagram | [hw/sys/sep/doc/otbn.adoc](../../../hw/sys/sep/doc/otbn.adoc) | [hw/sys/sep/doc/assets/upstream/opentitan_otbn.svg](../../../hw/sys/sep/doc/assets/upstream/opentitan_otbn.svg) | Imported |
 | FIG022 | Adam's Bridge block diagram | [hw/sys/sep/doc/adams_bridge.adoc](../../../hw/sys/sep/doc/adams_bridge.adoc) | [hw/sys/sep/doc/assets/upstream/adams_bridge_mldsa.png](../../../hw/sys/sep/doc/assets/upstream/adams_bridge_mldsa.png)<br>[hw/sys/sep/doc/assets/upstream/adams_bridge_mlkem.png](../../../hw/sys/sep/doc/assets/upstream/adams_bridge_mlkem.png) | Imported |
-| FIG023 | eFuse interface block diagram | [hw/sys/sep/doc/otp_fuse_controller.adoc](../../../hw/sys/sep/doc/otp_fuse_controller.adoc) | [hw/sys/sep/doc/assets/SEP_eFuse_Interface_Block_Diagram_FIG023.png](../../../hw/sys/sep/doc/assets/SEP_eFuse_Interface_Block_Diagram_FIG023.png) | Imported |
-| FIG024 | Life Cycle Controller (LCC) FSM | [hw/sys/sep/doc/lifecycle_controller.adoc](../../../hw/sys/sep/doc/lifecycle_controller.adoc) | [hw/sys/sep/doc/assets/SEP_LC_FSM.png](../../../hw/sys/sep/doc/assets/SEP_LC_FSM.png) | Existing canonical figure |
-| FIG025 | Life Cycle Controller block diagram | [hw/sys/sep/doc/lifecycle_controller.adoc](../../../hw/sys/sep/doc/lifecycle_controller.adoc) | [hw/sys/sep/doc/assets/SEP_LC_Block.png](../../../hw/sys/sep/doc/assets/SEP_LC_Block.png) | Existing canonical figure |
-| FIG026 | Token Processing | [hw/sys/sep/doc/token_processing.adoc](../../../hw/sys/sep/doc/token_processing.adoc) | [hw/sys/sep/doc/assets/SEP_Token_Processing.png](../../../hw/sys/sep/doc/assets/SEP_Token_Processing.png) | Existing canonical figure |
-| FIG029 | eFuse Sense FSM | [hw/sys/sep/doc/otp_fuse_controller.adoc](../../../hw/sys/sep/doc/otp_fuse_controller.adoc) | [hw/sys/sep/doc/assets/SEP_eFuse_Sense_FSM_FIG029.png](../../../hw/sys/sep/doc/assets/SEP_eFuse_Sense_FSM_FIG029.png) | Imported |
+| FIG023 | eFuse interface block diagram | [hw/sys/sep/doc/otp_fuse_controller.adoc](../../../hw/sys/sep/doc/otp_fuse_controller.adoc) | [hw/sys/sep/doc/assets/sep-efuse-interface.svg](../../../hw/sys/sep/doc/assets/sep-efuse-interface.svg) | Redrawn as hand-authored SVG from the imported figure |
+| FIG024 | Life Cycle Controller (LCC) FSM | [hw/sys/sep/doc/lifecycle_controller.adoc](../../../hw/sys/sep/doc/lifecycle_controller.adoc) | [hw/sys/sep/doc/assets/sep-lifecycle-state-machine.svg](../../../hw/sys/sep/doc/assets/sep-lifecycle-state-machine.svg) | Redrawn as hand-authored SVG from the imported figure |
+| FIG025 | Life Cycle Controller block diagram | [hw/sys/sep/doc/lifecycle_controller.adoc](../../../hw/sys/sep/doc/lifecycle_controller.adoc) | [hw/sys/sep/doc/assets/sep-lifecycle-controller.svg](../../../hw/sys/sep/doc/assets/sep-lifecycle-controller.svg) | Redrawn as hand-authored SVG from the imported figure |
+| FIG026 | Token Processing | [hw/sys/sep/doc/token_processing.adoc](../../../hw/sys/sep/doc/token_processing.adoc) | [hw/sys/sep/doc/assets/sep-token-processing.svg](../../../hw/sys/sep/doc/assets/sep-token-processing.svg) | Redrawn as hand-authored SVG from the imported figure |
+| FIG029 | eFuse Sense FSM | [hw/sys/sep/doc/otp_fuse_controller.adoc](../../../hw/sys/sep/doc/otp_fuse_controller.adoc) | [hw/sys/sep/doc/assets/sep-efuse-sensing.svg](../../../hw/sys/sep/doc/assets/sep-efuse-sensing.svg) | Redrawn as hand-authored SVG from the imported figure |
 
 ## SMC
 
