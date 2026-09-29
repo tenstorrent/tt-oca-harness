@@ -37,7 +37,7 @@ SMC_SCRATCH8_ADDR = 0x4003_90C0  # manifest offset from the SMC-SRAM base
 SMC_SCRATCH9_ADDR = 0x4003_90C8  # SMC->SEP status word the ROM polls
 SMC_SCRATCH10_ADDR = 0x4003_90D0  # raw DFX status the ROM publishes when it blocks
 SMC_DFT_STATUS_ADDR = 0x4000_B800  # DFX_CTRL_STATUS_SMU, the MEM_REPAIR/MBIST gate's word
-SMC_STRAPS_LO_ADDR = 0x4040_5800  # STRAPS_LO, bits [31:0] of the strap word
+SMC_STRAPS_LO_ADDR = 0x4040_4800  # STRAPS_LO, bits [31:0] of the strap word
 SMC_STRAPS_HI_ADDR = SMC_STRAPS_LO_ADDR + 4  # STRAPS_HI, bits [63:32]
 
 # scratch[9]: SRAM_INIT | MANIFEST_READY | BUFFER_READY | SRAM_PROTECTED, so the
