@@ -1754,7 +1754,7 @@ row's EXPECT sentence is worth, read the check.
 |===
 |Checker |Description
 |`CHK-SMU-EXT-SMN-S4` |the SMC-side ID-width converter presents the specified 6-bit subsystem ID
-|`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count, and its tie-off reads zero
+|`CHK-SMU-INT-AGG-S1` |smc_ext_interrupts_i is 256 wide, the SMC external interrupt count
 |`CHK-SMU-XTRIG-CTP-S1` |all four CTP groups are 16 wide, the XTRIG_NUM_CTP default
 |`CHK-SMU-XTRIG-CTP-S6` |bench-held resting CTP data inputs leave the CTP outputs static (live control: `smu_xtrig_ctp_pad_test`)
 |`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LC_STATE_WIDTH

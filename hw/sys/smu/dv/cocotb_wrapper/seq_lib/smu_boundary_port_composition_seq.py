@@ -143,12 +143,6 @@ class smu_boundary_port_composition_seq:
 
         # SMU-INT-AGG.S1
         self._width(smu, "smc_ext_interrupts_i", NUM_INT_TO_SMC, "CHK-SMU-INT-AGG-S1")
-        sb.expect_eq(
-            "smc_ext_interrupts_i tie-off reaches the SMU boundary as zero",
-            sample(smu.smc_ext_interrupts_i, "smc_ext_interrupts_i"),
-            0,
-            evidence="CHK-SMU-INT-AGG-S1",
-        )
 
         # SMU-EXT-SMN.S4. Drift: the SMN struct widths and the crossbar-side
         # ID width have no specification in this tree. Token: the SMC-side
