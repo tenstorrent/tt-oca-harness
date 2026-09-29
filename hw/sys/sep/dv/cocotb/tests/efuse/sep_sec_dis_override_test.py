@@ -23,6 +23,11 @@ The evidence is the two reset probes and ``FEAT_CTRL``. The test drives
 ``jtag_sep_reset_n_ovrd_i`` and ``jtag_sep_reset_n_val_i``. A transaction
 to a block that reset holds, and a write of the DTP IC_RESET register,
 are not claimed. JTAG ``TOKEN_EOP`` activate is not claimed.
+
+While SEC_DIS is active and sensing is still open, a read of the
+``LC_STATE`` shadow-map word must return AXI OKAY. The map gate input is
+tied to 0, so that read returns an error and ``CHK-MAP-OPEN`` fails. The
+other checkers run first.
 """
 
 from __future__ import annotations
@@ -30,9 +35,12 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
+from env.sep_axi_agent import SepAxiOp
+from env.sep_efuse_image import SepEfuseImage
 from env.sep_lcc_golden import LC_PROD, M64, feat_ctrl_expected, lc_state_name
 from env.sep_rma_token import token_digest
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
     TOKEN_MISMATCH,
@@ -237,6 +245,38 @@ class sep_sec_dis_override_test(sep_base_test):
             "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0"
         )
 
+    async def _read_shadow_map(self) -> str | None:
+        """Require an OKAY read of the LC_STATE shadow word while sense is open.
+
+        Returns the failure text when the read is not OKAY. The scoreboard does
+        not also grade this response: this checker owns that one failure.
+        """
+        self._require_sense_open("CHK-MAP-OPEN", sec_dis=1)
+        addr = SepEfuseImage.field("LC_STATE").shadow_addr
+        seq = SepAxiAccessSeq(
+            "sec_dis_map_rd",
+            op=SepAxiOp.READ,
+            addr=addr,
+            size=2,
+            allow_ungraded_read_resp=True,
+        )
+        await self.start_seq(seq)
+        self._require_sense_open("CHK-MAP-OPEN", sec_dis=1)
+        if seq.resp_ok and not seq.timed_out:
+            self.logger.info(
+                "CHK-MAP-OPEN PASS: LC_STATE @0x%08x AXI OKAY rdata=0x%08x "
+                "while sec_dis=1 sense_done=0",
+                addr,
+                seq.rdata & 0xFFFF_FFFF,
+            )
+            return None
+        return (
+            "CHK-MAP-OPEN FAIL: sec_dis=1 sense_done=0 "
+            f"LC_STATE @0x{addr:08x} resp_ok={int(seq.resp_ok)} resp={seq.resp_code} "
+            f"timed_out={int(seq.timed_out)} rdata=0x{seq.rdata & 0xFFFF_FFFF:08x}, "
+            "want AXI OKAY"
+        )
+
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(
             lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
@@ -271,6 +311,9 @@ class sep_sec_dis_override_test(sep_base_test):
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0"
         )
         await self._check_override_after_match()
+        map_fail = await self._read_shadow_map()
+        if map_fail is not None:
+            self.logger.info(map_fail)
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
         fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
@@ -309,3 +352,5 @@ class sep_sec_dis_override_test(sep_base_test):
             "CHK-DEACTIVATE PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after token=1", drop.match_code
         )
         await self._check_feat(0, "CHK-RESTORE")
+        if map_fail is not None:
+            raise AssertionError(map_fail)
