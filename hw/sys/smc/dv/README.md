@@ -116,8 +116,9 @@ fresh seed per leaf:
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress --sim-jobs 6
 ```
 
-`all` includes the fourteen `fw` leaves and the three dual-target leaves, so a
-picolibc-enabled RISC-V GCC (or `scripts/docker-run.sh`) must be available: the
+`all` includes the fifteen `fw` leaves, the three dual-target leaves and the two
+MMIO isolate-flush leaves, so a picolibc-enabled RISC-V GCC (or
+`scripts/docker-run.sh`) must be available: the
 `c_compile` stage builds the images with it (see
 [Prerequisites](#prerequisites)), in the toolchain container when
 `RISCV_TOOLCHAIN` is unset. To build the images ahead of the run:
@@ -135,16 +136,18 @@ with picolibc works too: set `RISCV_TOOLCHAIN` to its directory and no
 container or rootfs is needed.
 
 Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
-`--items hosted` with three seeds per leaf instead, because those runners have
-no RISC-V toolchain. `hosted` is `all` without those seventeen leaves;
+`--items hosted` with one seed per leaf (`reseed: 1`) instead, because those
+runners have no RISC-V toolchain. `hosted` is `all` without twenty leaves: the
+fifteen `fw` leaves, the three dual-target leaves, and
+`smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test`.
 `testlists/holdout.toml` defines every leaf outside `all` and `docs/SMC_VPLAN.adoc` (Known Limitations)
 records each with the reason, its owner and its closing condition.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
+python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 1
 ```
 
-One seed per leaf (`--reseed 1`) is the quick local form of the hosted run.
+`--reseed N` runs N random seeds per leaf when more stimulus variety is wanted.
 
 ### One named test
 
@@ -221,7 +224,8 @@ run as `occp_dual`; it still builds the harness directly, so it prints no
 
 `--cov` collects native coverage. VCS grades the SV covergroups under
 `cov/sv/` (`cov/config/vcs/`); on Verilator, `cov/config/verilator/coverage_policy.toml`
-grades the Python-side functional points the scoreboard records. Neither
+grades the `cov/sv` cover properties in the `user` family together with line,
+branch and expression. Neither
 scheduled tier collects coverage (`.github/workflows/regress.yml`): the coverage
 regression runs on the licensed flow outside hosted CI. Coverage intent, the
 VPLAN-to-FCOV traceability and the closure policy (public versus commercial
@@ -229,7 +233,7 @@ evidence, structural OUT versus waiver holes, waiver fields) are in
 `docs/SMC_FCOV.adoc`.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc --items all --tool vcs --regress --cov
+python3 tools/dv/run_dv.py --dut smc --items hosted fw --tool vcs --regress --cov
 ```
 
 ## Run modes, targets, and groups
@@ -242,8 +246,8 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 |---|---|
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
 | `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `dual`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `dual` elaborates a second build target the coverage merge cannot combine with `default` |
-| `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (three seeds) |
-| `fw` | firmware class: the fourteen CPU-boot leaves whose image `c_compile` builds |
+| `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (one seed) |
+| `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
 | `dual` | SMC_DUAL class: the three `target = "dual"` leaves, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
 | `occp_boot`, `occp_dual`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |

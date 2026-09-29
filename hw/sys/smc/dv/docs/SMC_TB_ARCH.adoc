@@ -297,7 +297,8 @@ A *multi-item-type dispatcher* (`write()` branches on item class), unlike SEP's
 single-item value scoreboard. Per type:
 
 * *SAMPLE items* (i2c/reset/clk/irq/gpio/axil): assert `resolvable` (no X/Z) and
-the type's idle invariants; emit `FUNC_COV_VALUE` coverage bins. (GPIO
+the type's idle invariants; emit `FUNC_COV_VALUE` log lines, a stimulus
+record and not a coverage metric (`SMC_FCOV.adoc`). (GPIO
 aggregates are checked for resolvability only — their level is a bus-aggregate
 artifact, not GPIO-diagnostic; isolated per-pad drive is proven by
 `smc_gpio_output_driveback_test`.)
