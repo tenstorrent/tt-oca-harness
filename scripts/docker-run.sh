@@ -310,8 +310,12 @@ run_image() {
     f=(-it)
     shift
   }
+  # The image's python carries the uv workspace members as editable installs
+  # resolved through $REPO_ROOT when they are imported (nix/load-uv-env.nix), so
+  # it has to name the repository as the container sees it, not as the host does.
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
     "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -e "REPO_ROOT=${RUN_ROOT}" \
     -v "${ROOT}:${RUN_ROOT}${VOL}" -w "$RUN_ROOT" "$image" "$@"
 }
 
