@@ -575,7 +575,7 @@ and operation fields.
 |(2+S+D/8) +: D |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
 |(2+S) +: (D/8) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB when the transaction is a write. On a Capture-DR, this field holds the previous value.
 |2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
-|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status, or a system reset discarded it (see <<jtag2axi-system-reset>>). 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
 |===
 
 ==== *_AXI_SERIES_CTRL
@@ -613,7 +613,7 @@ manage a series of AXI accesses.
 |(2+S+P) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
 |(2+S) +: P |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and the (wr/rd)_pl_depth field read from the bridge's `*_JTAG2AXI_CAPS` register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
 |2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
-|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
+|1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status, or a system reset discarded an operation that was in progress or queued (see <<jtag2axi-system-reset>>). This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset or system reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
 |===
 
 ==== *_AXI_SERIES_DATA_INCR
@@ -769,9 +769,36 @@ increment-control and error-status bit.
 .JTAG2AXI data and error-status fields
 |===
 |Bits |Field |Access |Reset |Description
-|n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
+|n |increment/status |RW |0 |The value shifted into this bit indicates whether the address should be incremented after this transaction completes. The value shifted out of this bit indicates whether the previous transaction completed successfully (0 = succeeded, 1 = failed). An AXI result of SLVERR or DECERR, a system reset that discarded the transaction, as well as attempting a new transaction while the previous was still pending will cause the status to be returned as "failed".
 |n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
+
+[[jtag2axi-system-reset]]
+==== System Reset Recovery
+
+A system reset resets the AXI side of each JTAG2AXI instrument while its JTAG
+side keeps running. The instrument recovers without a TAP reset. When the
+reset reaches its JTAG side, it discards every operation that is in flight or
+queued: the AXI transaction it was waiting on, series requests not yet issued,
+and series read data not yet shifted out. The target can still complete a
+transaction that was already on the AXI bus before the reset reached it, so
+the debugger must treat a discarded write as having an unknown effect.
+
+After the discard:
+
+* The SINGLE_OP op field reads 2 if a single operation or an error-status
+  series operation was discarded, and 0 otherwise. A captured read-data field
+  reads 0.
+* The SERIES_CTRL op field reads 2 if any operation was discarded, and 0
+  otherwise. A sticky status of 3 is cleared.
+* The SERIES_CTRL address, size, pl_depth and op settings keep their values,
+  but the read pipeline restarts empty. Reprogram SERIES_CTRL before resuming
+  a pipelined series read.
+
+The instrument needs a few TCK cycles after the system reset to complete the
+recovery. An operation shifted in during that time is held and issued once
+recovery completes, and the SINGLE_OP op field reads 3 until the operation
+finishes.
 
 === Debug Disable
 
