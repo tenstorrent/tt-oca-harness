@@ -85,6 +85,17 @@ no register must return SLVERR and must not alias onto a live register. See the
 The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
 single-beat transactions only; see {sep-crypto-access-ref}.
 
+== Units Unreachable from the Inbound Port
+
+Several SEP units are not connected to the external inbound port and answer
+`DECERR` to any external access attempt. These units include the Boot ROM,
+Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
+serves the mailbox and system CSR windows, and forwards all other addresses
+below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
+crossbar. Addresses above 0x4000_0000 and the units listed above are not
+reachable through this external path and receive error responses from the
+`smn_inbound` port.
+
 ifdef::backend-html5[]
 include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]
 endif::backend-html5[]
