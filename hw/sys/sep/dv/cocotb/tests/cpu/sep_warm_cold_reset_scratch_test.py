@@ -23,7 +23,8 @@ Checks (each asserts an exact value, so a stuck/X register fails):
                    Cold-domain isolation is CHK-WARM-CLEAR / CHK-WARM-RETAIN
                    (warm bank clears, cold bank retains) -- dbg_sep_reset_n_o has
                    no fan-out from wdt_rst_ni_i, so asserting it stays 1 cannot fail.
-  CHK-BANK-ALIAS : with one distinct pattern in each of the 16 registers, every
+  CHK-BANK-ALIAS : with one distinct pattern in each of the 16 registers (eight
+                   per bank, sep_scratch.rdl SCRATCH[8]), every
                    index of both banks reads back its OWN pattern -- per-register
                    storage with no aliasing between indices or between banks.
                    Cold bank cross-checked word-by-word via scratch_cold_probe_o.

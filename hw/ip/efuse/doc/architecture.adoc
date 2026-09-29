@@ -67,7 +67,7 @@ access features.
 .eFuse shadow-register features
 |=====================================================================================
 |Feature |Description
-|Capacity |Configurable (default: 24576 bits / 3KB, 768 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
+|Capacity |Configurable (default: 8192 bits / 1KB, 256 × 32-bit words), set via the `SHADOW_REG_BITS` parameter
 |Initialization |Automatic boot-time loading via Fuse Sense FSM
 |Access Control |Multi-tier hardware and software lock mechanisms
 |Data Consistency |Maintains synchronization with underlying OTP storage upon each power-on reset
@@ -88,6 +88,13 @@ be altered once set. It supports write-and-verify procedures for
 reliability, integrating verification steps that check programmed values
 against intended data, and fully blocks any unauthorized overwrites to
 maintain data integrity.
+
+*Readback Capture Behavior:*
+
+When a read command completes successfully, the read interface captures data from
+the SHIM response into the read-data CSR during the ST_WAIT_RESP state. This data
+is retained and continues to be available after the FSM returns to idle, allowing
+software to retrieve the result without a re-read.
 
 === Parameterized Command Typedefs
 
@@ -323,28 +330,36 @@ controller.
 
 *JTAG Access Control Based on LC_STATE:*
 
+JTAG access policies differ between SMC and SEP variants. The table below describes
+the SMC variant policy, which restricts JTAG access in production and RMA states.
+SEP applies a different policy: in restricted states (PROD or RMA_SIP), JTAG
+accesses to the MMR (token register) space remain allowed for token programming;
+accesses outside the MMR space are blocked with an error response.
+
+*SMC JTAG Policy:*
+
 When lifecycle state is PROD (0x1) or RMA_SOP (0x2, 0x3), JTAG access
 to eFuse registers is restricted (<<efuse-lifecycle-based-jtag-permissions-table>>).
 
 [[efuse-lifecycle-based-jtag-permissions-table]]
 [width="100%",cols="32%,43%,25%",options="header",]
-.eFuse lifecycle-based JTAG permissions
+.eFuse JTAG permissions (SMC)
 |=====================================================================================
 |Access Type |PROD/RMA_SOP State |Other States
 |JTAG Write |*Blocked* (error response) |Allowed
-|JTAG Read |*Blocked* except Chiplet ID |Allowed
-|JTAG Read Chiplet ID |Allowed |Allowed
+|JTAG Read |*Blocked* except JTAG_PUBLIC_IDENTITY |Allowed
+|JTAG Read JTAG_PUBLIC_IDENTITY |Allowed |Allowed
 |=====================================================================================
 
 The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
 returns an error response with data value `0xbadcab1e`.
 
-*Chiplet ID Exception:*
+*SMC exception for JTAG_PUBLIC_IDENTITY:*
 
-Even in PROD or RMA_SOP states, JTAG read access to the chiplet ID and
-package ID registers is permitted. This allows identification of the chip
-for manufacturing and field returns without exposing sensitive eFuse contents.
+Even in PROD or RMA_SOP states, JTAG read access to the JTAG_PUBLIC_IDENTITY
+register is permitted. This allows identification of the chip for manufacturing
+and field returns without exposing sensitive eFuse contents.
 
 === Secure Test Mode (secure_tm_i)
 

@@ -196,4 +196,8 @@ the SEP interrupt controller, so software reads INTR_STATE to tell them apart;
 the access-control and SPI pass-through interfaces are unused and tied off. The
 SPI busy output is withdrawn from the SEP interface, since the OpenTitan host
 reports activity only through STATUS.ACTIVE.
+|0.5.35 |2026-09-25 |Nils Wistoff |Stated in the SMC, SEP, Key Manager and
+cross-trigger network address maps how each unit answers an access that no
+register or memory backs, inside its decoded extent and past it, and how an
+address between unit apertures answers.
 |=======================================================================

@@ -500,7 +500,7 @@ SEP_ROM_MUX_NUM_PORTS
     logic [SEP_56_64_3_12_ADDR_WIDTH-1:0] region_start;
     logic [SEP_56_64_3_12_ADDR_WIDTH-1:0] region_end;
     logic [SEP_56_64_3_12_ADDR_WIDTH-1:0] offset;
-    logic cacheable;
+    axi_pkg::cache_t cacheable;
     logic region_valid;
   } remap_region_t;
 

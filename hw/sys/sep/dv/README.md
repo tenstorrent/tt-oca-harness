@@ -95,8 +95,10 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
 builds the images with it (see [Prerequisites](#prerequisites)). `rom_fw` stays
 out of `all`; run it with `--items rom_fw`.
 
-`all` enrolls 112 leaves. `cpu_stub` (92) and `cpu` (20) are disjoint and
-together hold all of them. The class commands below are the pre-merge gate.
+`all` enrolls 121 leaves. `cpu_stub` (101) and `cpu` (20) are disjoint and
+together hold all of them. `sep_km_ic_reset_release_test` runs on VCS only, so
+a Verilator selection of `all` is 120 leaves and of `cpu_stub` is 100. The
+class commands below are the pre-merge gate.
 
 ### Scheduled tiers
 
@@ -213,14 +215,24 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --target default --sim-jobs 32 --build-jobs 32
 ```
 
-`all` is the coverage set: 112 leaves, `cpu_stub` (92) plus `cpu` (20).
+`all` is the coverage set: 121 leaves, `cpu_stub` (101) plus `cpu` (20).
 Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third RTL
 target, firmware rather than hardware contracts -- so reaching those tests
-means naming `rom_fw`. `expected_count` is 112.
+means naming `rom_fw`. `expected_count` is 121.
 
 `--target default` compiles the full CPU once. no_cpu leaves force-splice the
 LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
 one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
+
+`--target default` also moves `sep_abr_absent_decerr_test` off its own target
+(`lsu_stub_abr_absent`, `SEP_ABR_EN` not defined) onto the ABR-present build,
+where it cannot test the ABR-absent model. The runner merges one
+build target per coverage run, so that leaf's coverage is a separate run on
+its own target:
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items sep_abr_absent_decerr_test --cov --tool vcs
+```
 
 What the resulting number is not:
 
@@ -273,7 +285,7 @@ entries below are entry points — use `--items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate: `sep_axi_smoke_test` only |
-| `all` | 112 leaves: `cpu_stub` (92) and `cpu` (20). `expected_count` is 112 |
+| `all` | 121 leaves: `cpu_stub` (101) and `cpu` (20). `expected_count` is 121 |
 | `cpu_stub` | CPU not alive (`sep_cpu` stub, `target = lsu_stub_all_live`) |
 | `cpu` | full-CPU firmware daily class (fallback `target = default`) |
 | `rom_fw` | production Boot ROM firmware; `rom_boot` target; not a member of `all` |

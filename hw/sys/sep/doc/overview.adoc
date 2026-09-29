@@ -24,7 +24,7 @@ peripherals subsystems
 *** Inbound AXI4 system bus slave
 ** Low speed IO peripherals AXI4 extension port with peripheral
 interrupt
-*** SPI controller interface (single/quad/octal)
+*** SPI controller interface (single/dual/quad)
 *** _Remote peripherals shared with SMC: UART, GPIO_
 ** JTAG for debug and test
 * External Macro Interfaces
