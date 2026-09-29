@@ -456,6 +456,21 @@ module smc_uvm_top
     end
 `endif
 
+    // The force-mode CPU reset withdraws the R beat the CPU is presenting to
+    // the front-port demux without `ready`
+    // (cocotb/seq_lib/README_cpu_isolate_flush.md), and the R arbiter's
+    // request-stability assertions report that withdrawal. Only the leaf that
+    // reaches the state on purpose asks for that arbiter's checks off; the
+    // scope is the one arbiter instance, so every other assertion stays armed.
+`ifndef VERILATOR
+    initial begin
+        if ($test$plusargs("smc_front_port_r_arb_assertoff")) begin
+            $assertoff(0, u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux
+                .i_demux_simple.genblk1.i_r_mux);
+        end
+    end
+`endif
+
     localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
     localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
 
