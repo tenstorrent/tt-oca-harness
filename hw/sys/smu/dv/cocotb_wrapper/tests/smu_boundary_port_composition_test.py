@@ -9,7 +9,7 @@ an evidence token takes its expected value from a specification: the port
 table's literal widths, the parameter defaults in
 `doc/integrator/src/smu.adoc` "SMU Default Parameters", the SMC port table's
 external interrupt count and system AXI input ID width, and the generated
-`reset_unit` register header for `SS_CONFIG`. seq_lib/smu_compose_helpers.py
+`reset_unit` register header for `SS_CONFIG`. cocotb/seq_lib/smu_compose_helpers.py
 names the source of each constant. The SMN struct widths and the
 crossbar-side and SEP-side ID widths have no specification in this tree and
 are checked as untokened drift. The `SMU-<feature>.S<n>` ids the CHK-SMU-*
@@ -19,10 +19,11 @@ rationales use; no document in this tree defines them.
 On the `--dut smu` production wrapper built with compile_smu_chiplet:
 every named port is read on the elaborated `smu` instance for its specified
 width, the SMC-side ID-width converter presents the 6-bit subsystem ID, the
-CTP channels whose data inputs the wrapper ties to zero stay static at zero at
+CTP channels whose data inputs the bench holds at zero stay static at zero at
 the DTP consumer and at the SMU boundary, `ss_config_o` presents the SS_CONFIG
-reset value and `skip_mem_repair_o` is clear with no isolation request
-pending.
+reset value, `skip_mem_repair_o` is clear with no isolation request
+pending, and after the fuse sense `smc_shadow_regs_o` carries the sensed
+image at the `smu` port, the `smu_wrapper` port and the bench net.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_boundary_port_composition_test --tool verilator

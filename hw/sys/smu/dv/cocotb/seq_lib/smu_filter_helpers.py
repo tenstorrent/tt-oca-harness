@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from cocotb.triggers import ClockCycles
@@ -17,6 +18,7 @@ from seq_lib.smu_addr_map import (
     OUTBOUND0_START,
     SMC_CHIP_CONFIG_VERSION_LO,
     SMC_CHIP_CONFIG_VERSION_LO_RESET,
+    c_header_u32,
     filter_ctrl_bm,
     filter_ctrl_field_reset_encode,
     smc_addr,
@@ -73,8 +75,8 @@ def page_align_window(start: int, end: int) -> tuple[int, int]:
 # probe from the external SMN port sit at their LOCAL addresses (0xC000_xxxx).
 # The wrapper elaborates SEP=1, so ext_in traffic is routed by
 # smu_axi_xbar.addr_map[1] = [GLOBAL_BASE, GLOBAL_BASE + REGION_SIZE) and a
-# local address misses it (DECERR, 0xBADCAB1E). LOCAL_BASE is hardwired to
-# 0xC000_0000, so writing GLOBAL_BASE = LOCAL_BASE makes the global and local
+# local address misses it (DECERR, 0xBADCAB1E). LOCAL_BASE is hardwired to its
+# reset value in the generated smc_base_config.h, 0xC000_0000, so writing GLOBAL_BASE = LOCAL_BASE makes the global and local
 # views coincide: every existing probe address and every inbound filter window
 # (the SYS_IN filter compares the raw incoming address) keeps working verbatim.
 # JTAG2AXI enters SMC through its debug port, which bypasses the crossbar, so
@@ -84,7 +86,10 @@ def page_align_window(start: int, end: int) -> tuple[int, int]:
 # aperture reset [0x0, 0x0100_0000), which the crossbar's overlap SVA requires.
 SMC_APERTURE_GLOBAL_BASE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_GLOBAL_BASE_BASE_ADDR")
 SMC_APERTURE_REGION_SIZE_REG = smc_addr("SMC_TOP_SMC_BASE_CONFIG_REGION_SIZE_BASE_ADDR")
-SMC_APERTURE_LOCAL_BASE = 0xC000_0000
+SMC_APERTURE_LOCAL_BASE = c_header_u32(
+    Path(__file__).resolve().parents[6] / "hw/sys/smc/regs/gen/c/blocks/smc_base_config.h",
+    "SMC_BASE_CONFIG__LOCAL_BASE__BASE_reset",
+)
 
 
 async def program_smc_aperture_local_alias(jtag, *, scoreboard: Any = None) -> int:
