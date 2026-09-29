@@ -118,7 +118,6 @@ module efuse_interface_controller #(
   input  logic                                  scan_rst_ni,  // DFT scan reset, active-low.
   input  logic                                  security_disable_i,  // Security disable override, active-high; skips fuse
                                                                      // sensing and opens APB access to the shadow registers.
-                                                                     // With HAS_LC_STATE set, connect to security_disable_o.
   input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Per-field access-control rules.
 
   output logic                                  reset_n_o,  // Active-low reset, released through a
