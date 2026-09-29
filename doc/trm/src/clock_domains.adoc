@@ -13,11 +13,11 @@ the SMC controls the PLLs during early bring-up and generates the primary
 system clock (`clk_smu_i`) that is then distributed to the SMC itself, the
 SEP, and the DTP.
 
-The SMN lives in its own clock domain with respect to the SMU --- as highlighted
-by the clock domain crossing in the top level diagram --- and with respect
-to the application logic.
+The `clk_smn_i` input is architecturally independent of `clk_smu_i`; when they
+are asynchronous, CDCs at this boundary are an integration responsibility.
+OCAH does not supply synchronizer cells at the SMN interface.
 
-The CDC boundaries are shown in the
+The boundary is shown in the
 ifdef::backend-html5[]
 xref:overview.adoc#ocah-top-block-diagram[OCAH top-level block diagram].
 endif::backend-html5[]
@@ -43,8 +43,9 @@ bridges.
 |`clk_smn_i`
 |SMN (integration context)
 |System Management Network clock. An integration-level input independent of
-`clk_smu_i`; clock-domain crossings (CDCs) are used at the SMU-SMN boundary to
-isolate the management fabric timing from the SMU subsystem clock. Not an SMU port.
+`clk_smu_i`; when the two are asynchronous, the integrator is responsible for
+placing CDCs at this boundary. OCAH does not supply synchronizer cells at the
+SMN interface. Not an SMU port.
 
 |`clk_ref_i`
 |SMC, SEP
