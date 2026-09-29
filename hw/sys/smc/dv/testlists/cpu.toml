@@ -346,6 +346,11 @@ seed = 1
 timeout_sec = 1800
 tags = ["cpu", "isolate_flush", "pyuvm"]
 run_modes = ["smoke"]
+# The force-mode reset withdraws the R beat the CPU is presenting without
+# `ready` (README_cpu_isolate_flush.md); the front-port R arbiter's
+# request-stability assertions report that withdrawal, and this leaf alone asks
+# tb_top to hold off that one arbiter instance's checks.
+args = ["+smc_front_port_r_arb_assertoff"]
 
 [[tests]]
 name = "smc_cpu_l2_write_wedge_test"

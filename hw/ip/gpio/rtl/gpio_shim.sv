@@ -8,8 +8,9 @@
 // External drive, pull, and glitch-filter controls can override register settings when
 // selected: the electrical controls come, in priority order, from the cold-reset defaults,
 // the LSIO pin select, CONTROL.config_enable, then the LSIO software select.
-// AXI-Lite addresses at or below the GPIO_CTRL base plus size reach the gpio_ctrl register
-// block; others receive DECERR from an error subordinate.
+// AXI-Lite addresses below the GPIO_CTRL base plus size reach the gpio_ctrl register block;
+// the base-plus-size address and above receive DECERR from an error subordinate. Addresses
+// below the base are decoded away upstream, so this shim bounds only the top of the aperture.
 // While rst_cold_ni is low a latch follows the pad input, and it holds the strap value once
 // rst_cold_ni rises.
 
@@ -109,16 +110,18 @@ module gpio_shim
   logic aw_select;
   logic ar_select;
 
-  // Address decode: output[0] for register block, output[1] for error slave
-  // Address is assumed to be greater than the GPIO_CTRL base address after passing the demux in gpio.sv
+  // Address decode: output[0] for register block, output[1] for error slave.
+  // The upstream fabric routes only addresses at or above the GPIO_CTRL base to this shim, so
+  // the ctrl aperture is the half-open range [base, base+size); base+size and above are out of
+  // range and route to the error subordinate.
   always_comb begin
-    if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] <= gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
+    if (axil_req_to_demux.aw.addr[GPIO_REG_ADDR_WIDTH-1:0] < gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
       aw_select = 1'b0;
     end else begin
       aw_select = 1'b1;
     end
 
-    if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] <= gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
+    if (axil_req_to_demux.ar.addr[GPIO_REG_ADDR_WIDTH-1:0] < gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_BASE_ADDR + gpio_wrap_addrmap_pkg::GPIO_WRAP_GPIO_CTRL_SIZE) begin
       ar_select = 1'b0;
     end else begin
       ar_select = 1'b1;

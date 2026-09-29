@@ -1077,8 +1077,7 @@ required identifier no scenario records, so finalization reports `missing=1`:
 
 |Evidence core (SV-UVM)
 |`python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm
---items ocah_jtag_idcode_test --skip-unimplemented
---plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE`
+--items ocah_jtag_idcode_test --plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE`
 
 |AXI
 |`uv run --locked --group dv python
