@@ -40,8 +40,9 @@ The reset hierarchy within the SMU proceeds as follows:
 
 . *SEP reset.* The SEP is held in reset by the same SMC primary reset
   (`rst_primary_smc_clk_no`). The SEP watchdog timer also drives a shared
-  warm-reset path (`rst_wdt_n` at the SMU level) that resets both the SEP and
-  parts of the SMC through the SMC reset unit.
+  warm-reset path (`rst_wdt_n` at the SMU level); its blast radius is limited
+  to the SEP CPU and the SEP warm scratch registers, plus the parts of the SMC
+  that the SMC reset unit routes through the warm-reset path.
 
 . *Downstream subsystem sequencing.* The SMC sequences reset deassertion for
   up to 32 managed subsystems through `ss_reset_ctrl_o[31:0]` and isolation
