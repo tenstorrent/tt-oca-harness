@@ -711,7 +711,9 @@ accelerator interfaces.</p>
 <h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1.1. Parameters</a></h3>
 <div class="paragraph">
 <p>The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
-the read-data behaviour of its memories, and the address of the eFuse controller.</p>
+the read-data behaviour of its memories, and the address of the eFuse controller.
+The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
+<code>scrambler_8192x32</code>.</p>
 </div>
 <div class="paragraph">
 <p>The parameters of <code>key_manager</code> are listed in <a href="../../../rtl-modules-reference/ip/key_manager/key_manager.html" class="xref page">key_manager</a>.</p>
@@ -2361,9 +2363,11 @@ bit for testing.</p>
 SLVERR response.</p>
 </div>
 <div class="paragraph">
-<p>The configuration register is written by the KM firmware; the status
-register is read-only and updated by the sampler hardware. The
-configuration register has the following fields:</p>
+<p>The configuration register is written by the KM firmware and controls
+sampler behaviour (PREFETCH and TIMEOUT). The status register is updated by
+the sampler hardware; it is not wholly read-only, as its error bits and
+counters can be cleared via writes. The configuration register has the
+following fields:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -2383,9 +2387,10 @@ cleared. Default: 0 (disabled).</p>
 <div class="ulist">
 <ul>
 <li>
-<p>The number of cycles to wait for the DRBG before timing out an active
-CPU read. A value of 0 disables timeout. Default: 256. On timeout, the
-response is SLVERR with RDATA zero.</p>
+<p>The timeout countdown threshold. The counter loads with <code>TIMEOUT - 1</code> and decrements,
+timing out after exactly <code>TIMEOUT</code> active cycles (visits values <code>TIMEOUT-1</code> down to 0).
+A value of 0 disables timeout. Default: 256. On timeout, the response is SLVERR with
+RDATA zero.</p>
 </li>
 </ul>
 </div>
@@ -2393,7 +2398,7 @@ response is SLVERR with RDATA zero.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The status register holds the following read-only fields:</p>
+<p>The status register holds the following fields:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -2491,7 +2496,7 @@ assembled word buffer, response data slot) have no reset value: they
 power up with random (undefined) values.</p>
 </div>
 <div class="paragraph">
-<p>The sampler hardware is implemented as a five-state FSM in <code>km_drbg_sampler</code>. The states and their transitions are summarised in <a href="#key-manager-drbg-sampler-states-table">Table 10</a>.</p>
+<p>The sampler hardware is implemented as a six-state FSM in <code>km_drbg_sampler</code>. The states and their transitions are summarised in <a href="#key-manager-drbg-sampler-states-table">Table 10</a>.</p>
 </div>
 <table id="key-manager-drbg-sampler-states-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 10. Key Manager DRBG sampler states</caption>
@@ -2525,6 +2530,10 @@ power up with random (undefined) values.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>StTimeout</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entered from <code>StRequest</code> or <code>StByteAssembly</code> when the cycle counter exceeds <code>CFG.TIMEOUT</code> (and timeout is enabled). The read completes with SLVERR, <code>RDATA</code> = 0, <code>TIMEOUT_ERR</code> is set, and <code>COUNT_BAD</code> increments. The FSM returns to <code>StIdle</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>StStreamErr</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entered from <code>StRequest</code> or <code>StByteAssembly</code> when an AXI-Stream protocol violation is detected (e.g., <code>TVALID</code> deasserted before <code>TREADY</code>). The <code>STREAM_ERR</code> bit is set and <code>COUNT_BAD</code> increments. The FSM returns to <code>StIdle</code>.</p></td>
 </tr>
 </tbody>
 </table>

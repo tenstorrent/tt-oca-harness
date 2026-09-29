@@ -399,6 +399,21 @@ no register must return SLVERR and must not alias onto a live register. See the
 <p>The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
 single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>.</p>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="units-unreachable-from-the-inbound-port"><a class="anchor" href="#units-unreachable-from-the-inbound-port"></a><a class="link" href="#units-unreachable-from-the-inbound-port">2. Units Unreachable from the Inbound Port</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Several SEP units are not connected to the external inbound port and answer
+<code>DECERR</code> to any external access attempt. These units include the Boot ROM,
+Reset Control, ICCM, DCCM, PIC, and AP/STEE remap regions. The inbound port
+serves the mailbox and system CSR windows, and forwards all other addresses
+below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
+crossbar. Addresses above 0x4000_0000 and the units listed above are not
+reachable through this external path and receive error responses from the
+<code>smn_inbound</code> port.</p>
+</div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. SEP Component Address Map</caption>
 <colgroup>
@@ -841,7 +856,7 @@ single-beat transactions only; see <a href="crypto.html#crypto-single-beat-only"
 </div>
 </div>
 <div class="sect1">
-<h2 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">2. Detailed Register Map</a></h2>
+<h2 id="sep-detailed-register-map"><a class="anchor" href="#sep-detailed-register-map"></a><a class="link" href="#sep-detailed-register-map">3. Detailed Register Map</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The following register tables are generated from the SEP register description
@@ -850,7 +865,7 @@ IP blocks under <code>hw/ip/efuse/regs/</code> and <code>hw/ip/entropy_source/re
 corresponds to a unit in the SEP memory map above.</p>
 </div>
 <div class="sect2">
-<h3 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">2.1. CPU Control and Interrupts</a></h3>
+<h3 id="cpu-control-and-interrupts"><a class="anchor" href="#cpu-control-and-interrupts"></a><a class="link" href="#cpu-control-and-interrupts">3.1. CPU Control and Interrupts</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1193,7 +1208,7 @@ corresponds to a unit in the SEP memory map above.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="reset-and-lifecycle"><a class="anchor" href="#reset-and-lifecycle"></a><a class="link" href="#reset-and-lifecycle">2.2. Reset and Lifecycle</a></h3>
+<h3 id="reset-and-lifecycle"><a class="anchor" href="#reset-and-lifecycle"></a><a class="link" href="#reset-and-lifecycle">3.2. Reset and Lifecycle</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1263,7 +1278,7 @@ corresponds to a unit in the SEP memory map above.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">2.3. Scratch and eFuse</a></h3>
+<h3 id="scratch-and-efuse"><a class="anchor" href="#scratch-and-efuse"></a><a class="link" href="#scratch-and-efuse">3.3. Scratch and eFuse</a></h3>
 <div class="paragraph">
 <p>The eFuse MMR block is an IP-level block (<code>hw/ip/efuse/regs/</code>); its register map
 is generated from the IP RDL rather than the SEP aggregate.</p>
@@ -1760,7 +1775,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="timers"><a class="anchor" href="#timers"></a><a class="link" href="#timers">2.4. Timers</a></h3>
+<h3 id="timers"><a class="anchor" href="#timers"></a><a class="link" href="#timers">3.4. Timers</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -1874,7 +1889,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="cryptographic-accelerators"><a class="anchor" href="#cryptographic-accelerators"></a><a class="link" href="#cryptographic-accelerators">2.5. Cryptographic Accelerators</a></h3>
+<h3 id="cryptographic-accelerators"><a class="anchor" href="#cryptographic-accelerators"></a><a class="link" href="#cryptographic-accelerators">3.5. Cryptographic Accelerators</a></h3>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <div class="ocah-reg-html">
@@ -2411,7 +2426,7 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="entropy-source"><a class="anchor" href="#entropy-source"></a><a class="link" href="#entropy-source">2.6. Entropy Source</a></h3>
+<h3 id="entropy-source"><a class="anchor" href="#entropy-source"></a><a class="link" href="#entropy-source">3.6. Entropy Source</a></h3>
 <div class="paragraph">
 <p>The entropy source is an IP-level block (<code>hw/ip/entropy_source/regs/</code>) that
 feeds the DRBG. Its register map is generated from the IP RDL rather than the
@@ -2997,7 +3012,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="drbg"><a class="anchor" href="#drbg"></a><a class="link" href="#drbg">2.7. DRBG</a></h3>
+<h3 id="drbg"><a class="anchor" href="#drbg"></a><a class="link" href="#drbg">3.7. DRBG</a></h3>
 <div class="paragraph">
 <p>The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <a href="trng.html#drbg-deterministic-random-bit-generator" class="xref page">Architecture</a>). Their register maps are reported here.</p>
@@ -3384,7 +3399,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="key-manager"><a class="anchor" href="#key-manager"></a><a class="link" href="#key-manager">2.8. Key Manager</a></h3>
+<h3 id="key-manager"><a class="anchor" href="#key-manager"></a><a class="link" href="#key-manager">3.8. Key Manager</a></h3>
 <div class="paragraph">
 <p>The generated maps live with the IP.</p>
 </div>
@@ -7585,7 +7600,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="secure-dma"><a class="anchor" href="#secure-dma"></a><a class="link" href="#secure-dma">2.9. Secure DMA</a></h3>
+<h3 id="secure-dma"><a class="anchor" href="#secure-dma"></a><a class="link" href="#secure-dma">3.9. Secure DMA</a></h3>
 <div class="paragraph">
 <p>The secure DMA controller register map follows.</p>
 </div>
@@ -7826,7 +7841,7 @@ SEP aggregate.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="spi-controller"><a class="anchor" href="#spi-controller"></a><a class="link" href="#spi-controller">2.10. SPI Controller</a></h3>
+<h3 id="spi-controller"><a class="anchor" href="#spi-controller"></a><a class="link" href="#spi-controller">3.10. SPI Controller</a></h3>
 <div class="paragraph">
 <p>Consult the
 <a href="https://opentitan.org/book/hw/ip/spi_host/index.html">OpenTitan SPI Host
@@ -7977,7 +7992,7 @@ register map follows.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">2.11. External Window Reference Model</a></h3>
+<h3 id="external-window-reference-model"><a class="anchor" href="#external-window-reference-model"></a><a class="link" href="#external-window-reference-model">3.11. External Window Reference Model</a></h3>
 <div class="paragraph">
 <p>The SEP external-window model supplies the eFuse SHIM control register below.
 The <code>efuse_shim_ctrl</code> instance at offset <code>0x0</code> fixes where that block sits.

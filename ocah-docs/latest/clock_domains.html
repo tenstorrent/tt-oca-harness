@@ -640,12 +640,12 @@ system clock (<code>clk_smu_i</code>) that is then distributed to the SMC itself
 SEP, and the DTP.</p>
 </div>
 <div class="paragraph">
-<p>The SMN lives in its own clock domain with respect to the SMU --- as highlighted
-by the clock domain crossing in the top level diagram --- and with respect
-to the application logic.</p>
+<p>The <code>clk_smn_i</code> input is architecturally independent of <code>clk_smu_i</code>; when they
+are asynchronous, CDCs at this boundary are an integration responsibility.
+OCAH does not supply synchronizer cells at the SMN interface.</p>
 </div>
 <div class="paragraph">
-<p>The CDC boundaries are shown in the
+<p>The boundary is shown in the
 <a href="overview.html#ocah-top-block-diagram" class="xref page">OCAH top-level block diagram</a>.</p>
 </div>
 <div class="paragraph">
@@ -676,17 +676,19 @@ bridges.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smn_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMN</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">System Management Network clock. Independent of <code>clk_smu_i</code>; clock-domain
-crossings (CDCs) are used at the SMU-SMN boundary to isolate the management
-fabric timing from the SMU subsystem clock.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMN (integration context)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Management Network clock. An integration-level input independent of
+<code>clk_smu_i</code>; when the two are asynchronous, the integrator is responsible for
+placing CDCs at this boundary. OCAH does not supply synchronizer cells at the
+SMN interface. Not an SMU port.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC, SEP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Always-on reference clock, available before PLL lock. Used by the SMC for
 early bring-up, PLL control, reset synchronisation, and peripherals requiring
-a stable, lower-frequency source.</p></td>
+a stable, lower-frequency source. The SEP also clocks its reference counter
+from this clock.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_periph_i</code></p></td>
@@ -721,19 +723,6 @@ asynchronous to <code>clk_i</code> and typically runs between 100 and 400 MHz.</
 </tr>
 </tbody>
 </table>
-<div class="admonitionblock note">
-<table>
-<tr>
-<td class="icon">
-<i class="fa icon-note" title="Note"></i>
-</td>
-<td class="content">
-The figure below will be provided as an annotated version of the
-top-level block diagram highlighting the clock domains.
-</td>
-</tr>
-</table>
-</div>
 </div>
 </div>
 <p class="block-references">Figures and tables: <a href="#ocah-clock-domain-table">Table 1</a>.</p>

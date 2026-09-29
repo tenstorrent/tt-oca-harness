@@ -446,7 +446,7 @@ against fault attacks.</p>
 <h2 id="dual-scratch-register-banks"><a class="anchor" href="#dual-scratch-register-banks"></a><a class="link" href="#dual-scratch-register-banks">7. Dual Scratch Register Banks</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>There shall be two sets of 16 x 32-bit scratch register banks
+<p>There shall be two sets of eight 32-bit scratch registers at 8-byte stride
 instantiated at the SEP top level. Both are designed as simple SystemRDL
 defined configuration registers with AXI4-lite slave interfaces. The
 configuration registers have the following properties:</p>
@@ -602,13 +602,22 @@ to its AXI fabric as described below.</p>
 </div>
 <div class="sect2">
 <h3 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">8.1. OCAH Modifications</a></h3>
+<div class="paragraph">
+<p>The DMA exposes full AXI4 at both external boundaries:</p>
+</div>
 <div class="ulist">
 <ul>
 <li>
-<p>64-bit AXI4-lite slave interface (replaces or translates the 32-bit
-TL-UL bus protocol)</p>
+<p>64-bit AXI4 register slave interface (for control and status)</p>
+</li>
+<li>
+<p>64-bit AXI4 data master interface (for memory transfers)</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Internally, the DMA core uses the TL-UL protocol, which is translated to/from AXI4
+by protocol converters at the boundary.</p>
 </div>
 </div>
 <div class="sect2">

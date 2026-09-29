@@ -385,6 +385,15 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 watchdog timer.</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x1000 – BASE + 0x1867</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2152 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2152 B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug Module Hart Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, &#8230;&#8203;) are reached over the Debug Module Interface and do not appear in this map.</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x2000 – BASE + 0x27FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">204 B</p></td>
@@ -708,6 +717,15 @@ the extent occupied by registers.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Core 3 bus-error unit.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x8014000 – BASE + 0x8014FFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_cluster_error_device</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error responder for unmapped cluster-bus accesses.</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -757,8 +775,7 @@ controls, the per-pad GPIO controls, the PLL macro, and the PVT sensors.</p>
 <li>
 <p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): any additional memory-mapped devices
 the adopter wants to expose, plus the captured strap registers at
-<code>BASE + 0x040_5800</code>. The reference integration places its vendor I3C
-controllers (nonfree overlay) here.</p>
+<code>BASE + 0x040_5800</code>.</p>
 </li>
 </ul>
 </div>
@@ -766,10 +783,10 @@ controllers (nonfree overlay) here.</p>
 <p>The generated SMC map reports this as one opaque adopter-owned aperture.
 Concrete placements inside it are integration-specific and are documented by
 the adopter. The mandatory functions are the PLL and PVT wrappers, clock
-observation and pad controls, and the eFuse SHIM. Supplementary functions may
-include vendor I3C controllers and captured GPIO straps. Captured straps are
-read-only values latched from bonded pads at cold reset and consumed by boot
-firmware.</p>
+observation and pad controls, and the eFuse SHIM. Supplementary functions are
+adopter-defined memory-mapped devices, plus the captured GPIO straps. Captured
+straps are read-only values latched from bonded pads at cold reset and consumed
+by boot firmware.</p>
 </div>
 <div class="paragraph">
 <p>The eFuse SHIM control block is the exception. Its placement is fixed at the
@@ -781,7 +798,14 @@ never appears on the external port. The adopter defines the SHIM&#8217;s control
 registers at offset <code>0x0</code> of its own <code>smc_external</code> map.</p>
 </div>
 <div class="paragraph">
-<p>The rest of the window, is passed through to the smu-level adopter external port.</p>
+<p>The supplementary (optional) region of the window is passed through to the SMU&#8217;s
+<code>smc_external_req_o</code> / <code>smc_external_resp_i</code> ports for adopter integration. The
+adopter may implement any memory-mapped functions there, or may instead
+terminate the region with an error response. The reference integration
+(<code>hw/top/smc_ip_integration.sv</code>) terminates
+unclaimed accesses in this region with a DECERR response via the
+<code>prim_axi_lite_err_slv</code> helper; this is one integration choice, not a
+requirement.</p>
 </div>
 <div class="sect2">
 <h3 id="external-window-reference-maps"><a class="anchor" href="#external-window-reference-maps"></a><a class="link" href="#external-window-reference-maps">3.1. External Window Reference Maps</a></h3>

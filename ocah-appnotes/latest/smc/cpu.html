@@ -910,235 +910,92 @@ firmware development and diagnostics.</p>
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2 id="regmap-debug_module">RISC-V Debug Module Registers</h2>
-<p>RISC-V External Debug Support Version 0.13.2 - Section 3.12. Field reset values updated as per specification and user rules (Preset/- -&gt; 0x0). HW access permissions are derived based on SW access. SW &#x27;w&#x27; access changed to &#x27;rw&#x27;. Fields previously rw1c now use &#x27;woclr&#x27;.</p>
+<h2 id="regmap-debug_module">Debug Module Hart Interface</h2>
+<p>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>abstractdata[12]</strong>: 12 registers, base 0x10, stride 0x4</li>
-<li><strong>confstrptr[3]</strong>: 3 registers, base 0x64, stride 0x4</li>
-<li><strong>progbuf[16]</strong>: 16 registers, base 0x80, stride 0x4</li>
+<li><strong>ABSTRACT[5]</strong>: 5 registers, base 0x328, stride 0x4</li>
+<li><strong>PROGBUF[16]</strong>: 16 registers, base 0x33C, stride 0x4</li>
+<li><strong>DATA[4]</strong>: 4 registers, base 0x380, stride 0x4</li>
+<li><strong>ROM[26]</strong>: 26 registers, base 0x800, stride 0x4</li>
 </ul>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x10 - 0x3C</td><td><a href="#abstractdata_12_">abstractdata[12]</a></td><td>RW</td><td>Abstract Data Register. Used for arguments/return values of abstract commands.</td></tr>
-<tr><td>0x40</td><td><a href="#dmcontrol">dmcontrol</a></td><td>RW</td><td>Controls the overall Debug Module and selected harts. Writes to action bits (haltreq, resumereq, etc.) apply to the new value of hartsel and hasel.</td></tr>
-<tr><td>0x44</td><td><a href="#dmstatus">dmstatus</a></td><td>R</td><td>Reports status for the Debug Module and currently selected harts. This entire register is read-only.</td></tr>
-<tr><td>0x48</td><td><a href="#hartinfo">hartinfo</a></td><td>R</td><td>Information about the hart currently selected by hartsel. Optional; reads all-zero if not present. Entire register is read-only.</td></tr>
-<tr><td>0x4C</td><td><a href="#haltsum1">haltsum1</a></td><td>R</td><td>Read-only. Each bit indicates if any hart in a group of 32 is halted. May not be present in systems with fewer than 33 harts. Unavailable/nonexistent harts are not considered halted.</td></tr>
-<tr><td>0x50</td><td><a href="#hawindowsel">hawindowsel</a></td><td>RW</td><td>Selects which 32-bit portion of the hart array mask register is accessible in hawindow.</td></tr>
-<tr><td>0x54</td><td><a href="#hawindow">hawindow</a></td><td>RW</td><td>R/W access to a 32-bit portion of the hart array mask register, selected by hawindowsel.</td></tr>
-<tr><td>0x58</td><td><a href="#abstractcs">abstractcs</a></td><td>RW</td><td>Controls and status for abstract commands. Writing this register while an abstract command is executing (busy=1) sets cmderr to 1 (busy) if cmderr was 0.</td></tr>
-<tr><td>0x5C</td><td><a href="#command">command</a></td><td>RW</td><td>Writes cause corresponding abstract command to execute. Writing while busy sets cmderr=1 (if cmderr=0). Ignored if cmderr is non-zero.</td></tr>
-<tr><td>0x60</td><td><a href="#abstractauto">abstractauto</a></td><td>RW</td><td>Optional. Allows more efficient burst accesses. Writing while busy sets cmderr=1 (if cmderr=0). Detect support by R/W test.</td></tr>
-<tr><td>0x64 - 0x6C</td><td><a href="#confstrptr_3_">confstrptr[3]</a></td><td>R</td><td>Part of configuration string pointer address (if dmstatus.confstrptrvalid=1) or unspecified identifier information. Read-only.</td></tr>
-<tr><td>0x74</td><td><a href="#nextdm">nextdm</a></td><td>R</td><td>If multiple DMs on DMI, this holds base address of the next DM. 0 if this is the last. Read-only.</td></tr>
-<tr><td>0x80 - 0xBC</td><td><a href="#progbuf_16_">progbuf[16]</a></td><td>RW</td><td>Program Buffer word. For debugger to write small programs.</td></tr>
-<tr><td>0xC0</td><td><a href="#authdata">authdata</a></td><td>RW</td><td>32-bit serial port to/from authentication module. Use when dmstatus.authbusy is clear.</td></tr>
-<tr><td>0xD0</td><td><a href="#haltsum2">haltsum2</a></td><td>R</td><td>Read-only. Each bit indicates if any hart in a group of 1024 is halted. May not be present if &lt; 1025 harts.</td></tr>
-<tr><td>0xD4</td><td><a href="#haltsum3">haltsum3</a></td><td>R</td><td>Read-only. Each bit indicates if any hart in a group of 32768 is halted. May not be present if &lt; 32769 harts.</td></tr>
-<tr><td>0xDC</td><td><a href="#sbaddress3">sbaddress3</a></td><td>RW</td><td>Bits 127:96 of the physical system bus address for System Bus Access. Not present if sbcs.sbasize &lt; 97. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
-<tr><td>0xE0</td><td><a href="#sbcs">sbcs</a></td><td>RW</td><td>Controls and status for the System Bus Access master. Writes while sbbusy=1 result in undefined behavior.</td></tr>
-<tr><td>0xE4</td><td><a href="#sbaddress0">sbaddress0</a></td><td>RW</td><td>Bits 31:0 of the physical system bus address. Not present if sbcs.sbasize=0. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror. If sbcs.sberror=0, sbcs.sbbusyerror=0, and sbcs.sbreadonaddr=1, write triggers read sequence.</td></tr>
-<tr><td>0xE8</td><td><a href="#sbaddress1">sbaddress1</a></td><td>RW</td><td>Bits 63:32 of the physical system bus address. Not present if sbcs.sbasize &lt; 33. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
-<tr><td>0xEC</td><td><a href="#sbaddress2">sbaddress2</a></td><td>RW</td><td>Bits 95:64 of the physical system bus address. Not present if sbcs.sbasize &lt; 65. Writes while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
-<tr><td>0xF0</td><td><a href="#sbdata0">sbdata0</a></td><td>RW</td><td>Bits 31:0 of system bus data. Not present if all sbcs.sbaccess* flags are 0. Accesses do nothing if sbcs.sberror or sbcs.sbbusyerror are non-zero. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror. Write triggers bus write sequence. Read triggers read sequence including conditional next read if sbcs.sbreadondata=1.</td></tr>
-<tr><td>0xF4</td><td><a href="#sbdata1">sbdata1</a></td><td>RW</td><td>Bits 63:32 of system bus data. Not present if sbcs.sbaccess64 and sbcs.sbaccess128 are 0. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
-<tr><td>0xF8</td><td><a href="#sbdata2">sbdata2</a></td><td>RW</td><td>Bits 95:64 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
-<tr><td>0xFC</td><td><a href="#sbdata3">sbdata3</a></td><td>RW</td><td>Bits 127:96 of system bus data. Only exists if sbcs.sbaccess128=1. Accesses while sbcs.sbbusy=1 set sbcs.sbbusyerror.</td></tr>
-<tr><td>0x100</td><td><a href="#haltsum0">haltsum0</a></td><td>R</td><td>Read-only. Each bit indicates whether one specific hart is halted. Unavailable/nonexistent harts are not considered halted. LSB for hart {hartsel[19:5],5&#x27;h0}, MSB for hart {hartsel[19:5],5&#x27;h1f}.</td></tr>
+<tr><td>0x100</td><td><a href="#HALTED">HALTED</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x104</td><td><a href="#GOING">GOING</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x108</td><td><a href="#RESUMING">RESUMING</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x10C</td><td><a href="#EXCEPTION">EXCEPTION</a></td><td>W</td><td>-</td></tr>
+<tr><td>0x300</td><td><a href="#WHERETO">WHERETO</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x328 - 0x338</td><td><a href="#ABSTRACT_5_">ABSTRACT[5]</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x33C - 0x378</td><td><a href="#PROGBUF_16_">PROGBUF[16]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x37C</td><td><a href="#IMPEBREAK">IMPEBREAK</a></td><td>R</td><td>-</td></tr>
+<tr><td>0x380 - 0x38C</td><td><a href="#DATA_4_">DATA[4]</a></td><td>RW</td><td>-</td></tr>
+<tr><td>0x400</td><td><a href="#FLAGS">FLAGS</a></td><td>R</td><td>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</td></tr>
+<tr><td>0x800 - 0x864</td><td><a href="#ROM_26_">ROM[26]</a></td><td>R</td><td>-</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
-<h3 id="abstractdata_12_">abstractdata[12]</h3>
+<h3 id="HALTED">HALTED</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data value for abstract commands.</td></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</td></tr>
 </table>
-<h3 id="dmcontrol">dmcontrol</h3>
+<h3 id="GOING">GOING</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>haltreq</td><td>RW</td><td>0x0</td><td>Halt request for currently selected harts. Write 0 to clear, 1 to set.</td></tr>
-<tr><td>30</td><td>resumereq</td><td>RW</td><td>0x0</td><td>Resume request for currently selected harts. Writing 1 causes halted harts to resume and clears their resume ack bit. Ignored if haltreq is set.</td></tr>
-<tr><td>29</td><td>hartreset</td><td>RW</td><td>0x0</td><td>Optional. Hart reset for currently selected harts. Write 1, then 0 to deassert. Debugger must not change selection while this is 1. If not implemented, reads as 0.</td></tr>
-<tr><td>28</td><td>ackhavereset</td><td>RW</td><td>0x0</td><td>Writing 1 clears havereset for any selected harts.</td></tr>
-<tr><td>27</td><td>_reserved_27</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>26</td><td>hasel</td><td>RW</td><td>0x0</td><td>Selects definition of currently selected harts. 0: single hart by hartsel. 1: hart by hartsel plus those by hart array mask. Tied to 0 if hart array mask not implemented.</td></tr>
-<tr><td>25:16</td><td>hartsello</td><td>RW</td><td>0x0</td><td>Low 10 bits of hartsel: DM-specific index of the hart to select.</td></tr>
-<tr><td>15:6</td><td>hartselhi</td><td>RW</td><td>0x0</td><td>High 10 bits of hartsel: DM-specific index of the hart to select.</td></tr>
-<tr><td>5:4</td><td>_reserved_5_4</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>3</td><td>setresethaltreq</td><td>RW</td><td>0x0</td><td>Optional (if dmstatus.hasresethaltreq=1). Writing 1 sets halt-on-reset request bit for selected harts (unless clrresethaltreq is also 1).</td></tr>
-<tr><td>2</td><td>clrresethaltreq</td><td>RW</td><td>0x0</td><td>Optional (if dmstatus.hasresethaltreq=1). Writing 1 clears halt-on-reset request bit for selected harts.</td></tr>
-<tr><td>1</td><td>ndmreset</td><td>RW</td><td>0x0</td><td>Controls reset signal from DM to system (ndmreset). Write 1, then 0 to deassert.</td></tr>
-<tr><td>0</td><td>dmactive</td><td>RW</td><td>0x0</td><td>Debug Module active and reset. 0: DM takes reset values (except this bit). 1: DM functions normally.</td></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</td></tr>
 </table>
-<h3 id="dmstatus">dmstatus</h3>
+<h3 id="RESUMING">RESUMING</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:23</td><td>_reserved_31_23</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>22</td><td>impebreak</td><td>R</td><td>0x0</td><td>1: Implicit ebreak after Program Buffer. Must be 1 if abstractcs.progbufsize is 1.</td></tr>
-<tr><td>21:20</td><td>_reserved_21_20</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>19</td><td>allhavereset</td><td>R</td><td>0x0</td><td>1: All currently selected harts have been reset and not acknowledged.</td></tr>
-<tr><td>18</td><td>anyhavereset</td><td>R</td><td>0x0</td><td>1: At least one currently selected hart has been reset and not acknowledged.</td></tr>
-<tr><td>17</td><td>allresumeack</td><td>R</td><td>0x0</td><td>1: All currently selected harts have acknowledged their last resume request.</td></tr>
-<tr><td>16</td><td>anyresumeack</td><td>R</td><td>0x0</td><td>1: Any currently selected hart has acknowledged its last resume request.</td></tr>
-<tr><td>15</td><td>allnonexistent</td><td>R</td><td>0x0</td><td>1: All currently selected harts do not exist in this platform.</td></tr>
-<tr><td>14</td><td>anynonexistent</td><td>R</td><td>0x0</td><td>1: Any currently selected hart does not exist in this platform.</td></tr>
-<tr><td>13</td><td>allunavail</td><td>R</td><td>0x0</td><td>1: All currently selected harts are unavailable.</td></tr>
-<tr><td>12</td><td>anyunavail</td><td>R</td><td>0x0</td><td>1: Any currently selected hart is unavailable.</td></tr>
-<tr><td>11</td><td>allrunning</td><td>R</td><td>0x0</td><td>1: All currently selected harts are running.</td></tr>
-<tr><td>10</td><td>anyrunning</td><td>R</td><td>0x0</td><td>1: Any currently selected hart is running.</td></tr>
-<tr><td>9</td><td>allhalted</td><td>R</td><td>0x0</td><td>1: All currently selected harts are halted.</td></tr>
-<tr><td>8</td><td>anyhalted</td><td>R</td><td>0x0</td><td>1: Any currently selected hart is halted.</td></tr>
-<tr><td>7</td><td>authenticated</td><td>R</td><td>0x0</td><td>0: Authentication required. 1: Authentication passed. Preset to 1 if no authentication implemented.</td></tr>
-<tr><td>6</td><td>authbusy</td><td>R</td><td>0x0</td><td>0: Authentication module ready. 1: Authentication module busy.</td></tr>
-<tr><td>5</td><td>hasresethaltreq</td><td>R</td><td>0x0</td><td>1: DM supports halt-on-reset functionality (setresethaltreq/clrresethaltreq bits in dmcontrol).</td></tr>
-<tr><td>4</td><td>confstrptrvalid</td><td>R</td><td>0x0</td><td>0: confstrptr0-3 are not relevant to config string. 1: confstrptr0-3 hold config string address.</td></tr>
-<tr><td>3:0</td><td>version</td><td>R</td><td>0x2</td><td>Debug Module version. 0=No DM, 1=v0.11, 2=v0.13, 15=Non-conformant.</td></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</td></tr>
 </table>
-<h3 id="hartinfo">hartinfo</h3>
+<h3 id="EXCEPTION">EXCEPTION</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:24</td><td>_reserved_31_24</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>23:20</td><td>nscratch</td><td>R</td><td>0x0</td><td>Number of dscratch registers available for debugger use during program buffer execution (dscratch0 upwards).</td></tr>
-<tr><td>19:17</td><td>_reserved_19_17</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>16</td><td>dataaccess</td><td>R</td><td>0x0</td><td>0: Data registers (dataN) are shadowed by CSRs. 1: Data registers are shadowed in hart&#x27;s memory map.</td></tr>
-<tr><td>15:12</td><td>datasize</td><td>R</td><td>0x0</td><td>If dataaccess=0: Number of CSRs for dataN. If dataaccess=1: Number of 32-bit words in memory map for dataN. Max value 12.</td></tr>
-<tr><td>11:0</td><td>dataaddr</td><td>R</td><td>0x0</td><td>If dataaccess=0: Number of first CSR for dataN. If dataaccess=1: Signed address of RAM where dataN are shadowed (relative to zero).</td></tr>
+<tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>9:0</td><td>hartid</td><td>W</td><td>-</td><td>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</td></tr>
 </table>
-<h3 id="haltsum1">haltsum1</h3>
+<h3 id="WHERETO">WHERETO</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>haltsum1</td><td>R</td><td>0x0</td><td>Halt status summary. LSB for harts {hartsel[19:10],10&#x27;h0}-{hartsel[19:10],10&#x27;h1f}, MSB for harts {hartsel[19:10],10&#x27;h3e0}-{hartsel[19:10],10&#x27;h3ff}.</td></tr>
+<tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</td></tr>
 </table>
-<h3 id="hawindowsel">hawindowsel</h3>
+<h3 id="ABSTRACT_5_">ABSTRACT[5]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:15</td><td>_reserved_31_15</td><td>R</td><td>0x0</td><td>Reserved. High bits may be tied to 0 depending on hart array mask size.</td></tr>
-<tr><td>14:0</td><td>hawindowsel</td><td>RW</td><td>0x0</td><td>Window select for hart array mask register. E.g., on a system with 48 harts, only bit 0 may be writable.</td></tr>
+<tr><td>31:0</td><td>instr</td><td>R</td><td>-</td><td>Instruction generated by the Debug Module for the current abstract command.</td></tr>
 </table>
-<h3 id="hawindow">hawindow</h3>
+<h3 id="PROGBUF_16_">PROGBUF[16]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>maskdata</td><td>RW</td><td>0x0</td><td>32-bit window into the hart array mask register. Some bits may be constant 0, depending on hawindowsel and implemented harts.</td></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Program buffer word shared with the debugger. Byte accesses are supported.</td></tr>
 </table>
-<h3 id="abstractcs">abstractcs</h3>
+<h3 id="IMPEBREAK">IMPEBREAK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>_reserved_31_29</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>28:24</td><td>progbufsize</td><td>R</td><td>0x0</td><td>Size of the Program Buffer, in 32-bit words. Valid sizes are 0-16.</td></tr>
-<tr><td>23:13</td><td>_reserved_23_13</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>12</td><td>busy</td><td>R</td><td>0x0</td><td>1: An abstract command is currently being executed. Set when &#x27;command&#x27; is written, cleared on completion.</td></tr>
-<tr><td>11</td><td>_reserved_11</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>10:8</td><td>cmderr</td><td>RW</td><td>0x0</td><td>Abstract command error status. Remains set until cleared. Valid if busy=0. 0=none, 1=busy, 2=not_supported, 3=exception, 4=halt/resume, 5=bus, 7=other.</td></tr>
-<tr><td>7:4</td><td>_reserved_7_4</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>3:0</td><td>datacount</td><td>R</td><td>0x0</td><td>Number of data registers (dataN) implemented. Valid sizes are 1-12.</td></tr>
+<tr><td>31:0</td><td>instr</td><td>R</td><td>0x100073</td><td>Implicit EBREAK instruction following the program buffer.</td></tr>
 </table>
-<h3 id="command">command</h3>
+<h3 id="DATA_4_">DATA[4]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:24</td><td>cmdtype</td><td>RW</td><td>0x0</td><td>Type of abstract command (e.g., 0 for Access Register, 1 for Quick Access, 2 for Access Memory).</td></tr>
-<tr><td>23:0</td><td>control</td><td>RW</td><td>0x0</td><td>Command-specific control field.</td></tr>
+<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Abstract command data word shared with the debugger. Byte accesses are supported.</td></tr>
 </table>
-<h3 id="abstractauto">abstractauto</h3>
+<h3 id="FLAGS">FLAGS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>autoexecprogbuf</td><td>RW</td><td>0x0</td><td>Bitmask (16 bits). If bit N=1, R/W to progbufN re-executes command in &#x27;command&#x27; register.</td></tr>
-<tr><td>15:12</td><td>_reserved_15_12</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>11:0</td><td>autoexecdata</td><td>RW</td><td>0x0</td><td>Bitmask (12 bits). If bit N=1, R/W to dataN re-executes command in &#x27;command&#x27; register.</td></tr>
+<tr><td>31:24</td><td>flags_3</td><td>R</td><td>-</td><td>Hart 3 go/resume flags.</td></tr>
+<tr><td>23:16</td><td>flags_2</td><td>R</td><td>-</td><td>Hart 2 go/resume flags.</td></tr>
+<tr><td>15:8</td><td>flags_1</td><td>R</td><td>-</td><td>Hart 1 go/resume flags.</td></tr>
+<tr><td>7:0</td><td>flags_0</td><td>R</td><td>-</td><td>Hart 0 go/resume flags.</td></tr>
 </table>
-<h3 id="confstrptr_3_">confstrptr[3]</h3>
+<h3 id="ROM_26_">ROM[26]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>addr</td><td>R</td><td>0x0</td><td>Bits of configuration string pointer or identifier information.</td></tr>
-</table>
-<h3 id="nextdm">nextdm</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>addr</td><td>R</td><td>0x0</td><td>Base address of the next Debug Module or 0.</td></tr>
-</table>
-<h3 id="progbuf_16_">progbuf[16]</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Program instruction word.</td></tr>
-</table>
-<h3 id="authdata">authdata</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data for authentication mechanism.</td></tr>
-</table>
-<h3 id="haltsum2">haltsum2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>haltsum2</td><td>R</td><td>0x0</td><td>Halt status summary. LSB for harts {hartsel[19:15],15&#x27;h0}-{hartsel[19:15],15&#x27;h3ff}, etc.</td></tr>
-</table>
-<h3 id="haltsum3">haltsum3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>haltsum3</td><td>R</td><td>0x0</td><td>Halt status summary. LSB for harts 20&#x27;h0-20&#x27;h7fff, etc.</td></tr>
-</table>
-<h3 id="sbaddress3">sbaddress3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 127:96 for system bus access.</td></tr>
-</table>
-<h3 id="sbcs">sbcs</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:29</td><td>sbversion</td><td>R</td><td>0x1</td><td>System Bus interface version. 0=pre-2018 drafts, 1=this version (0.13).</td></tr>
-<tr><td>28:23</td><td>_reserved_28_23</td><td>R</td><td>0x0</td><td>Reserved.</td></tr>
-<tr><td>22</td><td>sbbusyerror</td><td>RW</td><td>0x0</td><td>System bus busy error. Set if access attempted while busy or read while read in progress. No new access if set.</td></tr>
-<tr><td>21</td><td>sbbusy</td><td>R</td><td>0x0</td><td>1: System bus master is busy. Goes high on access request, low on completion.</td></tr>
-<tr><td>20</td><td>sbreadonaddr</td><td>RW</td><td>0x0</td><td>1: Every write to sbaddress0 automatically triggers a system bus read at the new address.</td></tr>
-<tr><td>19:17</td><td>sbaccess</td><td>RW</td><td>0x2</td><td>Access size for system bus accesses: 0=8-bit, 1=16-bit, 2=32-bit, 3=64-bit, 4=128-bit. If unsupported, access fails, sberror=4.</td></tr>
-<tr><td>16</td><td>sbautoincrement</td><td>RW</td><td>0x0</td><td>1: sbaddress is incremented by access size (from sbaccess) after every system bus access.</td></tr>
-<tr><td>15</td><td>sbreadondata</td><td>RW</td><td>0x0</td><td>1: Every read from sbdata0 automatically triggers a system bus read at (possibly auto-incremented) address.</td></tr>
-<tr><td>14:12</td><td>sberror</td><td>RW</td><td>0x0</td><td>System bus master error flags. No new access if non-zero. 0=none, 1=timeout, 2=bad_address, 3=alignment, 4=unsupported_size, 7=other.</td></tr>
-<tr><td>11:5</td><td>sbasize</td><td>R</td><td>0x38</td><td>Width of system bus addresses in bits. The integrated debug module reports 56. Zero indicates no system bus access support.</td></tr>
-<tr><td>4</td><td>sbaccess128</td><td>R</td><td>0x0</td><td>1: 128-bit system bus accesses are supported.</td></tr>
-<tr><td>3</td><td>sbaccess64</td><td>R</td><td>0x1</td><td>1: 64-bit system bus accesses are supported.</td></tr>
-<tr><td>2</td><td>sbaccess32</td><td>R</td><td>0x1</td><td>1: 32-bit system bus accesses are supported.</td></tr>
-<tr><td>1</td><td>sbaccess16</td><td>R</td><td>0x1</td><td>1: 16-bit system bus accesses are supported.</td></tr>
-<tr><td>0</td><td>sbaccess8</td><td>R</td><td>0x1</td><td>1: 8-bit system bus accesses are supported.</td></tr>
-</table>
-<h3 id="sbaddress0">sbaddress0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 31:0.</td></tr>
-</table>
-<h3 id="sbaddress1">sbaddress1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 63:32.</td></tr>
-</table>
-<h3 id="sbaddress2">sbaddress2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>address</td><td>RW</td><td>0x0</td><td>Address bits 95:64.</td></tr>
-</table>
-<h3 id="sbdata0">sbdata0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 31:0.</td></tr>
-</table>
-<h3 id="sbdata1">sbdata1</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 63:32.</td></tr>
-</table>
-<h3 id="sbdata2">sbdata2</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 95:64.</td></tr>
-</table>
-<h3 id="sbdata3">sbdata3</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>data</td><td>RW</td><td>0x0</td><td>Data bits 127:96.</td></tr>
-</table>
-<h3 id="haltsum0">haltsum0</h3>
-<table>
-<tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>haltsum0</td><td>R</td><td>0x0</td><td>Halt status for 32 harts based on hartsel[19:5].</td></tr>
+<tr><td>31:0</td><td>data</td><td>R</td><td>-</td><td>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</td></tr>
 </table>
 </div>
 <!-- SPDX-License-Identifier: Apache-2.0 -->

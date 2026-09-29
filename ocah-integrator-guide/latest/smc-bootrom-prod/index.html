@@ -1467,11 +1467,25 @@ For responses that fit in the transmit queue, it writes all data and then writes
 For larger responses, it fills the queue, writes the descriptor when the queue first becomes full, and continues filling as hardware drains data.
 The target hardware does not accept a private read until its response-start threshold is met.</p>
 </div>
-<div id="i3c-flow-control" class="imageblock kroki">
+<div id="i3c-flow-control" class="literalblock kroki-error">
+<div class="title">HCI target response flow</div>
 <div class="content">
-<img src="_images/diag-2031037295950f54b0b48a3d00e6185802ce180b.svg" alt="HCI target response flow">
+<pre>@startuml
+participant Controller
+participant "I3C target hardware" as HW
+participant "SMC ROM" as ROM
+
+Controller -&gt; HW: Private write containing OCCP request
+HW -&gt; ROM: RX descriptor and data
+ROM -&gt; ROM: Validate and execute request
+Controller -&gt; HW: Private read before response is armed
+HW --&gt; Controller: Read not accepted
+ROM -&gt; HW: Queue response data
+ROM -&gt; HW: Write TX descriptor with response length
+Controller -&gt; HW: Retry private read
+HW --&gt; Controller: OCCP response data
+@enduml</pre>
 </div>
-<div class="title">Figure 2. HCI target response flow</div>
 </div>
 <div class="paragraph">
 <p>The HCI receive implementation separately tracks each inbound frame&#8217;s descriptor length and unconsumed bytes.
@@ -1845,7 +1859,7 @@ report. After most handlers return an error, the loop emits a second
 <div class="content">
 <img src="_images/diag-ca1c2f51b875f5aa7a243e0497a99aebd671389d.svg" alt="SMC ROM FW status-reporting flow">
 </div>
-<div class="title">Figure 3. SMC ROM FW status-reporting flow</div>
+<div class="title">Figure 2. SMC ROM FW status-reporting flow</div>
 </div>
 <div class="paragraph">
 <p>The <code>STATUS_RPT_DISABLE</code> strap does not disable ring-buffer initialization or writes.
@@ -1990,7 +2004,7 @@ Packet formats, command semantics, CRCs, transport binding, and controller-visib
 <div class="content">
 <img src="_images/diag-c8ce5d5dba90c44fe577a63c74961a7a59280531.svg" alt="OCCP command-processing flow">
 </div>
-<div class="title">Figure 4. OCCP command-processing flow</div>
+<div class="title">Figure 3. OCCP command-processing flow</div>
 </div>
 <div class="sect2">
 <h3 id="polling-and-latching"><a class="anchor" href="#polling-and-latching"></a><a class="link" href="#polling-and-latching">8.1. Polling and latching</a></h3>

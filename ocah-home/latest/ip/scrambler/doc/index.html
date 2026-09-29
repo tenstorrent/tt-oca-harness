@@ -368,21 +368,21 @@ their output positions.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>P(i)</strong></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">25</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
 </tr>
 </tbody>
 </table>
@@ -435,21 +435,21 @@ their output positions.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>P(i)</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
 </tr>
 </tbody>
@@ -459,20 +459,20 @@ their output positions.</p>
 </div>
 <div class="paragraph">
 <p>First the tweaked key is xor&#8217;ed with the input write data. The output is
-split into 8 4-bit nibble lanes and which are fed into 16 sbox
-functions. The resulting values are concatenated and fed into the player
-permutation function to form the final scrambled data value which is
-written to memory.</p>
+split into 8 4-bit nibble lanes and each is fed into an sbox function.
+The resulting values are concatenated and fed into the player permutation
+function to form the final scrambled data value which is written to memory.</p>
 </div>
 <div id="descrambling-procedure" class="paragraph">
 <p><strong>Descrambling Procedure</strong></p>
 </div>
 <div class="paragraph">
 <p>The descrambling process is exactly the reverse as scrambling. The
-scrambled data value is read from memory and then we first perform the
-iplayer inverse permutation operation. This is followed by 8 inverse
-sbox functions and the outputs are concatenated. This word is then
-xor&#8217;ed with the tweaked key to recover the unscrambled read data.</p>
+scrambled data value is read from memory and we first perform the
+iplayer inverse permutation operation. This is followed by inverse sbox
+functions applied to each 4-bit lane, with the outputs concatenated.
+This word is then xor&#8217;ed with the tweaked key to recover the unscrambled
+read data.</p>
 </div>
 <div class="paragraph">
 <p><strong>Address Tweaking:</strong></p>

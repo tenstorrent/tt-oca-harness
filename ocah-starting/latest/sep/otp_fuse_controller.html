@@ -455,12 +455,13 @@ Enforcement in the Life Cycle Controller section.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">When TRANS_RMA_EN == 1,
-token-matching operations are permitted. On a token match, the chip is
-automatically placed into the corresponding RMA state by updating the
-LC_STATE shadow-register bits, with no chip reset required. A match on
+a token match automatically updates the LC_STATE shadow-register bits to place
+the chip into the corresponding RMA state, with no chip reset required. A match on
 RMA_CHIPLET_TOKEN takes priority. The user decides whether to reset the
-chip before entering the RMA state. When TRANS_RMA_EN == 0, a match on
-the *_TOKENs does not automatically change the LC_STATE shadow register.</p></td>
+chip after entering the RMA state. Token-matching operations themselves occur
+regardless of TRANS_RMA_EN; this bit controls only whether a match results in
+automatic LC_STATE shadow-register update. When TRANS_RMA_EN == 0, a match on
+the *_TOKENs does not change the LC_STATE shadow register.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SIP_DIS</p></td>

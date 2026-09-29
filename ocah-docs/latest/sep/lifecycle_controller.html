@@ -665,8 +665,8 @@ OTP sense FSM at power-on)</p>
 DFT, peripherals, Key Manager).</p>
 </li>
 <li>
-<p>Maintain volatile in-field debug demotion state via the DEMOTE_1, DEMOTE_2,
-DEMOTE_LOCK_1, and DEMOTE_LOCK_2 CSRs, and apply the resulting demotion
+<p>Maintain volatile in-field debug demotion state via the DEMOTE_1 and DEMOTE_2
+registers (each with demote and lock fields), and apply the resulting demotion
 feature-control profile to <code>feat_ctrl_o</code>. See
 <a href="#demote-1-2-in-field-debug-demotion">Section 1</a>.</p>
 </li>
@@ -695,10 +695,10 @@ components.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>In addition to the LC state stored in OTP, SEP implements two volatile
-demotion CSRs (DEMOTE_1, DEMOTE_2) and two companion lock CSRs
-(DEMOTE_LOCK_1, DEMOTE_LOCK_2). When asserted, the demotion CSRs grant
+demotion registers (DEMOTE_1, DEMOTE_2), each with a demote[0] field and a
+lock[1] field. When the demote bit is asserted, the demotion grants
 additional in-field debug access without changing the OTP-stored LC state. SEP
-cold reset clears all four registers, restoring the device to its OTP-stored LC
+cold reset clears both registers, restoring the device to its OTP-stored LC
 state.</p>
 </div>
 <div class="paragraph">
