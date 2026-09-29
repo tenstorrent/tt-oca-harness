@@ -12351,7 +12351,11 @@ Setting this bit to 1 will copy the result to the keyvault when it is ready.</ip
         <ipxact:registerFile>
           <ipxact:name>axil_mailbox</ipxact:name>
           <ipxact:displayName>SEP AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
-          <ipxact:description>SEP-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.</ipxact:description>
+          <ipxact:description>SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
           <ipxact:addressOffset>'h10a00000</ipxact:addressOffset>
           <ipxact:range>'h7850</ipxact:range>
           <ipxact:registerFile>
@@ -18226,7 +18230,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -18404,7 +18412,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
