@@ -33,9 +33,13 @@ endif::backend-html5[]
 `LOG_ENGINE_FIFO_DEPTH` must be a power of 2 greater than or equal to 16.
 
 [#sec-registers]
-== Registers
+== Registers — LCR.DLAB=0, Read Direction
 
-The tables below describe the register map and each register in detail.
+The UART 16550 follows the 8250 layout: single offsets map to different registers by
+access direction and by `LCR.DLAB`. This table is the `LCR.DLAB=0` read view at wrapper
+offset `+0x100`; write-only and divisor-latch aliases at the same offsets are in the
+next section. When this wrapper is arrayed by `uart_wrap`, instance _N_ adds a further
+`N * 0x400`.
 
 ifdef::backend-html5[]
 ++++
@@ -48,16 +52,10 @@ include::../regs/gen/adoc/uart_log_engine_wrap.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
 [#sec-register-aliases]
-== Register Aliases
+== Registers — Write-Only and LCR.DLAB=1 Views
 
-The UART 16550 follows the 8250 layout, in which a single offset maps to different
-registers by access direction and by `LCR.DLAB`. The register table above is the
-`LCR.DLAB=0` read view; the write-only and `LCR.DLAB=1` views occupy the same offsets
-and are listed below. The UART block is mapped at wrapper offset `0x100`, so each
-offset below is that of the standalone UART plus `0x100`: `THR` (write) shares `0x100`
-with `RBR` (read); `FCR` (write) shares `0x108` with `IIR` (read); and `DLL`/`DLM`
-occupy `0x100`/`0x104` when `LCR.DLAB=1`. When this wrapper is arrayed by `uart_wrap`,
-instance _N_ adds a further `N * 0x400`.
+`THR` (write) shares `+0x100` with `RBR` (read); `FCR` (write) shares `+0x108` with
+`IIR` (read); `DLL`/`DLM` occupy `+0x100`/`+0x104` when `LCR.DLAB=1`.
 
 ifdef::backend-html5[]
 ++++
