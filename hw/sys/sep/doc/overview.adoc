@@ -3,6 +3,14 @@
 
 = Hardware Overview
 :description: Major SEP hardware blocks and their relationships.
+ifdef::backend-html5[]
+:sep-axi-connectivity-ref: xref:sep:fabric.adoc#sep-axi-connectivity[SEP AXI4 connectivity]
+:sep-interrupts-ref: xref:sep:interrupts.adoc#sep-interrupts[Interrupts]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:sep-axi-connectivity-ref: <<sep-axi-connectivity,SEP AXI4 connectivity>>
+:sep-interrupts-ref: <<sep-interrupts,Interrupts>>
+endif::backend-html5[]
 
 [[hardware-overview]]
 
@@ -10,7 +18,26 @@
 
 [[sep-top-level-diagram]]
 .SEP top-level microarchitecture
-image::SEP_TopLevel_FIG001.drawio.png[alt="SEP top-level microarchitecture",width=100%,pdfwidth=100%]
+image::sep-top-level.svg[alt="SEP top-level microarchitecture",width=100%,pdfwidth=100%]
+
+Every AXI4 link carries a manager port (M) at the initiating end and a
+subordinate port (S) at the other. The local crossbar has five managers: the
+CPU IFU, LSU and debug ports, the DMA, and inbound SMN traffic after the system
+peripherals' inbound filter. Its ten subordinates are the CPU TCM port, the
+SRAM interface, the DMA registers, the SPI host, the watchdog, the system
+peripherals, the reset controller, the entropy pool, the crypto subsystem and
+the eFuse shim demux. {sep-axi-connectivity-ref} gives the permitted paths. The
+IFU and LSU reach the boot ROM through a dedicated AXI mux rather than the
+crossbar, and the IFU crossbar port reaches only the SRAM. The eFuse shim demux
+sends accesses in the eFuse shim CSR window to the crypto subsystem and the
+rest of the external aperture to the AXI4 extension port.
+
+The grey boxes are the memory macros and IP that the integration layer
+instantiates outside the SEP. The Adams Bridge and its SRAMs are present only
+when the build defines `SEP_ABR_EN`; the Adams Bridge uses nine SRAMs, plus
+four masked copies when `ABR_MASKING_EN` is set. The external TRNG is an
+adopter choice. Interrupt lines to the CPU PIC are not drawn; see
+{sep-interrupts-ref}.
 
 SEP is hierarchically organized as follows:
 
@@ -24,7 +51,7 @@ peripherals subsystems
 *** Inbound AXI4 system bus slave
 ** Low speed IO peripherals AXI4 extension port with peripheral
 interrupt
-*** SPI controller interface (single/dual/quad)
+*** SPI controller interface (standard, dual or quad, on four data lanes)
 *** _Remote peripherals shared with SMC: UART, GPIO_
 ** JTAG for debug and test
 * External Macro Interfaces
@@ -63,9 +90,24 @@ components in order to make integration and migration easier.
 [[sep-clock-distribution]]
 == Clock Distribution
 
-<<sep-clock-tree>> shows the SEP clock distribution and the domains used by its
-subblocks.
+<<sep-clock-tree>> overlays the SEP clock domains on the top-level diagram.
+The SEP clock `clk_i`, which the SMU drives from `clk_smu_i`, clocks
+everything in the green zone. Three regions run on their own clocks, each
+tinted in the colour of the clock input that feeds it:
+
+* `clk_wdt_i`, the watchdog counter clock, drives the counter in the watchdog.
+  The watchdog registers stay on `clk_i` and cross to the counter inside the
+  watchdog.
+* `clk_ref_i`, the free-running reference clock, drives the reference counter
+  in the system peripherals, which crosses its count into `clk_i`.
+* `entropy_rosc_sample_clk_i` drives the noise sampler of the entropy source in
+  the TRNG. The sampled noise is resynchronised into `clk_i`.
+
+The CPU debug TAP runs on `jtag_tck_i` and hands DMI accesses to the core
+through a synchroniser into `clk_i`. The quad SPI serial clock is divided from
+`clk_i` inside the SPI host. The ICCM, DCCM and Adams Bridge SRAM requests
+carry their macro clock, derived from `clk_i`, alongside the request.
 
 [[sep-clock-tree]]
 .SEP clock tree and clock domains
-image::SEP_CLOCKING_FIG002.svg[alt="SEP clock tree and clock domains",width=100%,pdfwidth=100%]
+image::sep-clock-domains.svg[alt="SEP clock domains overlaid on the top-level diagram",width=100%,pdfwidth=100%]

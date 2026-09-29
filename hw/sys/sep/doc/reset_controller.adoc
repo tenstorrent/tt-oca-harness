@@ -20,7 +20,29 @@ Controller.
 
 [[sep-reset-domain-diagram]]
 .SEP reset domains and reset sequencing
-image::SEP_ResetDomains_FIG003.1.png[alt="SEP reset domains and reset sequencing",width=100%,pdfwidth=100%]
+image::sep-reset-distribution.svg[alt="SEP reset distribution from the boundary reset inputs through the SEP Reset Controller to each instance",width=100%,pdfwidth=100%]
+
+Boundary reset inputs enter on the left and the generated resets run in the
+channel on the right, each net in its own colour, with the port it drives named
+at the instance edge. Inside `u_sep_crypto` the figure shows which sub-instances
+each reset reaches.
+
+`rst_ni` resets the isolation sequencers and JTAG override synchronizers of
+`u_sep_reset_ctrl`, the eFuse wrapper, the crypto interconnect, life cycle
+controller and EDN adapters, the watchdog, the local crossbar, the eFuse shim
+demux and the entropy pool. The eFuse wrapper releases
+`sep_intermediate_reset_no` once fuse sensing and `ext_boot_seq_done_i` are
+done. The Reset Controller passes it through the JTAG `sep_reset_n` override
+and a 2-flop synchronizer to produce `sep_reset_no`, which resets the Reset
+Controller's own register block, the Key Manager cold domain, the system
+peripherals, the SPI host, the DMA and the SRAM and boot ROM interfaces.
+`sep_cpu_reset_no` is `sep_reset_no` ANDed with `wdt_rst_ni`; it resets the CPU
+and the warm scratch registers. The seven bits of `sep_crypto_gated_rst_no`
+reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key Manager warm
+domain. The watchdog synchronizes `rst_ni` into `clk_wdt_i` for its counter, and
+its bite leaves the SEP on `wdt_timer_rst_req_o`. While `test_en_i` is high,
+`scan_rst_ni` replaces every generated reset; the figure does not draw the scan
+path.
 
 == Software Reset Register
 

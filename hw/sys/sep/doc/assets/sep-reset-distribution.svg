@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1050" viewBox="0 0 1040 1050" role="img" aria-labelledby="title desc">
+<title id="title">SEP reset distribution</title>
+<desc id="desc">Reset distribution inside the SEP. Boundary reset inputs enter on the left and the watchdog reset request leaves on the right. rst_ni fans out to u_sep_reset_ctrl, to the eFuse wrapper and the always-reset logic of u_sep_crypto, to u_sep_wdt_wrap, and to the local crossbar, the eFuse shim demux and the entropy pool. The eFuse wrapper releases sep_intermediate_reset_no once fuse sensing and ext_boot_seq_done_i are done; u_sep_reset_ctrl applies the JTAG IC_RESET override from jtag_sep_reset_ctrl_i and synchronises the result into sep_reset_no. sep_reset_no resets the Key Manager cold domain, the system peripherals, the SPI host, the DMA and the SRAM and boot ROM interfaces. sep_cpu_reset_no is sep_reset_no ANDed with wdt_rst_ni and resets the CPU and the warm scratch registers. The seven isolation-sequenced resets sep_crypto_gated_rst_no reset the crypto engines, the TRNG and the Key Manager warm domain. dbg_rstb_i and jtag_trst_ni reset the CPU debug module and TAP.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-bus" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#b2566c"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.n-bus { fill: none; stroke: #b2566c; stroke-width: 3; }
+.a-bus { fill: none; stroke: #b2566c; stroke-width: 3; marker-end: url(#m-bus); }
+</style>
+</defs>
+<rect width="1040" height="1050" fill="#ffffff"/>
+<rect class="smu" x="226" y="14" width="584" height="986" rx="8"/>
+<text class="b" x="238" y="988" text-anchor="start">sep</text>
+<rect class="core" x="290" y="30" width="350" height="144" rx="6"/>
+<text class="bs" x="300" y="50" text-anchor="start">u_sep_reset_ctrl</text>
+<text class="s" x="632" y="81" text-anchor="end">sep_reset_no</text>
+<text class="s" x="632" y="105" text-anchor="end">sep_cpu_reset_no</text>
+<text class="s" x="632" y="129" text-anchor="end">sep_crypto_gated_rst_no[6:0]</text>
+<text class="s" x="632" y="153" text-anchor="end">sep_intermediate_reset_ni</text>
+<text class="s" x="14" y="70" text-anchor="start">jtag_sep_reset_ctrl_i</text>
+<path class="a-jtag" d="M17,76 L284,76"/>
+<text class="s" x="14" y="94" text-anchor="start">wdt_rst_ni</text>
+<path class="a-tel" d="M17,100 L284,100"/>
+<text class="s" x="14" y="118" text-anchor="start">rst_ni</text>
+<path class="a-smu" d="M17,124 L284,124"/>
+<circle cx="250" cy="124" r="4" fill="#103525"/>
+<rect class="core" x="290" y="198" width="350" height="272" rx="6"/>
+<text class="bs" x="300" y="218" text-anchor="start">u_sep_crypto</text>
+<rect class="core" x="310" y="230" width="150" height="42" rx="4"/>
+<text class="s" x="385" y="256" text-anchor="middle">u_sep_efuse_wrapper</text>
+<rect class="core" x="310" y="284" width="180" height="46" rx="4"/>
+<text class="s" x="400" y="304.5" text-anchor="middle">Interconnect, life cycle,</text>
+<text class="s" x="400" y="319.5" text-anchor="middle">eFuse mux, EDN adapters</text>
+<rect class="core" x="310" y="342" width="180" height="46" rx="4"/>
+<text class="s" x="400" y="362.5" text-anchor="middle">OTBN, AES, HMAC, KMAC,</text>
+<text class="s" x="400" y="377.5" text-anchor="middle">Adams Bridge, u_sep_trng</text>
+<rect class="core" x="310" y="396" width="180" height="60" rx="4"/>
+<text class="s" x="400" y="431" text-anchor="middle">u_key_manager_s3c_scan</text>
+<path class="a-smu" d="M250,240 L304,240"/>
+<circle cx="250" cy="240" r="4" fill="#103525"/>
+<text class="s" x="14" y="256" text-anchor="start">ext_boot_seq_done_i</text>
+<path class="sigo" d="M17,262 L304,262"/>
+<path class="a-smu" d="M250,307 L304,307"/>
+<circle cx="250" cy="307" r="4" fill="#103525"/>
+<text class="s" x="632" y="245" text-anchor="end">sep_intermediate_reset_no</text>
+<path class="n-wdt" d="M460,251 L680,251 L680,148"/>
+<path class="a-wdt" d="M680,148 L646,148"/>
+<text class="s" x="632" y="359" text-anchor="end">gated_rst_ni[6:0]</text>
+<path class="n-bus" d="M640,124 L710,124 L710,365 L510,365"/>
+<path class="a-bus" d="M510,365 L498,365"/>
+<path class="n-bus" d="M510,365 L510,412"/>
+<path class="a-bus" d="M510,412 L498,412"/>
+<circle cx="510" cy="365" r="4.5" fill="#b2566c"/>
+<text class="s" x="518" y="417" text-anchor="start">km bit: warm_rst_ni</text>
+<text class="s" x="632" y="438" text-anchor="end">sep_reset_ni</text>
+<text class="s" x="500" y="462" text-anchor="start">cold_rst_ni</text>
+<rect class="core" x="290" y="494" width="350" height="82" rx="6"/>
+<text class="bs" x="300" y="514" text-anchor="start">u_sep_cpu</text>
+<text class="s" x="632" y="545" text-anchor="end">rst_ni</text>
+<text class="s" x="14" y="534" text-anchor="start">dbg_rstb_i</text>
+<path class="a-pg" d="M17,540 L284,540"/>
+<text class="s" x="14" y="558" text-anchor="start">jtag_trst_ni</text>
+<path class="a-jtag" d="M17,564 L284,564"/>
+<rect class="core" x="290" y="600" width="350" height="74" rx="6"/>
+<text class="bs" x="300" y="620" text-anchor="start">u_sep_system_peripherals</text>
+<text class="s" x="632" y="635" text-anchor="end">rst_warm_ni</text>
+<text class="s" x="632" y="659" text-anchor="end">rst_ni</text>
+<rect class="core" x="290" y="698" width="350" height="108" rx="6"/>
+<text class="bs" x="300" y="718" text-anchor="start">u_sep_io</text>
+<text class="bs" x="300" y="736" text-anchor="start">u_sep_dma_wrap</text>
+<text class="bs" x="300" y="754" text-anchor="start">u_sram_memory_interface</text>
+<text class="bs" x="300" y="772" text-anchor="start">u_boot_rom_axi_mux</text>
+<text class="bs" x="300" y="790" text-anchor="start">u_boot_rom_memory_interface</text>
+<text class="s" x="632" y="735" text-anchor="end">rst_ni</text>
+<rect class="core" x="290" y="830" width="350" height="56" rx="6"/>
+<text class="bs" x="300" y="850" text-anchor="start">u_sep_wdt_wrap</text>
+<text class="s" x="300" y="872" text-anchor="start">rst_ni synchronised to clk_wdt_i</text>
+<text class="s" x="820" y="868" text-anchor="start">wdt_timer_rst_req_o</text>
+<path class="a-slate" d="M640,874 L1023,874"/>
+<path class="a-smu" d="M250,874 L284,874"/>
+<circle cx="250" cy="874" r="4" fill="#103525"/>
+<rect class="core" x="290" y="910" width="350" height="70" rx="6"/>
+<text class="bs" x="300" y="930" text-anchor="start">u_sep_local_axi_xbar_wrapper</text>
+<text class="bs" x="300" y="948" text-anchor="start">u_efuse_shim_demux</text>
+<text class="bs" x="300" y="966" text-anchor="start">u_entropy_fifo</text>
+<path class="a-smu" d="M250,945 L284,945"/>
+<path class="n-smu" d="M250,124 L250,257 M250,267 L250,535 M250,545 L250,559 M250,569 L250,945"/>
+<path class="n-ref" d="M640,76 L770,76"/>
+<path class="n-ref" d="M770,76 L770,730"/>
+<path class="a-ref" d="M770,444 L498,444"/>
+<path class="a-ref" d="M770,654 L646,654"/>
+<path class="a-ref" d="M770,730 L646,730"/>
+<circle cx="770" cy="444" r="4" fill="#2f7f79"/>
+<circle cx="770" cy="654" r="4" fill="#2f7f79"/>
+<path class="n-per" d="M640,100 L740,100"/>
+<path class="n-per" d="M740,100 L740,439 M740,449 L740,630"/>
+<path class="a-per" d="M740,540 L646,540"/>
+<path class="a-per" d="M740,630 L646,630"/>
+<circle cx="740" cy="540" r="4" fill="#937027"/>
+<rect class="core" x="14" y="1017" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="1031" text-anchor="start">SEP RTL instance or group</text>
+<path class="n-bus" d="M262,1026 L302,1026"/>
+<text class="s" x="312" y="1031" text-anchor="start">Seven-bit reset bus</text>
+<path class="sigplain" d="M540,1026 L600,1026"/>
+<path class="sigplain" d="M570,1026 L570,1038"/>
+<circle cx="570" cy="1026" r="3.5" fill="#5b6670"/>
+<text class="s" x="612" y="1031" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M700,1026 L760,1026"/>
+<path class="sigplain" d="M730,1014 L730,1021 M730,1031 L730,1038"/>
+<text class="s" x="772" y="1031" text-anchor="start">Crossing, not connected</text>
+</svg>
