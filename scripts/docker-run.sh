@@ -588,6 +588,7 @@ run_image_1to1() {
   }
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
     "${net_flags[@]}" "${USER_FLAGS[@]}" "${GIT_ENGINE_MOUNT[@]}" \
+    -e "REPO_ROOT=${ROOT}" \
     -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
