@@ -13,8 +13,10 @@ S4: the SEP-to-SMC mailboxes. Each outbound mailbox raises its interrupt to the
     of it alone; flushing the FIFO, acknowledging IRQS and clearing IRQEN
     drops it.
 S5: the SEP SPI host (``spi_host.hjson``, ``hw/sys/sep/doc/spi.adoc``). With
-    the host enabled and its output driven, a quad-speed transmit of four
-    bytes drives every data lane and its output enable, and a quad-speed
+    the host enabled and its output driven, the data lanes are sampled before
+    any command; a quad-speed transmit of four bytes then drives every data
+    lane high and moves every lane off that idle level, and raises every
+    output enable, and a quad-speed
     receive of four bytes, which completes with the host idle, leaves the
     enables low and takes STATUS.RXQD from 0 to one word. With
     EVENT_ENABLE.IDLE set, INTR_STATE.SPI_EVENT follows the idle event and
@@ -256,7 +258,10 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._sb_ok(jtag, SPI_INTR_ENABLE, 2, SPI_INTR_EVENT)
         req = hier(smu_scope(self.dut), SPI_REQ_PATH)
         trigger_empty = _spi_field(req, "lsio_trigger")
-        lanes = {"tx_sd": 0, "tx_oe": 0, "rx_oe": 0}
+        # The data lanes' level with the host enabled and no command issued; a
+        # lane is credited as driven only where a transmit moves it off this.
+        idle_sd = _spi_field(req, "sd")
+        lanes = {"tx_sd": 0, "tx_moved": 0, "tx_oe": 0, "rx_oe": 0}
         phase = ["tx"]
         stop = [False]
 
@@ -265,7 +270,9 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
                 await ClockCycles(self.dut.clk_smu_i, 1)
                 oe = _spi_field(req, "sd_oe")
                 if phase[0] == "tx":
-                    lanes["tx_sd"] |= _spi_field(req, "sd")
+                    sd = _spi_field(req, "sd")
+                    lanes["tx_sd"] |= sd
+                    lanes["tx_moved"] |= sd ^ idle_sd
                     lanes["tx_oe"] |= oe
                 else:
                     lanes["rx_oe"] |= oe
@@ -284,6 +291,7 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         stop[0] = True
         await watcher
         seen_sd, seen_oe, oe_in_rx = lanes["tx_sd"], lanes["tx_oe"], lanes["rx_oe"]
+        moved_sd = lanes["tx_moved"]
         intr = []
         intr.append((await self._read_ok(jtag, SPI_INTR_STATE), _spi_field(req, "irq")))
         await self._sb_ok(jtag, SPI_INTR_STATE, 2, SPI_INTR_EVENT)
@@ -297,14 +305,16 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         rx_lanes = await self._drive_rx_pads()
         await self._sb_ok(jtag, SPI_CONTROL, 2, 0)
         self._log(
-            f"CHK-SEP-SPI-QUAD sd=0x{seen_sd:x} oe=0x{seen_oe:x} rx_oe=0x{oe_in_rx:x} "
+            f"CHK-SEP-SPI-QUAD idle_sd=0x{idle_sd:x} sd=0x{seen_sd:x} "
+            f"moved_off_idle=0x{moved_sd:x} oe=0x{seen_oe:x} rx_oe=0x{oe_in_rx:x} "
             f"rxqd={rx_depth} idle={idle} intr_state_irq={intr}"
         )
         self._log(f"OBSERVATION SEP SPI trigger_empty={trigger_empty} rx_lanes={rx_lanes}")
         sb.expect_eq(
             "CHK-SEP-SPI-QUAD",
-            (seen_sd, seen_oe, oe_in_rx, rx_depth, idle, intr),
+            (seen_sd, moved_sd, seen_oe, oe_in_rx, rx_depth, idle, intr),
             (
+                0xF,
                 0xF,
                 0xF,
                 0,

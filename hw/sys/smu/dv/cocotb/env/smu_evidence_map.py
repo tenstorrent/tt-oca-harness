@@ -666,7 +666,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-SPI-QUAD",
             "CHK-SEP-SPI-QUAD",
-            "quad-mode transmits drive all four data lanes and their enables, a quad receive "
+            "quad-mode transmits drive all four data lanes high and off their pre-command "
+            "idle level, and raise their enables, a quad receive "
             "fills one RX FIFO word and completes with every enable low, and "
             "INTR_STATE.SPI_EVENT and the interrupt stay "
             "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
