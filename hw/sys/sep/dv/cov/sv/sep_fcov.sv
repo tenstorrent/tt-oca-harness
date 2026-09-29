@@ -106,8 +106,8 @@ module sep_fcov (
   input wire        cpu_reset_n_i,
   input wire        spi_cs_n_i,
   input wire        spi_sck_i,
-  // IC_RESET sep_reset_n override. TB inputs, idle 0. ovrd selects val in
-  // place of the sense-gated reset.
+  // IC_RESET sep_reset_n override as SEP receives it, after the TB mux.
+  // ovrd selects val in place of the sense-gated reset.
   input wire        jtag_sep_reset_n_ovrd_i,
   input wire        jtag_sep_reset_n_val_i,
 
@@ -817,6 +817,10 @@ module sep_fcov (
   wire rd_cmpl = !in_reset && r_hs && (ar_out_q == 4'd1);
   wire sec_dis_map_rd = rd_cmpl && sense_open && sec_dis_on &&
       (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
+  // SW_RESET_N is in the sep_reset_n domain. An OKAY read while sensing is
+  // still open means the override has released that domain.
+  wire sec_dis_reach_rd = rd_okay && sense_open && (cpu_reset_n_i === 1'b1) &&
+      (ar_addr_q == SEP_RESET_CTRL_SW_RESET_N_REG_ADDR);
 
   always_ff @(posedge clk_i) begin
     if (in_reset) begin
@@ -1712,9 +1716,10 @@ module sep_fcov (
 
   // Sampled on the window edges, not on a held level. The map coverpoint
   // records the LC_STATE read response while sensing is still open.
+  // reach records an OKAY SW_RESET_N read in that window.
   covergroup sep_sec_dis_boot_cg with function sample (
       logic hold, logic released, logic rehold, logic sec_dis,
-      logic [1:0] map_resp, logic map_hit
+      logic [1:0] map_resp, logic map_hit, logic reach
   );
     option.per_instance = 1;
     option.name = "sep_sec_dis_boot_cg";
@@ -1727,6 +1732,7 @@ module sep_fcov (
       bins okay = {AxiOkay};
       bins slverr = {2'b10};
     }
+    cp_reach: coverpoint reach {bins sw_reset_n_while_open = {1'b1};}
   endgroup
 
   covergroup sep_lc_demote_cg with function sample (logic [3:0] lc, logic d1, logic d2);
@@ -1844,9 +1850,11 @@ module sep_fcov (
                                   (secure_tm_i === 1'b1));
         u_sep_lc_demote_cg.sample(lc_sensed, demote_1_set, demote_2_set);
       end
-      if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev || sec_dis_map_rd) begin
+      if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev || sec_dis_map_rd ||
+          sec_dis_reach_rd) begin
         u_sep_sec_dis_boot_cg.sample(sec_dis_hold_ev, sec_dis_release_ev,
-                                     sec_dis_rehold_ev, sec_dis_on, lsu_r_resp_i, sec_dis_map_rd);
+                                     sec_dis_rehold_ev, sec_dis_on, lsu_r_resp_i, sec_dis_map_rd,
+                                     sec_dis_reach_rd);
       end
       if (dma_copy_done || dma_hash_done) begin
         u_sep_dma_completion_route_cg.sample(dma_irq_done, dma_hs_q);

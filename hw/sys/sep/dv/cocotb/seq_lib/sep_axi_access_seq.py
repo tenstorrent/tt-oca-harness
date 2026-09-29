@@ -28,6 +28,8 @@ class SepAxiAccessSeq(uvm_sequence):
         size: int | None = None,
         allow_unverified_write_resp: bool = False,
         allow_ungraded_read_resp: bool = False,
+        allow_timeout: bool = False,
+        expected: int | None = None,
         expect_error: bool = False,
         user: int = 0,
         burst: int | None = None,
@@ -48,6 +50,12 @@ class SepAxiAccessSeq(uvm_sequence):
         if allow_ungraded_read_resp and op is not SepAxiOp.READ:
             raise ValueError("allow_ungraded_read_resp applies to a read only")
         self._allow_ungraded_read_resp = allow_ungraded_read_resp
+        # A non-completing read is an outcome the caller grades. Pair it with
+        # allow_ungraded_read_resp so the scoreboard does not also fail the wedge.
+        if allow_timeout and op is not SepAxiOp.READ:
+            raise ValueError("allow_timeout on this sequence applies to a read only")
+        self._allow_timeout = allow_timeout
+        self._expected = expected
         # Negative-path probe: a non-OKAY response is the EXPECTED outcome (the caller
         # asserts the exact resp_code). The scoreboard then tolerates it instead of
         # failing, and fails a probe that wrongly returns OKAY (e.g. a read from an
@@ -74,6 +82,8 @@ class SepAxiAccessSeq(uvm_sequence):
         item.size = self._size
         item.allow_unverified_write_resp = self._allow_unverified_write_resp
         item.allow_ungraded_read_resp = self._allow_ungraded_read_resp
+        item.allow_timeout = self._allow_timeout
+        item.expected = self._expected
         item.expect_error = self._expect_error
         item.user = self._user
         item.burst = self._burst

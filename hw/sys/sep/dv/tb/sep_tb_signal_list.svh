@@ -58,6 +58,20 @@
 // selects val. Default 0 on both, so every other leaf keeps the sense-gated reset.
 `SEP_TB_IN(logic, jtag_sep_reset_n_ovrd_i)
 `SEP_TB_IN(logic, jtag_sep_reset_n_val_i)
+// IC_RESET TDR for the SEP slice. tdr_en=0 keeps the per-port pins above.
+// tdr_en=1 selects jtag_ic_reset_reg, sized to jtag_sep_reset_ctrl_t and
+// packed the way jtag_ptap packs the SEP slice. Scan controls idle, and
+// rst_n/trst_n stay released, so the register holds override-off.
+`SEP_TB_IN(logic, jtag_ic_reset_tdr_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_tck_i)
+`SEP_TB_IN(logic, jtag_ic_reset_select_i)
+`SEP_TB_IN(logic, jtag_ic_reset_capture_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_shift_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_update_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_rst_n_i)
+`SEP_TB_IN(logic, jtag_ic_reset_trst_n_i)
+`SEP_TB_IN(logic, jtag_ic_reset_tdi_i)
+`SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
 // pair onto the LCC decoder input (no legal OTP image can present one). See
 // the force block below.

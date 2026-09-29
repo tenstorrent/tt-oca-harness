@@ -139,6 +139,20 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
+# SEP reachable through the IC_RESET TDR before sense finishes. RAND-NONE.
+# Real fuse sense. No token. The TDR is jtag_ic_reset_reg sized to the SEP
+# slice. Override pins stay 0. SW_RESET_N returns its reset default once the
+# TDR releases sep_reset_n, and the same read does not complete after the
+# TDR holds the reset again. FEAT_CTRL stays the withheld profile.
+name = "sep_sec_dis_reset_reach_test"
+module = "efuse.sep_sec_dis_reset_reach_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "lcc", "sec_dis", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
 # RMA token match vs mismatch -> LC update, then the comparator redundancy
 # fault path (collapse / disagree / common-mode / sticky IRQ). RANDCFG: token
 # values from the run seed; SIP and CHIPLET both walk match and mismatch.

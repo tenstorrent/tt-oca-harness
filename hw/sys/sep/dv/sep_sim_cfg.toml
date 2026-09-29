@@ -84,6 +84,11 @@ sources = [
   # OCAH_INC_ASSERT, which Verilator does not define. The rules are live
   # under VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  # IC_RESET TDR storage for the SEP slice. The TAP that selects it is not
+  # in this DUT. prim_flop, prim_inv, and prim_or2 are already in the closure.
+  "hw/common/ocah_prim/rtl/prim_jtag_pkg.sv",
+  "hw/common/ocah_prim/rtl/prim_jtag_scan_reg.sv",
+  "hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv",
 ]
 # `stubs` are OVERRIDE sources. Where the runner puts them is tool-dependent
 # (tools/dv/runlib/stages.py), and the one below only takes effect under Verilator:

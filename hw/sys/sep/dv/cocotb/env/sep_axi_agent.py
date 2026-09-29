@@ -60,7 +60,8 @@ class SepAxiItem(uvm_sequence_item):
         # Read-side counterpart, for a read the specification refuses without
         # naming the response code (a read-locked eFuse shadow). The scoreboard
         # does not grade a non-OKAY response on such a read; the caller grades
-        # the returned data and side effects. A timed-out read still fails.
+        # the returned data and side effects. A timed-out read still fails
+        # unless allow_timeout is also set; the sequence then grades the wedge.
         self.allow_ungraded_read_resp: bool = False
         # When True a non-completing access (no response within the timeout) is
         # NOT a test-fatal wedge but an explicitly expected outcome for a specific

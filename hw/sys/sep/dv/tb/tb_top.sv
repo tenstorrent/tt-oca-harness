@@ -134,7 +134,45 @@ module sep_uvm_top
     sep_efuse_pkg::efuse_axil_req_t   j_axil_req_drive;
     sep_efuse_pkg::efuse_axil_resp_t  j_axil_resp_w;
     sep_pkg::jtag_sep_reset_ctrl_t   jtag_sep_reset_ctrl_drive;
+    // IC_RESET TDR storage for the SEP slice. Width is the integrator SEP-slice
+    // table: 8 ports when SEP=1 (doc/integrator/src/smu.adoc). The TAP
+    // instruction that selects the TDR is outside this DUT. tdr_en selects
+    // the register; otherwise the per-port pins drive the same struct.
+    localparam int unsigned SEP_IC_RESET_PORTS = 8;
+    prim_jtag_pkg::jtag_scan_ctrl_t ic_reset_scan_ctrl;
+    prim_jtag_pkg::jtag_tap_ctrl_t  ic_reset_tap_ctrl;
+    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ovrd_w;
+    logic [SEP_IC_RESET_PORTS-1:0]  ic_reset_ctrl_n_w;
+    sep_pkg::jtag_sep_reset_ctrl_t  ic_reset_sep_packed;
     always_comb begin
+        ic_reset_scan_ctrl         = '0;
+        ic_reset_scan_ctrl.tck     = jtag_ic_reset_tck_i;
+        ic_reset_scan_ctrl.select  = jtag_ic_reset_select_i;
+        ic_reset_scan_ctrl.capture_en = jtag_ic_reset_capture_en_i;
+        ic_reset_scan_ctrl.shift_en   = jtag_ic_reset_shift_en_i;
+        ic_reset_scan_ctrl.update_en  = jtag_ic_reset_update_en_i;
+        ic_reset_scan_ctrl.rst_n  = jtag_ic_reset_rst_n_i;
+        ic_reset_scan_ctrl.chrst_n = 1'b1;
+        ic_reset_tap_ctrl          = '0;
+        ic_reset_tap_ctrl.trst_n   = jtag_ic_reset_trst_n_i;
+        ic_reset_tap_ctrl.tck      = jtag_ic_reset_tck_i;
+    end
+    jtag_ic_reset_reg #(
+        .NUM_IC_RESET_PORTS(SEP_IC_RESET_PORTS)
+    ) u_ic_reset_sep (
+        .scan_ctrl_i      (ic_reset_scan_ctrl),
+        .scan_in_i        (jtag_ic_reset_tdi_i),
+        .scan_out_o       (jtag_ic_reset_tdo_o),
+        .tap_ctrl_i       (ic_reset_tap_ctrl),
+        .ic_reset_ovrd_o  (ic_reset_ovrd_w),
+        .ic_reset_ctrl_n_o(ic_reset_ctrl_n_w)
+    );
+    assign ic_reset_sep_packed.ovrd = ic_reset_ovrd_w;
+    assign ic_reset_sep_packed.val  = ic_reset_ctrl_n_w;
+    always_comb begin
+        if (jtag_ic_reset_tdr_en_i === 1'b1) begin
+            jtag_sep_reset_ctrl_drive = ic_reset_sep_packed;
+        end else begin
         jtag_sep_reset_ctrl_drive = '0;
         // Ports are Z until cocotb drive_idle_defaults. Treat only 1 as hold.
         jtag_sep_reset_ctrl_drive.ovrd.otbn_jtag_rst_n_ovrd =
@@ -153,6 +191,7 @@ module sep_uvm_top
             (jtag_sep_reset_n_ovrd_i === 1'b1);
         jtag_sep_reset_ctrl_drive.val.sep_reset_n_val =
             (jtag_sep_reset_n_val_i === 1'b1);
+        end
     end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
@@ -2285,6 +2324,15 @@ module sep_uvm_top
     assign jtag_trng_rst_hold_i     = 1'b0;
     assign jtag_sep_reset_n_ovrd_i  = 1'b0;
     assign jtag_sep_reset_n_val_i   = 1'b0;
+    assign jtag_ic_reset_tdr_en_i   = 1'b0;
+    assign jtag_ic_reset_tck_i      = 1'b0;
+    assign jtag_ic_reset_select_i   = 1'b0;
+    assign jtag_ic_reset_capture_en_i = 1'b0;
+    assign jtag_ic_reset_shift_en_i = 1'b0;
+    assign jtag_ic_reset_update_en_i = 1'b0;
+    assign jtag_ic_reset_rst_n_i    = 1'b1;
+    assign jtag_ic_reset_trst_n_i   = 1'b1;
+    assign jtag_ic_reset_tdi_i      = 1'b0;
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
@@ -2408,8 +2456,9 @@ module sep_uvm_top
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
         .spi_sck_i             (spi_sck_o),
-        .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_n_ovrd_i),
-        .jtag_sep_reset_n_val_i  (jtag_sep_reset_n_val_i)
+        // Values SEP receives, after the pin-or-TDR mux.
+        .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd),
+        .jtag_sep_reset_n_val_i  (jtag_sep_reset_ctrl_drive.val.sep_reset_n_val)
     );
 `endif
 

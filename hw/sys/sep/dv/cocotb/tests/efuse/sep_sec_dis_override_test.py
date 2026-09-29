@@ -20,9 +20,9 @@ then opens feature control without waiting for sensing
 the override returns both probes to 0.
 
 The evidence is the two reset probes and ``FEAT_CTRL``. The test drives
-``jtag_sep_reset_n_ovrd_i`` and ``jtag_sep_reset_n_val_i``. A transaction
-to a block that reset holds, and a write of the DTP IC_RESET register,
-are not claimed. JTAG ``TOKEN_EOP`` activate is not claimed.
+``jtag_sep_reset_n_ovrd_i`` and ``jtag_sep_reset_n_val_i``. A read of a
+block that reset holds, and a shift of the IC_RESET TDR, are
+``sep_sec_dis_reset_reach_test``. JTAG ``TOKEN_EOP`` activate is not claimed.
 
 While SEC_DIS is active and sensing is still open, a read of the
 ``LC_STATE`` shadow-map word must return AXI OKAY. The map gate input is
