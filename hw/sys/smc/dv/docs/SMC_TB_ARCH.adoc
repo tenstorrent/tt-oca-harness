@@ -488,8 +488,8 @@ class smc_register_sanity_test_seq(SmcCsrSeq):
 Key `SmcCsrSeq` helpers: `csr_read(expected=)`, `csr_write`,
 `csr_write_readback`, `csr_read_many`, `csr_read_err_signature` /
 `csr_read_decerr_zero` / `csr_read_expect_error` (strict negative),
-`csr_read_allow_error` (tolerant), `csr_read_bounded` (tolerates DECERR *and*
-timeout), `assert_all_reachable` / `assert_reachable_or_gated`.
+`csr_read_bounded` (tolerates timeout, and DECERR unless `allow_error=False`),
+`assert_all_reachable` / `assert_reachable_or_gated`.
 
 `smc_base_test_seq` is the minimal, agent-agnostic base for non-CSR sequences
 (gpio/clk/reset/irq item types), dispatched via `_OneShot` (below).

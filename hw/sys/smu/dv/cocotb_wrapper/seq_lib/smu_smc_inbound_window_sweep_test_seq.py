@@ -137,13 +137,23 @@ class smu_smc_inbound_window_sweep_test_seq(smu_axi_in_burst_outstanding_test_se
                     prot=prot,
                     label=f"{name}w",
                 )
-                _, after = await self._ax(
+                resp_c, after = await self._ax(
                     master, write=False, addr=addr, payload=4, size=2, prot=prot, label=f"{name}c"
                 )
                 key = f"{name}/prot{prot}"
                 if stable:
-                    observed[key] = (resp_name(resp_r), resp_name(resp_w), after[:4] == data[:4])
-                    want[key] = (resp_name(RESP_OKAY), resp_name(RESP_OKAY), True)
+                    observed[key] = (
+                        resp_name(resp_r),
+                        resp_name(resp_w),
+                        resp_name(resp_c),
+                        after[:4] == data[:4],
+                    )
+                    want[key] = (
+                        resp_name(RESP_OKAY),
+                        resp_name(RESP_OKAY),
+                        resp_name(RESP_OKAY),
+                        True,
+                    )
                 else:
                     observed[key] = "completed"
                     want[key] = "completed"
@@ -205,10 +215,11 @@ class smu_smc_inbound_window_sweep_test_seq(smu_axi_in_burst_outstanding_test_se
         self.steps["S3"] = True
 
     async def _held_trains(self, master, sb) -> None:
-        _, dtp_word = await self._ax(
+        resp_dtp0, dtp_word = await self._ax(
             master, write=False, addr=DTP_CTP_CONFIG, payload=4, size=2, label="dtp0"
         )
         done = {}
+        train_resps = {}
         try:
             for name, addr, word in (
                 ("external", EXTERNAL, bytes(4)),
@@ -228,12 +239,16 @@ class smu_smc_inbound_window_sweep_test_seq(smu_axi_in_burst_outstanding_test_se
                 for event in reads + writes:
                     await with_timeout(event.wait(), HELD_WAIT_NS, "ns")
                 done[name] = len(reads) + len(writes)
+                train_resps[name] = {
+                    resp_name(worst_resp(getattr(event.data, "resp", None)))
+                    for event in reads + writes
+                }
         finally:
             master.driver.set_timing(AxiTimingProfile())
-        _, after = await self._ax(
+        resp_dtp1, after = await self._ax(
             master, write=False, addr=DTP_CTP_CONFIG, payload=4, size=2, label="dtp1"
         )
-        _, efuse_word = await self._ax(
+        resp_efuse1, efuse_word = await self._ax(
             master, write=False, addr=EFUSE_SPARE0, payload=4, size=2, label="efuse1"
         )
         await self._ax(
@@ -244,12 +259,18 @@ class smu_smc_inbound_window_sweep_test_seq(smu_axi_in_burst_outstanding_test_se
             size=2,
             label="efuse1w",
         )
-        observed = (done, after[:4] == dtp_word[:4])
+        okay = resp_name(RESP_OKAY)
+        observed = (
+            done,
+            after[:4] == dtp_word[:4],
+            (resp_name(resp_dtp0), resp_name(resp_dtp1), resp_name(resp_efuse1)),
+            train_resps["dtp"],
+        )
         self._log(f"CHK-SMC-WINDOW-HELD-TRAIN {observed}")
         sb.expect_eq(
             "CHK-SMC-WINDOW-HELD-TRAIN",
             observed,
-            ({"external": 2 * HELD_TRAIN, "dtp": 2 * HELD_TRAIN}, True),
+            ({"external": 2 * HELD_TRAIN, "dtp": 2 * HELD_TRAIN}, True, (okay, okay, okay), {okay}),
             evidence="CHK-SMC-WINDOW-HELD-TRAIN",
         )
         self.steps["S4"] = True

@@ -388,8 +388,8 @@ row's EXPECT sentence is worth, read the check.
 * smu_axi_atomic_operation_test - non-ATOP SMN read path on the wrapper.
 * `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
 * This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
-* What it proves: a plain 32-bit read on the SMN path completes rather than hanging, and the RID sampled off the live R channel mirrors the ARID issued.
-* DECERR / err_slv poison deny semantics stay deferred until a filter-allow / OKAY positive control exists (NEGATIVE-NEEDS-POSITIVE-CONTROL).
+* What it proves: with the SMC aperture and an INBOUND0 window programmed over JTAG, a plain 32-bit read of `VERSION_LO` on the SMN path is answered OKAY with the register's reset value, and the RID sampled off the live R channel mirrors the ARID issued.
+* DECERR / err_slv poison deny semantics stay OUT for this leaf: no ATOP can be driven to provoke them.
 
 *Test Procedure*:
 
