@@ -122,11 +122,6 @@ sources:
   # hmac_wrapper.sv, kmac_wrapper.sv, sep_crypto_otbn_wrapper.sv, sep.sv's secure_dma
   # integration) unconditionally instantiate these OpenTitan IP cores, so any build
   # that compiles SEP/SMU needs this whole file list to elaborate cleanly.
-  # Register/arbiter/FIFO leaf primitives the SMC iDMA frontend also instantiates
-  # (idma_reg64_2d_reg_top and the DMA wrapper). Moved out of the big
-  # any(opentitan_smu, sep, smu) list so an smc-only build resolves them instead of
-  # auto-blackboxing in static flows; the target set is
-  # a superset of the original, so sep/smu/opentitan_smu builds are unchanged.
   - target: any(smc, opentitan_smu, sep, smu)
     files:
       - upstream/hw/ip/prim/rtl/prim_subreg_arb.sv

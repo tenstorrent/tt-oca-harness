@@ -730,17 +730,14 @@ module avsbus_controller #(
     .data_o(R_avs_normal_status_F_total_retries)
   );
 
-  // AVS_SLAVE_STATUS and AVS_LATEST_SLAVE_SUBFRAME are storageless (passthrough)
-  // CSR reads: without a resync the raw avs_clk-domain registers would ride the
-  // register block's read mux straight into the APB/AXI response path. Both
-  // fields of AVS_SLAVE_STATUS share one autohs so they stay coherent with each
-  // other, matching how software reads them (a single 32-bit CSR read).
+  // Resync avs_clk-domain registers: AVS_SLAVE_STATUS, AVS_LATEST_SLAVE_SUBFRAME
+  // Share one autohs so they stay coherent with each other
   logic [1:0]  R_avs_slave_status_F_avs_slave_ack_RS_apb_clk;
   logic [4:0]  R_avs_slave_status_F_avs_slave_status_response_RS_apb_clk;
   logic [31:0] R_avs_latest_slave_subframe_F_avs_slave_subframe_RS_apb_clk;
 
   prim_sync_data_autohs #(
-      .WIDTH(7),
+      .WIDTH($size(R_avs_slave_status_F_avs_slave_ack) + $size(R_avs_slave_status_F_avs_slave_status_response)),
       .DEPTH(3)
   ) u_slave_status_resync (
       .clk_src_i(avs_clk),
