@@ -1915,6 +1915,31 @@
         }
       ],
       "test_pass_rate": 98.03
+    },
+    {
+      "failed_tests": 3,
+      "flaky_tests": 5,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-28T23:49:26+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 94.38,
+            "branch": 86.95,
+            "condition": 83.06,
+            "fsm_state": 72.18,
+            "functional": 98.43,
+            "line": 94.77,
+            "toggle": 83.13,
+            "user": 94.5263
+          },
+          "flow": "dtp",
+          "framework": "uvm",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.03
     }
   ]
 }
