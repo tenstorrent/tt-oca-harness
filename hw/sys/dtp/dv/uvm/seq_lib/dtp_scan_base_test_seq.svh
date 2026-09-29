@@ -291,6 +291,21 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     check_scan_window(quiet, none, {context_s, ".window"});
   endtask
 
+  // Before any scan captures into them, every iJTAG SIB and the extended STAP
+  // chain drive a resolved 0 on their host scan output (CHK-SCAN-RESET).
+  function void check_host_scan_out_reset(string context_s);
+    string names[$];
+    for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++) begin
+      names.push_back({ijtag_prefix(sib), "_host_scan_out"});
+    end
+    names.push_back("jtag_stap_host_scan_out");
+    foreach (names[i]) begin
+      logic sampled = scan_window.sample_scan_signal(names[i]);
+      family_check("CHK-SCAN-RESET", names[i], $isunknown(sampled) ? '1 : 64'(sampled), '0,
+                   $sformatf("%s sampled=%b", context_s, sampled));
+    end
+  endfunction
+
   // --- STAP / 3DCR -------------------------------------------------------------
   // The extended STAP host scan controls on dtp_scan_if.
   static function void stap_host_scan_controls(ref string signals[$]);

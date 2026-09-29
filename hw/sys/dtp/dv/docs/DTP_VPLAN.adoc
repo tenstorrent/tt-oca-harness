@@ -241,7 +241,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F2.3 DEBUG_CONTROL clock stop: `jtag_clock_stop` and CLA requests OR into the registered `stop_clks_o`; `cla_clock_stop` readback reflects CLA requests alone; `cla_clock_stop_en` exported |`dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test`, `dtp_dbg_ctrl_clk_stop_cla_clock_stop_test`, `dtp_dbg_ctrl_clk_stop_random_clock_stop_test` |debug_tdr |`debug_control_cg` clock-stop bins |`CHK-DBG-TDR`, `CHK-DBG-PIN` (`stop_clks` polled), `CHK-DBG-STOP-EDGE` (the `tb_top` `stop_clks_o` change counters), `CHK-TAP-RESET-TLR` in both realizations |YES; also the F5.7 credit
 |F2.4 DEBUG_CONTROL boot stall: override and stall combinations and their interaction with clock stop |`dtp_dbg_ctrl_boot_stall_test` |debug_tdr |`debug_control_cg` boot-stall bins |`CHK-DBG-TDR`, `CHK-DBG-PIN`, `CHK-TAP-RESET-TLR` in both realizations |YES
 |F2.5 Capability TDRs are read-only and stable: JTAG_CAPS and the SMC, SMC OTP, and SEP OTP JTAG2AXI CAPS |`dtp_dbg_jtag_caps_test`, `dtp_dbg_smc_jtag2axi_caps_test`, `dtp_dbg_smc_otp_jtag2axi_caps_test`, `dtp_dbg_sep_otp_jtag2axi_caps_test` |debug_tdr |`caps_tdr_cg` |`CHK-CAPS`, `CHK-CAPS-RO`, `CHK-TAP-RESET-TLR` in both realizations |YES
-|F3.1 iJTAG SIB network: DFT secure, DFT non-secure, and DFD chains; every SIB pattern |`dtp_ijtag_sib_all_off_test`, `dtp_ijtag_sib_all_on_test`, `dtp_ijtag_sib_random_test` |scan |`ijtag_sib_cg` pattern and instrument bins |`CHK-SCAN-WIN` temporal windows, `CHK-SCAN-LEN` marker latency, `CHK-SCAN-CHAIN` captured SIB states and instrument registers against the SIB model |YES, against the 4/5/6-bit instrument stubs behind the SIBs in `tb_top`
+|F3.1 iJTAG SIB network: DFT secure, DFT non-secure, and DFD chains; every SIB pattern; host scan outputs resolved from reset |`dtp_ijtag_sib_all_off_test`, `dtp_ijtag_sib_all_on_test`, `dtp_ijtag_sib_random_test` |scan |`ijtag_sib_cg` pattern and instrument bins |`CHK-SCAN-RESET` host scan outputs before the first scan, `CHK-SCAN-WIN` temporal windows, `CHK-SCAN-LEN` marker latency, `CHK-SCAN-CHAIN` captured SIB states and instrument registers against the SIB model |YES, against the 4/5/6-bit instrument stubs behind the SIBs in `tb_top`
 |F3.2 iJTAG instrument access follows `dft_secure`, `dft_nonsecure`, and `dfd` |`dtp_ijtag_dft_test`, `dtp_ijtag_dfd_test` |scan, dbg_disable |`ijtag_sib_cg` gating bins; `dbg_disable_cg` mirror points |`CHK-SCAN-WIN` quiet windows |YES
 |F3.3 STAP selection through composed TAP_3DCR scans for the I/O, SMC, SEP, and extra ports; the selected port forwards, a gated port parks in Test-Logic-Reset |`dtp_3dcr_stap_sel_ds_test`, `dtp_3dcr_stap_sel_smc_test`, `dtp_3dcr_stap_sel_sep_test`, `dtp_3dcr_stap_sel_extra_test` |scan, dbg_disable |`stap_3dcr_cg` |`CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME`, `CHK-SLAVE-DR-UPDATE`, `CHK-SCAN-CHAIN`, `CHK-SCAN-WIN` |YES, against behavioral downstream TAPs
 |F3.4 The external STAP return path follows `stap_host`: the host scan controls and the PTAP chain return (`jtag_stap_host_scan_in_i` while enabled, `jtag_stap_host_scan_out_o` while disabled); the STAP chain and the host scan controls move only while the PTAP 3DCR SELECT is set |`dtp_ext_stap_scan_test`, `dtp_stap_chain_hold_test` |scan, dbg_disable |`dbg_disable_cg` mirror points for `stap_host`; `stap_3dcr_cg` chain bins |`CHK-SCAN-CHAIN` segment readback and marker position, `CHK-SCAN-OBS` PTAP 3DCR with SELECT=0, `CHK-SCAN-WIN` |YES, against the 7-bit host segment in `tb_top`
@@ -4994,6 +4994,7 @@ b. Verify the latency equals the 3 SIB-control bits only (no instrument register
 
 *Test Coverage*:
 
+* Before the first scan, with every disable clear, `jtag_dft_secure_host_scan_out_o`, `jtag_dft_host_scan_out_o`, `jtag_dfd_host_scan_out_o`, and `jtag_stap_host_scan_out_o` drive a resolved 0 (the SIB and 3DCR scan stages reset)
 * SELECT_IJTAG (IR=0x1A) with all SIB bits = 1 produces the full-length iJTAG scan chain
 * DR chain length equals sum of SIB bits plus all three instrument register widths (3 SIBs {plus} 3 instruments)
 * All three scan controls (`jtag_dfd_host_scan_ctrl_o`, `jtag_dft_host_scan_ctrl_o`, `jtag_dft_secure_host_scan_ctrl_o`) assert during Shift-DR
@@ -5003,6 +5004,7 @@ b. Verify the latency equals the 3 SIB-control bits only (no instrument register
 *Test Procedure*:
 
 [arabic]
+. After Test-Logic-Reset with every disable clear, and before any IR or DR scan, sample the three iJTAG host scan outputs and the extended STAP host scan output and verify each is a resolved 0.
 . Load SELECT_IJTAG (IR=0x1A) via `OcahJtagMasterDriver`.
 . Shift a pattern enabling all SIBs (all bits = 1); Update-DR.
 . Measure DR chain length by shifting a known marker and counting the delay.
@@ -5019,6 +5021,7 @@ c. Verify chain length collapses to SIB bits only and no instrument scan control
 [cols=",",options="header",]
 |===
 |Checker |Description
+|`sib_all_on_reset_chk` |`CHK-SCAN-RESET`: every iJTAG host scan output and the extended STAP host scan output is a resolved 0 before the first scan
 |`sib_all_on_len_chk` |Full chain length matches sum of SIB bits plus all three instrument widths
 |`sib_all_on_ctrl_chk` |All three host scan-control outputs assert during Shift-DR
 |`sib_all_on_gate_chk` |Asserted SIB disables force every SIB closed; chain collapses despite all-ON request
