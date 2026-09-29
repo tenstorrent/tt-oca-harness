@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Debug &amp; Test Ports (DTP) Integration :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="smu.html">SMU Top-Level Integration</a></li>
+    <li><a href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Debug &amp; Test Ports (DTP) Integration</h1>
+<div class="sect1">
+<h2 id="configuration"><a class="anchor" href="#configuration"></a><a class="link" href="#configuration">1. Configuration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMU <code>smu_cfg_t</code> fields <code>XTRIG_NUM_CTP</code>, <code>XTRIG_NUM_INT_CT</code>, and
+<code>XTRIG_NUM_CLK_STOP_REQ</code> size the SMU-exposed cross-trigger ports and are
+passed through to the DTP (with the SMC-reserved lanes added to the internal-CT
+and clock-stop counts). The generated Cross Trigger Matrix register map must
+have one <code>CT_Src</code> and one <code>CT_Dst</code> for every DTP port
+(<code>XTRIG_NUM_CTP + XTRIG_NUM_INT_CT</code> at the DTP, which is the SMU-exposed
+internal-CT count plus <code>smu_pkg::XTRIG_SMC_INT_CT_LANES</code>). Resizing is two
+steps: set the <code>Cfg</code> counts, and regenerate the CTM with matching PeakRDL
+overrides:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-make hljs" data-lang="make">make ocah-regen-regs TARGET=cross_trigger_matrix \
+    OCAH_REG_RDL_PARAMS_cross_trigger_matrix="NUM_CT_SRC=&lt;n&gt; NUM_CT_DST=&lt;n&gt;"</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>&lt;n&gt;</code> is the DTP total (<code>Cfg.XTRIG_NUM_CTP + Cfg.XTRIG_NUM_INT_CT<br>
+smu_pkg::XTRIG_SMC_INT_CT_LANES</code>). <code>cross_trigger_network</code> fails elaboration if
+the parameterized total disagrees with the generated map. Defaults remain 16
+external CTPs, 10 internal CTs (8 exposed), and 9 clock-stop requests (8
+exposed). <code>XTRIG_INT_CT_MODE</code> and every <code>JTAG_*</code> enable are set at the
+instantiation as shown below.</p>
+</div>
+<div class="paragraph">
+<p>Include the DTP in your build using Bender target <code>dtp</code>, which pulls in the DTP
+RTL together with the JTAG and cross-trigger IPs it instantiates. The legacy
+filelist <code>hw/sys/dtp/rtl/config/dtp.f</code> covers only the JTAG portion of the
+hierarchy and is not a complete DTP recipe.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="instantiation"><a class="anchor" href="#instantiation"></a><a class="link" href="#instantiation">2. Instantiation</a></h2>
+<div class="sectionbody">
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">dtp #(
+    // JTAG Configuration
+    .JTAG_BSR_ENABLE          (1'b1),
+    .JTAG_TMP_ENABLE          (1'b1),
+    .JTAG_SMC_DBG_ENABLE      (1'b1),
+    .JTAG_SEP_DBG_ENABLE      (1'b1),
+    .JTAG_IDCODE_MFR_ID       (11'h15A),
+    .JTAG_IDCODE_PART_NUM     (16'h1234),
+    .JTAG_IDCODE_SI_REV       (4'h1),
+    // Cross Trigger Configuration
+    .XTRIG_NUM_CTP            (16),
+    .XTRIG_NUM_INT_CT         (10),
+    .XTRIG_NUM_CLK_STOP_REQ   (9),
+    .XTRIG_INT_CT_MODE        (10'b0000000000)
+) u_dtp (
+    .clk_i                    (clk),
+    .rst_n_i                  (rst_n),
+    .pwr_on_rst_ni            (pwr_on_rst_n),
+    // JTAG, Boundary Scan, Cross Trigger interfaces...
+);</code></pre>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clock-and-reset"><a class="anchor" href="#clock-and-reset"></a><a class="link" href="#clock-and-reset">3. Clock and Reset</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p><strong>TCK Domain</strong>: JTAG logic operates on external Test Clock</p>
+</li>
+<li>
+<p><strong>System Clock</strong> (<code>clk_i</code>): Cross trigger logic and JTAG2AXI bridges</p>
+</li>
+<li>
+<p><strong>System Reset</strong> (<code>rst_n_i</code>): Resets cross trigger and AXI; does not affect TAP controller</p>
+</li>
+<li>
+<p><strong>Power-On Reset</strong> (<code>pwr_on_rst_ni</code>): Asynchronous reset for JTAG state machine</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="constraints"><a class="anchor" href="#constraints"></a><a class="link" href="#constraints">4. Constraints</a></h2>
+<div class="sectionbody">
+<div class="ulist">
+<ul>
+<li>
+<p>JTAG interface: 10-50 MHz TCK frequency</p>
+</li>
+<li>
+<p>Cross trigger signals synchronized to system clock</p>
+</li>
+<li>
+<p>DTP remains active during clock stop for debug access</p>
+</li>
+<li>
+<p>External CTP signals require pad ring integration with ESD protection</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="stap-scan-chain-topology"><a class="anchor" href="#stap-scan-chain-topology"></a><a class="link" href="#stap-scan-chain-topology">5. STAP Scan Chain Topology</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
+string. The fixed order on this string is: PTAP, I/O STAP (if
+<code>JTAG_STAP_IO_ENABLE=1</code>), SMC debug STAP (if <code>JTAG_SMC_DBG_ENABLE=1</code>), SEP
+debug STAP (if <code>SEP=1</code> in the SMU), extra STAP[N-1:0], and return to PTAP.</p>
+</div>
+<div class="paragraph">
+<p>Both the SMC and SEP debug STAP host interfaces are internal to the SMU and are
+not exported on the SMU boundary. The SMU wires the SMC debug STAP host outputs
+to the SMC CPU/system JTAG ports (<code>smc_cpu_jtag_*</code>) when
+<code>JTAG_SMC_DBG_ENABLE=1</code>; when disabled, the DTP bypasses this STAP in the
+secondary scan chain and drives the internal host outputs low. The SEP debug
+STAP connects to the SEP JTAG debug port when <code>SEP=1</code>; when <code>SEP=0</code>, the SMU
+ties <code>sep_stap_tdo_to_dtp = 1&#8217;b0</code> to bypass the SEP STAP return path.</p>
+</div>
+<div class="paragraph">
+<p>Each STAP host interface is gated by a field of <code>dbg_disable_i</code>, synchronized to
+TCK inside the DTP. Each field is active-high (1 = path disabled).</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">STAP</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The full set of debug-disable-gated paths, including the iJTAG chains and the
+JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="dtp-port-interface"><a class="anchor" href="#dtp-port-interface"></a><a class="link" href="#dtp-port-interface">6. DTP Port Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The DTP exposes interfaces for JTAG TAP control, boundary scan, multiple STAP
+host ports, iJTAG scan chains, AXI debug bridges, cross trigger networks, and
+CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
+the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal design details.</p>
+</div>
+<div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
+</div>
+<div class="paragraph">
+<p><em>Legend: Where no Default entry is shown in Description / Default, the original port reference specifies N/A — those ports have no integrator-supplied default; connect as directed by Description.</em></p>
+</div>
+<div class="paragraph">
+<p><a href="#dtp-port-declaration-table">DTP Port Declaration</a> lists the DTP boundary ports, their dimensions, and their
+connections.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="DTP port reference" tabindex="0">
+<table id="dtp-port-declaration-table" class="tableblock frame-all grid-all stretch port-reference small">
+<caption class="title">Table 1. DTP Port Declaration</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 16%;">
+<col style="width: 8%;">
+<col style="width: 11%;">
+<col style="width: 25%;">
+<col style="width: 20%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Dir</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Description / Default</th>
+<th class="tableblock halign-left valign-top">Connection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock for cross trigger logic and JTAG2AXI bridges.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System clock</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_n_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pwr_on_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on reset for JTAG state machine (active low, asynchronous).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-on reset</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-path lifecycle controls for disabling debug and test interfaces. Active-high (1 = path disabled). DTP synchronizes each field into the JTAG TCK domain.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP lifecycle controller or adopter-equivalent policy source</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ptap_client_tap_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary JTAG TAP control (TCK, TMS, TRST_N).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External JTAG pads</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ptap_client_tdi_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary JTAG TDI.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External JTAG pads</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ptap_client_tdo_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary JTAG TDO.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External JTAG pads</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ptap_client_tdo_oen_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary JTAG TDO output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External JTAG pads</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_bsr_host_scan_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_scan_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan control. Tie scan_in to scan_out if BSR is disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_bsr_host_scan_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan data in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_bsr_host_scan_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan data out.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boundary scan chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_io_host_tap_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP TAP control for chiplet-to-chiplet connectivity. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_STAP_IO_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_io_host_tdi_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP TDI. Default: Tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_io_host_tdo_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP TDO.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_io_host_tdo_oen_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP TDO output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_smc_host_tap_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP TAP control. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_SMC_DBG_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_smc_host_tdi_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP TDI (from SMC TDO). Default: Tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_smc_host_tdo_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP TDO (to SMC TDI).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_smc_host_tdo_oen_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP TDO output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tap_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP TAP control. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_SEP_DBG_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tdi_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP TDI (from SEP TDO). Default: Tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tdo_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP TDO (to SEP TDI).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_sep_host_tdo_oen_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP TDO output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP JTAG port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tap_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_tap_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TAP control array. <code>.tck</code> remains driven when the STAP generate is off. Default: TMS/TRST idle if <code>JTAG_NUM_EXTRA_STAPS=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdi_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDI array. Default: Tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDO array.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_extra_host_tdo_oen_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[JTAG_NUM_EXTRA_STAP_PORTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP TDO output enable array.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP hosts</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_host_scan_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_scan_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extended STAP scan control. Tie scan_in to scan_out if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP scan chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_host_scan_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extended STAP scan data in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP scan chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_stap_host_scan_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extended STAP scan data out.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP scan chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dfd_host_scan_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_scan_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG scan control. Tie scan_in to scan_out if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dfd_host_scan_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG scan data in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dfd_host_scan_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG scan data out.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dft_secure_host_scan_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_scan_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DFT iJTAG scan control. Tie scan_in to scan_out if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DFT iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dft_secure_host_scan_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DFT iJTAG scan data in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DFT iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dft_secure_host_scan_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DFT iJTAG scan data out.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Secure DFT iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dft_host_scan_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_scan_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure DFT iJTAG scan control. Tie scan_in to scan_out if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure DFT iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dft_host_scan_in_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure DFT iJTAG scan data in.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure DFT iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_dft_host_scan_out_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure DFT iJTAG scan data out.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure DFT iJTAG chain</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axi_smc_dbg_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric debug AXI request. Active when <code>JTAG_SMC_DBG_ENABLE=1</code>. Default: tie to '0 if disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>jtag_axi_in_req_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axi_smc_dbg_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric debug AXI response. Default: tie to '0 if disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>jtag_axi_in_resp_o</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_smc_otp_jtag_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP debug AXI-Lite request. Default: tie to '0 if disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>axil_smc_otp_jtag_req_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_smc_otp_jtag_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP debug AXI-Lite response. Default: tie to '0 if disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>axil_smc_otp_jtag_resp_o</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_sep_otp_jtag_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP debug AXI-Lite request. Default: tie to '0 if disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_req_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_sep_otp_jtag_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP debug AXI-Lite response. Default: tie to '0 if disabled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>axil_sep_otp_jtag_resp_o</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>stop_clks_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop output from JTAG DEBUG_CONTROL or CLA clock-stop requests via CTN.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock gates</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cla_clock_stop_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA clock stop enable from DEBUG_CONTROL register.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock control logic</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_boot_stall_ovrd_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG boot stall override enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_boot_stall_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG boot stall value when override is asserted.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ic_reset_smc_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_smc_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>$bits(ic_reset_smc_t)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC IC_RESET override slice. Struct contains <code>.ovrd</code> (override enables) and <code>.val</code> (active-low override values), each sized to match the corresponding SMC reset control struct. Tied to '0 when <code>JTAG_IC_RESET_SMC_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>jtag_smc_reset_ctrl_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ic_reset_sep_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_sep_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>$bits(ic_reset_sep_t)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP IC_RESET override slice. Struct contains <code>.ovrd</code> (override enables) and <code>.val</code> (active-low override values), each sized to match the corresponding SEP reset control struct. Tied to '0 when <code>JTAG_IC_RESET_SEP_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP <code>jtag_sep_reset_ctrl_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ic_reset_ext_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ic_reset_ext_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>$bits(ic_reset_ext_t)</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External IC_RESET override slice. Struct contains <code>.ovrd</code> (override enables) and <code>.val</code> (active-low override values), each sized per integrator-defined type. Tied to '0 when <code>JTAG_IC_RESET_EXT_ENABLE=0</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Integrator-defined reset overrides for logic outside the SMU</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ptap_state_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tap_state_e</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Current PTAP TAP state.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_ptap_inst_decoded_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_instruction_decoded_e</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Current decoded PTAP instruction.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Debug infrastructure</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_xtrig_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_axil_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger CSR AXI-Lite request from SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>axil_dtp_csr_req_o</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_xtrig_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger CSR AXI-Lite response to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>axil_dtp_csr_resp_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger source requests from CTM to destination sinks.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger sinks</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_src_ack_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). Default: tie to '0 in pulse-sync mode.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger sinks</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger destination requests from source generators. Default: tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger sources</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctm_dst_ack_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_INT_CT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger destination acknowledges. Unused in pulse-sync mode (mode bit = 0).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross trigger sources</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_clk_stop_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CLK_STOP_REQ-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop requests from CLAs or other devices in the chiplet. Default: Tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Clock stop requesters</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out data output (to pad ring).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_dout_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out loopback input. Default: tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_out_din_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-out input enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in data output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_dout_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in data input. Default: tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_req_in_din_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP request-in input enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in data output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_dout_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in data input. Default: tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_in_din_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-in input enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out data output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_dout_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out output enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out data input. Default: tie to '0 if unused.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrig_ctp_ack_out_din_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[XTRIG_NUM_CTP-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out input enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

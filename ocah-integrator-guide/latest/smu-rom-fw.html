@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Immutable ROM FW Integration :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="smu.html">SMU Top-Level Integration</a></li>
+    <li><a href="smu-rom-fw.html">Immutable ROM FW Integration</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">Immutable ROM FW Integration</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>OCAH contains three immutable ROM FW images: the SMC production ROM FW, the
+SEP production ROM FW, and the Key Manager production ROM FW. Each image has
+two integration contracts. The adopter connects and configures the
+corresponding ROM macro, and the final ROM FW image must be present before its
+processor leaves reset. Where ROM FW must initialize or access an
+adopter-owned peripheral outside OCAH, the image may also expose build-time
+integration hooks.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="rom-fw-override-method"><a class="anchor" href="#rom-fw-override-method"></a><a class="link" href="#rom-fw-override-method">1. Weak-symbol override method</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>An immutable ROM FW image may provide selected vendor-neutral integration hooks
+as weak symbols. Supply an adopter implementation as a strong definition of the
+same symbol before the final image is frozen. The strong implementation must
+program the same adopter-owned IP instantiated by the RTL integration, and its
+signature, ABI, return values, and documented semantics must match the weak
+declaration.</p>
+</div>
+<div class="paragraph">
+<p>This mechanism applies only when the ROM FW needs to interact with a peripheral
+outside OCAH. It is a build-time image-composition mechanism, not a runtime
+extension mechanism. Include the adopter implementation in the final ROM FW
+build so that it replaces the weak definition at link time.</p>
+</div>
+<div class="paragraph">
+<p>Inspect the final ELF or linker map after linking. For example,
+<code>riscv64-unknown-elf-nm</code> must report each selected implementation as a strong
+symbol rather than <code>W</code>; successful linking alone does not prove that the weak
+default was replaced.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-rom-fw-integration"><a class="anchor" href="#smc-rom-fw-integration"></a><a class="link" href="#smc-rom-fw-integration">2. SMC ROM FW integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Connect <code>smc_rom_intf_req_o</code> and <code>smc_rom_intf_rsp_i</code> to the adopter&#8217;s ROM
+implementation. In the current four-core configuration, the request provides
+the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
+one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
+ROM FW image must be present before the first boot; its build is under
+<code>hw/sys/smc/bootrom/prod/</code>.</p>
+</div>
+<div class="paragraph">
+<p>Connect the ROM macro configuration input reached as <code>rom_cfg_i</code> and
+<code>mem_cfg_i</code> according to the selected macro&#8217;s contract. OCAH forwards these 11
+bits without assigning technology-specific semantics; the reference
+<code>smc_ip_integration.sv</code> ties them to zero. Set the eFuse shadow value that
+drives the CPU&#8217;s <code>rom_flip_endianness_i</code> path to match the byte order of the
+image and ROM macro. Deasserted passes each 64-bit read word unchanged;
+asserted reverses its eight bytes.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. SMC ROM FW override inventory</caption>
+<colgroup>
+<col style="width: 18%;">
+<col style="width: 20%;">
+<col style="width: 27%;">
+<col style="width: 35%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Hook</th>
+<th class="tableblock halign-left valign-top">Weak default</th>
+<th class="tableblock halign-left valign-top">Rationale</th>
+<th class="tableblock halign-left valign-top">Override and integration action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pll_init()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns <code>SMC_PLL_SUCCESS</code> without programming PLL hardware.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL implementation is technology- and vendor-specific, so OCAH does not
+include a vendor-specific PLL driver.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Override when <code>BL0_PLLCLK</code> is asserted and the adopter&#8217;s PLL requires
+ROM-time configuration. Provide the same
+<code>smc_pll_result_t smc_pll_init(void)</code> signature in the final ROM FW build.
+Any result other than <code>SMC_PLL_SUCCESS</code> is fatal: the ROM FW records an
+interface error and remains in <code>wfi</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>i3c_release_reset()</code>, <code>cfg_ps()</code>, <code>init_i3c_ctrl()</code>, and
+<code>I3C_GetDriverInstance()</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permit the ROM FW to boot without an active I3C implementation; I3C data
+operations report a hardware error.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCAH includes an I3C implementation, but the adopter may select a different
+I3C target and driver for the final system.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the ROM FW must use an active I3C target, select the open HCI
+implementation with <code>I3C_CORE=chipsalliance</code>, or connect the adopter&#8217;s I3C target
+through the SMC external AXI-Lite master (<code>smc_external_req_o</code> and
+<code>smc_external_resp_i</code>) and link strong implementations that conform to
+<code>drivers/include/i3c_target_driver.h</code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-rom-fw-integration"><a class="anchor" href="#sep-rom-fw-integration"></a><a class="link" href="#sep-rom-fw-integration">3. SEP ROM FW integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SEP exposes the <code>sep_boot_rom</code> memory interface for its production ROM FW
+image. The detailed ROM-macro configuration, image-loading contract, and
+adopter override inventory are not yet documented here.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SEP ROM FW override inventory</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Hook</th>
+<th class="tableblock halign-left valign-top">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>To be documented</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No adopter override requirement is defined here yet.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="km-rom-fw-integration"><a class="anchor" href="#km-rom-fw-integration"></a><a class="link" href="#km-rom-fw-integration">4. Key Manager ROM FW integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Key Manager exposes the <code>km_rom_mem</code> interface through SEP for its
+production ROM FW image. The detailed ROM-macro configuration, image-loading
+contract, and adopter override inventory are not yet documented here.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. Key Manager ROM FW override inventory</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Hook</th>
+<th class="tableblock halign-left valign-top">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><em>To be documented</em></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No adopter override requirement is defined here yet.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>

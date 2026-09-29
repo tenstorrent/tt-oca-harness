@@ -1,0 +1,2808 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>System Management Controller (SMC) Integration :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../_/css/site.css">
+    <link rel="stylesheet" href="../../_/css/extra.css">
+    <link rel="stylesheet" href="../../_/css/vendor/viewer.min.css">
+    <link rel="stylesheet" href="../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Harness Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="checklist.html">SoC Integration Checklist</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="smu.html">SMU Top-Level Integration</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-filelists.html">RTL Filelists</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-address-map.html">Address Map Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-rom-fw.html">Immutable ROM FW Integration</a>
+  </li>
+  <li class="nav-item is-current-page" data-depth="3">
+    <a class="nav-link" href="smu-smc.html">System Management Controller (SMC) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-dtp.html">Debug &amp; Test Ports (DTP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-sep.html">Security Processor (SEP) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="3">
+    <a class="nav-link" href="smu-composition.html">SMU Composition and Internal Wiring</a>
+  </li>
+</ul>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="smn.html">SMN Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="aou.html">AXI-over-UCIe Bridge (AoU) Integration</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="defines.html">Project Defines</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="prim.html">Prim Cell Replacement and Don&#8217;t-Touch Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="cdc.html">CDC Timing Constraints</a>
+  </li>
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <button class="context" aria-label="Open Chiplet Atlas (OCA) Harness Integrator Guide latest — switch documentation">
+    <span class="version">latest</span>
+  </button>
+  <ul class="components">
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Getting Started and Contributing Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Integrator Guide</span>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Programmer&#x27;s Guide</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <span class="title">Open Chiplet Atlas Harness (OCAH) Application Notes</span>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+  <ul>
+    <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Integrator Guide</a></li>
+    <li><a href="index.html">Integrator Guide</a></li>
+    <li><a href="smu.html">SMU Top-Level Integration</a></li>
+    <li><a href="smu-smc.html">System Management Controller (SMC) Integration</a></li>
+  </ul>
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<h1 class="page">System Management Controller (SMC) Integration</h1>
+<div id="preamble">
+<div class="sectionbody">
+<div class="paragraph">
+<p>The System Management Controller (SMC) is a subsystem responsible for power
+management, clock control, reset sequencing, and peripheral interface
+coordination. The <code>smc.sv</code> module exposes logic-level interfaces; all
+technology-specific components (PLLs, PVT sensors, eFuses, memory macros,
+GPIO padrings) are instantiated externally by the adopter. See the
+<a href="#smu-module-variants">SMU Module Variants</a> section for how the reference
+wrappers demonstrate this integration.</p>
+</div>
+<div class="paragraph">
+<p>For detailed architectural documentation about the SMC internal design, refer to
+<code>hw/sys/smc/doc/</code>. The public integration examples are
+<code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-integration-clk-rst"><a class="anchor" href="#smc-integration-clk-rst"></a><a class="link" href="#smc-integration-clk-rst">1. Clock and Reset</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC requires three external clock inputs: <code>clk_smc_i</code> (primary system clock
+driving the CPU cluster, fabric, and peripherals), <code>clk_periph_i</code> (peripheral clock
+driving the peripherals), and <code>clk_ref_i</code> (reference
+clock for timing-sensitive operations). All must be generated externally by the
+adopter&#8217;s PLL infrastructure; the SMC provides AXI-Lite control outputs for PLL
+configuration (see <a href="#smc-peripheral-connections">Peripheral Interface Connections</a>). The peripheral clock is used
+to drive the I3C interface, I2C interface, UART interface, and AVSBus interface.</p>
+</div>
+<div class="paragraph">
+<p>Hold <code>rst_cold_ni</code> asserted (low) while power supplies and clocks stabilize.
+Assert <code>powergood_i</code> once supplies reach nominal, then deassert <code>rst_cold_ni</code>
+(drive high) to start the boot sequence.</p>
+</div>
+<div class="paragraph">
+<p>The SMC generates AASD (async-assert / sync-deassert) reset outputs: <code>rst_primary_smc_clk_no</code> for the
+main clock domain, <code>rst_primary_periph_clk_no</code> for the peripheral clock domain, and <code>rst_primary_ref_clk_no</code> for the reference clock domain.
+These ensure clean reset release without metastability across the system
+hierarchy.</p>
+</div>
+<div class="paragraph">
+<p>Reset domain overrides are delivered through a single typed input,
+<code>jtag_reset_ctrl_i</code> (<code>smc_pkg::jtag_smc_reset_ctrl_t</code>), which carries all
+SMC reset override enables and active-low values. The DTP drives this input
+through the JTAG IC_RESET mechanism (see <a href="#smc-dtp-interconnection">[smc-dtp-interconnection]</a>); most
+integrations leave all override enables deasserted.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-ndm-cluster-reset"><a class="anchor" href="#smc-ndm-cluster-reset"></a><a class="link" href="#smc-ndm-cluster-reset">2. External CPU cluster NDM reset</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Connect <code>smc_ndmreset_request_i[i]</code> to the NDM reset request from
+external CPU cluster <code>i</code>, and return <code>smc_ndmreset_process_o[i]</code> to
+that cluster. Set <code>CPU_CLUSTER_COUNT</code> in <code>smc_config_pkg</code> to the number
+of clusters. This harness sets it to 4. The parameter sizes both ports,
+and <code>NDMRESET_CLUSTER_COUNT</code> reads that value back. The register fields
+stay 32 bits wide. Tie unused request inputs to 0.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-address-map-integration"><a class="anchor" href="#smc-address-map-integration"></a><a class="link" href="#smc-address-map-integration">3. Address Map and Aperture</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC has a chiplet-visible aperture and an internal local address
+view. Internally, the SMC uses a fixed local base address of
+<code>0xC000_0000</code> and a fixed local window size of 16 MiB. SMC-local
+addresses (registers, memories, remapped regions) are defined as offsets
+from that base. The chiplet-visible aperture is adopter-defined: the
+chiplet or SoC address map assigns the global base and size that
+external masters can use to reach SMC through the SMU crossbar.</p>
+</div>
+<div class="paragraph">
+<p>When integrating the SMC into a chiplet or SoC, the adopter assigns a
+system base address and reserved size for the SMC window. The system
+base (e.g. <code>0x0800_0000</code> in a chiplet address map) may be different from
+the SMC-local base <code>0xC000_0000</code>. Firmware programs the SMC
+<code>GLOBAL_BASE</code> / <code>REGION_SIZE</code> CSRs during early boot to match that
+assignment. The adopter&#8217;s fabric or address decoder must route the
+reserved system range to the SMC block so that offsets are preserved:
+system base + offset maps to SMC-local <code>0xC000_0000</code> + offset.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Address Base Mapping</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 30%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">View</th>
+<th class="tableblock halign-left valign-top">Base Address</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-local (internal)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xC000_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local alias address (fixed).
+Used by SMC CPU, firmware, and fabric.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System (adopter)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Base of the chiplet/SoC aperture
+assigned to SMC.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SMC fabric uses three registers in the CPU Control block
+(<code>0xC001_0000</code>) to distinguish local from remote addresses:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>LOCAL_BASE</code> (read-only, fixed at <code>0xC000_0000</code>): The local alias
+base. Together with <code>REGION_SIZE</code>, this is the address space the SMC
+CPU and internal fabric use to access SMC resources.</p>
+</li>
+<li>
+<p><code>GLOBAL_BASE</code> (read-write, defaults to <code>0x4000_0000</code>): The
+system-level base address. Firmware must program this during early boot
+to match the adopter&#8217;s system address assignment, enabling the SMC to
+issue outbound transactions using global system addresses.</p>
+</li>
+<li>
+<p><code>REGION_SIZE</code> (read-write, resets to <code>0x0100_0000</code> / 16 MiB): The size
+of both the local alias window and the global aperture. It sizes the
+SMC input fabric&#8217;s local/global split as well as SMU-level routing and
+SEP-to-SMC decode. Firmware must not program it to zero, and must keep
+<code>LOCAL_BASE + REGION_SIZE</code> inside the 32-bit SMC-local address space.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>For full details on alias remapping and outbound routing, see the SMC
+Fabric documentation (<code>hw/sys/smc/doc/fabric.adoc</code>).</p>
+</div>
+<div class="paragraph">
+<p>For a detailed breakdown of all components within the SMC local map,
+refer to the SMC Memory Map documentation (<code>hw/sys/smc/doc/memmap.adoc</code>).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="axi-interface-configuration"><a class="anchor" href="#axi-interface-configuration"></a><a class="link" href="#axi-interface-configuration">4. AXI Interface Configuration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC provides three distinct AXI interface groups serving different access
+paths. The <code>sys_axi_in</code> interface accepts requests from external system masters
+requiring access to SMC-managed resources. This interface uses a 56-bit address
+space with 64-bit data width and 6-bit transaction IDs. Connect this interface
+to your system fabric for normal operational access from application processors
+or DMA controllers.</p>
+</div>
+<div class="paragraph">
+<p>The <code>sep_axi_in</code> interface provides dedicated access from the Security Processor
+(SEP) subsystem. This interface shares the same sizing parameters as the system
+input but operates independently to maintain security domain separation. Use
+this interface only when integrating alongside the SEP subsystem. The interface
+may remain unconnected if your integration does not include SEP.</p>
+</div>
+<div class="paragraph">
+<p>The <code>output_axi</code> interface carries filtered and remapped requests from the SMC
+to external system resources. This interface uses an 8-bit transaction ID field
+to accommodate merged traffic from multiple input paths. Connect this interface
+to your system interconnect to allow SMC components access to external memory
+and peripherals. An AXI VIP or equivalent BFM is a suitable stand-in during
+integration verification before the real system fabric is available.</p>
+</div>
+<div class="paragraph">
+<p>The <code>jtag_axi_in</code> interface provides debug access through JTAG mechanisms. This
+interface uses reduced 2-bit transaction IDs and connects to your JTAG debug
+infrastructure.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="gpio-pad-integration"><a class="anchor" href="#gpio-pad-integration"></a><a class="link" href="#gpio-pad-integration">5. GPIO Pad Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>GPIO pad integration requires careful attention to function assignment and pull
+requirements. The GPIO table below lists each signal, bump location, function,
+recommended pull, and integration notes. Default input/output direction is
+defined by <code>smc_padring_pkg::DefaultDirectionMap</code>, not by the table.</p>
+</div>
+<div class="paragraph">
+<p>The public <code>hw/top/smc_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> examples
+show the pad connections. For bidirectional pins, implement proper tri-state
+buffers controlled by the <code>core2pad_en_o</code> signals. Connect multiplexed UART,
+I2C, I3C, and SPI pins to external devices according to the function assignments
+in the GPIO table.</p>
+</div>
+<div class="paragraph">
+<p>Configuration straps are captured separately from the GPIO table. Establish
+them before cold reset deassertion and keep them stable during capture. The
+<code>STRAPS_LO</code> and <code>STRAPS_HI</code> registers in the adopter peripheral window (see
+<a href="#smc-external-supplementary">Supplementary Region</a>) define the decoded bit assignments, including <code>BYPASS_SRAM_REPAIR</code> at
+<code>STRAPS_LO[13]</code> and <code>TEST_EN</code> at <code>STRAPS_LO[14]</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-peripheral-connections"><a class="anchor" href="#smc-peripheral-connections"></a><a class="link" href="#smc-peripheral-connections">6. Peripheral Interface Connections</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC exposes logic-level interfaces to several technology-specific
+subsystem components that the adopter instantiates externally. The
+subsections below describe each connection in turn.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-external-connection"><a class="anchor" href="#smc-external-connection"></a><a class="link" href="#smc-external-connection">6.1. Adopter Peripheral Window</a></h3>
+<div class="paragraph">
+<p>The <code>smc_external_req_o</code> and <code>smc_external_resp_i</code> signals form a 32-bit
+AXI-Lite interface to the adopter&#8217;s own peripheral register maps. Any
+technology- or product-specific block that SMC firmware needs to reach sits
+behind this window rather than on a dedicated per-peripheral port.</p>
+</div>
+<div class="paragraph">
+<p>The window is the recommended home for the control/status registers of logic
+that the SMC must configure or monitor but that the SMC itself does not
+implement&#8201;&#8212;&#8201;padring configuration logic, clock generation, on-die sensors,
+memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
+For example, runtime reconfiguration of pin directions, pull settings, and peripheral
+multiplexing is expected to be reachable here. The SMC decodes the aperture and
+forwards the transaction; what lives behind it is entirely adopter-defined.</p>
+</div>
+<div class="paragraph">
+<p>The window occupies <code>BASE + 0x040_0000</code> to <code>BASE + 0x07F_FFFF</code> (4 MiB; with
+<code>LOCAL_BASE</code>, <code>0xC040_0000</code> to <code>0xC07F_FFFF</code>). The SMC forwards every access
+in this range to <code>smc_external_req_o</code> except the eFuse SHIM range at its base
+(see <a href="#smc-external-mandatory">Mandatory Region</a>); the adopter decodes everything else. The
+generated SMC memory map reports the window as one opaque aperture.</p>
+</div>
+<div class="paragraph">
+<p>The window is split into two regions. Apart from the eFuse SHIM control block due to security reasons,
+hardware treats both identically&#8201;&#8212;&#8201;the split is organizational only:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Mandatory</strong> (<code>BASE + 0x040_0000</code>): blocks every integration must implement.
+OCAH specifications dictate their function, but their implementation, register
+layout and placement within the region are technology- and vendor-specific.</p>
+</li>
+<li>
+<p><strong>Supplementary</strong> (<code>BASE + 0x040_4000</code>): additional memory-mapped devices the
+adopter chooses to expose, plus the captured strap registers.</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="smc-external-mandatory"><a class="anchor" href="#smc-external-mandatory"></a><a class="link" href="#smc-external-mandatory">6.1.1. Mandatory Region</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse SHIM control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Technology-specific eFuse bank control, such as the time
+the OTP macro needs to initialize before sensing</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock-observation pad interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register-driven pad data and direction,
+per-field override enables, and an AXI PROT access filter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock-observation pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drive strength, pull enable and select, and
+Schmitt select</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock-observation pad interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As the PLL clock-observation pad interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT clock-observation pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">As the PLL clock-observation pad control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">POC/PBIAS pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pad supply-voltage level selection and retention
+enable, with an access filter</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference-clock pad control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Drive strength, pull and Schmitt settings for the
+reference-clock pad</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-pad GPIO control</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One control block per pad: pad electrical settings, the
+value captured at reset deassertion, and the secondary hardware function
+override</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status of the adopter&#8217;s clock-generation block</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT wrapper</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control and status of the adopter&#8217;s process, voltage and
+temperature sensors</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The eFuse SHIM control CSRs must sit at the base of the mandatory region.
+In each subsystem, the internal fabric routes the first <code>*_EFUSE_SHIM_SIZE</code>
+bytes of the window into the eFuse controller, so the controller&#8217;s lifecycle
+access control applies to them. The accesses then leave on the dedicated eFuse
+bank port, <code>smc_efuse_bank_ctrl_req_o</code> or <code>sep_efuse_bank_ctrl_req_o</code>, instead
+of <code>smc_external_req_o</code> or <code>sep_external_req_o</code>. See <a href="#efuse-bank-ctrl-window">[efuse-bank-ctrl-window]</a>.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="smc-external-supplementary"><a class="anchor" href="#smc-external-supplementary"></a><a class="link" href="#smc-external-supplementary">6.1.2. Supplementary Region</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 28.5714%;">
+<col style="width: 71.4286%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Block</th>
+<th class="tableblock halign-left valign-top">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter devices</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Optional memory-mapped devices. The reference integration
+places its vendor I3C controllers here</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Captured straps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Pad values latched at cold reset, one bit per GPIO, read by
+boot firmware</p></td>
+</tr>
+</tbody>
+</table>
+<div id="smc-external-straps" class="paragraph">
+<p>The captured straps are read-only. The generated <code>straps</code> register
+descriptions define the decoded bit assignments.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-efuse-connection"><a class="anchor" href="#smc-efuse-connection"></a><a class="link" href="#smc-efuse-connection">6.2. eFuse Interface</a></h3>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This guide uses <strong>eFuse</strong> and <strong>OTP</strong> interchangeably for the same one-time
+programmable bank and the SHIM that fronts it. Port names mix both
+(<code>efuse_*</code>, <code><strong><em>otp</em></strong></code>); they refer to the same interface.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>The eFuse interface consists of two parts:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>efuse_bank_ctrl</code>&#8201;&#8212;&#8201;a 32-bit AXI-Lite interface used to access the SHIM
+control CSRs (for example, foundry-specific bank timing such as the
+initialization delay before sensing can begin). Firmware reaches these CSRs
+through the base of the adopter external window; see
+<a href="#efuse-bank-ctrl-window">[efuse-bank-ctrl-window]</a>.</p>
+</li>
+<li>
+<p><code>efuse_shim_command</code>&#8201;&#8212;&#8201;the custom fuse command interface used to issue
+read, program, and program/read-back operations to the eFuse bank.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Adopter responsibility.</strong> The <code>efuse_shim_command</code> interface is intentionally
+generic and technology-neutral. The adopter must implement an Interface SHIM
+that converts these generic commands into the hardware signals required by
+their OTP macro. The conversion is driven by the adopter&#8217;s own read and
+program state machines inside the SHIM; OCAH only defines the command/response
+contract, not the macro-side signaling.</p>
+</div>
+<div class="paragraph">
+<p>The SMC and the SEP each contain their own eFuse controller, so the <code>smu.sv</code>
+boundary carries two independent copies of the interface, one with an <code>smc_</code>
+prefix and one with a <code>sep_</code> prefix. The adopter places <strong>two separate SHIM and
+macro instances</strong>, one per controller, each fronting its own 8 Kbit bank. The
+banks are never shared. Each controller also drives its own sense-done output
+to the <code>smu.sv</code> boundary, <code>smc_fuse_sense_done_o</code> and <code>sep_fuse_sense_done_o</code>,
+and holds the sensed bank in its own shadow registers.
+<a href="#efuse-smu-instances-fig">eFuse connections at the smu.sv boundary</a> shows these connections. When the SMU is built with
+<code>SEP = 0</code>, only the SMC instance is needed.</p>
+</div>
+<div id="efuse-smu-instances-fig" class="imageblock">
+<div class="content">
+<img src="_images/efuse_smu_instances.svg" alt="eFuse connections at the smu.sv boundary">
+</div>
+<div class="title">Figure 1. eFuse connections at the smu.sv boundary</div>
+</div>
+<div class="paragraph">
+<p><a href="#efuse-shim-contract-fig">eFuse controller to Interface SHIM contract</a> shows the contract for one of those instances.
+Everything above the dashed line is provided by OCAH; everything below it is
+the adopter&#8217;s. Only the two interfaces that cross the line are fixed.</p>
+</div>
+<div id="efuse-shim-contract-fig" class="imageblock">
+<div class="content">
+<img src="_images/efuse_shim_contract.svg" alt="eFuse controller to Interface SHIM contract">
+</div>
+<div class="title">Figure 2. eFuse controller to Interface SHIM contract</div>
+</div>
+<div class="paragraph">
+<p>The reference SHIM, <code>hw/ip/efuse/rtl/efuse_interface_shim.sv</code>, drives an
+APB-based behavioral bank model. Use it as a worked example of the read and
+program state machines, not as a template for macro-side timing.</p>
+</div>
+<div id="efuse-bank-ctrl-window" class="paragraph">
+<p><strong>SHIM control address window.</strong> The SHIM control CSRs are defined by the
+adopter, but their addresses sit at the base of the subsystem&#8217;s adopter
+external window. The fabric carves that block off the window and routes it
+to the eFuse controller instead of the external port. The controller does not
+decode it; it forwards every access outside its own register blocks to
+<code>efuse_bank_ctrl</code> unchanged. The rest of the external window leaves on the
+subsystem&#8217;s external port as usual.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SHIM control address window</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 30%;">
+<col style="width: 23%;">
+<col style="width: 35%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Subsystem</th>
+<th class="tableblock halign-left valign-top">Window base</th>
+<th class="tableblock halign-left valign-top">Size parameter (SMU default)</th>
+<th class="tableblock halign-left valign-top">Rest of the window</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external</code> base, SMC-local <code>0xC040_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_EFUSE_SHIM_SIZE</code> (<code>0x4</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_external_req_o</code> / <code>smc_external_resp_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_external</code> base, SEP-local <code>0x2000_0000</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_EFUSE_SHIM_SIZE</code> (<code>0x4</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_external_req_o</code> / <code>sep_external_resp_i</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SHIM must follow these rules for this window:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Fit the window.</strong> Size the parameter to cover every SHIM control register.
+Accesses past it go to the external port and never reach the SHIM.</p>
+</li>
+<li>
+<p><strong>Describe the registers in the external map.</strong> Place the SHIM control block
+at offset <code>0x0</code> of the adopter&#8217;s <code>smc_external</code> and <code>sep_external</code> register
+maps. The open SMC map reserves the whole window as opaque memory. SEP takes
+the window base from the <code>efuse_shim_ctrl</code> instance in <code>sep_external</code>, so an
+adopter map that replaces it must keep an instance of that name at offset
+<code>0x0</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The reference register block is <code>efuse_shim_ctrl</code>
+(<code>hw/ip/efuse/dv/models/regs/efuse_shim_ctrl.rdl</code>), which holds a single
+<code>EFUSE_BANK_INIT_TIME</code> register.</p>
+</div>
+<div class="paragraph">
+<p>The command and response payloads are exchanged as packed structs:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Controller -&gt; SHIM
+typedef struct packed {
+    addr_t                address;             // Target address (in bits)
+    logic                 program_data;        // Data to program (when programming)
+    access_length_words_t access_length_words; // Number of WORD_WIDTH words to access
+    command_t             command;             // READ / PROGRAM / PROGRAM_READ_BACK
+    logic                 valid;               // Request valid
+} fuse_command_req_t;
+
+// SHIM -&gt; Controller
+typedef struct packed {
+    data_t data;   // Read data (one WORD_WIDTH word)
+    logic  status; // Operation status (0 = OK, 1 = error)
+    logic  valid;  // Response valid (qualifies `data` for one cycle)
+} fuse_command_resp_t;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><code>command</code> is <code>efuse_pkg::fuse_command_e</code>: <code>FUSE_COMMAND_READ</code> (<code>2'b00</code>),
+<code>FUSE_COMMAND_PROGRAM</code> (<code>2'b01</code>) and <code>FUSE_COMMAND_PROGRAM_READ_BACK</code>
+(<code>2'b10</code>).</p>
+</div>
+<div class="paragraph">
+<p>The SHIM implements two operations, reads and programs:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Reads.</strong> If a request has <code>command</code> set to <code>FUSE_COMMAND_READ</code> and
+<code>access_length_words</code> set to <em>N</em>, respond with <em>N</em> <code>valid</code> strobes, each
+carrying one <code>WORD_WIDTH</code> word in <code>data</code>, reading consecutive words starting
+at <code>address</code>. Firmware reads set <em>N</em> to one; fuse sensing sets it to the whole
+bank, as described below.</p>
+</li>
+<li>
+<p><strong>Programs.</strong> If a request has <code>command</code> set to <code>FUSE_COMMAND_PROGRAM</code>, program
+the single bit at <code>address</code> and respond with one <code>valid</code> strobe when the macro
+finishes. <code>program_data</code> is always 1 and <code>access_length_words</code> is always 1.
+For <code>FUSE_COMMAND_PROGRAM_READ_BACK</code>, also read the word back, return it in
+<code>data</code>, and set <code>status</code> if the programmed bit did not stick.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Both operations follow these rules:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><strong>Bit addressing.</strong> <code>address</code> is a bit address. Convert it to whatever word or
+byte addressing the macro uses; the reference SHIM shifts it right by three.</p>
+</li>
+<li>
+<p><strong>One command at a time.</strong> <code>valid</code> is a level, not a strobe. The controller
+holds <code>valid</code> and the whole request payload stable from the cycle it issues a
+command until it has received the response, so the SHIM may sample the payload
+at any point while the command runs.</p>
+</li>
+<li>
+<p><strong>When <code>valid</code> falls.</strong> After a firmware read or program, <code>valid</code> falls in the
+cycle after the response strobe. After sensing it stays high until
+<code>fuse_sense_done</code> moves the arbiter to the firmware path, two cycles after the
+last strobe; do not treat that still-asserted request as a second read. The
+controller also withdraws <code>valid</code> without waiting for a response in these
+cases, and the SHIM must abandon the command it had started:</p>
+<div class="ulist">
+<ul>
+<li>
+<p>a firmware read or program timeout expires*</p>
+</li>
+<li>
+<p>firmware changes the read or program enable, where program takes priority
+over read*</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Errors.</strong> Setting <code>status</code> ends a firmware read or program command with an
+error. The sense FSM counts only <code>valid</code> strobes, so a sensing error must still
+be followed by the remaining strobes.</p>
+</li>
+<li>
+<p><strong>No access control.</strong> The eFuse guard zeroes requests to locked fields, and
+every request while the SEP is in secure test mode, in the same cycle the
+request is issued. A blocked request therefore never reaches the SHIM:
+<code>valid</code> does not rise, and no response is expected. Secure test mode is
+latched once per cold boot, before any firmware command can be issued, so it
+cannot begin in the middle of a command. The SMC controller has no secure test mode.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>* These scenarios will be fixed in a future release so that the
+controller never withdraws <code>valid</code> before the response.</p>
+</div>
+<div class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Fuse sensing happens <strong>once per cold boot</strong>, when the eFuse controller&#8217;s primary
+reset is released. It runs in <strong>both</strong> eFuse controller instances, SMC and SEP,
+each against its own bank. CPU and warm resets do not repeat it.</p>
+</div>
+<div class="paragraph">
+<p>The adopter must provide <strong>8 Kbit of fuses (8192 bits, 256 32-bit words) for
+each instance</strong>: one bank behind the SMC SHIM and a second, separate bank
+behind the SEP SHIM. For both, <code>NumShadowWords</code> is 256.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><strong>Fuse sensing protocol.</strong> During automatic sensing the controller issues a
+single read with <code>access_length_words</code> set to the entire bank:
+<code>NumShadowWords</code>, which is <code>SHADOW_REG_BITS / WORD_WIDTH</code>. The SHIM is expected
+to stream the bank back one <code>WORD_WIDTH</code> word at a time: for each OTP access it
+drives the read <code>data</code> onto <code>efuse_shim_command_resp_i.data</code> and asserts
+<code>valid</code> for <strong>exactly one cycle</strong>. The controller consumes one word per cycle
+that <code>valid</code> is high, advancing to the next eFuse word on each assertion.</p>
+</div>
+<div class="paragraph">
+<p><a href="#efuse-sense-timing-fig">eFuse sensing response stream</a> shows the stream for the 256-word bank. The sense FSM
+leaves <code>StRead</code> after one cycle and waits in <code>StWait</code>. Each <code>valid</code> strobe
+stores <code>data</code> into shadow word <code>words_received_q</code> and increments the count one
+cycle later. Gaps between strobes are allowed, as between cycles 2 and 4, and
+so are strobes on consecutive cycles, as in cycles 4 and 5, provided each
+cycle carries a new word. <code>data</code> is sampled only while <code>valid</code> is high. The
+strobe for word 255 (<code>NumShadowWords - 1</code>) stores the last word and moves the
+FSM to <code>StFinished</code> without incrementing. <code>fuse_sense_done</code> rises one cycle
+after that.</p>
+</div>
+<div id="efuse-sense-timing-fig" class="imageblock">
+<div class="content">
+<img src="_images/efuse_sense_timing.svg" alt="eFuse sensing response stream">
+</div>
+<div class="title">Figure 3. eFuse sensing response stream</div>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>valid</code> must be asserted for only a single cycle per returned word. If the
+SHIM holds <code>valid</code> high for two cycles, the controller will sample the same
+<code>data</code> value a second time and count it as the data for the <strong>next</strong> eFuse word,
+shifting all subsequent words and corrupting the sensed shadow contents. The
+adopter&#8217;s SHIM FSM is responsible for producing a clean one-cycle <code>valid</code>
+strobe per <code>WORD_WIDTH</code> access.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>During cold boot the SMC and SEP each sense their own bank into their own
+shadow registers. <code>smc_fuse_sense_done_o</code> and <code>sep_fuse_sense_done_o</code> indicate
+when each sensing operation completes.</p>
+</div>
+<div class="paragraph">
+<p>The <code>smc_shadow_regs_o</code> output gives adopter read-only access to the
+sensed SMC bank. The SMU has no equivalent SEP output: the SEP bank holds
+secrets such as the class key and device UIDs, so its shadow registers stay
+inside SEP.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-subsystem-integration"><a class="anchor" href="#memory-subsystem-integration"></a><a class="link" href="#memory-subsystem-integration">7. Memory Subsystem Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC includes an embedded RISC-V CPU cluster with associated memory
+interfaces. See <a href="#immutable-rom-fw-integration">[immutable-rom-fw-integration]</a> for the ROM FW integration
+contract.</p>
+</div>
+<div class="sect2">
+<h3 id="smc-sram-cache-integration"><a class="anchor" href="#smc-sram-cache-integration"></a><a class="link" href="#smc-sram-cache-integration">7.1. SRAM and Cache Array Integration</a></h3>
+<div class="paragraph">
+<p>Scratch RAM interfaces (<code>smc_scratch_ram_intf_req_o</code> and <code>smc_scratch_ram_intf_rsp_i</code>)
+connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
+memory interfaces for L1 instruction and data caches (<code>smc_l1_icache_*</code> and
+<code>smc_l1_dcache_*</code>) connect to tag and data RAM banks as specified in the port table.</p>
+</div>
+<div class="paragraph">
+<p>The <code>smc_disable_sram_auto_init_i</code> input controls automatic memory initialization
+behavior. When deasserted, the SMC automatically zeroes all SRAM contents during
+bring-up. The <code>smc_init_mem_done_o</code> output indicates completion of this
+initialization sequence. The <code>SRAM_AUTO_ZERO_DISABLE</code> strap
+(<code>STRAPS_LO[26]</code>) can
+disable this automatic zeroing behavior if your integration requires preserved
+SRAM contents across resets.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="memory-repair-integration"><a class="anchor" href="#memory-repair-integration"></a><a class="link" href="#memory-repair-integration">8. Memory Repair Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC implements Built-In Redundancy Analysis (BIRA) memory repair to address
+manufacturing defects in SRAM arrays. Repair uses redundant memory elements
+configured with data stored in eFuse memory, replacing defective cells detected
+during manufacturing test.</p>
+</div>
+<div class="paragraph">
+<p>Memory repair executes automatically during boot after eFuse sensing completes
+and before MBIST operations. The process must complete successfully before the
+CPU cluster can safely access SRAM arrays. Repair is required on every cold
+reset but can be bypassed during Function Level Reset (FLR) operations for
+faster recovery.</p>
+</div>
+<div class="paragraph">
+<p><strong>Control Signals:</strong></p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>smc_fuse_sense_done_o</code>: eFuse controller output indicating fuse sensing
+completion.
+  External DFT logic monitors this signal to trigger repair operations.</p>
+</li>
+<li>
+<p><code>skip_mem_repair_o</code>: Reset unit output indicating repair should be bypassed. It
+is driven by the isolation request inputs (<code>isolate_req_pin_sync_smc</code> or the
+SMC isolation register), not directly by the strap. When asserted, external
+repair logic should skip operations and immediately assert completion status.</p>
+</li>
+<li>
+<p><code>ext_boot_seq_done_i</code>: External signal indicating the external boot sequence (memory
+repair and shadow register override) is complete. Held low to pause reset release until
+the external agent gives the go-ahead; required before the system can continue its boot
+sequence</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><strong>Repair Data:</strong></p>
+</div>
+<div class="paragraph">
+<p>The SMC fuse map does not allocate storage for repair data. Your external memory
+repair controller must source it from wherever your manufacturing flow keeps it
+and apply it to SRAM arrays according to your memory architecture.</p>
+</div>
+<div class="paragraph">
+<p><strong>Status Monitoring:</strong></p>
+</div>
+<div class="paragraph">
+<p>Repair completion and success are reported through
+<code>DFX_CTRL_STATUS.STATUS_SMU</code> at <code>0xC000_B800</code>. The <code>mem_repair_done</code> bit
+indicates completion regardless of success, while <code>mem_repair_success</code> indicates
+successful repair. Both bits are set by the external repair controller. The SMC
+ROM FW monitors these bits during initialization to verify repair
+completion.</p>
+</div>
+<div class="paragraph">
+<p><strong>Bypass Configuration:</strong></p>
+</div>
+<div class="paragraph">
+<p>The <code>BYPASS_SRAM_REPAIR</code> configuration strap (<code>STRAPS_LO[13]</code>) is captured into
+the strap registers in the adopter peripheral window. Keep these three mechanisms distinct:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>No RTL path drives <code>skip_mem_repair_o</code> from this strap directly.
+<code>skip_mem_repair_o</code> is driven from the isolation request path.</p>
+</li>
+<li>
+<p>Production ROM reads the strap and, when asserted, skips repair-status
+validation and writes <code>MBIST_STATUS_MEM_REPAIR_BYPASSED</code> to scratchpad
+register 15 (<code>SMC_SCRATCH_MBIST_STATUS</code>, <code>0xC003_90F8</code>). It does not
+cause the external repair controller to skip physical repair.</p>
+</li>
+<li>
+<p>External repair logic independently honors <code>skip_mem_repair_o</code> to decide
+whether to bypass physical repair operations.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Use bypass mode only when SRAM arrays are guaranteed defect-free, such as
+during development or with known-good components.</p>
+</div>
+<div class="paragraph">
+<p><strong>Integration Requirements:</strong></p>
+</div>
+<div class="paragraph">
+<p>Provide an external memory repair controller that monitors <code>smc_fuse_sense_done_o</code>
+to initiate repair, respects <code>skip_mem_repair_o</code> for bypass control, reads
+repair data from eFuse shadow registers, applies repair configuration to SRAM
+arrays, asserts <code>ext_boot_seq_done_i</code> and updates DFT Control Status registers
+with completion status. The controller operates independently of the SMC core
+and must complete before the CPU cluster accesses SRAM.</p>
+</div>
+<div class="paragraph">
+<p>For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
+adopters must ensure the integrated logic will not interfere with accesses from the
+OCAH&#8217;s efuse interface.</p>
+</div>
+<div class="paragraph">
+<p>During FLR operations, the isolation request path asserts <code>skip_mem_repair_o</code>
+to bypass repair for rapid reset sequences. Normal cold reset sequences always
+execute repair unless isolation is already asserted.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interrupt-integration"><a class="anchor" href="#interrupt-integration"></a><a class="link" href="#interrupt-integration">9. Interrupt Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC aggregates interrupts from multiple sources into <code>cpu_interrupts_o</code>, which feeds
+the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
+<code>hw/sys/smc/rtl/smc_base.sv</code> and
+<code>hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv</code>. The authoritative
+bit-level map (RTL trace and PLIC source ID note) is
+maintained in a single place:</p>
+</div>
+<div class="paragraph">
+<p><a href="smc/interrupts.html#cpu-interrupt-vector-map" class="xref page">SMC CPU interrupt vector map</a></p>
+</div>
+<div class="paragraph">
+<p>The SMC PLIC and CPU interrupt vector are internal. <code>sync_irq_o</code> is <strong>not</strong> the
+interrupt aggregate&#8201;&#8212;&#8201;it is the software-controlled <code>SYNC_REG.sync</code> global
+synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
+Do not connect an external interrupt controller to <code>sync_irq_o</code>.</p>
+</div>
+<div class="paragraph">
+<p>External interrupt sources visible to the adopter are <code>smc_ext_interrupts_i</code> (SMC
+external interrupt input vector, width <code>NUM_INT_TO_SMC</code>),
+<code>smc_ext_mailbox_interrupts_o</code> (outbound mailbox notifications, width
+<code>NUM_MAILBOXES</code>), <code>gpio_interrupt_o</code> (GPIO edge/level events, width
+<code>NUM_GPIO_WRAPS</code>), and <code>uart_interrupt_o</code> (UART TX/RX events, width <code>NUM_UART</code>).
+Drive <code>smc_ext_interrupts_i</code> as an active-high level or as a pulse that stays
+high long enough to be sampled on <code>clk_smc</code>. The pin is three-flop
+synchronized; a short asynchronous pulse can be lost. There is no
+edge-triggered mode. For the full PLIC source map see the SMC Technical
+Reference Manual.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="telemetry-and-debug-integration"><a class="anchor" href="#telemetry-and-debug-integration"></a><a class="link" href="#telemetry-and-debug-integration">10. Telemetry and Debug Integration</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>For system-level debug and telemetry, the SMC implements ATB (Advanced Trace Bus) receiver
+interfaces. The telemetry interface group (<code>telemetry_atdata_i</code>, <code>telemetry_atid_i</code>,
+<code>telemetry_atvalid_i</code>, <code>telemetry_atready_o</code>) operates in a dedicated <code>clk_telemetry_i</code>
+clock domain with separate <code>rst_telemetry_ni</code> reset. Connect these signals to ATB trace
+sources for debug data collection.</p>
+</div>
+<div class="paragraph">
+<p>At the SMC boundary, <code>ext_debug_bus_i</code> is 512 bits wide; the SMU concatenates
+the adopter-visible 128-bit input with the SEP&#8217;s internal 384-bit bus before
+driving SMC. The typed <code>xtrigger_ss_i</code> / <code>xtrigger_ss_o</code> ports are the only
+cross-trigger signals at the SMC boundary. The adopter-visible SMU cross-trigger
+interfaces are <code>xtrig_ctm_*</code>, <code>xtrig_clk_stop_req_i</code>, and the CTP groups.</p>
+</div>
+<div class="paragraph">
+<p>Trace memory interfaces (<code>trace_mem_req_o</code> and <code>trace_mem_resp_i</code>) connect to trace RAM
+instances for storing captured debug data. <code>smc_ip_integration.sv</code> shows an example set of
+RAM instances that can be adapted to your debug requirements.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bring-up-sequence"><a class="anchor" href="#bring-up-sequence"></a><a class="link" href="#bring-up-sequence">11. Bring-Up Sequence</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The recommended bring-up sequence begins with asserting <code>rst_cold_ni</code> while stabilizing
+power supplies and clocks. Once all supplies reach nominal voltages, deassert <code>rst_cold_ni</code>
+to initiate the SMC boot sequence. The SMC immediately begins fuse sensing to read configuration
+values and security credentials.</p>
+</div>
+<div class="paragraph">
+<p>Monitor the <code>smc_fuse_sense_done_o</code> signal to detect completion of fuse sensing. Configuration
+straps sampled during this phase determine boot modes and operational settings. After fuse
+sensing completes, the SMC releases internal subsystem resets based on the programmed reset
+sequencing configuration.</p>
+</div>
+<div class="paragraph">
+<p>The CPU cluster begins executing the ROM FW after reset release. The ROM FW
+performs additional initialization including peripheral configuration, memory
+testing (unless disabled), and system health checks. The <code>smc_init_mem_done_o</code>
+signal indicates completion of memory initialization if automatic SRAM zeroing
+is enabled.</p>
+</div>
+<div class="paragraph">
+<p>To support Function Level Reset (FLR), assert <code>cfg_flr_pf_active_i</code> to trigger
+a warm reset sequence. The SMC asserts <code>isolate_req_o</code> bits for the affected
+subsystem indices. The adopter&#8217;s power controller drives <code>ss_reset_complete_i</code>
+high once the subsystem reset is complete; the SMC synchronizes this into the
+readable <code>SS_RESET_COMPLETE</code> register. Isolation remains asserted until cleared by software: SMC firmware must poll
+<code>SS_RESET_COMPLETE</code> and then write <code>ISOLATE_REQ_SMC_REG</code> to clear the FLR
+isolation latch. Do not assume isolation releases automatically on
+<code>ss_reset_complete_i</code>.</p>
+</div>
+<div class="paragraph">
+<p>See <code>hw/top/smu_wrapper.sv</code> and <code>hw/top/smc_ip_integration.sv</code> for reference
+bring-up wiring examples covering clock, reset, strap, and peripheral connections.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="smc-port-interface"><a class="anchor" href="#smc-port-interface"></a><a class="link" href="#smc-port-interface">12. SMC Port Interface</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC exposes a comprehensive set of interfaces for system integration. The following
+table defines all SMC top-level ports including clocks, resets, AXI interfaces, peripheral
+connections, and control signals. Refer to the detailed SMC documentation for internal
+signal descriptions and timing requirements.</p>
+</div>
+<div class="paragraph">
+<p>The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port&#8217;s connection and tie-off default.</p>
+</div>
+<div class="port-reference-scroll" role="region" aria-label="SMC port reference" tabindex="0">
+<table class="tableblock frame-all grid-all stretch port-reference port-reference-wide small">
+<caption class="title">Table 3. SMC Port Declaration</caption>
+<colgroup>
+<col style="width: 19%;">
+<col style="width: 15%;">
+<col style="width: 11%;">
+<col style="width: 8%;">
+<col style="width: 20%;">
+<col style="width: 14%;">
+<col style="width: 13%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Interface Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Direction</th>
+<th class="tableblock halign-left valign-top">Width</th>
+<th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Connection</th>
+<th class="tableblock halign-left valign-top">Default value (if applicable)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_smc_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary SMC clock domain. All SMC internal logic operates synchronously to this clock.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reference clock domain. Used for timing-sensitive operations and peripheral interfaces.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL reference clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_periph_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Peripheral clock domain.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL peripheral clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>powergood_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power-good indication. Assert after supply voltages stabilize.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Power management controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>powergood_stable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stabilized power-good output. Debounced version of <code>powergood_i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cold_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cold reset input (active low). Assertion and deassertion are synchronous to <code>clk_ref_i</code> and do not propagate while that clock is stopped. Assertion is de-glitched for 32 cycles. A falling <code>powergood_i</code> asserts the downstream cold reset without that wait. Deassertion is held for 255 cycles.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System cold reset</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_primary_ref_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset synchronized to reference clock domain (active low).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To subsystems using ref clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_primary_smc_clk_no</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Primary reset synchronized to SMC clock domain (active low).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">To subsystems using SMC clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sys_axi_in_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_sys_in_56_64_6_12_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System AXI input request (56-bit addr, 64-bit data, 6-bit ID, 12-bit user).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External system masters → Input Fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sys_axi_in_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_sys_in_56_64_6_12_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System AXI input response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input Fabric → External system masters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_axi_in_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag_56_64_2_12_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug AXI request (56-bit addr, 64-bit data, 2-bit ID, 12-bit user).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug port → Input Fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_axi_in_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag_56_64_2_12_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug AXI response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input Fabric → JTAG debug port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_smc_otp_jtag_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse OTP/JTAG AXI-Lite request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG → eFuse controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>axil_smc_otp_jtag_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse OTP/JTAG AXI-Lite response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse controller → JTAG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_in_req_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_sep_in_56_64_6_12_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI request (56-bit addr, 64-bit data, 6-bit ID, 12-bit user).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP → Input Fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_axi_in_resp_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_sep_in_56_64_6_12_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input Fabric → SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>output_axi_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_sys_out_56_64_8_12_axi_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Filtered and remapped AXI output request (56-bit addr, 64-bit data, 8-bit ID, 12-bit user).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output Fabric → External system resources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>output_axi_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_sys_out_56_64_8_12_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Filtered and remapped AXI output response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External system resources → Output Fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_bank_ctrl_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse bank control AXI-Lite request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse controller → eFuse Shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_bank_ctrl_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::smc_axil_32_32_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse bank control AXI-Lite response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Shim → eFuse controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_shim_command_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::fuse_command_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command interface request.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse controller → eFuse Shim</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>efuse_shim_command_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::fuse_command_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command interface response.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Shim → eFuse controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>shadow_regs_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_efuse_pkg::efuse_map_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse shadow register output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse controller → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pll_clk_obs_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation input.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL → GPIO padring (muxed)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pll_clk_obs_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control logic → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pvt_process_clk_obs_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT process monitor clock observation input.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT → GPIO padring (muxed)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pvt_process_clk_obs_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT process monitor clock observation enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control logic → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cat_therm_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor input.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CAT thermal sensor → PVT wrap</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lsio_interface_select_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">LSIO interface selection for each GPIO wrap.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → GPIO wraps</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO input data from pad ring to core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO padring → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO output data from core to pad ring.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>pad2core_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad-to-core path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>core2pad_en_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO core-to-pad path enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → GPIO padring</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_cool_n_from_pin_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cool reset input from GPIO pin 61.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pin 61 → Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_telemetry_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry clock domain. Separate clock for ATB telemetry data collection.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry clock source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rst_telemetry_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry reset (active low). Resets telemetry receiver logic.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry reset source</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atdata_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_receiver_pkg::telemetry_data_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry data input array.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atid_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_receiver_pkg::atb_id_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry ID input array.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atready_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry ready output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receivers → ATB sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_atvalid_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB telemetry valid input.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afvalid_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush valid output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receivers → ATB sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>telemetry_afready_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_TELEMETRY_RECEIVERS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB flush ready input.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ATB sources → Telemetry receivers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_cluster_ded_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cluster double error detection output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_first_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">First watchdog timeout signal.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster WDT → Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_second_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Second watchdog timeout signal.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_region_size_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC address region size output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Internal Registers → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_interrupts_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on <code>clk_smc</code>. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>; a short asynchronous pulse can be lost.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External sources → Interrupt aggregator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_mailbox_interrupts_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[7:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP → Interrupt aggregator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_wdt_reset_n_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset (active low). Active-low polarity is inverted before routing to internal interrupts to the SMC CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP → Interrupt aggregator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Fuse sense completion output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse controller → Memory repair logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_reset_n_delayed_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Delayed fuse reset output (after 16 pipeline stages).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse controller → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>skip_mem_repair_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Skip memory repair output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit → Memory repair logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_boot_seq_done_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External boot sequence completion input (memory repair and shadow register override done); gates reset release.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External boot/repair controller → eFuse controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[2*LC_STATE_WIDTH-1:0]</code> (8 bits)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state input, differentially encoded.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle controller → SMC Internal Registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From SEP; tie to 8&#8217;hf0 if unused (encoded TEST_DEV)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_MAILBOXES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox controller → External targets</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cfg_flr_pf_active_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Function Level Reset (FLR) PF active signal.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PCIe/System → Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_request_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NDM reset request from external CPU cluster <code>i</code> on bit <code>i</code>. Synchronized onto <code>clk_smc</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External CPU clusters → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_process_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Firmware response to external CPU cluster <code>i</code> on bit <code>i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC → external CPU clusters</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>isolate_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Isolation request output for 32 subsystems.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit → 32 subsystems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ss_reset_complete_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subsystem reset completion status.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 subsystems → Reset Unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32&#8217;hFFFFFFFF</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ss_config_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subsystem configuration output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit → 32 subsystems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ss_reset_ctrl_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_reset_unit_pkg::reset_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Subsystem reset control output array.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset Unit → 32 subsystems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sync_irq_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software-controlled global synchronisation bit (<code>SYNC_REG.sync</code> in the reset unit). Not an interrupt aggregate output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reset unit → External</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>gpio_interrupt_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_GPIO_WRAPS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw GPIO interrupt vector from the padring, one bit per GPIO wrap (bonded + unbonded). Software reads GPIO status registers to identify the interrupt source. Already OR-reduced into <code>peripheral_interrupts_o[30:29]</code> internally.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_padring</code> → external consumers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_interrupt_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_UART-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Raw UART interrupt outputs, one bit per UART instance, in the peripheral clock domain. Already aggregated into <code>peripheral_interrupts_o[21:18]</code> internally via CDC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>uart_wrap</code> → external consumers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM memory interface request. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → Boot ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ROM memory interface response. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_SRAM_BANKS2-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch RAM interface requests. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → Scratch RAM banks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_SRAM_BANKS2-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch RAM interface responses. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scratch RAM banks → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache tag interface requests. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 I-cache tag banks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache tag interface responses. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache tag banks → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache data interface requests. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 I-cache data banks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache data interface responses. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 I-cache data banks → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache tag interface requests. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 D-cache tag banks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_TAG_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache tag interface responses. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache tag banks → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_req_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache data interface requests. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → L1 D-cache data banks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_rsp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_DATA_BANKS-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache data interface responses. Width depends on CPU cluster configuration</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">L1 D-cache data banks → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_disable_sram_auto_init_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Disable SRAM automatic initialization.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control logic → CPU cluster</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_init_mem_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Memory initialization completion signal.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CPU cluster → Control logic</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>chiplet_is_primary_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Chiplet is primary signal. Used for System Timer OCTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO Padring Straps (strap 25) → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timer_count_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[63:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit system timer count output for Open Chiplet Time Synchronization (OCTS).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer OCTS → External systems</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>jtag_reset_ctrl_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::jtag_smc_reset_ctrl_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Typed reset-override control struct carrying all SMC reset override enables and active-low values. Driven by DTP via JTAG IC_RESET. Tie all enables to 0 when not used.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP → SMC reset unit</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All enables 0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cla_gpio_enable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA GPIO enable output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD controller → CLA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdr_dbg_ctrl_clock_stop_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DEBUG_CONTROL CLA clock-stop enable.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP → DFD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>tdr_dbg_ctrl_clocks_stopped_by_cla_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA halt-clock status under enable; also drives <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]</code> (internal interrupt 0), bit 320.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD → DTP / interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross-trigger subsystem input. SMU drives from <code>dtp_xtrig_ctm_src_req[1:0]</code>. Internal SMU connection; not an SMU external port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: DTP <code>xtrig_ctm_src_req_o[1:0]</code> → SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>xtrigger_ss_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::xtrigger_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross-trigger subsystem output. SMU routes to <code>dtp_xtrig_ctm_dst_req[1:0]</code>. Internal SMU connection; not an SMU external port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU internal: SMC → DTP <code>xtrig_ctm_dst_req_i[1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>trace_mem_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dfd_trace_mem_pkg::SinkMemPktIn_s</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[TRC_RAM_INSTANCES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trace memory interface requests.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFD controller → Trace memory</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>trace_mem_resp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dfd_trace_mem_pkg::SinkMemPktOut_s</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[TRC_RAM_INSTANCES-1:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trace memory interface responses.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Trace memory → DFD controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_debug_bus_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[511:0]</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External debug bus input (512 bits, 16-bit aligned).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External debug sources → Debug bus aggregator</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test controller → All modules</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Scan reset (active-low). Bypasses reset synchronizers during DFT.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Test controller → All modules</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="gpio-pin-requirements"><a class="anchor" href="#gpio-pin-requirements"></a><a class="link" href="#gpio-pin-requirements">13. GPIO Pin Requirements</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC provides GPIO functionality with multiplexed peripheral functions and
+test interfaces. The following table lists the signal and bump location,
+assigned function, recommended pull, and GPIO-specific notes. It does not define
+default direction or decode configuration straps; use
+<code>smc_padring_pkg::DefaultDirectionMap</code> and the <code>STRAPS_LO</code> and <code>STRAPS_HI</code>
+register descriptions (see <a href="#smc-external-supplementary">Supplementary Region</a>) for those.</p>
+</div>
+<table class="tableblock frame-all grid-all fit-content small">
+<caption class="title">Table 4. OCAH GPIO Requirements</caption>
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Index</th>
+<th class="tableblock halign-left valign-top">Signal</th>
+<th class="tableblock halign-left valign-top">Bump Loc</th>
+<th class="tableblock halign-left valign-top">Function</th>
+<th class="tableblock halign-left valign-top">Recommended Pull</th>
+<th class="tableblock halign-left valign-top">GPIO Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[0]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[1]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[1]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[2]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[2]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[3]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[3]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[4]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[4]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[5]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[5]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[6]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[6]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[7]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DATA[7]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[8]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.CS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[9]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.CLK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[10]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI.DQS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[11]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].RX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[12]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].TX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[13]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].RTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[14]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[0].CTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[15]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].RX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[16]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].TX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[17]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].RTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[18]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[1].CTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[19]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].RX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[20]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].TX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[21]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].RTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[22]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[2].CTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[23]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].RX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[24]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].TX</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[25]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].RTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[26]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UART[3].CTS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[27]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[0] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[28]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[0] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[29]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[2] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">30</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[30]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[2] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">31</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[31]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[3] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[32]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[3] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">33</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[33]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[4] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">34</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[34]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[4] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">35</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[35]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[5] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">36</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[36]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[5] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">37</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[37]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Every I2C can be programmed to act as I2C, SMBus or PMBus</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">38</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[38]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">39</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[39]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SMB_A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Alert</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[40]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[0] SMB_D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Suspend</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">41</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[41]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">42</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[42]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">43</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[43]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SMB_A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Alert</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">44</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[44]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[1] SMB_D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Suspend</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">45</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[45]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">46</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[46]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">47</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[47]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SMB_A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Alert</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">48</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[48]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C[2] SMB_D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMBus Suspend</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">49</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[49]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS.CLOCK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">50</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[50]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS.MDATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">51</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[51]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AVS.SDATA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">52</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[52]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Thermal Emergency N</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">53</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[53]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Isolate Request</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">54</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[54]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SPI DQS Loopback</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">55</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[55]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer Sync Load</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[56]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">System Timer Credit Count</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">57</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[57]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot Stall</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stall after fuse sensing to override shadow register values. Boot will resume when this GPIO is released. This value can be overridden by the value specified over JTAG using the boot_stall_jtag_ovrd and boot_stall_jtag_val signals from DTP.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">58</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[58]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OCCP Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">59</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[59]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.GPIO_PAD[60]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">61</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[61]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cool Reset In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">62</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[62]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cool Reset Out</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">63</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[63]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[1] SCL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.UNBONDED_GPIO[64]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C[1] SDA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PU</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Not packaged out</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TCK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TCK</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">66</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TRSTN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TRST</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">67</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TDI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TDI</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TMS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TMS</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">69</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_IN_TDO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PTAP TDO</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">70</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TCK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP TCK</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">71</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TRSTN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP TRST</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">72</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TDI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP TDI</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">73</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TMS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP TMS</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">74</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_JTAG_OUT_TDO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">?</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">STAP TDO</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">75</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_REFCLK</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BP_REFCLK_VDD_SYS</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">76</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_PRSTN</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BP_RESETN</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">77</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PAD_POWERGOOD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">BP_POWERGOOD</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">78</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[0]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">79</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[1]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">80</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[2]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">81</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[3]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">82</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[4]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">83</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTP[5]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">84</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT[0]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">85</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT[1]</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">86</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VDDIO</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">87</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PLL_CLK_OBS_PAD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock OBS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PLL clock observation pin</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">88</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_wrapper.PVT_CLK_OBS_PAD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PVT RO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PD</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Process sensor RO output</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">89</p></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+<td class="tableblock halign-left valign-top"></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>For multi-chiplet systems, the <code>PRIMARY_CHIPLET</code> strap (<code>STRAPS_LO[25]</code>)
+determines whether the chiplet operates as primary or secondary. The primary
+chiplet&#8217;s System Timer OCTS generates synchronization pulses
+(<code>timer_sync_load_o</code>, <code>timer_cnt_credit_o</code>) that secondary chiplets receive to
+maintain coherent timestamps across the system.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../_/js/register-sections.js"></script>
+<script src="../../_/js/toc-collapse.js"></script>
+<script src="../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../_/js/a11y-patches.js"></script>
+<script src="../../_/js/vendor/viewer.min.js"></script>
+<script src="../../_/js/image-zoom.js"></script>
+<script id="site-script" src="../../_/js/site.js" data-ui-root-path="../../_"></script>
+<script async src="../../_/js/vendor/highlight.js"></script>
+<script src="../../_/js/vendor/lunr.js"></script>
+<script src="../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../.." data-snippet-length="100" data-stylesheet="../../_/css/search.css"></script>
+<script async src="../../search-index.js"></script>
+  </body>
+</html>
