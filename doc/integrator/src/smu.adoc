@@ -395,24 +395,24 @@ The window is the recommended home for the control/status registers of logic
 that the SMC must configure or monitor but that the SMC itself does not
 implement -- padring configuration logic, clock generation, on-die sensors,
 memory-technology SHIMs, and similar adopter-owned blocks are typical examples.
-For example, runtime reconfiguration of pin directions, pull settings, and peripheral
-multiplexing is expected to be reachable here. The SMC decodes the aperture and
-forwards the transaction; what lives behind it is entirely adopter-defined.
+The SMC decodes the aperture and forwards the transaction; what lives behind it 
+is entirely adopter-defined.
 
 The window occupies `BASE + 0x040_0000` to `BASE + 0x07F_FFFF` (4 MiB; with
 `LOCAL_BASE`, `0xC040_0000` to `0xC07F_FFFF`). The SMC forwards every access
 in this range to `smc_external_req_o` except the eFuse SHIM range at its base
-(see <<smc-external-mandatory>>); the adopter decodes everything else. The
-generated SMC memory map reports the window as one opaque aperture.
+(see <<smc-external-mandatory>>); the adopter decodes everything else.
 
 The window is split into two regions. Hardware treats both identically -- the
 split is organizational only:
 
-* *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
-  OCAH specifications dictate their function, but their implementation, register
-  layout and placement within the region are technology- and vendor-specific.
-* *Supplementary* (`BASE + 0x040_4000`): additional memory-mapped devices the
-  adopter chooses to expose, plus the captured strap registers.
+* *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement
+  for the SMC to be functional. OCAH specifications dictate their function, 
+  but their implementation, register layout and placement within the region 
+  are adopter-defined.
+* *Supplementary* (`BASE + 0x040_3000`): additional memory-mapped devices the
+  adopter chooses to include. Blocks currently included are purely suggestions
+  and examples, adopters are not required to implement.
 
 [[smc-external-mandatory]]
 ===== Mandatory Region
@@ -422,22 +422,10 @@ split is organizational only:
 |Block |Purpose
 |eFuse SHIM control |Technology-specific eFuse bank control, such as the time
 the OTP macro needs to initialize before sensing
-|PLL clock-observation pad interface |Register-driven pad data and direction,
-per-field override enables, and an AXI PROT access filter
-|PLL clock-observation pad control |Drive strength, pull enable and select, and
-Schmitt select
-|PVT clock-observation pad interface |As the PLL clock-observation pad interface
-|PVT clock-observation pad control |As the PLL clock-observation pad control
-|POC/PBIAS pad control |Pad supply-voltage level selection and retention
-enable, with an access filter
-|Reference-clock pad control |Drive strength, pull and Schmitt settings for the
-reference-clock pad
 |Per-pad GPIO control |One control block per pad: pad electrical settings, the
 value captured at reset deassertion, and the secondary hardware function
 override
 |PLL wrapper |Control and status of the adopter's clock-generation block
-|PVT wrapper |Control and status of the adopter's process, voltage and
-temperature sensors
 |=======================================================================
 
 The eFuse SHIM control block sits at the base of the window and does not travel
@@ -451,15 +439,17 @@ window to the eFuse controller, which reaches the SHIM on
 [cols="2,5",options="header"]
 |=======================================================================
 |Block |Purpose
-|Adopter devices |Optional memory-mapped devices. The reference integration
-places its vendor I3C controllers here
-|Captured straps |Pad values latched at cold reset, one bit per GPIO, read by
+|Controller wrapper |An adopter peripheral controller, such as an I3C
+controller
+|Extra GPIO pad interface |Register-driven data and direction for a pad outside
+the per-pad GPIO array
+|Extra GPIO pad control |Drive strength, pull enable and select, and Schmitt
+select for that pad
+|Captured straps |Pad values latched at cold reset, read by
 boot firmware
+|PVT wrapper |Control and status of the adopter's process, voltage and
+temperature sensors
 |=======================================================================
-
-[[smc-external-straps]]
-The captured straps are read-only. The generated `straps` register
-descriptions define the decoded bit assignments.
 
 [[smc-efuse-connection]]
 ==== eFuse Interface
