@@ -30,6 +30,9 @@ REGISTER_SANITY_MIN_CSR_ACCESSES = 15
 class smc_register_sanity_test(smc_base_test):
     """Run the SMC OSS register-sanity scenario."""
 
+    required_evidence = ("CHK-CSR-SCRATCH-RW-RESTORE",)
+    min_evidence = 1
+
     auto_protocol_vip = False
 
     async def run_scenario(self) -> None:

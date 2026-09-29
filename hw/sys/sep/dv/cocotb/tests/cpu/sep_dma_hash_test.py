@@ -19,12 +19,13 @@ checks the firmware banner and that the core actually executed out of ICCM.
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import CHeaderRegBlock, ot_c_header, sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_hash_test")
@@ -32,6 +33,9 @@ _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
 _ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
+# CFG_REGWEN reads its RDL reset (MUBI4 TRUE, unlocked) before any DMA
+# configuration; the value comes from the generated secure_dma C header.
+_CFG_REGWEN_RESET = CHeaderRegBlock("SECURE_DMA", ot_c_header("secure_dma")).reset("CFG_REGWEN")
 # DMA copy + inline SHA-256 + a software SHA-256 over 256 bytes; the run loop
 # early-exits on fw_done, so this is just an upper bound.
 _MAX_RUN_CYCLES = 3_000_000
@@ -83,4 +87,51 @@ class sep_dma_hash_test(sep_base_test):
         self.logger.info(
             "CHK-SHA384 / CHK-MULTICHUNK / CHK-DIGEST-SWAP PASS: all three hash "
             "legs reported passing in the firmware console"
+        )
+
+        # The SHA-256 pass legs are scored the same way: each prints the line the
+        # card's checker names, so a leg that did not run loses its line here
+        # instead of hiding behind the PASS magic.
+        for needle, chk, what in (
+            (
+                f"CFG_REGWEN = 0x{_CFG_REGWEN_RESET:x} (expected 0x{_CFG_REGWEN_RESET:x} for unlocked)",
+                "CHK-CFG",
+                "CFG_REGWEN readable and unlocked before configuration",
+            ),
+            ("DMA transfer completed!", "CHK-COMPLETE", "the DMA reporting completion"),
+            (
+                "PASS: SRAM and DCCM data matches",
+                "CHK-COPY",
+                "the copied bytes matching the source",
+            ),
+            (
+                "PASS: SHA-384 pass also copied the message to DCCM intact",
+                "CHK-SHA384-COPY",
+                "the SHA-384 pass copying its message intact",
+            ),
+        ):
+            assert any(
+                needle in ln and not ln.lstrip().startswith(("FAIL", "ERROR"))
+                for ln in console.splitlines()
+            ), (
+                f"firmware console has no passing line carrying {needle!r}, so "
+                f"{what} was not checked. Console was:\n{console}"
+            )
+            self.logger.info("%s PASS: firmware reported %s", chk, what)
+
+        # CHK-DIGEST: the firmware prints the hardware digest and its own software
+        # recomputation. Compare them here as well, so the record rests on the two
+        # values rather than on the firmware's error count alone.
+        hw = re.search(r"Expected \(HW\) = 0x([0-9a-f]{64})", console)
+        sw = re.search(r"Computed \(SW\) = 0x([0-9a-f]{64})", console)
+        assert hw and sw, (
+            f"firmware console does not carry both SHA-256 digests, so CHK-DIGEST has "
+            f"nothing to compare. Console was:\n{console}"
+        )
+        assert hw.group(1) == sw.group(1), (
+            f"hardware digest 0x{hw.group(1)} != software digest 0x{sw.group(1)}"
+        )
+        self.logger.info(
+            "CHK-DIGEST PASS: hardware SHA-256 digest == the software recomputation "
+            "over the same SRAM bytes"
         )

@@ -5,6 +5,8 @@
 `define CPU_CTRL_RDL_DEFINED
 
 addrmap cpu_ctrl {
+    name = "CPU Control Address Map";
+    desc = "Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.";
 
     reg RESET_VECTOR{
         regwidth = 64;
@@ -131,15 +133,15 @@ addrmap cpu_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="Live status: high while a requested software reset is actually applied
-                  at the cluster (drain complete and reset asserted).";
+            desc="Live status: high while a requested software reset is applied at the cluster,
+                  either after drain completes or after a force-mode timeout.";
         } reset_applied [32:32] = 0x0;
 
         field {
             sw=r;
             hw=w;
-            desc="Live status: high while a pending software reset has exceeded
-                  timeout_value (timeout/error flag; set in both modes).";
+            desc="Status for the active software reset request: high after the request exceeds
+                  timeout_value and remains high until the request is deasserted. Set in both modes.";
         } reset_timeout [36:36] = 0x0;
     };
 

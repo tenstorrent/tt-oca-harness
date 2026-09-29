@@ -9,7 +9,6 @@ import fnmatch
 import hashlib
 import re
 from dataclasses import dataclass, field
-from datetime import date as calendar_date
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -53,9 +52,25 @@ SELECTOR_FIELDS = {
     "line",
     "hierarchy",
 }
+HOLE_KEYS = {
+    "id",
+    "title",
+    "category",
+    "disposition",
+    "status",
+    "confidence",
+    "rationale",
+    "owner",
+    "reviewer",
+    "issues",
+    "expected_matches",
+    "native",
+}
 GITHUB_ISSUE_RE = re.compile(
     r"^https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/issues/[1-9][0-9]*$"
 )
+NATIVE_FILE_KEYS = {"tool", "role", "path", "apply_phase", "args", "sha256"}
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -91,12 +106,9 @@ class HoleRule:
     rationale: str
     owner: str
     reviewer: str
-    date: str
-    expires: str | None
     issues: list[str]
     expected_matches: int
     selectors: list[dict[str, Any]]
-    expired: bool = False
 
 
 @dataclass
@@ -208,6 +220,9 @@ def _load_native_files(
     files: list[NativePolicyFile] = []
     for index, table in enumerate(_as_table_list(data.get("native_files"), "native_files")):
         where = f"{policy_path} [[native_files]] #{index + 1}"
+        unknown = sorted(set(table) - NATIVE_FILE_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
         raw_path = Path(_required_string(table, "path", where)).expanduser()
         resolved = raw_path if raw_path.is_absolute() else policy_path.parent / raw_path
         if not resolved.is_file():
@@ -218,6 +233,16 @@ def _load_native_files(
         args = _string_list(table.get("args"), f"{where}.args")
         if args and not any("{path}" in value for value in args):
             raise ConfigError(f"{where}.args must reference `{{path}}`")
+        digest = _sha256(resolved)
+        # A recorded digest pins the reviewed file: a regenerated file takes a new review.
+        pinned = _optional_string(table, "sha256", where)
+        if pinned is not None:
+            if not SHA256_RE.fullmatch(pinned):
+                raise ConfigError(f"{where}.sha256 must be 64 lowercase hexadecimal digits")
+            if pinned != digest:
+                raise ConfigError(
+                    f"{where}.sha256 does not match {resolved}: recorded {pinned}, file {digest}"
+                )
         files.append(
             NativePolicyFile(
                 tool=_required_string(table, "tool", where),
@@ -225,7 +250,7 @@ def _load_native_files(
                 path=resolved.resolve(),
                 apply_phase=phase,
                 args=args,
-                sha256=_sha256(resolved),
+                sha256=digest,
             )
         )
     return files
@@ -236,6 +261,9 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
     seen: set[str] = set()
     for index, table in enumerate(_as_table_list(data.get("holes"), "holes")):
         where = f"{path} [[holes]] #{index + 1}"
+        unknown = sorted(set(table) - HOLE_KEYS)
+        if unknown:
+            raise ConfigError(f"{where}: unsupported key(s): {', '.join(unknown)}")
         hole_id = _required_string(table, "id", where)
         if hole_id in seen:
             raise ConfigError(f"{where}: duplicate hole id `{hole_id}`")
@@ -255,16 +283,6 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
         rationale = _required_string(table, "rationale", where)
         owner = _required_string(table, "owner", where)
         reviewer = _required_string(table, "reviewer", where)
-        date = _required_string(table, "date", where)
-        expires = _optional_string(table, "expires", where)
-        for field_name, date_value in (("date", date), ("expires", expires)):
-            if date_value and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_value):
-                raise ConfigError(f"{where}.{field_name} must use YYYY-MM-DD")
-        expired = bool(
-            status == "accepted"
-            and expires
-            and calendar_date.fromisoformat(expires) < calendar_date.today()
-        )
         issues = _string_list(table.get("issues"), f"{where}.issues")
         _validate_issue_urls(issues, f"{where}.issues")
         if status == "open" and disposition in ACTIONABLE_DISPOSITIONS and not issues:
@@ -302,12 +320,9 @@ def _load_holes(data: dict[str, Any], path: Path) -> list[HoleRule]:
                 rationale=rationale,
                 owner=owner,
                 reviewer=reviewer,
-                date=date,
-                expires=expires,
                 issues=issues,
                 expected_matches=expected,
                 selectors=selectors,
-                expired=expired,
             )
         )
     return holes
@@ -366,16 +381,6 @@ def native_policy_manifest(policy: CoveragePolicy | None) -> list[dict[str, Any]
     ]
 
 
-def expired_holes(policy: CoveragePolicy | None) -> list[HoleRule]:
-    if policy is None:
-        return []
-    return [rule for rule in policy.holes if rule.expired]
-
-
-def lapsed_warning(rule: HoleRule) -> str:
-    return f"{rule.id} expired on {rule.expires}; treated as open"
-
-
 def _selector_matches(
     observation: CoverageObservation,
     selector: dict[str, Any],
@@ -411,7 +416,6 @@ def apply_coverage_policy(
         return details
 
     claimed: dict[str, str] = {}
-    lapsed: list[str] = []
     for rule in policy.holes:
         matches = [
             observation
@@ -423,11 +427,8 @@ def apply_coverage_policy(
                 f"{policy.path}: hole `{rule.id}` matched {len(matches)} observation(s), "
                 f"expected {rule.expected_matches}"
             )
-        # An accepted waiver past its `expires` date grades as open; the observation keeps
-        # the rule's identity and disposition.
-        status = "open" if rule.expired else rule.status
         if (
-            status == "accepted"
+            rule.status == "accepted"
             and rule.disposition in {"waive", "exclude_scope"}
             and any(observation.covered for observation in matches)
         ):
@@ -444,23 +445,18 @@ def apply_coverage_policy(
             observation.policy_id = rule.id
             observation.category = rule.category
             observation.disposition = rule.disposition
-            observation.status = status
+            observation.status = rule.status
             observation.confidence = rule.confidence
             observation.rationale = rule.rationale
             observation.owner = rule.owner
             observation.reviewer = rule.reviewer
             observation.issues = list(rule.issues)
-        if rule.expired:
-            lapsed.append(lapsed_warning(rule))
         application["matched"].append(
             {
                 "policy_id": rule.id,
                 "observation_ids": [observation.id for observation in matches],
             }
         )
-    if lapsed:
-        application["warnings"] = [*application["warnings"], *lapsed]
-        details.warnings = [*details.warnings, *lapsed]
 
     details.policy_fingerprint = policy.sha256
     details.scope_fingerprint = hashlib.sha256(

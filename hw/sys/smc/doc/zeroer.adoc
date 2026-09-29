@@ -1,25 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Zeroer
+:description: SMC hardware-assisted memory clearing architecture and operation.
+
 [[memory-zeroer]]
-=== Zeroer
 
 The SMC Memory Zeroer efficiently initializes large memory regions to
 zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.
 
-.Memory Zeroer Integration
+<<smc-memory-zeroer-integration-table>> summarises the zeroer control aperture and
+fabric integration.
+
+[[smc-memory-zeroer-integration-table]]
+.SMC Memory Zeroer Integration
 [width="100%",cols="30%,70%",options="header",]
 |===================================================================
 |Parameter |Description
 |Address Range |0xC003_8200 - 0xC003_83FF (512 bytes)
 |Control Interface |AXI4-Lite
 |Data Interface |AXI4 Master (56-bit address, 64-bit data, 4-bit ID)
-|Maximum Burst Length |255 beats (AXI maximum)
-|Outstanding Transactions |Up to 32 concurrent AXI transactions
+|Maximum Burst Length |256 beats (`AWLEN = 255`)
+|Outstanding Transactions |Counted by a 32-bit counter; no 32-transaction
+issuance limit or counter-based back-pressure
 |===================================================================
 
-==== Use Cases
+== Use Cases
 
 * *System Initialization*: Clear memory regions during boot or reset
 sequences
@@ -27,13 +34,22 @@ sequences
 * *Memory Management*: Initialize allocated memory blocks
 * *Error Recovery*: Clear corrupted memory regions
 
-==== Architecture
+== Architecture
 
-===== State Machine
+The DMA and zeroer share the data-accelerator fabric path shown in
+ifdef::backend-html5[]
+xref:dma.adoc#smc-dma-zeroer-diagram[SMC DMA and memory-zeroer architecture].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-dma-zeroer-diagram,SMC DMA and memory-zeroer architecture>>.
+endif::backend-pdf[]
 
-The zeroer implements a three-state operation model:
+=== State Machine
 
-.State Machine States
+The zeroer implements a three-state operation model (<<smc-zeroer-state-machine-table>>).
+
+[[smc-zeroer-state-machine-table]]
+.SMC zeroer state machine
 [width="100%",cols="25%,75%",options="header",]
 |======================================================================
 |State |Description
@@ -42,7 +58,7 @@ The zeroer implements a three-state operation model:
 |ST_ISSUE_DATA (3'b100) |Data phase - streaming zero data for all beats
 |======================================================================
 
-===== Operation Flow
+=== Operation Flow
 
 1.  *Configuration*: Software writes destination address and size to
 registers
@@ -54,9 +70,13 @@ beats
 5.  *Completion*: State machine returns to idle with status update and
 optional interrupt
 
-===== AXI Master Interface
+=== AXI Master Interface
 
-.AXI4 Master Characteristics
+<<smc-zeroer-axi4-master-characteristics-table>> summarises the zeroer's AXI master
+interface.
+
+[[smc-zeroer-axi4-master-characteristics-table]]
+.SMC zeroer AXI4 Master Characteristics
 [width="100%",cols="30%,70%",options="header",]
 |====================================================================
 |Parameter |Specification
@@ -64,35 +84,36 @@ optional interrupt
 |Data Width |64-bit data path
 |ID Width |4-bit transaction ID (internal 3-bit usage)
 |User Signals |12-bit user field for system-specific attributes
-|Maximum Burst Length |255 beats for optimal memory efficiency
+|Maximum Burst Length |256 beats (`AWLEN = 255`)
 |Burst Calculation |Automatic optimal burst sizing
 |Address Alignment |Intelligent handling of unaligned start addresses
 |Boundary Handling |Automatic burst fragmentation at page boundaries
 |====================================================================
 
-===== Outstanding Transaction Management
+=== Outstanding Transaction Management
 
-The zeroer efficiently manages outstanding AXI transactions using a
-32-bit counter to track in-flight writes. When the number of pending
-transactions reaches the allowed maximum, built-in flow control applies
-back-pressure until resources become available. Write responses are
-tracked to ensure accurate completion status, while AXI error responses
-are processed to handle faults robustly.
+The zeroer counts accepted write addresses and consumed write responses in a
+32-bit outstanding-request counter. The counter determines whether responses
+remain pending; it does not impose a limit of 32 transactions or throttle
+address issuance. AXI `AWREADY` and `WREADY` provide downstream back-pressure.
 
-Multiple write addresses can be pipelined to maximize throughput, and
-the zero data stream operates independently of response timing, allowing
-continuous operation. By supporting multiple bursts in flight, the
-zeroer achieves high parallelism and optimal memory bandwidth
-utilization.
+The response channel is consumed without checking `BRESP`. Completion means
+that all responses have arrived, not that every write succeeded. The internal
+error state handles an illegal state-machine encoding, not AXI bus errors.
+Software requiring verified clearing must use an independent verification path.
 
-===== Dual Clock Domain Architecture
+=== Dual Clock Domain Architecture
 
 The zeroer implements dual clock domain operation for power management
 and interface isolation.
 
-===== Clock Domains
+=== Clock Domains
 
-.Clock Domain Characteristics
+<<smc-zeroer-clock-domain-characteristics-table>> identifies the AXI and APB clock
+domains and their roles.
+
+[[smc-zeroer-clock-domain-characteristics-table]]
+.SMC zeroer Clock Domain Characteristics
 [width="100%",cols="25%,75%",options="header",]
 |=======================================================================
 |Clock Domain |Description
@@ -103,9 +124,13 @@ only during active zeroing
 independent of AXI activity
 |=======================================================================
 
-===== Clock Gating
+=== Clock Gating
 
-.Clock Gating Control
+<<smc-zeroer-clock-gating-control-table>> gives the gating conditions for each clock
+domain.
+
+[[smc-zeroer-clock-gating-control-table]]
+.SMC zeroer Clock Gating Control
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Domain |Gating Logic
@@ -114,38 +139,48 @@ independent of AXI activity
 |Register Clock
 |reg_clk_enable = disable_cg \| register_activity \| ~rst_ni
 
-|Implementation |prim_clkgater for glitch-free operation
+|Implementation |prim_clock_gating for glitch-free operation
 
 |Test Support |Test enable override for manufacturing test
 
 |Reset Override |Ensures proper reset domain operation
 |=======================================================================
 
-===== Control and Status
+=== Control and Status
 
-====== Operation Control
+==== Operation Control
 
-.Configuration and Control
+<<smc-zeroer-configuration-and-control-table>> defines the registers used to configure
+and start a zeroing operation.
+
+[[smc-zeroer-configuration-and-control-table]]
+.SMC zeroer Configuration and Control
 [width="100%",cols="30%,70%",options="header",]
 |===============================================================
 |Register |Description
 |DEST_ADDR |64-bit byte address for destination memory region
 |SIZE |64-bit byte count for zeroing operation
 |CTRL_STATUS |Control and status register (trigger, busy status)
-|Interrupt Enable |Optional completion interrupt enable
-|Validation |Hardware validates configuration parameters
+|CTRL_STATUS.INT_EN |Enables the completion pulse
+|Validation |Software must validate destination, length, permissions, and
+address arithmetic before starting
 |===============================================================
 
-====== Status Features
+==== Status Features
 
 * *Busy Status*: Real-time indication of zeroing operation in progress
 * *Completion Status*: Updates when all write responses received
-* *Error Status*: AXI error response detection and reporting
+* *Error Reporting*: No software-visible AXI error report; failed write
+responses are not distinguished from successful responses
 * *Interrupt Generation*: Optional interrupt on operation completion
 
-==== Operation Details
+== Operation Details
 
-.Data Generation and Control
+<<smc-zeroer-data-generation-and-control-table>> summarises zero-data generation and
+transfer control.
+
+[[smc-zeroer-data-generation-and-control-table]]
+.SMC zeroer Data Generation and Control
 [width="100%",cols="30%,70%",options="header",]
 |=======================================================================
 |Feature |Description
@@ -158,12 +193,14 @@ unaligned addresses
 
 |Size Tracking |Accurate remaining size calculation throughout operation
 
-|Overflow Protection |Size overflow detection and handling
+|Overflow Protection |Overflow assertions are simulation checks; there is
+no hardware overflow-rejection status or recovery control
 
-|Safe Abort |Ability to safely abort operation if needed
+|Abort |No software abort control or guarantee that a reset safely drains
+outstanding writes
 |=======================================================================
 
-==== Detailed Register Map
+== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
@@ -172,5 +209,5 @@ include::ip:partial$zeroer/regs/gen/html/zeroer_ctrl.html[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../../../ip/zeroer/regs/gen/adoc/zeroer_ctrl.adoc[]
+include::../../../ip/zeroer/regs/gen/adoc/zeroer_ctrl.adoc[leveloffset=+1]
 endif::backend-pdf[]

@@ -84,11 +84,11 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
         await self.csr_read("CLOCK_GATE_CONTROL_AVS_OFF", CLOCK_GATE_CONTROL, expected=ungated)
         for name, addr in AVSBUS_TIMEOUT_READS:
             before = self.timeouts
-            t0 = get_sim_time(units="ns")
+            t0 = get_sim_time(unit="ns")
             rdata = await self.csr_read_bounded(
-                f"{name}_UNGATED", addr, timeout_ns=_UNGATED_PROBE_BOUND_NS
+                f"{name}_UNGATED", addr, timeout_ns=_UNGATED_PROBE_BOUND_NS, allow_error=False
             )
-            latency = int(get_sim_time(units="ns") - t0)
+            latency = int(get_sim_time(unit="ns") - t0)
             assert self.timeouts == before, (
                 f"{name}: the AVS_CFG window did NOT answer within "
                 f"{_UNGATED_PROBE_BOUND_NS} ns with AVS_CG_EN cleared "
@@ -142,6 +142,7 @@ class smc_avsbus_clock_config_proxy_test_seq(SmcCsrSeq):
                 f"{name}_UNGATED_SAME_BOUND",
                 addr,
                 timeout_ns=self.gated_bound_ns,
+                allow_error=False,
             )
             assert self.timeouts == before, (
                 f"{name}: did NOT answer within the gated-leg bound "

@@ -35,7 +35,8 @@ class SpecRegion:
         return self.base <= addr <= self.end_addr
 
 
-# From hw/sys/sep/doc/memory_map.adoc. Inclusive ends. Reserved rows use _RSV_.
+# From the SEP address map in hw/sys/sep/doc/memory_map.adoc (its tables are
+# hw/sys/sep/regs/gen/adoc/memory_map.adoc). Inclusive ends. Reserved rows use _RSV_.
 # (base, end_inclusive, unit, desc)
 _MAP_ROWS = (
     # Coarse CPU view.
@@ -53,8 +54,7 @@ _MAP_ROWS = (
     (0xC008_0000, 0xC008_7FFF, "PIC", "Interrupt controller for El2 CPU"),
     (0xC008_8000, 0xCFFF_FFFF, _RSV, "Reserved"),
     # SEP-local detail.
-    (0x1000_0000, 0x1000_FFFF, "SRAM", "Scratch SRAM"),
-    (0x1001_0000, 0x1003_FFFF, _RSV, "Reserved Scratch SRAM expansion"),
+    (0x1000_0000, 0x1003_FFFF, "SRAM", "Scratch SRAM"),
     (0x1004_0000, 0x1004_FFFF, "ROM", "BL0 immutable instruction memory"),
     (0x1005_0000, 0x107F_FFFF, _RSV, "reserved"),
     (0x1080_0000, 0x1080_0FFF, "DMA", "DMA CSR"),
@@ -182,11 +182,19 @@ def may_complete(addr: int, regions=None) -> bool:
 
 
 def _selftest() -> None:
-    assert len(_MAP_ROWS) == 44, f"DV-owned map has {len(_MAP_ROWS)} rows, want 44"
+    assert len(_MAP_ROWS) == 43, f"DV-owned map has {len(_MAP_ROWS)} rows, want 43"
     regions = spec_regions()
     assert len(regions) >= 25, f"only {len(regions)} memory-map rows after holes"
 
     assert may_complete(0x1080_0000, regions), "DMA CSR base read as unallocated"
+    sram = region_of(0x1001_0000, regions)
+    assert sram is not None and sram.unit == "SRAM", f"0x10010000 -> {sram}"
+    # The SRAM row must span the generated SystemRDL memory, so a map edit that
+    # shrinks or grows either side fails here instead of in the refuse walk.
+    from sep_reg_meta import sym
+
+    assert sram.base == sym("SEP_SRAM_MEM_BASE_ADDR"), f"{sram}"
+    assert sram.end_addr + 1 - sram.base == sym("SEP_SRAM_MEM_SIZE"), f"{sram}"
     assert may_complete(0x1080_1FFF, regions), "WDT window top read as unallocated"
     assert not may_complete(0x1080_3008, regions), "reset-ctrl gap read as allocated"
     assert not may_complete(0x1092_1000, regions), "KM reserved gap read as allocated"

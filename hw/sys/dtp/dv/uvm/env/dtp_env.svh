@@ -58,7 +58,7 @@ class dtp_env extends ocah_env;
   dtp_scoreboard                m_scoreboard;
   dtp_tap_fsm_checker           m_fsm_checker;
   dtp_scan_window_monitor       m_scan_window;
-  ocah_jtag_scan_builder        m_scan_builder;
+  dtp_jtag_scan_builder         m_scan_builder;
   ocah_jtag_checker             m_jtag_checker;
 
   // Virtual sequencer every scenario pass runs on.
@@ -109,6 +109,14 @@ class dtp_env extends ocah_env;
       `uvm_fatal(get_type_name(), "virtual dtp_xtrig_if `xtrig_vif` not found in uvm_config_db")
     tb_vif.clk_period_ns = cfg.clk_period_ns;
     `uvm_info(get_type_name(), {"env cfg: ", cfg.convert2string()}, UVM_MEDIUM)
+    // The transcribed port count and the generated CT_DST_SELECT field must
+    // describe the same matrix: one select bit per CTM port.
+    if (DtpCtmSelectMask !== 32'((64'h1 << DtpXtrigNumCtmPorts) - 64'h1))
+      `uvm_fatal(get_type_name(), $sformatf(
+                 "CT_DST_SELECT mask 0x%0h does not cover %0d CTM ports",
+                 DtpCtmSelectMask,
+                 DtpXtrigNumCtmPorts
+                 ))
 
     build_jtag_master();
     build_checking();
@@ -120,8 +128,8 @@ class dtp_env extends ocah_env;
             vif_key: "smc_otp_axil_vif",
             name_tag: "dtp_smc_otp_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -134,8 +142,8 @@ class dtp_env extends ocah_env;
             vif_key: "sep_otp_axil_vif",
             name_tag: "dtp_sep_otp_axil",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         },
         cfg.axi_policy_for(
@@ -148,9 +156,9 @@ class dtp_env extends ocah_env;
             vif_key: "m_axi_vif",
             name_tag: "dtp_smc_axi",
             protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: 56,
-            data_width: 64,
-            id_width: 2
+            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
+            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
+            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
         },
         cfg.axi_policy_for(
             "smc_axi")
@@ -185,8 +193,8 @@ class dtp_env extends ocah_env;
             vif_key: "smc_otp_slave_vif",
             name_tag: "dtp_smc_otp_slave",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         }
     );
@@ -197,8 +205,8 @@ class dtp_env extends ocah_env;
             vif_key: "sep_otp_slave_vif",
             name_tag: "dtp_sep_otp_slave",
             protocol: OCAH_AXI_PROTO_AXI4_LITE,
-            addr_width: 32,
-            data_width: 32,
+            addr_width: dtp_dv_cfg_pkg::OtpAxilAddrWidth,
+            data_width: dtp_dv_cfg_pkg::OtpAxilDataWidth,
             id_width: 0
         }
     );
@@ -209,9 +217,9 @@ class dtp_env extends ocah_env;
             vif_key: "smc_axi_slave_vif",
             name_tag: "dtp_smc_axi_slave",
             protocol: OCAH_AXI_PROTO_AXI4,
-            addr_width: 56,
-            data_width: 64,
-            id_width: 2
+            addr_width: dtp_dv_cfg_pkg::SmcAxiAddrWidth,
+            data_width: dtp_dv_cfg_pkg::SmcAxiDataWidth,
+            id_width: dtp_dv_cfg_pkg::SmcAxiIdWidth
         }
     );
     m_smc_axi_slave_agent = ocah_axi_slave_agent::type_id::create("m_smc_axi_slave_agent", this);
@@ -277,6 +285,7 @@ class dtp_env extends ocah_env;
 
     m_scan_window = dtp_scan_window_monitor::type_id::create("m_scan_window", this);
     m_scan_window.scan_vif = scan_vif;
+    m_scan_window.tb_vif   = tb_vif;
 
     begin
       dtp_jtag_scan_builder builder = dtp_jtag_scan_builder::type_id::create(

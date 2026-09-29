@@ -45,10 +45,15 @@ class sep_esrc_alert_delivery_test(sep_base_test):
     """Trip persistent failure, claim PIC source 16, W1C-clear."""
 
     def _irq_bit(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_AGG_IDX) & 1
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << IRQ_AGG_IDX)
+        return (vec >> IRQ_AGG_IDX) & 1
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
+        # Routing only: this leaf holds the raw noise at a constant below to
+        # trip the persistent health-test failure, so a toggling generator is
+        # the opposite of what it needs.
+        await self.assert_noise_force_routed()
         esrc = SepEsrcAlert(self)
 
         sm = await esrc.read_main_sm()
@@ -71,6 +76,12 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         await esrc.enable_all_irq()
         proven: list[str] = []
         for name, bm in INTR_SOURCES:
+            # Each source starts from a dropped line, so its irq == 1 below is
+            # its own and not one left high by the source before it.
+            assert self._irq_bit() == 0, (
+                f"CHK-INTR-TEST FAIL: sep_internal_interrupts[{IRQ_AGG_IDX}] already high "
+                f"before the {name} pulse"
+            )
             await esrc.pulse_intr_test(bm)
             st = await esrc.read_intr()
             irq = self._irq_bit()
@@ -92,10 +103,14 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                 f"CHK-INTR-TEST FAIL: {name} did not clear on W1C "
                 f"(INTR_STATUS=0x{st_after:08x}); a singlepulse source must not re-latch"
             )
+            assert self._irq_bit() == 0, (
+                f"CHK-INTR-TEST FAIL: {name} cleared INTR_STATUS but "
+                f"sep_internal_interrupts[{IRQ_AGG_IDX}] stayed high"
+            )
             proven.append(name)
         self.logger.info(
             "CHK-INTR-TEST PASS: all %d INTR_TEST sources set their own INTR_STATUS bit, "
-            "raised PIC source 16, and cleared on W1C: %s",
+            "raised PIC source 16 from a dropped line, and dropped it again on W1C: %s",
             len(proven),
             ", ".join(proven),
         )
@@ -227,6 +242,13 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         )
 
         await esrc.leave_alert_hang()
+        sm_before_w1c = await esrc.read_main_sm()
+        st_before_w1c = await esrc.read_intr()
+        assert (sm_before_w1c & ALERT_MASK) and (st_before_w1c & PF_MASK), (
+            f"CHK-W1C FAIL: MODULE_ENABLE=0 already cleared ALERT/PF "
+            f"(sm=0x{sm_before_w1c:08x} st=0x{st_before_w1c:08x}); "
+            "the W1C write would have been a no-op"
+        )
         await esrc.w1c_alert()
         sm = await esrc.read_main_sm()
         st = await esrc.read_intr()
@@ -241,25 +263,25 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             IRQ_AGG_IDX,
         )
 
-        # HEALTH_TEST_STATUS is a sticky latch whose next value is re-driven from
-        # the live per-test fail signals every cycle, so a bit whose test is still
-        # failing re-latches behind the write. The provable contract is that the
-        # write clears the bits whose cause has gone and sets none of its own.
+        # entropy_source.rdl: HEALTH_TEST_CTRL.ENABLE "Disabling a test clears its
+        # state", and HEALTH_TEST_STATUS is a sticky latch, "Write one to clear."
+        # With every test disabled no fail signal can re-latch a bit, so the latch
+        # still holds the trip bits before the write and reads 0 after it.
         await esrc.disable_health_tests()
         ht_live = await esrc.read_health_status()
+        assert (ht_live & ht_status) == ht_status, (
+            f"CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS lost trip bits without a write "
+            f"(0x{ht_status:02x} at the trip, 0x{ht_live:02x} after ENABLE=0)"
+        )
         await esrc.w1c_health_status(ht_live)
         ht_cleared = await esrc.read_health_status()
-        assert (ht_cleared & ~ht_live & 0xFF) == 0, (
-            f"CHK-HT-STATUS FAIL: W1C of 0x{ht_live:02x} set bits that were not "
-            f"latched before it (reads 0x{ht_cleared:02x})"
-        )
-        assert ht_cleared != ht_live, (
-            f"CHK-HT-STATUS FAIL: W1C of 0x{ht_live:02x} cleared nothing (reads 0x{ht_cleared:02x})"
+        assert ht_cleared == 0, (
+            f"CHK-HT-STATUS FAIL: W1C of 0x{ht_live:02x} with every health test "
+            f"disabled reads 0x{ht_cleared:02x}, expected 0x00"
         )
         self.logger.info(
-            "CHK-HT-STATUS PASS: HEALTH_STATUS latched 0x%02x at the trip; W1C cleared "
-            "0x%02x and left 0x%02x, the bits whose per-test fail signal is still live",
+            "CHK-HT-STATUS PASS: HEALTH_STATUS latched 0x%02x at the trip, held 0x%02x "
+            "after ENABLE=0, and W1C of every latched bit reads back 0x00",
             ht_status,
-            ht_live & ~ht_cleared & 0xFF,
-            ht_cleared,
+            ht_live,
         )

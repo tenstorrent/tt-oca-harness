@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Core-0 WDT first and second timeout on the smc_wrapper pins, then the warm reset."""
+"""Per-core WDT first and second timeout on the smc_wrapper pins, each followed by the warm reset."""
 
 from __future__ import annotations
 
@@ -19,11 +19,12 @@ class smc_wdt_timeout_pin_test(smc_base_test):
     """A programmed first timeout raises smc_wdt_first_timeout_o; uncleared, the second follows."""
 
     required_evidence = (
+        "CHK-WDT-TIMEOUT-CORES",
         "CHK-WDT-TIMEOUT-FIRST",
         "CHK-WDT-TIMEOUT-RESET",
         "CHK-WDT-TIMEOUT-SECOND",
     )
-    min_evidence = 3
+    min_evidence = 4
 
     auto_protocol_vip = False
 
@@ -47,6 +48,9 @@ class smc_wdt_timeout_pin_test(smc_base_test):
         ), (
             f"second timeout {seq.second_gap_cycles} cycles after the first, "
             f"outside [0x{seq.stage2_cycles:x}, +{SECOND_TIMEOUT_SLACK_CYCLES}]"
+        )
+        assert sorted(seq.other_cores) == [1, 2, 3], (
+            f"cores {sorted(seq.other_cores)} ran both stages, expected 1, 2 and 3"
         )
         assert seq.live_after_reset == (0, 0), (
             f"live pins {seq.live_after_reset} after the warm reset released"

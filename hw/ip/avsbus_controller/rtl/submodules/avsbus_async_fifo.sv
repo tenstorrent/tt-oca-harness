@@ -1,32 +1,41 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// AVSBus Async FIFO
+// Cross AVSBus data between the write and read clock domains in an async FIFO.
 //
-//-----------------------------------------------------------------------------
+// Gray-coded pointers cross each way through prim_sync3 synchronizers, so DEPTH must be a
+// power of two. Each side takes its own synchronized reset.
+// vacant_slots_o and full_slots_o report occupancy in the write domain for flow control.
 
 module avsbus_async_fifo #(
-  parameter int unsigned DEPTH = 8,
-  parameter int unsigned WIDTH = 32
+  parameter int unsigned DEPTH = 8,                         // FIFO depth in entries; must be a
+                                                            // power of two.
+  parameter int unsigned WIDTH = 32                         // FIFO data width in bits.
 ) (
-  input logic scan_rst_ni,
-  input logic test_mode_i,
+  input logic scan_rst_ni,                                  // DFT scan reset, active-low; unused.
+  input logic test_mode_i,                                  // DFT test mode; unused.
 
-  input logic rst_wr_clk_syncd_ni,
-  input logic wr_clk_i,
-  input logic wr_en_i,
-  input logic [WIDTH-1:0] wr_data_i,
-  output logic wr_full_o,
-  output logic wr_empty_o,
+  input logic rst_wr_clk_syncd_ni,                          // Write-side reset, synchronized to
+                                                            // wr_clk_i.
+  input logic wr_clk_i,                                     // Write clock.
+  input logic wr_en_i,                                      // Write enable; ignored while wr_full_o
+                                                            // is high.
+  input logic [WIDTH-1:0] wr_data_i,                        // Write data.
+  output logic wr_full_o,                                   // FIFO full in the write domain.
+  output logic wr_empty_o,                                  // FIFO empty in the write domain.
 
-  input logic rst_rd_clk_syncd_ni,
-  input logic rd_clk_i,
-  input logic rd_en_i,
-  output logic [WIDTH-1:0] rd_data_o,
-  output logic rd_empty_o,
-  output logic [$clog2(DEPTH):0] vacant_slots_o,
-  output logic [$clog2(DEPTH):0] full_slots_o
+  input logic rst_rd_clk_syncd_ni,                          // Read-side reset, synchronized to
+                                                            // rd_clk_i.
+  input logic rd_clk_i,                                     // Read clock.
+  input logic rd_en_i,                                      // Read enable; ignored while rd_empty_o
+                                                            // is high.
+  output logic [WIDTH-1:0] rd_data_o,                       // Head entry, read combinationally
+                                                            // before rd_en_i.
+  output logic rd_empty_o,                                  // FIFO empty in the read domain.
+  output logic [$clog2(DEPTH):0] vacant_slots_o,            // Free entries, computed in the
+                                                            // wr_clk_i domain.
+  output logic [$clog2(DEPTH):0] full_slots_o               // Occupied entries, computed in the
+                                                            // wr_clk_i domain.
 );
 
   //NOTE: DEPTH must be a power of 2 for this fifo to work (otherwise gray code counter will not work).
@@ -64,13 +73,13 @@ module avsbus_async_fifo #(
     end
   end
 
-  prim_sync3 wr_ptr_gray_sync_to_rd_clk[PointerWidth-1:0] (
+  prim_sync3 u_wr_ptr_gray_sync_to_rd_clk[PointerWidth-1:0] (
     .clk_i(rd_clk_i),
     .d_i  (wr_ptr_gray),
     .q_o  (wr_ptr_gray_rd_clk)
   );
 
-  prim_sync3 rd_ptr_gray_sync_to_wr_clk[PointerWidth-1:0] (
+  prim_sync3 u_rd_ptr_gray_sync_to_wr_clk[PointerWidth-1:0] (
     .clk_i(wr_clk_i),
     .d_i  (rd_ptr_gray),
     .q_o  (rd_ptr_gray_wr_clk)

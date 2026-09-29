@@ -157,8 +157,8 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
             f"OTBN not released before transfer (SW_RESET_N=0x{rst:08x})"
         )
         self.logger.info(
-            "CHK-ISO key-bus isolation PASS: only KM+OTBN released, AES/KMAC/HMAC parked "
-            "(SW_RESET_N=0x%02x)",
+            "CHK-ISO key-bus isolation PASS: only KM+OTBN released, "
+            "AES/KMAC/HMAC parked (SW_RESET_N=0x%02x)",
             rst,
         )
 

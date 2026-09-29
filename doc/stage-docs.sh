@@ -9,9 +9,9 @@
 # product's src/meta tree, hw/**/doc and hw/**/regs/gen, plus explicitly staged
 # vendored documentation.
 #
-# Module topology (6 modules): ROOT, smc, sep, dtp, aou, ip.
+# Modules: ROOT, smc, sep, dtp, aou, ip; SMU is enabled by the TRM product.
 #   - ROOT: product src/*.adoc + meta tables + subsystem port_table partials.
-#   - smc/sep/dtp: pages from hw/sys/<sys>/doc, reg partials from its regs/gen.
+#   - subsystem modules: hw/sys/<sys>/doc pages and regs/gen partials.
 #   - aou: selected content from the vendored AXI-over-UCIe specification.
 #   - ip: every hw/ip/<ip>/doc collapsed under <ip>/doc, reg partials per IP.
 # Register docs use generated .html partials for Antora HTML and generated .adoc
@@ -30,13 +30,21 @@ COMMON_ASSETS="$DOC/trm/assets"
 AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
 AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
-SUBSYSTEMS="smc sep dtp"
+SUBSYSTEMS="smc sep dtp smc/bootrom/prod sep/bootrom/prod"
+# The SMU chapter links into the TRM's ROOT module. Other products retain
+# their existing subsystem pages and the independent ROOT SMU port partial.
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
+  SUBSYSTEMS="$SUBSYSTEMS smu"
+else
+  # Remove stale SMU pages/assets from builds predating product scoping.
+  rm -rf "${MOD:?}/smu"
+fi
 PORT_TABLE_SYS="smc sep dtp smu"
-MODULES="ROOT smc sep dtp aou ip"
+MODULES="ROOT $SUBSYSTEMS aou ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"
-  for m in smc sep dtp aou ip; do
+  for m in smc sep dtp smu aou ip; do
     rm -rf "${MOD:?}/$m"
   done
   rm -f "$ASSETS"/aou-*
@@ -101,7 +109,8 @@ strip_drawio_switch_fallback() {
 
 # --- module skeleton ---
 for m in $MODULES; do
-  mkdir -p "$MOD/$m/pages" "$MOD/$m/partials" "$MOD/$m/assets/images"
+  mt=$(echo $m | tr / -)
+  mkdir -p "$MOD/$mt/pages" "$MOD/$mt/partials" "$MOD/$mt/assets/images"
 done
 
 # --- ROOT: product pages + meta tables ---
@@ -109,7 +118,7 @@ for f in "$SRC"/*.adoc; do
   [ -f "$f" ] && cp -f "$f" "$MOD/ROOT/pages/"
 done
 if [ "${OCAH_DOC_PRODUCT_INCLUDE_REVISION:-1}" != "1" ]; then
-  rm -f "$MOD/ROOT/pages/revision.adoc"
+  rm -f "$MOD/ROOT/pages/revision.adoc" "$MOD/ROOT/pages/aou-records-of-changes.adoc"
 fi
 mkdir -p "$MOD/ROOT/pages/meta"
 for f in "$META"/*.adoc; do
@@ -127,24 +136,52 @@ done
 
 # --- subsystems: pages + register partials ---
 for s in $SUBSYSTEMS; do
-  stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$s/pages"
-  stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$s/partials/$s/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$s/partials/$s/regs/gen/html"
-  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
-  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
+  m=$(echo $s | tr / -)
+  stage_adoc_tree "$ROOT/hw/sys/$s/doc" "$MOD/$m/pages"
+  stage_gen_adoc "$ROOT/hw/sys/$s/regs/gen/adoc" "$MOD/$m/partials/$m/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$m/partials/$m/regs/gen/html"
+  stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$m/partials/$m/dv/models/regs/gen/adoc"
+  stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$m/partials/$m/dv/models/regs/gen/html"
 done
+# DTP and SMU port tables are private ROOT partials included by their owning pages.
+rm -f "$MOD/dtp/pages/port_table.adoc" "$MOD/smu/pages/port_table.adoc"
 
 # --- aou: each product stages only the section it publishes ---
 rm -rf "$MOD/aou"
 mkdir -p "$MOD/aou/pages" "$MOD/aou/partials" "$MOD/aou/assets/images"
 case "$(basename "$PRODUCT")" in
 trm)
-  cp -f "$AOU_DOC/index.adoc" "$MOD/aou/partials/"
-  for page in overview architecture interrupts-errors ppa-appendices; do
-    cp -f "$AOU_DOC/$page.adoc" "$MOD/aou/partials/"
-    sed -i "s@include::$page.adoc@include::partial\$$page.adoc@" \
-      "$MOD/aou/partials/index.adoc"
+  mkdir -p "$MOD/aou/partials/pdf"
+  for page in overview architecture interrupts-errors ppa-appendices software-operation; do
+    sed -E 's/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+      >"$MOD/aou/partials/$page.adoc"
+    # The PDF inherits book numbering instead of the standalone specification's numbers.
+    sed -E 's/^(={2,6}) [0-9]+(\.[0-9]+)*\. /\1 /; s/(xref:(figure|table)-[0-9]+)\[(Figure|Table) [0-9]+\]/\1[]/g' "$AOU_DOC/$page.adoc" \
+      >"$MOD/aou/partials/pdf/$page.adoc"
   done
+  # The web appendices have separate pages; the PDF keeps the complete section.
+  sed '/^ifndef::release\[\]/,$d' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/ppa-appendices.adoc"
+  sed -n '/^ifndef::release\[\]/,/^endif::release\[\]/p' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/records-of-changes.adoc"
+  sed -n '/^\[\[appendix-b-referenced-documents\]\]/,$p' "$AOU_DOC/ppa-appendices.adoc" \
+    >"$MOD/aou/partials/referenced-documents.adoc"
+  aou_pages="overview architecture interrupts-errors ppa-appendices records-of-changes referenced-documents software-operation"
+  for page in $aou_pages; do
+    # Published fragments land beside the link to their owning topic page.
+    {
+      echo '++++'
+      sed -nE 's/^\[\[([^],]+)\]\]$/<span id="\1"><\/span>/p' "$MOD/aou/partials/$page.adoc"
+      echo '++++'
+    } >"$MOD/aou/partials/$page-anchors.adoc"
+  done
+  # Antora topics need page-qualified links; PDF partials retain same-book links.
+  sed -i -f <(
+    for page in $aou_pages; do
+      sed -nE "s/^\[\[([^],]+)\]\]$/s@xref:\1\\\\[@xref:ROOT:aou-$page.adoc#\1[@g/p" \
+        "$MOD/aou/partials/$page.adoc"
+    done
+  ) "$MOD"/aou/partials/{overview,architecture,interrupts-errors,ppa-appendices,records-of-changes,referenced-documents}.adoc
   ;;
 integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
@@ -171,6 +208,34 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
 
+# --- ip: index pages include their topic fragments. For IP_PAGE_OWNERS,
+#     the topic fragments listed in IP_FRAGMENTS move out of pages/ and into
+#     partials/ so they are private (no standalone URL). The owning index page
+#     includes them via the partial$ prefix for HTML or a relative path for PDF.
+#     CTN memmap.adoc also moves to partials/; it owns CTM and CTP register maps.
+IP_PAGE_OWNERS="jtag_intf_unit jtag_ptap jtag_stap
+cross_trigger_network cross_trigger_port cross_trigger_matrix
+avsbus_controller axi_lite_mailbox_unit efuse gpio i2c system_timer_octs
+telemetry_receiver uart_16550 log_engine i3ccore_wrap
+drbg entropy_source key_manager scrambler"
+IP_FRAGMENTS="architecture.adoc interface.adoc memmap.adoc programming.adoc firmware.adoc"
+for ip in $IP_PAGE_OWNERS; do
+  src="$MOD/ip/pages/$ip/doc"
+  dst="$MOD/ip/partials/$ip/doc"
+  for frag in $IP_FRAGMENTS; do
+    if [ -f "$src/$frag" ]; then
+      mkdir -p "$dst"
+      mv "$src/$frag" "$dst/$frag"
+    fi
+  done
+done
+
+# The TRM's combined TRNG/DRBG page alias and a standalone DRBG page cannot
+# own the same URL. The DRBG architecture remains a reusable partial.
+if [ "$(basename "$PRODUCT")" = "trm" ]; then
+  rm -f "$MOD/ip/pages/drbg/doc/index.adoc"
+fi
+
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
 #     collateral is generated into the lowRISC overlay rather than hw/ip, because
 #     they are instantiated through wrappers (e.g. the DRBG wraps CSRNG and EDN).
@@ -196,8 +261,8 @@ stage_gen_html "$ROOT/vendor/pulp-platform/idma/overlay/rdl/gen/html" "$MOD/ip/p
 while IFS= read -r img; do
   mkdir -p "$ASSETS"
   cp -f "$img" "$ASSETS/" 2>/dev/null || true
-done < <(find "$ROOT"/hw/ip/*/doc "$ROOT"/hw/ip/*/*/doc "$ROOT"/hw/sys/*/doc \
-  -type f \( -name '*.png' -o -name '*.svg' -o -name '*.jpg' -o -name '*.jpeg' \) 2>/dev/null)
+done < <(find -L "$ROOT"/hw/ip/*/doc "$ROOT"/hw/ip/*/*/doc "$ROOT"/hw/sys/*/doc -type f \
+  \( -name '*.png' -o -name '*.svg' -o -name '*.jpg' -o -name '*.jpeg' \) 2>/dev/null)
 
 stage_module_assets() {
   local src="$1"

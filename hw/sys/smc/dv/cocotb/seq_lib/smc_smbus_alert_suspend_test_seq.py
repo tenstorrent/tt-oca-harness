@@ -120,7 +120,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             st = await self.csr_read(f"{label}_{i}", st_a)
             if (st & want_set) == want_set and (st & want_clear) == 0:
                 return st
-            await Timer(_POLL_STEP_US, units="us")
+            await Timer(_POLL_STEP_US, unit="us")
         raise AssertionError(
             f"{label} timeout SMBUS_STATUS=0x{st:08x} "
             f"want_set=0x{want_set:x} want_clear=0x{want_clear:x}"
@@ -134,7 +134,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             bit = bool(ir & I2C_INTR_STATE_SMBALERT)
             if bit == want_set:
                 return ir
-            await Timer(_POLL_STEP_US, units="us")
+            await Timer(_POLL_STEP_US, unit="us")
         raise AssertionError(f"{label} timeout INTR_STATE=0x{ir:08x} want_set={want_set}")
 
     async def _await_smbus_ctrl_alert(self, label: str, idx: int, *, want_set: bool) -> int:
@@ -145,7 +145,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             bit = bool(ctrl & I2C_SMBUS_CTRL_SMBALERT)
             if bit == want_set:
                 return ctrl
-            await Timer(_POLL_STEP_US, units="us")
+            await Timer(_POLL_STEP_US, unit="us")
         raise AssertionError(f"{label} timeout SMBUS_CTRL=0x{ctrl:08x} want_alert={want_set}")
 
     async def _host_ara_read(self) -> int:
@@ -167,7 +167,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             if not (status & I2C_STATUS_RXEMPTY):
                 rdata = await self.csr_read("ARA_RDATA", rdata_a) & 0xFF
                 break
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         else:
             raise AssertionError(f"ARA RX empty timeout STATUS=0x{status:08x}")
 
@@ -175,7 +175,7 @@ class smc_smbus_alert_suspend_test_seq(SmcCsrSeq):
             status = await self.csr_read(f"ARA_IDLE_{i}", status_a)
             if status & I2C_STATUS_HOSTIDLE:
                 return rdata
-            await Timer(10, units="us")
+            await Timer(10, unit="us")
         raise AssertionError(
             f"ARA HOSTIDLE timeout after RDATA=0x{rdata:02x} STATUS=0x{status:08x}"
         )

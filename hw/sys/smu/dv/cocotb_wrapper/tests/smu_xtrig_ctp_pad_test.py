@@ -3,15 +3,20 @@
 """smu_xtrig_ctp_pad_test - cross-trigger port pads at the SMU boundary.
 
 The DTP cross-trigger network owns all four CTP pad groups of smu_wrapper.
-This leaf programs it through the SMC peripheral window: it checks the wire-OR
-pad directions it resets to and the five outputs the network ties off, swaps
-one lane to point-to-point and checks the enables move on that lane alone,
-runs the four-phase handshake in both directions, and routes a trigger through
-the cross trigger matrix to a second port and to an internal cross-trigger
-lane at xtrig_ctm_src_req_o.
+This leaf programs it through the SMC peripheral window: it checks every pad
+control against the CTP signal interface table at its wire-OR reset level and
+the five pad-ring controls that table defines no driver for, swaps one lane to
+point-to-point and checks the controls move on that lane alone, runs the
+four-phase handshake in both directions, and routes a trigger through the
+cross trigger matrix to a second port and to an internal cross-trigger lane at
+xtrig_ctm_src_req_o. A wire-OR port's CT_Req_out pad sits on an
+ocah_open_drain_bus shared wire, private or the group pads in
+tb_xtrig_ctp_wire_group share, and its ct_dst is checked cycle-exactly against
+a chiplet pull of that wire. Addresses, counts and bitmasks come from the
+generated cross-trigger headers.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
-    --items smu_xtrig_ctp_pad_test --target compile_smu_chiplet_no_sep
+    --items smu_xtrig_ctp_pad_test --target compile_smu_chiplet
 """
 
 from __future__ import annotations

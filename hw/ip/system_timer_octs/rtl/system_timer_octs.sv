@@ -1,44 +1,78 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// System Timer OCTS
+// Wrap the OCTS system timer with AXI-Lite CSRs and primary/secondary sync.
 //
-//-----------------------------------------------------------------------------
-
-// Description: Top level wrapper for the System Timer OCTS
-
+// is_primary_i selects primary versus secondary mode at runtime.
+// timer_sync_load_* and timer_cnt_credit_* carry the OCTS synchronization pulses.
+// timer_count_o is the live 64-bit count; timer_gpio_enable_o gates an optional GPIO
+// export.
+// CREDIT_EXPIRED reads the largest run of credit-starved cycles seen in SECONDARY mode, and a
+// write to it clears the record.
 
 module system_timer_octs
   import system_timer_octs_pkg::*;
 (
-  // Global Interface
-  input  logic                         clk_i,
-  input  logic                         rst_ni,
+  input  logic                         clk_i,               // System clock.
+                                                            // Rising edge; all logic is synchronous
+                                                            // to it. Its frequency sets the timer
+                                                            // resolution and the synchronization
+                                                            // timing.
+  input  logic                         rst_ni,              // Async reset, active-low.
+                                                            // Assert asynchronously; deassert
+                                                            // synchronously to clk_i. Clears all
+                                                            // counters, state machines and
+                                                            // registers.
 
-  // Primary/Secondary mode select (runtime signal)
-  input  logic                         is_primary_i,
+  input  logic                         is_primary_i,        // Runtime primary/secondary mode
+                                                            // select. 1 selects PRIMARY, which
+                                                            // generates the sync pulses; 0 selects
+                                                            // SECONDARY, which receives them. Sets
+                                                            // the timer behaviour, STATUS.MODE and
+                                                            // the direction of the sync signals.
 
-  // AXI4-Lite Register Interface
-  input  system_timer_octs_axil_req_t  axil_req_i,
-  output system_timer_octs_axil_resp_t axil_resp_o,
+  input  system_timer_octs_axil_req_t  axil_req_i,          // AXI-Lite CSR request.
+  output system_timer_octs_axil_resp_t axil_resp_o,         // AXI-Lite CSR response.
 
+  input  logic                         timer_sync_load_i,   // Inbound sync-load pulse.
+                                                            // Active high, synchronized into clk_i
+                                                            // and rising-edge detected.
+                                                            // Loads the count from the preset and
+                                                            // starts the timer. Ignored in PRIMARY
+                                                            // mode.
+  input  logic                         timer_cnt_credit_i,  // Inbound credit pulse.
+                                                            // Active high, synchronized into clk_i
+                                                            // and rising-edge detected.
+                                                            // Replenishes the credits of a
+                                                            // SECONDARY timer. Ignored in PRIMARY
+                                                            // mode.
+  output logic                         timer_sync_load_o,   // Outbound sync-load pulse.
+                                                            // Active high. The PRIMARY timer pulses
+                                                            // it for CTRL.PULSE_WIDTH cycles on a
+                                                            // write to START for system-wide
+                                                            // initialization. Held low
+                                                            // in SECONDARY mode.
+  output logic                         timer_cnt_credit_o,  // Outbound credit pulse.
+                                                            // Active high. The PRIMARY timer pulses
+                                                            // it every CTRL.CREDIT_VAL cycles, for
+                                                            // CTRL.PULSE_WIDTH cycles, to keep the
+                                                            // SECONDARY
+                                                            // timers synchronized. Held low in
+                                                            // SECONDARY mode.
 
-  // OCTS Synchronization Interface
-  input  logic                         timer_sync_load_i,
-  input  logic                         timer_cnt_credit_i,
-  output logic                         timer_sync_load_o,
-  output logic                         timer_cnt_credit_o,
+  output logic [63:0]                  timer_count_o,       // Live 64-bit timer count.
+                                                            // Advances by one each cycle in PRIMARY
+                                                            // mode and by CTRL.STEP each cycle in
+                                                            // SECONDARY mode while credits remain.
 
-  // Timer Interface
-  output logic [63:0]                  timer_count_o,
+  output logic                         timer_gpio_enable_o, // TIMER_GPIO_ENABLE.GPIO_ENABLE;
+                                                            // enables the GPIO LSIO interface of
+                                                            // the timer.
 
-  // GPIO Interface
-  output logic                         timer_gpio_enable_o,
-
-  // Debug output
-  output logic [8:0]                   cur_credits_debug_o,
-  output logic                         credits_left_debug_o
+  output logic [8:0]                   cur_credits_debug_o, // SECONDARY steps consumed since the
+                                                            // last credit or sync pulse.
+  output logic                         credits_left_debug_o // High while cur_credits_debug_o is
+                                                            // below CTRL.CREDIT_VAL.
 );
 
   /////////////////////////
@@ -61,6 +95,9 @@ module system_timer_octs
   logic [31:0] count_hi;
   logic [7:0]  pulse_width;
   logic [31:0] credit_expired;
+  logic        rst_credit_expired;
+
+  assign rst_credit_expired = hwif_out.CREDIT_EXPIRED.req & hwif_out.CREDIT_EXPIRED.req_is_wr; // If we get a write to this register, reset the value
 
   /////////////////////////
   // Timer Core Instance //
@@ -93,6 +130,7 @@ module system_timer_octs
     .timer_cnt_step_i     (step),
 
     // Credit expired counter (SECONDARY only)
+    .credit_expired_clr_i (rst_credit_expired),
     .credit_expired_o     (credit_expired),
 
     // Timer outputs
@@ -107,11 +145,9 @@ module system_timer_octs
   // Credit Expired Logic //
   //////////////////////////
 
-  logic rst_credit_expired;
   logic [31:0] credit_expired_value_d, credit_expired_value_q;
 
   assign credit_expired_value_d   = (credit_expired_value_q < credit_expired) ? credit_expired : credit_expired_value_q; // Max(credit_expired_value, credit_expired)
-  assign rst_credit_expired       = hwif_out.CREDIT_EXPIRED.req & hwif_out.CREDIT_EXPIRED.req_is_wr; // If we get a write to this register, reset the value
 
   always_ff @(posedge clk_i or negedge rst_ni) begin
     if (~rst_ni) begin

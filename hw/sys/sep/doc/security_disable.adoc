@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Security Disable (SEC_DIS)
+:description: SEP emergency security-disable behavior and integration requirements.
+
+ifdef::backend-html5[]
+:dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:dtp-ic-reset-overrides-ref: <<dtp-ic-reset-overrides>>
+endif::backend-html5[]
+
 [[security-disable-sec_dis]]
-==== Security Disable (SEC_DIS)
 
 Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
 silicon. On deassertion of power-on reset, the fuse sense logic runs before
@@ -19,13 +28,24 @@ chain to a dump: that chain admits only test commands, and only at
 `secure_tm = 1`, independently of the feature-control bits (see the Life Cycle
 Controller chapter, _`secure_tm` and the Secure Scan Chain_).
 
+== Token Activation
+
 SEC_DIS is activated by presenting a secret token: SEC_DIS_TOKEN_I is passed
 into the SEP via the JTAG port, hashed, and redundantly compared against an
 embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
 SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
 debug access, and the feature-control output follows the SEC_DIS rules in the
-Life Cycle Controller chapter. Once SEC_DIS is active,
-the SEP can boot even if the fuse sense logic never completes.
+Life Cycle Controller chapter.
+
+A match does not release the SEP reset, which stays held until fuse sensing
+completes. To boot a part whose fuse sensing does not complete, override
+`sep_reset_n` through the SEP slice of the IC_RESET TDR (see
+{dtp-ic-reset-overrides-ref} in the DTP chapter). The override and the token
+match are independent JTAG steps: the override alone releases the reset but
+leaves the life-cycle control closed, so recovering such a part for debug
+takes both.
+
+== Silicon Revision Scope
 
 SEC_DIS is intended for A0 silicon only and is removed in later revisions
 (A1/B0) by a simple metal-mask ECO: the token comparator's enable is
@@ -33,7 +53,7 @@ implemented in a metal-programmable revision cell, strapped to 1 (comparator
 enabled) in A0 silicon and re-strapped to 0 at top metal in later revisions,
 so the feature is killed without a re-spin.
 
-Implementation requirements:
+== Implementation Requirements
 
 * The token secret itself is never stored in RTL; the RTL stores only the
 token hash value, and the hardware forces every presented token through the
@@ -66,4 +86,3 @@ implementation flow -- for example as an RTL parameter passed down the
 instance hierarchy (chiplet top to SMU to SEP to fuse controller). One member of the DV team
 shall perform final verification of the SEC_DIS_TOKEN functionality on the
 post-layout extracted netlist with *_gate-level simulation_*.
-

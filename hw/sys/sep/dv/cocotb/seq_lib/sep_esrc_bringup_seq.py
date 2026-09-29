@@ -118,8 +118,20 @@ EDN_CTRL_BOOT = EDN.value(
     AUTO_REQ_MODE=_MUBI4_FALSE,
     CMD_FIFO_RST=_MUBI4_FALSE,
 )
-CMD_INSTANTIATE = 0x0000_0901  # acmd=1, flag0=9 (use real entropy)
-CMD_RESEED = 0x0000_0902  # acmd=2
+
+
+def csrng_cmd(*, acmd: int, flag0: int = 0x9, clen: int = 0, glen: int = 0) -> int:
+    """CSRNG command word: {8'h0, glen[11:0], flag0[3:0], clen[3:0], acmd[3:0]}.
+
+    ``flag0=0x9`` is the OpenTitan ``kMultiBitBool4True`` encoding (use real
+    entropy). Field layout is the CSRNG application-command word, not an RDL
+    register; ``csrng_generate_cmd`` uses the same packing.
+    """
+    return ((glen & 0xFFF) << 12) | ((flag0 & 0xF) << 8) | ((clen & 0xF) << 4) | (acmd & 0xF)
+
+
+CMD_INSTANTIATE = csrng_cmd(acmd=1)
+CMD_RESEED = csrng_cmd(acmd=2)
 RING_OSC_SAMPLECLK_ONLY = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0, SAMPLE_CLK_ENABLE=0xFFF)
 RING_OSC_ALL_ON = ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0xFFF, SAMPLE_CLK_ENABLE=0xFFF)
 
@@ -152,8 +164,8 @@ GENBITS_TIMEOUT = 60_000
 
 
 def csrng_generate_cmd(glen: int) -> int:
-    """csrng cmd word {8'h0, glen[11:0], flag0=9(use-entropy), clen=0, acmd=3}."""
-    return ((glen & 0xFFF) << 12) | (0x9 << 8) | 0x3
+    """CSRNG generate command: acmd=3, flag0=use-entropy, glen from the config."""
+    return csrng_cmd(acmd=3, glen=glen)
 
 
 @dataclass(frozen=True)
@@ -211,7 +223,7 @@ class SepEntropyCfg:
     def decor_ctrl(self) -> int:
         """DECORRELATOR_CTRL: SAMPLE_CLK_DIV in [31:12] (byte_mask is a separate
         register left at its 0xFF reset default)."""
-        return (self.sample_clk_div & 0xFFFFF) << 12
+        return ENTROPY_SOURCE.value("DECORRELATOR_CTRL", SAMPLE_CLK_DIV=self.sample_clk_div)
 
     @property
     def esrc_ctrl_whiten(self) -> int:
@@ -350,7 +362,8 @@ class SepEsrcFifoDrainSeq(uvm_sequence):
         self.words: list[int] = []
 
     async def body(self) -> None:
-        level = (await _rd(self, ESRC_FIFO_STATUS)) & 0x7F
+        level_meta = ENTROPY_SOURCE.fields("FIFO_STATUS")["LEVEL"]
+        level = ((await _rd(self, ESRC_FIFO_STATUS)) & level_meta["bm"]) >> level_meta["bp"]
         for _ in range(min(level, self.max_words)):
             self.words.append((await _rd(self, ESRC_FIFO_RDATA)) & 0xFFFFFFFF)
 

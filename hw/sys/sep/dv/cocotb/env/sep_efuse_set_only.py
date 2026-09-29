@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Seed-derived set-only shadow OR-merge policy.
 
-Every ``periphs.adoc`` fuse-field row except ``LC_STATE`` is walked.
+Every ``otp_fuse_controller.adoc`` fuse-field row except ``LC_STATE`` is walked.
 Set-only rows come from ``spec_set_only_walk``; ``LOCK`` comes from
 ``spec_lock_walk`` (both ``LOCKS`` words and ``LOCKS_SPARE``) after the
 other rows; SW-writable ``true`` rows come from

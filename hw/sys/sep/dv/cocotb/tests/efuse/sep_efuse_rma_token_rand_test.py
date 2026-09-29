@@ -76,10 +76,14 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             "FEAT_CTRL golden below would follow the DUT rather than grade it"
         )
         seq = sep_lcc_stitch_check_seq(image, sec_dis=0)
+        mark = self.sb_mark()
         await self.start_seq(seq)
         assert seq.observed_lc_raw == raw, (
             f"{tag}: observed LC 0x{seq.observed_lc_raw:x} != {lc_state_name(raw)}"
         )
+        # FEAT_CTRL is graded by the scoreboard against item.expected; the PASS
+        # line below rests on that judgment, not on the deferred check_phase.
+        self.assert_sb_judged(mark, f"CHK-LC-FEAT {tag}")
         self.logger.info(
             "CHK-LC-FEAT PASS: %s LC=%s FEAT_CTRL=0x%016x",
             tag,
@@ -131,7 +135,9 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         )
 
     def _irq39(self) -> int:
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> IRQ_TOKEN_MATCH_FAULT) & 1
+        mask = 1 << IRQ_TOKEN_MATCH_FAULT
+        vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask)
+        return (vec >> IRQ_TOKEN_MATCH_FAULT) & 1
 
     async def _rd_fault(self) -> int:
         seq = SepAxiAccessSeq("token_fault_rd", op=SepAxiOp.READ, addr=TOKEN_MATCH_FAULT)
@@ -250,11 +256,15 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         assert irq == 1, "irq39 dropped on a valid-token retry"
         await self._wr_fault(0)
         still = await self._rd_fault()
-        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write 0 left 0x{still:x}"
+        assert still & FAULT_RMA_SIP, f"TOKEN_MATCH_FAULT is sw=r; write-0 left 0x{still:x}"
+        irq_after = self._irq39()
+        assert irq_after == 1, "irq39 dropped after the write-0 to TOKEN_MATCH_FAULT"
         self.logger.info(
-            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=1, write-0 ignored",
+            "CHK-STICKY PASS: valid retry code=0x%02x, FAULT=0x%08x irq39=%d after "
+            "the write-0, so the fault and the interrupt stayed set",
             code,
             still,
+            irq_after,
         )
 
         await self._set_inject(TOKEN_CMP_INJECT_DISAGREE)
@@ -284,6 +294,11 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             f"SEC_DISABLE collapse did not set bit 16: FAULT=0x{fault:x}"
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
+        all_three = FAULT_RMA_SIP | FAULT_RMA_CHIPLET | FAULT_SEC_DISABLE
+        assert (fault & all_three) == all_three, (
+            f"CHK-WHICH-TOKEN FAIL: FAULT=0x{fault:08x} after the third collapse; each fault "
+            f"bit is sticky, so all of 0x{all_three:08x} must still be set"
+        )
         self.logger.info(
             "CHK-WHICH-TOKEN PASS: FAULT=0x%08x (SIP bit0 + CHIPLET bit8 + SEC_DISABLE bit16)",
             fault,

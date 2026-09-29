@@ -17,12 +17,19 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       run_hardware_ci: ${{ steps.diff-class.outputs.run_hardware_ci }}
+      run_nix_ci: ${{ steps.diff-class.outputs.run_nix_ci }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request' || github.event_name == 'push'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init --recursive
+
       - name: Classify the diff
         id: diff-class
         run: |
@@ -32,6 +39,7 @@ jobs:
               ;;
             *)
               echo "run_hardware_ci=true" >> "$GITHUB_OUTPUT"
+              echo "run_nix_ci=true" >> "$GITHUB_OUTPUT"
               ;;
           esac
 
@@ -138,7 +146,10 @@ jobs:
             printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
           fi
           exit 0
+      # The Checks API post is advisory. Verilator's exit status, gated
+      # below, fails the job.
       - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
         with:
           log-file: verilator_${{ matrix.block }}.sarif
           format: sarif
@@ -157,6 +168,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -175,7 +190,10 @@ jobs:
             printf '%s\n' '{"version":"2.1.0","runs":[]}' > "$sarif"
           fi
           exit 0
+      # The Checks API post is advisory. Ruff's exit status, gated below,
+      # fails the job.
       - uses: ./.github/actions/reviewdog-report
+        continue-on-error: true
         with:
           log-file: ruff.sarif
           format: sarif
@@ -201,6 +219,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -229,6 +251,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -237,6 +263,19 @@ jobs:
         run: make ocah-lint-spelling 2>&1 | tee lint_spelling.log || true
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: lint_spelling.log, efm: '%f:%l: %m', level: error, name: lint-spelling }
+
+  lint-sv-comments:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Check SystemVerilog comments
+        run: make ocah-lint-sv-comments 2>&1 | tee lint_sv_comments.log || true
+      - uses: ./.github/actions/reviewdog-report
+        with: { log-file: lint_sv_comments.log, efm: '%f:%l: %m', level: error, name: lint-sv-comments }
 
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
   # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
@@ -285,6 +324,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -302,6 +345,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -377,6 +424,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -397,6 +448,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -414,6 +469,42 @@ jobs:
           level: error
           name: format-c
 
+  format-nix:
+    needs: [diff-class, setup-tools]
+    if: needs.diff-class.outputs.run_nix_ci == 'true'
+    runs-on: ubuntu-latest
+    permissions: { contents: read, checks: write, pull-requests: write }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+           fetch-depth: 0
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          sed -i 's|git@github.com:tenstorrent/|https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/|g' $GITHUB_WORKSPACE/.gitmodules
+          git submodule update --init
+          git config --global --add safe.directory $GITHUB_WORKSPACE/hw/sys/sep/bootrom/prod/tools/tt-oca-manifest
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}
+      - name: Run nix-fmt
+        run: |
+          set +e
+          NIX_FMT_CHECK_NO_COLOUR=1 nix fmt -- -f check > "$GITHUB_WORKSPACE/format_nix_raw.log" 2>&1
+          nix_exit=$?
+          echo "nix fmt exit: $nix_exit" >&2
+          cat "$GITHUB_WORKSPACE/format_nix_raw.log" >&2
+          awk '/^diff --git/{found=1} found && /^(traversed |emitted |formatted [0-9]|Error: )/{exit} found{print}' \
+            "$GITHUB_WORKSPACE/format_nix_raw.log" > "$GITHUB_WORKSPACE/format_nix.log"
+      - uses: ./.github/actions/reviewdog-report
+        with:
+          log-file: ${{ github.workspace }}/format_nix.log
+          format: diff
+          name: format-nix
+
   lint-tcl:
     needs: [diff-class, setup-tools]
     if: needs.diff-class.outputs.run_hardware_ci == 'true'
@@ -422,6 +513,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
@@ -528,6 +623,11 @@ jobs:
               ;;
           esac
           echo "run=$run" >> "$GITHUB_OUTPUT"
+      - name: Checkout submodules
+        if: steps.scope.outputs.run == 'true'
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         if: steps.scope.outputs.run == 'true'
         uses: astral-sh/setup-uv@v6
@@ -536,6 +636,27 @@ jobs:
       - name: Run the DV unit tests
         if: steps.scope.outputs.run == 'true'
         run: uv run --locked --group dv python -m unittest discover tools/dv/tests
+
+  doc-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: { contents: read }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+      - name: Install the converter the block catalog tests convert through
+        run: npm install -g @asciidoctor/core@3
+      - name: Run the documentation unit tests
+        run: |
+          NODE_PATH="$(npm root -g)" python3 -m unittest discover tools/doc/tests
 
   # Deletes and regenerates every register block's collateral from the RDLs,
   # then fails if the working tree changes. The shared checker forces every
@@ -556,6 +677,10 @@ jobs:
           # check; match diff-class's fetch-depth here so the bypass has
           # real history to work with.
           fetch-depth: 0
+      - name: Checkout submodules
+        run: |
+          git config --global url."https://x-access-token:${{ secrets.OCA_BOOT_MANIFEST_OCA_MODEL_PAT }}@github.com/tenstorrent/".insteadOf "git@github.com:tenstorrent/"
+          git submodule update --init
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:

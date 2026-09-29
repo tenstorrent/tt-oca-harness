@@ -15,7 +15,7 @@
 //   * IC_RESET[6:0]: reset_hold plus one {enable, control} pair per
 //     default slice in EXT, SEP, SMC order;
 //   * JTAG_CAPS[59:0] / *_JTAG2AXI_CAPS[13:0]: read-only capability TDRs
-//     compared against the standalone OSS DTP elaboration constants;
+//     compared against the bench's declared DTP configuration (dtp_types);
 //   * pin observables through dtp_tb_if (stop_clks, cla_clock_stop_en,
 //     boot-stall pair, flattened IC_RESET slices) with a bounded poll —
 //     stop_clks passes through a 2-flop synchronizer and an output flop,
@@ -32,14 +32,14 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   // Register sizes: DEBUG_CONTROL from the interface-unit instruction table;
   // IC_RESET is reset_hold plus one {enable, control} pair per port
   // ("IC_RESET Support" table), one SMC, one SEP, and one external port in
-  // the standalone DTP; JTAG_CAPS[59:0] ("JTAG Capabilities" table) and
-  // *_JTAG2AXI_CAPS[13:0] from the PTAP document.
+  // the bench's DTP configuration; JTAG_CAPS[59:0] ("JTAG Capabilities"
+  // table) and *_JTAG2AXI_CAPS[13:0] from the PTAP document.
   localparam int unsigned DebugControlLen = 5;
-  localparam int unsigned IcResetPorts = 3;
+  localparam int unsigned IcResetPorts = DtpNumSmcIcReset + DtpNumSepIcReset + DtpNumExtIcReset;
   localparam int unsigned IcResetLen = 2 * IcResetPorts + 1;
   localparam int unsigned JtagCapsLen = 60;
   localparam int unsigned Jtag2AxiCapsLen = DtpJtag2AxiCapsLen;
-  localparam int unsigned NumClkStopReq = dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ;
+  localparam int unsigned NumClkStopReq = DtpNumClkStopReq;
 
   // DEBUG_CONTROL bit positions.
   localparam int unsigned DbgBootStallBit = 0;
@@ -55,6 +55,9 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     ICR_SEP = 1,
     ICR_SMC = 2
   } icr_port_e;
+
+  // Observables already reported X in this pass (one error per name).
+  protected bit m_x_reported[string];
 
   function new(string name = "dtp_debug_tdr_base_test_seq");
     super.new(name);
@@ -132,19 +135,20 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- CAPS TDRs ---------------------------------------------------------------
-  // Expected JTAG_CAPS for the standalone OSS DTP instantiation
-  // (elaboration constants: XTRIG 10 internal / 16 CTP, 1 extra STAP, all
-  // instruction families enabled, one IC_RESET slice per port, OCH v0).
+  // Expected JTAG_CAPS of the DTP configuration the bench instantiates
+  // (dtp_types bench-configuration constants), packed per the "JTAG
+  // Capabilities" table of the PTAP document: every instruction family
+  // enabled, one IC_RESET slice per port.
   static function bit [63:0] expected_jtag_caps();
-    return (64'd10 << 54)  // NUM_XTRIG_INT_CT
-    | (64'd16 << 48)  // NUM_XTRIG_CTP
-    | (64'd1 << 44)  // NUM_EXTRA_STAPS
-    | (64'd1 << 43)  // STAP_IO_EN
-    | (64'd1 << 42)  // SEP_DBG_EN
-    | (64'd1 << 41)  // SMC_DBG_EN
-    | (64'd1 << 33)  // NUM_SMC_IC_RESET
-    | (64'd1 << 25)  // NUM_SEP_IC_RESET
-    | (64'd1 << 17)  // NUM_EXT_IC_RESET
+    return (64'(DtpXtrigNumIntCt) << 54)  // num_xtrig_int_ct
+    | (64'(DtpXtrigNumCtp) << 48)  // num_xtrig_ctp
+    | (64'(DtpNumExtraStaps) << 44)  // num_xtra_stap
+    | (64'd1 << 43)  // stap_io_en
+    | (64'd1 << 42)  // sep_dbg_en
+    | (64'd1 << 41)  // smc_dbg_en
+    | (64'(DtpNumSmcIcReset) << 33)  // num_smc_ic_rst
+    | (64'(DtpNumSepIcReset) << 25)  // num_sep_ic_rst
+    | (64'(DtpNumExtIcReset) << 17)  // num_ext_ic_rst
     | (64'd1 << 16)  // IC_RST_INST_EN
     | (64'd1 << 15)  // TMP_INST_EN
     | (64'd1 << 14)  // RUNBIST_INST_EN
@@ -154,13 +158,12 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     | (64'd1 << 10)  // EXTEST_PULSE_EN
     | (64'd1 << 9)  // EXTEST_TRAIN_EN
     | (64'd1 << 8)  // BSR_INST_EN
-    | 64'd0;  // OCH_VER
+    | 64'(DtpOchVer);  // och_ver
   endfunction
 
-  static function bit [63:0] expected_jtag2axi_caps(bit bus_type, int unsigned addr_width,
-                                                    int unsigned data_width_bits,
-                                                    int unsigned rd_pl_depth = DtpJ2aPipelineDepth,
-                                                    int unsigned wr_pl_depth = DtpJ2aPipelineDepth);
+  static function bit [63:0] expected_jtag2axi_caps(
+      bit bus_type, int unsigned addr_width, int unsigned data_width_bits, int unsigned rd_pl_depth,
+      int unsigned wr_pl_depth);
     int unsigned size_enc = $clog2(data_width_bits / 8);
     return (64'(rd_pl_depth) << 12)
              | (64'(wr_pl_depth) << 10)
@@ -224,7 +227,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     bit bus_type = t.bus_type;
     int unsigned addr_width = t.addr_width;
     int unsigned data_width_bits = t.data_width;
-    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits);
+    bit [63:0] expected = expected_jtag2axi_caps(bus_type, addr_width, data_width_bits,
+                                                 t.rd_pl_depth, t.wr_pl_depth);
     bit [63:0] value, reread;
     read_caps_tdr(instr, Jtag2AxiCapsLen, value);
     `uvm_info(
@@ -236,8 +240,8 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
     family_check("CHK-CAPS", {label, ".addr_width"}, 64'(value[6:1]), 64'(addr_width & 'h3F));
     family_check("CHK-CAPS", {label, ".data_size"}, 64'(value[9:7]), 64'($clog2(data_width_bits / 8
                  )));
-    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(DtpJ2aPipelineDepth));
-    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(DtpJ2aPipelineDepth));
+    family_check("CHK-CAPS", {label, ".wr_pl_depth"}, 64'(value[11:10]), 64'(t.wr_pl_depth));
+    family_check("CHK-CAPS", {label, ".rd_pl_depth"}, 64'(value[13:12]), 64'(t.rd_pl_depth));
     check_caps_multi_read(instr, Jtag2AxiCapsLen, value, label);
     check_caps_read_only_patterns(instr, Jtag2AxiCapsLen, value, label);
     // Instruction switches must not disturb the stored capability value.
@@ -250,23 +254,31 @@ class dtp_debug_tdr_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- pin observables through dtp_tb_if -----------------------------------
+  // An X on a debug observable is an error once per name per pass: a zero
+  // expectation would otherwise absorb it.
   function bit [63:0] sample_dbg_signal(string name);
+    logic [63:0] sampled;
     case (name)
-      "stop_clks":                return 64'(tb_vif.stop_clks);
-      "cla_clock_stop_en":        return 64'(tb_vif.cla_clock_stop_en);
-      "jtag_boot_stall":          return 64'(tb_vif.jtag_boot_stall);
-      "jtag_boot_stall_ovrd":     return 64'(tb_vif.jtag_boot_stall_ovrd);
-      "jtag_ic_reset_smc_ovrd":   return 64'(tb_vif.jtag_ic_reset_smc_ovrd);
-      "jtag_ic_reset_smc_ctrl_n": return 64'(tb_vif.jtag_ic_reset_smc_ctrl_n);
-      "jtag_ic_reset_sep_ovrd":   return 64'(tb_vif.jtag_ic_reset_sep_ovrd);
-      "jtag_ic_reset_sep_ctrl_n": return 64'(tb_vif.jtag_ic_reset_sep_ctrl_n);
-      "jtag_ic_reset_ext_ovrd":   return 64'(tb_vif.jtag_ic_reset_ext_ovrd);
-      "jtag_ic_reset_ext_ctrl_n": return 64'(tb_vif.jtag_ic_reset_ext_ctrl_n);
+      "stop_clks":                sampled = 64'(tb_vif.stop_clks);
+      "cla_clock_stop_en":        sampled = 64'(tb_vif.cla_clock_stop_en);
+      "jtag_boot_stall":          sampled = 64'(tb_vif.jtag_boot_stall);
+      "jtag_boot_stall_ovrd":     sampled = 64'(tb_vif.jtag_boot_stall_ovrd);
+      "jtag_ic_reset_smc_ovrd":   sampled = 64'(tb_vif.jtag_ic_reset_smc_ovrd);
+      "jtag_ic_reset_smc_ctrl_n": sampled = 64'(tb_vif.jtag_ic_reset_smc_ctrl_n);
+      "jtag_ic_reset_sep_ovrd":   sampled = 64'(tb_vif.jtag_ic_reset_sep_ovrd);
+      "jtag_ic_reset_sep_ctrl_n": sampled = 64'(tb_vif.jtag_ic_reset_sep_ctrl_n);
+      "jtag_ic_reset_ext_ovrd":   sampled = 64'(tb_vif.jtag_ic_reset_ext_ovrd);
+      "jtag_ic_reset_ext_ctrl_n": sampled = 64'(tb_vif.jtag_ic_reset_ext_ctrl_n);
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown debug observable '%s'", name))
-        return '0;
+        sampled = '0;
       end
     endcase
+    if ($isunknown(sampled) && !m_x_reported.exists(name)) begin
+      m_x_reported[name] = 1'b1;
+      `uvm_error(get_type_name(), $sformatf("debug observable %s sampled X", name))
+    end
+    return sampled;
   endfunction
 
   // Single-sample observable compare through the family recorder.

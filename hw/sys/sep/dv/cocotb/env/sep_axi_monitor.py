@@ -9,11 +9,20 @@ Verilator build cannot run (gated off by ``VERILATOR``). It
 checks, per accepted bus beat:
 
   * **read-data integrity** -- an accepted R beat (``rvalid && rready``) that
-    returns OKAY/EXOKAY must not carry fully-unresolved (all-X/Z) data; an all-X
-    read on a *successful* response means a non-responding or uninitialised
-    register path (the classic thing an RTL assertion catches). Error responses
-    (SLVERR/DECERR) may legitimately carry X data, so the check is gated to
-    successful beats.
+    returns OKAY/EXOKAY must not carry an X/Z bit in the byte lanes the read
+    accesses. The monitor records every AR handshake on the bus (address, ARLEN,
+    ARSIZE, ARBURST, ARID) and joins each R beat to its AR by RID, so it knows
+    which lanes each beat carries (AMBA IHI 0022, "Transfer address" and
+    "Data read and write structure"). Lanes outside the transfer are not
+    checked. The driver resolves X/Z to 0 when it packs ``item.rdata``, so this
+    is the only place an unknown read value is visible: without it a
+    zero-expecting compare passes on an undriven read path. An R beat with no
+    recorded AR (for example CPU traffic on the shared response path) gets the
+    weaker whole-bus check: it fails only when every data bit is X/Z. Error
+    responses (SLVERR/DECERR) may legitimately carry X data, so both checks
+    are gated to successful beats. A read that must accept unknown data sets
+    ``SepAxiItem.allow_unknown_rdata``; the driver then opens an exemption
+    window (``open_unknown_rdata_window``) around that access.
   * **decode legality** -- flags ``DECERR`` on R/B responses (address never
     decoded), but only when ``fail_decerr`` is set. ``SLVERR`` is tallied but not
     failed (it can be intentional). A test that *intentionally* drives an
@@ -61,6 +70,53 @@ def _resp(sig):
         return None
 
 
+def _bits(sig) -> str:
+    """The per-bit string of a signal, MSB first (cocotb 1.x ``binstr``, 2.x ``str``)."""
+    value = sig.value
+    bits = getattr(value, "binstr", None)
+    return (bits if bits is not None else str(value)).strip()
+
+
+def _to_int(sig):
+    """The signal as an int, or None when any bit is not 0/1 or it is unbound."""
+    if sig is None:
+        return None
+    try:
+        return int(sig.value)
+    except Exception:
+        return None
+
+
+def _beat_lanes(ar: dict, beat: int, bus_bytes: int) -> range:
+    """Byte lanes that carry data on beat ``beat`` (0-based) of a recorded AR.
+
+    AMBA IHI 0022 A3.4.1: the first beat starts at the (possibly unaligned)
+    start address; each later beat of an INCR or WRAP burst is at the aligned
+    address plus ``beat * 2**ARSIZE``; a WRAP burst wraps at the
+    ``2**ARSIZE * (ARLEN + 1)`` boundary; a FIXED burst repeats the first
+    beat's address. An AR whose fields did not resolve selects every lane.
+    """
+    addr, size, burst, length = ar["addr"], ar["size"], ar["burst"], ar["len"]
+    if addr is None or size is None or burst is None or length is None:
+        return range(bus_bytes)
+    nbytes = 1 << size
+    aligned = (addr // nbytes) * nbytes
+    if beat == 0 or burst == 0:
+        beat_addr = addr
+    else:
+        beat_addr = aligned + beat * nbytes
+        if burst == 2:
+            span = nbytes * (length + 1)
+            lower = (addr // span) * span
+            if beat_addr >= lower + span:
+                beat_addr -= span
+    beat_aligned = (beat_addr // nbytes) * nbytes
+    base = (beat_addr // bus_bytes) * bus_bytes
+    lo = beat_addr - base
+    hi = beat_aligned + nbytes - 1 - base
+    return range(max(0, lo), min(bus_bytes - 1, hi) + 1)
+
+
 def _is_all_x(sig) -> bool:
     """True only if every bit of the data bus is X/Z (fully unresolved)."""
     try:
@@ -81,6 +137,9 @@ class SepAxiMonitor(uvm_component):
     # Overridable per instance (set in the env's build_phase, top-down).
     bus_prefix = "s_axi"
     fail_decerr = True
+    # Fail if the prefix resolved to nothing. The s_axi instance is live on
+    # every env; m_axi ports exist too, but that instance idles on most tests.
+    require_attach = True
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
@@ -93,6 +152,19 @@ class SepAxiMonitor(uvm_component):
         self._beat_capture: list[int | None] | None = None
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
+        # AR handshakes waiting for their R beats, per ARID, in issue order.
+        # Each entry carries the fields `_beat_lanes` needs, the next beat
+        # index, and whether the read is exempt from the unknown-lane check.
+        self._ar_pending: dict[int | None, list[dict]] = {}
+        self._unknown_rdata_window = 0
+        self._error_rdata_window = 0
+        self.ar_tracked = 0
+        self.r_beats_joined = 0
+        self.r_beats_lane_checked = 0
+        self.r_beats_exempt = 0
+        # The driver finds this monitor by bus prefix to open the exemption
+        # window for a read that sets allow_unknown_rdata.
+        ConfigDB().set(None, "*", f"sep_axi_monitor_{self.bus_prefix}", self)
         # Write-channel ordering. VALID assertion is the stimulus this bench
         # controls; the handshake is the slave's answer, and a slave that
         # holds wready until AW makes a W-first handshake impossible however
@@ -108,8 +180,8 @@ class SepAxiMonitor(uvm_component):
         # Consecutive slave-ready-low cycles while the matching VALID is held.
         self._ready_wait = {"aw": 0, "w": 0, "ar": 0}
         self.max_ready_wait = {"aw": 0, "w": 0, "ar": 0}
-        period = max(1, int(self.cfg.sys_clk_period_ns))
-        self.max_ready_wait_cycles = max(1, int(self.cfg.axi_timeout_ns) // period)
+        period = self.cfg.sys_clk_period_ns
+        self.max_ready_wait_cycles = max(1, int(self.cfg.axi_timeout_ns / period))
 
     def start_beat_capture(self) -> None:
         """Record the ordered RRESP of every following R beat until taken.
@@ -152,6 +224,92 @@ class SepAxiMonitor(uvm_component):
         absorb the next UNEXPECTED DECERR anywhere on this bus, so a probe
         that did not see one must hand the credit back."""
         self._armed_decerr = max(0, self._armed_decerr - n)
+
+    def open_unknown_rdata_window(self) -> None:
+        """Exempt reads whose AR handshakes before the matching close call.
+
+        For a caller that must read data that is legitimately partly unknown.
+        The exemption is per AR, so a read split into several bursts is
+        covered while the window is open, and traffic after the close is
+        checked again.
+        """
+        self._unknown_rdata_window += 1
+
+    def close_unknown_rdata_window(self) -> None:
+        self._unknown_rdata_window = max(0, self._unknown_rdata_window - 1)
+
+    def open_error_rdata_window(self) -> None:
+        """Also check error-response beats of reads whose AR handshakes before the close.
+
+        By default only OKAY/EXOKAY beats are lane-checked for X/Z. A caller that
+        grades the data of an error response (a specified error payload, or 0)
+        opens this window so an X/Z in that payload fails instead of reading as 0.
+        """
+        self._error_rdata_window += 1
+
+    def close_error_rdata_window(self) -> None:
+        self._error_rdata_window = max(0, self._error_rdata_window - 1)
+
+    def forget_pending_reads(self, axi_id: int) -> None:
+        """Drop the recorded ARs of ``axi_id`` that are still waiting for R beats.
+
+        The driver calls this after a read it issued timed out. That read's AR
+        never gets its beats, and a later read with the same ID would
+        otherwise join to it and be checked against the wrong lanes.
+        """
+        self._ar_pending.pop(axi_id, None)
+
+    def _record_ar(self, sig) -> None:
+        entry = {
+            "addr": _to_int(sig["araddr"]),
+            "len": _to_int(sig["arlen"]) if sig["arlen"] is not None else 0,
+            "size": _to_int(sig["arsize"]),
+            "burst": _to_int(sig["arburst"]) if sig["arburst"] is not None else 1,
+            "beat": 0,
+            "exempt": self._unknown_rdata_window > 0,
+            "check_error_beats": self._error_rdata_window > 0,
+        }
+        if entry["size"] is None and sig["arsize"] is None:
+            entry["size"] = self._bus_bytes.bit_length() - 1
+        arid = _to_int(sig["arid"]) if sig["arid"] is not None else 0
+        self._ar_pending.setdefault(arid, []).append(entry)
+        self.ar_tracked += 1
+
+    def _check_r_lanes(self, sig, code) -> bool:
+        """Join an R beat to its AR and check its lanes. False if no AR was recorded."""
+        rid = _to_int(sig["rid"]) if sig["rid"] is not None else 0
+        queue = self._ar_pending.get(rid)
+        if not queue:
+            return False
+        ar = queue[0]
+        beat = ar["beat"]
+        ar["beat"] += 1
+        if ar["len"] is None or ar["beat"] > ar["len"]:
+            queue.pop(0)
+        self.r_beats_joined += 1
+        if code not in (0, 1) and not ar["check_error_beats"]:
+            return True
+        if ar["exempt"]:
+            self.r_beats_exempt += 1
+            return True
+        self.r_beats_lane_checked += 1
+        bits = _bits(sig["rdata"])
+        nbits = len(bits)
+        unknown = []
+        for lane in _beat_lanes(ar, beat, self._bus_bytes):
+            for j in range(8):
+                i = lane * 8 + j
+                if i < nbits and bits[nbits - 1 - i] not in "01":
+                    unknown.append(i)
+        if unknown:
+            where = f"0x{ar['addr']:08x}" if ar["addr"] is not None else "unresolved address"
+            self._fail(
+                f"R beat {beat} (resp={code}) of the read at {where} (RID {rid}) carries X/Z "
+                f"in accessed bit(s) {unknown[:16]}{' ...' if len(unknown) > 16 else ''}: "
+                f"rdata={bits!r}. The driver packs these bits as 0, so a "
+                "zero-expecting compare on this read would pass on an unknown value"
+            )
+        return True
 
     def arm_write_order(self) -> None:
         """Measure the next write on its own, discarding the previous one."""
@@ -222,11 +380,21 @@ class SepAxiMonitor(uvm_component):
                 "wready",
                 "arvalid",
                 "arready",
+                "arlen",
+                "arsize",
+                "arburst",
+                "arid",
+                "rid",
             )
         }
         if any(sig[n] is None for n in ("rvalid", "rready", "rdata")):
-            self.logger.info("%s read channel not found; AXI monitor idle", p)
+            msg = f"{p} read channel not found; AXI monitor idle"
+            if self.require_attach:
+                self._fail(msg)
+                return
+            self.logger.info(msg)
             return
+        self._bus_bytes = max(1, len(_bits(sig["rdata"])) // 8)
         await self.cfg.reset_done.wait()
         self.logger.info(
             "SEP AXI monitor active on %s bus (fail_decerr=%s, max slave ready-wait %d cycles)",
@@ -247,6 +415,8 @@ class SepAxiMonitor(uvm_component):
                 self._tick_ready_wait("w", _hi(sig["wvalid"]) and not _hi(sig["wready"]))
             if has_ar:
                 self._tick_ready_wait("ar", _hi(sig["arvalid"]) and not _hi(sig["arready"]))
+                if _hi(sig["arvalid"]) and _hi(sig["arready"]) and sig["araddr"] is not None:
+                    self._record_ar(sig)
             if has_aw:
                 if _hi(sig["awvalid"]) and self._aw_valid_cycle is None:
                     self._aw_valid_cycle = self.cycles
@@ -264,9 +434,11 @@ class SepAxiMonitor(uvm_component):
                 self.resp_tally[code if code in (0, 1, 2, 3) else None] += 1
                 if self._beat_capture is not None:
                     self._beat_capture.append(code)
-                # All-X only fails on a *successful* response (an error beat may
-                # legitimately carry X data).
-                if code in (0, 1) and _is_all_x(sig["rdata"]):
+                # Lane check for a beat joined to its AR; whole-bus all-X check
+                # otherwise. Both only on a *successful* response (an error
+                # beat may legitimately carry X data).
+                joined = self._check_r_lanes(sig, code)
+                if not joined and code in (0, 1) and _is_all_x(sig["rdata"]):
                     addr = _resp(sig["araddr"]) if sig["araddr"] is not None else None
                     where = f" (last AR addr ~0x{addr:08x})" if addr is not None else ""
                     self._fail(
@@ -285,15 +457,39 @@ class SepAxiMonitor(uvm_component):
             f"SEP AXI monitor [{self.bus_prefix}] found {len(self.errors)} "
             f"protocol error(s): " + "; ".join(self.errors[:8])
         )
+        # The lane check joins R to AR by ID. Recorded ARs with R beats on the
+        # bus but no beat ever joined means the join is broken, and the lane
+        # check graded nothing.
+        assert not (self.ar_tracked and self.r_beats and not self.r_beats_joined), (
+            f"SEP AXI monitor [{self.bus_prefix}] recorded {self.ar_tracked} AR "
+            f"handshake(s) and saw {self.r_beats} R beat(s), but joined none by "
+            "RID -- the read-data lane check did not run"
+        )
+        sb = getattr(self.parent, "scoreboard", None)
+        if (
+            self.bus_prefix == "s_axi"
+            and sb is not None
+            and getattr(sb, "checks", 0) > 0
+            and (self.r_beats + self.b_resps) == 0
+        ):
+            raise AssertionError(
+                f"SEP AXI monitor [{self.bus_prefix}] saw 0 R/B beats while the "
+                f"scoreboard graded {sb.checks} transaction(s) -- the prefix "
+                "did not observe the live bus"
+            )
         self.logger.info(
             "SEP AXI monitor [%s]: %d R beats, %d B resps; R-resp tally %s; "
-            "%d expected DECERR; max slave ready-wait aw=%d w=%d ar=%d "
+            "%d expected DECERR; rdata lane check %d beat(s) (%d joined to an AR, "
+            "%d exempt by allow_unknown_rdata); max slave ready-wait aw=%d w=%d ar=%d "
             "(bound %d); 0 errors",
             self.bus_prefix,
             self.r_beats,
             self.b_resps,
             ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.resp_tally.items() if v),
             self.expected_decerr_seen,
+            self.r_beats_lane_checked,
+            self.r_beats_joined,
+            self.r_beats_exempt,
             self.max_ready_wait["aw"],
             self.max_ready_wait["w"],
             self.max_ready_wait["ar"],

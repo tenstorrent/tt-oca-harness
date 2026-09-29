@@ -29,13 +29,12 @@ flow:
   an error rather than a silent skip.
 * *Profile-owned launch mechanics.* The shared `native` profile
   (`hw/common/dv/configs/profiles/native.toml`) supplies the UVM view's
-  contract: the simulator allowlist (VCS), the folded analyze+elaborate
+  contract: the simulator allowlist, the folded analyze+elaborate
   build, the bare `UVM` define, assertions enabled, and `SIMULATION` kept
   on. DUT configs declare only their own sources and incdirs.
 * *Simulator-owned UVM library.* The UVM base-class library comes from the
-  simulator installation (the analyze stage precompiles it with a dedicated
-  `vlogan -ntb_opts uvm` invocation before any user source); it is never
-  vendored into the repository.
+  simulator installation; the analyze stage compiles it before any user
+  source. It is not included in the repository.
 * *One testbench top, one core.* The same `tb_top.sv` compiles as a
   framework-neutral core (interface instances, DUT, adapters) whose
   instances both frameworks consume; the `UVM` define adds only the harness
@@ -146,7 +145,7 @@ sim args, and the default target. Reference: the bottom of
 [source,toml]
 ----
 [frameworks.uvm]
-description = "<DUT> SV-UVM smoke flow (VCS)"
+description = "<DUT> SV-UVM smoke flow"
 
 [frameworks.uvm.build]
 source_lists = [
@@ -172,7 +171,7 @@ build_dir = "hw/<category>/<dut>/dv/build/uvm"
 ----
 
 Do not redeclare what the profile owns: the `UVM` define, the tool
-allowlist, and the VCS stage mechanics all come from
+allowlist, and the backend stage mechanics all come from
 `profiles/native.toml`. `run_dv.py --validate-configs` checks every listed
 path, including the manifest fragments.
 
@@ -211,10 +210,8 @@ Declare every TB signal exactly once. In the interface-based core each TB
 net is one local declaration wired to an interface member (DTP's
 `tb_top.sv`). A bench whose cocotb realization binds a pin-level port list
 keeps that list in a single include file expanded into both shapes
-through direction macros, the pattern of
-`hw/sys/smu/dv/tb/smu_tb_signal_list.svh` and its expansion in SMU's
-`tb_top.sv`. Hand-maintaining two declaration blocks in lockstep is the
-failure mode both patterns exist to remove.
+through direction macros. Hand-maintaining two declaration blocks in
+lockstep is the failure mode both patterns exist to remove.
 
 ==== Step 3: Carry DUT-local controls in a TB interface
 
@@ -235,8 +232,8 @@ always-on `<dut>_scoreboard` and the invariant subscribers, and the
 environment. The environment reads its env cfg and the TB interface from
 `uvm_config_db`, fills one VIP config per port (interface, geometry,
 `name_tag`, evidence policy), instantiates the VIP-level environments and
-agents (the factory-overridable seam that commercial integrations replace),
-wires the virtual sequencer handles and the monitor streams in
+agents (the factory-overridable seam that optional backend integrations
+replace), wires the virtual sequencer handles and the monitor streams in
 `connect_phase`, and finalizes evidence once in `check_phase`. It drives
 nothing and checks no protocol. Reference:
 `hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv` and `dtp_env.svh`.
@@ -284,10 +281,12 @@ module = { cocotb = "<dut>_sanity_test", uvm = "<dut>_sanity_test" }
 ----
 
 A scenario that is cocotb-only by design declares it in the same map
-(`module = { cocotb = "<dut>_x_test", uvm = false }`); group selections skip
-it under `--framework uvm` with no flag. A scenario without any `uvm` entry
-errors when selected under `--framework uvm`; during bring-up, group
-selections can ride `--skip-unimplemented` until the port is complete.
+(`module = { cocotb = "<dut>_x_test", uvm = false }`). A scenario without
+any `uvm` entry needs nothing: the UVM view runs the scenarios bound to it,
+and group selections under `--framework uvm` skip the rest, printed on the
+`selection` line. `--list` counts the two states apart, as `excluded` and
+`missing`, so the `false` is a statement for the reader rather than a
+switch. Naming either kind with `--items` under `--framework uvm` errors.
 
 ==== Step 8: Run and verify
 
@@ -297,23 +296,22 @@ python3 tools/dv/run_dv.py --dut <dut> --framework uvm --items <dut>_sanity_test
 ----
 
 Acceptance for a bring-up is three-sided: the UVM scenario passes end to
-end on VCS (flow verdict, not just the banner — the `uvm-log` policy counts
-`UVM_ERROR`/`UVM_FATAL` lines), its `CHK-*`/`CHECKER_SUMMARY` evidence is
-present in the log, and the DUT's cocotb regressions still pass unmodified.
+end on the selected backend (flow verdict, not just the banner — the
+`uvm-log` policy counts `UVM_ERROR`/`UVM_FATAL` lines), its
+`CHK-*`/`CHECKER_SUMMARY` evidence is present in the log, and the DUT's
+cocotb regressions pass without test changes.
 
-[[shared-uvm-commercial]]
-=== Commercial VIP Integration
+[[shared-uvm-optional-backend]]
+=== Optional Backend Integration
 
-The normative text for integrating a commercial VIP behind the shared
+The normative text for integrating an optional backend behind the shared
 surfaces is the *Template Contract* section of
 `hw/common/dv/vip/ocah_jtag_vip/README.md`. In brief: the open tree carries
 only the hooks — the opaque `vendor_cfg` extension, the `cfg.en_monitor`
 knob, the guarded vendor-interface nest inside each shared interface, and
-the factory-overridable VIP environments — and every implementation built
-on them lives in the proprietary `nonfree/` companion repository, with a
-strictly one-way dependency: the open tree never references companion paths
-and is complete without it. Deployment-side guidance lives in
-<<shared-vip-commercial-deployment>>.
+the factory-overridable VIP environments. Adopter overlays supply backend
+implementations without adding a dependency from the open tree.
+Deployment-side guidance lives in <<shared-vip-backend-deployment>>.
 
 [[shared-uvm-troubleshooting]]
 === Troubleshooting

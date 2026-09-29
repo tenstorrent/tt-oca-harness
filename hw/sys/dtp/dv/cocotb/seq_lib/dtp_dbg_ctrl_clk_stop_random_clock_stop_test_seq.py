@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from env.dtp_tap_device import DTP_NUM_CLK_STOP_REQ
+from env.dtp_dv_cfg import DTP_NUM_CLK_STOP_REQ
 
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 
@@ -20,7 +20,7 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
         clk_stop_req: int,
         context: str = "",
     ) -> None:
-        """Apply one clock-stop combination and check outputs/readback."""
+        """Apply one clock-stop combination and record outputs and readback."""
         control_value = self.pack_debug_control(
             jtag_clock_stop=jtag_clock_stop,
             cla_clock_stop_en=cla_clock_stop_en,
@@ -40,28 +40,28 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
         expected_cla = 1 if clk_stop_req else 0
         expected_stop = jtag_clock_stop | expected_cla
         await self.wait_for_signal_value("stop_clks", expected_stop, context=context)
-        await self.expect_signal("cla_clock_stop_en", cla_clock_stop_en)
+        await self.expect_dbg_signal("cla_clock_stop_en", cla_clock_stop_en, context=context)
 
         readback = await self.read_debug_control(shift_value=control_value)
         decoded = self.log_debug_control(f"{context} readback", readback)
-        self.assert_equal(
-            "DEBUG_CONTROL.cla_clock_stop", decoded["cla_clock_stop"], expected_cla, context
-        )
-        self.assert_equal(
-            "DEBUG_CONTROL.jtag_clock_stop", decoded["jtag_clock_stop"], jtag_clock_stop, context
-        )
-        self.assert_equal(
-            "DEBUG_CONTROL.cla_clock_stop_en",
-            decoded["cla_clock_stop_en"],
-            cla_clock_stop_en,
-            context,
+        self.check_debug_control_fields(
+            decoded,
+            {
+                "cla_clock_stop": expected_cla,
+                "jtag_clock_stop": jtag_clock_stop,
+                "cla_clock_stop_en": cla_clock_stop_en,
+            },
+            context=context,
         )
 
     async def body(self) -> None:
         self.log_banner("DEBUG_CONTROL Random Clock Stop")
+        await self.attach_family_checker(
+            {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"}, use_monitor=False
+        )
 
         self.log_step(1, "Reset TAP and create deterministic RNG")
-        await self.reset_tap()
+        await self.reset_to_tlr()
         rng = self.rng("dbg_ctrl_random_clock_stop")
 
         self.log_step(2, "Run deterministic per-request and all-control sweep")
@@ -124,3 +124,4 @@ class dtp_dbg_ctrl_clk_stop_random_clock_stop_test_seq(dtp_debug_tdr_base_test_s
             directed_iterations=total_directed,
             random_iterations=self.random_count,
         )
+        await self.finalize_family_checker()

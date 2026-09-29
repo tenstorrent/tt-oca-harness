@@ -23,6 +23,7 @@ def parse_coverage_details(
     report_dir: Path,
     merged: Path,
     log_path: Path | None = None,
+    raw_report_dir: Path | None = None,
 ) -> CoverageDetails:
     common = {
         "dut": dut,
@@ -36,6 +37,7 @@ def parse_coverage_details(
         return parse_urg_details(
             report_dir=report_dir,
             log_path=log_path,
+            raw_report_dir=raw_report_dir,
             **common,
         )
     if parser == "imc":

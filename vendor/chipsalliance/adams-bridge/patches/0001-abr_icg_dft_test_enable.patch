@@ -1,0 +1,19 @@
+--- a/src/abr_libs/rtl/abr_icg.sv
++++ b/src/abr_libs/rtl/abr_icg.sv
+@@ -18,6 +18,7 @@
+     module `ABR_ICG (
+         input logic clk,
+         input logic en,
++        input logic te,
+         output clk_cg
+     );
+         logic en_lat;
+@@ -25,7 +26,7 @@
+         //Latch disable for both clk and soc_ifc clk
+         always_latch begin
+             if(!clk) begin
+-                en_lat = en;
++                en_lat = en | te;
+             end
+         end
+          

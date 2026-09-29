@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.7
-:revdate: 2026-09-11
+:revnumber: 0.0.8
+:revdate: 2026-09-18
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -24,6 +24,7 @@ for the respective subsystem.
 ifdef::backend-html5[]
 == Documentation Overview
 
+* xref:initial.adoc[Initial SMU Integration] - Initial tasks for an SMU integrator
 * xref:checklist.adoc[SoC Integration Checklist] - Review the top-level integration gates
 * xref:smu.adoc[SMU Top-Level Integration] - Guidelines for integrating the SMU subsystems
 * xref:smn.adoc[SMN Integration] - Guidelines for integrating the System Management Network
@@ -35,6 +36,7 @@ ifdef::backend-html5[]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
+include::initial.adoc[]
 include::checklist.adoc[]
 include::smu.adoc[]
 include::smn.adoc[]

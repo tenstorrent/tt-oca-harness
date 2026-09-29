@@ -157,29 +157,13 @@ typedef union {
 } csrng__CTRL_t;
 
 // reg - csrng::CMD_REQ
-#define CSRNG__CMD_REQ__ACMD_bm 0xf
-#define CSRNG__CMD_REQ__ACMD_bp 0
-#define CSRNG__CMD_REQ__ACMD_bw 4
-#define CSRNG__CMD_REQ__ACMD_reset 0x0
-#define CSRNG__CMD_REQ__CLEN_bm 0xf0
-#define CSRNG__CMD_REQ__CLEN_bp 4
-#define CSRNG__CMD_REQ__CLEN_bw 4
-#define CSRNG__CMD_REQ__CLEN_reset 0x0
-#define CSRNG__CMD_REQ__FLAG0_bm 0xf00
-#define CSRNG__CMD_REQ__FLAG0_bp 8
-#define CSRNG__CMD_REQ__FLAG0_bw 4
-#define CSRNG__CMD_REQ__FLAG0_reset 0x0
-#define CSRNG__CMD_REQ__GLEN_bm 0x1fff000
-#define CSRNG__CMD_REQ__GLEN_bp 12
-#define CSRNG__CMD_REQ__GLEN_bw 13
-#define CSRNG__CMD_REQ__GLEN_reset 0x0
+#define CSRNG__CMD_REQ__CMD_REQ_bm 0xffffffff
+#define CSRNG__CMD_REQ__CMD_REQ_bp 0
+#define CSRNG__CMD_REQ__CMD_REQ_bw 32
+#define CSRNG__CMD_REQ__CMD_REQ_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
-        uint32_t acmd :4;
-        uint32_t clen :4;
-        uint32_t flag0 :4;
-        uint32_t glen :13;
-        uint32_t :7;
+        uint32_t CMD_REQ :32;
     } f;
     uint32_t w;
 } csrng__CMD_REQ_t;
@@ -260,11 +244,9 @@ typedef union {
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bm 0x1
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bp 0
 #define CSRNG__GENBITS_VLD__GENBITS_VLD_bw 1
-#define CSRNG__GENBITS_VLD__GENBITS_VLD_reset 0x0
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bm 0x2
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bp 1
 #define CSRNG__GENBITS_VLD__GENBITS_FIPS_bw 1
-#define CSRNG__GENBITS_VLD__GENBITS_FIPS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENBITS_VLD :1;
@@ -278,7 +260,6 @@ typedef union {
 #define CSRNG__GENBITS__GENBITS_bm 0xffffffff
 #define CSRNG__GENBITS__GENBITS_bp 0
 #define CSRNG__GENBITS__GENBITS_bw 32
-#define CSRNG__GENBITS__GENBITS_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t GENBITS :32;
@@ -329,7 +310,6 @@ typedef union {
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bm 0xffffffff
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bp 0
 #define CSRNG__INT_STATE_VAL__INT_STATE_VAL_bw 32
-#define CSRNG__INT_STATE_VAL__INT_STATE_VAL_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint32_t INT_STATE_VAL :32;

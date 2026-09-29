@@ -32,19 +32,24 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 # SEP SRAM aperture (256 KiB). Derived from the generated Python register export
 # rather than a literal, so a map change surfaces as an import error instead of a
 # silently stale constant. The C header spells the same aperture
-# OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
+# SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
 # is importable from here.
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
 _MASK64 = 0xFFFF_FFFF_FFFF_FFFF
 
+_WORD_BITS = 64
+
+# Walking one and walking zero: every one of the 64 bit positions, one word each.
+WALKING_ONE_PATTERNS = [1 << bit for bit in range(_WORD_BITS)]
+WALKING_ZERO_PATTERNS = [_MASK64 ^ (1 << bit) for bit in range(_WORD_BITS)]
+
 # Required data patterns (always present; the RANDCFG adds seed-random extras).
 _REQUIRED_PATTERNS = [
     0xAAAA_AAAA_AAAA_AAAA,
     0x5555_5555_5555_5555,
-    0x0000_0000_0000_0001,  # walking-1 lsb
-    0x8000_0000_0000_0000,  # walking-1 msb
-    0xFFFF_FFFF_FFFF_FFFE,  # walking-0 lsb
+    *WALKING_ONE_PATTERNS,
+    *WALKING_ZERO_PATTERNS,
     0xDEAD_BEEF_CAFE_BABE,
 ]
 
@@ -52,6 +57,7 @@ _REQUIRED_PATTERNS = [
 # Floors the test asserts, so a generator or list that shrank fails the run
 # rather than reporting a clean pass over fewer cells.
 CONTIGUOUS_WSTRB_SPECS = 36  # 8 one-hot + 28 multi-byte runs on an 8-byte lane
+WALKING_POSITIONS = 64  # one walking-one and one walking-zero word per data bit
 
 
 def _contiguous_wstrb_specs() -> list[tuple[int, int]]:
@@ -90,6 +96,17 @@ class SepSramBreadthCfg:
         self.wstrb_newdata = [rng.getrandbits(64) for _ in self.wstrb_specs]
 
         # Patterns: the required cells are always present; add a few seed-random extras.
+        # Each walk covers all 64 bit positions exactly once; a shorter walk is a
+        # config bug and must not reach the bench as a narrower CHK-PATTERN.
+        for name, walk in (
+            ("walking-one", WALKING_ONE_PATTERNS),
+            ("walking-zero", WALKING_ZERO_PATTERNS),
+        ):
+            if len(set(walk)) != WALKING_POSITIONS:
+                raise RuntimeError(
+                    f"{name} set has {len(set(walk))} distinct words, "
+                    f"expected {WALKING_POSITIONS} on a 64-bit word"
+                )
         n_extra = rng.randrange(2, 5)
         self.pattern_values = list(_REQUIRED_PATTERNS) + [
             rng.getrandbits(64) for _ in range(n_extra)
@@ -98,6 +115,19 @@ class SepSramBreadthCfg:
 
         # Boundary: always the base word and the top valid 64-bit word.
         self.boundary_addrs = [self.base_addr, self.base_addr + self.size - 8]
+
+        # Address lines: the base word, one word at every power-of-two offset
+        # from the word stride up to half the generated size, and the top word.
+        # Each holds its own value, so a memory that decodes fewer address bits
+        # than the generated size -- 64 KiB aliased four times over 256 KiB,
+        # say -- fails. Offsets at or above 0x1_0000 are the upper 192 KiB.
+        self.addr_line_offsets = (
+            [0] + [1 << k for k in range(3, self.size.bit_length() - 1)] + [self.size - 8]
+        )
+        self.addr_line_values = [
+            (0xA11E_0000_0000_0000 | (i << 40) | off) & _MASK64
+            for i, off in enumerate(self.addr_line_offsets)
+        ]
 
         # Sequential: >= 4 words (seed-bounded), random aligned base + seed data.
         self.seq_words = rng.randrange(4, 9)

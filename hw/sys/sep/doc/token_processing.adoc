@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Token Processing
+:description: SEP token generation, matching, and fault handling.
+
 [[token-processing]]
-==== Token Processing
 
 Maintaining a known, measurable state of the SEP system is a core
 requirement to ensure trust and security. Consequently, changing the
@@ -11,22 +13,21 @@ protected. Tokens are high security password strings which are used to
 alter the security state of SEP. They are used to initiate RMA LC state
 transitions as well as disable security features. Tokens are:
 
-* Security Disable (SEC_DIS) bypasses fuse sensing
+* Security Disable (SEC_DIS) opens debug access without waiting for fuse sensing
 * Package RMA (RMA_SIP) used in LC state machine
 * Chiplet RMA (RMA_CHIPLET) used in LC state machine
 
-The tokens directly affect the life cycle state machine processing and
-fuse sensing. so token processing is naturally done in the OTP
-Controller. Tokens are entered via the JTAG port into a dedicated
-eight-word register array per token, held in the eFuse MMR block, for
-match processing described in the next section. Those arrays have the
-following important properties:
+The tokens directly affect the life cycle state machine processing, so
+token processing is naturally done in the OTP Controller. Tokens are
+entered via the JTAG port into a dedicated eight-word register array per
+token, held in the eFuse MMR block, for match processing described in the
+next section. Those arrays have the following important properties:
 
 * Non-scannable
 * Non-resetable
 
 [[token-generation-storage-and-provisioning]]
-===== Token Generation, Storage and Provisioning
+== Token Generation, Storage and Provisioning
 
 All token processing besides final provisioning takes place within the
 confines of an HSM, a very high security environment. RTL constant
@@ -48,7 +49,7 @@ purpose tokens, granting special TBD privileges on a per device basis.
 Processing at the device level can handle each scenario.
 
 [[token-matching-mechanism-and-attack-countermeasures]]
-===== Token Matching Mechanism and Attack Countermeasures
+== Token Matching Mechanism and Attack Countermeasures
 
 The tokens are 256-bit values which are processed in an analogous manner
 as passwords. We have tokens:
@@ -93,14 +94,18 @@ token value is considered practically infeasible so even if the secret
 digest is extracted from OTP or gates, the token will remain unknown to
 the attacker.
 
-As just stated, the _SEC_DIS secret is stored_ only in gates, not in
-OTP. The reason for this is that SEC_DIS is an emergency feature used to
-unlock the chip when the OTP fuse sensing logic is non-functional but we
-still need to unlock the chip. If we were to rely on the non-functioning
-OTP, we would be unable to unlock the chip.
+The SEC_DIS secret is stored only in gates and not in OTP. SEC_DIS is an
+emergency feature to unlock when the OTP is not functional so that the chip can
+still be unlocked. See
+ifdef::backend-html5[]
+xref:sep:security_disable.adoc#security-disable-sec_dis[Security Disable (SEC_DIS)].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<security-disable-sec_dis,Security Disable (SEC_DIS)>>.
+endif::backend-pdf[]
 
 [[token-match-sequence]]
-===== Token Match Sequence
+== Token Match Sequence
 
 Each token has its own eight-word array in the eFuse MMR block, its own
 SHA256 engine and its own set of comparators. JTAG:
@@ -118,15 +123,16 @@ The two RMA comparisons additionally wait for fuse sensing to complete,
 because their expected digests come from the OTP shadow registers. The
 SEC_DIS comparison does not, because its expected digest comes from
 gates. That is what lets SEC_DIS unlock a part whose fuse sensing is
-broken.
+broken. This applies only to the token compare and the feature-control
+override. SEP reset still waits for fuse sensing, or for the IC_RESET
+`sep_reset_n` override.
 
 [[token-matching-countermeasures]]
-===== Matching Logic Countermeasures
+== Matching Logic Countermeasures
 
 The actual matching logic is a vulnerable attack point via FIB or fault
-injection. We protect this by using triple-redundant matching logic on
-fully differential signals resulting in a 6-bit output as illustrated
-below.
+injection. This is protected by using triple-redundant matching logic on fully
+differential signals resulting in a 6-bit output as illustrated below.
 
 This is not a majority vote scheme. While a comparison is in flight two
 invariants must both hold: every comparator must drive a genuine
@@ -164,6 +170,11 @@ Invert of a match is a legal mismatch; invert of a mismatch is a legal match
 (fail-open). "Any deviation" here means a collapsed pair or a disagreement
 between instances, not full coverage of every possible fault.
 
+<<sep-token-processing-figure>> shows the token-processing path and the matching signal
+distributed to its consumers.
+
+[[sep-token-processing-figure]]
+.SEP token processing
 image::SEP_Token_Processing.png[SEP_Token_Processing,scaledwidth=90.0%]
 
 The 6-bit matching signal is distributed as is to each individual point
@@ -176,7 +187,7 @@ Mismatch = 6’b101010
 Error = 6’b111111
 
 [[post-token-matching-handling]]
-===== Post Token Matching Handling
+== Post Token Matching Handling
 
 A token match does not by itself change the life cycle state. It
 authorizes a change, and the state is then updated by one of two paths

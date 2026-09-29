@@ -1,48 +1,55 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-otbn_wrapper_key]
+== OTBN Wrapper Key Registers
+
+Key storage registers for the OTBN sideload interface.
+Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.
+
 [NOTE]
 ======
-*Register Arrays:* This register map contains the following register arrays:
+*Register Arrays:*
 
-* *KEY_SHARE0[12]*: 12 registers
-  ** Base Address: 0x0
-  ** Address Increment: 0x4 per register
-
-* *KEY_SHARE1[12]*: 12 registers
-  ** Base Address: 0x30
-  ** Address Increment: 0x4 per register
-
+* *KEY_SHARE0[12]*: 12 registers, base 0x0, stride 0x4
+* *KEY_SHARE1[12]*: 12 registers, base 0x30, stride 0x4
 ======
 
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 - 0x2C | KEY_SHARE0[12] | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x0 - 0x2C | <<reg-{regmap-instance}-otbn_wrapper_key-KEY_SHARE0-0-,KEY_SHARE0[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x30 - 0x5C | KEY_SHARE1[12] | W a| One 32-bit word of key data. Write-only; reads return 0.
+| 0x30 - 0x5C | <<reg-{regmap-instance}-otbn_wrapper_key-KEY_SHARE1-0-,KEY_SHARE1[12]>> | W a| One 32-bit word of key data. Write-only; reads return 0.
 No reset; powers up with undefined value.
-| 0x60 | KEY_CTRL | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
+| 0x60 | <<reg-{regmap-instance}-otbn_wrapper_key-KEY_CTRL,KEY_CTRL>> | RW a| Key control register. Writing KEY_VALID=1 asserts the sideload
 valid signal to the OTBN core.
 |===
 
+[#reg-{regmap-instance}-otbn_wrapper_key-KEY_SHARE0-0-]
+=== KEY_SHARE0[12]
+
 [cols="1,3,1,1,6", options="header"]
-.KEY_SHARE0[12] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
+[#reg-{regmap-instance}-otbn_wrapper_key-KEY_SHARE1-0-]
+=== KEY_SHARE1[12]
+
 [cols="1,3,1,1,6", options="header"]
-.KEY_SHARE1[12] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | W | - a| 32-bit key data word. Write-only for security.
 |===
 
+[#reg-{regmap-instance}-otbn_wrapper_key-KEY_CTRL]
+=== KEY_CTRL
+
 [cols="1,3,1,1,6", options="header"]
-.KEY_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved

@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# UART 16550 IP-level scenarios.
+
+[[tests]]
+name = "uart_16550_sanity_test"
+module = { cocotb = "uart_16550_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "uart_16550_fifo_test"
+module = { cocotb = "uart_16550_fifo_test" }
+seed = 1
+timeout_sec = 900
+tags = ["uart", "fifo", "dma"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "uart_16550_modem_test"
+module = { cocotb = "uart_16550_modem_test" }
+seed = 1
+timeout_sec = 900
+tags = ["uart", "modem", "loopback"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "uart_16550_interrupt_test"
+module = { cocotb = "uart_16550_interrupt_test" }
+seed = 1
+timeout_sec = 900
+tags = ["uart", "interrupt"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["uart_16550_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = [
+  "uart_16550_sanity_test",
+  "uart_16550_fifo_test",
+  "uart_16550_modem_test",
+  "uart_16550_interrupt_test",
+]

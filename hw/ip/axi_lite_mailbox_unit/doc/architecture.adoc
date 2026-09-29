@@ -2,34 +2,23 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[mailbox-unit-architecture]]
-===== Architecture
+== Architecture
 
 The Mailbox IP provides inter-processor and inter-chiplet communication
 through a register-based interface. A single AXI4-Lite slave port is demuxed
 into one register aperture per mailbox direction, and each mailbox pair owns
 the two FIFOs that carry data between its two apertures.
 
-====== Configuration Parameters
+=== Configuration Parameters
 
-[width="100%",cols="25%,15%,60%",options="header",]
-|=======================================================================
-|Parameter |Default |Description
-|`NUM_MAILBOXES` |2 (max: 32) |Scales from point-to-point to
-multi-processor coordination
+ifdef::backend-html5[]
+The parameters and ports of `axi_lite_mailbox_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.adoc[axi_lite_mailbox_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `axi_lite_mailbox_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-|`MAILBOX_DEPTH` |8 entries |Depth of each internal message FIFO
-
-|`MAX_TRANS` |32 |Maximum outstanding AXI4-Lite transactions per demux port
-
-|`MAILBOX_BASE_ADDR` |0x0 |Base address the aperture decode is relative to
-
-|`ADDR_WIDTH` / `DATA_WIDTH` |32 / 64 |AXI4-Lite slave port widths
-
-|`MAILBOX_SIZE` |0x800 (2KB) |Register space per mailbox for control and
-status
-|=======================================================================
-
-====== Address Space
+=== Address Space
 
 The architecture supports up to 64 mailbox instances (32 bidirectional
 pairs):
@@ -46,7 +35,7 @@ information without multi-word transfers. The 2KB allocation per aperture
 leaves the ten registers sparsely mapped; offsets above the register map are
 unmapped rather than aliased.
 
-====== Internal Structure
+=== Internal Structure
 
 The unit is an `axi_lite_demux` in front of `NUM_MAILBOXES` mailbox instances.
 Each mailbox instance has two AXI4-Lite slave ports, one per aperture, and
@@ -55,7 +44,7 @@ cross-coupled between the two ports: the push side of one port is the pop side
 of the other. The FIFOs are internal to the IP; there is no external FIFO
 interface.
 
-====== Transaction Processing
+=== Transaction Processing
 
 AXI4-Lite transactions follow this flow:
 
@@ -70,7 +59,7 @@ in the Error Handling table
 giving one cycle of latency and keeping the response path free of
 combinational paths from the request
 
-====== Bidirectional Communication
+=== Bidirectional Communication
 
 Each mailbox pair provides two register apertures, conventionally used as an
 outbound and an inbound direction. The two are not independent storage: they
@@ -82,25 +71,14 @@ naming reflects intended use, not an access restriction.
 Separate apertures give each direction its own thresholds, status, error flags
 and interrupt output.
 
-====== Clock and Reset
+=== Clock and Reset
 
-The mailbox uses a single clock domain for integration reliability:
-
-[width="100%",cols="20%,30%,50%",options="header",]
-|=======================================================================
-|Signal |Type |Description
-|`clk_i` |Single clock |Unifies functional logic and AXI4-Lite interface
-
-|`rst_ni` |Asynchronous, active-low |Primary reset, initializes all
-mailbox state
-
-|`test_en_i` |Test enable |DFT support
-|=======================================================================
+The mailbox uses a single clock domain for integration reliability.
 
 No internal clock domain crossings eliminates CDC complexity. Single
 clock domain simplifies timing analysis and integration verification.
 
-====== Interrupt Architecture
+=== Interrupt Architecture
 
 The mailbox provides independent interrupt outputs for each mailbox
 instance:
@@ -114,9 +92,11 @@ requirements. Inbound interrupts indicate incoming commands requiring
 immediate processing; outbound interrupts indicate successful
 transmission or buffer availability.
 
-The following table reports the interrupt sources.
+<<mailbox-interrupt-sources-table>> reports the interrupt sources.
 
+[[mailbox-interrupt-sources-table]]
 [width="100%",cols="30%,70%",options="header",]
+.Mailbox interrupt sources
 |=======================================================================
 |Source |Description
 |Write Threshold |FIFO fill level exceeds configured threshold

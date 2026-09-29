@@ -109,7 +109,7 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
             val = int(dut.tb_i2c0_smbalert.value)
             if val == want:
                 return True
-            await Timer(1, units="us")
+            await Timer(1, unit="us")
         return False
 
     async def body(self) -> None:
@@ -151,8 +151,14 @@ class smc_smbus_alert_ara_test_seq(SmcCsrSeq):
         self.alert_cleared = await self._wait_smbalert(expect_low=False, timeout_us=5000)
         assert self.alert_cleared, "SMBALERT# stayed low after ARA (expected hwclr)"
         cocotb.log.info(
-            "ARA OK: reply=0x%02X; SMBALERT# cleared on pad39",
+            "CHK-SMBUS-ALERT-ARA: tb_i2c0_smbalert (pad39) idle %d, low after "
+            "SMBUS_CTRL.SMBALERT, VIP ARA read at 0x%02X returned 0x%02X (expected "
+            "0x%02X = target 0x%02X << 1), and the pad returned high after the reply",
+            idle,
+            _ARA_ADDR,
             resp,
+            _ARA_REPLY,
+            _TARGET_ADDR,
         )
 
         await self.csr_write("I2C0_CTRL_DISABLE", I2C0_CTRL, 0)

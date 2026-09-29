@@ -85,9 +85,9 @@ class TestEntry:
     # Per-framework entry points from a `module = { cocotb = "...", uvm = "..." }` binding map.
     # A bare-string `module` is normalized to a single binding for the DUT's default framework.
     bindings: dict[str, str] = field(default_factory=dict)
-    # Frameworks the binding map declares out of scope with `<fw> = false`. Group and tag
-    # selection skips the scenario under such a framework without --skip-unimplemented; naming
-    # it explicitly with --items is an error.
+    # Frameworks the binding map declares out of scope with `<fw> = false`. Selection treats
+    # such a framework like one the map omits (skipped from groups and tags, an error when
+    # named with --items); `--list` counts the two apart.
     excluded: frozenset[str] = frozenset()
     # Per-framework runtime overrides from `[tests.overrides.<fw>]` (seed/timeout_sec/args).
     overrides: dict[str, dict[str, Any]] = field(default_factory=dict)
@@ -121,6 +121,8 @@ class StageResult:
     target: str | None = None
     # Proof totals and per-task statuses of a graded formal stage; None on every other stage.
     formal: dict[str, Any] | None = None
+    # Repo-relative path of the leaf's own result.json; None on a run-level stage.
+    result_json: str | None = None
 
 
 @dataclass

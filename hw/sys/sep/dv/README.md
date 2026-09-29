@@ -22,9 +22,10 @@ Everything the environment needs lives under this tree.
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x (CI pin `v5.050`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
+| Verilator 5.x (CI pin `v5.052`) | the acceptance backend | `.github/actions/dv-run/action.yml`. 5.046 fails the `--cov` C++ compile (`__PVT__MLKEM_SHARED_KEY`) |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8 g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
-| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python`. `run_dv.py` bootstraps the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
+| Python ≥ 3.11 | launcher | `pyproject.toml` `requires-python` |
+| uv (CI: `astral-sh/setup-uv@v6`) | every stage, including `--items smoke` | must be on `PATH`. `run_dv.py` re-executes itself inside the locked uv-managed DV env (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi). A missing binary exits 2 before any stage runs. No SEP-owned semver pin; the dependency pin is `uv.lock` |
 | Bender (CI: `pulp-actions/bender-install@v2.5.1`) | filelist (`--stage flist`) | must be on `PATH`. A missing binary fails filelist generation. No SEP-owned semver pin |
 | ccache (CI: Ubuntu apt) | Verilator object cache | `[build.verilator] ccache = true`. Absence fails the C++ compile (`ccache: No such file or directory` / make Error 127) |
 | RISC-V GCC + picolibc (`ocah-toolchain`) | `--stage c_compile` (TCM firmware, Boot ROM, KM `rom_main`) | `tools/docker/Dockerfile`: Debian trixie `gcc-riscv64-unknown-elf` + `picolibc-riscv64-unknown-elf` (packages float; the base image digest is pinned). Host without `--specs=picolibc.specs` fails unless `scripts/docker-run.sh` is available. Not needed for `--items smoke` |
@@ -34,9 +35,10 @@ Everything the environment needs lives under this tree.
 
 | Variable / action | When it is needed |
 |---|---|
-| `PATH` | must contain `verilator`, `python3`, `bender`; `ccache` for the Verilator model; a RISC-V GCC for `--items all`, `--items cpu`, `--items rom_fw`, and `--tag boot` |
+| `PATH` | must contain `uv`, `verilator`, `python3`, `bender`; `ccache` for the Verilator model; a RISC-V GCC for `--items all`, `--items cpu`, `--items rom_fw`, and `--tag boot` |
 | `source /opt/rh/gcc-toolset-11/enable` | RHEL-8 hosts whose default g++ is 8.5 (sets `PATH` to g++ ≥ 10) |
 | `RISCV_TOOLCHAIN`, `RISCV_PREFIX` | optional override for `--stage c_compile`. Unset, the stage probes a site toolchain then a local xPack install, then `scripts/docker-run.sh` when picolibc is missing |
+| `OCAH_DV_SKIP_UV` | set to `1` on a pre-provisioned host that already supplies the `dv` dependency group. It skips only the uv re-execution; `run_dv.py` still exports the root and sets the Python path |
 | `OCAH_ROOT` | firmware `make` only (`OCAH_ROOT="$PWD"` from the repository root) |
 | `TMPDIR` | large local scratch for sim/build temporaries; do not use `/tmp` |
 | `VCS_HOME`, `SNPSLMD_LICENSE_FILE`, `LD_LIBRARY_PATH` | VCS only (license file plus the 32-bit `vcs` driver's python-3.9 lib dir) |
@@ -69,10 +71,10 @@ python3 tools/dv/run_dv.py --dut sep --items smoke
 That group is `sep_axi_smoke_test` only. `--items all --tag smoke` is a tag
 filter over `all` and is not the CI command.
 
-### Nightly `all` group
+### Full regression, the `all` group
 
-The nightly command for the `all` group (every test this VPLAN grades:
-`cpu_stub` + `cpu`), one fresh seed per leaf:
+The command for the `all` group (every test this VPLAN grades), one fresh seed
+per leaf. It is a local command -- no CI tier runs it, see below:
 
 ```bash
 # No --stage: builds the filelist, the firmware and the model, then regresses.
@@ -88,11 +90,28 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
   --sim-jobs 8 --build-jobs 24
 ```
 
-`all` includes firmware-boot tests, so a picolibc-enabled RISC-V GCC (or
-`scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
-the images with it (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
-(`.github/workflows/regress.yml`) runs `--items cpu_stub` instead, because those
-runners have no RISC-V toolchain.
+`all` includes the `cpu` firmware-boot tests, so a picolibc-enabled RISC-V GCC
+(or `scripts/docker-run.sh`) must be available -- the `c_compile` stage above
+builds the images with it (see [Prerequisites](#prerequisites)). `rom_fw` stays
+out of `all`; run it with `--items rom_fw`.
+
+`all` enrolls 121 leaves. `cpu_stub` (101) and `cpu` (20) are disjoint and
+together hold all of them. `sep_km_ic_reset_release_test` runs on VCS only, so
+a Verilator selection of `all` is 120 leaves and of `cpu_stub` is 100. The
+class commands below are the pre-merge gate.
+
+### Scheduled tiers
+
+Both scheduled tiers in `.github/workflows/regress.yml` run
+`--items cpu_stub`, not `all`: the nightly tier (cron `0 18 * * 0-5`) and the
+weekly coverage tier (cron `0 18 * * 6`). Their runners are GitHub-hosted and
+the shared `dv-run` action installs uv, Bender and Verilator only, so a
+`c_compile` stage has no RISC-V toolchain to call.
+
+The consequence for reading a green CI badge: the `cpu` and `rom_fw` runtime
+classes are **never** exercised by any CI tier. Firmware-boot evidence comes
+only from a local `all` / `cpu` / `rom_fw` run on a host that has the
+toolchain.
 
 The pre-merge class split is the reliable local gate. `rom_fw` is a separate
 owner and is not a member of `all`:
@@ -156,11 +175,10 @@ EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
 
 `own` excludes the records `sep_base_test` emits during bring-up, so a leaf
 cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
-zero **fails** — unless it is named in `_EvidenceFilter.NO_OWN_EVIDENCE`, which
-lists the leaves that grade through another channel (firmware console verdict,
-a sequence-level compare, a base-class golden compare) together with the reason
-for each. That list may only shrink; retire an entry by making the check that
-already runs log a `CHK-` ID where it happens.
+zero **fails**. Firmware-console leaves emit `CHK-FW-CONSOLE` from `poll_boot`
+after the mailbox PASS magic, and that ID is not in `BASE_IDS`, so it counts
+as the leaf's own evidence. `_EvidenceFilter.NO_OWN_EVIDENCE` is empty and
+may only shrink.
 
 Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
 `required_evidence = ("CHK-A", ...)` names IDs that must appear.
@@ -197,15 +215,24 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --target default --sim-jobs 32 --build-jobs 32
 ```
 
-`all` is the coverage set: every test the VPLAN grades, which is exactly `cpu_stub`
-+ `cpu`. Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third
-RTL target, firmware rather than hardware contracts -- so reaching those tests
-means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
-drifts from the class groups.
+`all` is the coverage set: 121 leaves, `cpu_stub` (101) plus `cpu` (20).
+Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third RTL
+target, firmware rather than hardware contracts -- so reaching those tests
+means naming `rom_fw`. `expected_count` is 121.
 
 `--target default` compiles the full CPU once. no_cpu leaves force-splice the
 LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
 one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
+
+`--target default` also moves `sep_abr_absent_decerr_test` off its own target
+(`lsu_stub_abr_absent`, `SEP_ABR_EN` not defined) onto the ABR-present build,
+where it cannot test the ABR-absent model. The runner merges one
+build target per coverage run, so that leaf's coverage is a separate run on
+its own target:
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items sep_abr_absent_decerr_test --cov --tool vcs
+```
 
 What the resulting number is not:
 
@@ -217,18 +244,37 @@ What the resulting number is not:
   interface event happened, never that it was correct, so "did the DUT do the
   right thing" stays with the checkers in
   [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
-* **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
-  excludes the testbench top, the outbound mailbox, the AXI SVA module and the
-  CPU subtree at compile time, across both code and
-  assertion coverage (`-cm_hier` with `-cm_common_hier`), so the excluded
-  instances never enter the database. The percentage is the SEP DUT **with the
-  CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
-  `cov/config/vcs/README.md` records the scope.
+* **TT-owned SEP integration RTL, not the whole DUT.**
+  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, CPU subtree,
+  library-class cells, DV models and complete third-party IP modules at compile
+  time across code and assertion coverage (`-cm_hier` with
+  `-cm_common_hier`). Quote that scope with the percentage; never call it bare
+  "SEP DUT coverage". `urg -hier` at report time prunes report pages and still
+  grades the whole database, so the scope is this compile-time file.
 * **Not a read on assertions.** Assertion coverage counts elaborated assertions
   only, and SEP gates those through the `prim_assert` shim. Confirm assertions
   are live before reading that column.
 * **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
   test contributes one sample. Pin seeds for any number that gets cited.
+
+### Boot ROM firmware coverage
+
+Boot ROM C source coverage is separate from simulator-native RTL coverage.
+Run the `rom_fw` group with `--plusarg +sep_rom_fw_coverage`; the existing
+CPU trace monitor then writes a Renode-format retired-PC trace into each
+simulation leaf. Generate the report from that exact run directory:
+
+```bash
+uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
+  --run-dir "$RUN_DIR"
+```
+
+The generator accepts only passing, complete traces and uses the leaf-local
+`boot_rom.elf` staged by the firmware profile. It reports `boot_rom`,
+`boot_rom_ot`, and `boot_rom_ot_pio` separately because their PCs cannot be
+interpreted with one shared ELF. See
+[`tools/dv/fw_coverage/README.md`](../../../../tools/dv/fw_coverage/README.md)
+for the complete command and tool prerequisites.
 
 ## Run modes, targets, and groups
 
@@ -239,7 +285,7 @@ entries below are entry points — use `--items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate: `sep_axi_smoke_test` only |
-| `all` | every test this VPLAN grades (`cpu_stub` ∪ `cpu`); `expected_count` is the membership gate |
+| `all` | 121 leaves: `cpu_stub` (101) and `cpu` (20). `expected_count` is 121 |
 | `cpu_stub` | CPU not alive (`sep_cpu` stub, `target = lsu_stub_all_live`) |
 | `cpu` | full-CPU firmware daily class (fallback `target = default`) |
 | `rom_fw` | production Boot ROM firmware; `rom_boot` target; not a member of `all` |
@@ -303,11 +349,11 @@ Bender RTL recipe, stubs, and shims), and `--dut sep --framework uvm` selects
 it. A testlist entry binds both implementations of one scenario
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
-the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-`sep_axi_smoke_test` is the scenario with a `uvm` binding. VCS only: Verilator
-has no SV-UVM support. The bench architecture is in `docs/SEP_TB_ARCH.adoc`
-("SystemVerilog UVM Realization"); the framework conventions it follows are in
+the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
+naming a scenario with no `uvm` entry errors. `sep_axi_smoke_test` is the
+scenario with a `uvm` binding. VCS only: Verilator has no SV-UVM support. The
+bench architecture is in `docs/SEP_TB_ARCH.adoc` ("SystemVerilog UVM
+Realization"); the framework conventions it follows are in
 `hw/common/dv/docs/uvm-framework.adoc`.
 
 `tb/tb_top.sv` is one module with two shapes: the cocotb pin port list by
@@ -318,16 +364,15 @@ the sole LSU driver and the shared `ocah_axi_vip` master drives the `s_axi_*`
 splice through it.
 
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# the group holds cocotb-only scenarios.
-python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only --skip-unimplemented
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
 
 # Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke
 
 # Negative validation: a corrupted scoreboard prediction must make the run FAIL
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \

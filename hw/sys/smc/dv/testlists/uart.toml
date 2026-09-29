@@ -4,11 +4,44 @@ schema_version = 1
 
 # BFM rebuilds of the commercial UART depth tests.
 [[tests]]
+name = "smc_uart_rbr_error_path_test"
+module = "smc_uart_rbr_error_path_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+args = ["+smc_uart_cross_3to0"]
+
+[[tests]]
+name = "smc_uart_window_landing_test"
+module = "smc_uart_window_landing_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_thr_paths_test"
+module = "smc_uart_thr_paths_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_log_engine_fetch_error_test"
+module = "smc_log_engine_fetch_error_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_uart_fifo_basic_trigger_reset_test"
 module = "smc_uart_fifo_basic_trigger_reset_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -16,7 +49,7 @@ name = "smc_uart_irq_sources_priority_test"
 module = "smc_uart_irq_sources_priority_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -24,7 +57,7 @@ name = "smc_uart_error_conditions_test"
 module = "smc_uart_error_conditions_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
@@ -33,7 +66,7 @@ name = "smc_uart_baud_word_parity_format_test"
 module = "smc_uart_baud_word_parity_format_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -41,7 +74,7 @@ name = "smc_uart_extremes_misc_test"
 module = "smc_uart_extremes_misc_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -49,7 +82,7 @@ name = "smc_uart_sanity_test"
 module = "smc_uart_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "depth", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 args = ["+smc_uart_cross_3to0"]
 
@@ -60,7 +93,39 @@ name = "smc_log_engine_intr_mask_test"
 module = "smc_log_engine_intr_mask_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "uart", "pyuvm"]
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_spi_log_engine_test"
+module = "smc_uart_spi_log_engine_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_reg_rw_test"
+module = "smc_uart_log_engine_reg_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_loopback_test"
+module = "smc_uart_loopback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_error_boundary_test"
+module = "smc_uart_log_engine_error_boundary_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[groups]]
@@ -76,31 +141,41 @@ tests = [
 ]
 
 [[tests]]
-name = "smc_uart_spi_log_engine_test"
-module = "smc_uart_spi_log_engine_test"
+name = "smc_uart_log_engine_field_sweep_test"
+module = "smc_uart_log_engine_field_sweep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_uart_log_engine_reg_rw_test"
-module = "smc_uart_log_engine_reg_rw_test"
+name = "smc_log_engine_transfer_test"
+module = "smc_log_engine_transfer_test"
 seed = 1
-timeout_sec = 1800
-tags = ["ci", "depth_uart_log", "pyuvm"]
+timeout_sec = 3600
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_uart_loopback_test"
-module = "smc_uart_loopback_test"
+name = "smc_log_engine_abort_test"
+module = "smc_log_engine_abort_test"
 seed = 1
-timeout_sec = 1800
-tags = ["ci", "depth_uart_log", "pyuvm"]
+timeout_sec = 3600
+tags = ["ci", "uart"]
 run_modes = ["smoke"]
 
-[[groups]]
-name = "depth_uart_log"
-tests = [
-    "smc_uart_log_engine_reg_rw_test",
-]
+[[tests]]
+name = "smc_uart_char_loopback_test"
+module = "smc_uart_char_loopback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_core_mode_select_test"
+module = "smc_uart_core_mode_select_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "uart"]
+run_modes = ["smoke"]

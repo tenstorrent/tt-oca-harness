@@ -29,8 +29,9 @@ from collections import Counter, deque
 import cocotb
 from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
+from models.entropy_noise_model import EntropyNoiseModel
 from sep_entropy_golden import SepEntropyGolden
-from sep_noise_golden import SepNoiseGolden
+from sep_spec_tables import CRYPTO_EDN_SINKS
 
 
 def _safe_int(sig):
@@ -90,14 +91,9 @@ class SepDrbgScoreboard:
         "otbn_urnd": "CHK5_otbn_urnd",
         "pool": "CHK5_pool",
     }
-    # crypto-EDN sink stream key -> bit/word index into the packed crypto_edn_*_o
-    # probe vectors (drbg_axis_edn_adapter client order: AES,KMAC,OTBN-RND,OTBN-URND).
-    _CRYPTO_SINK_IDX = {
-        "CHK5_aes": 0,
-        "CHK5_kmac": 1,
-        "CHK5_otbn_rnd": 2,
-        "CHK5_otbn_urnd": 3,
-    }
+    # Packed-probe index from the DV-owned sink table. Consuming tests bind
+    # each name with a single-client beat delta before any concurrent fork.
+    _CRYPTO_SINK_IDX = {f"CHK5_{name}": i for i, name in enumerate(CRYPTO_EDN_SINKS)}
 
     @staticmethod
     def _norm_mode(v, *, what):
@@ -188,7 +184,7 @@ class SepDrbgScoreboard:
         self._warmup["CHK1_decor"] = warmup
 
         # One noise source feeds both the DUT drive and the golden chain.
-        self.noise_gen = SepNoiseGolden()
+        self.noise_gen = EntropyNoiseModel()
         self.noise_gen.configure(noise_mode, seed_base=noise_seed_base)
         self._gk = dict(golden_kwargs or {})
         # Scoreboard-only knob: consumed here, never forwarded to SepEntropyGolden.
@@ -256,6 +252,9 @@ class SepDrbgScoreboard:
         # Granted/accepted beat whose packed data probe is X/Z. That is a
         # malformed routed beat, not "didn't happen" -- report() fails on it.
         self._xz_routed_beats = 0
+        # Scored beat (CHK2/CHK3/CHK4) whose data is X/Z, per checker. Same rule:
+        # an unresolvable value on a valid beat is a failure, not a skipped beat.
+        self._xz_scored_beats: dict[str, int] = {}
         # Adapter-protocol violation on the crypto-EDN leg: a same-cycle dual
         # grant, or an ack with an empty AXIS1 queue. The offending client may be
         # one this test does not score, so the per-sink results cannot carry it --
@@ -518,6 +517,7 @@ class SepDrbgScoreboard:
         self._axis2_member_hits = 0
         self._axis2_member_misses = 0
         self._xz_routed_beats = 0
+        self._xz_scored_beats = {}
         self._routing_protocol_fails = 0
         # Pre-reset genbits are X/garbage, so any Generate they opened is not a
         # real unterminated command -- drop the segmentation state with them.
@@ -596,6 +596,11 @@ class SepDrbgScoreboard:
             where,
         )
 
+    def _note_xz_scored(self, key: str) -> None:
+        """A valid beat on a scored stream whose data is X/Z. Fail in report()."""
+        self._xz_scored_beats[key] = self._xz_scored_beats.get(key, 0) + 1
+        self.log.error("%s FAIL: a valid beat carried X/Z data (unscorable)", key)
+
     # --------------------------------------------------------------- monitors
     async def _mon_level(self, key, vld, sig, *, mask):
         """One item per cycle the valid is high."""
@@ -604,7 +609,9 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if _safe_int(vld):
                 v = _safe_int(sig)
-                if v is not None:
+                if v is None:
+                    self._note_xz_scored(key)
+                else:
                     self._record(key, v & mask)
 
     async def _mon_handshake(self, key, vld, rdy, sig, *, mask):
@@ -888,7 +895,9 @@ class SepDrbgScoreboard:
             hs = (_safe_int(a) or 0) and (_safe_int(b) or 0)
             if hs and not prev:
                 v = _safe_int(sig)
-                if v is not None:
+                if v is None:
+                    self._note_xz_scored(key)
+                else:
                     self._record(key, v & mask)
             prev = hs
 
@@ -923,7 +932,9 @@ class SepDrbgScoreboard:
             if not (_safe_int(d.drbg_genbits_vld_o) or 0):
                 continue
             v = _safe_int(d.drbg_genbits_data_o)
-            if v is not None:
+            if v is None:
+                self._note_xz_scored("CHK4_genbits")
+            else:
                 # Predict this block before comparing it. Returns None only in the
                 # pre-seed boot window, where _record() will flag the empty queue.
                 self.chain.genbits_block()
@@ -1226,6 +1237,9 @@ class SepDrbgScoreboard:
             self.log.error(
                 "CHK5 ROUTING FAIL: %d accepted beat(s) had X/Z packed data", self._xz_routed_beats
             )
+            any_fail = True
+        for key, n in sorted(self._xz_scored_beats.items()):
+            self.log.error("%s FAIL: %d valid beat(s) carried X/Z data", key, n)
             any_fail = True
         if self._routing_protocol_fails:
             self.log.error(

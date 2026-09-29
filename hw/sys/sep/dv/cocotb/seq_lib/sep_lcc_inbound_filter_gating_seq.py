@@ -3,24 +3,31 @@
 """LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
 
 Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter
-_gating_test``). The contract:
+_gating_test``). The contract comes from the specification:
 
-  feat_ctrl.sep_debug (FEAT_CTRL[0]) drives the SEP inbound filter's
-  ``filter_skip_i`` (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``).
-  When sep_debug=0 the inbound filter is active (block-by-default) and an external
-  AXI access is blocked; when sep_debug=1 the filter is skipped and the external
-  access reaches the SEP-local fabric.
+  * ``feat_ctrl_o = ~(SIP_DIS | SYS_DIS)`` is positive logic, and bit 0 is
+    ``SEP_DBG``: 1 = SEP-scope debug enabled, inbound traffic bypasses the
+    filter; 0 = disabled, inbound traffic is filtered
+    (``hw/sys/sep/doc/lifecycle_controller.adoc``, feature-control-vector-definition).
+  * The inbound filter is bypassed in its entirety while SEP-scope debug is
+    enabled, and blocks traffic that matches no entry
+    (``hw/sys/sep/doc/fabric.adoc``, sep-traffic-filter-decode).
+  * A blocked transaction is not dropped: it is terminated with ``DECERR`` on
+    ``RRESP`` (``hw/ip/axi_filter/doc/index.adoc``, axi-traffic-filter-blocked).
+
+  So with FEAT_CTRL[0]=0 an external AXI read is refused with DECERR, and with
+  FEAT_CTRL[0]=1 it reaches the SEP-local fabric and returns OKAY.
 
 Two buses are exercised:
   * CONTROL (CPU-LSU, ``s_axi``, no inbound filter): reads FEAT_CTRL and writes
     DEMOTE_1 to flip PROD -> PROD_DBG_1. FEAT_CTRL reads carry an ``expected``
     golden value so the scoreboard exact-value-checks the lc_state -> feat_ctrl
-    decode (and FEAT_CTRL[0] is the frontdoor mirror of the internal
-    ``filter_skip_i`` -- the OSS replacement for the reference suite's backdoor ``uvm_hdl_read``).
+    decode. FEAT_CTRL[0] is the frontdoor view of the SEP_DBG enable, in place of
+    the reference suite's backdoor ``uvm_hdl_read``.
   * EXTERNAL (SMN-inbound, ``m_axi``): the filtered path. ``SepExtAxiProbeSeq``
     issues a single read and exposes resp_ok / resp_code / timed_out. Timeout is
-    fatal by default; the inbound filter proves a blocked access by routing it to
-    axi_err_slv with RESP_DECERR.
+    fatal by default; a blocked access is proven by the DECERR response the
+    specification requires.
 
 Register-map constants live here (co-located with the stimulus, never copied into
 the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl``.
@@ -29,13 +36,15 @@ the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecy
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_axi_decode_map import spec_regions
 from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
 from pyuvm import uvm_sequence
+from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
 # SEP-local lifecycle-controller block. The LCC register map lives in
 # env.sep_lcc_golden (single source of truth).
-DEMOTE_BIT = 0x1  # DEMOTE.demote (field [0:0])
-DEMOTE_LOCK_BIT = 0x2  # DEMOTE.lock (field [1:1])
+DEMOTE_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "demote")
+DEMOTE_LOCK_BIT = SEP_LIFECYCLE_CTRL.field_mask("DEMOTE_1", "lock")
 DEMOTE_FIELD_MASK = DEMOTE_BIT | DEMOTE_LOCK_BIT
 
 
@@ -121,12 +130,11 @@ class SepLccDemoteSeq(uvm_sequence):
         await self.start_item(rd)
         await self.finish_item(rd)
         self.demote = rd.rdata & DEMOTE_BIT
-        self.lock = (rd.rdata >> 1) & 0x1
+        self.lock = bool(rd.rdata & DEMOTE_LOCK_BIT)
 
 
-# AXI response codes (axi_pkg): blocked inbound traffic is routed to axi_err_slv
-# with RESP_DECERR (axi_filter_wrap.sv), so a blocked external probe must return
-# exactly this -- not a timeout (which would mean a wedge) nor SLVERR.
+# AMBA AXI4-Lite decode error (IHI 0022). A blocked inbound probe must return
+# DECERR, not a timeout and not SLVERR.
 RESP_DECERR = 3
 
 
@@ -134,8 +142,8 @@ class SepExtAxiProbeSeq(uvm_sequence):
     """Single read on the EXTERNAL (SMN-inbound, ``m_axi``) master.
 
     Run on the external sequencer (``start_ext_seq``). The access traverses the
-    inbound filter: blocked when sep_debug=0 (the filter routes it to axi_err_slv
-    -> RESP_DECERR) and allowed when sep_debug=1 (OKAY + real data). Exposes
+    inbound filter: blocked when sep_debug=0 (RESP_DECERR, per the module
+    contract) and allowed when sep_debug=1 (OKAY + real data). Exposes
     ``resp_ok`` / ``resp_code`` / ``timed_out`` / ``rdata``.
 
     ``allow_timeout`` defaults False: a non-completing access is then a test-fatal
@@ -166,3 +174,37 @@ class SepExtAxiProbeSeq(uvm_sequence):
         self.resp_code = item.resp_code
         self.timed_out = item.timed_out
         self.rdata = item.rdata & 0xFFFF_FFFF
+
+
+def _spec_row(unit: str):
+    rows = [r for r in spec_regions() if r.unit == unit]
+    if len(rows) != 1:
+        raise RuntimeError(f"memory-map table has {len(rows)} rows for {unit!r}, want 1")
+    return rows[0]
+
+
+def _unreachable() -> tuple[tuple[str, int], ...]:
+    """First and last word of each unit the inbound port has no path to.
+
+    ``hw/sys/sep/doc/fabric.adoc`` [[sep-axi-connectivity]]
+    (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg``): the System Interface
+    initiator has no connection to CPU TCM, Reset Ctrl or System Periph (which
+    holds the AP/STEE remap regions), and the Boot ROM path serves only CPU IFI
+    and LSU. ICCM, DCCM and the PIC are SEP CPU resources that no crossbar
+    target reaches.
+    Unit extents come from the DV-owned memory-map table in
+    ``env/sep_axi_decode_map.py`` and, for the ROM, the generated export.
+    """
+    rom = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+    out = [("Boot ROM", rom), ("Boot ROM", rom + sym("SEP_BOOT_ROM_MEM_SIZE") - 4)]
+    for unit in ("RST_CTRL", "ICCM", "DCCM", "PIC", "AP Remap Region", "STEE Remap Region"):
+        row = _spec_row(unit)
+        out += [(unit, row.base), (unit, (row.end_addr - 3) & ~0x3)]
+    return tuple(out)
+
+
+# (unit, word address) the SMN inbound port must not reach, walked in order.
+INBOUND_UNREACHABLE = _unreachable()
+# Reachable positive control on the same port: Scratch SRAM is connected to the
+# System Interface initiator in the same connectivity matrix.
+INBOUND_REACHABLE_SRAM = sym("SEP_SRAM_MEM_BASE_ADDR") + 0x100

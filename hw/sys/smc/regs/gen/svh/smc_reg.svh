@@ -10099,7 +10099,7 @@ localparam longint unsigned FILTER_CTRL_START_ADDR_REG_DEFAULT                  
 localparam longint unsigned FILTER_CTRL_END_ADDR_REG_DEFAULT                                                      = 64'h0000000000000007;
 localparam longint unsigned AXIL_MAILBOX_WRITE_DATA_REG_DEFAULT                                                   = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_READ_DATA_REG_DEFAULT                                                    = 64'h0000000000000000;
-localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000000;
+localparam longint unsigned AXIL_MAILBOX_STATUS_REG_DEFAULT                                                       = 64'h0000000000000001;
 localparam longint unsigned AXIL_MAILBOX_ERROR_REG_DEFAULT                                                        = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_WIRQT_REG_DEFAULT                                                        = 64'h0000000000000000;
 localparam longint unsigned AXIL_MAILBOX_RIRQT_REG_DEFAULT                                                        = 64'h0000000000000000;

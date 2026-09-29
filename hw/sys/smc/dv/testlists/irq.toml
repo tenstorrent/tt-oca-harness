@@ -7,7 +7,7 @@ name = "smc_irq_observe_test"
 module = "smc_irq_observe_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "functional", "pyuvm"]
+tags = ["ci", "irq"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -15,7 +15,7 @@ name = "smc_irq_multi_sample_test"
 module = "smc_irq_multi_sample_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "pyuvm"]
+tags = ["ci", "irq"]
 run_modes = ["smoke"]
 
 # BFM rebuild of FW hang_detector_sanity (irq_test; real stall not claimed).
@@ -24,16 +24,24 @@ name = "smc_hang_detector_sanity_test"
 module = "smc_hang_detector_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "hang", "pyuvm"]
+tags = ["ci", "irq", "hang"]
 run_modes = ["smoke"]
 
 # BFM: SEP outstanding stall timeout (tb_sep_axi_r_hold); not irq_test.
+[[tests]]
+name = "smc_hang_detector_disable_test"
+module = "smc_hang_detector_disable_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "irq", "hang"]
+run_modes = ["smoke"]
+
 [[tests]]
 name = "smc_hang_detector_timeout_test"
 module = "smc_hang_detector_timeout_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "hang", "pyuvm"]
+tags = ["ci", "irq", "hang"]
 run_modes = ["smoke"]
 
 # BFM: SYS_IN outstanding stall timeout (tb_sys_axi_r_hold); not SEP / irq_test.
@@ -42,7 +50,7 @@ name = "smc_hang_detector_sys_timeout_test"
 module = "smc_hang_detector_sys_timeout_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "hang", "pyuvm"]
+tags = ["ci", "irq", "hang"]
 run_modes = ["smoke"]
 
 # BFM: DATA_ACCEL outstanding stall (tb_output_axi_resp_hold + DMA); not SEP/SYS / irq_test.
@@ -51,7 +59,7 @@ name = "smc_hang_detector_data_timeout_test"
 module = "smc_hang_detector_data_timeout_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "hang", "pyuvm"]
+tags = ["ci", "irq", "hang"]
 run_modes = ["smoke"]
 
 # BFM: hang OR reaches the PLIC source pin via peripheral_interrupts[30].
@@ -61,7 +69,7 @@ name = "smc_hang_detector_plic_route_test"
 module = "smc_hang_detector_plic_route_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "hang", "plic", "pyuvm"]
+tags = ["ci", "irq", "hang", "plic"]
 run_modes = ["smoke"]
 
 # Unique PVT digital pin (the analog macros are placeholder RTL).
@@ -70,7 +78,7 @@ name = "smc_temp_interrupt_test"
 module = "smc_temp_interrupt_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "pvt", "pyuvm"]
+tags = ["ci", "irq", "pvt"]
 run_modes = ["smoke"]
 
 # The only external-interrupt coverage there is: wrapper ext_interrupts_i[0],
@@ -81,7 +89,7 @@ name = "smc_ext_interrupts_pin_test"
 module = "smc_ext_interrupts_pin_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "irq", "ext", "pyuvm"]
+tags = ["ci", "irq", "ext"]
 run_modes = ["smoke"]
 
 [[groups]]
@@ -104,8 +112,5 @@ name = "smc_mailbox_irq_test"
 module = "smc_mailbox_irq_test"
 seed = 1
 timeout_sec = 1800
-tags = [
-    "ci", "axil", "canonical",
-    "pyuvm"
-]
+tags = ["ci", "axil", "canonical"]
 run_modes = ["smoke"]

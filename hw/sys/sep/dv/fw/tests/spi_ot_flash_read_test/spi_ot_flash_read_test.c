@@ -52,13 +52,13 @@
 #define FLASH_READ_ADDR 0x000000
 
 static void init_spi_controller(void) {
-    spi_controller__CTRL_t ctrl;
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    spi_controller__CONTROL_t ctrl;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
-    spi_controller__CFG_t cfg;
+    spi_controller__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = SPI_CLKDIV;
     cfg.f.CPOL = 0;
@@ -66,16 +66,16 @@ static void init_spi_controller(void) {
     cfg.f.CSNIDLE = 2;
     cfg.f.CSNLEAD = 2;
     cfg.f.CSNTRAIL = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 }
 
 static int wait_for_ready(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (status.f.READY) return 0;
     }
     printf("  TIMEOUT waiting for READY\n");
@@ -85,7 +85,7 @@ static int wait_for_ready(int timeout) {
 static int wait_for_idle(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.ACTIVE) return 0;
     }
     printf("  TIMEOUT waiting for ACTIVE=0\n");
@@ -106,7 +106,7 @@ int main(void) {
     printf("SPI controller enabled: CLKDIV=%d\n", SPI_CLKDIV);
     printf("Flash address: 0x%06x, Read length: %u bytes\n\n", FLASH_READ_ADDR, READ_LEN_BYTES);
 
-    spi_controller__CMD_t cmd;
+    spi_controller__COMMAND_t cmd;
 
     /* ----------------------------------------------------------------
      * Step 0: JEDEC presence (fail closed if no flash peer / wrong device)
@@ -116,13 +116,13 @@ int main(void) {
         pass = 0;
         goto done;
     }
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, FLASH_CMD_JEDEC_ID);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), FLASH_CMD_JEDEC_ID);
     cmd.w = 0;
     cmd.f.LEN = 0;
     cmd.f.CSAAT = 1;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 2;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_for_ready(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
@@ -132,20 +132,20 @@ int main(void) {
     cmd.f.CSAAT = 0;
     cmd.f.SPEED = 0;
     cmd.f.DIRECTION = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     if (wait_for_idle(TIMEOUT_LIMIT)) {
         pass = 0;
         goto done;
     }
     {
         spi_controller__STATUS_t st;
-        st.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        st.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (st.f.RXQD < 1) {
             printf("  FAIL: empty RX after JEDEC (no flash peer)\n");
             pass = 0;
             goto done;
         }
-        uint32_t jedec = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+        uint32_t jedec = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
         uint8_t mfr = (uint8_t)(jedec & 0xFF);
         uint8_t typ = (uint8_t)((jedec >> 8) & 0xFF);
         uint8_t cap = (uint8_t)((jedec >> 16) & 0xFF);
@@ -158,18 +158,21 @@ int main(void) {
         printf("  PASS: flash peer present (W25Q512JV)\n");
     }
 
-    /* Drain any residual RX before READ (bounded SW_RST completion). */
+    /* Drain any residual RX before READ (bounded SW_RST completion). SW_RST is
+     * a level, so the release below is what lets the READ segments run. */
     {
-        spi_controller__CTRL_t c;
+        spi_controller__CONTROL_t c;
         spi_controller__STATUS_t st;
         int t = TIMEOUT_LIMIT;
-        c.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);
+        c.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
         c.f.SW_RST = 1;
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, c.w);
+        WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, c.w);
         while (t-- > 0) {
-            st.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+            st.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
             if (st.f.RXEMPTY && st.f.TXEMPTY && !st.f.ACTIVE) break;
         }
+        c.f.SW_RST = 0;
+        WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, c.w);
         if (t <= 0) {
             printf("  FAIL: SW_RST drain timeout before READ\n");
             pass = 0;
@@ -195,7 +198,7 @@ int main(void) {
     uint32_t tx_word = (FLASH_CMD_READ & 0xFF) | (((FLASH_READ_ADDR >> 16) & 0xFF) << 8) |
                        (((FLASH_READ_ADDR >> 8) & 0xFF) << 16) |
                        (((FLASH_READ_ADDR >> 0) & 0xFF) << 24);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, tx_word);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), tx_word);
     printf("  TXDATA=0x%08x (cmd=0x%02x, addr=0x%06x)\n", tx_word, FLASH_CMD_READ, FLASH_READ_ADDR);
 
     cmd.w = 0;
@@ -203,7 +206,7 @@ int main(void) {
     cmd.f.CSAAT = 1;     /* keep CS# low for data phase */
     cmd.f.SPEED = 0;     /* Standard SPI */
     cmd.f.DIRECTION = 2; /* TX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=TX, SPEED=Std, LEN=3(4B), CSAAT=1\n");
 
     /* ----------------------------------------------------------------
@@ -220,7 +223,7 @@ int main(void) {
     cmd.f.CSAAT = 0;                /* release CS# after */
     cmd.f.SPEED = 0;                /* Standard SPI */
     cmd.f.DIRECTION = 1;            /* RX only */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_COMMAND_BASE_ADDR, cmd.w);
     printf("  CMD: DIR=RX, SPEED=Std, LEN=%u(%uB), CSAAT=0\n", READ_LEN_BYTES - 1, READ_LEN_BYTES);
 
     if (wait_for_idle(TIMEOUT_LIMIT)) {
@@ -235,7 +238,7 @@ int main(void) {
      * ---------------------------------------------------------------- */
     printf("\nStep 3: Read %u words from RXDATA (expect erased 0xFF)\n", READ_LEN_BYTES / 4);
     spi_controller__STATUS_t status;
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  RXQD=%u, RXEMPTY=%u\n", status.f.RXQD, status.f.RXEMPTY);
 
     uint32_t rx_words[READ_LEN_BYTES / 4];
@@ -244,9 +247,9 @@ int main(void) {
     uint32_t mismatch = 0;
 
     for (i = 0; i < num_words; i++) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (!status.f.RXEMPTY) {
-            rx_words[i] = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
+            rx_words[i] = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0));
             printf("  [%u] 0x%08x  (bytes: %02x %02x %02x %02x)\n", i, rx_words[i],
                    (rx_words[i] >> 0) & 0xFF, (rx_words[i] >> 8) & 0xFF, (rx_words[i] >> 16) & 0xFF,
                    (rx_words[i] >> 24) & 0xFF);
@@ -278,7 +281,7 @@ int main(void) {
      * ---------------------------------------------------------------- */
     printf("\nStep 4: Check SPI error status\n");
     spi_controller__ERROR_STATUS_t err;
-    err.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS=0x%08x\n", err.w);
     if (err.f.CMDINVAL) {
         printf("  FAIL: CMDINVAL\n");

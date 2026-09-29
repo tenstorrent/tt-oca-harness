@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[i2c-memory-map]]
-===== Memory Map
+== Memory Map
 
-====== Overview
+=== Overview
 
 The I2C Interface Component provides a comprehensive register interface
 through an 8-bit address space (0x00-0xFF) accessible via AXI4-Lite
@@ -13,102 +13,7 @@ interrupt management, control configuration, data access, timing
 parameters, and mode-specific functionality. All registers are 32-bit
 aligned and support both controller and target operating modes.
 
-====== Register Address Map
-
-.Register Address Map
-[width="100%",cols="10%,25%,10%,55%",options="header",]
-|=====================================================================================
-|Address |Name |Access |Description
-|0x00 |INTR_STATE |RW |Interrupt State Register - Status of all
-interrupt sources
-
-|0x04 |INTR_ENABLE |RW |Interrupt Enable Register - Individual interrupt
-enables
-
-|0x08 |INTR_TEST |RW |Interrupt Test Register - Force interrupts for
-testing
-
-|0x0C |SMBUS_CTRL |RW |SMBus Control Register - SMBus-specific features
-
-|0x10 |CTRL |RW |Control Register - Global configuration and mode
-control
-
-|0x14 |STATUS |R |Status Register - Current operational status
-
-|0x18 |RDATA |R |Read Data Register - Controller mode received data
-
-|0x1C |FDATA |W |Format Data Register - Controller mode
-command/address/data
-
-|0x20 |FIFO_CTRL |W |FIFO Control Register - FIFO management commands
-
-|0x24 |HOST_FIFO_CONFIG |RW |Controller FIFO Configuration - Thresholds
-and settings
-
-|0x28 |TARGET_FIFO_CONFIG |RW |Target FIFO Configuration - Thresholds
-and settings
-
-|0x2C |HOST_FIFO_STATUS |R |Controller FIFO Status - Current FIFO levels
-and flags
-
-|0x30 |TARGET_FIFO_STATUS |R |Target FIFO Status - Current FIFO levels
-and flags
-
-|0x34 |OVRD |RW |Override Control Register - Direct signal control for
-debug
-
-|0x38 |VAL |R |Oversampled Values Register - Current signal states
-
-|0x3C |TIMING0 |RW |Timing Register 0 - SCL low and high periods
-
-|0x40 |TIMING1 |RW |Timing Register 1 - Rise and fall times
-
-|0x44 |TIMING2 |RW |Timing Register 2 - START condition timing
-
-|0x48 |TIMING3 |RW |Timing Register 3 - Data setup and hold timing
-
-|0x4C |TIMING4 |RW |Timing Register 4 - STOP condition and bus free
-timing
-
-|0x50 |TIMEOUT_CTRL |RW |Timeout Control Register - Bus timeout
-configuration
-
-|0x54 |TARGET_ID |RW |Target ID Register - Target mode address
-configuration
-
-|0x58 |ACQDATA |R |Acquired Data Register - Target mode received data
-
-|0x5C |TXDATA |W |Transmit Data Register - Target mode transmit data
-
-|0x60 |HOST_TIMEOUT_CTRL |RW |Controller Timeout Control -
-Controller-specific timeouts
-
-|0x64 |TARGET_TIMEOUT_CTRL |RW |Target Timeout Control - Target-specific
-timeouts
-
-|0x68 |TARGET_NACK_COUNT |RW |Target NACK Count Register - NACK counting
-configuration
-
-|0x6C |TARGET_ACK_CTRL |RW |Target ACK Control Register - ACK/NACK
-control
-
-|0x70 |ACQ_FIFO_NEXT_DATA |R |ACQ FIFO Next Data Register - Preview next
-ACQ FIFO entry
-
-|0x74 |HOST_NACK_HANDLER_TIMEOUT |RW |Controller NACK Handler Timeout -
-NACK response timing
-
-|0x78 |CONTROLLER_EVENTS |RW |Controller Events Register -
-Controller-specific event flags
-
-|0x7C |TARGET_EVENTS |RW |Target Events Register - Target-specific event
-flags
-
-|0x80 |SMBUS_STATUS |R |SMBus Status Register - SMBus-specific status
-information
-|=====================================================================================
-
-====== Address Alignment and Access Width
+=== Address Alignment and Access Width
 
 *Address Alignment:* - All registers are aligned to 32-bit boundaries
 (addresses are multiples of 4) - 8-bit effective address space: only
@@ -122,34 +27,18 @@ AXI4-Lite write strobe signals should be set to 4'b1111 for all writes
 *Endianness:* - All multi-byte fields use little-endian byte ordering -
 Bit numbering follows standard convention (bit 0 is LSB)
 
-====== Reset Values and Power-On State
-
-.Register Reset Values
-[width="100%",cols="30%,20%,50%",options="header",]
-|=====================================================================================
-|Register Group |Reset Value |Description
-|Interrupt Registers |0x00000000 |All interrupts cleared and disabled
-
-|Control Registers |0x00000000 |All modes disabled, default
-configuration
-
-|Status Registers |Varies |Hardware-determined based on initial state
-
-|Data Registers |N/A |FIFO access registers, no fixed reset value
-
-|Timing Registers |0x00000000 |Must be configured before operation
-
-|Target ID Registers |0x00000000 |No target addresses configured
-|=====================================================================================
-
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
 include::partial$i2c/regs/gen/html/i2c.html[]
+include::partial$i2c/regs/gen/html/i2c_ctrl.html[]
+include::partial$i2c/regs/gen/html/i2c_wrap.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/i2c.adoc[]
+include::../regs/gen/adoc/i2c.adoc[leveloffset=+2]
+include::../regs/gen/adoc/i2c_ctrl.adoc[leveloffset=+2]
+include::../regs/gen/adoc/i2c_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]

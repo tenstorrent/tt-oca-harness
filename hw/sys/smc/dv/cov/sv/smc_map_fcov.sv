@@ -5,9 +5,16 @@
 // spec-mapped apertures the suite reached and completed, plus the external
 // managers' read/write completions.
 //
-// Every window below is the memmap chapter's `BASE + offset` with BASE the
-// local alias 0xC000_0000. A cell is hit when a transaction to the window
-// completed, not when its address was merely presented.
+// Every window below is a `BASE + offset` with BASE the local alias
+// 0xC000_0000. Unit bases, instance strides and instance counts come from the
+// generated address map (smc_top_addrmap_pkg); a unit's aperture is the `Size`
+// column of the generated component map (regs/gen/adoc/memory_map.adoc), which
+// the package does not carry, and the layout regions are that file's
+// functional-organization table. Placements inside the adopter external window
+// are the reference integration's, from the generated boot ROM register header
+// (bootrom/prod/registers/smc_top_regs.h, SMC_TOP_SMC_EXTERNAL_*). A cell is
+// hit when a transaction to the window completed, not when its address was
+// merely presented.
 //
 // Attributing a response to an address needs the two channels tied to one
 // transaction. This module keeps a single-outstanding tracker per direction:
@@ -49,12 +56,23 @@ module smc_map_fcov (
   input wire [1:0] sep_rresp_i,
   input wire [63:0] sep_rdata_i,
 
-  // SYS_IN and JTAG inbound managers: completion handshakes only.
+  // SYS_IN inbound manager: completion handshakes only.
   input wire sys_bvalid_i,
   input wire sys_bready_i,
   input wire sys_rvalid_i,
   input wire sys_rready_i,
   input wire sys_rlast_i,
+
+  // JTAG inbound manager: address and completion handshakes, for the remap
+  // windows only this manager's path reaches.
+  input wire jtag_awvalid_i,
+  input wire jtag_awready_i,
+  input wire [55:0] jtag_awaddr_i,
+  input wire jtag_arvalid_i,
+  input wire jtag_arready_i,
+  input wire [55:0] jtag_araddr_i,
+  input wire [1:0] jtag_bresp_i,
+  input wire [1:0] jtag_rresp_i,
   input wire jtag_bvalid_i,
   input wire jtag_bready_i,
   input wire jtag_rvalid_i,
@@ -73,7 +91,57 @@ module smc_map_fcov (
 
   wire in_reset = (rst_cold_ni !== 1'b1);
 
+  import smc_top_addrmap_pkg::*;
+
   localparam logic [55:0] LocalBase = 56'h00_C000_0000;
+
+  // Generated-map windows as offsets from the local alias. A memory's window
+  // is its size; a register block's window is its aperture from the generated
+  // component map.
+  localparam logic [31:0] RomLo = 32'(SMC_TOP_SPM_ROM_MEMORY_BASE_ADDR - LocalBase);
+  localparam logic [31:0] RomHi = RomLo + 32'(SMC_TOP_SPM_ROM_MEMORY_SIZE) - 32'd1;
+  localparam logic [31:0] SpmLo = 32'(SMC_TOP_SPM_MEMORY_BASE_ADDR - LocalBase);
+  localparam logic [31:0] SpmHi = SpmLo + 32'(SMC_TOP_SPM_MEMORY_SIZE) - 32'd1;
+  localparam logic [31:0] DmaLo = 32'(SMC_TOP_DMA_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] DmaHi = DmaLo + 32'h200 - 32'd1;
+  localparam logic [31:0] ZeroerLo = 32'(SMC_TOP_ZEROER_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] ZeroerHi = ZeroerLo + 32'h100 - 32'd1;
+  // Last aligned 64-bit word of a unit's decoded extent: past it the fabric
+  // refuses the access even inside the unit's aperture (memmap.adoc, Address
+  // Space Organization).
+  localparam logic [31:0] DmaTop = ((DmaLo + 32'(SMC_TOP_DMA_CTRL_SIZE)) & ~32'd7) - 32'd8;
+  localparam logic [31:0] ZeroerTop = ((ZeroerLo + 32'(SMC_TOP_ZEROER_CTRL_SIZE)) & ~32'd7) - 32'd8;
+  localparam logic [31:0] PlicLo = 32'(SMC_TOP_SMC_CLUSTER_PLIC_BASE_ADDR - LocalBase);
+  localparam logic [31:0] PlicHi = PlicLo + 32'h0400_0000 - 32'd1;
+  localparam logic [31:0] PlicEnd = PlicLo + 32'(SMC_TOP_SMC_CLUSTER_PLIC_SIZE);
+  localparam logic [31:0] PlicTop = (PlicEnd & ~32'd7) - 32'd8;
+  localparam logic [31:0] ClintLo = 32'(SMC_TOP_SMC_CLUSTER_CLINT_BASE_ADDR - LocalBase);
+  localparam logic [31:0] ClintTop =
+      ((ClintLo + 32'(SMC_TOP_SMC_CLUSTER_CLINT_SIZE)) & ~32'd7) - 32'd8;
+  localparam logic [31:0] ResetUnitLo = 32'(SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - LocalBase);
+  localparam logic [31:0] MiscWrapLo = 32'(SMC_TOP_SMC_MISC_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] MiscWrapLast = MiscWrapLo + 32'(SMC_TOP_SMC_MISC_WRAP_SIZE) - 32'd4;
+  localparam logic [31:0] GpioIntfLo = 32'(SMC_TOP_GPIO_INTF_BASE_ADDR(0) - LocalBase);
+  localparam logic [31:0] GpioIntfStride = 32'(SMC_TOP_GPIO_INTF_STRIDE);
+  localparam int unsigned GpioIntfNum = int'(SMC_TOP_GPIO_INTF_NUM);
+  localparam logic [31:0] AvsLo = 32'(SMC_TOP_SMC_AVSBUS_CONTROLLER_BASE_ADDR - LocalBase);
+  localparam logic [31:0] I2cLo = 32'(SMC_TOP_SMC_I2C_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] UartLo = 32'(SMC_TOP_SMC_UART_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] UartStride = 32'(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_STRIDE);
+  localparam int unsigned UartNum = int'(SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_NUM);
+  localparam logic [31:0] EfuseMapLo = 32'(SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] EfuseIfLo = 32'(SMC_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] TelemetryLo =
+      32'(SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] OctsLo = 32'(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_BASE_ADDR - LocalBase);
+  localparam logic [31:0] DtpCtrlLo = 32'(SMC_TOP_DTP_CTRL_REG_BASE_ADDR - LocalBase);
+  localparam logic [31:0] DfxLo = 32'(SMC_TOP_DFX_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] I3cLo = 32'(SMC_TOP_OCA_I3C_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] I3cHi = I3cLo + 32'h6000 - 32'd1;
+  localparam logic [31:0] I3cStride = 32'(SMC_TOP_OCA_I3C_WRAP_I3C_CSR_STRIDE);
+  localparam int unsigned I3cNum = int'(SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM);
+  localparam logic [31:0] ClaLo = 32'(SMC_TOP_SMC_CLA_BASE_ADDR - LocalBase);
+  localparam logic [31:0] ClaHi = ClaLo + 32'(SMC_TOP_SMC_CLA_SIZE) - 32'd1;
   localparam logic [1:0] RespOkay = 2'b00;
 
   // Inclusive offset window against the local alias base.
@@ -126,6 +194,10 @@ module smc_map_fcov (
   wire rd_okay = rd_done && (sep_rresp_i == RespOkay);
   wire wr_okay = wr_done && (sep_bresp_i == RespOkay);
 
+  // Reads or writes completing OKAY inside [lo, hi].
+  `define SMC_MAP_OK(lo, hi) \
+      ((rd_okay && in_win(rd_addr_q, (lo), (hi))) || (wr_okay && in_win(wr_addr_q, (lo), (hi))))
+
   // 32-bit register lane selected by the transaction address.
   wire [31:0] rd_lane = rd_addr_q[2] ? sep_rdata_i[63:32] : sep_rdata_i[31:0];
   wire [31:0] wr_lane = wr_addr_q[2] ? wr_data_q[63:32] : wr_data_q[31:0];
@@ -172,47 +244,45 @@ module smc_map_fcov (
   // that point records the completed access; which macro answered is the
   // checker's to decide from the data.
   // ------------------------------------------------------------------
-  wire rom_base_read_e = rd_okay && in_win(rd_addr_q, 32'h0004_0000, 32'h0004_0007);
-  wire rom_top_read_e = rd_okay && in_win(rd_addr_q, 32'h0005_FFF8, 32'h0005_FFFF);
-  wire rom_above_top_e = rd_done && in_win(rd_addr_q, 32'h0006_0000, 32'h0006_0007);
+  wire rom_base_read_e = rd_okay && in_win(rd_addr_q, RomLo, RomLo + 32'd7);
+  wire rom_top_read_e = rd_okay && in_win(rd_addr_q, RomHi - 32'd7, RomHi);
+  wire rom_above_top_e = rd_done && in_win(rd_addr_q, RomHi + 32'd1, RomHi + 32'd8);
   `OCAH_FCOV_COVER(c_rom_base_read, rom_base_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_rom_top_read, rom_top_read_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_rom_just_above_top_not_rom, rom_above_top_e, clk_smc_i, in_reset)
 
   // Scratchpad region edges, and a read after a write landed in the region.
-  wire spm_rd_ok = rd_okay && in_win(rd_addr_q, 32'h0006_0000, 32'h0007_FFFF);
-  wire spm_wr_ok = wr_okay && in_win(wr_addr_q, 32'h0006_0000, 32'h0007_FFFF);
+  wire spm_rd_ok = rd_okay && in_win(rd_addr_q, SpmLo, SpmHi);
+  wire spm_wr_ok = wr_okay && in_win(wr_addr_q, SpmLo, SpmHi);
   logic spm_written_seen_q;
   always_ff @(posedge clk_smc_i) begin
     if (in_reset) spm_written_seen_q <= 1'b0;
     else if (spm_wr_ok) spm_written_seen_q <= 1'b1;
   end
-  wire spm_base_e = (rd_okay && in_win(rd_addr_q, 32'h0006_0000, 32'h0006_0007))
-      || (wr_okay && in_win(wr_addr_q, 32'h0006_0000, 32'h0006_0007));
-  wire spm_top_e = (rd_okay && in_win(rd_addr_q, 32'h0007_FFF8, 32'h0007_FFFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0007_FFF8, 32'h0007_FFFF));
+  wire spm_base_e = (rd_okay && in_win(rd_addr_q, SpmLo, SpmLo + 32'd7))
+      || (wr_okay && in_win(wr_addr_q, SpmLo, SpmLo + 32'd7));
+  wire spm_top_e = (rd_okay && in_win(rd_addr_q, SpmHi - 32'd7, SpmHi))
+      || (wr_okay && in_win(wr_addr_q, SpmHi - 32'd7, SpmHi));
   wire spm_write_then_read_e = spm_rd_ok && spm_written_seen_q;
   `OCAH_FCOV_COVER(c_spm_region_base, spm_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_spm_region_top, spm_top_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_spm_write_then_read, spm_write_then_read_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // DMA and zeroer apertures, 512 B each and adjacent.
+  // DMA (512 B) and zeroer (256 B) apertures, adjacent.
   // ------------------------------------------------------------------
-  wire dma_win_ok = (rd_okay && in_win(rd_addr_q, 32'h0003_8000, 32'h0003_81FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8000, 32'h0003_81FF));
-  wire zeroer_win_ok = (rd_okay && in_win(rd_addr_q, 32'h0003_8200, 32'h0003_83FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8200, 32'h0003_83FF));
-  wire dma_base_e = (rd_okay && in_win(rd_addr_q, 32'h0003_8000, 32'h0003_8007))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8000, 32'h0003_8007));
-  wire dma_top_e = (rd_okay && in_win(rd_addr_q, 32'h0003_81F8, 32'h0003_81FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_81F8, 32'h0003_81FF));
-  wire dma_above_top_e = (rd_done && in_win(rd_addr_q, 32'h0003_8200, 32'h0003_8207))
-      || (wr_done && in_win(wr_addr_q, 32'h0003_8200, 32'h0003_8207));
-  wire zeroer_base_e = (rd_okay && in_win(rd_addr_q, 32'h0003_8200, 32'h0003_8207))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_8200, 32'h0003_8207));
-  wire zeroer_top_e = (rd_okay && in_win(rd_addr_q, 32'h0003_83F8, 32'h0003_83FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_83F8, 32'h0003_83FF));
+  wire dma_win_ok = (rd_okay && in_win(rd_addr_q, DmaLo, DmaHi))
+      || (wr_okay && in_win(wr_addr_q, DmaLo, DmaHi));
+  wire zeroer_win_ok = (rd_okay && in_win(rd_addr_q, ZeroerLo, ZeroerHi))
+      || (wr_okay && in_win(wr_addr_q, ZeroerLo, ZeroerHi));
+  wire dma_base_e = (rd_okay && in_win(rd_addr_q, DmaLo, DmaLo + 32'd7))
+      || (wr_okay && in_win(wr_addr_q, DmaLo, DmaLo + 32'd7));
+  wire dma_top_e = `SMC_MAP_OK(DmaTop, DmaTop + 32'd7);
+  wire dma_above_top_e = (rd_done && in_win(rd_addr_q, DmaHi + 32'd1, DmaHi + 32'd8))
+      || (wr_done && in_win(wr_addr_q, DmaHi + 32'd1, DmaHi + 32'd8));
+  wire zeroer_base_e = (rd_okay && in_win(rd_addr_q, ZeroerLo, ZeroerLo + 32'd7))
+      || (wr_okay && in_win(wr_addr_q, ZeroerLo, ZeroerLo + 32'd7));
+  wire zeroer_top_e = `SMC_MAP_OK(ZeroerTop, ZeroerTop + 32'd7);
   `OCAH_FCOV_COVER(c_dma_aperture_base, dma_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_dma_aperture_top, dma_top_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_dma_just_above_top_not_dma, dma_above_top_e, clk_smc_i, in_reset)
@@ -258,37 +328,25 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_all_16_banks_decode, all_16_banks_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // Peripheral block apertures at their mapped base offsets. A cell pinned
-  // by two chapters carries one label per cell over the same window.
+  // Peripheral block apertures at their generated bases, each as wide as the
+  // component map's `Size` column. A cell pinned by two chapters carries one
+  // label per cell over the same window.
   // ------------------------------------------------------------------
-  wire gpio_intf_e = (rd_okay && in_win(rd_addr_q, 32'h0000_3000, 32'h0000_340F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_3000, 32'h0000_340F));
-  wire i3c_e = (rd_okay && in_win(rd_addr_q, 32'h0000_4000, 32'h0000_5FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_4000, 32'h0000_5FFF));
-  wire avsbus_e = (rd_okay && in_win(rd_addr_q, 32'h0000_6000, 32'h0000_6FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_6000, 32'h0000_6FFF));
-  wire i2c_e = (rd_okay && in_win(rd_addr_q, 32'h0000_7000, 32'h0000_7FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_7000, 32'h0000_7FFF));
-  wire uart_e = (rd_okay && in_win(rd_addr_q, 32'h0000_8000, 32'h0000_8FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_8000, 32'h0000_8FFF));
-  wire efuse_map_e = (rd_okay && in_win(rd_addr_q, 32'h0000_9000, 32'h0000_9FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_9000, 32'h0000_9FFF));
-  wire efuse_if_e = (rd_okay && in_win(rd_addr_q, 32'h0000_A000, 32'h0000_AFFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_A000, 32'h0000_AFFF));
-  wire telemetry_e = (rd_okay && in_win(rd_addr_q, 32'h0000_B000, 32'h0000_BFFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_B000, 32'h0000_BFFF));
-  wire octs_e = (rd_okay && in_win(rd_addr_q, 32'h0000_C000, 32'h0000_CFFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_C000, 32'h0000_CFFF));
-  wire dtp_ctrl_e = (rd_okay && in_win(rd_addr_q, 32'h0000_D000, 32'h0000_D7FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_D000, 32'h0000_D7FF));
-  wire dfx_status_e = (rd_okay && in_win(rd_addr_q, 32'h0000_D800, 32'h0000_DFFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_D800, 32'h0000_DFFF));
-  wire reset_unit_e = (rd_okay && in_win(rd_addr_q, 32'h0000_2000, 32'h0000_27FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_2000, 32'h0000_27FF));
-  wire misc_wrap_e = (rd_okay && in_win(rd_addr_q, 32'h0000_2800, 32'h0000_2FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_2800, 32'h0000_2FFF));
-  wire cla_e = (rd_okay && in_win(rd_addr_q, 32'h0016_0000, 32'h0016_8FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0016_0000, 32'h0016_8FFF));
+  wire gpio_intf_e = `SMC_MAP_OK(GpioIntfLo,
+                                 GpioIntfLo + GpioIntfStride * 32'(GpioIntfNum) - 32'd1);
+  wire i3c_e = `SMC_MAP_OK(I3cLo, I3cHi);
+  wire avsbus_e = `SMC_MAP_OK(AvsLo, AvsLo + 32'h0FFF);
+  wire i2c_e = `SMC_MAP_OK(I2cLo, I2cLo + 32'h0FFF);
+  wire uart_e = `SMC_MAP_OK(UartLo, UartLo + 32'h0FFF);
+  wire efuse_map_e = `SMC_MAP_OK(EfuseMapLo, EfuseMapLo + 32'h0FFF);
+  wire efuse_if_e = `SMC_MAP_OK(EfuseIfLo, EfuseIfLo + 32'h0FFF);
+  wire telemetry_e = `SMC_MAP_OK(TelemetryLo, TelemetryLo + 32'h0FFF);
+  wire octs_e = `SMC_MAP_OK(OctsLo, OctsLo + 32'h0FFF);
+  wire dtp_ctrl_e = `SMC_MAP_OK(DtpCtrlLo, DtpCtrlLo + 32'h07FF);
+  wire dfx_status_e = `SMC_MAP_OK(DfxLo, DfxLo + 32'h07FF);
+  wire reset_unit_e = `SMC_MAP_OK(ResetUnitLo, ResetUnitLo + 32'h07FF);
+  wire misc_wrap_e = `SMC_MAP_OK(MiscWrapLo, MiscWrapLo + 32'h07FF);
+  wire cla_e = `SMC_MAP_OK(ClaLo, ClaHi);
   `OCAH_FCOV_COVER(c_gpio_interface_decode, gpio_intf_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_i3c_decode, i3c_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_i3c_region, i3c_e, clk_smc_i, in_reset)
@@ -303,32 +361,29 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_telemetry_decode, telemetry_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_octs_decode, octs_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_octs_aperture_decode, octs_e, clk_smc_i, in_reset)
+`ifdef SMC_FCOV_PHASE2
+  // Phase 2 (SMC_FCOV.adoc): the DTP control window is served by the DTP,
+  // which smc_wrapper leaves outside the bench with its CSR port unterminated.
   `OCAH_FCOV_COVER(c_dtp_ctrl_decode, dtp_ctrl_e, clk_smc_i, in_reset)
+`endif
   `OCAH_FCOV_COVER(c_dfx_status_decode, dfx_status_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_reset_unit_decode, reset_unit_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_misc_wrap_decode, misc_wrap_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_cla_decode, cla_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_cla_region, cla_e, clk_smc_i, in_reset)
 
-  // Multi-instance peripherals at their instance stride: GPIO 0x10, I3C
-  // 0x500, mailbox pairs 0x1000 (128 KiB over 32 pairs), UART 0x400 (4 KiB
-  // over 4 instances).
-  wire gpio_inst0_e = (rd_okay && in_win(rd_addr_q, 32'h0000_3000, 32'h0000_300F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_3000, 32'h0000_300F));
-  wire gpio_inst64_e = (rd_okay && in_win(rd_addr_q, 32'h0000_3400, 32'h0000_340F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_3400, 32'h0000_340F));
-  wire i3c_inst0_e = (rd_okay && in_win(rd_addr_q, 32'h0000_4000, 32'h0000_44FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_4000, 32'h0000_44FF));
-  wire i3c_inst5_e = (rd_okay && in_win(rd_addr_q, 32'h0000_5900, 32'h0000_5DFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_5900, 32'h0000_5DFF));
-  wire mbx_pair0_e = (rd_okay && in_win(rd_addr_q, 32'h0001_8000, 32'h0001_8FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0001_8000, 32'h0001_8FFF));
-  wire mbx_pair31_e = (rd_okay && in_win(rd_addr_q, 32'h0003_7000, 32'h0003_7FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_7000, 32'h0003_7FFF));
-  wire uart_inst0_e = (rd_okay && in_win(rd_addr_q, 32'h0000_8000, 32'h0000_83FF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_8000, 32'h0000_83FF));
-  wire uart_inst3_e = (rd_okay && in_win(rd_addr_q, 32'h0000_8C00, 32'h0000_8FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_8C00, 32'h0000_8FFF));
+  // Multi-instance peripherals at their generated instance stride: GPIO
+  // interfaces, the I3C CSR windows and the UART log-engine wraps. Mailbox
+  // pairs are 0x1000 apart (128 KiB over 32 pairs).
+  wire gpio_inst0_e = `SMC_MAP_OK(GpioIntfLo, GpioIntfLo + GpioIntfStride - 32'd1);
+  wire gpio_inst64_e = `SMC_MAP_OK(GpioIntfLo + GpioIntfStride * 32'(GpioIntfNum - 1),
+                                   GpioIntfLo + GpioIntfStride * 32'(GpioIntfNum) - 32'd1);
+  wire i3c_inst0_e = `SMC_MAP_OK(I3cLo, I3cLo + I3cStride - 32'd1);
+  wire i3c_inst5_e = `SMC_MAP_OK(I3cLo + I3cStride * 32'd5, I3cLo + I3cStride * 32'd6 - 32'd1);
+  wire mbx_pair0_e = `SMC_MAP_OK(32'h0001_8000, 32'h0001_8FFF);
+  wire mbx_pair31_e = `SMC_MAP_OK(32'h0003_7000, 32'h0003_7FFF);
+  wire uart_inst0_e = `SMC_MAP_OK(UartLo, UartLo + UartStride - 32'd1);
+  wire uart_inst3_e = `SMC_MAP_OK(UartLo + UartStride * 32'd3, UartLo + UartStride * 32'd4 - 32'd1);
   `OCAH_FCOV_COVER(c_gpio_instance_0, gpio_inst0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_instance_64, gpio_inst64_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_i3c_instance_0, i3c_inst0_e, clk_smc_i, in_reset)
@@ -341,14 +396,10 @@ module smc_map_fcov (
   // pair; those come from the generated map (smc_addr.h
   // SMC_TOP_SMC_MAILBOX_{OUT,IN}BOUND_MAILBOX_n_BASE_ADDR), 0x50 of registers
   // at pair base + 0x0 and pair base + 0x800.
-  wire mbx_ob_pair0_e = (rd_okay && in_win(rd_addr_q, 32'h0001_8000, 32'h0001_804F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0001_8000, 32'h0001_804F));
-  wire mbx_ib_pair0_e = (rd_okay && in_win(rd_addr_q, 32'h0001_8800, 32'h0001_884F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0001_8800, 32'h0001_884F));
-  wire mbx_ob_pair31_e = (rd_okay && in_win(rd_addr_q, 32'h0003_7000, 32'h0003_704F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_7000, 32'h0003_704F));
-  wire mbx_ib_pair31_e = (rd_okay && in_win(rd_addr_q, 32'h0003_7800, 32'h0003_784F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0003_7800, 32'h0003_784F));
+  wire mbx_ob_pair0_e = `SMC_MAP_OK(32'h0001_8000, 32'h0001_804F);
+  wire mbx_ib_pair0_e = `SMC_MAP_OK(32'h0001_8800, 32'h0001_884F);
+  wire mbx_ob_pair31_e = `SMC_MAP_OK(32'h0003_7000, 32'h0003_704F);
+  wire mbx_ib_pair31_e = `SMC_MAP_OK(32'h0003_7800, 32'h0003_784F);
   `OCAH_FCOV_COVER(c_outbound_pair_0, mbx_ob_pair0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_inbound_pair_0, mbx_ib_pair0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_outbound_pair_31, mbx_ob_pair31_e, clk_smc_i, in_reset)
@@ -356,16 +407,14 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_uart_instance_0, uart_inst0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_uart_instance_3, uart_inst3_e, clk_smc_i, in_reset)
 
-  // All six I3C instance windows reached within one run.
-  logic [5:0] i3c_inst_mask_q;
+  // Every I3C CSR window reached within one run.
+  logic [I3cNum-1:0] i3c_inst_mask_q;
   logic i3c_inst_all_q;
-  logic [5:0] i3c_inst_hit;
+  logic [I3cNum-1:0] i3c_inst_hit;
   always_comb begin
-    for (int unsigned i = 0; i < 6; i++) begin
-      i3c_inst_hit[i] = (rd_okay && in_win(rd_addr_q, 32'h0000_4000 + 32'(i * 32'h500),
-                                           32'h0000_44FF + 32'(i * 32'h500))) ||
-          (wr_okay &&
-           in_win(wr_addr_q, 32'h0000_4000 + 32'(i * 32'h500), 32'h0000_44FF + 32'(i * 32'h500)));
+    for (int unsigned i = 0; i < I3cNum; i++) begin
+      i3c_inst_hit[i] = `SMC_MAP_OK(I3cLo + I3cStride * 32'(i),
+                                    I3cLo + I3cStride * 32'(i + 1) - 32'd1);
     end
   end
   always_ff @(posedge clk_smc_i) begin
@@ -374,10 +423,10 @@ module smc_map_fcov (
       i3c_inst_all_q <= 1'b0;
     end else begin
       i3c_inst_mask_q <= i3c_inst_mask_q | i3c_inst_hit;
-      i3c_inst_all_q <= (i3c_inst_mask_q == 6'h3F);
+      i3c_inst_all_q <= (&i3c_inst_mask_q);
     end
   end
-  wire i3c_count_6_e = (i3c_inst_mask_q == 6'h3F) && !i3c_inst_all_q;
+  wire i3c_count_6_e = (&i3c_inst_mask_q) && !i3c_inst_all_q;
   `OCAH_FCOV_COVER(c_i3c_count_6, i3c_count_6_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
@@ -489,8 +538,10 @@ module smc_map_fcov (
   wire chip_config_write_e = wr_done && in_win(wr_addr_q, 32'h0000_2900, 32'h0000_290F);
   wire misc_wrap_base_e = (rd_okay && in_win(rd_addr_q, 32'h0000_2800, 32'h0000_2807))
       || (wr_okay && in_win(wr_addr_q, 32'h0000_2800, 32'h0000_2807));
-  wire misc_wrap_top_e = (rd_okay && in_win(rd_addr_q, 32'h0000_2FF8, 32'h0000_2FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0000_2FF8, 32'h0000_2FFF));
+  // The top that decodes is the last register of the decoded extent; the rest
+  // of the 2 KiB aperture is refused by the fabric (memmap.adoc, Address Space
+  // Organization).
+  wire misc_wrap_top_e = `SMC_MAP_OK(MiscWrapLast, MiscWrapLast + 32'd3);
   wire ndm_reset_block_e = (rd_okay && in_win(rd_addr_q, 32'h0000_2A00, 32'h0000_2A0B))
       || (wr_okay && in_win(wr_addr_q, 32'h0000_2A00, 32'h0000_2A0B));
   wire lc_state_readback_e = rd_okay && in_win(rd_addr_q, 32'h0000_290C, 32'h0000_290F)
@@ -504,20 +555,25 @@ module smc_map_fcov (
 
   // ------------------------------------------------------------------
   // AXI-Lite external window: mandatory blocks, per-pad control stride and
-  // the supplementary region with the captured straps.
+  // the supplementary region with the captured straps. Offsets are the
+  // reference placement in smc_top_regs.h (SMC_TOP_SMC_EXTERNAL_MANDATORY_*).
+  //
+  // The window belongs to the adopter: SMC routes every access in it to the
+  // external AXI-Lite port and specifies nothing behind it (memmap.adoc,
+  // AXI-Lite External Window). The clock-observation, pad-bias,
+  // reference-clock and per-pad control points therefore take a completion the
+  // external port carried, whatever the response; the reference integration
+  // implements none of those blocks and terminates them with an error slave.
   // ------------------------------------------------------------------
-  wire pll_obs_intf_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0000, 32'h0040_000B))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0000, 32'h0040_000B));
-  wire pll_obs_ctrl_e = (rd_okay && in_win(rd_addr_q, 32'h0040_000C, 32'h0040_000F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_000C, 32'h0040_000F));
-  wire pvt_obs_intf_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0010, 32'h0040_001B))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0010, 32'h0040_001B));
-  wire pvt_obs_ctrl_e = (rd_okay && in_win(rd_addr_q, 32'h0040_001C, 32'h0040_001F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_001C, 32'h0040_001F));
-  wire gpio_poc_pbias_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0020, 32'h0040_002B))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0020, 32'h0040_002B));
-  wire gpio_refclk_ctrl_e = (rd_okay && in_win(rd_addr_q, 32'h0040_002C, 32'h0040_002F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_002C, 32'h0040_002F));
+  `define SMC_MAP_EXT(lo, hi) \
+      ((rd_ext_done && in_win(rd_addr_q, (lo), (hi))) \
+       || (wr_ext_done && in_win(wr_addr_q, (lo), (hi))))
+  wire pll_obs_intf_e = `SMC_MAP_EXT(32'h0040_1000, 32'h0040_100B);
+  wire pll_obs_ctrl_e = `SMC_MAP_EXT(32'h0040_100C, 32'h0040_100F);
+  wire pvt_obs_intf_e = `SMC_MAP_EXT(32'h0040_1010, 32'h0040_101B);
+  wire pvt_obs_ctrl_e = `SMC_MAP_EXT(32'h0040_101C, 32'h0040_101F);
+  wire gpio_poc_pbias_e = `SMC_MAP_EXT(32'h0040_1020, 32'h0040_102B);
+  wire gpio_refclk_ctrl_e = `SMC_MAP_EXT(32'h0040_102C, 32'h0040_102F);
   `OCAH_FCOV_COVER(c_pll_obs_intf_decode, pll_obs_intf_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pll_obs_ctrl_decode, pll_obs_ctrl_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pvt_obs_intf_decode, pvt_obs_intf_e, clk_smc_i, in_reset)
@@ -525,12 +581,10 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_gpio_poc_pbias_decode, gpio_poc_pbias_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_refclk_ctrl_decode, gpio_refclk_ctrl_e, clk_smc_i, in_reset)
 
-  wire per_pad_inst0_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0100, 32'h0040_011F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0100, 32'h0040_011F));
-  wire per_pad_inst1_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0120, 32'h0040_013F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0120, 32'h0040_013F));
-  wire per_pad_inst64_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0900, 32'h0040_091F))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0900, 32'h0040_091F));
+  // Per-pad GPIO control, 65 instances 0x20 apart from +0x1100.
+  wire per_pad_inst0_e = `SMC_MAP_EXT(32'h0040_1100, 32'h0040_111F);
+  wire per_pad_inst1_e = `SMC_MAP_EXT(32'h0040_1120, 32'h0040_113F);
+  wire per_pad_inst64_e = `SMC_MAP_EXT(32'h0040_1900, 32'h0040_191F);
   `OCAH_FCOV_COVER(c_per_pad_instance_0, per_pad_inst0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_per_pad_block_first, per_pad_inst0_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_per_pad_instance_64, per_pad_inst64_e, clk_smc_i, in_reset)
@@ -551,19 +605,16 @@ module smc_map_fcov (
   wire per_pad_stride_e = pad_inst0_seen_q && pad_inst1_seen_q && !pad_stride_q;
   `OCAH_FCOV_COVER(c_per_pad_stride_0x20, per_pad_stride_e, clk_smc_i, in_reset)
 
-  wire mandatory_base_e = (rd_okay && in_win(rd_addr_q, 32'h0040_0000, 32'h0040_0007))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_0000, 32'h0040_0007));
-  wire pll_wrapper_e = (rd_okay && in_win(rd_addr_q, 32'h0040_1000, 32'h0040_1FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_1000, 32'h0040_1FFF));
-  wire pvt_wrapper_e = (rd_okay && in_win(rd_addr_q, 32'h0040_2000, 32'h0040_2FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_2000, 32'h0040_2FFF));
-  wire efuse_shim_e = (rd_okay && in_win(rd_addr_q, 32'h0040_3000, 32'h0040_3FFF))
-      || (wr_okay && in_win(wr_addr_q, 32'h0040_3000, 32'h0040_3FFF));
+  // The eFuse SHIM CSR at the window base, then the PLL and PVT wrappers, each
+  // over its register extent. The bench answers all three OKAY.
+  wire mandatory_base_e = `SMC_MAP_OK(32'h0040_0000, 32'h0040_0007);
+  wire efuse_shim_e = `SMC_MAP_OK(32'h0040_0000, 32'h0040_0043);
+  wire pll_wrapper_e = `SMC_MAP_OK(32'h0040_2000, 32'h0040_2EE1);
+  wire pvt_wrapper_e = `SMC_MAP_OK(32'h0040_3000, 32'h0040_3947);
   // The supplementary region holds the adopter's own devices, so a completion
   // there is the terminator's rather than a device's. The point takes a
   // completed access that the external port carried.
-  wire supplementary_base_e = (rd_ext_done && in_win(rd_addr_q, 32'h0040_4000, 32'h0040_4007))
-      || (wr_ext_done && in_win(wr_addr_q, 32'h0040_4000, 32'h0040_4007));
+  wire supplementary_base_e = `SMC_MAP_EXT(32'h0040_4000, 32'h0040_4007);
   `OCAH_FCOV_COVER(c_mandatory_region_base_decodes, mandatory_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pll_wrapper_decodes, pll_wrapper_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_pvt_wrapper_decode, pvt_wrapper_e, clk_smc_i, in_reset)
@@ -621,15 +672,17 @@ module smc_map_fcov (
   wire rd_done_far = rd_done && rd_unfolded;
   wire wr_done_far = wr_done && wr_unfolded;
 
-  // PLIC, 4 MiB at offset 0x400_0000.
-  wire plic_region_e = (rd_okay_far && in_win(rd_addr_q, 32'h0400_0000, 32'h043F_FFFF))
-      || (wr_okay_far && in_win(wr_addr_q, 32'h0400_0000, 32'h043F_FFFF));
-  wire plic_base_e = (rd_okay_far && in_win(rd_addr_q, 32'h0400_0000, 32'h0400_0007))
-      || (wr_okay_far && in_win(wr_addr_q, 32'h0400_0000, 32'h0400_0007));
-  wire plic_top_e = (rd_okay_far && in_win(rd_addr_q, 32'h043F_FFF8, 32'h043F_FFFF))
-      || (wr_okay_far && in_win(wr_addr_q, 32'h043F_FFF8, 32'h043F_FFFF));
-  wire plic_above_e = (rd_done_far && in_win(rd_addr_q, 32'h0440_0000, 32'h0440_0007))
-      || (wr_done_far && in_win(wr_addr_q, 32'h0440_0000, 32'h0440_0007));
+  // PLIC, 64 MiB aperture at offset 0x400_0000. Its top is the last word of
+  // the decoded extent, and anything above that inside the aperture is
+  // refused.
+  wire plic_region_e = (rd_okay_far && in_win(rd_addr_q, PlicLo, PlicHi))
+      || (wr_okay_far && in_win(wr_addr_q, PlicLo, PlicHi));
+  wire plic_base_e = (rd_okay_far && in_win(rd_addr_q, PlicLo, PlicLo + 32'd7))
+      || (wr_okay_far && in_win(wr_addr_q, PlicLo, PlicLo + 32'd7));
+  wire plic_top_e = (rd_okay_far && in_win(rd_addr_q, PlicTop, PlicTop + 32'd7))
+      || (wr_okay_far && in_win(wr_addr_q, PlicTop, PlicTop + 32'd7));
+  wire plic_above_e = (rd_done_far && in_win(rd_addr_q, PlicEnd, PlicHi))
+      || (wr_done_far && in_win(wr_addr_q, PlicEnd, PlicHi));
   `OCAH_FCOV_COVER(c_plic_region, plic_region_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_plic_base_access, plic_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_plic_top_access, plic_top_e, clk_smc_i, in_reset)
@@ -637,7 +690,7 @@ module smc_map_fcov (
 
   // PLIC software initialisation: interrupts.adoc requires firmware to write
   // priority 0 and disabled to every source before enabling external
-  // interrupts. The register offsets inside the 4 MiB window are the generated
+  // interrupts. The register offsets inside the PLIC window are the generated
   // map's (smc_addr.h SMC_TOP_SMC_CLUSTER_PLIC_PRIORITY / _COREn_MEIP_ENABLE):
   // 337 priority words at +0x0 and eleven enable words per core from +0x2000.
   wire plic_prio_win_rd = rd_okay_far && in_win(rd_addr_q, 32'h0400_0000, 32'h0400_0543);
@@ -657,12 +710,13 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_enables_written_to_disabled, plic_en_disabled_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_readback_matches, plic_readback_e, clk_smc_i, in_reset)
 
-  // CLINT, 64 KiB at offset 0x800_0000, and the 80 KiB timer / bus-error
-  // region that holds it together with the four bus-error units.
+  // CLINT, 64 KiB at offset 0x800_0000 with its top at the end of the decoded
+  // extent, and the 80 KiB timer / bus-error region that holds it together
+  // with the four bus-error units.
   wire clint_base_e = (rd_okay_far && in_win(rd_addr_q, 32'h0800_0000, 32'h0800_0007))
       || (wr_okay_far && in_win(wr_addr_q, 32'h0800_0000, 32'h0800_0007));
-  wire clint_top_e = (rd_okay_far && in_win(rd_addr_q, 32'h0800_FFF8, 32'h0800_FFFF))
-      || (wr_okay_far && in_win(wr_addr_q, 32'h0800_FFF8, 32'h0800_FFFF));
+  wire clint_top_e = (rd_okay_far && in_win(rd_addr_q, ClintTop, ClintTop + 32'd7))
+      || (wr_okay_far && in_win(wr_addr_q, ClintTop, ClintTop + 32'd7));
   wire clint_above_e = (rd_done_far && in_win(rd_addr_q, 32'h0801_0000, 32'h0801_0007))
       || (wr_done_far && in_win(wr_addr_q, 32'h0801_0000, 32'h0801_0007));
   wire timer_buserror_region_e = (rd_okay_far && in_win(rd_addr_q, 32'h0800_0000, 32'h0801_3FFF))
@@ -688,40 +742,44 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_beu_instance_3, beu3_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // Address-space layout regions inside the 16 MiB reset aperture.
+  // Address-space layout regions inside the 16 MiB reset aperture, from the
+  // functional-organization table of the generated memory map. Its "System
+  // and Peripheral Control" row is split into the four component groups the
+  // component table lists under it: reset and misc control, the GPIO
+  // interfaces, the serial controllers, and the eFuse / telemetry / timer /
+  // DTP / DFT blocks. The PLIC and core-local rows lie above the reset
+  // aperture and have their own points below.
   // ------------------------------------------------------------------
-  localparam int unsigned NumRegions = 14;
+  localparam int unsigned NumRegions = 13;
   localparam logic [31:0] RegionLo[NumRegions] = '{
       32'h0000_0000,
-      32'h0000_1000,
-      32'h0000_2000,
-      32'h0000_3000,
-      32'h0000_4000,
-      32'h0000_6000,
-      32'h0000_9000,
+      ResetUnitLo,
+      GpioIntfLo,
+      AvsLo,
+      EfuseMapLo,
       32'h0001_0000,
-      32'h0001_8000,
-      32'h0003_8000,
-      32'h0004_0000,
-      32'h0016_0000,
-      32'h0040_0000,
-      32'h0080_0000
+      32'(SMC_TOP_SMC_MAILBOX_BASE_ADDR - LocalBase),
+      DmaLo,
+      32'(SMC_TOP_SMC_CPU_CTRL_BASE_ADDR - LocalBase),
+      RomLo,
+      ClaLo,
+      32'(SMC_TOP_SMC_EXTERNAL_BASE_ADDR - LocalBase),
+      32'(SMC_TOP_ECAM_REGION_BASE_ADDR - LocalBase)
   };
   localparam logic [31:0] RegionHi[NumRegions] = '{
       32'h0000_0FFF,
-      32'h0000_1FFF,
-      32'h0000_2FFF,
-      32'h0000_3FFF,
-      32'h0000_5FFF,
-      32'h0000_8FFF,
-      32'h0000_DFFF,
-      32'h0001_7FFF,
+      MiscWrapLo + 32'h07FF,
+      GpioIntfLo + 32'h0FFF,
+      UartLo + 32'h0FFF,
+      DfxLo + 32'h07FF,
+      32'h0001_6FFF,
       32'h0003_7FFF,
-      32'h0003_83FF,
-      32'h0007_FFFF,
-      32'h0016_8FFF,
-      32'h0040_57FF,
-      32'h01FF_FFFF
+      ZeroerHi,
+      I3cHi,
+      SpmHi,
+      ClaHi,
+      32'(SMC_TOP_SMC_EXTERNAL_BASE_ADDR - LocalBase) + 32'(SMC_TOP_SMC_EXTERNAL_SIZE) - 32'd1,
+      32'(SMC_TOP_XVISOR_REGION_BASE_ADDR - LocalBase) + 32'(SMC_TOP_XVISOR_REGION_SIZE) - 32'd1
   };
 
   logic [NumRegions-1:0] region_ok, region_base_ok, region_top_ok, region_beyond_done;
@@ -740,19 +798,16 @@ module smc_map_fcov (
   end
 
   wire wdt_region_e = region_ok[0];
-  wire debug_region_e = region_ok[1];
-  wire system_control_region_e = region_ok[2];
-  wire gpio_region_e = region_ok[3];
-  wire peripheral_region_e = region_ok[5];
-  wire security_timing_dft_region_e = region_ok[6];
-  wire fabric_control_region_e = region_ok[7];
-  wire mailbox_region_e = region_ok[8];
-  wire data_processing_region_e = region_ok[9];
-  wire memory_region_e = region_ok[10];
-  wire axil_external_region_e = region_ok[12];
-  wire remap_region_e = region_ok[13];
+  wire system_control_region_e = region_ok[1];
+  wire gpio_region_e = region_ok[2];
+  wire peripheral_region_e = region_ok[3];
+  wire security_timing_dft_region_e = region_ok[4];
+  wire fabric_control_region_e = region_ok[5];
+  wire mailbox_region_e = region_ok[6];
+  wire data_processing_region_e = region_ok[7];
+  wire memory_region_e = region_ok[9];
+  wire axil_external_region_e = region_ok[11];
   `OCAH_FCOV_COVER(c_wdt_region, wdt_region_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_debug_region, debug_region_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_system_control_region, system_control_region_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_region, gpio_region_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_peripheral_region, peripheral_region_e, clk_smc_i, in_reset)
@@ -762,6 +817,50 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_data_processing_region, data_processing_region_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_memory_region, memory_region_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_external_region, axil_external_region_e, clk_smc_i, in_reset)
+
+  // The address-remapping row serves the managers whose traffic passes the
+  // output fabric's remap stages (fabric.adoc, SMC Fabric Traffic Managers:
+  // DMA, JTAG2AXI, log engine, CPU external path). SEP_IN enters the local
+  // fabric directly, so the point takes the JTAG manager's completions,
+  // attributed with the same single-outstanding rule as SEP_IN.
+  wire jtag_aw_acc = (jtag_awvalid_i === 1'b1) && (jtag_awready_i === 1'b1);
+  wire jtag_ar_acc = (jtag_arvalid_i === 1'b1) && (jtag_arready_i === 1'b1);
+  wire jtag_b_done_acc = (jtag_bvalid_i === 1'b1) && (jtag_bready_i === 1'b1);
+  wire jtag_r_done_acc = (jtag_rvalid_i === 1'b1) && (jtag_rready_i === 1'b1)
+      && (jtag_rlast_i === 1'b1);
+  logic [7:0] jtag_rd_out_q, jtag_wr_out_q;
+  logic jtag_rd_single_q, jtag_wr_single_q;
+  logic [55:0] jtag_rd_addr_q, jtag_wr_addr_q;
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      jtag_rd_out_q <= '0;
+      jtag_wr_out_q <= '0;
+      jtag_rd_single_q <= 1'b0;
+      jtag_wr_single_q <= 1'b0;
+      jtag_rd_addr_q <= '0;
+      jtag_wr_addr_q <= '0;
+    end else begin
+      jtag_rd_out_q <= jtag_rd_out_q + 8'(jtag_ar_acc) - 8'(jtag_r_done_acc);
+      jtag_wr_out_q <= jtag_wr_out_q + 8'(jtag_aw_acc) - 8'(jtag_b_done_acc);
+      if (jtag_ar_acc) begin
+        jtag_rd_addr_q <= jtag_araddr_i;
+        jtag_rd_single_q <= (jtag_rd_out_q == 8'd0)
+            || ((jtag_rd_out_q == 8'd1) && jtag_r_done_acc);
+      end
+      if (jtag_aw_acc) begin
+        jtag_wr_addr_q <= jtag_awaddr_i;
+        jtag_wr_single_q <= (jtag_wr_out_q == 8'd0)
+            || ((jtag_wr_out_q == 8'd1) && jtag_b_done_acc);
+      end
+    end
+  end
+  wire jtag_rd_okay = jtag_r_done_acc && (jtag_rd_out_q == 8'd1) && jtag_rd_single_q
+      && (jtag_rresp_i == RespOkay);
+  wire jtag_wr_okay = jtag_b_done_acc && (jtag_wr_out_q == 8'd1) && jtag_wr_single_q
+      && (jtag_bresp_i == RespOkay);
+  wire remap_region_e =
+      (jtag_rd_okay && in_win(jtag_rd_addr_q, RegionLo[12], RegionHi[12]))
+      || (jtag_wr_okay && in_win(jtag_wr_addr_q, RegionLo[12], RegionHi[12]));
   `OCAH_FCOV_COVER(c_remap_region, remap_region_e, clk_smc_i, in_reset)
 
   // Region edges: the first and last word of any region completing OKAY, and
@@ -775,8 +874,8 @@ module smc_map_fcov (
   `OCAH_FCOV_COVER(c_region_top_decodes, region_top_decodes_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_beyond_region_does_not, beyond_region_e, clk_smc_i, in_reset)
 
-  wire cla_base_e = region_base_ok[11];
-  wire cla_top_e = region_top_ok[11];
+  wire cla_base_e = region_base_ok[10];
+  wire cla_top_e = region_top_ok[10];
   `OCAH_FCOV_COVER(c_cla_base_decodes, cla_base_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_cla_top_decodes, cla_top_e, clk_smc_i, in_reset)
 
@@ -803,25 +902,51 @@ module smc_map_fcov (
   // Commercial-simulator covergroup: the attributed completion against the
   // layout region and response code, which the flat list cannot cross.
   // ------------------------------------------------------------------
+  localparam logic [NumRegions-1:0] RegionMemory = NumRegions'(1) << 9;
+  localparam logic [NumRegions-1:0] RegionCla = NumRegions'(1) << 10;
+  localparam logic [NumRegions-1:0] RegionRemap = NumRegions'(1) << 12;
+
   covergroup cg_map_access with function sample (
       logic [NumRegions-1:0] region, logic is_write, logic [1:0] resp
   );
     option.per_instance = 1;
     cp_region: coverpoint region {
       bins regions[] = {
-        14'b00_0000_0000_0001, 14'b00_0000_0000_0010, 14'b00_0000_0000_0100,
-        14'b00_0000_0000_1000, 14'b00_0000_0001_0000, 14'b00_0000_0010_0000,
-        14'b00_0000_0100_0000, 14'b00_0000_1000_0000, 14'b00_0001_0000_0000,
-        14'b00_0010_0000_0000, 14'b00_0100_0000_0000, 14'b00_1000_0000_0000,
-        14'b01_0000_0000_0000, 14'b10_0000_0000_0000
+        13'b0_0000_0000_0001, 13'b0_0000_0000_0010, 13'b0_0000_0000_0100,
+        13'b0_0000_0000_1000, 13'b0_0000_0001_0000, 13'b0_0000_0010_0000,
+        13'b0_0000_0100_0000, 13'b0_0000_1000_0000, 13'b0_0001_0000_0000,
+        13'b0_0010_0000_0000, 13'b0_0100_0000_0000, 13'b0_1000_0000_0000,
+        13'b1_0000_0000_0000
       };
-      bins unmapped = {14'b0};
+      bins unmapped = {13'b0};
     }
     cp_dir: coverpoint is_write;
+    // memmap.adoc says the fabric refuses an address between unit apertures
+    // or past a unit's decoded extent, and fabric.adoc names an error slave
+    // for invalid addresses; neither fixes which error code a refusal
+    // carries, so the bins are a completion and a refusal. EXOKAY answers an
+    // exclusive access, and no manager on this bench issues one (the
+    // per-manager channel points record the same fact).
     cp_resp: coverpoint resp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
+      bins okay = {2'b00}; bins error = {2'b10, 2'b11}; ignore_bins exokay = {2'b01};
     }
-    x_region_resp: cross cp_region, cp_dir, cp_resp;
+    // Per-region facts:
+    // * CLA: the unit's decoded extent fills the region (memory_map.adoc,
+    //   smc_cla 16 KiB of 16 KiB), so no address in it is refused.
+    // * Address remapping: the remap stages serve the DMA, JTAG2AXI, log
+    //   engine and CPU external-path managers (fabric.adoc, SMC Fabric Traffic
+    //   Managers). This group samples SEP_IN, which the fabric refuses there.
+    // * Local memories: the ROM and scratchpad fill the region, so a read is
+    //   refused only for an uncorrectable ECC error, which needs fault
+    //   injection and is in the Phase 2 set (SMC_FCOV.adoc).
+    x_region_resp: cross cp_region, cp_dir, cp_resp{
+      ignore_bins cla_fills_region = binsof (cp_region) intersect {RegionCla} &&
+          binsof (cp_resp.error);
+      ignore_bins sep_in_not_remapped = binsof (cp_region) intersect {RegionRemap} &&
+          binsof (cp_resp.okay);
+      ignore_bins memory_read_refused = binsof (cp_region) intersect {RegionMemory} &&
+          binsof (cp_dir) intersect {1'b0} && binsof (cp_resp.error);
+    }
   endgroup
 
   cg_map_access u_cg_map_access = new();
@@ -841,5 +966,8 @@ module smc_map_fcov (
     end
   end
 `endif
+
+  `undef SMC_MAP_OK
+  `undef SMC_MAP_EXT
 
 endmodule : smc_map_fcov

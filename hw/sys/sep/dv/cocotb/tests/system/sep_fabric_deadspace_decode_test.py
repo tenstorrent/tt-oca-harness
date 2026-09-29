@@ -17,6 +17,14 @@ reaches a unit. It names no response flavour.
 Every probe in the set is asserted, the wrapping anchors included; the
 contract is not carried by a probe that is logged or waived.
 
+CHK-TRNG-UNOWNED covers the TRNG window, which SEP forwards whole to an
+adopter endpoint. The reference integration connects no external TRNG, so no
+offset owns a register and every access must be refused: never OKAY, never
+the value of a neighbouring ESRC register, and no ESRC register moved.
+``memory_map.adoc`` names SLVERR for such an offset and the SMU integrator
+guide names a DECERR slave, so the response code of every TRNG probe is logged
+for the document owner and not graded.
+
 CHK-DEADSPACE-BURST asserts the same refusal on a beat a single-beat probe
 cannot reach: AXI decodes the request address only, so an INCR begun in a
 block's last live words carries its remaining beats past REG_MAP_SIZE. Each
@@ -25,6 +33,8 @@ fails. The master reports one response for the whole burst, so a burst that
 refused only some of its beats cannot be told from one that refused all of
 them; a beat inside the extent is therefore also compared against the value the
 single-beat path reads, which catches data the single beat could not reach. A
+beat past the extent is held to the single-beat no-alias rule: its data must
+not equal a value in the window snapshot, whatever its response code. A
 burst that times out is a failure of the audit, not a pass. A window whose dead space is
 4KB-aligned carries no legal burst into it and is reported as not auditable,
 never counted as a pass; a run where no window was auditable fails.
@@ -42,6 +52,8 @@ from seq_lib.sep_fabric_deadspace_seq import (
     SepDeadspaceCfg,
 )
 
+_RESP_NAME = {-1: "TIMEOUT", RESP_OKAY: "OKAY", 1: "EXOKAY", 2: "SLVERR", RESP_DECERR: "DECERR"}
+
 
 @pyuvm.test()
 class sep_fabric_deadspace_decode_test(sep_base_test):
@@ -50,6 +62,12 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepDeadspaceCfg(self.random_seed())
         self.logger.info("deadspace config: %s", cfg.summary())
+        assert not cfg.short_windows, (
+            "CHK-DEADSPACE-RAND FAIL: window(s) short of the random-probe quota: "
+            + ", ".join(
+                f"{name}={got}/{want}" for name, (got, want) in sorted(cfg.short_windows.items())
+            )
+        )
         await self.bring_up_no_cpu()
         dead = SepDeadspace(self)
 
@@ -61,14 +79,20 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
             # Both numbers, because they differ and the smaller one is the real
             # coverage: readable is what the read-alias compare uses, armed is
-            # what the write-probe store compare can actually fail on. Printing
-            # only the first reads as more coverage than the store compare has.
+            # what the per-probe change compare can actually fail on. Printing
+            # only the first reads as more coverage than the change compare has.
             hw_updating = sum(1 for addr in snaps[win.name] if addr in win.hw_updating)
+            assert len(snaps[win.name]) - hw_updating > 0, (
+                f"CHK-WINDOW-LIVE FAIL: {win.name} has no register armed for the change "
+                f"compare ({len(snaps[win.name])} readable, all hardware-updating); the "
+                "no-store-alias check cannot fail there"
+            )
             self.logger.info(
-                "CHK-WINDOW-LIVE PASS: %s %d allocated register(s) readable, "
-                "%d armed for the store compare (%d hardware-updating)",
+                "CHK-WINDOW-LIVE PASS: %s %d %s register(s) readable, "
+                "%d armed for the change compare (%d hardware-updating)",
                 win.name,
                 len(snaps[win.name]),
+                f"neighbouring {win.watch_from}" if win.watch_from else "allocated",
                 len(snaps[win.name]) - hw_updating,
                 hw_updating,
             )
@@ -79,10 +103,22 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         aliased = 0
         accepted = 0
         fails: list[str] = []
+        # (op, addr, resp, refused) of every probe of an adopter window.
+        adopter_probes: list[tuple[str, int, int, bool]] = []
         for item in cfg.probes:
             win = cfg.windows[item.window]
             hit = await dead.probe(win, item, snaps[win.name])
             tag = "anchor" if item.anchor else "rand"
+            if win.adopter:
+                adopter_probes.append((item.op, item.addr, dead.last_resp, not hit))
+                self.logger.info(
+                    "TRNG-UNOWNED-RESP: %s %s 0x%08x resp=%s (%s)",
+                    item.window,
+                    item.op,
+                    item.addr,
+                    _RESP_NAME.get(dead.last_resp, str(dead.last_resp)),
+                    tag,
+                )
             if hit:
                 fails.extend(hit)
                 if any("changed live" in f for f in hit):
@@ -115,6 +151,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         beat_audited: list[str] = []
         beat_discriminating: list[str] = []
         beat_skipped: list[str] = []
+        data_compared: list[str] = []
+        past_compared: list[str] = []
         for win in cfg.windows.values():
             # A window whose dead space starts on a 4KB boundary cannot be
             # entered by a legal burst, and one with no live words before it
@@ -196,27 +234,45 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     f"RRESP sequence for the burst at 0x{start:08x}"
                 )
 
-            # The aggregate still fails a fabric that answers the whole burst
-            # OKAY while refusing the same address as a single beat.
+            # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
+            # DECERR-only. The specification does not mandate DECERR vs SLVERR.
+            # A window whose past-extent single beat answers SLVERR must still
+            # fail an OKAY burst to the same address.
             worst = max(resps) if resps else RESP_OKAY
             for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i
                 if addr >= win.dead_lo:
-                    if sresp == RESP_DECERR and worst == RESP_OKAY:
+                    if sresp != RESP_OKAY and worst == RESP_OKAY:
                         burst_fails.append(
                             f"{win.name} 0x{addr:08x} is refused as a single "
                             f"beat (resp={sresp}) but the burst beginning "
                             f"0x{start:08x} was accepted (resp={worst})"
                         )
                         break
+                    # The single-beat no-alias rule, on the burst word: a beat
+                    # past the extent must not return a live register's value,
+                    # whatever its response code.
+                    if win.name not in past_compared:
+                        past_compared.append(win.name)
+                    for live_addr, live_val in snaps[win.name].items():
+                        if words[i] == live_val:
+                            burst_fails.append(
+                                f"{win.name} beat{i} 0x{addr:08x} is past the extent but "
+                                f"returned 0x{words[i]:08x}, the value of live register "
+                                f"0x{live_addr:08x}, inside the burst beginning 0x{start:08x}"
+                            )
+                            break
                     continue
-                # Inside the extent, and only when the burst was accepted: an
-                # accepted burst must read what the single-beat path reads. A
-                # refused burst carries the error slave's poison on every beat,
-                # which is not data and is not compared.
-                if worst != RESP_OKAY:
+                # Inside the extent: compare a beat the burst actually served.
+                # The master's collapsed response is the worst beat of the
+                # burst, so a refused tail would skip an in-extent beat that
+                # answered OKAY. Poison on a refused beat is not data.
+                beat_r = beat_resps[i] if i < len(beat_resps) else None
+                if beat_r != RESP_OKAY or sresp != RESP_OKAY:
                     continue
-                if sresp == RESP_OKAY and words[i] != sdata:
+                if win.name not in data_compared:
+                    data_compared.append(win.name)
+                if words[i] != sdata:
                     burst_fails.append(
                         f"{win.name} 0x{addr:08x} reads 0x{sdata:08x} as a "
                         f"single beat but 0x{words[i]:08x} as beat{i} of the "
@@ -270,6 +326,26 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved across any probe"
         )
 
+        # The TRNG verdicts are part of CHK-DEADSPACE-REFUSE / -NO-ALIAS above,
+        # which already raised on any OKAY, timeout or alias. This line names the
+        # window, requires both a read and a write were refused there, and gives
+        # the response codes the document owner reconciles.
+        trng_rd = sorted({r for op, _a, r, ok in adopter_probes if op == "r" and ok})
+        trng_wr = sorted({r for op, _a, r, ok in adopter_probes if op == "w" and ok})
+        assert trng_rd and trng_wr, (
+            f"CHK-TRNG-UNOWNED FAIL: need a refused read and a refused write in the "
+            f"TRNG window, got {len(adopter_probes)} probe(s): {adopter_probes}"
+        )
+        self.logger.info(
+            "CHK-TRNG-UNOWNED PASS: %d TRNG-window probes refused, none OKAY, no ESRC "
+            "register aliased or moved; read resp=%s write resp=%s (flavour logged, "
+            "not graded: memory_map.adoc names SLVERR, the SMU integrator guide a "
+            "DECERR slave)",
+            len(adopter_probes),
+            "/".join(_RESP_NAME[r] for r in trng_rd),
+            "/".join(_RESP_NAME[r] for r in trng_wr),
+        )
+
         for line in burst_fails:
             self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
         if burst_fails:
@@ -283,12 +359,28 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
             "contract, so it has no evidence here (" + "; ".join(burst_skipped) + ")"
         )
+        missing_past = [name for name in burst_audited if name not in past_compared]
+        if missing_past:
+            raise AssertionError(
+                "CHK-DEADSPACE-BURST FAIL: past-extent beat data was not held to the "
+                "no-alias rule on " + ", ".join(missing_past)
+            )
+        missing_data = [name for name in beat_discriminating if name not in data_compared]
+        if missing_data:
+            raise AssertionError(
+                "CHK-DEADSPACE-BURST FAIL: in-extent OKAY beats were not "
+                "compared to the single-beat value: " + ", ".join(missing_data)
+            )
         self.logger.info(
             "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
-            "that ends past its allocated extent (%s); %d not auditable (%s)",
+            "that ends past its allocated extent (%s); in-extent data "
+            "compared on %s; past-extent beat data held to the no-alias rule on %s; "
+            "%d not auditable (%s)",
             len(burst_audited),
             len(cfg.windows),
             ", ".join(burst_audited),
+            ", ".join(data_compared) or "none",
+            ", ".join(past_compared) or "none",
             len(burst_skipped),
             "; ".join(burst_skipped) or "none",
         )

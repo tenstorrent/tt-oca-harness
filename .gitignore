@@ -16,13 +16,15 @@ __pycache__/
 /hw/common/dv/configs/site.local.toml
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_dual is
-# the dual-SMC DV tree, kept separate from build/ so concurrent --rebuild runs do
-# not race on bender filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_release
+# is the same ROM's BUILD_TYPE=release tree; build_dual is the dual-SMC DV tree,
+# kept separate from build/ so concurrent --rebuild runs do not race on bender
+# filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
 **/build_dual/
 **/build_ot/
 **/build_ot_pio/
+**/build_release/
 
 # Legacy generated register markdown is not part of the current doc flow.
 **/regs/gen/adoc/**/*.md
@@ -51,22 +53,29 @@ __pycache__/
 # (see doc/stage-docs.sh); source of truth stays outside staged module output.
 doc/_build/
 doc/*/_build/
-# Keep the released PDFs tracked (like tt-oca-hw's doc/dist), ignore the rest.
-doc/*/dist/*
-!doc/*/dist/ocah-*.pdf
 doc/*/assets/*
 doc/*/src/assets
-!doc/trm/assets/.gitignore
+# Most assets in these directories are automatically copied from the block hw
+# directories - so don't need to be tracked. Add files only stored here to the
+# override filters (.gitignore) in the relevant directories.
 doc/trm/assets/*
+!doc/trm/assets/.gitignore
 doc/integrator/assets/*
 !doc/integrator/assets/.gitignore
+# Datasheet assets are separate
+!doc/datasheets/assets/
+!doc/datasheets/assets/*.svg
 doc/*/modules/ROOT/pages/
 doc/*/modules/ROOT/partials/hw/
+doc/*/modules/ROOT/partials/rtl-modules/
 doc/*/modules/ROOT/assets/
 doc/*/modules/smc/
+doc/*/modules/smc-bootrom-prod/
 doc/*/modules/sep/
+doc/*/modules/sep-bootrom-prod/
 doc/*/modules/dtp/
 doc/*/modules/aou/
+doc/*/modules/smu/
 doc/*/modules/ip/
 
 
@@ -85,7 +94,7 @@ node_modules/
 vendor/**/Bender.lock
 
 # Cocotb testbench transient outputs: Bender-generated filelists, simulation
-# build/log trees, and cached cycle counts (e.g. hw/ip/key_manager/dv/tb).
+# build/log trees, and cached cycle counts.
 **/dv/tb/rtl.f
 **/dv/tb/tb.f
 **/dv/tb/i3ccore_filelist.f
@@ -111,9 +120,24 @@ vendor/**/Bender.lock
 /packaged_ip/
 /weekly_packaged_ip/
 
+# DV runner run trees at the harness root, named after the simulator, when a job
+# passes --run-dir instead of taking the per-DUT default (that one lands in
+# <dut>/dv/build/runs and is already covered by **/build/ above). The runner
+# writes a generated launcher and shell wrapper per leaf into the run tree, and
+# the build-model-identity guard counts every untracked file in its scope as a
+# dirty model input -- so a run tree that is not ignored fails every leaf of the
+# regression on the flow's own output.
+/vcs/
+/verilator/
+/xcelium/
+
 # npm install target for a11y
 tools/a11y/node_mo#dules/
 tools/a11y/report/
 
 # Rendered doc output (sep_book.html / sep_book.pdf)
 doc_render/
+
+# Nix Builds and Direnv Cache
+local/
+.direnv/

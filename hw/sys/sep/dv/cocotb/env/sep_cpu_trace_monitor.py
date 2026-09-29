@@ -37,13 +37,21 @@ volume.
 from __future__ import annotations
 
 import logging
+import sys
 from collections import deque
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
 from pyuvm import uvm_component
 
 from .sep_fw_symbols import SepFwSymbols
+
+_TOOLS_DV = Path(__file__).resolve().parents[6] / "tools" / "dv"
+if str(_TOOLS_DV) not in sys.path:
+    sys.path.insert(0, str(_TOOLS_DV))
+
+from fw_coverage.renode_trace import TRACE_NAME, RenodeTraceWriter  # noqa: E402
 
 # RISC-V link registers (RV32I calling convention): x1/ra and x5/t0 alternate
 # link. rd in the set => call; jalr/c.jr with rd=x0 through the set => return.
@@ -125,12 +133,17 @@ class SepCpuTraceMonitor(uvm_component):
         # or ["trap", pc, ecause, interrupt, tval]. Index 0 is outermost.
         self.stack: list[list] = []
         self.max_depth = 0
+        # Snapshot at the most recent trap push. max_depth is run-global and
+        # can be satisfied by crt0 before the chain is live.
+        self.trap_depth = 0
+        self.trap_stack: list[list] = []
         self.trap_events: list[tuple[int, int, int, int, int]] = []
         self.reset_flushes = 0
         self.resync_notes = 0
         self._fill_target = False
         self._hang_warned = False
         self._trace_file = None
+        self._coverage_trace: RenodeTraceWriter | None = None
 
     def add_symbols(self, path) -> None:
         """Merge one nm listing (missing file is a warning, not an error --
@@ -154,6 +167,8 @@ class SepCpuTraceMonitor(uvm_component):
         self.last_pc = pc
         self.pcs.add(pc)
         self.ring.append((cycle, pc, insn))
+        if self._coverage_trace is not None:
+            self._coverage_trace.log_pc(pc)
         if self._trace_file is not None:
             self._trace_file.write(f"{cycle:>10} {pc:08x} {insn:08x} {self._sym(pc)}\n")
         if self._fill_target:
@@ -163,6 +178,8 @@ class SepCpuTraceMonitor(uvm_component):
         if exc:
             self.trap_events.append((cycle, pc, ecause, interrupt, tval))
             self._push(["trap", pc, ecause, interrupt, tval])
+            self.trap_depth = len(self.stack)
+            self.trap_stack = [list(frame) for frame in self.stack]
             self.logger.warning(
                 "trap at cycle %d: %s pc=0x%08x (%s) tval=0x%08x",
                 cycle,
@@ -232,17 +249,20 @@ class SepCpuTraceMonitor(uvm_component):
             return
         if "cpu_trace_log" in cocotb.plusargs:
             self._trace_file = open("cpu_trace.log", "w")
+        if "sep_rom_fw_coverage" in cocotb.plusargs:
+            self._coverage_trace = RenodeTraceWriter(TRACE_NAME)
+            self.logger.info("SEP Boot ROM coverage trace active: %s", TRACE_NAME)
         self.active = True
         self.logger.info("CPU trace monitor active (hang watch at %d cycles)", self.hang_cycles)
 
         def rd(name: str) -> int:
             s = sig[name]
             if s is None:
-                return 0
+                raise AssertionError(f"CPU trace signal {name} is not bound")
             try:
                 return int(s.value)
-            except Exception:
-                return 0
+            except Exception as exc:
+                raise AssertionError(f"CPU trace signal {name} is not a known 0/1 value") from exc
 
         clk = dut.clk_i
         cycle = 0
@@ -301,12 +321,13 @@ class SepCpuTraceMonitor(uvm_component):
         log(
             level,
             "CPU state: %d retired, %d distinct PCs, last pc 0x%08x (%s), "
-            "max call depth %d, %d trap(s), %d reset flush(es), %d resync note(s)",
+            "max call depth %d, trap-live depth %d, %d trap(s), %d reset flush(es), %d resync note(s)",
             self.trace_count,
             len(self.pcs),
             self.last_pc,
             self._sym(self.last_pc),
             self.max_depth,
+            self.trap_depth,
             len(self.trap_events),
             self.reset_flushes,
             self.resync_notes,
@@ -356,5 +377,10 @@ class SepCpuTraceMonitor(uvm_component):
         if self._trace_file is not None:
             self._trace_file.close()
             self._trace_file = None
+        if self._coverage_trace is not None:
+            count = self._coverage_trace.count
+            self._coverage_trace.close()
+            self._coverage_trace = None
+            self.logger.info("SEP Boot ROM coverage trace closed (%d unique PCs)", count)
         if self.active:
             self.dump_diagnostics(logging.INFO)

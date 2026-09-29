@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[log-engine]]
-==== Log Engine
+= Log Engine
 
-===== Overview
+== Overview
 
 The OCA Log Engine is a DMA-based logging system that efficiently
 transfers log messages from a configured memory region to a UART
@@ -14,7 +14,7 @@ engine supports up to 16 independent log entries with fair round-robin
 arbitration, making it suitable for multi-threaded or multi-core logging
 scenarios.
 
-===== Description and Features
+== Description and Features
 
 The Log Engine features a multi-interface architecture, combining a
 32-bit AXI4-Lite register interface with both 64-bit log fetch and
@@ -27,7 +27,34 @@ integration with the UART transmitter—including flow control—streamlines
 log data output. Error conditions in log fetch or write operations are
 tracked via a comprehensive interrupt system for robust monitoring.
 
+[[log-engine-wrapper-diagram]]
+.SMC log-engine wrapper and data paths
+image::UART_Log_Engine_Wrap_FIG025-2.png[alt="SMC log-engine wrapper and data paths",width=100%,pdfwidth=100%]
+
+<<log-engine-wrapper-diagram>> shows the SMC wrapper and its memory-to-UART
+data paths.
+
+ifdef::backend-html5[]
+include::partial$log_engine/doc/architecture.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::architecture.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$log_engine/doc/interface.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::interface.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$log_engine/doc/memmap.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::memmap.adoc[]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::partial$log_engine/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
 include::programming.adoc[]
+endif::backend-pdf[]

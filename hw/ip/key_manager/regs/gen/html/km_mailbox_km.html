@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: km_mailbox_km</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-km_mailbox_km">Key Manager Mailbox KM Side</h2>
+<p>Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#KM_WRITE_DATA">KM_WRITE_DATA</a></td><td>W</td><td>Write data to outbound FIFO (KM→SEP messages)</td></tr>
@@ -18,7 +19,7 @@
 <tr><td>0x14</td><td><a href="#KM_IRQ_ENABLE">KM_IRQ_ENABLE</a></td><td>RW</td><td>Interrupt enable register for KM CPU</td></tr>
 <tr><td>0x18</td><td><a href="#KM_CTRL">KM_CTRL</a></td><td>RW</td><td>Control register for mailbox behavior configuration</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KM_WRITE_DATA">KM_WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= CPU Subsystem
+:description: SEP VeeR EL2 configuration, boot, DMA, and alarm processing.
+ifdef::backend-html5[]
+:sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
+:sep-rom-reference: xref:sep:rom.adoc#sep-rom[SEP Boot ROM]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+:sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
+:sep-rom-reference: <<sep-rom,SEP Boot ROM>>
+endif::backend-pdf[]
+
 [[cpu-subsystem]]
-=== CPU Subsystem
 
 SEP uses the 32-bit RISC-V
 https://github.com/chipsalliance/Cores-VeeR-EL2[VeeR EL2 CPU] as its
@@ -11,8 +21,25 @@ https://chipsalliance.github.io/Cores-VeeR-EL2/html/main/docs_rendered/html/inde
 Programmer’s Reference Manual] provides the details required for
 programming the CPU.
 
+<<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
+memory interfaces.
+
+ifdef::backend-pdf[]
+[page-layout=landscape]
+<<<
+endif::backend-pdf[]
+
+[[sep-cpu-diagram]]
+.SEP VeeR EL2 CPU subsystem and memory interfaces
+image::SEP_CPU_FIG004.svg[alt="SEP VeeR EL2 CPU subsystem and memory interfaces",width=100%,pdfwidth=100%]
+
+ifdef::backend-pdf[]
+[page-layout=portrait]
+<<<
+endif::backend-pdf[]
+
 [[cpu-feature-summary]]
-==== CPU Feature Summary
+== CPU Feature Summary
 
 * RV32IMC including bit manipulation extensions Zb(abcsefbr)
 * 4-stage pipeline
@@ -22,12 +49,15 @@ for FUSA compliance
 ** Configurable, constant delay between the two cores
 * Closely coupled instruction and data memory
 ** Parity and ECC (32+7)
-* RISC-V PMP (Physical Memory Protection) - Privileged Architecture
-standard
-** 32-bit address space divided into 16 regions of 256 MB fixed size
-** Each region has execute, write and read permissions controlled by the
-Region Access Control Register (mrac)
-** Precisely trapped exception on usage violation
+* RISC-V PMP (Physical Memory Protection)
+** `pmpcfg` and `pmpaddr` CSRs define address ranges and their read, write,
+and execute permissions
+** Access violations raise precise exceptions
+* Memory attributes controlled separately by the Region Access Control
+Register (`mrac`)
+** Sixteen fixed 256 MiB regions cover the 32-bit address space
+** Each region has cacheability and side-effect attributes; these do not
+grant or deny read, write, or execute access
 * PIC (Programmable Interrupt Controller) is integrated supporting up to
 255 external interrupts; see
 ifdef::backend-html5[]
@@ -37,13 +67,13 @@ ifdef::backend-pdf[]
 <<sep-cpu-interrupt-vector-map>>
 endif::backend-pdf[]
 for the complete source-by-source mapping
-* Two independent or linked internal timers with standard RV _mip_
-interrupts
+* Two independent or linked internal timers with VeeR-specific
+`mip.MITIP0` and `mip.MITIP1` interrupts
 * Debug unit with JTAG interface and internal AXI4 Debug Master
 * Hardware Secure Boot Unlock
 
 [[configuration-straps]]
-==== Configuration Straps
+== Configuration Straps
 
 There shall be a minimum of 8 static configuration straps (preferably
 16) which are associated with the GPIO interface pins. Note that the
@@ -59,7 +89,7 @@ configuring the device as a primary versus secondary chiplet and
 recovery mode versus normal mode.
 
 [[cpu-reset-vector]]
-==== Reset Vector
+== Reset Vector
 
 The SEP CPU reset vector is held in a test data register (TDR) in the EL2
 debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
@@ -73,7 +103,7 @@ programmed value persists until the TAP is reset. This supports bring-up and
 failure analysis flows that execute from a memory other than the Boot ROM.
 
 [[debug-module]]
-==== Debug Module
+== Debug Module
 
 The VeeR EL2 debug module is reached from the DTP SEP debug STAP through the
 core's JTAG TAP. TAP access is already gated by lifecycle state, so the DMI
@@ -82,35 +112,36 @@ check. The DMI uncore aperture is unused: the debug module's AXI master already
 reaches the rest of the SEP fabric.
 
 [[boot-rom]]
-==== Boot ROM
+== Boot ROM
 
 The Boot ROM holds the BL0 immutable Root-of-Trust code which is the
 first code running on the SEP host upon power on. It has the following
 features:
 
 * 64 kB capacity
-* SECDED Error Correction - single error detect double error correct
-** 32-bit data + 7-bit ECC tag
+* 64-bit data path without ECC or an integrity-error sideband in the open
+generic ROM integration
+
+See {sep-rom-reference} for the hardware and firmware-image layout.
 
 There is no ROM patching facility in the first generation
 implementation. This feature is planned for the second generation design
 and will use OTP as the backup storage.
 
 [[bl0-secure-boot-and-bl1-execution-unlock]]
-==== BL0 Secure Boot and BL1 Execution Unlock
+== BL0 Secure Boot and BL1 Execution Unlock
 
 The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
 SEP system into a runnable state after power on reset (PoR) and running
 the first stage of external firmware AKA BL1.
 
-The complete boot flow is specified in <<sep-rom-boot-arch>>, which is
-normative: CPU initialization, PMP fencing, fuse and lifecycle
-evaluation, SMC synchronization, boot-source selection, manifest and
-payload validation, secure boot, demotion, attestation and hand-off,
-with requirement identifiers and an implementation-status matrix. The
-summary below exists to place the ROM in the context of this chapter; it
-is deliberately not a second description of the same flow, because two
-would drift.
+The complete boot flow is specified by the production ROM documentation under
+`hw/sys/sep/bootrom/prod/doc/`. It covers CPU initialization, PMP fencing,
+fuse and lifecycle evaluation, SMC synchronization, boot-source selection,
+manifest and payload validation, secure boot, demotion, attestation and
+hand-off, with requirement identifiers and an implementation-status matrix.
+The summary below places the ROM in the context of this chapter, the definitive
+description is in  the production ROM documentation
 
 * SEP initialization -- read configuration straps, determine boot options
 * Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
@@ -134,7 +165,7 @@ by running the CPU in Dual Core Lock Step. This will further protect
 against fault attacks.
 
 [[dual-scratch-register-banks]]
-==== Dual Scratch Register Banks
+== Dual Scratch Register Banks
 
 There shall be two sets of 16 x 32-bit scratch register banks
 instantiated at the SEP top level. Both are designed as simple SystemRDL
@@ -155,7 +186,7 @@ Scratch register set 1 has *additional warm reset* behavior. It can be
 reset by a signal from the Watchdog Timer (WDT).
 
 [[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
-==== Direct Memory Access (DMA)
+== Direct Memory Access (DMA)
 
 The module is based on the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA
@@ -166,7 +197,7 @@ built-in SHA2 engine for inline hashing.
 Consult the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller
 documentation] for the authoritative core functionality of the IP. The
-register map is reported in <<sep-detailed-register-map>>.
+register map is reported in the {sep-register-map}.
 
 Transfers operate on a word by word basis. This is because the TL-UL
 bus, used in the OpenTitan implementation, does not support burst
@@ -197,14 +228,21 @@ SPI
 ** Peripheral signals read FIFO data available and transmit FIFO space
 available to DMA for automatic flow control
 
+[[sep-dma-reference-diagram]]
+.OpenTitan DMA core and inline hashing reference architecture
+image::opentitan_dma.svg[alt="OpenTitan DMA core and inline hashing reference architecture",width=100%,pdfwidth=100%]
+
+<<sep-dma-reference-diagram>> shows the upstream DMA core. SEP adapts the host register interface
+to its AXI fabric as described below.
+
 [[och-modifications]]
-===== OCAH Modifications
+=== OCAH Modifications
 
 * 64-bit AXI4-lite slave interface (replaces or translates the 32-bit
 TL-UL bus protocol)
 
 [[future-enhancements]]
-===== Future Enhancements
+=== Future Enhancements
 
 _The following feature enhancements will be considered for the next
 generation implementation:_
@@ -218,10 +256,15 @@ streaming interfaces
 Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)
 
+<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
+described in this section.
+
+[[proposed-sep-dma-extensions-figure]]
+.Proposed SEP DMA extensions
 image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]
-==== Alarm Aggregation Processor (AGP)
+== Alarm Aggregation Processor (AGP)
 
 _Note that this module will not be implemented in the first generation
 SEP and will be deferred to the second generation. The AGP use case is

@@ -12,7 +12,8 @@
       <ipxact:name>gpio_ctrl_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>gpio_ctrl</ipxact:name>
-        <ipxact:description>GPIO Control CSR</ipxact:description>
+        <ipxact:displayName>GPIO Control Address Map</ipxact:displayName>
+        <ipxact:description>Per-pin GPIO pad control registers: drive strength, pull configuration, and strap capture.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h4</ipxact:range>
         <ipxact:width>32</ipxact:width>

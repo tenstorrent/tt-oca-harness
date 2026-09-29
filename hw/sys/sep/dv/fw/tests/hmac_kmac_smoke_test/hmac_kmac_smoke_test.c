@@ -53,9 +53,9 @@ static const uint32_t kAesZeroIv[4] = {0, 0, 0, 0};
 
 // SRAM staging area for the round trip. Clear of the HMAC/KMAC legs, which do
 // not touch SRAM at all.
-#define AES_SRAM_PT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x400u)
-#define AES_SRAM_CT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x410u)
-#define AES_SRAM_RT (OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + 0x420u)
+#define AES_SRAM_PT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x400u)
+#define AES_SRAM_CT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x410u)
+#define AES_SRAM_RT (SEP_TOP_SEP_SRAM_BASE_ADDR + 0x420u)
 
 static void sram_store_block(uint32_t addr, const uint32_t blk[4]) {
     volatile uint32_t *p = (volatile uint32_t *)addr;
@@ -90,11 +90,14 @@ static int aes_ecb_via_sram(uint32_t op, uint32_t src_addr, uint32_t dst_addr, u
 }
 
 // Compare one HMAC SHA-256 against an independent software SHA-256 golden.
-static int hmac_check(const char *name, const uint8_t *msg, uint32_t len) {
+// ``chk`` is the VPLAN checker id printed on the [PASS] line.
+static int hmac_check(const char *chk, const char *name, const uint8_t *msg, uint32_t len) {
     uint32_t hw[8];
     int rc = sep_hmac_sha256(msg, len, hw);
     if (rc != 0) {
         sep_mbx_puts("[FAIL] ");
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" ");
         sep_mbx_puts(name);
         sep_mbx_puts(rc == 1   ? " HMAC timeout\n"
                      : rc == 2 ? " HMAC ERR_CODE!=0\n"
@@ -110,6 +113,8 @@ static int hmac_check(const char *name, const uint8_t *msg, uint32_t len) {
 
     if (memcmp(hw, sw, 32) != 0) {
         sep_mbx_puts("[FAIL] ");
+        sep_mbx_puts(chk);
+        sep_mbx_puts(" ");
         sep_mbx_puts(name);
         sep_mbx_puts(" HMAC digest != SW SHA-256 (hw[0]=");
         sep_mbx_puthex(hw[0]);
@@ -117,6 +122,8 @@ static int hmac_check(const char *name, const uint8_t *msg, uint32_t len) {
         return 1;
     }
     sep_mbx_puts("[PASS] ");
+    sep_mbx_puts(chk);
+    sep_mbx_puts(": ");
     sep_mbx_puts(name);
     sep_mbx_puts(" HMAC == SW SHA-256\n");
     return 0;
@@ -132,9 +139,11 @@ int main(void) {
     static const uint8_t msg_empty[] = "";
     static const uint8_t msg_abc[] = "abc";
     static const uint8_t msg_hello[] = "Hello OTBN.";
-    errors += hmac_check("empty", msg_empty, 0);
-    errors += hmac_check("abc", msg_abc, 3);
-    errors += hmac_check("Hello OTBN.", msg_hello, 11);
+    int hmac_errors = 0;
+    hmac_errors += hmac_check("CHK-HMAC-EMPTY", "empty", msg_empty, 0);
+    hmac_errors += hmac_check("CHK-HMAC-SHORT", "abc", msg_abc, 3);
+    hmac_errors += hmac_check("CHK-HMAC-MULTI", "Hello OTBN.", msg_hello, 11);
+    errors += hmac_errors;
 
     // --- KMAC: SW-entropy masked hash; completion + no-error + non-degenerate. ---
     uint32_t kdig[8];
@@ -153,9 +162,13 @@ int main(void) {
             sep_mbx_puts("[FAIL] KMAC unmasked digest all-zero (degenerate)\n");
             errors++;
         } else {
-            sep_mbx_puts("[PASS] KMAC done, ERR_CODE=0, digest nonzero kdig[0]=");
+            sep_mbx_puts("[PASS] CHK-KMAC-LIVE: KMAC done, ERR_CODE=0, digest "
+                         "nonzero kdig[0]=");
             sep_mbx_puthex(kdig[0]);
             sep_mbx_putc('\n');
+            if (hmac_errors == 0) {
+                sep_mbx_puts("[PASS] CHK-RW1C: HMAC and KMAC done bits cleared\n");
+            }
         }
     }
 

@@ -30,9 +30,9 @@
 #include "sha256.h"
 #include "sep_pic.h"
 
-// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [11]->12).
+// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [10]->11).
 #define EXT_INT_DMA_DONE 9
-#define EXT_INT_DMA_ERROR 12
+#define EXT_INT_DMA_ERROR 11
 
 // Flag set by interrupt handler
 static volatile uint32_t dma_interrupt_fired = 0;
@@ -40,7 +40,7 @@ static volatile uint32_t dma_interrupt_fired = 0;
 // DMA interrupt handler - clears interrupt at source
 void __attribute__((interrupt("machine"))) dma_isr(void) {
     dma_interrupt_fired = 1;
-    volatile uint32_t *status = (volatile uint32_t *)OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR;
+    volatile uint32_t *status = (volatile uint32_t *)SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR;
     *status = SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
               SECURE_DMA__STATUS__CHUNK_DONE_bm;
     __asm__ volatile("fence" ::: "memory");
@@ -142,11 +142,11 @@ int main(void) {
 
     printf("=== Secure DMA SHA-256 Hash Test ===\n\n");
 
-    // Check that DMA is idle (CFG_REGWEN should be MUBI4_TRUE = 0x6)
-    uint32_t cfg_regwen = READ_REG(OCH_SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
+    // Check that DMA is idle (CFG_REGWEN reads MUBI4 TRUE, its RDL reset)
+    uint32_t cfg_regwen = READ_REG(SEP_TOP_SECURE_DMA_CFG_REGWEN_BASE_ADDR);
     printf("CFG_REGWEN = 0x%x (expected 0x%x for unlocked)\n", cfg_regwen, MUBI4_TRUE);
 
-    if ((cfg_regwen & 0xF) != MUBI4_TRUE) {
+    if ((cfg_regwen & SECURE_DMA__CFG_REGWEN__REGWEN_bm) != MUBI4_TRUE) {
         // This is the only check that the config write-enable is open before the
         // DMA is programmed: a CFG_REGWEN stuck locked, or reading as an unmapped
         // 0x0, fails the test here.
@@ -160,18 +160,18 @@ int main(void) {
     printf("\nConfiguring DMA enabled memory range:\n");
 
     // Set the allowed memory range for DMA operations
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
     printf("  ENABLED_MEMORY_RANGE_BASE = 0x%08x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR));
+           READ_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR));
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFF);
     printf("  ENABLED_MEMORY_RANGE_LIMIT = 0x%08x\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR));
+           READ_REG(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR));
 
     // Mark the range as valid - this is required before DMA can operate
     secure_dma__RANGE_VALID_t range_valid = {.f = {.RANGE_VALID = 1}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, range_valid.w);
-    printf("  RANGE_VALID = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR));
+    WRITE_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, range_valid.w);
+    printf("  RANGE_VALID = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR));
 
     //==========================================================================
     // Step 2: Write random data to SRAM
@@ -179,7 +179,7 @@ int main(void) {
 
     // Generate random data directly in SRAM (avoid stack overflow)
     printf("  Generating random data in SRAM...\n");
-    volatile uint32_t *src_ptr = (volatile uint32_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+    volatile uint32_t *src_ptr = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < TEST_DATA_SIZE / 4; i++) {
         src_ptr[i] = (uint32_t)rand();
     }
@@ -190,62 +190,62 @@ int main(void) {
     printf("\nConfiguring DMA transfer from SRAM to DCCM:\n");
 
     // Set the source address
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
 
     // Set the destination address (use high DCCM to avoid BSS overlap)
     // BSS is at low DCCM (~0x80000-0x80FFF), so use 0x82000+
-#define DMA_DST_ADDR (OCH_SEP_TOP_SEP_DCCM_BASE_ADDR + 0x2000)
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DMA_DST_ADDR);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, DMA_DST_ADDR >> 32);
+#define DMA_DST_ADDR (SEP_TOP_SEP_DCCM_BASE_ADDR + 0x2000)
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DMA_DST_ADDR);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, DMA_DST_ADDR >> 32);
 
     // Configure address space IDs (both internal OT addresses)
     secure_dma__ADDR_SPACE_ID_t addr_space_id = {
         .f = {.SRC_ASID = ASID_OT_ADDR, .DST_ASID = ASID_OT_ADDR}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, addr_space_id.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, addr_space_id.w);
     printf("  ADDR_SPACE_ID = 0x%x (SRC=OT_ADDR, DST=OT_ADDR)\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
+           READ_REG(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
 
     // Set the transfer width to 4 bytes
     secure_dma__TRANSFER_WIDTH_t transfer_width = {
         .f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
 
     // Set the chunk data size (single chunk = total size)
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, TEST_DATA_SIZE);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, TEST_DATA_SIZE);
 
     // Set the total data size
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, TEST_DATA_SIZE);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, TEST_DATA_SIZE);
 
     // Configure source: increment address after each transfer
     secure_dma__SRC_CONFIG_t src_config = {.f = {.INCREMENT = 1, .WRAP = 0}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_config.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, src_config.w);
     printf("  SRC_CONFIG = 0x%x (INCREMENT enabled)\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
+           READ_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
 
     // Configure destination: increment address after each transfer
     secure_dma__DST_CONFIG_t dst_config = {.f = {.INCREMENT = 1, .WRAP = 0}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_config.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, dst_config.w);
     printf("  DST_CONFIG = 0x%x (INCREMENT enabled)\n",
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));
+           READ_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));
 
     // Dump all configuration registers before starting transfer
     printf("\nDMA Configuration before GO:\n");
-    printf("  SRC_ADDR    = 0x%08x%08x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR),
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR));
-    printf("  DST_ADDR    = 0x%08x%08x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR),
-           READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR));
-    printf("  TOTAL_SIZE  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR));
-    printf("  CHUNK_SIZE  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR));
-    printf("  XFER_WIDTH  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR));
-    printf("  ADDR_SPACE  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
-    printf("  SRC_CONFIG  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
-    printf("  DST_CONFIG  = 0x%x\n", READ_REG(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));
+    printf("  SRC_ADDR    = 0x%08x%08x\n", READ_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR),
+           READ_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR));
+    printf("  DST_ADDR    = 0x%08x%08x\n", READ_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR),
+           READ_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR));
+    printf("  TOTAL_SIZE  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR));
+    printf("  CHUNK_SIZE  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR));
+    printf("  XFER_WIDTH  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR));
+    printf("  ADDR_SPACE  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
+    printf("  SRC_CONFIG  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR));
+    printf("  DST_CONFIG  = 0x%x\n", READ_REG(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR));
 
     // Enable DMA interrupts in the DMA controller
     secure_dma__INTR_ENABLE_t intr_enable = {
         .f = {.DMA_DONE = 1, .DMA_CHUNK_DONE = 0, .DMA_ERROR = 1}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, intr_enable.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, intr_enable.w);
 
     // Start the DMA transfer: OPCODE=SHA256 (0x1), INITIAL_TRANSFER=1 (bit 8), and GO=1 (bit 31)
     // IMPORTANT: Printf before starting DMA to avoid DCCM contention (format strings are in DCCM)
@@ -256,7 +256,7 @@ int main(void) {
     // DIGEST_SWAP converts digest to big-endian to match SW SHA-256 output
     secure_dma__CONTROL_t control = {
         .f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .INITIAL_TRANSFER = 1, .GO = 1}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, control.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, control.w);
 
     // Wait for DMA completion using WFI
     // The interrupt handler sets dma_interrupt_fired flag and clears STATUS.DONE
@@ -272,7 +272,7 @@ int main(void) {
     // Check ERROR_CODE to see if there was an error
     // (STATUS bits are cleared by the interrupt handler)
     secure_dma__ERROR_CODE_t error_code;
-    error_code.w = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    error_code.w = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
 
     // Process result
     if (dma_interrupt_fired && error_code.w == 0) { // Success
@@ -301,7 +301,7 @@ int main(void) {
         printf("  ERROR: DMA transfer timeout!\n");
         // Abort DMA
         secure_dma__CONTROL_t abort_ctrl = {.f = {.ABORT = 1}};
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
+        WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
         errors++;
     }
 
@@ -322,7 +322,7 @@ int main(void) {
 
     uint32_t expected_hash[8];
     for (int i = 0; i < 8; i++) {
-        expected_hash[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+        expected_hash[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
     }
 
     // Cast the 32-bit array to an 8-bit pointer for memcmp
@@ -381,7 +381,7 @@ int main(void) {
     printf("\n=== Secure DMA SHA-384 (FIPS 180-4 vector) ===\n");
 
     // Stage the fixed message in SRAM, where the SHA-256 pass left random data.
-    volatile uint8_t *msg_ptr = (volatile uint8_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+    volatile uint8_t *msg_ptr = (volatile uint8_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     for (int i = 0; i < FIPS_MSG_LEN; i++) {
         msg_ptr[i] = (uint8_t)kFips1804Msg[i];
     }
@@ -389,15 +389,15 @@ int main(void) {
 
     // Same src/dst/width/ASID as the first pass; only the length and the opcode
     // change.
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
 
     dma_interrupt_fired = 0;
     __asm__ volatile("fence" ::: "memory");
 
     secure_dma__CONTROL_t sha384_ctrl = {
         .f = {.OPCODE = OPCODE_SHA384, .DIGEST_SWAP = 1, .INITIAL_TRANSFER = 1, .GO = 1}};
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, sha384_ctrl.w);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, sha384_ctrl.w);
 
     int sha384_timeout = 100000;
     while (sha384_timeout-- > 0) {
@@ -406,12 +406,12 @@ int main(void) {
     }
 
     secure_dma__ERROR_CODE_t sha384_err;
-    sha384_err.w = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    sha384_err.w = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
 
     if (!dma_interrupt_fired) {
         printf("  ERROR: SHA-384 DMA transfer timeout!\n");
         secure_dma__CONTROL_t abort_ctrl = {.f = {.ABORT = 1}};
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
+        WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, abort_ctrl.w);
         errors++;
     } else if (sha384_err.w != 0) {
         // OPCODE_ERROR here would mean the engine does not accept OpcSha384 on
@@ -424,7 +424,7 @@ int main(void) {
 
         uint32_t hw384[SHA384_DIGEST_WORDS];
         for (int i = 0; i < SHA384_DIGEST_WORDS; i++) {
-            hw384[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+            hw384[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
         }
 
         char got_hex[2 * SHA384_DIGEST_BYTES + 1];
@@ -469,21 +469,21 @@ int main(void) {
     // Interrupts are disabled for this pass: the ISR clears STATUS.chunk_done,
     // and chunk pacing has to read that bit.
     printf("\n=== Secure DMA multi-chunk SHA-256 (FIPS 180-4 vector) ===\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, 0);
 
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
+    WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_CHUNK_LEN);
 
     uint32_t mc_status = 0;
     uint32_t mc_chunks = 0;
     uint32_t mc_initial = SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm;
     for (uint32_t guard = 0; guard < 16u; guard++) {
         secure_dma__CONTROL_t mc_ctrl = {.f = {.OPCODE = OPCODE_SHA256, .DIGEST_SWAP = 1, .GO = 1}};
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
+        WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, mc_ctrl.w | mc_initial);
 
         int t = 200000;
         do {
-            mc_status = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+            mc_status = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(mc_status & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
                                 SECURE_DMA__STATUS__CHUNK_DONE_bm)) &&
                  --t > 0);
@@ -491,11 +491,11 @@ int main(void) {
         mc_chunks++;
         if (mc_status & SECURE_DMA__STATUS__DONE_bm) break;
         // Clear chunk_done and continue the same transfer.
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
+        WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__CHUNK_DONE_bm);
         mc_initial = 0;
     }
 
-    uint32_t mc_err = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+    uint32_t mc_err = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     if (!(mc_status & SECURE_DMA__STATUS__DONE_bm) || mc_err != 0) {
         printf("  ERROR: multi-chunk SHA-256 did not complete (status 0x%x err 0x%x "
                "chunks %u)\n",
@@ -511,7 +511,7 @@ int main(void) {
     } else {
         uint32_t hw256[SHA256_DIGEST_WORDS];
         for (int i = 0; i < SHA256_DIGEST_WORDS; i++) {
-            hw256[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+            hw256[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
         }
         char mc_hex[2 * SHA256_DIGEST_BYTES + 1];
         digest_to_hex((const uint8_t *)hw256, SHA256_DIGEST_BYTES, mc_hex);
@@ -528,9 +528,9 @@ int main(void) {
                    (unsigned)mc_chunks);
         }
     }
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
-                                                           SECURE_DMA__STATUS__ERROR_bm |
-                                                           SECURE_DMA__STATUS__CHUNK_DONE_bm);
+    WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
+                                                       SECURE_DMA__STATUS__ERROR_bm |
+                                                       SECURE_DMA__STATUS__CHUNK_DONE_bm);
 
     //==========================================================================
     // Step 8: DIGEST_SWAP is the only thing that changes between these two runs
@@ -545,21 +545,21 @@ int main(void) {
     uint32_t unswapped[SHA256_DIGEST_WORDS];
 
     for (int pass = 0; pass < 2; pass++) {
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+        WRITE_REG(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
+        WRITE_REG(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, FIPS_MSG_LEN);
         secure_dma__CONTROL_t sw_ctrl = {.f = {.OPCODE = OPCODE_SHA256,
                                                .DIGEST_SWAP = (pass == 0) ? 1u : 0u,
                                                .INITIAL_TRANSFER = 1,
                                                .GO = 1}};
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, sw_ctrl.w);
+        WRITE_REG(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, sw_ctrl.w);
 
         uint32_t st = 0;
         int t = 200000;
         do {
-            st = READ_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+            st = READ_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
         } while (!(st & (SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm)) && --t > 0);
 
-        uint32_t err = READ_REG(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
+        uint32_t err = READ_REG(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
         if (!(st & SECURE_DMA__STATUS__DONE_bm) || err != 0) {
             printf("  ERROR: DIGEST_SWAP=%d run did not complete (status 0x%x err 0x%x)\n",
                    (pass == 0) ? 1 : 0, st, err);
@@ -567,12 +567,12 @@ int main(void) {
         } else {
             uint32_t *dst = (pass == 0) ? swapped : unswapped;
             for (int i = 0; i < SHA256_DIGEST_WORDS; i++) {
-                dst[i] = READ_REG(OCH_SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
+                dst[i] = READ_REG(SEP_TOP_SECURE_DMA_SHA2_DIGEST_0_BASE_ADDR(i));
             }
         }
-        WRITE_REG(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
-                                                               SECURE_DMA__STATUS__ERROR_bm |
-                                                               SECURE_DMA__STATUS__CHUNK_DONE_bm);
+        WRITE_REG(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
+                                                           SECURE_DMA__STATUS__ERROR_bm |
+                                                           SECURE_DMA__STATUS__CHUNK_DONE_bm);
     }
 
     int swap_mismatches = 0;

@@ -1,0 +1,72 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Platform Overview
+:description: OCAH high-level features and the top-level block diagram.
+
+[[ocah-high-level-features]]
+== OCAH High-Level Features
+
+* *Security Processor (SEP)* -- Root of Trust (RoT) with the highest
+  security privilege. Provides a physically isolated RISC-V execution
+  environment for secure boot, lifecycle control, device attestation, and
+  hardware-accelerated cryptography (OTBN PKA, AES, HMAC-SHA2, KMAC-SHA3,
+  TRNG, DRBG, Key Manager). A security hierarchy across chiplets enables
+  SiP-wide security management. The inclusion of the SEP is an elaboration
+  option, controlled by the SMU's `SEP` parameter. The system integrator
+  selects which chiplets include an SEP as part of the SiP security architecture.
+
+* *System Management Controller (SMC)* -- Firmware-driven orchestration engine
+  responsible for clock, voltage, and reset management, platform
+  bootstrapping, system initialisation, and power/thermal management. Built
+  around a RISC-V micro-controller with hardware accelerators (DMA, memory
+  zeroer) where firmware alone cannot meet timing requirements. Inter-chiplet
+  management hierarchy via I2C/I3C and OCMI channels.
+
+* *Debug & Test Ports (DTP)* -- Standardised debug and test access across
+  heterogeneous, multi-vendor chiplet systems. Layered architecture separating
+  physical transport from logical access, with cross-chiplet event triggering,
+  synchronised clock control for trace, and coordinated resets.
+
+* *System Management Unit (SMU)* -- The composite module combining SEP, SMC,
+  and DTP into a single instantiable subsystem.
+
+* *System Management Network (SMN)* -- Internal communication fabric
+  (point-to-point or packetised) providing the management backbone for
+  configuration, status reporting, and firmware-driven coordination between
+  SMU, user logic, and D2D interfaces.
+
+* *AXI-over-UCIe Bridge (AoU)* -- Protocol bridge between the AXI-based
+  internal fabric and the UCIe die-to-die physical interface, enabling
+  inter-chiplet system management traffic and application-level transaction
+  forwarding.
+
+* *Application-Specific Logic* -- OCAH treats the application layer as a black
+  box: the harness services are agnostic to whether the application is a CPU
+  complex, NoC, DSA, memory controller, or high-speed IO. The application
+  logic is outside the scope of OCAH.
+
+* *Safety Monitor (SMO)* -- External entity that collects error signals and
+  diagnostic logging from OCAH subsystems to implement fault reaction
+  policies. The SMO is outside the scope of OCAH; its interface requirements
+  are specified separately as part of OCAH's functional safety
+  documentation.
+
+[[ocah-top-block-diagram]]
+== Top Block Diagram
+
+<<ocah-top-level-diagram>> presents the OCAH top-level block diagram showing the
+relationship between the subsystems described above.
+
+[[ocah-top-level-diagram]]
+.OCAH Top-Level Block Diagram
+image::ocah_top.png[OCAH Top-Level Block Diagram,scaledwidth=100.0%]
+
+The SMU crossbar permits each initiator to reach the other two targets;
+self-directed paths are not connected. The detailed connectivity is shown in
+ifdef::backend-html5[]
+xref:smu:index.adoc#smu-axi-crossbar[SMU AXI Crossbar].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smu-axi-crossbar,SMU AXI Crossbar>>.
+endif::backend-pdf[]

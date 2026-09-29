@@ -381,10 +381,10 @@ def selftest() -> None:
 # ---------------------------------------------------------------------------
 # dbg_disable
 # ---------------------------------------------------------------------------
-# Packed dbg_disable names, MSB first, as the testbench exports the flattened
-# vector. The lifecycle chapter states the three DTP cases, not this field
-# order. dft_secure and stap_sep are both Case 3, so a swapped pair cannot
-# fail a checker today.
+# Named dbg_disable bits. Each is a DUT-output port on tb_top; checkers read
+# those ports by name. The DTP ladder in lifecycle_controller.adoc states the
+# three cases, not a packing order. Same-case bits still share a golden, but
+# a swapped pair of ports fails because the sample no longer walks a vector.
 DBG_DISABLE_FIELDS = (
     "stap_io",
     "stap_smc",
@@ -462,8 +462,9 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
         "smc_jtag2axi": 1 - case2,
         "dft_secure": 1 - case3,
         "stap_sep": 1 - case3,
-        # The fuse controller enforces OTP JTAG2AXIL access through LOCKS, so
-        # the lifecycle controller ties both bridges open in every LC state.
+        # hw/sys/sep/doc/lifecycle_controller.adoc ("DTP path feature gates"): the
+        # SEP and SMC OTP JTAG2AXIL paths are "Ungated" -- no feature control
+        # bit gates them; LOCKS and the wrapper access policy enforce access.
         "smc_otp_jtag2axi": 0,
         "sep_otp_jtag2axi": 0,
     }
@@ -471,6 +472,11 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
         "dbg_disable golden does not account for every field in the struct"
     )
     return exp
+
+
+def dbg_disable_sample(dut) -> dict[str, int]:
+    """Read each dbg_disable bit from its named DUT-output port."""
+    return {name: int(getattr(dut, f"dbg_disable_{name}_o").value) for name in DBG_DISABLE_FIELDS}
 
 
 def dbg_disable_unpack(raw: int, width: int) -> dict[str, int]:

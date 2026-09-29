@@ -12,16 +12,18 @@
 ifdef::backend-html5[]
 ++++
 <div class="dashboard">
-  <p><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
+  <p class="dashboard-back"><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
 
   <h3 id="dashboard-block-name">Block</h3>
   <div id="dashboard-status" class="dashboard-status">Loading dashboard data&hellip;</div>
 
   <div id="dashboard-block-summary" hidden>
-    <table class="dashboard-table">
-      <thead id="dashboard-block-summary-head"></thead>
-      <tbody id="dashboard-block-row"></tbody>
-    </table>
+    <div class="dashboard-table-scroll">
+      <table class="dashboard-table">
+        <thead id="dashboard-block-summary-head"></thead>
+        <tbody id="dashboard-block-row"></tbody>
+      </table>
+    </div>
   </div>
 
   <p class="dashboard-more" id="dashboard-block-history"></p>

@@ -2,9 +2,9 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[system-timer-octs-programming]]
-===== Programming
+== Programming
 
-====== Multi-Chiplet Deployment Example
+=== Multi-Chiplet Deployment Example
 
 [source,sourceCode,c]
 ----
@@ -24,7 +24,7 @@ void initialize_multi_chiplet_timing() {
 
     // Configure all timers with same parameters
     for (int i = 0; i < 4; i++) {
-        write32(timer_bases[i] + 0x04, 0x0805); // Credit=8, Pulse=5
+        write32(timer_bases[i] + 0x04, 0x00010508); // Step=1, Pulse=5, Credit=8
         write32(timer_bases[i] + 0x0C, 0x00000000); // Preset_LO=0
         write32(timer_bases[i] + 0x10, 0x00000000); // Preset_HI=0
     }
@@ -40,7 +40,7 @@ void initialize_multi_chiplet_timing() {
 }
 ----
 
-====== High-Precision Timestamping
+=== High-Precision Timestamping
 
 [source,sourceCode,c]
 ----
@@ -72,7 +72,7 @@ void performance_measurement() {
 }
 ----
 
-====== Synchronization Health Monitoring
+=== Synchronization Health Monitoring
 
 [source,sourceCode,c]
 ----
@@ -105,7 +105,12 @@ void monitor_synchronization_health() {
 }
 ----
 
-====== Dynamic Reconfiguration
+=== Dynamic Reconfiguration
+
+`CTRL.CREDIT_VAL` occupies bits `[7:0]`, `PULSE_WIDTH` bits `[15:8]`, and
+`STEP` bits `[23:16]`. Keep `CREDIT_VAL > PULSE_WIDTH` and preserve a
+nonzero `STEP` for secondary counting. Apply compatible settings to the
+primary and secondary timers.
 
 [source,sourceCode,c]
 ----
@@ -118,10 +123,10 @@ void adjust_synchronization_parameters() {
     printf("Current: Credit=%u, Pulse=%u\n", current_credit, current_pulse);
 
     // Adjust for tighter synchronization
-    uint8_t new_credit = 5;  // Reduce credit value
-    uint8_t new_pulse = 10;  // Increase pulse width
+    uint8_t new_credit = 6;
+    uint8_t new_pulse = 3; // Must remain less than credit.
 
-    uint32_t new_ctrl = (new_pulse << 8) | new_credit;
+    uint32_t new_ctrl = (ctrl & 0x00FF0000u) | ((uint32_t)new_pulse << 8) | new_credit;
     write32(PRIMARY_TIMER_BASE + 0x04, new_ctrl);
 
     printf("Updated: Credit=%u, Pulse=%u\n", new_credit, new_pulse);

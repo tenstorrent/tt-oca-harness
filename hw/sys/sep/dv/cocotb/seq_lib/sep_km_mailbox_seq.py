@@ -3,7 +3,7 @@
 """Host-side Key Manager (KM) mailbox command driver.
 
 Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so an OSS cocotb test
+(`hw/ip/key_manager/approm/prod`, `rom_main`) implements, so an OSS cocotb test
 can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
 send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
 
@@ -20,6 +20,8 @@ All AXI accesses go through the SEP AXI agent via SepAxiAccessSeq.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -41,6 +43,9 @@ KM_MBOX_STATUS = sym("KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET")
 KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
+# Byte size of the SEP-side window. SEP_CTRL is its last register, so the
+# first offset past the window is the upper word of a 64-bit beat at SEP_CTRL.
+KM_MBOX_SIZE = sym("KM_MAILBOX_SEP_REG_MAP_SIZE")
 
 # SEP_STATUS bit positions, from the generated export like the offsets above.
 # km_mailbox_sep.rdl declares SEP_STATUS with the `status_reg` typedef, so the
@@ -53,36 +58,45 @@ KM_STATUS_OUTBOUND_EMPTY = _KM_MBOX("SEP_STATUS", "outbound_empty")
 KM_STATUS_OUTBOUND_FULL = _KM_MBOX("SEP_STATUS", "outbound_full")
 KM_STATUS_INBOUND_DEPTH_LSB = _KM_MBOX("SEP_STATUS", "inbound_depth")
 KM_STATUS_OUTBOUND_DEPTH_LSB = _KM_MBOX("SEP_STATUS", "outbound_depth")
+KM_STATUS_INBOUND_DEPTH_MASK = (1 << KM_MAILBOX_SEP.field_width("SEP_STATUS", "inbound_depth")) - 1
+KM_STATUS_OUTBOUND_DEPTH_MASK = (
+    1 << KM_MAILBOX_SEP.field_width("SEP_STATUS", "outbound_depth")
+) - 1
 KM_STATUS_INBOUND_OVERFLOW = _KM_MBOX("SEP_STATUS", "inbound_overflow")
+KM_STATUS_LOW_MASK = (1 << KM_STATUS_INBOUND_OVERFLOW) - 1
 KM_STATUS_OUTBOUND_OVERFLOW = _KM_MBOX("SEP_STATUS", "outbound_overflow")
 KM_STATUS_INBOUND_UNDERFLOW = _KM_MBOX("SEP_STATUS", "inbound_underflow")
 KM_STATUS_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_STATUS", "outbound_underflow")
 KM_STATUS_INBOUND_SEPARATOR = _KM_MBOX("SEP_STATUS", "inbound_separator")
 KM_STATUS_OUTBOUND_SEPARATOR = _KM_MBOX("SEP_STATUS", "outbound_separator")
 
-# SEP_IRQ_STATUS bit positions.
-KM_IRQ_OUTBOUND_DATA_AVAIL = 0
-KM_IRQ_INBOUND_SPACE_AVAIL = 1
-KM_IRQ_INBOUND_OVERFLOW = 2
-KM_IRQ_OUTBOUND_UNDERFLOW = 3
-KM_IRQ_FLUSHED_BY_KM = 4
-KM_IRQ_EN_OUTBOUND_DATA_AVAIL = 0
-KM_IRQ_EN_INBOUND_SPACE_AVAIL = 1
-KM_IRQ_EN_INBOUND_OVERFLOW = 2
-KM_IRQ_EN_OUTBOUND_UNDERFLOW = 3
-KM_IRQ_EN_FLUSHED_BY_KM = 4
+# SEP_IRQ_STATUS / SEP_IRQ_ENABLE bit positions, from the generated export.
+KM_IRQ_OUTBOUND_DATA_AVAIL = _KM_MBOX("SEP_IRQ_STATUS", "outbound_read_data_avail")
+KM_IRQ_INBOUND_SPACE_AVAIL = _KM_MBOX("SEP_IRQ_STATUS", "inbound_write_space_avail")
+KM_IRQ_INBOUND_OVERFLOW = _KM_MBOX("SEP_IRQ_STATUS", "inbound_overflow")
+KM_IRQ_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_IRQ_STATUS", "outbound_underflow")
+KM_IRQ_FLUSHED_BY_KM = _KM_MBOX("SEP_IRQ_STATUS", "flushed_by_km")
+KM_IRQ_EN_OUTBOUND_DATA_AVAIL = _KM_MBOX("SEP_IRQ_ENABLE", "outbound_read_data_avail_en")
+KM_IRQ_EN_INBOUND_SPACE_AVAIL = _KM_MBOX("SEP_IRQ_ENABLE", "inbound_write_space_avail_en")
+KM_IRQ_EN_INBOUND_OVERFLOW = _KM_MBOX("SEP_IRQ_ENABLE", "inbound_overflow_en")
+KM_IRQ_EN_OUTBOUND_UNDERFLOW = _KM_MBOX("SEP_IRQ_ENABLE", "outbound_underflow_en")
+KM_IRQ_EN_FLUSHED_BY_KM = _KM_MBOX("SEP_IRQ_ENABLE", "flushed_by_km_en")
 
 KM_MBOX_IRQ_AGG = agg_from_pic("KM mailbox IRQ")
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
+RESP_DECERR = 3
 
-# SEP_CTRL bit positions.
-KM_CTRL_INBOUND_OVERFLOW_RESP = 0
-KM_CTRL_OUTBOUND_UNDERFLOW_RESP = 1
-KM_CTRL_FLUSH = 2
+# SEP_CTRL bit positions, from the generated export.
+KM_CTRL_INBOUND_OVERFLOW_RESP = _KM_MBOX("SEP_CTRL", "inbound_overflow_resp")
+KM_CTRL_OUTBOUND_UNDERFLOW_RESP = _KM_MBOX("SEP_CTRL", "outbound_underflow_resp")
+KM_CTRL_FLUSH = _KM_MBOX("SEP_CTRL", "flush")
 
-# Both FIFOs are 16 entries deep (the KM firmware's own frame-size bound).
+# Both FIFOs are 16 words deep. hw/ip/key_manager/doc/architecture.adoc
+# (mailbox) gives the inbound and outbound FIFOs a "minimum depth 16 words
+# each"; this DV-owned constant takes that minimum as the depth the full,
+# space-available and overflow goldens expect.
 KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------
@@ -104,6 +118,9 @@ KM_CMD_ABR_SK_TRANSFER = 0x27
 KM_CMD_OTP_READ_LOCK_COLD = 0x28
 KM_RESP_CMD = 0x00
 KM_RESP_KM_READY = 0x55
+# Unsolicited: the firmware posts this when Adams Bridge has written an ML-KEM
+# shared key into the sideload CSR and the block's KEY_VALID latched. It is the
+# only observation of the shim's interrupt path from the host side.
 KM_RESP_ABR_SHARED_KEY_READY = 0x56
 KM_RESP_RECOVERABLE_FAULT = 0xFE
 KM_RESP_UNRECOVERABLE_FAULT = 0xFF
@@ -140,9 +157,25 @@ KM_DEST_ABR_MLKEM_SEED_D = 0x20
 KM_DEST_ABR_MLKEM_SEED_Z = 0x40
 KM_DEST_ABR_MLKEM_MSG = 0x80
 
-# Packed versions: patch[7:0], minor[15:8], major[23:16] (rom_km_version_ret_t).
-KM_HW_VER_1_0_0 = 0x0001_0000
-KM_ROM_VER_1_1_0 = 0x0001_0100
+
+def _hw_root() -> Path:
+    return Path(__file__).resolve().parents[5]
+
+
+def _km_csr_version_reset() -> int:
+    import importlib.util
+
+    reg_py = _hw_root() / "ip/key_manager/regs/gen/py/key_manager_reg.py"
+    spec = importlib.util.spec_from_file_location("key_manager_reg", reg_py)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load {reg_py}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return int(mod.KM_CSR_VERSION_REG_REG_DEFAULT)
+
+
+# KMCSR VERSION reset from the RDL: patch[7:0], minor[15:8], major[23:16].
+KM_HW_VER_1_0_0 = _km_csr_version_reset()
 
 
 def crc8_rohc(data: bytes) -> int:
@@ -493,6 +526,20 @@ class SepKmMailbox:
         )
         return rc, arg
 
+    async def abr_sk_transfer(self, *, dest: int, timeout: int = 200_000) -> tuple[int, int]:
+        """CMD_ABR_SK_TRANSFER; returns (return_code, return_arg).
+
+        Consumes the ML-KEM shared key Adams Bridge posted into the sideload
+        CSR and stores it in the KPV. The firmware rejects the command while
+        that block's KEY_VALID is clear, so the reject leg is the negative
+        control for the writeback path and the raw result is returned rather
+        than raised on."""
+        seq = await self.send_command(KM_CMD_ABR_SK_TRANSFER, [dest & 0xFFFF_FFFF])
+        rc, arg = await self.recv_resp_cmd(KM_CMD_ABR_SK_TRANSFER, seq, timeout=timeout)
+        await self.check_outbound_empty("POST-ABR-SK-TRANSFER")
+        self.log.info("KM CMD_ABR_SK_TRANSFER: dest=0x%02x rc=%d arg=0x%08x", dest, rc, arg)
+        return rc, arg
+
     async def check_outbound_empty(self, tag: str) -> None:
         status = await self._status()
         if not (status & (1 << KM_STATUS_OUTBOUND_EMPTY)):
@@ -682,6 +729,26 @@ class SepKmMailbox:
 
     async def read_ctrl(self) -> int:
         return await self._rd32(KM_MBOX_CTRL)
+
+    async def write_ctrl_wide_raw(self, value: int) -> tuple[int, bool]:
+        """One 64-bit write beat (AxSIZE=3, 8 bytes) at SEP_CTRL.
+
+        The upper four bytes of this beat fall past the register file. Returns
+        (resp_code, timed_out) so the caller can grade the single write
+        response. expect_error tells the scoreboard a non-OKAY response is the
+        contract.
+        """
+        seq = SepAxiAccessSeq(
+            "km_mbox_ctrl_wr64",
+            op=SepAxiOp.WRITE,
+            addr=self.base + KM_MBOX_CTRL,
+            wdata=value & 0xFFFF_FFFF_FFFF_FFFF,
+            length=8,
+            size=3,
+            expect_error=True,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code, seq.timed_out
 
     async def read_data_raw(self, *, expect_error: bool = False) -> tuple[int, int]:
         """Read SEP_READ_DATA. Returns (resp_code, data).

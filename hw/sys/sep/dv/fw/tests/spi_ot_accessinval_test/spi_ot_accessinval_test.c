@@ -53,29 +53,29 @@ int main(void) {
            "gate).\n\n");
 
     int pass = 1;
-    spi_controller__CTRL_t ctrl;
-    spi_controller__CFG_t cfg;
+    spi_controller__CONTROL_t ctrl;
+    spi_controller__CONFIGOPTS_t cfg;
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
     uint32_t dummy;
 
     /* Enable controller */
-    ctrl.w = SPI_CONTROLLER__CTRL_reset;
+    ctrl.w = SPI_CONTROLLER__CONTROL_reset;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     cfg.w = 0;
     cfg.f.CLKDIV = spi_clkdiv();
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CSID_BASE_ADDR, 0);
 
     /* ------------------------------------------------------------------ */
     /* Step 1: Verify ACCESSINVAL=0 initially and after clearing           */
     /* ------------------------------------------------------------------ */
     printf("Step 1: ACCESSINVAL=0 initially\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  ERROR_STATUS after clear: 0x%08x, ACCESSINVAL=%u\n", err_status.w,
            err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
@@ -90,11 +90,11 @@ int main(void) {
     /* SW/SH/SB from RISC-V produce valid aligned AXI byte enables.        */
     /* ------------------------------------------------------------------ */
     printf("\nStep 2: Valid TXDATA writes (SW, SH, SB) must not trigger ACCESSINVAL\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     /* Full-word write (SW → byte-enable = 4'b1111, valid) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0x12345678);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0x12345678);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 32-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
         printf("  FAIL: ACCESSINVAL set by valid 32-bit TXDATA write\n");
@@ -104,9 +104,9 @@ int main(void) {
     }
 
     /* Half-word store (SH → contiguous 2-byte enable, valid) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    *(volatile uint16_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 0x5678u;
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    *(volatile uint16_t *)(uintptr_t)SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x5678u;
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 16-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
         printf("  FAIL: ACCESSINVAL set by valid 16-bit TXDATA write\n");
@@ -116,9 +116,9 @@ int main(void) {
     }
 
     /* Byte store (SB → single-byte enable, valid) */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    *(volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR = 0x78u;
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    *(volatile uint8_t *)(uintptr_t)SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0) = 0x78u;
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After 8-bit TXDATA write: ACCESSINVAL=%u (expected 0)\n", err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
         printf("  FAIL: ACCESSINVAL set by valid 8-bit TXDATA write\n");
@@ -151,9 +151,9 @@ int main(void) {
     /* Step 4: W1C behavior on already-0 bit (no spurious set)            */
     /* ------------------------------------------------------------------ */
     printf("\nStep 4: W1C write to ACCESSINVAL bit when already 0\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
               SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bm);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After W1C (writing 1 to bit 20 when 0): ACCESSINVAL=%u (expected 0)\n",
            err_status.f.ACCESSINVAL);
     if (err_status.f.ACCESSINVAL != 0) {
@@ -168,11 +168,11 @@ int main(void) {
     /* Prove bit 20 is RAZ/WI: write 1 and readback must stay clear.       */
     /* ------------------------------------------------------------------ */
     printf("\nStep 5: ERROR_ENABLE bit 20 is not writable (ACCESSINVAL not gated)\n");
-    err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
+    err_enable.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
     printf("  ERROR_ENABLE before probe: 0x%08x\n", err_enable.w);
     err_enable.w |= (1u << 20);
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, err_enable.w);
-    err_enable.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, err_enable.w);
+    err_enable.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR);
     printf("  ERROR_ENABLE after write-1 to bit 20: 0x%08x\n", err_enable.w);
     if ((err_enable.w >> 20) & 1) {
         printf("  FAIL: ERROR_ENABLE bit 20 is writable (ACCESSINVAL gate unexpected)\n");
@@ -181,18 +181,17 @@ int main(void) {
         printf("  PASS: ERROR_ENABLE bit 20 RAZ/WI (ACCESSINVAL not in enable map)\n");
     }
     /* Restore POR default composed from generated field resets */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR,
-              SPI_CONTROLLER__ERROR_ENABLE_reset);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_ENABLE_BASE_ADDR, SPI_CONTROLLER__ERROR_ENABLE_reset);
 
     /* ------------------------------------------------------------------ */
     /* Step 6: Other ERROR_STATUS bits unaffected by ACCESSINVAL W1C      */
     /* Trigger UNDERFLOW (read empty RX FIFO), then W1C only ACCESSINVAL  */
     /* ------------------------------------------------------------------ */
     printf("\nStep 6: ACCESSINVAL W1C does not affect other ERROR_STATUS bits\n");
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
-    dummy = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR); /* trigger UNDERFLOW */
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    dummy = READ_REG(SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR(0)); /* trigger UNDERFLOW */
     (void)dummy;
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  UNDERFLOW triggered: ERROR_STATUS=0x%08x, UNDERFLOW=%u\n", err_status.w,
            err_status.f.UNDERFLOW);
     if (!err_status.f.UNDERFLOW) {
@@ -200,9 +199,9 @@ int main(void) {
     }
 
     /* Write 1 only to bit 20 (ACCESSINVAL W1C) — should not clear UNDERFLOW */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR,
               SPI_CONTROLLER__ERROR_STATUS__ACCESSINVAL_bm);
-    err_status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    err_status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
     printf("  After ACCESSINVAL W1C: ERROR_STATUS=0x%08x, UNDERFLOW=%u (expected 1)\n",
            err_status.w, err_status.f.UNDERFLOW);
     if (!err_status.f.UNDERFLOW) {
@@ -213,7 +212,7 @@ int main(void) {
     }
 
     /* Clear all */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR, 0xFFFFFFFF);
 
     printf("\n========================================\n");
     if (pass) {

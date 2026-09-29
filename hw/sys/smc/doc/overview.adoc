@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Overview
+:description: SMC responsibilities, architecture, and top-level organization.
+
 [[overview]]
-=== Overview
 
 The System Management Controller (SMC) is a subsystem in a chiplet that
 takes on the system management tasks, including managing
@@ -54,8 +56,9 @@ core-local interruptors (CLINT) for timer and software interrupt management.
 Debug infrastructure provides JTAG access and RISC-V debug module support for
 development and troubleshooting.
 
-The figure below shows the SMC microarchitectural diagram.
+<<smc-top-level-block-diagram-figure>> shows the SMC microarchitectural diagram.
 
+[[smc-top-level-block-diagram-figure]]
 .SMC Top-Level Block Diagram
 image::smc_top.png[SMC Top-Level Block Diagram,scaledwidth=90.0%]
 

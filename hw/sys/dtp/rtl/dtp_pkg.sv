@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// DTP Package - Cross-trigger and debug-interface configuration
+// Hold Debug and Test Ports configuration and interface typedefs.
+//
+// Define default CTP, internal-CT, and clock-stop counts, the AXI-Lite and JTAG-debug AXI
+// typedefs, and static checks that these defaults match cross_trigger_network_pkg.
+// Failures of those checks are elaboration errors, not lint.
 
 package dtp_pkg;
 
@@ -27,9 +31,9 @@ package dtp_pkg;
   //-------------------------------------------------------------------------
   // Cross Trigger Configuration Checks
   //
-  // cross_trigger_network_pkg restates these counts, and the matrix takes its
-  // own from its generated register map. Nothing derives one from another, so
-  // check that the three agree. Failures are elaboration errors, not lint.
+  // cross_trigger_network_pkg restates these default counts. Nothing derives
+  // one from another, so check that they agree. Failures are elaboration
+  // errors, not lint.
   //-------------------------------------------------------------------------
 
   `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(NumCtpMatchesCtn_A,
@@ -39,13 +43,6 @@ package dtp_pkg;
   `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(
       NumClkStopReqMatchesCtn_A,
       DEFAULT_NUM_CLK_STOP_REQ == cross_trigger_network_pkg::DEFAULT_NUM_CLK_STOP_REQ)
-
-  // The matrix routes every port in both directions: one CT_Src config register
-  // and one CT_Dst select bit each.
-  `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmSrcMatchesCtmPorts_A,
-                                    DEFAULT_NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_SRC)
-  `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmDstMatchesCtmPorts_A,
-                                    DEFAULT_NUM_CTM_PORTS == cross_trigger_matrix_pkg::NUM_CT_DST)
 
   //-------------------------------------------------------------------------
   // Derived Parameters

@@ -1,0 +1,132 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+# Entropy Source IP-level scenarios.
+
+[[tests]]
+name = "entropy_source_sanity_test"
+module = { cocotb = "entropy_source_sanity_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "entropy_source", "csr"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "entropy_source_register_walk_test"
+module = { cocotb = "entropy_source_register_walk_test" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "csr"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_axi_random_test"
+module = { cocotb = "entropy_source_axi_random_test" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "csr", "axi"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_decorrelator_modes_test"
+module = { cocotb = "entropy_source_decorrelator_modes_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "datapath", "decorrelator", "biw"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_fifo_test"
+module = { cocotb = "entropy_source_fifo_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "fifo", "security"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_health_test"
+module = { cocotb = "entropy_source_health_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "health", "tuning"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_health_algorithms_test"
+module = { cocotb = "entropy_source_health_algorithms_test" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "health", "window"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_debug_monitor_test"
+module = { cocotb = "entropy_source_debug_monitor_test" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "debug"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_downsample_rate_test"
+module = { cocotb = "entropy_source_downsample_rate_test" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "downsample"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_pipeline_integration_test"
+module = { cocotb = "entropy_source_pipeline_integration_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "datapath", "sha", "fifo"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_sampling_test"
+module = { cocotb = "entropy_source_sampling_test" }
+seed = 1
+timeout_sec = 600
+tags = ["entropy_source", "ring", "clock"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_conditioning_test"
+module = { cocotb = "entropy_source_conditioning_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "sha", "csr"]
+run_modes = ["functional"]
+
+[[tests]]
+name = "entropy_source_integrated_test"
+module = { cocotb = "entropy_source_integrated_test" }
+seed = 1
+timeout_sec = 1200
+tags = ["entropy_source", "integration", "fifo", "irq"]
+run_modes = ["functional"]
+
+[[groups]]
+name = "smoke"
+tests = ["entropy_source_sanity_test"]
+
+[[groups]]
+name = "all"
+tests = [
+  "entropy_source_sanity_test",
+  "entropy_source_register_walk_test",
+  "entropy_source_axi_random_test",
+  "entropy_source_decorrelator_modes_test",
+  "entropy_source_fifo_test",
+  "entropy_source_health_test",
+  "entropy_source_health_algorithms_test",
+  "entropy_source_debug_monitor_test",
+  "entropy_source_downsample_rate_test",
+  "entropy_source_pipeline_integration_test",
+  "entropy_source_sampling_test",
+  "entropy_source_conditioning_test",
+  "entropy_source_integrated_test",
+]

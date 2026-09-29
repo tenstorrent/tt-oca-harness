@@ -22,6 +22,19 @@ import smc_seq_lib_pkg::*;
 
 // CSR scenarios on the SEP_IN AXI4 ingress.
 `include "smc_register_sanity_test.svh"
+`include "smc_default_reg_rd_test.svh"
+
+// Reset-unit write-once lock scenarios.
+`include "smc_reset_unit_lock_test.svh"
+
+// CPU_CTRL side-effect register scenarios.
+`include "smc_mutex_semaphore_test.svh"
+
+// SPM memory datapath scenarios (full-width 64-bit accesses).
+`include "smc_spm_mem_boundary_test.svh"
+
+// Reset-domain scenarios (test-sequenced resets through smc_tb_if).
+`include "smc_multi_reset_csr_persistence_test.svh"
 
 // Adopter overlay hook: an external (non-OSS) build may append vendor-
 // specific test classes -- e.g. a commercial-VIP overlay -- by defining

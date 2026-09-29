@@ -8,7 +8,7 @@ name = "smc_mailbox_idle_test"
 module = "smc_mailbox_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "functional", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -16,7 +16,7 @@ name = "smc_mailbox_data_error_test"
 module = "smc_mailbox_data_error_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "mailbox_depth", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -24,7 +24,7 @@ name = "smc_mailbox_inbound_test"
 module = "smc_mailbox_inbound_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -32,7 +32,7 @@ name = "smc_mailbox_multi_instance_test"
 module = "smc_mailbox_multi_instance_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -40,7 +40,7 @@ name = "smc_mailbox_field_sweep_test"
 module = "smc_mailbox_field_sweep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -51,11 +51,13 @@ name = "smc_mailbox_flush_test"
 module = "smc_mailbox_flush_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "pyuvm"]
+tags = ["ci"]
 run_modes = ["smoke"]
 
-[[groups]]
-name = "mailbox_depth"
-tests = [
-    "smc_mailbox_data_error_test",
-]
+[[tests]]
+name = "smc_mailbox_event_irq_test"
+module = "smc_mailbox_event_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci"]
+run_modes = ["smoke"]

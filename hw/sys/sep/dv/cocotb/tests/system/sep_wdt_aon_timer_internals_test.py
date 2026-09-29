@@ -28,11 +28,13 @@ import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_spec_tables import aon_timer_regwen_gates, aon_timer_wkup_ticks_per_count
 from sep_base_test import sep_base_test
+from sep_reg_meta import SEP_CPU_CTRL
 from seq_lib.sep_wdt_aon_seq import (
     INTR_STATE,
     INTR_TEST,
     INTR_TEST_WKUP_EXPIRED,
     INTR_WKUP_EXPIRED,
+    INTR_WKUP_LSB,
     WDOG_BARK_THOLD,
     WDOG_BITE_THOLD,
     WDOG_COUNT,
@@ -40,6 +42,8 @@ from seq_lib.sep_wdt_aon_seq import (
     WDOG_ENABLE,
     WDOG_REGWEN,
     WKUP_CAUSE,
+    WKUP_CAUSE_BIT,
+    WKUP_CAUSE_LSB,
     WKUP_COUNT_HI,
     WKUP_COUNT_LO,
     WKUP_CTRL,
@@ -50,12 +54,6 @@ from seq_lib.sep_wdt_aon_seq import (
     SepWdtAon,
     SepWdtCfg,
 )
-
-# WKUP_CAUSE.cause bit (wakeup-request status). The RDL labels it onwrite=woclr,
-# but the cause is acknowledged/cleared by WRITING 0, AFTER the wakeup condition
-# (count>=thold) is removed -- it is level-held and AON-domain (the clear settles
-# over a few clk_wdt cycles).
-WKUP_CAUSE_BIT = 1 << 0
 
 # How much faster than the silicon 1000x ratio we run clk_wdt for this CSR test
 # (sim-timing knob): clk_wdt = WDT_CLK_RATIO x the core period -- still
@@ -68,6 +66,15 @@ WDT_CLK_RATIO = 8
 # probe lowers it. A literal: it is the non-vacuity anchor for that check and
 # must not move with any seeded value.
 _COUNT_RUN_FLOOR = 40
+
+
+# SEP_CPU_CTRL.REFERENCE_COUNTER is one 64-bit field. The high 32-bit AXI
+# window is the last word of that field.
+REFERENCE_COUNTER_LO = SEP_CPU_CTRL.addr("REFERENCE_COUNTER")
+_RC_BITS = SEP_CPU_CTRL.field_width("REFERENCE_COUNTER", "rc")
+if _RC_BITS % 32:
+    raise RuntimeError(f"REFERENCE_COUNTER.rc is {_RC_BITS} bits, not a multiple of 32")
+REFERENCE_COUNTER_HI = REFERENCE_COUNTER_LO + 4 * ((_RC_BITS // 32) - 1)
 
 
 @pyuvm.test()
@@ -154,10 +161,64 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         await self._chk_wkup_expire()
         await self._chk_intr_test()
         await self._chk_wdog_pet()
+        await self._chk_reference_counter()
         await self._chk_regwen_lock_and_nonvac()
         # No CHK-ALL summary line: every facet above logs its own PASS, and a plan
         # row keyed on a bare summary string would record coverage with no checker
         # behind it.
+
+    async def _read_refcnt(self) -> int:
+        """The 64-bit reference count, high half first.
+
+        Reading high then low, and requiring the high half to be unchanged
+        afterwards, is what keeps a carry between the two reads from being
+        reported as a count that went backwards.
+        """
+        hi = await self.wdt.read(REFERENCE_COUNTER_HI)
+        lo = await self.wdt.read(REFERENCE_COUNTER_LO)
+        hi_again = await self.wdt.read(REFERENCE_COUNTER_HI)
+        if hi_again != hi:
+            # A carry landed between the halves; take the pair again on the
+            # new high half rather than returning a torn value.
+            lo = await self.wdt.read(REFERENCE_COUNTER_LO)
+            hi = hi_again
+        return (hi << 32) | lo
+
+    async def _chk_reference_counter(self) -> None:
+        """CHK-REFCNT-RUNS on SEP_CPU_CTRL.REFERENCE_COUNTER.
+
+        The counter is the one piece of SEP that runs on clk_ref_i rather than
+        clk_i: prim_refclk_count_w_cdc counts on the reference edge and
+        resynchronises the value across to clk_i for the CSR read. Both halves
+        of that crossing are dark whenever the reference clock is not driven,
+        and a frozen counter reads as a perfectly stable CSR.
+        """
+        first = await self._read_refcnt()
+        await ClockCycles(cocotb.top.clk_i, 400)
+        second = await self._read_refcnt()
+        assert second > first, (
+            f"CHK-REFCNT-RUNS FAIL: REFERENCE_COUNTER did not advance across a "
+            f"400-cycle window ({first} -> {second}). The counter runs on "
+            "clk_ref_i and resynchronises onto clk_i; a reference clock that is "
+            "not running, or a CDC that never hands the value over, both read as "
+            "a stable count"
+        )
+        self.logger.info(
+            "CHK-REFCNT-RUNS PASS: REFERENCE_COUNTER %d -> %d across 400 core "
+            "cycles, so the clk_ref_i counter and its crossing onto clk_i are live",
+            first,
+            second,
+        )
+
+        # CHK-REFCNT-LOAD is deliberately NOT claimed here. A software load of
+        # this counter can be lost when clk_i runs far faster than clk_ref_i.
+        # This bench drives clk_i at 1.25 ns and clk_ref_i at 10 ns. The update
+        # crosses on a depth-1 async FIFO whose own source comment says an
+        # update that arrives before the previous one has crossed is "dropped
+        # with no error indication", and the guard assertion in that primitive
+        # (CntUpdateAccepted_A) is compiled out of this build by
+        # COMMON_CELLS_ASSERTS_OFF, so the loss is silent. Claiming the load
+        # needs a measurement at this ratio.
 
     async def _chk_wkup_count(self) -> None:
         """CHK-WKUP-COUNT: WKUP_COUNT advances on clk_wdt with a high (non-expiring) thold."""
@@ -180,6 +241,12 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
             f"CHK-WKUP-COUNT: high threshold expired in the count window "
             f"(INTR_STATE=0x{intr:08x}, count2={count2}, thold={self.cfg_wdt.wkup_high_thold})"
         )
+        await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
+        forced = await self.wdt.read(INTR_STATE)
+        assert forced & INTR_WKUP_EXPIRED, (
+            f"CHK-WKUP-COUNT: INTR_STATE.wkup_expired stayed 0 after INTR_TEST (0x{forced:08x})"
+        )
+        await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)
         self.logger.info(
             "CHK-WKUP-COUNT PASS: WKUP_COUNT %d -> %d (advances on clk_wdt); "
             "INTR_STATE.wkup_expired stayed 0 under the high threshold",
@@ -264,7 +331,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )  # small: expires within poll budget
         await self.wdt.write(WKUP_CTRL, WKUP_ENABLE)
         ok, val = await self._poll_bit_set(
-            INTR_STATE, 0, timeout_cycles=300 * self._tick, step=4 * self._tick
+            INTR_STATE, INTR_WKUP_LSB, timeout_cycles=300 * self._tick, step=4 * self._tick
         )
         assert ok, f"WKUP_COUNT>=THOLD never set INTR_STATE.wkup_expired (INTR_STATE=0x{val:08x})"
         self.logger.info("CHK-WKUP-EXPIRE PASS (set): INTR_STATE.wkup_expired=1 (0x%08x)", val)
@@ -278,6 +345,24 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         assert cause & WKUP_CAUSE_BIT, f"WKUP_CAUSE.cause not set after wkup expiry (0x{cause:08x})"
         await self.wdt.write(WKUP_COUNT_HI, 0)  # remove the wakeup condition
         await self.wdt.write(WKUP_COUNT_LO, 0)
+        # The COUNT writes are AON-domain too. Read COUNT back below the threshold
+        # first, so the cause read below samples the AON state after the condition
+        # is gone, not before the write crossed.
+        clear_budget = 100 * self._tick
+        low, cnt_lo = await self._poll_at_most(
+            WKUP_COUNT_LO,
+            self.cfg_wdt.wkup_thold - 1,
+            timeout_cycles=clear_budget,
+            step=4 * self._tick,
+        )
+        cnt_hi = await self.wdt.read(WKUP_COUNT_HI)
+        assert low and cnt_hi == 0, (
+            f"WKUP_COUNT did not read back below WKUP_THOLD={self.cfg_wdt.wkup_thold} "
+            f"after the reset write (HI=0x{cnt_hi:08x} LO=0x{cnt_lo:08x})"
+        )
+        # Hold for the same budget the write-0 clear below is given. A level-only
+        # cause would drop within it, as the write-0 clear must.
+        await ClockCycles(cocotb.top.clk_i, clear_budget)
         # Sticky: dropping the count must leave the cause set, otherwise the write-0
         # below cannot be blamed for the clear.
         cause_held = await self.wdt.read(WKUP_CAUSE)
@@ -290,7 +375,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         # WKUP_CAUSE is AON-domain (clk_aon=clk_wdt): the clear settles over a few clk_wdt
         # cycles via the register CDC, so poll rather than read back immediately.
         ccleared, cpost = await self._poll_bit_clear(
-            WKUP_CAUSE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+            WKUP_CAUSE, WKUP_CAUSE_LSB, timeout_cycles=clear_budget, step=4 * self._tick
         )
         assert ccleared, (
             f"WKUP_CAUSE.cause not cleared after condition removal + write 0 (0x{cpost:08x})"
@@ -328,7 +413,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
         )
         await self.wdt.write(INTR_TEST, INTR_TEST_WKUP_EXPIRED)
         ok, val = await self._poll_bit_set(
-            INTR_STATE, 0, timeout_cycles=100 * self._tick, step=4 * self._tick
+            INTR_STATE, INTR_WKUP_LSB, timeout_cycles=100 * self._tick, step=4 * self._tick
         )
         assert ok, f"CHK-INTR-TEST: INTR_TEST did not set wkup_expired (INTR_STATE=0x{val:08x})"
         await self.wdt.write(INTR_STATE, INTR_WKUP_EXPIRED)  # W1C

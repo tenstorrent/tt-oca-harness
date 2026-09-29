@@ -38,8 +38,8 @@ static void spin_delay(uint32_t cycles) {
 static int wait_for_done_or_idle(void) {
     int timeout = 2000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t status = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || status.f.hmac_idle) {
             return 0;
         }
@@ -53,7 +53,7 @@ static void read_digest_hex(char *hex_out) {
     static const char hex_chars[] = "0123456789abcdef";
 
     for (int word = 0; word < 8; word++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(word));
+        uint32_t raw = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(word));
         uint32_t digest_word = bswap32(raw);
         for (int byte = 0; byte < 4; byte++) {
             uint8_t value = (uint8_t)(digest_word >> (byte * 8));
@@ -70,10 +70,10 @@ static void hmac_cfg_sha256_start(void) {
     cfg.f.sha_en = 1;
     cfg.f.hmac_en = 0;
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     hmac__CMD_t start = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, start.w);
 }
 
 static int prove_fifo_accept_then_drain(void) {
@@ -81,7 +81,7 @@ static int prove_fifo_accept_then_drain(void) {
      * Separate hash: prove MSG_FIFO accepts a word burst via MSG_LENGTH, then
      * process/drain. fifo_full@32 is not required under CPU MMIO Pass-through.
      */
-    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint32_t *fifo32 = (volatile uint32_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     const uint32_t words = 32u;
     uint32_t max_depth = 0;
     int full_seen = 0;
@@ -90,24 +90,24 @@ static int prove_fifo_accept_then_drain(void) {
 
     for (uint32_t i = 0; i < words; i++) {
         *fifo32 = 0xC0000000u | i;
-        hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__STATUS_t status = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (status.f.fifo_depth > max_depth) max_depth = status.f.fifo_depth;
         if (status.f.fifo_full) full_seen = 1;
     }
 
-    uint32_t msg_bits = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_bits = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
     printf("  Accept probe: words=%u MSG_LENGTH=%u full_seen=%u max_depth=%u\n", words, msg_bits,
            full_seen, max_depth);
     if (msg_bits != words * 32u) {
         printf("  FAIL: MSG_LENGTH mismatch after FIFO burst\n");
         hmac__CMD_t process_fail = {.f.hash_process = 1};
-        WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process_fail.w);
+        WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, process_fail.w);
         (void)wait_for_done_or_idle();
         return -1;
     }
 
     hmac__CMD_t process = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
     if (wait_for_done_or_idle() != 0) {
         return -1;
     }
@@ -116,12 +116,12 @@ static int prove_fifo_accept_then_drain(void) {
     clear.f.hmac_done = 1;
     clear.f.fifo_empty = 1;
     clear.f.hmac_err = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     return 0;
 }
 
 static int stream_message(void) {
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     uint32_t pos = 0;
     uint32_t chunks = 0;
     uint32_t full_waits = 0;
@@ -137,7 +137,7 @@ static int stream_message(void) {
 
         for (uint32_t i = 0; i < chunk; i++) {
             int spins = 0;
-            hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+            hmac__STATUS_t status = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
             while (status.f.fifo_full) {
                 full_seen = 1;
                 full_waits++;
@@ -145,7 +145,7 @@ static int stream_message(void) {
                     printf("  FIFO full timeout at byte %u\n", pos);
                     return -1;
                 }
-                status.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+                status.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
             }
 
             if (status.f.fifo_empty) {
@@ -163,7 +163,7 @@ static int stream_message(void) {
         spin_delay((chunks * 11u) & 0x3fu);
     }
 
-    hmac__STATUS_t final_status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    hmac__STATUS_t final_status = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     if (final_status.f.fifo_depth > max_depth) {
         max_depth = final_status.f.fifo_depth;
     }
@@ -187,7 +187,7 @@ int main(void) {
 
     hmac__INTR_ENABLE_t intr_en = {.w = 0};
     intr_en.f.hmac_done = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     printf("Step 1: Prove MSG_FIFO accept + drain (separate hash)\n");
     if (prove_fifo_accept_then_drain() != 0) {
@@ -200,8 +200,8 @@ int main(void) {
         pass = 0;
     }
 
-    uint32_t msg_len_lower = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
-    uint32_t msg_len_upper = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    uint32_t msg_len_lower = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t msg_len_upper = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
     printf("  MSG_LENGTH lower=%u upper=%u expected=%u\n", msg_len_lower, msg_len_upper,
            MSG_LEN_BYTES * 8u);
     if (msg_len_lower != MSG_LEN_BYTES * 8u || msg_len_upper != 0) {
@@ -211,12 +211,12 @@ int main(void) {
 
     printf("Step 3: hash_process and wait for completion\n");
     hmac__CMD_t process = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, process.w);
     if (wait_for_done_or_idle() != 0) {
         pass = 0;
     }
 
-    hmac__STATUS_t status = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    hmac__STATUS_t status = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     printf("  STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", status.w, status.f.hmac_idle,
            status.f.fifo_empty, status.f.fifo_full, status.f.fifo_depth);
     if (!status.f.hmac_idle || !status.f.fifo_empty) {
@@ -235,11 +235,11 @@ int main(void) {
         pass = 0;
     }
 
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xffffffffu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
 
     printf("\n========================================\n");
     if (pass) {

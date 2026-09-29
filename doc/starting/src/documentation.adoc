@@ -33,6 +33,33 @@ Documents are published in GitHub Pages at [https://tenstorrent.github.io/tt-oca
 
 Downloadable PDFs are also accessible from the above location.
 
+Generated register maps provide links from register names to their field tables,
+with each register listed in the contents and PDF bookmarks. The AsciiDoc
+partials contain a level-one address-map heading and level-two register headings.
+When including one, set `leveloffset` to the level of the containing section so
+both stay beneath it; for example, beneath `=== Detailed Register Map`, use
+`include::../regs/gen/adoc/example.adoc[leveloffset=+2]`.
+
+The TRM PDF build checks every generated register map in the open register
+inventory against the assembled document. A missing map, missing register
+section, or section deeper than the contents or bookmark limit fails the build.
+Include new maps under their owning block and keep integration reference models
+labelled as such.
+
+The TRM builds linked lists of figures and tables, including generated
+register tables. Prefer an explicit block title and stable anchor for each
+authored figure or table, and reference that anchor from the explanatory text.
+Use automatic cross-reference text instead of hard-coded figure or table
+numbers. Untitled figures use their alternative text; untitled tables use
+their containing section and, for register tables, the table's purpose.
+Each section also provides local links to its figures and tables.
+
+`tools/doc/block_catalog.rb` numbers and indexes blocks across the PDF book.
+The Antora extensions `tools/doc/block-captions.js` and
+`tools/doc/block-indexes.js` number blocks within each TRM topic and assemble
+the HTML indexes. Keep these extensions enabled in both the standalone and
+combined playbooks. Other documentation products retain their own captions.
+
 === Updating documentation
 
 Document updates are made by pushing changes to `main`.
@@ -43,7 +70,7 @@ The CI process deploys to the published site on all pushes to `main` (see `.gith
 
 Documentation may also be built locally for development. Follow the instructions xref:setup.adoc#package-dependencies[here] to install Asciidoctor and Antora.
 
-Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#containers[here].
+Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#container-engine-setup[here].
 
 The two commands below may be executed from the root of the checked out repository.
 They generate the built material in subfolders under each book.
@@ -55,7 +82,7 @@ make doc-all-pdf
 
 # OR Container workflow
 scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
-scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/dist/ocah-trm.pdf
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/_build/latex/ocah-trm.pdf
 ```
 
 Once the documents are built they can be staged with the command below.
@@ -80,6 +107,12 @@ python3 -m http.server 8000
 
 This will generate the documentation, and then serve it on `http://localhost:8000/`. You will then be able to access it in your web browser.
 
+For a preview that opens at the TRM, run `make doc-trm-serve`.
+The TRM HTML build includes the other guides so links to Home, integration
+details, and programming procedures resolve locally. The container command
+`scripts/docker-run.sh doc-html trm` builds the same set of guides.
+If port 8000 is occupied, use `make doc-trm-serve OCAH_TRM_SERVE_PORT=8001`.
+
 === Embedding Images
 
 All images are stored in the repository at `doc/trm/assets` regardless of which document they
@@ -93,6 +126,65 @@ Any image can then be embedded in an Asciidoc document with:
 
 ```
 image::<my_image>.png[Alternative Text]
+```
+
+On the HTML site, click an unlinked block image to open the image viewer.
+Use the mouse wheel to zoom and drag the image to pan. The toolbar provides
+zoom in, zoom out, actual size (`1:1`), and reset controls.
+Keyboard users can focus an image and press Enter or Space to open it,
+use the up/down arrow keys to zoom, and press Escape to close the viewer.
+
+=== Local Kroki
+
+https://kroki.io[Kroki] renders text-based diagrams (Mermaid, PlantUML, D2, and others)
+into images at build time. By default the `asciidoctor-kroki` Antora extension sends
+diagram source to the public `https://kroki.io` service. Running a local Kroki server
+avoids the network round-trip, works offline, and keeps diagram source off an external
+service.
+
+==== Container workflow
+
+Start Kroki in one terminal — it keeps running while you build:
+
+```bash
+scripts/docker-run.sh doc-kroki
+```
+
+Then build with `OCAH_ANTORA_KROKI_OFFLINE=true` in another terminal:
+
+```bash
+OCAH_ANTORA_KROKI_OFFLINE=true scripts/docker-run.sh doc-html trm
+# or for the full combined site:
+OCAH_ANTORA_KROKI_OFFLINE=true scripts/docker-run.sh doc-html all
+```
+
+`doc-kroki` puts the Kroki container on the same Docker/Podman network as the Antora
+container and names it `kroki`, so Antora can reach it at `http://kroki:8001`.
+`OCAH_ANTORA_KROKI_OFFLINE=true` tells `doc-html` to pass that URL as the
+`kroki-server-url` Antora attribute.
+
+By default `doc-kroki` exposes Kroki on host port 8001 (`http://localhost:8001`).
+Override with `OCAH_KROKI_PORT`:
+
+```bash
+OCAH_ANTORA_KROKI_OFFLINE=true OCAH_KROKI_PORT=9000 scripts/docker-run.sh doc-kroki
+```
+
+==== Nix-native workflow
+
+In a nix dev shell the `kroki` binary is available directly. Start it in one terminal:
+
+```bash
+kroki
+```
+
+It listens on `http://localhost:8001` by default. Then build with `KROKI_SERVER_URL`
+pointing at it — the `ocah-antora` wrapper picks this up automatically:
+
+```bash
+KROKI_SERVER_URL=http://localhost:8001 make doc-trm-serve
+# or
+KROKI_SERVER_URL=http://localhost:8001 make doc-all-html
 ```
 
 === References

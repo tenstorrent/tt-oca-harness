@@ -1,41 +1,81 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+= Clock Stop / Reset
+:description: DTP clock stop integration — combined JTAG and CLA halt path, CLA-only readback, exported enable policy.
+
 [[dtp-clock-stop]]
-=== Clock Stop
 
-This section describes DTP-level clock stop integration. For the clock stop
-controller implementation details, see <<cross-trigger-network>>.
+The DTP combines JTAG DEBUG_CONTROL and CLA clock-stop request sources into
+one functional chiplet halt path, while keeping the CLA-only status separate
+for debugger readback.
 
-From the DTP perspective, clock-stop handling combines JTAG DEBUG_CONTROL and
-CLA request sources into one functional halt path, while keeping CLA-only status
-separate for DEBUG_CONTROL readback.
+== Halt Path Architecture
 
-* *JTAG `jtag_clock_stop`*: The JTAG Interface Unit captures the DEBUG_CONTROL
-  `jtag_clock_stop` bit and drives it into the Cross Trigger Network (CTN) clock
-  stop controller. It is OR-combined with CLA clock-stop requests to form the
-  registered DTP `stop_clks_o` output that connects to chiplet functional clock
-  gating.
-* *Exported `cla_clock_stop_en`*: The DEBUG_CONTROL `cla_clock_stop_en` bit is
-  exported at the DTP top level for downstream use (for example SMC/CLA debug
-  policy). It is not used inside the CTN `stop_clks_o` aggregation.
-* *CLA clock-stop indication*: The CTN OR-reduces `xtrig_clk_stop_req_i` to form
-  the `cla_clock_stop` readback status (CLA requests only). This does not
-  include the JTAG `jtag_clock_stop` bit.
+<<dtp-clock-stop-diagram>> shows how JTAG and CLA requests contribute to the chiplet
+halt path.
 
-==== Architecture
+[[dtp-clock-stop-diagram]]
+.DTP JTAG and CLA clock-stop aggregation
+image::DTP_ClockStopAggregration_FIG010.png[alt="DTP JTAG and CLA clock-stop aggregation",width=100%,pdfwidth=100%]
 
-At a high level, the architecture is:
+Three distinct signals participate in clock stop:
 
-1. The JTAG Interface Unit captures DEBUG_CONTROL bits. The `jtag_clock_stop`
-   bit is routed to the CTN clock stop controller; `cla_clock_stop_en` is
-   exported at the DTP boundary.
-2. The CTN OR-reduces `xtrig_clk_stop_req_i` for `cla_clock_stop` status and
-   combines that aggregate with `jtag_clock_stop` for the registered
-   `stop_clks_o` output.
-3. The `cla_clock_stop` status is fed back into the DEBUG_CONTROL readback path
-   so software or a debugger can observe whether any CLA clock-stop source is
-   active.
+*`jtag_clock_stop`* (JTAG DEBUG_CONTROL bit)::
+Captured by the JTAG Interface Unit in the TCK domain and routed to the CTN
+clock-stop controller. OR-combined with CLA requests to form the registered
+`stop_clks_o` output that connects to chiplet functional clock gating.
 
-This keeps CLA clock-stop observability distinct from the JTAG direct-stop path,
-while both can assert the functional chiplet halt through `stop_clks_o`.
+*`cla_clock_stop_en`* (JTAG DEBUG_CONTROL bit)::
+Exported at the DTP top level for downstream use (for example SMC/CLA debug
+policy). Not included in the `stop_clks_o` aggregation inside the CTN.
+
+*CLA clock-stop indication*::
+The CTN OR-reduces `xtrig_clk_stop_req_i` (CLA sources only, not
+`jtag_clock_stop`) to form the `cla_clock_stop` readback status. This status
+feeds back into the DEBUG_CONTROL readback so software or a debugger can
+observe whether any CLA clock-stop source is active.
+
+== Signal Flow
+
+. The JTAG Interface Unit captures DEBUG_CONTROL bits in the TCK domain.
+  The `jtag_clock_stop` bit is routed to the CTN clock-stop controller;
+  `cla_clock_stop_en` is exported at the DTP boundary.
+. The CTN OR-reduces `xtrig_clk_stop_req_i` to produce `cla_clock_stop`
+  status, then OR-combines that aggregate with `jtag_clock_stop` to produce
+  the registered `stop_clks_o` output.
+. The `cla_clock_stop` status is fed back into the DEBUG_CONTROL readback path
+  so a debugger can observe CLA clock-stop source activity independently of its
+  own direct-stop assertion.
+
+This architecture keeps CLA observability distinct from the JTAG direct-stop
+path, while either source can assert the functional chiplet halt through
+`stop_clks_o`.
+
+For the CTN clock-stop controller implementation and the `xtrig_clk_stop_req_i`
+input indexing, see
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network[Cross-Trigger Network].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<cross-trigger-network,Cross-Trigger Network>>.
+endif::backend-pdf[]
+
+[[dtp-clock-distribution]]
+== Clock Distribution
+
+<<dtp-clock-tree>> shows which DTP blocks use the system clock and which use TCK.
+
+[[dtp-clock-tree]]
+.DTP system-clock and JTAG-clock distribution
+image::DTP_ClockingArchitecture_FIG021.png[alt="DTP system-clock and JTAG-clock distribution",width=100%,pdfwidth=100%]
+
+[[dtp-reset-distribution]]
+== Reset Distribution
+
+<<dtp-reset-tree>> shows the reset distribution for DTP system logic and the JTAG scan
+paths.
+
+[[dtp-reset-tree]]
+.DTP system and JTAG reset distribution
+image::DTP_ResetArchitecture_FIG022.png[alt="DTP system and JTAG reset distribution",width=100%,pdfwidth=100%]

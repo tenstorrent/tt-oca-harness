@@ -8,6 +8,8 @@
 
 Early assembly reads strap registers at `0xC0405800` and `0xC0405804`.
 The C strap driver later caches the fields used for reporting or policy.
+Boot stall is controlled by the dedicated GPIO 57 hardware path before ROM
+execution and is not a captured strap.
 
 .ROM strap use
 [cols="2,1,4",options="header"]
@@ -21,10 +23,6 @@ The C strap driver later caches the fields used for reporting or policy.
 |`TEST_EN`
 |14
 |Cached by the strap driver; no later ROM behavior depends on it.
-
-|`BOOT_STALL`
-|17
-|Reported in the POST word. CPU stalling occurs before ROM execution in hardware.
 
 |`BOOT_I2C`
 |18

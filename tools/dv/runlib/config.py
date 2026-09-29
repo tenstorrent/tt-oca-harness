@@ -165,7 +165,196 @@ FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
 # Tool-table keys that describe one deployment rather than the tool: a site file
 # (runlib.site) supplies them and the checked-in registry rejects them.
 SITE_ONLY_TOOL_KEYS = {"launcher", "extra_env", "setup_hook"}
+
+# Executor registry (executors.toml). Schema 1 declares `[local]` and a cluster table named
+# by one `binary`; schema 2 names a `driver` and every scheduler command the driver runs, so
+# `--doctor` can check each command and a site can retarget any of them in configuration.
+EXECUTOR_SCHEMA_VERSIONS = {1, 2}
+EXECUTOR_KINDS = {"local", "cluster"}
+# Driver names a cluster table may select; `runlib.executors` says which of them dispatch.
+CLUSTER_DRIVERS = frozenset({"lsf", "slurm"})
+LOCAL_EXECUTOR_KEYS = {"kind", "description", "submit_argv", "wait_mode"}
+CLUSTER_EXECUTOR_V1_KEYS = {
+    "kind",
+    "binary",
+    "submit_argv",
+    "wait_mode",
+    "env_passthrough",
+    "defaults",
+}
+CLUSTER_EXECUTOR_KEYS = {
+    "kind",
+    "description",
+    "driver",
+    "binaries",
+    "wait_mode",
+    "submit_argv",
+    "query_argv",
+    "history_argv",
+    "cancel_argv",
+    "worker_argv",
+    "history_parser",
+    "env_passthrough",
+    "defaults",
+    "limits",
+    "setup_hook",
+    "arrays",
+    "builds",
+    "build_defaults",
+    "build_submit_argv",
+}
+# Where a cluster executor runs the target builds.
+EXECUTOR_BUILD_MODES = {"local", "scheduler"}
+# Executor keys that describe one deployment; the checked-in registry rejects them.
+SITE_ONLY_EXECUTOR_KEYS = {"setup_hook"}
+# The normalized resource vocabulary: an executor's `defaults`, a stage's `resources`, and the
+# `--queue/--cores/--mem-mb/--walltime` flags all speak it.
+EXECUTOR_RESOURCE_KEYS = {"queue", "cores", "mem_mb", "walltime"}
+# `[<executor>.limits]`: the coordinator loop's knobs, each with the bound a value must meet.
+EXECUTOR_LIMIT_KEYS: dict[str, tuple[type, float]] = {
+    "max_in_flight": (int, 1),
+    "submit_batch_size": (int, 1),
+    "query_batch_size": (int, 1),
+    "poll_interval_sec": (float, 0.1),
+    "artifact_grace_sec": (float, 0),
+    "cancel_grace_sec": (float, 0),
+    "command_timeout_sec": (float, 1),
+    "array_chunk_size": (int, 1),
+}
+ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Placeholders an executor argv template may render. Resource values come in every unit a
+# scheduler asks for, so a site template picks `{mem_gb}` or `{walltime_min}` as needed.
+EXECUTOR_RESOURCE_PLACEHOLDERS = {
+    "queue",
+    "cores",
+    "mem_mb",
+    "mem_gb",
+    "walltime",
+    "walltime_sec",
+    "walltime_min",
+    "walltime_hms",
+}
+EXECUTOR_SUBMIT_PLACEHOLDERS = EXECUTOR_RESOURCE_PLACEHOLDERS | {
+    "joblog",
+    "jobname",
+    "array_range",
+    "image",
+    "script",
+    "manifest",
+    "python",
+    "run_dir",
+    "repo_root",
+    "leaf_dir",
+    "task_id",
+    "executor",
+}
+# `{job_ids_argv}` splices one token per job id; the other two render inside one token.
+EXECUTOR_QUERY_PLACEHOLDERS = {"job_id", "job_ids_csv", "job_ids_argv"}
+EXECUTOR_WORKER_PLACEHOLDERS = {"python", "manifest", "repo_root", "run_dir", "leaf_dir", "task_id"}
+EXECUTOR_TEMPLATE_PLACEHOLDERS = {
+    "submit_argv": EXECUTOR_SUBMIT_PLACEHOLDERS,
+    "build_submit_argv": EXECUTOR_SUBMIT_PLACEHOLDERS,
+    "query_argv": EXECUTOR_QUERY_PLACEHOLDERS,
+    "history_argv": EXECUTOR_QUERY_PLACEHOLDERS,
+    "cancel_argv": EXECUTOR_QUERY_PLACEHOLDERS,
+    "worker_argv": EXECUTOR_WORKER_PLACEHOLDERS,
+}
+# A wall-time request: minutes (`90`), a unit suffix (`90m`, `2h`, `30s`, `1d`), `HH:MM`,
+# `HH:MM:SS`, or `D-HH[:MM[:SS]]`. Two colon-separated fields are hours and minutes.
+WALLTIME_UNIT_RE = re.compile(r"^(\d+)([smhd])$")
+WALLTIME_CLOCK_RE = re.compile(r"^(?:(\d+)-)?(\d+)(?::(\d{1,2}))?(?::(\d{1,2}))?$")
+_WALLTIME_UNIT_SEC = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def parse_walltime_sec(text: str) -> int:
+    """Seconds in a wall-time request; a ConfigError names the accepted forms."""
+    value = str(text).strip()
+    total = 0
+    if value.isdigit():
+        total = int(value) * 60
+    elif unit := WALLTIME_UNIT_RE.match(value):
+        total = int(unit.group(1)) * _WALLTIME_UNIT_SEC[unit.group(2)]
+    elif clock := WALLTIME_CLOCK_RE.match(value):
+        days, hours, minutes, seconds = clock.groups()
+        if int(minutes or 0) < 60 and int(seconds or 0) < 60:
+            total = int(hours) * 3600 + int(minutes or 0) * 60 + int(seconds or 0)
+            if days:
+                total += int(days) * 86400
+    if total > 0:
+        return total
+    raise ConfigError(
+        f"invalid walltime {text!r}: use minutes, a unit suffix (s/m/h/d), HH:MM, HH:MM:SS, "
+        "or D-HH:MM:SS"
+    )
+
+
+def validate_resource_table(table: Any, where: str) -> dict[str, Any]:
+    """Shape-check a normalized resource table and return it with typed values."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where} must be a table")
+    validate_allowed_keys(table, EXECUTOR_RESOURCE_KEYS, where)
+    out: dict[str, Any] = {}
+    if "queue" in table:
+        if not isinstance(table["queue"], str) or not table["queue"]:
+            raise ConfigError(f"{where}.queue must be a non-empty string")
+        out["queue"] = table["queue"]
+    for key in ("cores", "mem_mb"):
+        if key in table:
+            value = table[key]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ConfigError(f"{where}.{key} must be a positive integer")
+            out[key] = value
+    if "walltime" in table:
+        value = table["walltime"]
+        if not isinstance(value, str) or not value:
+            raise ConfigError(f"{where}.walltime must be a non-empty string")
+        try:
+            parse_walltime_sec(value)
+        except ConfigError as exc:
+            raise ConfigError(f"{where}.walltime: {exc}") from exc
+        out["walltime"] = value
+    return out
+
+
+def validate_limits_table(table: Any, where: str) -> dict[str, Any]:
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where} must be a table")
+    validate_allowed_keys(table, set(EXECUTOR_LIMIT_KEYS), where)
+    out: dict[str, Any] = {}
+    for key, value in table.items():
+        kind, floor = EXECUTOR_LIMIT_KEYS[key]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ConfigError(f"{where}.{key} must be a number")
+        if kind is int and not isinstance(value, int):
+            raise ConfigError(f"{where}.{key} must be an integer")
+        if value < floor:
+            raise ConfigError(f"{where}.{key} must be at least {floor:g}")
+        out[key] = value
+    return out
+
+
+def validate_argv_template(template: Any, where: str, allowed: set[str], *, required: bool) -> None:
+    """An executor argv template: strings and optional groups over the allowed placeholders."""
+    if template is None:
+        if required:
+            raise ConfigError(f"{where} is required")
+        return
+    if not isinstance(template, list) or (required and not template):
+        raise ConfigError(f"{where} must be a non-empty list of argv tokens")
+    for idx, element in enumerate(template):
+        if isinstance(element, list):
+            if not element or not all(isinstance(token, str) and token for token in element):
+                raise ConfigError(f"{where}[{idx}]: an optional group holds non-empty strings only")
+            continue
+        if not isinstance(element, str) or not element:
+            raise ConfigError(f"{where}[{idx}] must be a non-empty string or a group")
+    validate_placeholders_in_value(template, where, allowed)
+
+
 TOOL_KINDS = {"simulation", "formal"}
+# A tool table's `min_version`: a dotted release number, compared by the doctor against the
+# first such number in the release line the tool's binary prints.
+MIN_VERSION_RE = re.compile(r"\d+(?:\.\d+)+")
 
 TOP_LEVEL_KEYS = {
     "schema_version",
@@ -337,6 +526,7 @@ COVERAGE_TOOL_KEYS = {
     "fail_under",
     "input_glob",
     "merge_cmd",
+    "combine_cmd",
     "merged_name",
     "parser",
     "policy_file",
@@ -349,6 +539,7 @@ COVERAGE_LIST_KEYS = {
     "compile_args",
     "exclude_files",
     "merge_cmd",
+    "combine_cmd",
     "report_cmd",
     "sim_args",
     "test_args",
@@ -805,6 +996,16 @@ def validate_stage_table(stage_name: str, stage: dict[str, Any], where: str) -> 
         "resources",
     }
     validate_allowed_keys(stage, allowed, f"{where} [native.stages.{stage_name}]")
+    if "default_executor" in stage and (
+        not isinstance(stage["default_executor"], str) or not stage["default_executor"]
+    ):
+        raise ConfigError(
+            f"{where} [native.stages.{stage_name}].default_executor must be a non-empty string"
+        )
+    if "resources" in stage:
+        validate_resource_table(
+            stage["resources"], f"{where} [native.stages.{stage_name}].resources"
+        )
     validate_placeholders_in_value(stage, f"{where} [native.stages.{stage_name}]")
 
 
@@ -1563,6 +1764,13 @@ def validate_simulator_registry(simulators: dict[str, Any], where: str) -> None:
                 f"{where}: [{tool}] must declare `license_env` ([] for a license-free tool)"
             )
         as_str_list(table.get("license_env"), f"{where} [{tool}].license_env")
+        min_version = table.get("min_version")
+        if min_version is not None and not (
+            isinstance(min_version, str) and MIN_VERSION_RE.fullmatch(min_version)
+        ):
+            raise ConfigError(
+                f'{where}: [{tool}].min_version must be a dotted release number such as "5.036"'
+            )
         if kind == "formal":
             if "argv" not in table:
                 raise ConfigError(
@@ -1619,17 +1827,15 @@ def validate_executor_registry(executors: dict[str, Any], where: str) -> None:
             raise ConfigError(f"{where}: [{name}] must be a table")
         kind = cfg.get("kind")
         if kind == "local":
-            validate_allowed_keys(cfg, {"kind", "submit_argv", "wait_mode"}, f"{where} [{name}]")
+            validate_allowed_keys(cfg, LOCAL_EXECUTOR_KEYS, f"{where} [{name}]")
             if cfg.get("submit_argv") not in ([], None):
                 raise ConfigError(f"{where}: [local].submit_argv must be []")
             if cfg.get("wait_mode") != "inline":
                 raise ConfigError(f"{where}: [local].wait_mode must be `inline`")
+        elif kind == "cluster" and "driver" in cfg:
+            validate_cluster_executor(cfg, f"{where} [{name}]")
         elif kind == "cluster":
-            validate_allowed_keys(
-                cfg,
-                {"kind", "binary", "submit_argv", "wait_mode", "env_passthrough", "defaults"},
-                f"{where} [{name}]",
-            )
+            validate_allowed_keys(cfg, CLUSTER_EXECUTOR_V1_KEYS, f"{where} [{name}]")
             if not isinstance(cfg.get("binary"), str) or not cfg.get("binary"):
                 raise ConfigError(f"{where}: [{name}].binary must be a non-empty string")
             as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
@@ -1641,14 +1847,64 @@ def validate_executor_registry(executors: dict[str, Any], where: str) -> None:
             raise ConfigError(f"{where}: [{name}].kind must be `local` or `cluster`")
 
 
+def validate_cluster_executor(cfg: dict[str, Any], where: str) -> None:
+    """A schema-2 cluster table: a driver, the binaries it runs, and its argv templates."""
+    validate_allowed_keys(cfg, CLUSTER_EXECUTOR_KEYS, where)
+    driver = cfg.get("driver")
+    if driver not in CLUSTER_DRIVERS:
+        raise ConfigError(f"{where}.driver must be one of: {', '.join(sorted(CLUSTER_DRIVERS))}")
+    binaries = as_str_list(cfg.get("binaries"), f"{where}.binaries")
+    if not binaries or not all(binaries):
+        raise ConfigError(f"{where}.binaries must name every scheduler command the driver runs")
+    if cfg.get("wait_mode", "poll") != "poll":
+        raise ConfigError(f"{where}.wait_mode must be `poll` on a cluster executor")
+    for key, allowed in EXECUTOR_TEMPLATE_PLACEHOLDERS.items():
+        validate_argv_template(
+            cfg.get(key),
+            f"{where}.{key}",
+            allowed,
+            required=key in {"submit_argv", "query_argv", "cancel_argv"},
+        )
+    for name in as_str_list(cfg.get("env_passthrough"), f"{where}.env_passthrough"):
+        if not ENV_NAME_RE.match(name):
+            raise ConfigError(f"{where}.env_passthrough: {name!r} is not a variable name")
+    if "defaults" in cfg:
+        validate_resource_table(cfg["defaults"], f"{where}.defaults")
+    if "build_defaults" in cfg:
+        validate_resource_table(cfg["build_defaults"], f"{where}.build_defaults")
+    if "builds" in cfg and cfg["builds"] not in EXECUTOR_BUILD_MODES:
+        raise ConfigError(
+            f"{where}.builds must be one of: {', '.join(sorted(EXECUTOR_BUILD_MODES))}"
+        )
+    if "limits" in cfg:
+        validate_limits_table(cfg["limits"], f"{where}.limits")
+    for key in ("description", "history_parser", "setup_hook"):
+        if key in cfg and (not isinstance(cfg[key], str) or not cfg[key]):
+            raise ConfigError(f"{where}.{key} must be a non-empty string")
+    if "arrays" in cfg and not isinstance(cfg["arrays"], bool):
+        raise ConfigError(f"{where}.arrays must be true or false")
+
+
 def load_executors(root: Path) -> dict[str, Any]:
     """The checked-in executor registry; ``runlib.site.merged_executors`` layers a site file on it."""
     path = configs_root(root) / "executors.toml"
     if not path.is_file():
         raise ConfigError(f"missing executor registry: {path}")
     data = load_toml(path)
+    if data.get("schema_version") not in EXECUTOR_SCHEMA_VERSIONS:
+        raise ConfigError(
+            f"{path}: schema_version must be one of "
+            + ", ".join(str(version) for version in sorted(EXECUTOR_SCHEMA_VERSIONS))
+        )
     executors = {key: value for key, value in data.items() if key != "schema_version"}
     validate_executor_registry(executors, str(path))
+    for name, table in executors.items():
+        site_only = sorted(set(table) & SITE_ONLY_EXECUTOR_KEYS)
+        if site_only:
+            raise ConfigError(
+                f"{path}: [{name}] carries deployment key(s) {', '.join(site_only)}; "
+                "they belong in the site layer (site.local.toml)"
+            )
     return executors
 
 
@@ -2035,9 +2291,9 @@ def _resolve_catalog_frameworks(flow: Flow, tests: dict[str, TestEntry], source:
 
     A bare-string `module` is normalized to a binding for the DUT's default framework; a binding
     map is looked up by the selected framework. A scenario with no binding for the selected
-    framework keeps `module = ""`; selection decides before it can run: a framework the map
-    declares `false` is skipped from group and tag selections, a framework the map omits is an
-    error unless --skip-unimplemented is given.
+    framework keeps `module = ""`; selection decides before it can run: group and tag
+    selections skip the scenario under a framework its map declares `false` or omits, and
+    naming it with --items under that framework is an error.
     """
     if not flow.framework:
         for test in tests.values():

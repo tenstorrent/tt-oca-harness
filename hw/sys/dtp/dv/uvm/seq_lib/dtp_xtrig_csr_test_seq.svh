@@ -51,20 +51,53 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     endcase
   endtask
 
+  // Accepted-path CSR accesses under an activity window: no request or
+  // acknowledge enable or CTP busy flop moves while an access is in flight,
+  // the crossbar's READY-low stall counters do not advance, and a routed
+  // pulse afterwards is the positive control of the same observables. The
+  // pad levels and the receive pulses stay out of the window because they
+  // follow the polarity CSR the accesses write.
   protected task run_reg_stall();
     bit [15:0] stretch = 16'($urandom);
     bit [31:0] select = $urandom_range(CtmSelectMask, 1);
+    bit [31:0] aw_stall0 = xtrig_pin("xtrig_axil_aw_stall_count");
+    bit [31:0] ar_stall0 = xtrig_pin("xtrig_axil_ar_stall_count");
+    int unsigned int_idx = $urandom_range(XtrigNumIntCt - 1);
+    int unsigned ctp_idx = $urandom_range(XtrigNumCtp - 1);
+    string in_flight[$];
     `uvm_info(get_type_name(), "XTRIG accepted-path CSR access and stall rationale", UVM_LOW)
+    foreach (reset_signals[i])
+      if (!(reset_signals[i] inside {"xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout",
+                                     "xtrig_ctp_ct_dst", "xtrig_int_ct_dst"}))
+        in_flight.push_back(reset_signals[i]);
+    idle_inputs();
+    start_activity_window_on(in_flight);
     write_read_check(ctp_config_addr(0), pack_ctp_config(.invert(1'b1)), pack_ctp_config(
                      .invert(1'b1)), 4'hF, CtpConfigMask, "regstall.ctp0.config");
     write_read_check(ctp_stretch_addr(0), 32'(stretch), 32'(stretch), 4'hF, CtpStretchMask,
                      "regstall.ctp0.stretch");
     write_read_check(ctm_config_addr(0), select, select, 4'hF, CtmSelectMask, "regstall.ctm0");
+    wait_sys_cycles(2);
+    stop_activity_window();
+    foreach (in_flight[i])
+      check_evidence(ChkQuiet, $sformatf("regstall.in_flight.%s", in_flight[i]),
+                     64'(window_activity[in_flight[i]]), 64'd0, $sformatf(
+                     "cycles=%0d", window_cycles));
     check_quiet("reg_stall_accepted");
+    check_evidence(ChkAxil, "regstall.aw_stall_count_delta", 64'(xtrig_pin(
+                   "xtrig_axil_aw_stall_count") - aw_stall0), 64'd0);
+    check_evidence(ChkAxil, "regstall.ar_stall_count_delta", 64'(xtrig_pin(
+                   "xtrig_axil_ar_stall_count") - ar_stall0), 64'd0);
     check_evidence(ChkAxil, "regstall.awvalid_count_nonzero", 64'(xtrig_pin(
                    "xtrig_axil_awvalid_count") > 0), 64'd1);
     check_evidence(ChkAxil, "regstall.arvalid_count_nonzero", 64'(xtrig_pin(
                    "xtrig_axil_arvalid_count") > 0), 64'd1);
+    // Positive control: the observables the quiet records judged move for a
+    // routed pulse in the same pass.
+    clear_xtrig();
+    verify_route(internal_ct_port(int_idx), 32'd1 << external_ctp_port(ctp_idx), CtpModeWireOr,
+                 "regstall.control");
+    clear_xtrig();
   endtask
 
   protected task run_ctp_csr_sweep();
@@ -252,6 +285,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                    before_neighbor & CtmSelectMask,
                    after_neighbor & CtmSelectMask
                    ))
+      // One routed pulse per source: its select decodes into the matrix.
+      verify_route(src_idx, 32'd1 << nbr_idx, CtpModeWireOr, $sformatf("allsrc%0d.route", src_idx));
     end
   endtask
 
@@ -390,16 +425,11 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
             addr_a, addr_b, hold, first.worst_resp().name(), second.worst_resp().name(),
             first.first_data(), second.first_data(), first.ax_stall_cycles, first.ax_stable,
             first.hold_stable), UVM_LOW)
-    // The crossbar's error subordinate, not a register block, answers an
-    // unmapped read: its data word says so.
+    // No subordinate decodes an unmapped address: AXI answers DECERR.
     check_evidence(ChkAxil, "read_decode.first.resp", 64'(first.worst_resp()),
                    64'(OCAH_AXI_RESP_DECERR));
-    check_evidence(ChkAxil, "read_decode.first.err_slv_data", first.first_data(),
-                   64'(XtrigDecerrData));
     check_evidence(ChkAxil, "read_decode.second.resp", 64'(second.worst_resp()),
                    64'(OCAH_AXI_RESP_DECERR));
-    check_evidence(ChkAxil, "read_decode.second.err_slv_data", second.first_data(),
-                   64'(XtrigDecerrData));
     check_evidence(ChkAxil, "read_decode.first.hold_stable", 64'(first.hold_stable), 64'd1);
     check_evidence(ChkArStall, "read_decode.second_ar_held", 64'(first.ax_stall_cycles > 0), 64'd1);
     check_evidence(ChkArStall, "read_decode.ar_stable", 64'(first.ax_stable), 64'd1);

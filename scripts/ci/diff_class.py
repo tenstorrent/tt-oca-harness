@@ -46,7 +46,12 @@ REGISTER_INFRASTRUCTURE_PATHS = frozenset(
         "scripts/ci/validate-regen-regs.py",
     }
 )
-REGISTER_INFRASTRUCTURE_DIRS = ("hw/common/regs/", "tools/regs/")
+REGISTER_INFRASTRUCTURE_DIRS = (
+    "hw/common/regs/",
+    "tools/regs/",
+    "vendor/lowRISC/opentitan/patches/",
+    "vendor/lowRISC/opentitan/upstream/util/reggen/",
+)
 
 # pyproject.toml and uv.lock pin the reggen toolchain (peakrdl*, systemrdl-compiler,
 # mako, hjson) alongside dozens of unrelated lint/format tools, so listing either file
@@ -74,10 +79,11 @@ UNCLASSIFIED = "(unclassified)"
 
 # The tools/dv unit tests check the DV runner against the per-DUT DV packages:
 # a leaf's required_evidence tuple against the SMC_VPLAN card that declares it,
-# the testlists against the configs. Either side can move on its own, and a
-# plan card is an .adoc, so this scope is deliberately not the documentation
-# classifier above.
-DV_CHECK_DIRS = ("tools/dv/",)
+# the testlists against the configs. They also check the dashboard data the
+# runner publishes against the tools/doc scripts that read it for the site.
+# Any of these sides can move on its own, and a plan card is an .adoc, so this
+# scope is separate from the documentation classifier above.
+DV_CHECK_DIRS = ("tools/dv/", "tools/doc/")
 DV_CHECK_SYS_SUBDIR = "dv/"
 
 DOCUMENTATION_ONLY_CHILD = """\
@@ -115,7 +121,15 @@ def is_docs_path(path: str) -> bool:
 def is_register_regen_path(path: str) -> bool:
     """Return True when changing *path* can affect register collateral."""
     normalized = path.replace("\\", "/").lstrip("./")
-    if normalized == UNCLASSIFIED or normalized.endswith(".rdl"):
+    if (
+        normalized == UNCLASSIFIED
+        or normalized.endswith(".rdl")
+        or (
+            normalized.startswith("vendor/lowRISC/opentitan/upstream/hw/ip/")
+            and normalized.endswith(".hjson")
+        )
+        or normalized.endswith(("/doc/memmap.toml", "/regs/regdoc.toml"))
+    ):
         return True
     if normalized in REGISTER_INFRASTRUCTURE_PATHS or normalized.startswith(
         REGISTER_INFRASTRUCTURE_DIRS
@@ -139,8 +153,23 @@ def is_dv_check_path(path: str) -> bool:
 
 
 def is_dv_check_required(paths: list[str]) -> bool:
-    """Return True when the diff touches the DV runner or a DUT's DV package."""
+    """Return True when the diff touches the DV runner, a site reader or a DUT's DV package."""
     return any(is_dv_check_path(path) for path in paths)
+
+
+def is_nix_path(path: str) -> bool:
+    """Return True when path is a Nix file"""
+    normalized = path.replace("\\", "/").lstrip("./")
+    if normalized == UNCLASSIFIED or normalized.startswith("nix"):
+        return True
+    if normalized == "flake.lock":
+        return True
+    return Path(normalized).suffix.lower() == "nix"
+
+
+def is_nix_required(paths: list[str]) -> bool:
+    """Return True when the diff touches the Nix Infrastructure."""
+    return any(is_nix_path(path) for path in paths)
 
 
 def _dependency_spec_name(specifier: str) -> str:
@@ -369,7 +398,8 @@ def changed_files() -> tuple[list[str], str | None]:
         # pipeline (not a separate downstream project), so GitLab forwards
         # the parent's CI_MERGE_REQUEST_*/CI_COMMIT_* variables unchanged;
         # only the pipeline-source classification itself needs recovering,
-        # which .gitlab-ci.yml's `nonfree:` job does via PARENT_PIPELINE_SOURCE.
+        # which the trusted GitLab parent's `nonfree:` job does via
+        # PARENT_PIPELINE_SOURCE.
         source = os.environ.get("PARENT_PIPELINE_SOURCE") or source
     if source == "merge_request_event":
         base = os.environ.get("CI_MERGE_REQUEST_DIFF_BASE_SHA", "")
@@ -399,7 +429,7 @@ def self_test() -> None:
     assert is_docs_path("README.md")
     assert is_docs_path("hw/sys/dtp/doc/jtag.adoc")
     assert is_docs_path("doc/trm/src/index.adoc")
-    assert is_docs_path("doc/trm/dist/ocah-trm.pdf")
+    assert is_docs_path("doc/trm/_build/latex/ocah-trm.pdf")
     assert is_docs_path("antora-playbook.yml")
     assert is_docs_path("antora-combined-playbook.yml")
     assert is_docs_path("hw/ip/uart/doc/diagram.svg")
@@ -418,10 +448,14 @@ def self_test() -> None:
 
     for path in (
         "hw/sys/smc/regs/smc.rdl",
+        "hw/sys/smc/doc/memmap.toml",
         "hw/ip/uart/regs/gen/sv/uart_reg.sv",
         "hw/ip/foo/registers/bar/gen/c/bar.h",
         "vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_reg.sv",
         "tools/regs/reggen_wrapper.py",
+        "vendor/lowRISC/opentitan/patches/0040-systemrdl_exporter_roundtrip.patch",
+        "vendor/lowRISC/opentitan/upstream/util/reggen/systemrdl_exporter.py",
+        "vendor/lowRISC/opentitan/upstream/hw/ip/kmac/data/kmac.hjson",
         "hw/common/regs/templates/svpkg.mako",
         "ocah.mk",
         UNCLASSIFIED,
@@ -503,6 +537,7 @@ version = "2.12.2"
     for path in (
         "tools/dv/run_dv.py",
         "tools/dv/tests/test_smc_required_evidence.py",
+        "tools/doc/trim_dashboard_data.py",
         "hw/sys/smc/dv/cocotb/tests/smc_dbs_idle_test.py",
         "hw/sys/smc/dv/docs/SMC_VPLAN.adoc",
         "hw/sys/sep/dv/testlists/all.toml",
@@ -519,6 +554,9 @@ version = "2.12.2"
     assert is_dv_check_required(["README.md", "tools/dv/run_dv.py"])
     assert not is_dv_check_required([])
     assert not is_dv_check_required(["README.md", "hw/sys/smc/rtl/smc.sv"])
+
+    assert is_nix_required(["flake.nix", "nix/lib.nix"])
+    assert is_nix_path("flake.lock")
 
     assert _split_rev_range("origin/main...HEAD") == ("origin/main", "HEAD")
     assert _split_rev_range("abc123..def456") == ("abc123", "def456")
@@ -551,12 +589,18 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument(
         "--is-dv-check-required",
         action="store_true",
-        help="exit 0 if the diff touches tools/dv or a hw/sys/<dut>/dv package, otherwise 1",
+        help="exit 0 if the diff touches tools/dv, tools/doc or a hw/sys/<dut>/dv package, "
+        "otherwise 1",
     )
     mode.add_argument(
         "--is-register-regen-required",
         action="store_true",
         help="exit 0 if the diff can affect register collateral, otherwise 1",
+    )
+    mode.add_argument(
+        "--is-nix-required",
+        action="store_true",
+        help="exit 0 if the diff touches a .nix file or flake.lock, otherwise 1",
     )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
@@ -567,11 +611,15 @@ def main(argv: list[str] | None = None) -> int:
 
     paths, rev_range = changed_files()
     documentation_only = is_documentation_only(paths)
+    nix_required = is_nix_required(paths)
     print(f"changed: {', '.join(paths) or '(none)'}", file=sys.stderr)
     print(f"documentation_only={str(documentation_only).lower()}", file=sys.stderr)
+    if nix_required:
+        print(f"nix_required={str(nix_required).lower()}", file=sys.stderr)
 
     if args.github_output:
         print(f"run_hardware_ci={str(not documentation_only).lower()}")
+        print(f"run_nix_ci={str(nix_required).lower()}")
         return 0
     if args.write_documentation_only_child:
         if not documentation_only:
@@ -581,6 +629,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.is_dv_check_required:
         required = is_dv_check_required(paths)
         print(f"dv_check_required={str(required).lower()}", file=sys.stderr)
+        return 0 if required else 1
+    if args.is_nix_required:
+        required = nix_required
+        print(f"nix_required={str(required).lower()}", file=sys.stderr)
         return 0 if required else 1
     if args.is_register_regen_required:
         required = is_register_regen_required(paths, rev_range)

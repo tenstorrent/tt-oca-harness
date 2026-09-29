@@ -52,8 +52,8 @@ already wires that port to DTP).
 
 Placeholder PLL/PVT OKAY+0 wraps, idle DTP CSR, and I3C decode-only
 (`proxy=True`) are not feature proof. See
-`hw/sys/smc/doc/dv/SMC_SCOPE_TRACEABILITY.adoc` and
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
+`docs/SMC_VPLAN.adoc` (Signoff Package, and Known Limitations under "SMC
+deferred and OUT disposition").
 
 [[vip-selection-policy]]
 === VIP Selection Policy
@@ -158,7 +158,7 @@ Non-proxy evidence, by area — what lets a group record
 |I3C |`smc_i3c_to_fabric_test` |I3C0 resolved SCL/SDA exposed; external pull-low/release verified via `check_i3c0_external_pull_low`; the CSR window gate is HCI_VERSION decode. The test records `proxy=True` — no protocol-level VIP traffic runs
 |CPU JTAG |`smc_ijtag_basic_test`, `smc_jtag_dmi_smoke_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_reset_proxy_test` |TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required
 |Mailbox |`smc_mailbox_irq_test`, `smc_mailbox_data_error_test`, `smc_mailbox_event_irq_test` |DV-only `tb_sep_mailbox_interrupts` source + `tb_mailbox_irq_any` checker prove SEP mailbox interrupt bits reach the SMC peripheral vector
-|GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_ext_interrupts_pin_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert. Strap capture has no testcase: `tb_captured_straps` has no `smc_wrapper` pin to drive (`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`).
+|GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_ext_interrupts_pin_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert. Strap capture has no testcase: `tb_captured_straps` has no `smc_wrapper` pin to drive (`docs/SMC_VPLAN.adoc`, Known Limitations).
 |Sideband (AVSBus/OCTS) |`smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_sanity_test` |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode/timeout. These tests record `proxy=True`; full promotion needs a real pad-level AVSBus/OCTS BFM
 |CPU / OCCP |`smc_cpu_sanity_test`, `smc_cpu_ctrl_scratch_window_test`, `smc_cpu_ctrl_map_depth_test`, `smc_cpu_to_sep_axi_test`, `smc_occp_sanity_secure_error_test` |SEP_IN AXI master-BFM substitutes for firmware traffic; CPU-control map + scratch write/read/restore + reset/powergood checks
 |eFuse / OTP |`smc_efuse_permission_boundary_test`, `smc_efuse_chip_config_read_test`, `smc_efuse_otp_clock_config_depth_test`, `smc_efuse_otp_clock_test` |eFuse-derived chip-config surface for version/LC/RAS semantics + OTP clock-gate restore + eFuse-bank AXI-Lite idle checker
@@ -240,7 +240,7 @@ realization `smc_env.m_sys_out_slave_agent` on `sys_out_vif`).
 The DTP CSR port is a `smc_wrapper` boundary: the TB ties
 `axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. A test that
 needs a DTP CSR subordinate cannot run on this bench;
-`hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` holds its disposition.
+`docs/SMC_VPLAN.adoc` (Known Limitations, "SMC deferred and OUT disposition") holds its disposition.
 
 The module has two shapes selected by the bare `UVM` define. Every TB signal
 is declared exactly once in `tb/smc_tb_signal_list.svh` and expanded by the
@@ -297,7 +297,8 @@ A *multi-item-type dispatcher* (`write()` branches on item class), unlike SEP's
 single-item value scoreboard. Per type:
 
 * *SAMPLE items* (i2c/reset/clk/irq/gpio/axil): assert `resolvable` (no X/Z) and
-the type's idle invariants; emit `FUNC_COV_VALUE` coverage bins. (GPIO
+the type's idle invariants; emit `FUNC_COV_VALUE` log lines, a stimulus
+record and not a coverage metric (`SMC_FCOV.adoc`). (GPIO
 aggregates are checked for resolvability only — their level is a bus-aggregate
 artifact, not GPIO-diagnostic; isolated per-pad drive is proven by
 `smc_gpio_output_driveback_test`.)
@@ -487,8 +488,8 @@ class smc_register_sanity_test_seq(SmcCsrSeq):
 Key `SmcCsrSeq` helpers: `csr_read(expected=)`, `csr_write`,
 `csr_write_readback`, `csr_read_many`, `csr_read_err_signature` /
 `csr_read_decerr_zero` / `csr_read_expect_error` (strict negative),
-`csr_read_allow_error` (tolerant), `csr_read_bounded` (tolerates DECERR *and*
-timeout), `assert_all_reachable` / `assert_reachable_or_gated`.
+`csr_read_bounded` (tolerates timeout, and DECERR unless `allow_error=False`),
+`assert_all_reachable` / `assert_reachable_or_gated`.
 
 `smc_base_test_seq` is the minimal, agent-agnostic base for non-CSR sequences
 (gpio/clk/reset/irq item types), dispatched via `_OneShot` (below).
@@ -614,9 +615,9 @@ assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
 
 Bender supplies the product SMC RTL to the simulator flows. Verilator and the
 commercial simulators therefore compile the same subsystem source graph, with
-one difference: `tb/verilator_stubs/` replaces the `och_prim` `prim_sync2` /
-`prim_sync3` cells with behavioural stand-ins on Verilator and Xcelium, and the
-runner drops those stubs on VCS only, where the product cells elaborate. What
+one difference: `tb/verilator_stubs/` replaces the `ocah_prim` `prim_sync3`
+cell with a behavioural stand-in on Verilator and Xcelium, and the runner drops
+that stub on VCS only, where the product cell elaborates. What
 that directory may hold is stated in its own `tb/verilator_stubs/README.md`.
 
 PeakRDL nested hwif structs stay compilable with `disable_public_flat_rw` plus
@@ -626,7 +627,7 @@ responders, not substitute macro RTL.
 
 Both stand-ins, the leaves whose verdict reads a signal behind one, and the
 control that keeps each claim honest are recorded in the *Bench stand-ins*
-section of `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc`.
+section of `docs/SMC_VPLAN.adoc` (Known Limitations, "SMC deferred and OUT disposition").
 
 [[house-rules]]
 === House rules
@@ -649,10 +650,9 @@ wrongly-OKAY blocked access fails structurally, not just in a sequence assert.
 * *Golden-value traceability*: prefer RDL-cited reset values over
 golden==observed regression-locks; where a value is not RDL-traceable, label it
 a regression-lock with its real source.
-* *Enrollment*: a test enters `smoke` or `per_ip` only with active stimulus
-and at least one Verilator PASS. `per_ip` stays coverage-minimal: a depth
-test does not enter it for passing, only by replacing an older representative
-with strictly better coverage.
+* *Enrollment*: a test enters `all` only with active stimulus and at least one
+Verilator PASS, and `smoke` only as one of the three toolchain-free bring-up
+leaves the CI gate runs.
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)
@@ -662,9 +662,9 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut smc --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 carry both implementations in their testlist `module` binding map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error at selection unless `--skip-unimplemented` is passed. The
-framework conventions and the bring-up walkthrough this realization follows
+(`module = { cocotb = "<name>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework
+conventions and the bring-up walkthrough this realization follows
 are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
 reference bench is DTP.
 

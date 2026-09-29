@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// smu_dtp_jtag_smoke_test — SMU_ALL_005 (`--items smu_dtp_jtag_smoke_test`):
-// runs smu_dtp_jtag_smoke_test_seq on the environment's virtual sequencer
-// once per pass and requires the embedded DTP scoreboard features the
-// scenario exercises (ir_decode, idcode, bypass) and the aggregate TAP
-// evidence, so a pass whose scans never reached the reference models fails
-// at finalization.
+// smu_dtp_jtag_smoke_test (`--items smu_dtp_jtag_smoke_test`): runs
+// smu_dtp_jtag_smoke_test_seq on the environment's virtual sequencer once per
+// pass and requires the scoreboard features the scenario exercises (ir_decode,
+// idcode, bypass) and the aggregate TAP evidence, so a pass whose accesses
+// never reached the reference models fails at finalization.
 
 class smu_dtp_jtag_smoke_test extends smu_base_test;
   `uvm_component_utils(smu_dtp_jtag_smoke_test)

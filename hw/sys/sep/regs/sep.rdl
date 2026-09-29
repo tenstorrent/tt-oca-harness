@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// OCH SEP Top-Level Address Map
-// This file defines the complete address map for the OCH SEP subsystem
+// OCAH SEP Top-Level Address Map
+// This file defines the complete address map for the OCAH SEP subsystem
 // Base addresses are derived from hw/sep/sep_crypto_pkg.sv and hw/sep/sep_pkg.sv
 
 // Include all peripheral RDL files
@@ -34,6 +34,10 @@
 `include "csrng.rdl"
 `include "edn.rdl"
 `include "entropy_source.rdl"
+`include "sep_trng.rdl"
+`include "../../../../../vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/kv_def.rdl"
+`include "../../../../../vendor/chipsalliance/adams-bridge/upstream/src/abr_top/rtl/abr_reg.rdl"
+`include "sep_entropy_pool.rdl"
 
 `include "spi_controller.rdl"
 `include "sep_external.rdl"
@@ -41,11 +45,11 @@
 `include "sep_scratch.rdl"
 `include "el2_pic.rdl"
 
-addrmap och_sep_top #(
+addrmap sep_top #(
     longint unsigned BASE_ADDR = 0x0000_0000
 ) {
-    name = "OCH SEP Top-Level Address Map";
-    desc = "Complete address map for OCH Security Processor subsystem";
+    name = "OCAH SEP Top-Level Address Map";
+    desc = "Complete address map for OCAH Security Processor subsystem";
 
     // =========================================================================
     // System Resources (0x1010_0000 - 0x1090_0000)
@@ -59,11 +63,11 @@ addrmap och_sep_top #(
     external sep_boot_rom      sep_boot_rom             @BASE_ADDR + 0x1004_0000;
 
     // Secure DMA
-    // Base: 0x1080_8000, Size: 4 KB (0x1000)
+    // Base: 0x1080_0000, Size: 4 KB (0x1000)
     secure_dma                 secure_dma               @BASE_ADDR + 0x1080_0000;
 
     // WDT Timer
-    // Base: 0x1090_1000, Size: 4 KB (0x1000)
+    // Base: 0x1080_1000, Size: 4 KB (0x1000)
     aon_timer                  wdt_timer                @BASE_ADDR + 0x1080_1000;
 
     // SEP Scratch Registers
@@ -109,6 +113,10 @@ addrmap och_sep_top #(
     // Entropy Source (ESRC)
     entropy_source              entropy_source          @BASE_ADDR + 0x1091_6000;
 
+    // External TRNG register passthrough
+    // Base: 0x1091_7000, Size: 4 KB (0x1000)
+    external sep_trng           trng                     @BASE_ADDR + 0x1091_7000;
+
     // Lifecycle Controller
     // Base: 0x1091_8000, Size: 32 kB (spec: LC at 0x1091_8000-0x1091_FFFF)
     sep_lifecycle_ctrl          sep_lifecycle_ctrl      @BASE_ADDR + 0x1091_8000;
@@ -129,12 +137,20 @@ addrmap och_sep_top #(
     // Base: 0x1093_0500, Size: 112 B (0x70)
     efuse_mmr                   efuse_mmr               @BASE_ADDR + 0x1093_0500;
 
+    // Adams Bridge post-quantum cryptographic accelerator
+    // Base: 0x1094_0000, Size: 64 KB (0x10000)
+    external abr_reg            abr                     @BASE_ADDR + 0x1094_0000;
+
+    // Fabric entropy pool
+    // Base: 0x1095_0000, Size: 64 KB (0x10000)
+    external sep_entropy_pool   entropy_pool            @BASE_ADDR + 0x1095_0000;
+
     // =========================================================================
     // System Peripherals (0x10A0_0000 - 0x10A5_0FFF)
     // =========================================================================
 
     // Mailbox
-    // Base: 0x10A0_0000, Size: 2 KB (0x800)
+    // Base: 0x10A0_0000, Size: 32 KB (0x8000)
     axil_mailbox_sep_wrap       axil_mailbox             @BASE_ADDR + 0x10A0_0000;
 
     // Local Master Alias Remap
@@ -142,23 +158,23 @@ addrmap och_sep_top #(
     alias_remap        local_master_alias_remap_ctrl[16] @BASE_ADDR + 0x10A1_0000 += 0x20;
 
     // AP Output Remap
-    // Base: 0x00A1_0200, Size: 1024 B (0x400)
+    // Base: 0x10A1_0200, Size: 128 B (0x80)
     output_remap       ap_output_remap_ctrl[16]          @BASE_ADDR + 0x10A1_0200 += 0x08;
 
     // STEE Output Remap
-    // Base: 0x00A1_0600, Size: 1024 B (0x400)
+    // Base: 0x10A1_0300, Size: 128 B (0x80)
     output_remap       stee_output_remap_ctrl[16]        @BASE_ADDR + 0x10A1_0300 += 0x08;
 
     // Filter Control
-    // Base: 0x00A2_0000, Size: 512 B (0x200)
+    // Base: 0x10A2_0000, Size: 1 KB (0x400)
     filter_ctrl        outbound_filter_ctrl[32]          @BASE_ADDR + 0x10A2_0000 += 0x20;
 
     // Filter Control
-    // Base: 0x00A2_0100, Size: 256 B (0x100)
+    // Base: 0x10A2_1000, Size: 512 B (0x200)
     filter_ctrl        inbound_filter_ctrl[16]           @BASE_ADDR + 0x10A2_1000 += 0x20;
 
     // SEP CPU Control
-    // Base: 0x00A3_0000, Size: 8 KB (0x2000)
+    // Base: 0x10A3_0000, Size: 8 KB (0x2000)
     sep_cpu_ctrl       sep_cpu_ctrl                      @BASE_ADDR + 0x10A3_0000;
 
     // =========================================================================
@@ -201,5 +217,42 @@ addrmap och_sep_top #(
     // PIC
     // Base: 0xC008_0000, Size: 32 KB (0x8000)
     el2_pic                    pic                       @BASE_ADDR + 0xC008_0000;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    sep_boot_rom->desc = "BL0 immutable instruction memory.";
+    secure_dma->ocah_aperture_size = 0x1000;
+    secure_dma->desc = "Secure DMA control and status registers.";
+    wdt_timer->ocah_aperture_size = 0x1000;
+    sep_scratch_cold->desc = "Cold-reset scratch register bank.";
+    sep_scratch_warm->desc = "Warm-reset scratch register bank.";
+    sep_reset_ctrl->ocah_aperture_size = 0x1000;
+    otbn->ocah_aperture_size = 0x10000;
+    aes->ocah_aperture_size = 0x1000;
+    aes->desc = "AES block-cipher accelerator.";
+    csrng->ocah_aperture_size = 0x800;
+    edn->ocah_aperture_size = 0x800;
+    entropy_source->ocah_aperture_size = 0x1000;
+    sep_lifecycle_ctrl->ocah_aperture_size = 0x8000;
+    sep_lifecycle_ctrl->desc = "Lifecycle state and transition control.";
+    km_mailbox_sep->ocah_aperture_size = 0x1000;
+    sep_efuse_map->desc = "Cached eFuse shadow registers.";
+    efuse_interface_ctrl->ocah_aperture_size = 0x100;
+    efuse_interface_ctrl->desc = "eFuse command and status registers.";
+    efuse_mmr->ocah_aperture_size = 0x100;
+    efuse_mmr->desc = "eFuse security-token registers.";
+    abr->ocah_aperture_size = 0x10000;
+    abr->desc = "Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.";
+    entropy_pool->ocah_aperture_size = 0x10000;
+    axil_mailbox->ocah_aperture_size = 0x8000;
+    axil_mailbox->desc = "Eight bidirectional mailbox pairs.";
+    local_master_alias_remap_ctrl->ocah_aperture_size = 0x200;
+    outbound_filter_ctrl->ocah_aperture_size = 0x400;
+    inbound_filter_ctrl->ocah_aperture_size = 0x200;
+    sep_cpu_ctrl->ocah_aperture_size = 0x2000;
+    sep_cpu_ctrl->desc = "SEP CPU control and interrupt registers.";
+    spi_controller->ocah_aperture_size = 0x100000;
+    spi_controller->desc = "External I/O SPI controller bridge.";
+    pic->ocah_aperture_size = 0x8000;
+`endif
 
 };

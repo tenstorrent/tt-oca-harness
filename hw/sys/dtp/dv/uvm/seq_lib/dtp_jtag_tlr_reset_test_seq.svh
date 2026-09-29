@@ -101,7 +101,7 @@ class dtp_jtag_tlr_reset_test_seq extends dtp_debug_tdr_base_test_seq;
     program_debug_tdrs();
     load_ir(BYPASS_INSTR);
     goto_state(state);
-    check_state(tap_state_e'(16'h1 << int'(state)), "jtag_tlr_chk", $sformatf(
+    check_state(dtp_tap_state_e'(16'h1 << int'(state)), "jtag_tlr_chk", $sformatf(
                 "start state %s before TMS-high walk", state.name()));
 
     repeat (ones) step(1'b1);

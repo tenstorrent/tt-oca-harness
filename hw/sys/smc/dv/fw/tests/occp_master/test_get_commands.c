@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * GET Commands Test Module
- *
- * Tests for GET_VERSION, GET_STATUS, GET_SEP_STATUS, GET_SMC_STATUS commands
+ * Sends GET_VERSION, GET_STATUS, GET_SEP_STATUS and GET_SMC_STATUS; checks the version value.
  */
 
 #include "occp_test_common.h"
@@ -16,19 +14,17 @@ bool run_get_commands_tests(test_context_t *ctx) {
 
     simputs("=== GET Commands Tests ===\n");
 
-    // Test 1: GET_VERSION command
     simputs("--- Test 1: GET_VERSION ---\n");
     test_status = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (test_status == OCCP_SUCCESS) {
         simputshex32("OCCP Version: ", status_data);
-        result &= (status_data == 0x00010000); // Expected version 1.0
+        result &= (status_data == 0x00010000);
         simputs("GET_VERSION: PASS\n");
     } else {
         simputs("GET_VERSION: FAIL\n");
         result = false;
     }
 
-    // Test 2: GET_STATUS command
     simputs("\n--- Test 2: GET_STATUS ---\n");
     test_status = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
     if (test_status == OCCP_SUCCESS) {
@@ -39,7 +35,6 @@ bool run_get_commands_tests(test_context_t *ctx) {
         result = false;
     }
 
-    // Test 3: GET_SEP_STATUS command
     simputs("\n--- Test 3: GET_SEP_STATUS ---\n");
     test_status = occp_send_get_sep_status_command(ctx, ctx->slave_addr, &status_data);
     if (test_status == OCCP_SUCCESS) {
@@ -50,7 +45,6 @@ bool run_get_commands_tests(test_context_t *ctx) {
         result = false;
     }
 
-    // Test 4: GET_SMC_STATUS command
     simputs("\n--- Test 4: GET_SMC_STATUS ---\n");
     test_status = occp_send_get_smc_status_command(ctx, ctx->slave_addr, &status_data);
     if (test_status == OCCP_SUCCESS) {

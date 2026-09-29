@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unit tests for formal view discovery: a DUT's formal config found by convention, through the
 registry, or through the site layer; its `--validate-configs` row, `--list` row, and `--list
---json` entry; and the unavailable state of a site-named config whose file is absent.
+--json` entry; the unavailable state of a site-named config whose file is absent; and how an
+`alias_of` name is listed.
 
 Run from the repository root:
 
@@ -327,6 +328,80 @@ class ListingTest(TempRepo):
         report = doctor()
         self.assertIn("configs : FAIL", report)
         self.assertIn("frobnicate", report)
+
+
+class AliasListingTest(TempRepo):
+    """An `alias_of` name is listed once, as a row naming the DUT it selects."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.write(
+            "hw/common/dv/configs/duts.toml",
+            """
+            schema_version = 1
+            [duts.gizmo]
+            root = "hw/sys/gizmo/dv"
+            [duts.gizmo_alt]
+            root = "hw/sys/gizmo/dv"
+            alias_of = "gizmo"
+            [duts.widget_alt]
+            root = "hw/sys/widget/dv"
+            alias_of = "widget"
+            """,
+        )
+
+    def listing(self) -> list[str]:
+        duts, registries, views = cli.validate_all(self.root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            cli.list_flows(duts, registries.simulators, views)
+        return out.getvalue().splitlines()
+
+    def entries(self) -> list[dict]:
+        duts, _registries, views = cli.validate_all(self.root)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            cli.list_flows_json(self.root, duts, views)
+        return json.loads(out.getvalue())["duts"]
+
+    def test_alias_row_names_its_dut(self) -> None:
+        lines = self.listing()
+        names = [line.split()[0] for line in lines[1:] if line and not line.startswith(" ")]
+        self.assertEqual(names, ["gizmo", "gizmo_alt", "widget", "widget", "widget_alt"])
+        self.assertRegex(
+            next(line for line in lines if line.startswith("widget_alt")),
+            r"^widget_alt\s+alias of widget$",
+        )
+
+    def test_json_lists_each_dut_once_with_its_aliases(self) -> None:
+        entries = self.entries()
+        keys = [(e["name"], e["mode"], e["framework"]) for e in entries]
+        self.assertEqual(
+            keys,
+            [
+                ("gizmo", "sim", "cocotb"),
+                ("widget", "sim", "cocotb"),
+                ("widget", "formal", "formal"),
+            ],
+        )
+        self.assertEqual(
+            {(e["name"], e["mode"]): e["aliases"] for e in entries},
+            {
+                ("gizmo", "sim"): ["gizmo_alt"],
+                ("widget", "sim"): ["widget_alt"],
+                ("widget", "formal"): ["widget_alt"],
+            },
+        )
+
+    def test_formal_view_only_the_alias_reaches_is_listed(self) -> None:
+        cfg = self.write_formal("gizmo", "companion/gizmo/gizmo_formal_cfg.toml")
+        self.write_site(f'[duts.gizmo_alt]\nformal_cfg = "{cfg.relative_to(self.root)}"\n')
+        self.assertRegex(
+            next(line for line in self.listing() if " fv " in line and "gizmo" in line),
+            r"^gizmo_alt\s+fv\s+.*gizmo TAP formal$",
+        )
+        formal = [e for e in self.entries() if e["mode"] == "formal"]
+        self.assertEqual([e["name"] for e in formal], ["gizmo_alt", "widget"])
 
 
 if __name__ == "__main__":

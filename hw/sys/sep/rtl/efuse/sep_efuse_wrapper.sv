@@ -1,75 +1,93 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SEP eFuse Wrapper
+// Wrap efuse_interface_controller with SEP datapath conversion, JTAG policy, and secure
+// test mode.
 //
-//-----------------------------------------------------------------------------
-//
-// Wraps the generic `efuse_interface_controller` for SEP and implements the
-// SEP-specific data-path conversion, security policy, and secure test mode control:
-//   * Downsizes the functional AXI4 slave from the local crossbar (64-bit) to
-//     32-bit, then converts it to AXI4-Lite for the eFuse controller.
-//   * Implements the SEP JTAG access-control policy: in a restricted state
-//     (PROD / RMA_SiP, or an LC-state differential-decode integrity error)
-//     block JTAG accesses to the eFuse except the MMR / token register space,
-//     which stays accessible (e.g. for RMA_SiP token programming).
-//   * Upon cold reset release, if secure test mode is enabled, latch the secure test mode signal.
+// Downsizes the functional 64-bit AXI4 slave to 32-bit, converts it to AXI4-Lite, and
+// muxes it with the Key Manager AXI-Lite path into the eFuse controller register port.
+// In a restricted state (PROD / RMA_SiP, or an LC-state differential-decode integrity
+// error), JTAG accesses outside the MMR / token register space receive DECERR with read
+// data 0xBADCAB1E; the MMR space stays accessible for RMA_SiP token programming.
+// secure_tm_req_i is latched into secure_tm_o on the second clock edge after rst_ni
+// release when security is disabled, and otherwise on the rising edge of fuse sense done.
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 
 module sep_efuse_wrapper #(
-  // During synthesis, to be replaced with the actual token digest embedded in the netlist
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0  // Netlist-embedded secure-disable token
+                                                        // digest; replace at synthesis.
 ) (
-  input logic                                clk_i,
-  input logic                                rst_ni,
+  input logic                                clk_i,  // System clock.
+  input logic                                rst_ni,  // Active-low reset.
 
-  input  logic                               test_en_i,
-  input  logic                               scan_rst_ni,
+  input  logic                               test_en_i,  // DFT test-enable (scan-enable).
+  input  logic                               scan_rst_ni,  // DFT scan reset, active-low; bypasses
+                                                           // the reset synchronizer.
 
-  input  logic                               secure_tm_req_i,
-  input  logic                               ext_boot_seq_done_i,
+  input  logic                               secure_tm_req_i,  // Secure test mode request strap,
+                                                               // latched into secure_tm_o.
+  input  logic                               ext_boot_seq_done_i,  // Integration boot-sequence
+                                                                   // completion (memory repair and
+                                                                   // SMC straps); gates release of
+                                                                   // sep_intermediate_reset_no.
 
-  output logic                               security_disable_o,
-  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
-  output sep_efuse_pkg::efuse_map_t          shadow_regs_o,
-  output logic                               fuse_sense_done_o,
-  output logic                               secure_tm_o,
+  output logic                               security_disable_o,  // Security-disable status from
+                                                                  // eFuse token processing,
+                                                                  // active-high.
+  output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,  // Differentially encoded lifecycle
+                                                                // state from the eFuse shadow
+                                                                // registers.
+  output sep_efuse_pkg::efuse_map_t          shadow_regs_o,  // eFuse shadow register contents;
+                                                             // secret fields read as zero in secure
+                                                             // test mode.
+  output logic                               fuse_sense_done_o,  // High once the shadow registers
+                                                                 // have been loaded from the fuses.
+  output logic                               secure_tm_o,  // Latched secure test mode, active-high;
+                                                           // captured on the second clock edge
+                                                           // after rst_ni release when security is
+                                                           // disabled, otherwise on the rising edge
+                                                           // of fuse sense done.
 
-  // OTP debug AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t     axil_sep_otp_jtag_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t     axil_sep_otp_jtag_req_i,  // OTP debug AXI-Lite manager interface, filtered by the lifecycle JTAG policy.
+  output sep_efuse_pkg::efuse_axil_resp_t    axil_sep_otp_jtag_resp_o,  // Response to the OTP debug manager; DECERR for accesses the JTAG policy blocks.
 
-  // Key Manager AXI-Lite manager interface
-  input  sep_efuse_pkg::efuse_axil_req_t     km_efuse_axil_req_i,
-  output sep_efuse_pkg::efuse_axil_resp_t    km_efuse_axil_resp_o,
+  input  sep_efuse_pkg::efuse_axil_req_t     km_efuse_axil_req_i,  // Key Manager AXI-Lite manager
+                                                                   // interface, muxed with the
+                                                                   // functional path.
+  output sep_efuse_pkg::efuse_axil_resp_t    km_efuse_axil_resp_o,  // Response from the eFuse controller to the Key Manager.
 
-  // Full AXI4 slave from local crossbar
-  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,
-  output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_axi_resp_o,
+  input  sep_pkg::sep_crypto_axi_req_t       sep_efuse_axi_req_i,  // Functional 64-bit AXI4 slave;
+                                                                   // in sep_crypto, the merged
+                                                                   // crypto eFuse and eFuse shim
+                                                                   // CSR legs.
+  output sep_pkg::sep_crypto_axi_resp_t      sep_efuse_axi_resp_o,  // Response on the functional AXI4 slave.
 
-  // Efuse Interface to SHIM
-  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,
-  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,
+  output sep_efuse_pkg::efuse_axil_req_t     efuse_bank_ctrl_req_o,  // eFuse controller AXI-Lite requests to the eFuse shim CSRs.
+  input  sep_efuse_pkg::efuse_axil_resp_t    efuse_bank_ctrl_resp_i,  // Response from the eFuse shim CSRs.
 
-  // Efuse Command Interface - custom interface for SHIM
-  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,
-  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,
+  output sep_efuse_pkg::fuse_command_req_t   efuse_shim_command_req_o,  // eFuse read and program commands on the custom shim command interface.
+  input  sep_efuse_pkg::fuse_command_resp_t  efuse_shim_command_resp_i,  // Shim response to the eFuse commands.
 
-  // Efuse intermediate reset
-  output logic                               sep_intermediate_reset_no,
+  output logic                               sep_intermediate_reset_no,  // Active-low SEP reset, synchronized to clk_i and released once fuse sense and
+                                                                         // the external boot sequence are done; to sep_reset_ctrl before the JTAG override.
 
-  // Debug signals
-  output logic [9:0]                         sep_efuse_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,
-  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,
+  output logic [9:0]                         sep_efuse_debug_o,  // eFuse controller debug flags:
+                                                                 // [0] shadow write locked, [1]
+                                                                 // shadow read locked, [2] program
+                                                                 // locked, [3] read locked, [4]
+                                                                 // write set-only, [5] LC-state
+                                                                 // access, [6] read timeout, [7]
+                                                                 // program timeout, [8] request
+                                                                 // error, [9] secure TM blocked.
+  output logic [5:0]                         sep_efuse_token_match_sip_debug_o,  // RMA SiP token match status code; 6'b010101 indicates a match.
+  output logic [5:0]                         sep_efuse_token_match_chiplet_debug_o,  // RMA chiplet token match status code; 6'b010101 indicates a match.
 
-  // Locked Field Access Interrupt
-  output logic                               locked_field_access_interrupt_o,
+  output logic                               locked_field_access_interrupt_o,  // Interrupt raised when an access targets a locked eFuse field.
 
-  // Token Comparator Redundancy Fault Interrupt
-  output logic                               token_match_fault_o
+  output logic                               token_match_fault_o  // Token Comparator Redundancy
+                                                                  // Fault Interrupt.
 );
 
   // Intermediate 32-bit AXI (after data-width conversion)
@@ -102,9 +120,9 @@ module sep_efuse_wrapper #(
   logic lc_sigint_err;
   logic lc_restricted_state;
   localparam sep_efuse_pkg::addr_t EFUSE_MMR_BASE_ADDR =
-      sep_efuse_pkg::addr_t'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR);
+      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR);
   localparam sep_efuse_pkg::addr_t EFUSE_MMR_SIZE =
-      sep_efuse_pkg::addr_t'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE);
+      sep_efuse_pkg::addr_t'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE);
 
   // Efuse signals
   logic fuse_sense_done;
@@ -162,7 +180,7 @@ module sep_efuse_wrapper #(
     .full_resp_t    (sep_efuse_axi32_resp_t),
     .lite_req_t     (sep_efuse_pkg::efuse_axil_req_t),
     .lite_resp_t    (sep_efuse_pkg::efuse_axil_resp_t)
-  ) sep_efuse_axi_to_axi_lite (
+  ) u_sep_efuse_axi_to_axi_lite (
     .clk_i(clk_i),
     .rst_ni(rst_ni),
     .test_i(test_en_i),
@@ -283,7 +301,7 @@ module sep_efuse_wrapper #(
     .axi_resp_t  (sep_efuse_pkg::efuse_axil_resp_t),
     .NoSlvPorts  (2),
     .MaxTrans    (2),
-    .FallThrough (1'b1),
+    .FallThrough (1'b0),
     .SpillAw     (1'b1),
     .SpillW      (1'b1),
     .SpillB      (1'b1),
@@ -329,14 +347,14 @@ module sep_efuse_wrapper #(
 
     .SEP_SEC_DISABLE_TOKEN      (SEP_SEC_DISABLE_TOKEN),
 
-    .EFUSE_MAP_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)),
-    .EFUSE_MAP_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE)),
+    .EFUSE_MAP_REG_MAP_BASE_ADDR(32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR)),
+    .EFUSE_MAP_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_SEP_EFUSE_MAP_SIZE)),
 
-    .EFUSE_MMR_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR)),
-    .EFUSE_MMR_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_MMR_SIZE)),
+    .EFUSE_MMR_REG_MAP_BASE_ADDR(32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_BASE_ADDR)),
+    .EFUSE_MMR_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_MMR_SIZE)),
 
-    .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
-    .EFUSE_CTRL_REG_MAP_SIZE     (32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
+    .EFUSE_CTRL_REG_MAP_BASE_ADDR(32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR)),
+    .EFUSE_CTRL_REG_MAP_SIZE     (32'(sep_top_addrmap_pkg::SEP_TOP_EFUSE_INTERFACE_CTRL_SIZE)),
 
     .SHADOW_REG_BITS            (sep_efuse_pkg::SHADOW_REG_BITS),
     .EFUSE_MACRO_WORD_WIDTH     (sep_efuse_pkg::NumFuseWordWidth),
@@ -346,7 +364,6 @@ module sep_efuse_wrapper #(
     .HAS_LC_STATE               (1'b1), // SEP has LC state
     .CLASS1_SHADOW_RANGES       (sep_efuse_pkg::Class1ShadowRanges),
     .SECRET_SHADOW_RANGES       (sep_efuse_pkg::SecretShadowRanges),
-    .LC_STATE_WIDTH             (sep_pkg::LC_STATE_BIT_WIDTH),
     .LC_STATE_BIT_POSITION      (sep_pkg::LC_STATE_BIT_POSITION),
 
     .efuse_map_t                (sep_efuse_pkg::efuse_map_t)
@@ -386,24 +403,22 @@ module sep_efuse_wrapper #(
     .ext_boot_seq_done_i        (ext_boot_seq_done_i), // Integration-defined boot-sequence-done indication (e.g. memory repair done and straps from SMC)
 
     // Debug signals
-    .is_write_locked_shadow_regs_o(sep_efuse_debug_o[0]),
-    .is_read_locked_shadow_regs_o (sep_efuse_debug_o[1]),
-    .is_program_locked_o          (sep_efuse_debug_o[2]),
-    .is_read_locked_o             (sep_efuse_debug_o[3]),
-    .is_write_setup_only_o        (sep_efuse_debug_o[4]),
-    .is_lc_state_access_o         (sep_efuse_debug_o[5]),
-    .is_read_timeout_debug_o      (sep_efuse_debug_o[6]),
-    .is_program_timeout_debug_o   (sep_efuse_debug_o[7]),
-    .is_efuse_req_err_o           (sep_efuse_debug_o[8]),
-    .is_secure_tm_blocked_o       (sep_efuse_debug_o[9]),
-    .is_rma_sip_token_match_debug (sep_efuse_token_match_sip_debug_o),
-    .is_rma_chiplet_token_match_debug (sep_efuse_token_match_chiplet_debug_o),
+    .is_write_locked_shadow_regs_o      (sep_efuse_debug_o[0]),
+    .is_read_locked_shadow_regs_o       (sep_efuse_debug_o[1]),
+    .is_program_locked_o                (sep_efuse_debug_o[2]),
+    .is_read_locked_o                   (sep_efuse_debug_o[3]),
+    .is_write_setup_only_o              (sep_efuse_debug_o[4]),
+    .is_lc_state_access_o               (sep_efuse_debug_o[5]),
+    .is_read_timeout_debug_o            (sep_efuse_debug_o[6]),
+    .is_program_timeout_debug_o         (sep_efuse_debug_o[7]),
+    .is_efuse_req_err_o                 (sep_efuse_debug_o[8]),
+    .is_secure_tm_blocked_o             (sep_efuse_debug_o[9]),
+    .is_rma_sip_token_match_debug_o     (sep_efuse_token_match_sip_debug_o),
+    .is_rma_chiplet_token_match_debug_o (sep_efuse_token_match_chiplet_debug_o),
 
-    .sec_disable_token_o          (),
+    .locked_field_access_interrupt_o    (locked_field_access_interrupt_o),
 
-    .locked_field_access_interrupt_o  (locked_field_access_interrupt_o),
-
-    .token_match_fault_o              (token_match_fault_o)
+    .token_match_fault_o                (token_match_fault_o)
   );
 
 

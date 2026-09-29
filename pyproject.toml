@@ -23,10 +23,12 @@ dependencies = [
   "peakrdl-systemrdl>=1.0.1",
   "pre-commit==4.5.1",  # 4.6+ requires Git 2.31; supported environments include Git 2.26
   "pyelftools>=0.33",
+  "pyyaml>=6.0.3",
   "ruff==0.16.5",
   "semantic-version>=2.10.0",
   "shellcheck-py==0.11.0.1",  # wraps the shellcheck binary; see shfmt-py below for the formatter half
   "shfmt-py==4.1.0",  # wraps the shfmt binary; no lint rules of its own, pairs with shellcheck-py
+  "svdoc==0.3.0",  # RTL Modules Reference: module, parameter, and port tables
   "systemrdl-compiler>=1.32.2",
   "tclint==0.4.2",
   "tomllint==0.3.6",  # syntax-only: catches malformed DV testlist/sim-config TOML, no style rules
@@ -38,15 +40,17 @@ dependencies = [
 # Simulation environment for the native DV runner (tools/dv/run_dv.py). Kept out of
 # default-groups so `uv sync` for reggen/docs does not pull the simulation stack.
 dv = ["ocah-dv"]
+manifest = ["tt-oca-manifest"]
 
 [tool.uv]
 package = false
 
 [tool.uv.sources]
 ocah-dv = { workspace = true }
+tt-oca-manifest = { workspace = true }
 
 [tool.uv.workspace]
-members = ["hw/common/dv"]
+members = ["hw/common/dv", "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest"]
 
 [tool.ruff]
 target-version = "py311"
@@ -63,6 +67,17 @@ extend-exclude = [
   "hw/sys/sep/bootrom/prod/tools/tt-oca-manifest",
 ]
 
+# The SMU DV `env` and `seq_lib` packages are namespace packages spanning the
+# block and wrapper framework trees (hw/sys/smu/dv/README.md), so they carry no
+# __init__.py; name them here so isort keeps treating their imports as
+# first-party.
+namespace-packages = [
+  "hw/sys/smu/dv/cocotb/env",
+  "hw/sys/smu/dv/cocotb/seq_lib",
+  "hw/sys/smu/dv/cocotb_wrapper/env",
+  "hw/sys/smu/dv/cocotb_wrapper/seq_lib",
+]
+
 [tool.ruff.lint]
 select = ["E", "F", "I"]
 ignore = ["E501"]
@@ -71,8 +86,6 @@ ignore = ["E501"]
 "**/dv/tb_vcs/**/*.py" = ["E722", "E741", "F403", "F405", "F841"]
 "**/cocotb/**/*.py" = ["E402"]
 "hw/ip/i3ccore_wrap/dv/tb/*.py" = ["E402"]
-"hw/ip/key_manager/dv/tb/test_firmware.py" = ["E402", "E722", "F841"]
-"hw/ip/entropy_source/dv/cocotb/test_entropy_source.py" = ["F403", "F405"]
 # sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
 # a side effect); isort's alphabetical sort would put sep_reg first and break it.
 "hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]
@@ -112,13 +125,24 @@ exclude = '''(?x)^(
 #   why the literal token is described rather than quoted here: quoting it
 #   makes this file itself a finding.
 # - tools/tt-oca-manifest is a submodule: another repo's sources, fixable only
-#   by a PR there, so a finding in it cannot gate this repo.
+#   by a PR there, so a finding in it cannot gate this repo. The same goes for
+#   virtual_platform/tt-oca-harness-model
+#
+# - The below is in four blocks - vendor, generated, submodules, artifacts/binaries
 skip = """\
-vendor,nonfree,.git,*/tools/tt-oca-manifest,\
+\
+*/vendor/*,*/nonfree/*,.git,\
+*/dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
+*/local/pdks/*,\
+\
 */integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
-*/dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
-*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock\
+*/doc/*/modules/*,*/_build/*,\
+\
+*/tools/tt-oca-manifest,*/virtual_platform/tt-oca-harness-model/*,\
+\
+*.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,*.pem,uv.lock,*.lock,\
+*.dis,*.il,*.log\
 """
 # interruptor(s): the RISC-V CLINT spec spells out the acronym as
 # "Core-Local INTerruptor", matching every other occurrence in doc/; not the

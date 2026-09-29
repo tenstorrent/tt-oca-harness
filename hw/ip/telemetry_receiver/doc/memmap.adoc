@@ -2,43 +2,22 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[telemetry-receiver-memory-map]]
-===== Memory Map
+== Memory Map
 
 The Telemetry Receiver provides a comprehensive register interface for
 configuration, status monitoring, and telemetry data access. All
 registers are accessed through a 32-bit AXI4-Lite interface with 4-byte
 address alignment.
 
-====== Address Space Overview
+=== Address Space Overview
 
-The component uses a 128-byte address space (7-bit address width) with
+The component uses a 256-byte address space (8-bit address width) with
 the following organization:
 
 * *Control and Status*: 0x00 - 0x1F (Configuration, status, probe ID, and counter validity registers)
 * *Counter Array*: 0x80 - 0xFF (32 × 32-bit counter value registers)
 
-====== Register Map
-
-.Complete Register Map
-[width="100%",cols="15%,25%,10%,50%",options="header",]
-|====================================================================================
-|Address |Register Name |Access |Description
-|0x00 |CTRL |RW |Control Register
-|0x04 |STATUS |R |Status Register
-|0x08 |INTR_STATUS |RW |Interrupt Status Register
-|0x0C |INTR_ENABLE |RW |Interrupt Enable Register
-|0x10 |INTR_TEST |RW |Interrupt Test Register
-|0x14 |TELEMETRY_PROBE_ID |R |Telemetry Probe ID Register
-|0x18 |TELEMETRY_COUNTER_VLDS |R |Telemetry Counter Valid Bits Register
-|0x80 |TELEMETRY_COUNTER[0] |R |Telemetry Counter Register 0
-|0x84 |TELEMETRY_COUNTER[1] |R |Telemetry Counter Register 1
-|0x88 |TELEMETRY_COUNTER[2] |R |Telemetry Counter Register 2
-|0x8C |TELEMETRY_COUNTER[3] |R |Telemetry Counter Register 3
-|... |... |... |...
-|0xFC |TELEMETRY_COUNTER[31] |R |Telemetry Counter Register 31
-|====================================================================================
-
-====== Reset Behavior
+=== Reset Behavior
 
 Upon system reset (rst_ni assertion):
 
@@ -52,14 +31,16 @@ The reset operation is asynchronous for assertion and synchronous for
 deassertion, ensuring clean startup behavior and proper synchronization
 with the system clock domain.
 
-====== Detailed Register Map
+=== Detailed Register Map
 
 ifdef::backend-html5[]
 ++++
 include::partial$telemetry_receiver/regs/gen/html/telemetry_receiver.html[]
+include::partial$telemetry_receiver/regs/gen/html/telemetry_receiver_wrap.html[]
 ++++
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
-include::../regs/gen/adoc/telemetry_receiver.adoc[]
+include::../regs/gen/adoc/telemetry_receiver.adoc[leveloffset=+2]
+include::../regs/gen/adoc/telemetry_receiver_wrap.adoc[leveloffset=+2]
 endif::backend-pdf[]

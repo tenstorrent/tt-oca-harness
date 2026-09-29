@@ -41,15 +41,24 @@
 // OCAH_ASSUME: Assume a concurrent property.
 // OCAH_ASSUME_I: Assume an immediate property.
 
+// OCAH_DEBUG_LIVE selects the RTL debug hooks: elaboration checks, assertions, and $display /
+// $error / $fatal messages. The simulation and emulation views compile them; the synthesis view
+// does not. EMULATION takes precedence over SYNTHESIS, so a compile that sets both gets the
+// emulation view.
+`ifdef EMULATION
+`define OCAH_DEBUG_LIVE
+`elsif SYNTHESIS
+`else
+`define OCAH_DEBUG_LIVE
+`endif
+
 // Define OCAH_INC_ASSERT only when assertions should be compiled in. The macro bodies in
 // ocah_assert_standard_macros.svh are each guarded by `ifdef OCAH_INC_ASSERT, so under
 // synthesis / Verilator (OCAH_INC_ASSERT undefined) they expand to nothing.
-`ifndef SYNTHESIS
+`ifdef OCAH_DEBUG_LIVE
 `ifndef VERILATOR
-`ifndef TARGET_VERILATOR
 `ifndef NO_OCAH_ASSERT
 `define OCAH_INC_ASSERT
-`endif
 `endif
 `endif
 `endif

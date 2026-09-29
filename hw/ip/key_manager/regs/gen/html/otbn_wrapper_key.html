@@ -6,20 +6,21 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: otbn_wrapper_key</h2>
+<h2 id="regmap-otbn_wrapper_key">OTBN Wrapper Key Registers</h2>
+<p>Key storage registers for the OTBN sideload interface.<br>Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.</p>
 <p><strong>Register Arrays:</strong></p>
 <ul>
 <li><strong>KEY_SHARE0[12]</strong>: 12 registers, base 0x0, stride 0x4</li>
 <li><strong>KEY_SHARE1[12]</strong>: 12 registers, base 0x30, stride 0x4</li>
 </ul>
-<h2>Register List:</h2>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0x2C</td><td><a href="#KEY_SHARE0_12_">KEY_SHARE0[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x30 - 0x5C</td><td><a href="#KEY_SHARE1_12_">KEY_SHARE1[12]</a></td><td>W</td><td>One 32-bit word of key data. Write-only; reads return 0.<br>No reset; powers up with undefined value.</td></tr>
 <tr><td>0x60</td><td><a href="#KEY_CTRL">KEY_CTRL</a></td><td>RW</td><td>Key control register. Writing KEY_VALID=1 asserts the sideload<br>valid signal to the OTBN core.</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="KEY_SHARE0_12_">KEY_SHARE0[12]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

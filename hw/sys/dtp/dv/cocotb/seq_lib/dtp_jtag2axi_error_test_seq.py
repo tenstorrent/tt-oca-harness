@@ -14,7 +14,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from env.dtp_types import DtpJtag2AxiOp, DtpJtag2AxiStatus, pack_single_op, unpack_series_data
+from env.dtp_types import (
+    FAULT_STATUS_CHECK_ID,
+    DtpJtag2AxiOp,
+    DtpJtag2AxiStatus,
+    pack_single_op,
+    unpack_series_data,
+)
 
 from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 
@@ -24,7 +30,6 @@ ERROR_RESPONSES = (AXI_SLVERR, AXI_DECERR)
 ERROR_BASE = 0x1800
 RECOVERY_BASE = 0x2800
 SERIES_BEATS = 3
-FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
 
 
 def _series_mode(*, increment: bool, with_status: bool) -> str:
@@ -42,6 +47,7 @@ class _SeriesFault:
     base: int
     fault_idx: int
     expected: DtpJtag2AxiStatus
+    resp: int
 
     def addr(self, idx: int) -> int:
         return self.base + idx * self.stride
@@ -262,6 +268,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             base=first,
             fault_idx=fault_idx,
             expected=expected,
+            resp=resp,
         )
 
     async def _series_write_beat(
@@ -367,7 +374,17 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             self.target, before=before, read=True, context=f"series_read_error.axi#{idx}"
         )
         rdata = await self._series_plain_read_shift(size=plan.size, increment=plan.increment)
-        if idx != plan.fault_idx:
+        if idx == plan.fault_idx:
+            self.check_error_rdata(
+                self.target,
+                addr,
+                rdata,
+                resp=plan.resp,
+                preload=mem_expected,
+                size=plan.size,
+                context=f"series_read_error.fault#{idx}",
+            )
+        else:
             self.assert_equal(
                 f"series_read_error.rdata#{idx}", rdata, mem_expected, f"addr=0x{addr:x}"
             )
@@ -452,7 +469,11 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             read=True,
         )
         width = self.target_cfg(self.target).data_width
-        preload = [rng.getrandbits(width) & self.data_mask(plan.size) for _ in range(SERIES_BEATS)]
+        # A nonzero preload keeps each slot's word distinguishable from the
+        # errored beat's RDATA.
+        preload = [
+            rng.randrange(1, 1 << width) & self.data_mask(plan.size) for _ in range(SERIES_BEATS)
+        ]
         for idx, value in enumerate(preload):
             self.write_target_mem_int(self.target, plan.addr(idx), value, plan.size)
         if with_status:

@@ -2,66 +2,27 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[gpio-interface]]
-===== Interface
+== Interface
 
 The GPIO peripheral provides bus interfaces for register access, LSIO
 integration for hardware protocols, and direct GPIO pad connections.
 
-====== Configuration Parameters
+Each `gpio` instance drives one pad. The peripheral comprises 65 pads: 61 bonded and 4
+unbonded.
 
-[width="100%",cols="30%,20%,50%",options="header",]
-|=====================================================================================
-|Parameter |Default |Description
-|NUM_GPIO |65 |Total number of GPIO pins (61 bonded + 4 unbonded)
+ifdef::backend-html5[]
+The parameters and ports of `gpio` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/gpio/gpio.adoc[gpio].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `gpio` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
-|BUS_PROTOCOL |AXI4-Lite |Register interface protocol (AXI4-Lite or
-APB4)
-
-|ADDR_WIDTH |32 |Address bus width
-
-|DATA_WIDTH |32 |Data bus width
-|=====================================================================================
-
-====== Signal Interface Definitions
-
-====== Global Interface
-
-.Global Interface Signals
-[width="100%",cols="20%,10%,10%,10%,50%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Active |Description
-|`clk_i` |1 |Input |Rising |System clock input. All synchronous
-operations use rising edge.
-
-|`rst_ni` |1 |Input |Low |System reset input. Asynchronous assertion,
-synchronous deassertion.
-
-|`test_en_i` |1 |Input |High |Test enable input for DFT (Design for
-Test) support.
-|=====================================================================================
-
-====== LSIO Interface
+=== LSIO Interface
 
 The LSIO (Low Speed Input/Output) interface enables hardware-controlled
 GPIO operation for protocol processing.
 
-.LSIO Interface Signals
-[width="100%",cols="25%,10%,10%,55%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Description
-|`lsio_interface_select_i` |1 |Input |LSIO interface selection control
-(active high)
-
-|`lsio_core2pad_en_ni` |1 |Input |LSIO core-to-pad enable (active low)
-
-|`lsio_core2pad_data_i` |1 |Input |LSIO core-to-pad data value
-
-|`lsio_pad2core_en_ni` |1 |Input |LSIO pad-to-core enable (active low)
-
-|`lsio_pad2core_data_o` |1 |Output |LSIO pad-to-core data value
-|=====================================================================================
-
-====== LSIO Protocol Specifications
+=== LSIO Protocol Specifications
 
 * *Selection Priority*: an asserted `lsio_interface_select_i` overrides
 register-driven control, including DATA_CTRL.interface_enable and the
@@ -75,37 +36,20 @@ DATA_CTRL.lsio_disable gates both
 DATA_CTRL.lsio_enable register. The field tracks the hardware request line
 gated by lsio_disable, so it reads 0 during a software-forced LSIO
 
-====== GPIO Pad Interface
+=== GPIO Pad Interface
 
 The GPIO pad interface provides direct connection to external pads with
 bidirectional capabilities.
 
-.GPIO Pad Interface Signals
-[width="100%",cols="20%,10%,10%,60%",options="header",]
-|================================================================================
-|Signal Name |Width |Direction |Description
-|`core2pad_o` |1 |Output |Data signal from core to external pad
-|`core2pad_en_o` |1 |Output |Output enable for core-to-pad data path
-|`pad2core_i` |1 |Input |Data signal from external pad to core
-|`pad2core_en_o` |1 |Output |Input enable for pad-to-core data path
-|================================================================================
-
-====== Interrupt Interface
+=== Interrupt Interface
 
 The interrupt interface provides event notification capabilities with
 configurable trigger modes.
 
-.Interrupt Interface Signals
-[width="100%",cols="20%,10%,10%,60%",options="header",]
-|=====================================================================================
-|Signal Name |Width |Direction |Description
-|`interrupt_o` |1 |Output |Interrupt request output (active high)
+The strap-capture output `captured_strap_o` is a port of `gpio_shim`, not of `gpio`; it
+holds the pad value captured when the cold reset is released.
 
-|`captured_strap_o` |1 |Output |Configuration strap capture completion
-indicator
-|=====================================================================================
-
-====== Interrupt Specifications
+=== Interrupt Specifications
 
 * *Polarity*: Active high (asserted when high)
 * *Duration*: Level-sensitive, remains asserted based on configuration

@@ -3,7 +3,6 @@
 """KM key/policy vault: slot extent, SRAM write-lock, and the KPV seal.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_vault.parhex. RANDCFG.
-Loaded image md5 a10f770eb95fbf4fe79e7c6f9274dea2.
 Not ``rom_main``: KPV CTRL and SRAM_LOCK are on the KM CPU bus. The seal
 lives here rather than on the mailbox command set because no command
 seals a slot -- over the mailbox an erase always frees, so the retire
@@ -63,8 +62,11 @@ class sep_km_key_policy_vault_test(sep_base_test):
         polled = 0
         for polled in range(1, _MAX_KM_CYCLES + 1):
             await RisingEdge(dut.clk_i)
-            word = self.rd(dut.km_sram_word0_o)
+            # The word can be unknown before the ROM's first store; the poll
+            # tolerates that, and the graded word is re-read as fully known.
+            word = self.rd(dut.km_sram_word0_o, allow_unknown=True)
             if (word >> 24) == RESULT_MAGIC:
+                word = self.rd(dut.km_sram_word0_o)
                 break
         else:
             raise AssertionError(
@@ -90,7 +92,7 @@ class sep_km_key_policy_vault_test(sep_base_test):
         _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")
         self.logger.info(
             "CHK-LOCKUSE PASS: key-data read of the lock_use slot raised SLVERR and "
-            "returned zero data"
+            "returned zero, after a known non-zero store landed on that slot"
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
         self.logger.info("CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
@@ -104,7 +106,8 @@ class sep_km_key_policy_vault_test(sep_base_test):
         self.logger.info("CHK-W1C PASS: violation and IRQ read back 0 after W1C")
         _bit(FLAG_SEAL, "CHK-SEAL")
         self.logger.info(
-            "CHK-SEAL PASS: one CTRL write on slot %d set seal and raised lock_write",
+            "CHK-SEAL PASS: one CTRL write on slot %d reads back exactly seal|lock_write "
+            "(lock_use and erase clear before the erase)",
             cfg.seal_slot,
         )
         _bit(FLAG_RETIRE, "CHK-RETIRE")

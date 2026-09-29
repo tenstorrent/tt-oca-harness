@@ -23,7 +23,7 @@ from env.sep_axi_decode_map import (
     spec_regions,
 )
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import SEP_CPU_CTRL
+from sep_reg_meta import SEP_CPU_CTRL, SEP_RESET_CTRL, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
@@ -36,6 +36,20 @@ RESP_OKAY = 0
 # expected value come from the generated SystemRDL export.
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
+ROM_ONE_PAST = sym("SEP_BOOT_ROM_MEM_BASE_ADDR") + sym("SEP_BOOT_ROM_MEM_SIZE")
+
+# Live words a refused read must not return. A refused access never reaches a
+# unit (memory_map.adoc), so a refused read that hands back one of these values
+# has reached the unit that owns it. The set is the live-bus control plus the
+# first word of the two blocks that directed read anchors sit directly above:
+# the reset controller (anchor 0x1080_3008) and the boot ROM (ROM_ONE_PAST).
+# Each is sampled at run time over the ordinary path; a zero word is dropped,
+# because it cannot tell a refusal that returns zero from an aliased zero.
+LIVE_DATA_ADDRS: tuple[tuple[int, str], ...] = (
+    (MAPPED_CSR_ADDR, "SEP_CPU_CTRL.SEP_NMI_VEC"),
+    (SEP_RESET_CTRL.addr("SW_RESET_N"), "SEP_RESET_CTRL.SW_RESET_N"),
+    (sym("SEP_BOOT_ROM_MEM_BASE_ADDR"), "boot ROM word 0"),
+)
 
 # Reserved spans that must not be probed, each with the reason. These are
 # excluded from stimulus, not from the contract: the map still says reserved.
@@ -48,7 +62,6 @@ _PROBE_EXCLUDE: dict[tuple[int, int], str] = {
     (0x0000_0000, 0x0FFF_FFFF): "external chiplet aperture, TB-terminated",
     (0x4000_0000, 0xBFFF_FFFF): "external SMU aperture, TB-terminated",
     # Reserved in the map; this test does not assert a refusal flavour.
-    (0x1001_0000, 0x1003_FFFF): "reserved expansion, refuse unnamed",
     (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, refuse unnamed",
     (0x1092_1000, 0x1092_FFFF): "reserved KM gap, refuse unnamed",
     (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, refuse unnamed",
@@ -82,11 +95,12 @@ SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the exclude list. A drop here does not move
 # short_regions, so the count is held on its own.
-ANCHOR_KEPT = 6
+ANCHOR_KEPT = 7
 
 # Reserved gaps walked on every seed: one address just past the end of a live
-# block. Four sit in unnamed-refuse spans and are dropped, so six survive.
+# block. Four sit in unnamed-refuse spans and are dropped, so seven survive.
 _ANCHORS: tuple[tuple[int, str], ...] = (
+    (ROM_ONE_PAST, "r"),
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
     (0x1091_4000, "r"),  # KMAC/DRBG gap
@@ -175,6 +189,9 @@ class SepAxiMapRefuse:
         self.refused = 0
         self.decerr = 0
         self.slverr = 0
+        # addr -> (value, label) of the live words sampled by sample_live().
+        self.live: dict[int, tuple[int, str]] = {}
+        self.reads_compared = 0
 
     async def _access(self, op: SepAxiOp, addr: int, *, wdata: int = 0):
         seq = SepAxiAccessSeq(
@@ -216,15 +233,44 @@ class SepAxiMapRefuse:
             )
         return None
 
+    async def sample_live(self) -> str | None:
+        """Read LIVE_DATA_ADDRS over the ordinary path. None when all read OKAY."""
+        for addr, label in LIVE_DATA_ADDRS:
+            seq = SepAxiAccessSeq(
+                f"maprefuse_live_0x{addr:08x}", op=SepAxiOp.READ, addr=addr, length=4, size=2
+            )
+            await self.test.start_seq(seq)
+            if seq.timed_out or seq.resp_code != RESP_OKAY:
+                return (
+                    f"live word {label} 0x{addr:08x} resp={seq.resp_code} timed_out={seq.timed_out}"
+                )
+            val = seq.rdata & 0xFFFF_FFFF
+            if val:
+                self.live[addr] = (val, label)
+        return None
+
     async def probe(self, item: MapProbe) -> str | None:
         """None when the fabric refused. A string names the failure."""
         # One DECERR credit, the way the deadspace probe does it: the monitor
         # treats an unexpected DECERR as a protocol error otherwise.
         self.test.env.axi_monitor.arm_expected_decerr(1)
+        data_fail: str | None = None
         if item.op == "w":
             resp, _rd, timed_out = await self._access(SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF)
         else:
-            resp, _rd, timed_out = await self._access(SepAxiOp.READ, item.addr)
+            resp, rd, timed_out = await self._access(SepAxiOp.READ, item.addr)
+            # The data of a refused read is compared whatever its flavour: a
+            # refusal that still returns a live word has reached the unit.
+            if not timed_out and resp != RESP_OKAY:
+                self.reads_compared += 1
+                for live_addr, (val, label) in self.live.items():
+                    if rd == val:
+                        data_fail = (
+                            f"r 0x{item.addr:08x} ({item.unit}) refused with resp={resp} "
+                            f"but returned 0x{rd:08x}, the live value of {label} "
+                            f"0x{live_addr:08x}"
+                        )
+                        break
 
         # A standing credit absorbs the next unexpected DECERR anywhere on this
         # bus, so a probe that saw no DECERR beat hands it back. Keyed off the
@@ -248,7 +294,7 @@ class SepAxiMapRefuse:
             self.decerr += 1
         elif resp == 2:
             self.slverr += 1
-        return None
+        return data_fail
 
 
 def _selftest() -> None:

@@ -4,10 +4,16 @@
 // SMC bench constants, DUT geometry, and pure helper functions shared by the
 // environment (scoreboard predictor, cfgs) and the sequence library (CSR
 // operations, scenario helpers). Register addresses come from the generated
-// smc_top_addrmap_pkg (hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv); the few
-// bench-only constants cite their source. No class lives here: everything is
-// a package-scope type, constant, or `function automatic`. The cocotb twin
-// is seq_lib/smc_addr_map.py plus the SmcSysAxiItem access contract.
+// smc_top_addrmap_pkg (hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv) and reset
+// values from the generated register header smc_reg.svh included below (the
+// SystemVerilog export of hw/sys/smc/regs/smc.rdl, same split the cocotb
+// twin uses: address from smc_addr.h, expected value from the block header);
+// the few bench-only constants cite their source. No class lives here:
+// everything is a package-scope type, constant, or `function automatic`. The
+// cocotb twin is seq_lib/smc_addr_map.py plus seq_lib/smc_csr_field_catalog.py
+// and the SmcSysAxiItem access contract.
+
+`include "smc_reg.svh"
 
 // ---------------------------------------------------------------------------
 // SEP_IN AXI4 ingress: smc_wrapper.sep_axi_in_req_i behind the tb_top
@@ -28,8 +34,19 @@ localparam int unsigned SmcSepInBeatBytes = SmcSepInDataWidth / 8;
 localparam int unsigned SmcCsrBytes = 4;
 localparam int unsigned SmcCsrSize = 2;
 
+// SPM memory is reached with a FULL-WIDTH single-beat transfer instead: one
+// 64-bit word, every byte lane strobed (AxSIZE = 3). A CSR-shaped 32-bit
+// access would leave half of each word untouched and could not tell two
+// aliased addresses apart.
+localparam int unsigned SmcMemBytes = SmcSepInBeatBytes;
+localparam int unsigned SmcMemSize = 3;
+
 // Scoreboard feature names (smc_scoreboard predictors; test cfg policy).
 localparam string SmcFeatureScratchCsr = "scratch_csr";
+localparam string SmcFeatureDefaultReg = "default_reg";
+localparam string SmcFeatureLockCsr = "lock_csr";
+localparam string SmcFeatureMutexSema = "mutex_sema";
+localparam string SmcFeatureSpmMem = "spm_mem";
 
 // SMC_MISC_WRAP scratch windows: SCRATCH_COLD lives in the cold reset
 // domain, SCRATCH_COLD_WARM in the warm domain that fuse sense releases.
@@ -98,4 +115,338 @@ endfunction
 // CSR value extracted from the bus word.
 function automatic bit [31:0] smc_csr_from_bus(bit [63:0] addr, bit [63:0] word);
   return 32'(word >> (8 * smc_csr_lane(addr)));
+endfunction
+
+// ---------------------------------------------------------------------------
+// CSR reset epoch: the value every CSR reference model re-baselines its
+// shadow on. Both the cold reset and a de-glitched cool reset drop
+// rst_primary_smc_clk_n, and that is the reset of every CSR block reached
+// over SEP_IN -- smc_peripherals.sv:1077 wires smc_misc_wrap.rst_ni to it
+// (so BOTH scratch windows clear: smc_misc_wrap.sv:106-108 resets
+// SCRATCH_COLD on rst_ni alone and :133 resets SCRATCH_COLD_WARM on
+// rst_ni && rst_warm_ni), and smc_subsystem_resets.sv clocks its external
+// registers on it. A model that watched only the cold counter would keep
+// predicting pre-cool-reset values.
+//
+// SPM memory is deliberately NOT on this epoch: it is an SRAM, and nothing
+// in this bench establishes that a reset clears its contents.
+// ---------------------------------------------------------------------------
+function automatic bit [63:0] smc_csr_reset_epoch(bit [31:0] cold_count, bit [31:0] cool_count);
+  return {cold_count, cool_count};
+endfunction
+
+// ---------------------------------------------------------------------------
+// default_reg catalogue: the registers whose post-reset content the
+// default_reg feature predicts, and how each one is allowed to be judged.
+// Both halves of every compare are symbol-sourced -- the address from
+// smc_top_addrmap_pkg, the expected value from a generated *_REG_DEFAULT of
+// smc_reg.svh -- so a regenerated RDL moves address and expectation
+// together. The three access kinds mirror the cocotb
+// seq_lib/smc_csr_field_catalog.py SmcCsrAccessKind:
+//
+//   SmcRegKindRwRestore  RDL `sw=rw` (hw=r or hw=na): software owns the
+//                        storage, so it holds its reset value until software
+//                        writes it. Compared, and a write updates the shadow.
+//   SmcRegKindRoStatic   RDL `sw=r; hw=w` where the hardware side is an
+//                        integration constant or a TB tie-off, so the read is
+//                        deterministic in this bench. Compared; a write can
+//                        never change it, so the shadow ignores writes.
+//   SmcRegKindRoStatus   RDL `sw=r; hw=w` from live state or from a value the
+//                        harness drives to something other than the RDL
+//                        default. DECODE-ONLY: `has_default` is 0, no expected
+//                        item is published, and only the OKAY response and the
+//                        access count are evidence.
+//
+// A register whose read has a side effect must NOT appear here (CPU_CTRL
+// MUTEX acquires on read, so its second read legitimately differs from its
+// default -- it belongs to the mutex_sema feature instead).
+// ---------------------------------------------------------------------------
+
+typedef enum int unsigned {
+  SmcRegKindRwRestore,
+  SmcRegKindRoStatic,
+  SmcRegKindRoStatus
+} smc_reg_kind_e;
+
+typedef struct {
+  string         name;
+  bit [63:0]     addr;
+  smc_reg_kind_e kind;
+  bit            has_default;    // 0 => decode-only, no value contract
+  bit [31:0]     default_value;
+  string         why;            // cited reason for the kind / decode-only
+} smc_default_reg_entry_t;
+
+function automatic void smc_default_reg_catalog(ref smc_default_reg_entry_t entries[$]);
+  entries.delete();
+
+  // --- scratch.rdl: `sw=rw; hw=na`, pure software storage, 8 instances. ---
+  entries.push_back('{"SCRATCH_COLD_0", smc_scratch_cold_addr(0), SmcRegKindRwRestore, 1'b1,
+                    32'(SCRATCH_SCRATCH_REG_DEFAULT), "scratch.rdl sw=rw hw=na"});
+  entries.push_back('{"SCRATCH_COLD_7", smc_scratch_cold_addr(7), SmcRegKindRwRestore, 1'b1,
+                    32'(SCRATCH_SCRATCH_REG_DEFAULT), "scratch.rdl sw=rw hw=na (window top)"});
+  entries.push_back('{"SCRATCH_COLD_WARM_0", smc_scratch_cold_warm_addr(0), SmcRegKindRwRestore,
+                    1'b1, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
+                    "scratch.rdl sw=rw hw=na, warm reset domain"});
+  entries.push_back('{"SCRATCH_COLD_WARM_7", smc_scratch_cold_warm_addr(7), SmcRegKindRwRestore,
+                    1'b1, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
+                    "scratch.rdl sw=rw hw=na, warm domain window top"});
+
+  // --- chip_config.rdl ---
+  // VERSION_LO/HI and CHIP_ID are `sw=r; hw=w`, driven by smc_misc_wrap from
+  // its integration parameters; the OSS TB leaves those parameters at their
+  // defaults, which are the same constants the generated map declares, so the
+  // compare is exact and fails loudly if a variant ever drives something else.
+  // VERSION_LO's default is non-zero (0x000100A0), so a read path stuck at 0
+  // cannot pass this catalogue.
+  entries.push_back(
+      '{"CHIP_CONFIG_VERSION_LO",
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR),
+      SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_VERSION_LO_REG_DEFAULT),
+      "chip_config.rdl sw=r hw=w from integration constant (non-zero default)"});
+  entries.push_back(
+      '{"CHIP_CONFIG_VERSION_HI",
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR),
+      SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_VERSION_HI_REG_DEFAULT),
+      "chip_config.rdl sw=r hw=w from integration constant"});
+  entries.push_back('{"CHIP_CONFIG_CHIP_ID",
+                    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR),
+                    SmcRegKindRoStatic, 1'b1, 32'(CHIP_CONFIG_CHIP_ID_REG_DEFAULT),
+                    "chip_config.rdl sw=r hw=w from the CHIP_ID module parameter"});
+  // LC_STATE is `sw=r; hw=w` and the UVM harness drives tb_lc_state with the
+  // complementary TEST_DEV encoding rather than the RDL default, so its read
+  // is an integration value with no default contract: decode-only.
+  entries.push_back('{"CHIP_CONFIG_LC_STATE",
+                    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR),
+                    SmcRegKindRoStatus, 1'b0, 32'h0,
+                    "chip_config.rdl sw=r hw=w; harness drives tb_lc_state, not the RDL default"});
+
+  // --- ndm_reset.rdl ---
+  // NDMRESET_REQUEST is `sw=r; hw=w` and the UVM harness ties
+  // tb_ndmreset_request to '0 (tb_top.sv quiescent tie-offs), so unlike the
+  // cocotb twin it is deterministic here and is compared against zero.
+  entries.push_back(
+      '{"NDM_RESET_NDMRESET_REQUEST",
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_REQUEST_BASE_ADDR),
+      SmcRegKindRoStatic, 1'b1, 32'(NDM_RESET_NDMRESET_REQUEST_REG_DEFAULT),
+      "ndm_reset.rdl sw=r hw=w; harness ties tb_ndmreset_request to '0"});
+  entries.push_back(
+      '{"NDM_RESET_NDMRESET_PROCESS",
+      64'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR),
+      SmcRegKindRwRestore, 1'b1, 32'(NDM_RESET_NDMRESET_PROCESS_REG_DEFAULT),
+      "ndm_reset.rdl sw=rw hw=r"});
+  // CLUSTER_COUNT is `sw=r; hw=w` from a design-side count this bench does not
+  // establish: decode-only.
+  entries.push_back('{"NDM_RESET_NDMRESET_CLUSTER_COUNT",
+                    64'(
+                    // verilog_format: off
+                    smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_CLUSTER_COUNT_BASE_ADDR
+                    // verilog_format: on
+                    ),
+                    SmcRegKindRoStatus, 1'b0, 32'h0,
+                    "ndm_reset.rdl sw=r hw=w from a design-side count"});
+
+  // --- reset_unit.rdl ---
+  // SS_WARM_RESET_N is a plain PeakRDL-internal `sw=rw; hw=r` register
+  // (smc_subsystem_resets.sv:58 only reads hwif_out_i), so a write lands
+  // unfiltered and the shadow rule above describes it. Its default is all
+  // ones, the second non-zero expectation in this catalogue.
+  entries.push_back('{"RESET_UNIT_SS_WARM_RESET_N",
+                    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR),
+                    SmcRegKindRwRestore, 1'b1, 32'(RESET_UNIT_SS_WARM_RESET_N_REG_DEFAULT),
+                    "reset_unit.rdl:44-49 sw=rw hw=r, default 0xFFFFFFFF (non-zero)"});
+  // SS_CONFIG, SS_CONFIG_LOCK and SS_COLD_RESET_N belong to the lock_csr
+  // feature, not here: the two locks are `onwrite=woset` (a written 0 is
+  // inert) and the two guarded registers take lock-filtered write bit-enables
+  // (smc_subsystem_resets.sv:81, :100), so the plain shadow rule of this
+  // catalogue would mispredict them the moment anything wrote them. Their
+  // reset values are 0, so they would add no discriminating power here
+  // either. One feature owns one set of semantics.
+endfunction
+
+// Catalogue entry addressing `word_addr`, if any. Used by the reference model
+// to decide whether a transaction it observed carries a default contract.
+function automatic bit smc_default_reg_lookup(bit [63:0] word_addr,
+                                              output smc_default_reg_entry_t entry);
+  smc_default_reg_entry_t entries[$];
+  smc_default_reg_catalog(entries);
+  foreach (entries[i]) begin
+    if (smc_csr_word_addr(entries[i].addr) == word_addr) begin
+      entry = entries[i];
+      return 1'b1;
+    end
+  end
+  return 1'b0;
+endfunction
+
+// A catalogued CSR access the default_reg feature may judge: an OKAY
+// single-beat transfer at a catalogued address (the narrow 32-bit CSR shape).
+function automatic bit smc_is_default_reg_access(ocah_axi_item t,
+                                                 output smc_default_reg_entry_t entry);
+  if (!smc_default_reg_lookup(smc_csr_word_addr(t.address), entry)) return 1'b0;
+  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+endfunction
+
+// ---------------------------------------------------------------------------
+// lock_csr: the reset unit's two write-once lock registers and the register
+// each one guards. Both locks are declared `sw=rw; hw=r; onwrite=woset;` with
+// reset 0 and one bit per subsystem (reset_unit.rdl:18-26 and :87-95), and
+// both guarded registers are PeakRDL EXTERNAL registers whose storage and
+// read data live in smc_subsystem_resets.sv: the lock filters the write
+// bit-enables before they reach the flop
+//
+//   config_filtered_wr_mask    = (~ss_config_lock)     & ss_config_wr_mask       (:81)
+//   cold_reset_filtered_wr_mask = (~ss_cold_reset_lock) & ss_cold_reset_n_wr_mask (:100)
+//   ss_config_o <= (wr_data & filtered) | (ss_config_o & ~filtered)              (:88)
+//
+// so a locked bit keeps its value on read-back, and that is the property the
+// lock_csr feature predicts. Both guarded flops reset to '0 on rst_primary_ni,
+// which is also the reset value the generated *_REG_DEFAULT declares.
+// ---------------------------------------------------------------------------
+
+typedef struct {
+  string     name;
+  bit [63:0] target_addr;
+  bit [63:0] lock_addr;
+  string     rdl_cite;
+} smc_lock_pair_t;
+
+function automatic void smc_lock_pairs(ref smc_lock_pair_t pairs[$]);
+  pairs.delete();
+  pairs.push_back('{"COLD_RESET",
+                  64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR),
+                  64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR),
+                  "reset_unit.rdl:87-95, smc_subsystem_resets.sv:100"});
+  pairs.push_back('{"CONFIG", 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR),
+                  64'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR),
+                  "reset_unit.rdl:18-26, smc_subsystem_resets.sv:81"});
+endfunction
+
+// Locate `word_addr` in the lock-pair table; `is_lock` tells the two roles
+// apart.
+function automatic bit smc_lock_lookup(bit [63:0] word_addr, output int unsigned pair_idx,
+                                       output bit is_lock);
+  smc_lock_pair_t pairs[$];
+  smc_lock_pairs(pairs);
+  foreach (pairs[i]) begin
+    if (smc_csr_word_addr(pairs[i].target_addr) == word_addr) begin
+      pair_idx = i;
+      is_lock  = 1'b0;
+      return 1'b1;
+    end
+    if (smc_csr_word_addr(pairs[i].lock_addr) == word_addr) begin
+      pair_idx = i;
+      is_lock  = 1'b1;
+      return 1'b1;
+    end
+  end
+  return 1'b0;
+endfunction
+
+// A lock-pair CSR access the lock_csr feature may judge.
+function automatic bit smc_is_lock_csr_access(ocah_axi_item t, output int unsigned pair_idx,
+                                              output bit is_lock);
+  if (!smc_lock_lookup(smc_csr_word_addr(t.address), pair_idx, is_lock)) return 1'b0;
+  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+endfunction
+
+// Bits 1..bit_index of a 32-bit word: the bits this bench has put under a
+// lock by the given scenario pass, with bit 0 deliberately left out as the
+// never-locked control.
+function automatic bit [31:0] smc_lock_accum_mask(int unsigned bit_index);
+  return 32'((32'h1 << (bit_index + 1)) - 32'h2);
+endfunction
+
+// ---------------------------------------------------------------------------
+// mutex_sema: the CPU_CTRL hardware mutexes and semaphores, whose READ and
+// WRITE both have side effects, so no plain shadow rule describes them.
+// Semantics from cpu_ctrl.rdl:270-293 (SPEC, not RTL):
+//
+//   reg MUTEX  `field ... mutex[0:0] = 0x1` -- "HW mutex. Reads will attempt
+//              to acquire mutex, 1 on success. If the mutex is already
+//              acquired, the read will return 0. To release the mutex, write
+//              any value to the register." MUTEX[4] @ 0x240: four independent
+//              locks.
+//   reg SEMA   `field ... sema[15:0] = 0x0` -- "16-bit semaphore value to
+//              inc/dec. Writing to this register will inc/dec the semaphore
+//              value. The written value is treated as a signed number using
+//              2s compliment." SEMA[4] @ 0x260.
+//
+// Both registers are declared regwidth/accesswidth 64, but each live field
+// sits inside the low 32 bits, so the bench's 4-byte CSR access covers the
+// whole field under test; bits above the field carry no RDL field and are
+// masked out of every compare rather than being given an invented expectation.
+// ---------------------------------------------------------------------------
+
+localparam int unsigned SmcMutexCount = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_MUTEX_NUM);
+localparam int unsigned SmcSemaCount = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SEMA_NUM);
+
+// Field masks and the mutex's two legal read values, symbol-sourced.
+localparam bit [31:0] SmcMutexMask = 32'(CPU_CTRL_MUTEX_MUTEX_MASK);
+localparam bit [31:0] SmcSemaMask = 32'(CPU_CTRL_SEMA_SEMA_MASK);
+// The field's reset value IS the "available" encoding, and it is
+// symbol-sourced. The taken encoding is NOT derivable from a symbol: the RDL
+// states it in prose -- cpu_ctrl.rdl:270-281, "If the mutex is already
+// acquired, the read will return 0" -- so it is written as the literal that
+// sentence gives, cited here, rather than as an expression over
+// SmcMutexMask that would be identically zero whatever the map said and would
+// therefore hide a changed encoding instead of catching it.
+localparam bit [31:0] SmcMutexFree = 32'(CPU_CTRL_MUTEX_REG_DEFAULT) & SmcMutexMask;
+localparam bit [31:0] SmcMutexTaken = 32'h0;  // cpu_ctrl.rdl:270-281, quoted above
+
+function automatic bit [63:0] smc_mutex_addr(int unsigned idx);
+  return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_MUTEX_BASE_ADDR(idx));
+endfunction
+
+function automatic bit [63:0] smc_sema_addr(int unsigned idx);
+  return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SEMA_BASE_ADDR(idx));
+endfunction
+
+// Locate `word_addr` among the mutexes and semaphores; `is_sema` tells the
+// two register kinds apart and `idx` is the instance.
+function automatic bit smc_mutex_sema_lookup(bit [63:0] word_addr, output int unsigned idx,
+                                             output bit is_sema);
+  for (int unsigned i = 0; i < SmcMutexCount; i++) begin
+    if (smc_csr_word_addr(smc_mutex_addr(i)) == word_addr) begin
+      idx     = i;
+      is_sema = 1'b0;
+      return 1'b1;
+    end
+  end
+  for (int unsigned i = 0; i < SmcSemaCount; i++) begin
+    if (smc_csr_word_addr(smc_sema_addr(i)) == word_addr) begin
+      idx     = i;
+      is_sema = 1'b1;
+      return 1'b1;
+    end
+  end
+  return 1'b0;
+endfunction
+
+function automatic bit smc_is_mutex_sema_access(ocah_axi_item t, output int unsigned idx,
+                                                output bit is_sema);
+  if (!smc_mutex_sema_lookup(smc_csr_word_addr(t.address), idx, is_sema)) return 1'b0;
+  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
+endfunction
+
+// ---------------------------------------------------------------------------
+// spm_mem: the SPM scratchpad window reached over SEP_IN as 64-bit words.
+// ---------------------------------------------------------------------------
+localparam bit [63:0] SmcSpmBase = smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR;
+localparam bit [63:0] SmcSpmSize = smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE;
+
+// 64-bit word address (8-byte aligned) of a bus address.
+function automatic bit [63:0] smc_mem_word_addr(bit [63:0] addr);
+  return addr & ~64'(SmcMemBytes - 1);
+endfunction
+
+function automatic bit smc_is_spm_addr(bit [63:0] addr);
+  return (addr >= SmcSpmBase) && (addr < SmcSpmBase + SmcSpmSize);
+endfunction
+
+// An SPM access the spm_mem feature predicts and compares: an OKAY
+// single-beat transfer inside the window.
+function automatic bit smc_is_spm_mem_access(ocah_axi_item t);
+  if (!smc_is_spm_addr(t.address)) return 1'b0;
+  return t.is_ok() && t.data_words.size() == 1 && t.beat_count() == 1;
 endfunction

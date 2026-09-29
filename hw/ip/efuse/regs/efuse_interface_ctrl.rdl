@@ -4,6 +4,8 @@
 `ifndef EFUSE_INTERFACE_CTRL_RDL_DEFINED
 `define EFUSE_INTERFACE_CTRL_RDL_DEFINED
 addrmap efuse_interface_ctrl {
+    name = "eFuse Interface Control Address Map";
+    desc = "Program and read command, address, data, status, and timeout registers for the eFuse interface.";
 
     reg EFUSE_INTERFACE_CTRL_STATUS {
         desc = "eFuse interface status and error-clear register. Reports the sense-done flag and request/address error conditions, and provides write-1 strobes to clear those errors.";
@@ -144,7 +146,7 @@ addrmap efuse_interface_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="0: No Error.  1: Logic error, assert read_go when read is not enabled";
+            desc="0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.";
         } read_status [26:26] = 0x0;
 
         field {

@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMU Configuration Package
+// Hold System Management Unit configuration types and defaults.
+//
+// Define smu_cfg_t and DefaultCfg for JTAG feature enables, cross-trigger counts,
+// pipeline depths, and SEP/Adams-Bridge options consumed by smu; the JTAG, cross-trigger
+// and pipeline fields configure its DTP instance. XTRIG_NUM_INT_CT and
+// XTRIG_NUM_CLK_STOP_REQ are the SMU-exposed counts; smu adds the SMC-reserved lanes
+// (XTRIG_SMC_INT_CT_LANES, XTRIG_SMC_CLK_STOP_LANES) before passing them to DTP.
+// NoSepCfg holds the same values as DefaultCfg, and SmuConfigs lists both.
 
 package smu_pkg;
 
   import dtp_pkg::*;
 
-  // Full AXI address width for SEP-to-SMC paths (matches smc_pkg / sep_pkg 56-bit fabric)
-  localparam int unsigned AXI_ADDR_WIDTH = 56;
-
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_BASE = 56'h4000_0000;
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_SIZE       = 56'h4000_0000; // 1GB region for SEP-to-SMC accesses
-  localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_ALIAS_BASE = 56'h0000_0000; // Alias to start of SMC address space
+  localparam int unsigned XTRIG_SMC_INT_CT_LANES = 2;
+  localparam int unsigned XTRIG_SMC_CLK_STOP_LANES = 1;
+  localparam int unsigned XTRIG_INT_CT_MODE_WIDTH = 32;
 
   typedef struct packed {
     int unsigned NUM_INT_TO_SMC;
@@ -39,8 +43,12 @@ package smu_pkg;
     logic [3:0]  JTAG_IDCODE_SI_REV;
     logic [7:0]  JTAG_OCH_VER;
 
-    // Cross-trigger configuration
-    logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] XTRIG_INT_CT_MODE;
+    // Cross-trigger configuration. XTRIG_NUM_INT_CT and XTRIG_NUM_CLK_STOP_REQ
+    // are the SMU-exposed counts; smu adds the SMC-reserved lanes for DTP.
+    int unsigned XTRIG_NUM_CTP;
+    int unsigned XTRIG_NUM_INT_CT;
+    int unsigned XTRIG_NUM_CLK_STOP_REQ;
+    logic [XTRIG_INT_CT_MODE_WIDTH-1:0] XTRIG_INT_CT_MODE;
 
     // Pipeline depth parameters
     logic [1:0] SMC_OTP_RD_PL_DEPTH;
@@ -57,7 +65,7 @@ package smu_pkg;
   } smu_cfg_t;
 
   localparam smu_cfg_t DefaultCfg = '{
-      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
+      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
       JTAG_BSR_ENABLE: 1'b1,
       JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
       JTAG_EXTEST_PULSE_ENABLE: 1'b1,
@@ -74,6 +82,9 @@ package smu_pkg;
       JTAG_IDCODE_PART_NUM: 16'h0000,
       JTAG_IDCODE_SI_REV: 4'h0,
       JTAG_OCH_VER: 8'h00,
+      XTRIG_NUM_CTP: dtp_pkg::DEFAULT_NUM_CTP,
+      XTRIG_NUM_INT_CT: dtp_pkg::DEFAULT_NUM_INT_CT - XTRIG_SMC_INT_CT_LANES,
+      XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - XTRIG_SMC_CLK_STOP_LANES,
       XTRIG_INT_CT_MODE: '0,
       SMC_OTP_RD_PL_DEPTH: 2'h3,
       SMC_OTP_WR_PL_DEPTH: 2'h3,
@@ -85,7 +96,7 @@ package smu_pkg;
   };
 
   localparam smu_cfg_t NoSepCfg = '{
-      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
+      NUM_INT_TO_SMC: 32'd256,  // smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS.
       JTAG_BSR_ENABLE: 1'b1,
       JTAG_EXTEST_TRAIN_ENABLE: 1'b1,
       JTAG_EXTEST_PULSE_ENABLE: 1'b1,
@@ -102,6 +113,9 @@ package smu_pkg;
       JTAG_IDCODE_PART_NUM: 16'h0000,
       JTAG_IDCODE_SI_REV: 4'h0,
       JTAG_OCH_VER: 8'h00,
+      XTRIG_NUM_CTP: dtp_pkg::DEFAULT_NUM_CTP,
+      XTRIG_NUM_INT_CT: dtp_pkg::DEFAULT_NUM_INT_CT - XTRIG_SMC_INT_CT_LANES,
+      XTRIG_NUM_CLK_STOP_REQ: dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ - XTRIG_SMC_CLK_STOP_LANES,
       XTRIG_INT_CT_MODE: '0,
       SMC_OTP_RD_PL_DEPTH: 2'h3,
       SMC_OTP_WR_PL_DEPTH: 2'h3,
@@ -114,8 +128,8 @@ package smu_pkg;
 
   localparam int unsigned NumSmuConfigs = 2;
   localparam smu_cfg_t [NumSmuConfigs-1:0] SmuConfigs = {
-    NoSepCfg,  // [1] SMC + DTP only
-    DefaultCfg  // [0] Full SMU (SMC + SEP + DTP)
+    NoSepCfg,  // [1] SMC + DTP only.
+    DefaultCfg  // [0] Full SMU (SMC + SEP + DTP).
   };
 
 endpackage : smu_pkg

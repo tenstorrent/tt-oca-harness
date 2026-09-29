@@ -160,7 +160,7 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
             if status & I2C_STATUS_ACQEMPTY:
                 if saw_stop:
                     return words
-                await Timer(10, units="us")
+                await Timer(10, unit="us")
                 continue
             raw = await self.csr_read("I2C0_ACQDATA", I2C0_ACQDATA)
             words.append(int(raw) & 0xFFFF)

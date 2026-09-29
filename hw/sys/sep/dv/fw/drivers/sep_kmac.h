@@ -19,7 +19,7 @@
 #include "och_sep_common.h"
 
 /* OT KMAC STATE window: share0 then share1; size from sep_addr.h. */
-#define SEP_KMAC_STATE_SHARE1_OFFSET (OCH_SEP_TOP_KMAC_STATE_SIZE / 2u)
+#define SEP_KMAC_STATE_SHARE1_OFFSET (SEP_TOP_KMAC_STATE_SIZE / 2u)
 
 #define SEP_KMAC_NUM_SEED_WORDS 6
 #define SEP_KMAC_TIMEOUT 1000000
@@ -43,7 +43,7 @@
 #define SEP_KMAC_ENTROPY_MODE_EDN ((uint32_t)0x1u)
 #define SEP_KMAC_ENTROPY_MODE_SW ((uint32_t)0x2u)
 
-/* CMD encodings (OT kmac_pkg::kmac_cmd_e). */
+/* Sparse CMD.CMD encodings (OT KMAC Programmer's Guide / generated kmac.adoc). */
 #define SEP_KMAC_CMD_START 29u
 #define SEP_KMAC_CMD_PROCESS 46u
 #define SEP_KMAC_CMD_MANUAL_RUN 49u
@@ -78,8 +78,8 @@ static inline void sep_kmac_wr(uint32_t addr, uint32_t value) {
 
 // CFG_SHADOWED needs the same value written twice to commit the shadow copy.
 static inline void sep_kmac_cfg_write(uint32_t value) {
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, value);
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, value);
+    sep_kmac_wr(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, value);
+    sep_kmac_wr(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, value);
 }
 
 // Run a KMAC128 over the 4-byte message "test" with a zero key and the "KMAC"
@@ -90,7 +90,7 @@ static inline void sep_kmac_cfg_write(uint32_t value) {
 static inline int sep_kmac128_sw_smoke(uint32_t digest_out[8]) {
     int t = SEP_KMAC_TIMEOUT;
     while ((t-- > 0) &&
-           !(sep_kmac_rd(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR) & KMAC__STATUS__SHA3_IDLE_bm)) {
+           !(sep_kmac_rd(SEP_TOP_KMAC_STATUS_BASE_ADDR) & KMAC__STATUS__SHA3_IDLE_bm)) {
     }
     if (t <= 0) {
         return 1;
@@ -102,48 +102,47 @@ static inline int sep_kmac128_sw_smoke(uint32_t digest_out[8]) {
     sep_kmac_cfg_write(base_cfg);
     sep_kmac_cfg_write(base_cfg | KMAC__CFG_SHADOWED__ENTROPY_READY_bm);
     for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
-        sep_kmac_wr(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
+        sep_kmac_wr(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
     }
 
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, 0u); // Key128
+    sep_kmac_wr(SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, 0u); // Key128
     for (int i = 0; i < 4; i++) {
-        sep_kmac_wr(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), 0u);
-        sep_kmac_wr(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0u);
+        sep_kmac_wr(SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), 0u);
+        sep_kmac_wr(SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0u);
     }
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001u);
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341u);
+    sep_kmac_wr(SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x4D4B2001u);
+    sep_kmac_wr(SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00004341u);
     for (int i = 2; i < 11; i++) {
-        sep_kmac_wr(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0u);
+        sep_kmac_wr(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0u);
     }
 
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_START);
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574u); // "test", little-endian
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001u); // right_encode(256)
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_PROCESS);
+    sep_kmac_wr(SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_START);
+    sep_kmac_wr(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574u); // "test", little-endian
+    sep_kmac_wr(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001u); // right_encode(256)
+    sep_kmac_wr(SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_PROCESS);
 
     t = SEP_KMAC_TIMEOUT;
     while (t-- > 0) {
-        if (sep_kmac_rd(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+        if (sep_kmac_rd(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
             break;
         }
     }
     if (t <= 0) {
         return 2;
     }
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
+    sep_kmac_wr(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
     int rw1c_fail =
-        (sep_kmac_rd(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) ? 1
-                                                                                              : 0;
+        (sep_kmac_rd(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) ? 1 : 0;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t s0 = sep_kmac_rd(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + i * 4);
+        uint32_t s0 = sep_kmac_rd(SEP_TOP_KMAC_STATE_BASE_ADDR + i * 4);
         uint32_t s1 =
-            sep_kmac_rd(OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + i * 4);
+            sep_kmac_rd(SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + i * 4);
         digest_out[i] = s0 ^ s1;
     }
 
-    int err = (sep_kmac_rd(OCH_SEP_TOP_KMAC_ERR_CODE_BASE_ADDR) != 0);
-    sep_kmac_wr(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_DONE);
+    int err = (sep_kmac_rd(SEP_TOP_KMAC_ERR_CODE_BASE_ADDR) != 0);
+    sep_kmac_wr(SEP_TOP_KMAC_CMD_BASE_ADDR, SEP_KMAC_CMD_DONE);
     if (rw1c_fail) {
         return 4;
     }

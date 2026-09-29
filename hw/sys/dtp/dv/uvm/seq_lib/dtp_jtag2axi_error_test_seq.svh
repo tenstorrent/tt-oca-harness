@@ -48,7 +48,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
   // injected response, then that observed status.
   dtp_j2a_status_e status = DTP_J2A_SUCCESS;
   int unsigned operation_count = 0;
-  localparam string FaultStatusCheckId = "CHK-J2A-FAULT-STATUS";
+  localparam string FaultStatusCheckId = DtpJ2aFaultStatusCheckId;
   localparam int unsigned SeriesBeats = 3;
 
   // Address plan (mirrors the cocotb layout: 0x20-spaced error slots,
@@ -133,7 +133,8 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
       unconsumed = axi_cfg.pending_expected_resp()
                        + axi_cfg.pending_expected_writes()
                        + axi_cfg.pending_expected_reads();
-    emit_nonvacuity_evidence((operation_count >= minimum_ops) && (unconsumed == 0), $sformatf(
+    emit_nonvacuity_evidence(target(), (operation_count >= minimum_ops) && (unconsumed == 0),
+                             $sformatf(
                              "scenario=%s target=%s operations=%0d credits_unconsumed=%0d",
                              label,
                              target_name,
@@ -331,7 +332,7 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
     reset_to_rti();
     arm_target_error(t, base + fault_idx * stride, resp, 1'b1, 1'b0);
     foreach (preload[idx]) begin
-      preload[idx] = rand_data(t) & data_mask(size);
+      preload[idx] = rand_nonzero_data(t) & data_mask(size);
       write_target_mem_int(t, base + idx * stride, preload[idx], size);
     end
     if (with_status) begin
@@ -359,7 +360,10 @@ class dtp_jtag2axi_error_test_seq extends dtp_jtag2axi_base_test_seq;
         wait_for_target_activity(t, aw0, w0, ar0, 1'b1, $sformatf("series_read_error.axi#%0d", idx
                                  ));
         series_plain_read_shift(t, size, increment, rdata);
-        if (idx != fault_idx && rdata !== mem_expected)
+        if (idx == fault_idx)
+          check_error_rdata(t, addr, rdata, resp, mem_expected, size, $sformatf(
+                            "series_read_error.fault#%0d", idx));
+        else if (rdata !== mem_expected)
           `uvm_error("jtag2axi_data_chk", $sformatf(
                      "series_read_error.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
                      idx,

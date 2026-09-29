@@ -83,23 +83,20 @@ module smc_axi_chan_fcov (
   `OCAH_FCOV_COVER(c_ar_single_beat, ar_single_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_ar_multi_beat, ar_multi_e, clk_i, in_reset)
 
-  // Response codes. All four encodings get a point so the ones the suite
-  // never produces are named holes rather than absent from the model.
+  // Response codes. EXOKAY has no point: it answers an exclusive access, and
+  // no subordinate in the SMC fabric supports one, so no stimulus reaches it
+  // (the covergroup below ignores the encoding for the same reason).
   wire bresp_okay_e = b_accept_e && (bresp_i == 2'b00);
-  wire bresp_exokay_e = b_accept_e && (bresp_i == 2'b01);
   wire bresp_slverr_e = b_accept_e && (bresp_i == 2'b10);
   wire bresp_decerr_e = b_accept_e && (bresp_i == 2'b11);
   `OCAH_FCOV_COVER(c_bresp_okay, bresp_okay_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_bresp_exokay, bresp_exokay_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_bresp_slverr, bresp_slverr_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_bresp_decerr, bresp_decerr_e, clk_i, in_reset)
 
   wire rresp_okay_e = r_accept_e && (rresp_i == 2'b00);
-  wire rresp_exokay_e = r_accept_e && (rresp_i == 2'b01);
   wire rresp_slverr_e = r_accept_e && (rresp_i == 2'b10);
   wire rresp_decerr_e = r_accept_e && (rresp_i == 2'b11);
   `OCAH_FCOV_COVER(c_rresp_okay, rresp_okay_e, clk_i, in_reset)
-  `OCAH_FCOV_COVER(c_rresp_exokay, rresp_exokay_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_rresp_slverr, rresp_slverr_e, clk_i, in_reset)
   `OCAH_FCOV_COVER(c_rresp_decerr, rresp_decerr_e, clk_i, in_reset)
 
@@ -129,7 +126,12 @@ module smc_axi_chan_fcov (
   covergroup cg_axi_resp with function sample (logic [1:0] resp);
     option.per_instance = 1;
     cp_resp: coverpoint resp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
+      bins okay = {2'b00};
+      bins slverr = {2'b10};
+      bins decerr = {2'b11};
+      // No subordinate behind these ports answers an exclusive access: the
+      // memory adapters tie exokay off and the crossbars carry no atomics.
+      ignore_bins exokay = {2'b01};
     }
   endgroup
 

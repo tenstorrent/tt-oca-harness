@@ -2,16 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP XTRIG register constants and lightweight reference helpers.
 
-Register offsets, strides, and field masks come from the generated SystemRDL
-Python headers of the cross-trigger IP, ``cross_trigger_matrix_reg`` and
-``cross_trigger_port_reg`` under ``hw/ip/cross_trigger/*/regs/gen/py`` (on the
-import path through the DTP sim config ``python_paths``). Two numbers have no
-generated Python export and cite ``cross_trigger_network_pkg``: the CTP window
-base (``CSR_ADDR_CTM_SIZE``) and the per-CTP window stride
-(``CSR_ADDR_CTP_SIZE``), both also stated in
-``hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc``. The port counts
-cite the same package (``DEFAULT_NUM_CTP``, ``DEFAULT_NUM_INT_CT``) and are
-checked against the generated select-field width at import.
+Register offsets, strides, windows, and field masks come from the generated
+SystemRDL Python headers of the cross-trigger IP, ``cross_trigger_network_reg``,
+``cross_trigger_matrix_reg`` and ``cross_trigger_port_reg`` under
+``hw/ip/cross_trigger/*/regs/gen/py`` (on the import path through the DTP sim
+config ``python_paths``). The port counts are the bench configuration's
+(``dtp_dv_cfg``, which reads them from the network map) and are checked against
+the generated select-field width at import.
 """
 
 from __future__ import annotations
@@ -21,7 +18,16 @@ from ctypes import Structure
 from dataclasses import dataclass
 
 import cross_trigger_matrix_reg as _ctm_reg
+import cross_trigger_network_reg as _ctn_reg
 import cross_trigger_port_reg as _ctp_reg
+
+from .dtp_dv_cfg import (
+    DTP_CT_DST_LATENCY,
+    DTP_NUM_XTRIG_CTP,
+    DTP_NUM_XTRIG_INT_CT,
+    DTP_WIRE_OR_ASSERT,
+    DTP_WIRE_OR_PULL,
+)
 
 _RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
@@ -52,10 +58,10 @@ _CTP_STATUS = _field_masks(_ctp_reg.CROSS_TRIGGER_PORT_STATUS_reg_t)
 _CTP_STRETCH = _field_masks(_ctp_reg.CROSS_TRIGGER_PORT_STRETCH_MULT_reg_t)
 _CTM_SELECT = _field_masks(_ctm_reg.CT_SRC_CONFIG_0_reg_t)
 
-# cross_trigger_network_pkg DEFAULT_NUM_CTP and DEFAULT_NUM_INT_CT; the matrix
-# carries one CT_SRC register and one CT_DST_SELECT bit per port.
-XTRIG_NUM_CTP = 16
-XTRIG_NUM_INT_CT = 10
+# Port counts of the bench configuration; the matrix carries one CT_SRC
+# register and one CT_DST_SELECT bit per port.
+XTRIG_NUM_CTP = DTP_NUM_XTRIG_CTP
+XTRIG_NUM_INT_CT = DTP_NUM_XTRIG_INT_CT
 XTRIG_NUM_CTM_PORTS = XTRIG_NUM_CTP + XTRIG_NUM_INT_CT
 
 XTRIG_CTM_SELECT_MASK = _CTM_SELECT["ct_dst_select"]
@@ -65,19 +71,14 @@ if XTRIG_CTM_SELECT_MASK != (1 << XTRIG_NUM_CTM_PORTS) - 1:
         f"assumes {XTRIG_NUM_CTM_PORTS} CTM ports"
     )
 
-# Cross-trigger network CSR windows: the CTM block at offset 0, then one
-# window per external CTP (cross_trigger_network_pkg CSR_ADDR_CTM_SIZE and
-# CSR_ADDR_CTP_SIZE).
-XTRIG_CTM_BASE = _ctm_reg.CROSS_TRIGGER_MATRIX_REG_MAP_BASE_ADDR
+# Cross-trigger network CSR windows (generated network address map): the CTM
+# block, then one window per external CTP.
+XTRIG_CTM_BASE = _ctn_reg.CTM_REG_MAP_BASE_ADDR
 XTRIG_CTM_STRIDE = _ctm_reg.CT_SRC_1__CONFIG_0_REG_ADDR - _ctm_reg.CT_SRC_0__CONFIG_0_REG_ADDR
-XTRIG_CTP_BASE = 0x200
-XTRIG_CTP_STRIDE = 0x10
+XTRIG_CTP_BASE = _ctn_reg.CTP_0__REG_MAP_BASE_ADDR
+XTRIG_CTP_STRIDE = _ctn_reg.CTP_1__REG_MAP_BASE_ADDR - _ctn_reg.CTP_0__REG_MAP_BASE_ADDR
 XTRIG_CSR_END = XTRIG_CTP_BASE + (XTRIG_NUM_CTP * XTRIG_CTP_STRIDE)
 XTRIG_UNMAPPED_BASE = XTRIG_CSR_END
-
-# Read data the crossbar's error subordinate returns alongside DECERR on an
-# unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
-XTRIG_DECERR_DATA = 0xBADC_AB1E
 
 XTRIG_CTP_CONFIG_OFFSET = _ctp_reg.CONFIG_REG_OFFSET
 XTRIG_CTP_STATUS_OFFSET = _ctp_reg.STATUS_REG_OFFSET
@@ -92,6 +93,12 @@ XTRIG_CTP_STRETCH_MASK = _CTP_STRETCH["stretch_mult"]
 # CONFIG.MODE encoding (cross_trigger_port.rdl): 0 wire-OR, 1 point-to-point.
 XTRIG_CTP_MODE_WIRE_OR = 0
 XTRIG_CTP_MODE_P2P = 1
+
+# Shared-wire polarity per CONFIG.INVERT and the receive latency of a port
+# (dtp_dv_cfg, checked against dtp_dv_cfg_pkg at bring-up).
+XTRIG_WIRE_OR_PULL = DTP_WIRE_OR_PULL
+XTRIG_WIRE_OR_ASSERT = DTP_WIRE_OR_ASSERT
+XTRIG_CT_DST_LATENCY = DTP_CT_DST_LATENCY
 
 XTRIG_CTP_STATUS_BUSY = _CTP_STATUS["busy"]
 XTRIG_CTP_STATUS_REQ_OUT = _CTP_STATUS["req_out"]
@@ -230,6 +237,11 @@ class DtpXtrigCtpShadow:
     @property
     def invert_mask(self) -> int:
         return sum(1 << i for i, inv in enumerate(self.inverts) if inv)
+
+    @property
+    def wire_pull_mask(self) -> int:
+        """Rest level of every CTP's private wire: the pull of the board built for its INVERT."""
+        return sum(XTRIG_WIRE_OR_PULL[inv] << i for i, inv in enumerate(self.inverts))
 
 
 class DtpCtmRefModel:

@@ -44,18 +44,39 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // (system-domain cycles).
   localparam int unsigned InjectSettleCycles = 2;
 
+  // Completed responder bursts per bridge when the pass began: the
+  // anti-vacuity record of a scenario requires the bridge it ran on to have
+  // moved at least one burst across the DUT's AXI port since then.
+  protected int unsigned m_burst_baseline[string];
+
   function new(string name = "dtp_jtag2axi_base_test_seq");
     super.new(name);
   endfunction
 
-  // Geometry gate: every pass opens by reading the three *_JTAG2AXI_CAPS
-  // TDRs and comparing bus type, address size, and data size with the
-  // dtp_types table (CHK-J2A-GEOMETRY), so no bridge request is packed with
-  // field widths the DUT does not publish.
+  // Every pass opens with the burst baseline and the geometry gate: the
+  // three *_JTAG2AXI_CAPS TDRs are read and their bus type, address size,
+  // and data size compared with the dtp_types table (CHK-J2A-GEOMETRY), so
+  // no bridge request is packed with field widths the DUT does not publish.
   virtual task pre_body();
     super.pre_body();
+    snapshot_burst_baseline();
     verify_bridge_geometry();
   endtask
+
+  function void snapshot_burst_baseline();
+    string names[3] = '{"smc_otp", "sep_otp", "smc_axi"};
+    foreach (names[i]) begin
+      dtp_j2a_target_t t = dtp_j2a_target_by_name(names[i]);
+      m_burst_baseline[t.name] = write_bursts_now(t) + read_bursts_now(t);
+    end
+  endfunction
+
+  // Bursts the responder behind `t` completed since the pass began: the
+  // bus-side witness that the bridge drove its AXI port.
+  function int unsigned bursts_since_baseline(dtp_j2a_target_t t);
+    int unsigned now = write_bursts_now(t) + read_bursts_now(t);
+    return m_burst_baseline.exists(t.name) ? now - m_burst_baseline[t.name] : now;
+  endfunction
 
   // +DTP_J2A_GEOMETRY_NEGATIVE corrupts the expected address size so the
   // run must FAIL, proving the gate rejects a wrong table end to end.
@@ -91,6 +112,12 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
       ));
       void'(geometry.expect_equal(
           DtpJ2aGeometryCheckId, 64'(value[9:7]), 64'(dtp_j2a_data_size(t)), {t.name, " data_size"}
+      ));
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[11:10]), 64'(t.wr_pl_depth), {t.name, " wr_pl_depth"}
+      ));
+      void'(geometry.expect_equal(
+          DtpJ2aGeometryCheckId, 64'(value[13:12]), 64'(t.rd_pl_depth), {t.name, " rd_pl_depth"}
       ));
     end
     geometry.finalize();
@@ -180,6 +207,49 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     return responder(t).read_int(addr, size_bytes(size)) & data_mask(size);
   endfunction
 
+  // --- end-state byte image of a random write stream ----------------------
+  // Record the bytes of the word at `addr` that the image lacks.
+  function void snapshot_target_word(dtp_j2a_target_t t, ref bit [7:0] image[bit [63:0]],
+                                     input bit [63:0] addr, input int unsigned size);
+    bit [63:0] word = read_target_mem_int(t, addr, size);
+    for (int unsigned b = 0; b < size_bytes(size); b++) begin
+      if (!image.exists(addr + b)) image[addr+b] = word[8*b+:8];
+    end
+  endfunction
+
+  // Apply one write's enabled lanes to the byte image.
+  function void image_write(ref bit [7:0] image[bit [63:0]], input bit [63:0] addr,
+                            input bit [63:0] data, input bit [7:0] wstrb, input int unsigned size);
+    for (int unsigned b = 0; b < size_bytes(size); b++) begin
+      if (wstrb[b]) image[addr+b] = data[8*b+:8];
+    end
+  endfunction
+
+  // CHK-J2A-MEM-IMAGE: every byte of the image matches the responder memory.
+  // The image holds every lane a stream wrote at its last value and every
+  // untouched lane of a touched word at its prior value, so a write that
+  // landed on the wrong lane or disturbed a neighbour fails here.
+  function void check_memory_image(dtp_j2a_target_t t, ref bit [7:0] image[bit [63:0]],
+                                   input string context_s);
+    int unsigned mismatches = 0;
+    foreach (image[addr]) begin
+      bit [7:0] observed = 8'(read_target_mem_int(t, addr, 0));
+      if (observed !== image[addr]) begin
+        mismatches++;
+        `uvm_error("jtag2axi_image_chk", $sformatf("%s: %s byte 0x%0h holds 0x%02h, image 0x%02h",
+                                                   context_s, t.name, addr, observed, image[addr]))
+      end
+    end
+    if (axi_evidence != null)
+      void'(axi_evidence.expect_equal(
+          DtpJ2aMemImageCheckId,
+          64'(mismatches),
+          64'd0,
+          $sformatf(
+              "%s target=%s bytes=%0d", context_s, t.name, image.num())
+      ));
+  endfunction
+
   // CHK-AXI-WMEM: responder RAM bytes versus the stimulus intent.
   function void check_target_memory(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] expected,
                                     int unsigned size, string context_s);
@@ -244,28 +314,39 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     note_tdr_access(single_op_len(t), $sformatf("%s single_op request", t.name));
   endtask
 
-  // Poll SINGLE_OP (shifting zeros) until the bridge leaves BUSY_OR_FULL,
-  // then land CHK-AXI-COMPLETION: a bridge stuck BUSY within the poll
-  // bound fails (every call site expects a final, settled status).
+  // One SINGLE_OP status capture (shifting zeros): the bridge's status and
+  // data field as this poll saw them.
+  task single_status_once(dtp_j2a_target_t t, output dtp_j2a_status_e status,
+                          output bit [63:0] rdata);
+    dtp_jtag2axi_single_status_seq st = dtp_jtag2axi_single_status_seq::type_id::create(
+        "single_status"
+    );
+    st.target = t;
+    run_jtag_op(st);
+    check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SINGLE_OP status capture");
+    check_last_scan_length(1'b0, single_op_len(t), $sformatf("%s status poll", t.name));
+    note_scan(1'b0, single_op_len(t));
+    status = st.status;
+    rdata  = st.rdata;
+  endtask
+
+  // Poll SINGLE_OP until the bridge leaves BUSY_OR_FULL, then land
+  // CHK-AXI-COMPLETION: a bridge stuck BUSY within the poll bound fails
+  // (every call site expects a final, settled status). The log counts the
+  // captures that read BUSY_OR_FULL first, usually none at the bench's TCK
+  // ratio, since a scan outlasts the bus access.
   task poll_single(dtp_j2a_target_t t, output dtp_j2a_status_e status, output bit [63:0] rdata,
                    input string context_s = "single_op");
+    int unsigned busy_polls = 0;
     status = DTP_J2A_BUSY_OR_FULL;
     rdata  = '0;
     for (int unsigned poll = 0; poll < DtpJ2aMaxStatusPolls; poll++) begin
-      dtp_jtag2axi_single_status_seq st = dtp_jtag2axi_single_status_seq::type_id::create(
-          "single_status"
-      );
-      st.target = t;
-      run_jtag_op(st);
-      check_state(RUN_TEST_IDLE, "jtag2axi_scan_chk", "after SINGLE_OP status capture");
-      check_last_scan_length(1'b0, single_op_len(t), $sformatf("%s status poll", t.name));
-      note_scan(1'b0, single_op_len(t));
-      status = st.status;
-      rdata  = st.rdata;
+      single_status_once(t, status, rdata);
       if (status != DTP_J2A_BUSY_OR_FULL) break;
+      busy_polls++;
     end
-    `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP status=%s rdata=0x%0h", t.name,
-                                         status.name(), rdata), UVM_MEDIUM)
+    `uvm_info(get_type_name(), $sformatf("%s SINGLE_OP status=%s rdata=0x%0h busy_polls=%0d",
+                                         t.name, status.name(), rdata, busy_polls), UVM_MEDIUM)
     if (axi_evidence != null)
       void'(axi_evidence.expect_true(
           "CHK-AXI-COMPLETION",
@@ -522,8 +603,8 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // One series-data shift (dtp_jtag2axi_series_data_seq): payload-sized
   // TDR, optional MSB increment bit (with-status mode), idle TCK cycles
   // for the op to launch.
-  protected task series_data_shift(dtp_j2a_target_t t, jtag_inst_reg_pkg::jtag_instruction_e instr,
-                                   bit [63:0] data, int unsigned size,
+  protected task series_data_shift(dtp_j2a_target_t t, dtp_jtag_instr_e instr, bit [63:0] data,
+                                   int unsigned size,
                                    input int increment,  // <0: no increment/status bit in the TDR
                                    output bit [63:0] result);
     int unsigned payload_bits = 8 * size_bytes(size);
@@ -574,11 +655,11 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   // --- lifecycle debug disables (must be cleared before JTAG2AXI ops) ----
   // Assert exactly the disable that gates this target (all others clear).
   task gate_target(dtp_j2a_target_t t);
-    set_dbg_disable(t.dbg_disable_mask);
+    set_dbg_disable(dtp_dbg_disable_only(t.dbg_path));
   endtask
 
   function bit target_enabled(dtp_j2a_target_t t);
-    return (tb_vif.dbg_disable & t.dbg_disable_mask) == '0;
+    return !dtp_dbg_path_disabled(tb_vif.dbg_disable, t.dbg_path);
   endfunction
 
   // --- error arming (responder injection + shared checker, one place) ----
@@ -690,11 +771,20 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                          before_ar, ar))
   endtask
 
-  // CHK-AXI-NONVAC: scenario-level non-vacuity through the shared recorder
-  // (the SV analogue of the cocotb stream-minimum + nonvacuous evidence).
-  function void emit_nonvacuity_evidence(bit condition, string context_s);
+  // CHK-AXI-NONVAC: the scenario's own minimum-activity condition, gated on
+  // the responder behind `t` having completed a burst this pass, so a
+  // tied-off, idle, or gated bridge cannot satisfy the record whatever the
+  // sequence counted (the SV analogue of the cocotb stream-minimum +
+  // nonvacuous evidence).
+  function void emit_nonvacuity_evidence(dtp_j2a_target_t t, bit condition, string context_s);
+    int unsigned bursts = bursts_since_baseline(t);
     if (axi_evidence != null)
-      void'(axi_evidence.expect_true("CHK-AXI-NONVAC", condition, context_s));
+      void'(axi_evidence.expect_true(
+          "CHK-AXI-NONVAC",
+          condition && (bursts > 0),
+          $sformatf(
+              "%s target=%s responder_bursts=%0d", context_s, t.name, bursts)
+      ));
   endfunction
 
   // Completed-burst counters from the responder (exact per-transaction
@@ -723,13 +813,21 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
                          t.name, timeout_cycles))
   endtask
 
-  // --- bridge FSM observation (dtp_tb_if) -----------------------------------
-  function dtp_j2a_fsm_state_e bridge_fsm_state(dtp_j2a_target_t t);
-    logic [2:0] raw;
-    if (t.name == "smc_otp") raw = tb_vif.smc_otp_fsm_state;
-    else if (t.name == "sep_otp") raw = tb_vif.sep_otp_fsm_state;
-    else raw = tb_vif.smc_axi_fsm_state;
-    return dtp_j2a_fsm_state_e'(raw);
+  // --- bridge state-machine observation (dtp_tb_if) -------------------------
+  // tb_top decodes each bridge's AXI state machine by state name into the
+  // idle, write-path, and read-path flags.
+  function bit bridge_fsm_idle(dtp_j2a_target_t t);
+    if (t.name == "smc_otp") return tb_vif.smc_otp_fsm_idle;
+    if (t.name == "sep_otp") return tb_vif.sep_otp_fsm_idle;
+    return tb_vif.smc_axi_fsm_idle;
+  endfunction
+
+  function bit bridge_fsm_on_path(dtp_j2a_target_t t, bit is_read);
+    if (t.name == "smc_otp")
+      return is_read ? tb_vif.smc_otp_fsm_read_path : tb_vif.smc_otp_fsm_write_path;
+    if (t.name == "sep_otp")
+      return is_read ? tb_vif.sep_otp_fsm_read_path : tb_vif.sep_otp_fsm_write_path;
+    return is_read ? tb_vif.smc_axi_fsm_read_path : tb_vif.smc_axi_fsm_write_path;
   endfunction
 
   function bit bridge_op_pending(dtp_j2a_target_t t);
@@ -753,16 +851,15 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
     wait_sys_cycles(1);
   endtask
 
-  // Step TCK in Run-Test/Idle until the bridge FSM leaves (want_idle = 0)
-  // or reaches (want_idle = 1) IDLE, within `tck_cycles`: the FSM and the
-  // CDC's TCK side advance only while TCK runs.
-  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles,
-                       output dtp_j2a_fsm_state_e state);
-    state = bridge_fsm_state(t);
+  // Step TCK in Run-Test/Idle until the bridge's state machine leaves
+  // (want_idle = 0) or reaches (want_idle = 1) idle, within `tck_cycles`: the
+  // state machine and the CDC's TCK side advance only while TCK runs.
+  task wait_bridge_fsm(dtp_j2a_target_t t, bit want_idle, int unsigned tck_cycles, output bit idle);
+    idle = bridge_fsm_idle(t);
     for (int unsigned i = 0; i < tck_cycles; i++) begin
-      if ((state == DTP_J2A_FSM_IDLE) == want_idle) return;
+      if (idle == want_idle) return;
       step(1'b0);
-      state = bridge_fsm_state(t);
+      idle = bridge_fsm_idle(t);
     end
   endtask
 
@@ -966,17 +1063,16 @@ class dtp_jtag2axi_base_test_seq extends dtp_base_test_seq;
   function void emit_series_status_nonvacuity(
       string label, dtp_j2a_target_t t, dtp_j2a_series_status_plan_t p, int unsigned operations);
     int unsigned unconsumed = pending_expected_credits();
-    emit_nonvacuity_evidence(
-        (operations >= DtpJ2aSeriesStatusBeats) && (p.fault_idx >= 0) && (unconsumed == 0),
-        $sformatf(
-        "scenario=%s target=%s operations=%0d fault_beat=%0d resp=%s credits_unconsumed=%0d",
-        label,
-        t.name,
-        operations,
-        p.fault_idx,
-        p.expected.name(),
-        unconsumed
-        ));
+    bit ran = (operations >= DtpJ2aSeriesStatusBeats) && (p.fault_idx >= 0) && (unconsumed == 0);
+    emit_nonvacuity_evidence(t, ran, $sformatf(
+                             "scenario=%s target=%s operations=%0d fault_beat=%0d resp=%s credits_unconsumed=%0d",
+                             label,
+                             t.name,
+                             operations,
+                             p.fault_idx,
+                             p.expected.name(),
+                             unconsumed
+                             ));
   endfunction
 
 endclass : dtp_jtag2axi_base_test_seq

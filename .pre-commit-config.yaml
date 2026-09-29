@@ -23,31 +23,37 @@ repos:
 
       - id: ruff-check
         name: Lint Python with Ruff
-        entry: uv --directory . run --locked ruff check --force-exclude
+        entry: sh -c 'make -s --no-print-directory ocah-lint-python OCAH_LINT_RUFF_EXTRA_FLAGS=--force-exclude PYTHON_PATH="$*"' --
         language: system
         types_or: [python, pyi]
 
       - id: ruff-format
         name: Check Python formatting with Ruff
-        entry: uv --directory . run --locked ruff format --check --force-exclude
+        entry: sh -c 'make -s --no-print-directory ocah-format-python-check OCAH_LINT_RUFF_EXTRA_FLAGS=--force-exclude PYTHON_PATH="$*"' --
         language: system
         types_or: [python, pyi]
 
       - id: clang-format
         name: Check C/C++ formatting with clang-format
-        entry: uv --directory . run --locked clang-format -style=file --dry-run --Werror
+        entry: sh -c 'make -s --no-print-directory ocah-format-c-check FORMAT_C_PATH="$*"' --
         language: system
         files: '\.(c|h|cpp)$'
 
+      - id: nix-format
+        name: Check Nix formatting with nix fmt
+        entry: sh -c 'make -s --no-print-directory ocah-format-nix-check OCAH_FORMAT_NIX_FILES="$*"' --
+        language: system
+        files: '(\.nix|flake.lock)$'
+
       - id: tclfmt
         name: Check Tcl formatting with tclfmt
-        entry: uv --directory . run --locked tclfmt --check --spaces-in-braces
+        entry: sh -c 'make -s --no-print-directory ocah-format-tcl-check TCL_PATH="$*"' --
         language: system
         files: '\.tcl$'
 
       - id: tclint
         name: Lint Tcl with tclint
-        entry: uv --directory . run --locked tclint --no-check-style --style-line-length 100
+        entry: sh -c 'make -s --no-print-directory ocah-lint-tcl TCL_PATH="$*"' --
         language: system
         files: '\.tcl$'
 
@@ -60,31 +66,30 @@ repos:
         # a skip-listed path (e.g. the vendored Metal HAL headers) would still
         # get flagged the moment it's staged. Scanning from repo root every
         # time keeps this consistent with `make ocah-lint-spelling`.
-        entry: uv --directory . run --locked codespell .
+        entry: make -s --no-print-directory ocah-lint-spelling
         language: system
         pass_filenames: false
 
       - id: yamllint
         name: Lint YAML with yamllint
-        entry: uv --directory . run --locked yamllint -c .yamllint.yml
+        entry: sh -c 'make -s --no-print-directory ocah-lint-yaml YAML_PATH="$*"' --
         language: system
         files: '\.ya?ml$'
 
       - id: tomllint
         name: Check TOML syntax with tomllint
-        entry: uv --directory . run --locked tomllint
+        entry: sh -c 'make -s --no-print-directory ocah-lint-toml TOML_PATH="$*"' --
         language: system
         files: '\.toml$'
-        exclude: '^hw/ip/scrambler/dv/lint/scrambler\.toml$'
 
       - id: shellcheck
         name: Lint shell scripts with shellcheck
-        entry: uv --directory . run --locked shellcheck --severity=warning
+        entry: sh -c 'make -s --no-print-directory ocah-lint-shell SHELL_PATH="$*"' --
         language: system
         files: '\.sh$'
 
       - id: shfmt
         name: Check shell formatting with shfmt
-        entry: uv --directory . run --locked shfmt -i 2 -d
+        entry: sh -c 'make -s --no-print-directory ocah-format-shell-check SHELL_PATH="$*"' --
         language: system
         files: '\.sh$'

@@ -5,13 +5,11 @@
 OSS port of reference suite ``sep_clock_uvm_warm_reset_vs_cold_reset_test``.
 Proves the SEP System-block dual scratch banks honor their reset domains:
 
-  * SCRATCH_WARM (base 0x1080_2080) is in the WARM domain -- its register block is
-    reset by ``rst_ni && rst_warm_ni`` (sep_system_csr.sv u_sep_scratch_reg_warm),
-    where ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni`` (sep.sv:816,
-    sep_reset_ctrl.sv:59). A warm reset (wdt_rst_ni low) clears it.
-  * SCRATCH_COLD (base 0x1080_2000) is in the COLD domain -- reset by ``rst_ni``
-    only (u_sep_scratch_reg_cold). A warm reset does NOT clear it; only a cold
-    reset (rst_ni) does.
+  * SCRATCH_WARM (base 0x1080_2080) is in the WARM domain. A warm reset
+    (``wdt_rst_ni_i`` low) clears it. VPLAN card
+    ``sep_warm_cold_reset_scratch_test``.
+  * SCRATCH_COLD (base 0x1080_2000) is in the COLD domain. A warm reset does
+    not clear it; only a cold reset (``rst_ni``) does.
 
 Beyond the reference suite (which only warm-resets), it adds the COLD-reset re-init
 half and cross-checks the cold bank both FRONTDOOR (the CPU-LSU AXI
@@ -25,7 +23,8 @@ Checks (each asserts an exact value, so a stuck/X register fails):
                    Cold-domain isolation is CHK-WARM-CLEAR / CHK-WARM-RETAIN
                    (warm bank clears, cold bank retains) -- dbg_sep_reset_n_o has
                    no fan-out from wdt_rst_ni_i, so asserting it stays 1 cannot fail.
-  CHK-BANK-ALIAS : with one distinct pattern in each of the 16 registers, every
+  CHK-BANK-ALIAS : with one distinct pattern in each of the 16 registers (eight
+                   per bank, sep_scratch.rdl SCRATCH[8]), every
                    index of both banks reads back its OWN pattern -- per-register
                    storage with no aliasing between indices or between banks.
                    Cold bank cross-checked word-by-word via scratch_cold_probe_o.
@@ -35,7 +34,8 @@ Checks (each asserts an exact value, so a stuck/X register fails):
   CHK-WARM-BANK  : the warm reset clears ALL 8 warm registers and leaves ALL 8
                    cold registers at their patterns -- the domain split holds per
                    register, not only at index 0.
-  CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset.
+  CHK-WARM-RECOVER: both banks are writable again post-warm-reset, each with
+                   a distinct new pattern.
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
                    default. Probe cross-check on the cold bank.
   CHK-COLD-BANK  : the cold reset clears both banks -- 8 registers each, 16 in
@@ -54,6 +54,7 @@ from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 from seq_lib.sep_scratch_reset_seq import (
     COLD_PATTERN,
+    COLD_PATTERN2,
     COLD_PATTERNS,
     SCRATCH_COLD_0,
     SCRATCH_COLD_ADDRS,
@@ -80,8 +81,8 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         """Slice cold-bank word ``idx`` (32b) out of the 256b scratch_cold_probe_o.
 
         Only the slice being read is required to be known: CHK-COLD-REINIT and
-        CHK-COLD-BANK expect zero there, and rd would resolve an X to the same
-        zero. The other seven words may legitimately be X and are not demanded.
+        CHK-COLD-BANK expect zero there, so an X in it must raise. The other
+        seven words may legitimately be X and are not demanded.
         """
         probe = self.rd_known(cocotb.top.scratch_cold_probe_o, 0xFFFF_FFFF << (32 * idx))
         return (probe >> (32 * idx)) & 0xFFFF_FFFF
@@ -89,12 +90,10 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
     async def _check_reset_obs(self, sig, name: str, expected: int) -> None:
         """Assert a reset observable equals an exact value.
 
-        A zero expectation reads through rd_known: rd resolves X to 0, so
-        ``== 0`` would also hold for an observable nothing drives, which is the
-        whole point of a reset check. A one expectation is safe on rd -- an X
-        cannot satisfy it.
+        ``rd`` raises on an X/Z bit, so neither ``== 0`` nor ``== 1`` can hold
+        for an observable nothing drives.
         """
-        val = self.rd_known(sig) if expected == 0 else self.rd(sig)
+        val = self.rd(sig)
         if val != expected:
             raise AssertionError(f"{name}: expected {expected}, got {val}")
         self.logger.info("PASS: %s == %d", name, expected)
@@ -212,29 +211,30 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             SCRATCH_N,
         )
 
-        # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset ---
+        # --- CHK-WARM-RECOVER: both banks writable again post-warm-reset ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
+        await self.scr.write(SCRATCH_COLD_0, COLD_PATTERN2)
         warm_rec = await self.scr.read(SCRATCH_WARM_0)
+        cold_rec = await self.scr.read(SCRATCH_COLD_0)
         assert warm_rec == WARM_PATTERN2, (
             f"CHK-WARM-RECOVER SCRATCH_WARM[0]=0x{warm_rec:08x} != 0x{WARM_PATTERN2:08x}"
         )
-        cold_rec = await self.scr.read(SCRATCH_COLD_0)
-        assert cold_rec == COLD_PATTERNS[0], (
-            f"CHK-WARM-RECOVER SCRATCH_COLD[0]=0x{cold_rec:08x} != 0x{COLD_PATTERNS[0]:08x}"
+        assert cold_rec == COLD_PATTERN2, (
+            f"CHK-WARM-RECOVER SCRATCH_COLD[0]=0x{cold_rec:08x} != 0x{COLD_PATTERN2:08x}"
         )
         self.logger.info(
             "CHK-WARM-RECOVER PASS: warm SCRATCH_WARM[0] re-written 0x%08x, cold "
-            "SCRATCH_COLD[0] still 0x%08x across the warm reset",
+            "SCRATCH_COLD[0] re-written 0x%08x after the warm reset",
             warm_rec,
             cold_rec,
         )
 
         # --- CHK-COLD-REINIT: a cold reset clears BOTH banks ---
-        # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
+        # State going in: SCRATCH_COLD[0]=COLD_PATTERN2, SCRATCH_WARM[0]=WARM_PATTERN2.
         # resense() pulses rst_ni low->high and re-gates fuse-sense; the clocks keep
         # running and the cocotb-driven idle defaults persist across the pulse. Both
-        # banks' arst_n deasserts on rst_ni (cold: rst_ni; warm: rst_ni && rst_warm_ni),
-        # so both must return to the reset default.
+        # banks' arst_n asserts on cold reset (cold: rst_ni; warm: rst_warm_ni,
+        # which already includes rst_ni), so both must return to the reset default.
         # Re-arm BOTH banks first. The warm reset above cleared warm[1..7] and only
         # warm[0] was rewritten, so without this the cold-reset assertion on those
         # seven is satisfied by state the warm reset already produced and cannot
@@ -249,8 +249,8 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             f"cold={[hex(v) for v in rearm_cold]}"
         )
         self.logger.info(
-            "CHK-COLD-BANK PASS (pre-reset arming): %d warm + %d cold registers armed, "
-            "warm[0]=0x%08x warm[%d]=0x%08x cold[0]=0x%08x cold[%d]=0x%08x",
+            "CHK-COLD-ARM PASS: %d warm + %d cold registers armed before the cold "
+            "reset, warm[0]=0x%08x warm[%d]=0x%08x cold[0]=0x%08x cold[%d]=0x%08x",
             SCRATCH_N,
             SCRATCH_N,
             rearm_warm[0],

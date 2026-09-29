@@ -25,18 +25,20 @@ from check_no_vendor_paths import (  # noqa: E402
 )
 
 SIM_CFG = "smu_sim_cfg.toml"
-CATALOG = "testlists/wrapper.toml"
+CATALOG = "testlists/all.toml"
 # The wrapper has one compile profile: SEP=1 with the real EL2 CPU.
 TARGET_SEP_RTL = "compile_smu_chiplet"
 SMOKE_TESTS = {
-    "smu_wrapper_elaboration_sep_rtl_test": TARGET_SEP_RTL,
+    "smu_wrapper_elaboration_test": TARGET_SEP_RTL,
     "smu_smc_smoke_test": TARGET_SEP_RTL,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Merge-gate smoke: the elaboration leaf and both firmware smokes.
-EXPECTED_SMOKE_GROUP = {
-    "smu_wrapper_elaboration_sep_rtl_test",
+# The firmware boot smoke group: the elaboration leaf and both firmware smokes.
+# The PR gate `smoke` is toolchain-free and does not include them.
+EXPECTED_FW_BOOT_GROUP = {
+    "smu_wrapper_elaboration_test",
     "smu_smc_smoke_test",
+    "smu_smc_fabric_test",
     "smu_sep_smoke_test",
 }
 
@@ -52,9 +54,9 @@ REQUIRED_SOURCES = (
     "cocotb_wrapper/tests/smu_wrapper_elaboration_test.py",
     "cocotb_wrapper/tests/smu_smc_smoke_test.py",
     "cocotb_wrapper/tests/smu_sep_smoke_test.py",
-    "common/seq_lib/smu_wrapper_elaboration_seq.py",
-    "common/seq_lib/smu_smc_smoke_seq.py",
-    "common/seq_lib/smu_sep_smoke_seq.py",
+    "cocotb_wrapper/seq_lib/smu_wrapper_elaboration_seq.py",
+    "cocotb_wrapper/seq_lib/smu_smc_smoke_seq.py",
+    "cocotb_wrapper/seq_lib/smu_sep_smoke_seq.py",
     "cocotb_wrapper/env/smu_env_cfg.py",
     "cocotb_wrapper/env/smu_boot_scoreboard.py",
     CATALOG,
@@ -166,10 +168,10 @@ def check_sources(result: Readiness) -> None:
             passed = test is not None and test.get("target") == target
             detail = f"target={test.get('target')}" if test is not None else "missing from catalog"
             result.record(f"catalog:{test_name}", passed, detail)
-        expected_group = EXPECTED_SMOKE_GROUP
-        smoke_group = set(groups.get("smoke", []))
+        expected_group = EXPECTED_FW_BOOT_GROUP
+        smoke_group = set(groups.get("fw_boot", []))
         result.record(
-            "catalog:smoke_group",
+            "catalog:fw_boot_group",
             smoke_group == expected_group,
             f"tests={sorted(smoke_group)}",
         )

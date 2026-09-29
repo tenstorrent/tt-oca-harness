@@ -4,24 +4,10 @@
 /*
  * OCCP Invalid Message Length (Zero-Length Body) Test
  *
- * Sends READ and WRITE commands while forcing the request's internal transfer
- * length (WLen/RLen) to 0 using the test context length injection.
- *
- * Expected outcome and its authority: the target must return an error response
- * carrying code 0x03 `Invalid_header`. occp-protocol.adoc:310-313 defines 0x03
- * as "A command body length or encoded transfer size is invalid", and the ROM
- * implements exactly that for a zero encoded length -- WRITE at
- * bootrom/prod/lib/src/occp.c:1181-1186, READ at occp.c:1324-1330. Both also
- * file an SMC_OCCP_ERROR_{WRITE,READ}_OVERFLOW status record; the error
- * response and the status record are emitted together, not as alternatives.
- *
- * ctx->exp_response_code pins that code, so occp_get_response_header
- * (occp_commands.c:331-334) fails the command on any other error code and
- * (occp_commands.c:354-357) fails it if no error comes back at all.
- *
- * The sibling smc_occp_zero_length_transfer_test reaches the same target state
- * without the injection, by passing byte_length = 0, and asserts this same
- * outcome.
+ * Sends READ and WRITE commands while forcing the OCCP header length field to 0
+ * using the test context length injection. Expects the target to return an
+ * error response with code INVALID_MESSAGE_LENGTH. The command helpers treat
+ * that as success under injection, mirroring the unsupported status ID test style.
  */
 
 #include "occp_test_common.h"
@@ -31,12 +17,11 @@
 static void run_zero_len_body_cases(test_context_t *ctx) {
     uint64_t range = ctx->test_upper_addr_bound - ctx->test_base_addr;
     uint64_t addr = ctx->test_base_addr + (get_random_int() % (range ? range : 4));
-    addr &= 0xfffffffffffffffcULL; /* 4B aligned */
+    addr &= 0xfffffffffffffffcULL;
     uint8_t data[8] = {0};
 
     simputs("=== OCCP Invalid Message Length (force zero) ===\n");
 
-    /* Force invalid message length error via context */
     ctx->invalid_message_length_zero_inject_enable = true;
     ctx->exp_response_code = OCCP_INVALID_HEADER;
 
@@ -59,7 +44,6 @@ static void run_zero_len_body_cases(test_context_t *ctx) {
     }
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
-    /* Clean up to avoid affecting later commands */
     ctx->invalid_message_length_zero_inject_enable = false;
 }
 
@@ -95,13 +79,10 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    /* Warm-up with valid commands for stability */
     execute_random_commands(&test_ctx, 5);
 
-    /* Run zero-length message body cases */
     run_zero_len_body_cases(&test_ctx);
 
-    /* Cool-down to ensure interface recovers */
     execute_random_commands(&test_ctx, 5);
 
     finalize_test_results(&test_ctx);

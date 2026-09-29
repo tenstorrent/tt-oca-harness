@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     width="1000" height="1000" viewBox="0 0 1000 1000"
+     role="img" aria-labelledby="diagram-title diagram-description">
+  <title id="diagram-title">Debug and Test Ports (DTP)</title>
+  <desc id="diagram-description">The JTAG Interface Unit contains PTAP, a STAP
+    chain, an iJTAG SIB network and JTAG2AXI bridges. PTAP supplies the Cross
+    Trigger Network's clock-stop aggregator. The cross-trigger matrix connects
+    to internal triggers and cross-trigger ports. Separate arrows connect the
+    JTAG pads, CTP pads and SMC AXI-Lite interface to their respective blocks.</desc>
+  <defs>
+    <style>
+      text { font-family: sans-serif; fill: #333333; text-anchor: middle; }
+      .title, .heading { font-size: 24px; font-weight: bold; }
+      .detail { font-size: 22px; fill: #555555; }
+      .jiu { fill: #dce8f4; stroke: #4a7baa; stroke-width: 1.5; }
+      .ctn { fill: #f4dcdc; stroke: #aa4a4a; stroke-width: 1.5; }
+      .external { fill: #eeeeee; stroke: #888888; stroke-width: 1.5; }
+      .route { fill: none; stroke-width: 2; }
+      .jtag { stroke: #4a7baa; marker-end: url(#arr-b); }
+      .trigger { stroke: #aa4a4a; marker-end: url(#arr-r); }
+      .pad { stroke: #555555; marker-end: url(#arr-g); }
+      .control { stroke: #998866; marker-end: url(#arr-k); }
+      .secondary { stroke-dasharray: 6 4; }
+    </style>
+    <marker id="arr-b" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10"
+            refX="10" refY="5" orient="auto">
+      <path d="M0,0 L0,10 L10,5 z" fill="#4a7baa"/>
+    </marker>
+    <marker id="arr-r" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10"
+            refX="10" refY="5" orient="auto">
+      <path d="M0,0 L0,10 L10,5 z" fill="#aa4a4a"/>
+    </marker>
+    <marker id="arr-g" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10"
+            refX="10" refY="5" orient="auto">
+      <path d="M0,0 L0,10 L10,5 z" fill="#555555"/>
+    </marker>
+    <marker id="arr-k" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10"
+            refX="10" refY="5" orient="auto">
+      <path d="M0,0 L0,10 L10,5 z" fill="#998866"/>
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="white"/>
+
+  <text x="500" y="30" class="title">Debug and Test Ports (DTP)</text>
+  <rect id="dtp-boundary" x="20" y="50" width="960" height="810" rx="8"
+        fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="12 6"/>
+  <rect id="jiu-boundary" x="50" y="85" width="370" height="740" rx="6"
+        fill="#f0f4f8" stroke="#4a7baa" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <rect id="ctn-boundary" x="460" y="85" width="490" height="740" rx="6"
+        fill="#f4f0f0" stroke="#aa4a4a" stroke-width="1.5" stroke-dasharray="7 5"/>
+  <text x="235" y="120" class="heading">JTAG Interface Unit (JIU)</text>
+  <text x="705" y="120" class="heading">Cross Trigger Network (CTN)</text>
+
+  <g id="ptap">
+    <rect x="120" y="170" width="260" height="90" rx="5" class="jiu"/>
+    <text x="250" y="207" class="heading">PTAP</text>
+    <text x="250" y="240" class="detail">Primary TAP</text>
+  </g>
+  <g id="stap">
+    <rect x="120" y="330" width="260" height="90" rx="5" class="jiu"/>
+    <text x="250" y="367" class="heading">STAP Chain</text>
+    <text x="250" y="400" class="detail">Secondary scan</text>
+  </g>
+  <g id="ijtag">
+    <rect x="120" y="490" width="260" height="90" rx="5" class="jiu"/>
+    <text x="250" y="527" class="heading">iJTAG SIB Network</text>
+    <text x="250" y="560" class="detail">IEEE 1687 network</text>
+  </g>
+  <g id="bridges">
+    <rect x="120" y="670" width="260" height="90" rx="5" class="jiu"/>
+    <text x="250" y="707" class="heading">JTAG2AXI Bridges</text>
+    <text x="250" y="740" class="detail">Parametric</text>
+  </g>
+
+  <g id="clock-stop">
+    <rect x="510" y="170" width="400" height="150" rx="5" class="ctn"/>
+    <text x="710" y="203" class="heading">Clock-Stop Aggregator</text>
+    <text x="710" y="237" class="detail">jtag_clock_stop OR</text>
+    <text x="710" y="269" class="detail">xtrig_clk_stop_req_i</text>
+    <text x="710" y="301" class="detail">produces stop_clks_o</text>
+  </g>
+  <g id="ctm">
+    <rect x="510" y="370" width="220" height="110" rx="5" class="ctn"/>
+    <text x="620" y="402" class="heading">CTM</text>
+    <text x="620" y="433" class="detail">N×M routing</text>
+    <text x="620" y="463" class="detail">matrix</text>
+  </g>
+  <g id="ctp">
+    <rect x="790" y="370" width="140" height="110" rx="5" class="ctn"/>
+    <text x="860" y="414" class="heading">CTPs</text>
+    <text x="860" y="447" class="detail">Parametric</text>
+  </g>
+  <g id="internal-ct">
+    <rect x="510" y="550" width="220" height="90" rx="5" class="ctn"/>
+    <text x="620" y="587" class="heading">Internal CT</text>
+    <text x="620" y="620" class="detail">xtrig_ctm_src/dst</text>
+  </g>
+  <g id="csr">
+    <rect x="510" y="690" width="250" height="110" rx="5" class="ctn"/>
+    <text x="635" y="722" class="heading">AXI-Lite CSR</text>
+    <text x="635" y="753" class="detail">CTM routes · CTP</text>
+    <text x="635" y="783" class="detail">port configuration</text>
+  </g>
+
+  <g id="jtag-pads">
+    <rect x="40" y="910" width="300" height="75" rx="5" class="external"/>
+    <text x="190" y="940" class="heading">JTAG Pads</text>
+    <text x="190" y="972" class="detail">jtag_ptap_client_*</text>
+  </g>
+  <g id="smc">
+    <rect x="490" y="910" width="270" height="75" rx="5" class="external"/>
+    <text x="625" y="940" class="heading">SMC (via SMU)</text>
+    <text x="625" y="972" class="detail">axil_dtp_csr_*</text>
+  </g>
+  <g id="ctp-pads">
+    <rect x="790" y="910" width="180" height="75" rx="5" class="external"/>
+    <text x="880" y="940" class="heading">CTP Pads</text>
+    <text x="880" y="972" class="detail">xtrig_ctp_*</text>
+  </g>
+
+  <g id="connectors">
+    <polyline id="jtag-tdi" points="95,910 95,230 120,230" class="route pad"/>
+    <polyline id="jtag-tdo" points="120,200 70,200 70,910" class="route pad secondary"/>
+    <line id="ptap-stap" x1="250" y1="260" x2="250" y2="330" class="route jtag"/>
+    <polyline id="ptap-ijtag" points="380,230 400,230 400,535 380,535" class="route jtag secondary"/>
+    <polyline id="ptap-bridges" points="380,245 410,245 410,715 380,715" class="route jtag secondary"/>
+    <line id="jtag-clock-stop" x1="380" y1="200" x2="510" y2="200" class="route control secondary"/>
+    <line id="clock-stop-request" x1="935" y1="260" x2="910" y2="260" class="route pad secondary"/>
+    <line id="clock-stop-output" x1="910" y1="295" x2="935" y2="295" class="route pad"/>
+    <line id="ctm-ctp" x1="730" y1="405" x2="790" y2="405" class="route trigger"/>
+    <line id="ctp-ctm" x1="790" y1="445" x2="730" y2="445" class="route trigger secondary"/>
+    <line id="ctm-internal" x1="620" y1="480" x2="620" y2="550" class="route trigger secondary"/>
+    <line id="csr-request" x1="575" y1="910" x2="575" y2="800" class="route trigger"/>
+    <line id="csr-response" x1="660" y1="800" x2="660" y2="910" class="route trigger secondary"/>
+    <line id="ctp-pad-output" x1="840" y1="480" x2="840" y2="910" class="route pad"/>
+    <line id="ctp-pad-input" x1="890" y1="910" x2="890" y2="480" class="route pad secondary"/>
+  </g>
+</svg>

@@ -7,9 +7,6 @@
 [WARNING]
 ====
 This document is currently under development.
-
-- Check license requirements of external IPs
-- Add Dependencies of `tt-oca-harness-model`
 ====
 
 This section outlines the system requirements and dependencies for the
@@ -17,7 +14,7 @@ OCAH project. To install the required packages, refer to xref:setup.adoc[Environ
 
 == System Requirements
 
-* *Linux Distribution*: The guide included in xref:setup.adoc[Environment Setup] is written
+* *Linux Distribution*: The xref:setup.adoc#native[Native Installation guide] is written
 for Ubuntu 26.04 LTS, but most modern distributions should be compatible, though package
 installation instructions may vary. Development on MacOS _should_ also be possible, though
 you will need to handle package installation yourself.
@@ -28,18 +25,17 @@ you will need to handle package installation yourself.
 
 == Software Dependencies
 
-The project uses the following documentation tools, a Python virtual environment for SystemRDL
-and a docker container for synthesis tools:
+The project uses the following documentation tools. See xref:setup.adoc[Environment Setup] for
+installation/setup options.
 
 * *Asciidoctor*: AsciiDoc documentation processing and PDF generation - Requires `asciidoctor-pdf` Version 2.3.24+
 * *Antora*: Multi-repository documentation site generator for AsciiDoc - Version 3.1.10+
 * *Python packages*: Managed by the repo-level `pyproject.toml` and `uv.lock`;
 run `make uv-sync` or `uv sync` from the repository root.
 ** *PeakRDL*: SystemRDL processing and RTL generation
-* *Podman/Docker Containers*: Used for some workflows.
-** If using Podman, also required is *Fuse-OverlayFS*
-* *RISC-V Toolchain*: `riscv64-unknown-elf-*` with support for both 32 bit and 64 bit architectures - used
-to compile firmware and bootcode - containerised alternative available
+* *RISC-V Toolchain*: `riscv64-unknown-elf-*` with support for both 32-bit and
+  64-bit architectures — used to compile firmware and bootcode. Provided by the
+  project container; a native install is optional.
 ** `riscv-unknown-elf-gcc` - Version 15.3.0+ recommended
 ** `binutils-riscv-unknown-elf` - Version 2.44+ recommended
 ** `picolibc-riscv64-unknown-elf` - Version 1.8.12+ recommended
@@ -48,11 +44,13 @@ to compile firmware and bootcode - containerised alternative available
 * *GnuMake*: Version 4.4.1
 * *Bender*: Version 0.32.0 - Used to manage Vendor RTL and code
 * *Slang*: Version 9.1+
-* *Yosys*: Version 0.60+ - Currently only used via a container, included for completeness
+* *Yosys*: Version 0.68+
+** *SV-Elab*: Version 2026-08-30+ (formerly yosys-slang)
 * *GCC*: Version 15.3.0+ recommended
 * *CCache*: Version 4.12.3+
 * *CMake*: Version 4.2.3+
-* The Virtual Platform for testing the SEP Firmware has the following additional dependencies, but installs and manages them itself unless configured otherwise:
+* The Virtual Platform for testing the SEP Firmware has the following additional
+dependencies, but installs and manages them itself unless configured otherwise:
 ** *SystemC*: Version 3.0.2, built with C++20
 ** *Boost*: Version 1.84.0
 ** *OPENSSL*: Version 3.3.2
@@ -64,5 +62,5 @@ to compile firmware and bootcode - containerised alternative available
 * *Open Source Tools*: No additional licenses required
 * *Commercial Tools*: Valid licenses for VCS, Design Compiler,
 etc are optional, these may be used for alternate workflows.
-* *Dependencies*: Some external IPs may have specific license
-requirements
+* *Dependencies*: All External IPs used within the project are distributed
+under open-source licenses (Mostly Apache/MIT).

@@ -16,7 +16,7 @@
 
 schema_version = 1
 dut = "sep"
-scope_epoch = "sep-code-cov-v1"
+scope_epoch = "sep-code-cov-v2b"
 
 # Report-page pruning only. `urg -hier` drops rows from the report but scores
 # the whole database regardless, so this entry keeps the pages aligned with the
@@ -31,3 +31,36 @@ apply_phase = "report"
 # `-hier` prune assertion pages as well as code pages, so the report matches the
 # instrumented scope instead of showing assertion rows for excluded hierarchy.
 args = ["-hier", "{path}", "-cm_common_hier"]
+
+# Point-level structural ties in the PeakRDL-generated regblocks. Hierarchy-level
+# scope lives in sep_cov_scope.hier; this file waives individual coverage objects
+# inside blocks that stay graded, which `-hier` cannot express.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_regblock_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# External-TRNG AXI-Stream payload. The stream has no master in this
+# elaboration -- sep_ip_integration.sv:773 ties the request struct to zero in
+# RTL, not in the testbench -- so tvalid/tdata/tstrb cannot present a second
+# value on any of the three modules the struct crosses. The source-select mux
+# that consumes the stream is deliberately NOT in this file: its select is a
+# CSR field, so both arms stay graded.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_ext_trng_payload_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]
+
+# Structurally tied inputs on the TT-owned SEP DMA wrapper. Each entry names
+# the RTL tie. Stimulus gaps stay in the denominator. Checksums come from
+# `urg -dump full_exclusions tgl` on the merged VDB, never by hand.
+[[native_files]]
+tool = "vcs"
+role = "exclude"
+path = "sep_unreachable_exclusions.el"
+apply_phase = "report"
+args = ["-elfile", "{path}"]

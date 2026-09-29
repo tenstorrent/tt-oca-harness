@@ -22,7 +22,7 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "sep.h"    /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "sep.h"    /* SEP_TOP_SEP_SRAM_BASE_ADDR / SEP_TOP_SEP_SRAM_SIZE   */
 #include "harden.h" /* fault-injection value launder (harden_u32)  */
 
 /*
@@ -47,7 +47,7 @@
  * slots on a smaller part.
  *
  * Its ceiling is SEP SRAM: the ROM stages a slot's manifest and payload into
- * SRAM to authenticate them, so a slot bigger than OCH_SEP_TOP_SEP_SRAM_SIZE
+ * SRAM to authenticate them, so a slot bigger than SEP_TOP_SEP_SRAM_SIZE
  * has space the ROM can never consume. The default takes that ceiling exactly,
  * which is the reasoning behind the historical 0x40000 stride. The assertions
  * below are the only hard constraints; everything else is policy.
@@ -65,7 +65,7 @@
 #define BOOT_SLOT_MANIFEST_OFFSET 0x1000u
 #endif
 
-_Static_assert(BOOT_SLOT_SIZE <= (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE,
+_Static_assert(BOOT_SLOT_SIZE <= (uint32_t)SEP_TOP_SEP_SRAM_SIZE,
                "BOOT_SLOT_SIZE exceeds SEP SRAM; the ROM stages manifest+payload into SRAM, so "
                "a slot cannot usefully be larger than it");
 _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
@@ -90,10 +90,10 @@ _Static_assert(BOOT_SLOT_MANIFEST_OFFSET < BOOT_SLOT_SIZE,
 #include "sep_dma.h"
 /* Cadence xSPI XIP window (memory-mapped flash), matching sep_dma.c. */
 #ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
+#define SEP_SPI_BASE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
 #endif
 #ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
+#define SEP_SPI_MAX_SIZE ((uint32_t)SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
 #endif
 #endif
 
@@ -169,8 +169,8 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
      * ever be reduced; the two are equal at the default geometry, where a slot is
      * exactly one SRAM in size. */
     const uint32_t slot_span = (uint32_t)BOOT_SLOT_SIZE - (uint32_t)BOOT_SLOT_MANIFEST_OFFSET;
-    const uint32_t sram_base = (uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
-    const uint32_t sram_size = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
+    const uint32_t sram_base = (uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR;
+    const uint32_t sram_size = (uint32_t)SEP_TOP_SEP_SRAM_SIZE;
 
     bool flash_ok_1 =
         boot_flash_range_within(flash_off, len, (uint32_t)PRIMARY_MANIFEST_OFFSET, slot_span) ||

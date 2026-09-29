@@ -9,21 +9,16 @@ name = "smc_register_sanity_test"
 module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }
 seed = 1
 timeout_sec = 1800
-tags = [
-    "smoke", "ci", "axil", "functional",
-    "pyuvm"
-]
+tags = ["smoke", "ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
 name = "smc_default_reg_rd_test"
-module = "smc_default_reg_rd_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_default_reg_rd_test", uvm = "smc_default_reg_rd_test" }
 seed = 1
 timeout_sec = 1800
-tags = [
-    "ci", "axil", "canonical",
-    "pyuvm"
-]
+tags = ["ci", "axil", "canonical"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -31,7 +26,7 @@ name = "smc_register_boundary_depth_test"
 module = "smc_register_boundary_depth_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "depth_reg", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -39,11 +34,31 @@ name = "smc_rdl_field_sweep_test"
 module = "smc_rdl_field_sweep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "pyuvm"]
+tags = ["ci", "axil"]
 run_modes = ["smoke"]
 
-[[groups]]
-name = "depth_reg"
-tests = [
-    "smc_register_boundary_depth_test",
-]
+[[tests]]
+name = "smc_periph_regblock_sweep_test"
+module = "smc_periph_regblock_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_cpu_ctrl_read_only_write_test"
+module = "smc_cpu_ctrl_read_only_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]
+
+[[tests]]
+# Byte writes that hold set fields, W1C fields held across a zero, and zero writes
+# into triggers and status registers.
+name = "smc_regblock_partial_write_test"
+module = "smc_regblock_partial_write_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "register"]
+run_modes = ["smoke"]

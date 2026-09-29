@@ -20,10 +20,11 @@ Three probe shapes, each fail-capable on its own:
   response generation"). The scoreboard enforces both the error response and
   the exact DECERR code; an OKAY or a wedge fails.
 
-``read_external_routed`` additionally samples ``tb_axil_external_active`` on
-every ``clk_smc_i`` edge while an access into the adopter external window is in
-flight, so the decode is proven at the consumer (the external AXI-Lite port)
-rather than inferred from the response alone.
+``read_external_routed`` and ``write_external_routed`` additionally watch the
+adopter external AXI-Lite port while the access is in flight and credit only a
+request on the matching channel carrying the probed address, so the decode is
+proven at the consumer rather than inferred from the response or from port
+activity alone.
 """
 
 from __future__ import annotations
@@ -32,10 +33,16 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_OKAY = 0
 AXI_RESP_DECERR = 3
+
+# The probed word inside the adopter external window: the port may carry the
+# full local address or the window offset, so both are compared on the window
+# bits above the byte lane.
+_EXTERNAL_WORD_MASK = (smc_addr("SMC_TOP_SMC_EXTERNAL_SIZE") - 1) & ~0x3
 
 # Cycles the external-window activity sampler keeps running after the access
 # completes, so a request that is still being drained is not missed.
@@ -120,28 +127,35 @@ class SmcDecodeProbeSeq(SmcCsrSeq):
         self.accesses += 1
         return item.resp_code, item.rdata
 
-    async def rw_coresident(
-        self,
-        entries: list[tuple[str, int, int, int]],
-        length: int = 4,
-    ) -> None:
-        """Write every ``(label, addr, pattern, restore)`` first, then read all back.
+    async def _count_external_requests(self, addr: int, channel: str, body) -> int:
+        """Run ``body`` and count external-port requests that carry ``addr``.
 
-        The patterns and the addresses must be pairwise distinct: with the
-        writes batched, a decode that collapses two of the addresses onto one
-        register holds the last pattern written and the first readback fails.
-        Every address is then restored and the restore read back exactly.
+        A cycle counts only when the adopter external port presents a request
+        on ``channel`` ("ar" or "aw") whose address falls on the probed word
+        within the external window, so activity from another master or at
+        another address does not credit the probe.
         """
-        assert len({e[1] for e in entries}) == len(entries), "co-resident addresses not distinct"
-        assert len({e[2] for e in entries}) == len(entries), "co-resident patterns not distinct"
-        for label, addr, pattern, _restore in entries:
-            await self.csr_write(f"{label}_PATTERN", addr, pattern, length=length)
-        for label, addr, pattern, _restore in entries:
-            await self.csr_read(f"{label}_PATTERN_RB", addr, expected=pattern, length=length)
-        for label, addr, _pattern, restore in entries:
-            await self.csr_write(f"{label}_RESTORE", addr, restore, length=length)
-        for label, addr, _pattern, restore in entries:
-            await self.csr_read(f"{label}_RESTORE_RB", addr, expected=restore, length=length)
+        dut = cocotb.top
+        valid = getattr(dut, f"tb_axil_external_{channel}valid")
+        port_addr = getattr(dut, f"tb_axil_external_{channel}addr")
+        want = addr & _EXTERNAL_WORD_MASK
+        hits = [0]
+
+        async def _sample() -> None:
+            while True:
+                await RisingEdge(dut.clk_smc_i)
+                v, a = valid.value, port_addr.value
+                if v.is_resolvable and int(v) and a.is_resolvable:
+                    if int(a) & _EXTERNAL_WORD_MASK == want:
+                        hits[0] += 1
+
+        sampler = cocotb.start_soon(_sample())
+        try:
+            await body()
+            await ClockCycles(dut.clk_smc_i, _EXTERNAL_DRAIN_CYCLES)
+        finally:
+            sampler.cancel()
+        return hits[0]
 
     async def read_external_routed(
         self,
@@ -154,37 +168,47 @@ class SmcDecodeProbeSeq(SmcCsrSeq):
     ) -> tuple[int, int]:
         """Read into the adopter external window and prove the port carried it.
 
-        Returns ``(rdata, active_cycles)`` where ``active_cycles`` is the
-        number of ``clk_smc_i`` edges at which ``tb_axil_external_active`` was
-        1 during the access; zero fails, because then the address was answered
-        by something other than the external AXI-Lite port.
+        Returns ``(rdata, request_cycles)`` where ``request_cycles`` is the
+        number of ``clk_smc_i`` edges at which the external port presented a
+        read request for ``addr``; zero fails, because then the address was
+        answered by something other than the external AXI-Lite port.
         """
-        dut = cocotb.top
-        hits = [0]
+        result = [0]
 
-        async def _sample() -> None:
-            handle = dut.tb_axil_external_active
-            while True:
-                await RisingEdge(dut.clk_smc_i)
-                value = handle.value
-                if value.is_resolvable and int(value):
-                    hits[0] += 1
-
-        sampler = cocotb.start_soon(_sample())
-        try:
+        async def _read() -> None:
             if decerr:
-                rdata = await self.read_decerr(label, addr, length=length)
+                result[0] = await self.read_decerr(label, addr, length=length)
             else:
-                rdata = await self.csr_read(label, addr, expected=expected, length=length)
-            await ClockCycles(dut.clk_smc_i, _EXTERNAL_DRAIN_CYCLES)
-        finally:
-            sampler.cancel()
-        assert hits[0] > 0, (
-            f"{label} @ 0x{addr:08x}: tb_axil_external_active never sampled 1 "
-            f"while the access was in flight, so the address was not routed "
-            f"to the adopter external AXI-Lite port"
+                result[0] = await self.csr_read(label, addr, expected=expected, length=length)
+
+        hits = await self._count_external_requests(addr, "ar", _read)
+        assert hits > 0, (
+            f"{label} @ 0x{addr:08x}: the adopter external AXI-Lite port never presented a "
+            f"read request for this address while the access was in flight, so it was not "
+            f"routed there"
         )
-        return rdata & ((1 << (length * 8)) - 1), hits[0]
+        return result[0] & ((1 << (length * 8)) - 1), hits
+
+    async def write_external_routed(
+        self, label: str, addr: int, data: int, *, length: int = 4
+    ) -> tuple[int, int]:
+        """Write into the adopter external window, expecting a refusal, and prove routing.
+
+        Returns ``(resp_code, request_cycles)``; the write must answer an error
+        and the external port must present a write request for ``addr``.
+        """
+        result = [0]
+
+        async def _write() -> None:
+            result[0] = await self.write_expect_error(label, addr, data, length=length)
+
+        hits = await self._count_external_requests(addr, "aw", _write)
+        assert hits > 0, (
+            f"{label} @ 0x{addr:08x}: the adopter external AXI-Lite port never presented a "
+            f"write request for this address while the access was in flight, so it was not "
+            f"routed there"
+        )
+        return result[0], hits
 
     def report_cells(self, token: str) -> None:
         """Emit the cell ledger; every closed cell names its measured evidence."""

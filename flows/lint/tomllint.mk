@@ -11,20 +11,14 @@ include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 # default) scopes to the whole repo. tomllint takes no config file (there is
 # nothing to ignore by), so exclusions live in this find call rather than in
 # a sibling config, unlike yamllint's .yamllint.yml.
-TOML_PATH ?=
-
-ocah_toml_root := $(if $(TOML_PATH),$(OCAH_ROOT)/$(TOML_PATH),$(OCAH_ROOT))
+TOML_PATH ?= .
 
 # .toml files under TOML_PATH, excluding vendor/nonfree, build output, and the
 # local uv venv (which vendors its own third-party Cargo.toml resources).
-# Also excludes slang-tidy's own config file: slang-tidy expects a filename
-# ending in .toml (see --config-file in hw/ip/scrambler/dv/lint/Makefile) but
-# parses it with its own Checks:/CheckConfigs: grammar, not TOML -- a real
-# TOML parser correctly rejects it (see tools/tidy/README.md upstream).
-ocah_toml_files = $(shell find $(ocah_toml_root) -name '*.toml' \
+ocah_toml_files = $(shell cd $(OCAH_ROOT) && find $(TOML_PATH) -name '*.toml' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
 	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
-	-not -path '*/.venv/*' -not -path '*/hw/ip/scrambler/dv/lint/scrambler.toml' 2>/dev/null)
+	-not -path '*/.venv/*' 2>/dev/null)
 
 ocah_toml_check_files = @[ -n "$(strip $(ocah_toml_files))" ] || { echo "error: no .toml files under $(if $(TOML_PATH),$(TOML_PATH),repo root)" >&2; exit 1; }
 

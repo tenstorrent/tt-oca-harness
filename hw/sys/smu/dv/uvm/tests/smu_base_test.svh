@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMU base test (ocah_test realization): builds the two configuration
-// levels and the environment, walks the power-good / cold-reset ladder, and
-// runs every scenario as a virtual sequence on the environment's virtual
-// sequencer through the library's looped-scenario runner.
-//
-//   1. build smu_test_cfg: seed and random volume from the library
-//      accessors, the knob-derived controls, then the test's
-//      configure_test_cfg() hook (required scoreboard features, aggregate
-//      JTAG evidence policy); srandom(seed) + randomize() draws the clock
-//      periods, the TCK period, and the settle;
-//   2. derive smu_env_cfg from it and publish both through uvm_config_db;
-//      build smu_env;
-//   3. bring_up(): the cocotb smu_base_test.bring_up ladder through
-//      smu_tb_if in ref-clock cycles of the randomized period, then the
-//      bounded polls of the cold-stable and primary reset releases;
-//      run_looped_scenario() (ocah_test) then starts create_scenario_seq()
-//      on m_env.m_vseqr once per pass with scenario_seed = seed + pass.
-//
-// Knobs (plusargs here, environment variables in the cocotb twin
-// tests/smu_base_test.py): +<specific>=N per test, +<group>=N per group,
-// +SMU_TEST_LOOPS=N suite-wide, +SMU_RANDOM_COUNT=N random volume per pass;
-// the negative-validation switch is read into smu_test_cfg (read_knobs).
-// The pass banner comes from ocah_test.
+// SMU base test (ocah_test realization): builds the two configuration levels
+// and the environment, walks the power-good / cold-reset ladder, and runs
+// every scenario as a virtual sequence on the environment's virtual sequencer
+// through the library's looped-scenario runner.    1. build smu_test_cfg: seed
+// and random volume from the library      accessors, the knob-derived
+// controls, then the test's      configure_test_cfg() hook (required
+// scoreboard features, aggregate      JTAG evidence policy, the TCK floor);
+// srandom(seed) + randomize()      draws the clock periods, the TCK period,
+// and the settle;   2. derive smu_env_cfg from it and publish both through
+// uvm_config_db;      build smu_env;   3. bring_up(): the cocotb
+// smu_base_test.bring_up ladder through      smu_tb_if in ref-clock cycles of
+// the randomized period -- a TAP reset      before the cold-reset release and
+// another after it, so the IC_RESET      TDR loads its reset image instead of
+// holding the SMC in reset --      then the bounded polls of the cold-stable
+// and primary reset      releases; run_looped_scenario() (ocah_test) then
+// starts      create_scenario_seq() on m_env.m_vseqr once per pass with
+// scenario_seed = seed + pass.  Knobs (plusargs here, environment variables in
+// the cocotb twin cocotb_wrapper/tests/smu_base_test.py): +<specific>=N per
+// test, +<group>=N per group, +SMU_TEST_LOOPS=N suite-wide,
+// +SMU_RANDOM_COUNT=N random volume per pass; the negative-validation switches
+// are read into smu_test_cfg (read_knobs). The pass banner comes from
+// ocah_test.
 
 class smu_base_test extends ocah_test;
   `uvm_component_utils(smu_base_test)
@@ -43,7 +42,7 @@ class smu_base_test extends ocah_test;
     test_cfg.random_count = random_count();
     test_cfg.read_knobs();
     configure_test_cfg(test_cfg);
-    // The one draw before run_phase: the bench-level dimensions (clock,
+    // The one draw before run_phase: the bench-level dimensions (clocks,
     // TCK, and settle) come from the runner seed through srandom(), so a
     // run replays from the seed alone.
     test_cfg.srandom(test_cfg.seed);
@@ -90,6 +89,7 @@ class smu_base_test extends ocah_test;
     smu_seq.dtp_tb_vif = m_env.dtp_tb_vif;
     smu_seq.test_cfg   = test_cfg;
     smu_seq.env_cfg    = env_cfg;
+    smu_seq.scoreboard = m_env.m_scoreboard;
     smu_seq.evidence   = m_env.m_jtag_checker;
   endfunction
 
@@ -100,25 +100,39 @@ class smu_base_test extends ocah_test;
   endfunction
 
   // Clock/reset bring-up (cocotb bring_up parity): power-good and cold
-  // reset asserted while the clocks start, then power-good, then cold-reset
-  // release after the power-good sync and the 32-cycle cold deglitch, then
-  // the post-reset settle and the bounded polls of the cold-stable and
-  // primary reset releases. The ladder holds the only wall-clock waits in
-  // test code, derived from the randomized ref-clock period.
+  // reset asserted while the clocks start, a TAP reset so the DTP IC_RESET
+  // TDR holds its reset image rather than a power-up override that would
+  // keep the SMC in cold reset, then power-good, then cold-reset release
+  // after the power-good sync and the 32-cycle cold deglitch, a second TAP
+  // reset, then the post-reset settle and the bounded polls of the
+  // cold-stable and primary reset releases. The ladder holds the only
+  // wall-clock waits in test code, derived from the randomized ref-clock
+  // period.
   virtual task bring_up();
     m_env.tb_vif.powergood  <= 1'b0;
     m_env.tb_vif.rst_cold_n <= 1'b0;
     wait_ref_cycles(test_cfg.powergood_delay_cycles);
+    tap_reset_on_jtag_seqr("before power-good");
     `uvm_info(get_type_name(), "asserting powergood", UVM_LOW)
     m_env.tb_vif.powergood <= 1'b1;
     wait_ref_cycles(test_cfg.cold_release_delay_cycles);
     `uvm_info(get_type_name(), "releasing cold reset", UVM_LOW)
     m_env.tb_vif.rst_cold_n <= 1'b1;
+    tap_reset_on_jtag_seqr("after cold-reset release");
     wait_ref_cycles(test_cfg.post_reset_settle_cycles);
     wait_reset_released("rst_cold_stable_ref_clk_no", m_env.tb_vif.rst_cold_stable_ref_clk_n);
     wait_reset_released("rst_primary_smc_clk_no", m_env.tb_vif.rst_primary_smc_clk_n);
     `uvm_info(get_type_name(), "SMU bring-up complete (powergood + cold/primary resets released)",
               UVM_LOW)
+  endtask
+
+  // One TAP reset operation straight on the JTAG agent sequencer (the
+  // bring-up runs before any scenario pass owns the virtual sequencer).
+  protected task tap_reset_on_jtag_seqr(string when);
+    smu_jtag_tap_reset_seq op = smu_jtag_tap_reset_seq::type_id::create("bring_up_tap_reset");
+    `uvm_info(get_type_name(), {"TAP reset ", when}, UVM_LOW)
+    op.entry_state = OCAH_JTAG_TEST_LOGIC_RESET;
+    op.start(m_env.m_jtag_env.m_sequencer);
   endtask
 
   // Bounded ref-clock poll of one reset-release observable (cocotb

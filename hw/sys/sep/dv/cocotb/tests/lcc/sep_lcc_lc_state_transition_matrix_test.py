@@ -2,6 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LC_STATE next state on the shadow write-1-to-set path (OSS).
 
+No testlist entry carries this module's name. Seven entries in
+``testlists/efuse_lcc.toml`` run it, each selecting a start state with
+``+lc_start=N``: sep_lcc_lc_state_w1s_prod_test (1),
+sep_lcc_lc_state_w1s_prod_demote_test, sep_lcc_lc_state_w1s_rma_sip_test,
+sep_lcc_lc_state_w1s_rma_chiplet_test, sep_lcc_lc_state_w1s_prod_end_test,
+sep_lcc_lc_state_w1s_prod_end_rma_test (the two PROD_END exits, pinned with
+``+lc_prod_end_exit``) and sep_lcc_lc_state_w1s_transient_test. Run one of those names, not this one.
+
 The lifecycle stitch walk covers the OTP-program path: burn a fuse bit, re-sense,
 check the decode. This test covers the OTHER writer of LC_STATE -- the frontdoor
 shadow write, whose setup phase computes the next lifecycle state in
@@ -58,22 +66,35 @@ Checkers, by leaf (``+lc_start`` value):
     * CHK-CHIP-ADVANCE   bit 2 with a match reaches RMA_CHIPLET.
     * CHK-INVALID-REACH  a write whose result is outside the named set lands
                          there, and FEAT_CTRL fails closed to 0.
-    * CHK-INVALID-TERM   from there, a write of every bit with BOTH tokens
-                         matched changes nothing.
   6 (RMA_CHIP_0)
     * CHK-RMA-BIT0       bit 0 sets inside RMA_CHIPLET (0x6 -> 0x7).
   8 (PROD_END)
-    * CHK-PROD-END-INVALID  PROD_END's reachable destination is INVALID.
+    * CHK-PROD-END-INVALID  PROD_END's reachable destination is INVALID. The
+                           seed selects one of the two exits (one sensed start
+                           per leaf, and either exit leaves PROD_END):
+                           - bit0: a write of the ungated bit 0 lands on 0x9;
+                           - rma_sip: the RMA path. An RMA_SIP token match and a
+                             write of bit 1 land on the golden INVALID 0xA, not on
+                             a named RMA state.
+                           FEAT_CTRL fails closed to 0 on both exits.
+    * CHK-INVALID-TERM     from the INVALID state the exit reached, a write of
+                           the remaining lifecycle bits with both tokens matched
+                           changes nothing.
   8 + transient RMA
     * CHK-TRANSIENT-INVALID  the transient path applies the same W1S and token
                              rules with no bus request, INVALID result included.
 
-Every leaf also runs CHK-UPPER-MERGE: LC_STATE bytes [31:8] OR-merge as ordinary
-shadow bytes and do not disturb the lifecycle nibble.
+Every leaf with a bus-write cell also runs CHK-UPPER-WRITE: two seed-derived
+[31:8] patterns with a unique bit each. LC_STATE[31:8] is sep_efuse_map.rdl's
+``rsvd`` field and takes a plain shadow write, so the second pattern replaces
+the first; a stale OR of the two fails. The set-only rule covers the lifecycle
+nibble alone (CHK-W1S-NO-CLEAR), not these bytes.
 
 RANDCFG: the tokens and the byte [31:8] pattern come from the run seed
-(``SepLcTransitionCfg``); the cells within a leaf are fixed, so no contract is
-seed-selected.
+(``SepLcTransitionCfg``). The two PROD_END leaves pin the exit with
+``+lc_prod_end_exit=bit0|rma_sip``; without it the seed selects one
+(``_prod_end_exit``).
+Every other cell within a leaf is fixed.
 """
 
 from __future__ import annotations
@@ -81,29 +102,37 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env.sep_efuse_image import LC_WORD_IDX
+from env.sep_efuse_image import LC_WORD_IDX, lc_encode
 from env.sep_lc_transition import SIP_DIS, SYS_DIS, SepLcTransitionCfg
 from env.sep_lcc_golden import (
     LC_PROD,
     LC_PROD_END,
     LC_RMA_CHIP_0,
     LC_RMA_SIP_0,
+    feat_ctrl_expected,
     is_invalid_lc,
     is_valid_lc_transition,
     lc_state_name,
     lc_state_next,
 )
+from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_CMP_INJECT_COLLAPSE,
     TOKEN_CMP_INJECT_OFF,
     TOKEN_CMP_SEL_SIP,
     TOKEN_ERROR,
+    TOKEN_MATCH,
     TOKEN_RMA_CHIPLET,
     TOKEN_RMA_SIP,
     SepRmaTokenMatchSeq,
+    SepRmaTokenStatusSeq,
 )
-from seq_lib.sep_lc_shadow_write_seq import SepLcShadowWriteSeq
+from seq_lib.sep_lc_shadow_write_seq import (
+    LC_STATE_BYTE_MASK,
+    LC_STATE_UPPER_MASK,
+    SepLcShadowWriteSeq,
+)
 from seq_lib.sep_lcc_inbound_filter_gating_seq import DEMOTE_BIT, SepLccDemoteSeq
 
 _MAX_SENSE_CYCLES = 20_000
@@ -111,6 +140,13 @@ _MAX_SENSE_CYCLES = 20_000
 # Starting states this test knows how to walk. A leaf that asks for anything
 # else is a testlist/registry mistake, not a DUT failure, so it fails loudly.
 _SUPPORTED_STARTS = (LC_PROD, LC_RMA_SIP_0, LC_RMA_CHIP_0, LC_PROD_END)
+
+# The two exits from PROD_END. One sensed start per leaf, and each exit leaves
+# PROD_END, so a leaf walks one of them; the seed selects which.
+_PROD_END_EXITS = ("bit0", "rma_sip")
+# Salt for the exit-choice stream, so it is independent of the SepLcTransitionCfg
+# stream drawn from the same seed.
+_PROD_END_EXIT_SALT = 0x5052_4F44_454E_4400
 
 
 @pyuvm.test()
@@ -131,6 +167,18 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
     def _flag(name: str) -> bool:
         return name in cocotb.plusargs
 
+    def _prod_end_exit(self) -> str:
+        """PROD_END exit for this seed, or the ``+lc_prod_end_exit`` override."""
+        raw = cocotb.plusargs.get("lc_prod_end_exit")
+        if raw not in (None, "", True):
+            choice = str(raw)
+            assert choice in _PROD_END_EXITS, (
+                f"+lc_prod_end_exit={choice} is not one of {_PROD_END_EXITS}"
+            )
+            return choice
+        rng = SepSeededRng(self.cfg_lc.seed ^ _PROD_END_EXIT_SALT)
+        return _PROD_END_EXITS[rng.randrange(len(_PROD_END_EXITS))]
+
     # -- setup ---------------------------------------------------------------
     async def _sense(self, lc_raw: int, *, transient_rma: bool) -> None:
         """Bring up on the t=0 image for this leaf's starting state."""
@@ -149,9 +197,8 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         self._demote_1 = 0
         self._demote_2 = 0
         self._cur = lc_raw
-        # Bytes [31:8] of the sensed LC word; the walk OR-merges the seed
-        # nuisance pattern into them on its first write.
-        self._upper = image.shadow_word(LC_WORD_IDX) & 0xFFFF_FF00
+        # Bytes [31:8] of the sensed LC word, before any shadow write.
+        self._upper = image.shadow_word(LC_WORD_IDX) & LC_STATE_UPPER_MASK
         sec_dis = int(getattr(cocotb.top, "lcc_security_disable_probe_o").value) & 0x1
         assert sec_dis == 0, (
             "SEC_DIS is asserted, which forces FEAT_CTRL to all-ones and would "
@@ -230,10 +277,12 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         *,
         do_write: bool = True,
         expect: int | None = None,
+        upper: int | None = None,
     ) -> int:
         """Run one cell; the expected next state comes from the chapter golden."""
         prev = self._cur
-        full_wdata = (wdata & 0xFF) | self.cfg_lc.nuisance
+        pattern = self.cfg_lc.nuisance if upper is None else upper
+        full_wdata = (wdata & LC_STATE_BYTE_MASK) | pattern
         if do_write:
             expected = lc_state_next(
                 prev,
@@ -241,7 +290,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 sip_match=self._sip_match,
                 chiplet_match=self._chiplet_match,
             )
-            expected_upper = self._upper | self.cfg_lc.nuisance
+            expected_upper = pattern
         else:
             # Readback-only cell: the move was caused by something other than a
             # bus write, so the caller supplies the golden.
@@ -275,11 +324,37 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
         if do_write:
             assert seq.observed_word is not None
-            assert (seq.observed_word & 0xFFFF_FF00) == expected_upper, (
-                f"CHK-UPPER-MERGE FAIL: {tag} LC_STATE[31:8] = "
-                f"0x{seq.observed_word & 0xFFFF_FF00:08x} want 0x{expected_upper:08x}"
+            assert (seq.observed_word & LC_STATE_UPPER_MASK) == expected_upper, (
+                f"CHK-UPPER-WRITE FAIL: {tag} LC_STATE[31:8] = "
+                f"0x{seq.observed_word & LC_STATE_UPPER_MASK:08x} want 0x{expected_upper:08x}"
             )
+            assert seq.observed_word == (expected_upper | lc_encode(expected)), (
+                f"{tag}: LC_STATE word 0x{seq.observed_word:08x} != "
+                f"0x{(expected_upper | lc_encode(expected)):08x}"
+            )
+            if tag == "CHK-UPPER-WRITE":
+                self.logger.info(
+                    "CHK-UPPER-WRITE PASS: LC_STATE[31:8]=0x%08x is the second "
+                    "pattern alone; the prior 0x%08x did not persist",
+                    expected_upper,
+                    self._upper,
+                )
             self._upper = expected_upper
+        want_feat = feat_ctrl_expected(
+            expected,
+            SIP_DIS,
+            SYS_DIS,
+            demote_1=self._demote_1,
+            demote_2=self._demote_2,
+            sec_dis=0,
+        )
+        assert observed == expected, (
+            f"{tag}: DUT LC 0x{observed:x} ({lc_state_name(observed)}) != "
+            f"golden 0x{expected:x} ({lc_state_name(expected)})"
+        )
+        assert seq.observed_feat == want_feat, (
+            f"{tag}: FEAT_CTRL 0x{seq.observed_feat:016x} != golden 0x{want_feat:016x}"
+        )
         self._cur = int(observed)
         action = f"write 0x{wdata:x}" if do_write else "no write"
         self.logger.info(
@@ -295,6 +370,22 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         )
         return int(observed)
 
+    async def _prove_upper_write(self) -> None:
+        """Second [31:8] write replaces the first: rsvd takes a plain shadow write."""
+        second = self.cfg_lc.nuisance2
+        # Non-vacuity: the two patterns must differ in both directions, so a
+        # DUT that OR-merged instead of replacing would fail this cell rather
+        # than land on the same value either way.
+        assert second & ~self._upper & LC_STATE_UPPER_MASK, (
+            "CHK-UPPER-WRITE FAIL: second pattern adds no new bits "
+            f"(prior=0x{self._upper:08x} second=0x{second:08x})"
+        )
+        assert self._upper & ~second & LC_STATE_UPPER_MASK, (
+            "CHK-UPPER-WRITE FAIL: second pattern covers every prior bit, so an "
+            f"OR would read the same (prior=0x{self._upper:08x} second=0x{second:08x})"
+        )
+        await self._cell(0x0, "CHK-UPPER-WRITE", upper=second)
+
     # -- per-leaf walks ------------------------------------------------------
     async def _walk_prod(self) -> None:
         # Read the preloaded state before touching it. Two things depend on
@@ -304,6 +395,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD)
         await self._cell(0x0, "CHK-W1S-NO-CLEAR")
+        await self._prove_upper_write()
         await self._cell(0x2, "CHK-GATE-SIP")
         # CHIPLET matched but RMA_SIP not established: the ordering gate holds
         # here with the token gate already open.
@@ -333,6 +425,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # Non-vacuity for the advance below: this readback's FEAT_CTRL golden
         # carries demote_1/2=1, so it passes only if the demotion took effect.
         await self._cell(0x0, "CHK-DEMOTE-OPEN")
+        await self._prove_upper_write()
         await self._match(TOKEN_RMA_SIP)
         got = await self._cell(0x2, "CHK-DEMOTE-NO-BLOCK")
         assert got == 0x3, (
@@ -348,6 +441,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_SIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
+        await self._prove_upper_write()
         assert got == 0x3, f"RMA_SIP is 4'b001X: 0x2 + bit0 must be 0x3, got 0x{got:x}"
         # No CHIPLET token presented yet: the token gate alone.
         await self._cell(0x4, "CHK-GATE-CHIP-TOK")
@@ -368,12 +462,6 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             "CHK-INVALID-REACH: FEAT_CTRL must fail closed to 0 outside the named "
             f"set, got 0x{self._last_feat:016x}"
         )
-        await self._match(TOKEN_RMA_SIP)
-        got = await self._cell(0xF, "CHK-INVALID-TERM")
-        assert got == 0xF, (
-            "CHK-INVALID-TERM: INVALID is end-of-life; a write of every bit with "
-            f"both tokens matched must change nothing, got 0x{got:x}"
-        )
 
     async def _walk_rma_chiplet(self) -> None:
         # Read the preloaded state before touching it. Two things depend on
@@ -383,19 +471,71 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_RMA_CHIP_0)
         got = await self._cell(0x1, "CHK-RMA-BIT0")
+        await self._prove_upper_write()
         assert got == 0x7, f"RMA_CHIPLET is 4'b011X: 0x6 + bit0 must be 0x7, got 0x{got:x}"
 
-    async def _walk_prod_end(self) -> None:
+    async def _walk_prod_end(self, exit_path: str) -> None:
         # Read the preloaded state before touching it. Two things depend on
         # this: nothing else asserts the image actually starts where the walk
         # claims, and the coverage sampler only records an LC state on a real
         # LC_STATE read -- every cell below writes first, so without this the
         # start state is never observed.
         await self._cell(0x0, "CHK-START-SENSED", do_write=False, expect=LC_PROD_END)
-        got = await self._cell(0x1, "CHK-PROD-END-INVALID")
-        assert is_invalid_lc(got) and got == 0x9, (
-            "CHK-PROD-END-INVALID: PROD_END's reachable destination is INVALID "
-            f"(0x9), got {lc_state_name(got)}"
+        if exit_path == "rma_sip":
+            # The RMA path, which the chapter forbids from PROD_END. The SIP
+            # token gate is open, so the exact compare fails on a DUT that moves
+            # PROD_END into a named RMA state, and on one that holds bit 1 and
+            # stays in PROD_END. The golden result is outside the named set.
+            exit_wdata = 0x2
+            await self._match(TOKEN_RMA_SIP)
+        else:
+            exit_wdata = 0x1
+        want = lc_state_next(
+            LC_PROD_END,
+            exit_wdata,
+            sip_match=self._sip_match,
+            chiplet_match=self._chiplet_match,
+        )
+        assert is_invalid_lc(want), (
+            f"test bug: the golden for the {exit_path} exit from PROD_END is "
+            f"{lc_state_name(want)}, not INVALID"
+        )
+        got = await self._cell(exit_wdata, "CHK-PROD-END-INVALID")
+        exit_feat = self._last_feat
+        await self._prove_upper_write()
+        assert is_invalid_lc(got) and got == want, (
+            f"CHK-PROD-END-INVALID: the {exit_path} exit from PROD_END must land on "
+            f"INVALID 0x{want:x}, got {lc_state_name(got)}"
+        )
+        # Under these disable vectors no in-spec state decodes to 0, so this is a
+        # real discriminator rather than a coincidence.
+        assert exit_feat == 0, (
+            f"CHK-PROD-END-INVALID: FEAT_CTRL after the {exit_path} exit must fail "
+            f"closed to 0, got 0x{exit_feat:016x}"
+        )
+        # The lifecycle bits the exit left clear: bits 1 and 2 after the bit-0
+        # exit, bits 0 and 2 after the bit-1 exit. Bit 0 is ungated, and with
+        # both tokens matched bits 1 and 2 are open too, so a DUT that treated
+        # INVALID as ordinary W1S would set them. The chapter's end-of-life rule
+        # holds them.
+        remaining = 0x7 & ~got
+        await self._match(TOKEN_RMA_SIP)
+        await self._match(TOKEN_RMA_CHIPLET)
+        # Live control for the bit-1 half of the claim: the SIP match must still
+        # hold after the CHIPLET presentation, or a DUT that treats INVALID as
+        # ordinary W1S would also hold the state here and pass.
+        sip = SepRmaTokenStatusSeq(TOKEN_RMA_SIP)
+        await self.start_seq(sip)
+        assert sip.match_code == TOKEN_MATCH, (
+            "CHK-INVALID-TERM: RMA_SIP_TOKEN_MATCH reads "
+            f"0x{sip.match_code:02x} after the RMA_CHIPLET match, expected the match "
+            f"code 0x{TOKEN_MATCH:02x}; the hold below would not be under test"
+        )
+        held = await self._cell(remaining, "CHK-INVALID-TERM")
+        assert held == got, (
+            f"CHK-INVALID-TERM: from INVALID 0x{got:x} a write of the remaining "
+            f"lifecycle bits 0x{remaining:x} with both tokens matched must hold, "
+            f"got 0x{held:x}"
         )
 
     async def _walk_transient(self) -> None:
@@ -415,6 +555,11 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             "CHK-TRANSIENT-INVALID: the transient path must apply the same W1S and "
             f"token rules as the bus path; expected 0x{expected:x}, got 0x{got:x}"
         )
+        # The transient cells never write the shadow. A later bus write of 0
+        # keeps INVALID and lets the two-pattern upper-byte write run on this
+        # leaf too.
+        await self._cell(0x0, "CHK-W1S-NO-CLEAR")
+        await self._prove_upper_write()
 
     # -- entry ---------------------------------------------------------------
     async def run_scenario(self) -> None:
@@ -423,12 +568,14 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         start = self._lc_start()
         demote = self._flag("lc_demote")
         transient = self._flag("lc_transient_rma")
+        prod_end_exit = self._prod_end_exit() if start == LC_PROD_END and not transient else None
         self.logger.info(
-            "lc W1S leaf: start=%s demote=%d transient_rma=%d RANDCFG: %s",
+            "lc W1S leaf: start=%s demote=%d transient_rma=%d RANDCFG: %s%s",
             lc_state_name(start),
             int(demote),
             int(transient),
             self.cfg_lc.summary(),
+            f" prod_end_exit={prod_end_exit}" if prod_end_exit else "",
         )
 
         await self._sense(start, transient_rma=transient)
@@ -449,13 +596,13 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
                 walked = "prod-gates"
         elif start == LC_RMA_SIP_0:
             await self._walk_rma_sip()
-            walked = "rma-sip + invalid-terminal"
+            walked = "rma-sip + invalid-reach"
         elif start == LC_RMA_CHIP_0:
             await self._walk_rma_chiplet()
             walked = "rma-chiplet"
         else:
-            await self._walk_prod_end()
-            walked = "prod-end"
+            await self._walk_prod_end(prod_end_exit)
+            walked = f"prod-end ({prod_end_exit} exit)"
 
         self.logger.info(
             "CHK-LEAF PASS: walked %s from a sensed %s (tokens and LC_STATE[31:8] "

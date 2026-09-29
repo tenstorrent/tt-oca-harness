@@ -3,7 +3,10 @@
 """SEP UVM scoreboard.
 
 Subscribes to the AXI agent's completed-transaction stream and checks:
-  * every access reports an OKAY AXI response (no SLVERR/DECERR);
+  * every access reports an OKAY AXI response (no SLVERR/DECERR), except a
+    write with ``allow_unverified_write_resp`` or a read with
+    ``allow_ungraded_read_resp``, whose caller grades the outcome another way
+    (a timed-out read still fails, unless that read also sets ``allow_timeout``);
   * reads carrying an ``expected`` value return it exactly (value-specific
     positive evidence, not a "no-X" cross-check);
   * a negative-path probe (``item.expect_error``) is the inverse: it must return a
@@ -26,6 +29,7 @@ class SepScoreboard(uvm_subscriber):
         self.errors: list[str] = []
         self.checks = 0  # transactions observed
         self.value_checks = 0  # reads whose expected value was verified
+        self.expected_reads = 0  # reads that carried an expected value
         self.error_checks = 0  # negative-path probes that returned a non-OKAY (as expected)
 
     def _fail(self, msg: str) -> None:
@@ -70,12 +74,31 @@ class SepScoreboard(uvm_subscriber):
                     item.addr,
                 )
                 return
+            if (
+                item.op is SepAxiOp.READ
+                and item.allow_ungraded_read_resp
+                and item.allow_timeout
+                and item.timed_out
+            ):
+                self.logger.info(
+                    "read @ 0x%08x timed out; sequence grades the wedge",
+                    item.addr,
+                )
+                return
+            if item.op is SepAxiOp.READ and item.allow_ungraded_read_resp and not item.timed_out:
+                self.logger.info(
+                    "read @ 0x%08x resp=%d not graded; sequence grades the returned data",
+                    item.addr,
+                    item.resp_code,
+                )
+                return
             self._fail(
                 f"{item.op.value} @ 0x{item.addr:08x} returned a non-OKAY or "
                 f"unverifiable AXI response"
             )
             return
         if item.op is SepAxiOp.READ and item.expected is not None:
+            self.expected_reads += 1
             mask = (1 << (item.length * 8)) - 1
             got = item.rdata & mask
             exp = item.expected & mask
@@ -95,6 +118,10 @@ class SepScoreboard(uvm_subscriber):
         # Positive evidence: a clean run must have actually observed
         # transactions, not passed vacuously on zero activity.
         assert self.checks > 0, "SEP scoreboard saw no AXI transactions (no positive evidence)"
+        if self.expected_reads:
+            assert self.value_checks > 0, (
+                "SEP scoreboard saw reads that carried an expected value but verified none"
+            )
         self.logger.info(
             "SEP scoreboard: %d checks (%d value-verified, %d expected-error), 0 errors",
             self.checks,

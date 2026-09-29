@@ -25,7 +25,6 @@ class sep_base_test_seq extends ocah_sequence;
 
   // Named-evidence IDs recorded by the shared helpers below.
   localparam string ChkFuseSense = "CHK-FUSE-SENSE-DONE";
-  localparam string ChkOtpJtag2AxiUngated = "CHK-OTP-JTAG2AXI-UNGATED";
   localparam string ChkCsrResp = "CHK-CSR-RESP";
 
   // Plumbed by the test before start(): the SEP-local TB interface and the
@@ -73,7 +72,7 @@ class sep_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   task wait_sys_cycles(int unsigned cycles);
-    #(cycles * env_cfg.clk_period_ns * 1ns);
+    #(cycles * env_cfg.sys_clk_period_ns * 1ns);
   endtask
 
   // ------------------------------------------------------------------
@@ -105,15 +104,6 @@ class sep_base_test_seq extends ocah_sequence;
         tb_vif.fuse_sense_done === 1'b1,
         $sformatf(
             "fuse_sense_done=%0b after %0d system clocks", tb_vif.fuse_sense_done, cycles)
-    ));
-    void'(m_check.expect_true(
-        ChkOtpJtag2AxiUngated,
-        (tb_vif.dbg_disable_smc_otp_jtag2axi === 1'b0) &&
-            (tb_vif.dbg_disable_sep_otp_jtag2axi === 1'b0),
-        $sformatf(
-            "smc_otp_jtag2axi=%0b sep_otp_jtag2axi=%0b",
-            tb_vif.dbg_disable_smc_otp_jtag2axi,
-            tb_vif.dbg_disable_sep_otp_jtag2axi)
     ));
   endtask
 

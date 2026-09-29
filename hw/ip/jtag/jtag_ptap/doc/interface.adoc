@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ptap-interface]]
-==== Interface
 
-===== Instruction Encodings
+=== Instruction Encodings
 
 The PTAP uses 6-bit instruction encodings. During the capture phase, the least
 significant bit (closest to TDO) of the instruction register always presents a 1
@@ -12,7 +11,12 @@ to the scan chain, and the next least significant bit presents a 0 as specified
 by the 1149.1 standard, section 7.2.1. All other bits of the instruction
 register always return 0s.
 
+<<ptap-instruction-encodings-table>> lists the PTAP instruction encodings and associated
+register lengths.
+
+[[ptap-instruction-encodings-table]]
 [cols="<,<,<,<",options="header"]
+.PTAP instruction encodings
 |===
 |Encoding |Name |Register Size |Description
 |0x00 |BYPASS |1 |IEEE 1149.1, Section 8.4
@@ -41,44 +45,26 @@ register always return 0s.
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.
 
-===== Signal Interface
+=== Signal Interface
 
-[cols="<,<,<,<",options="header"]
-|===
-|Signal |Direction |Width |Description
-|tck_i |Input |1 |JTAG test clock (from client_tap_ctrl_i.tck)
-|trst_ni |Input |1 |JTAG test reset (from client_tap_ctrl_i.trst_n)
-|tdi_i |Input |1 |Test Data In
-|tdo_o |Output |1 |Test Data Out
-|tms_i |Input |1 |Test Mode Select
-|tdo_en_o |Output |1 |TDO output enable
-|ir_o |Output |6 |Current instruction register value
-|tap_state_o |Output |4 |Current TAP controller state
-|capture_dr_o |Output |1 |Capture-DR state indicator
-|shift_dr_o |Output |1 |Shift-DR state indicator
-|update_dr_o |Output |1 |Update-DR state indicator
-|reset_n_o |Output |1 |Combined reset output
-|ch_reset_n_o |Output |1 |Channel reset (TMP-aware)
-|stap_tdi_o |Output |1 |STAP chain TDI output
-|stap_tdo_i |Input |1 |STAP chain TDO input
-|stap_capture_o |Output |1 |STAP capture control
-|stap_shift_o |Output |1 |STAP shift control
-|stap_update_o |Output |1 |STAP update control
-|ic_reset_ovrd_o |Output |N |IC_RESET override enables
-|ic_reset_ctrl_n_o |Output |N |IC_RESET control values
-|ijtag_tdi_o |Output |1 |iJTAG network TDI
-|ijtag_tdo_i |Input |1 |iJTAG network TDO
-|pwr_on_rst_ni |Input |1 |Power-on reset (active low), AND-combined with TRST
-|clk_i |Input |1 |System clock for AXI bridge modules
-|rst_n_i |Input |1 |System reset for AXI bridge modules (active low)
-|smc_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC fabric JTAG2AXI bridge (1 = bridge disabled)
-|smc_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SMC OTP JTAG2AXIL bridge (1 = bridge disabled)
-|sep_otp_jtag2axi_security_disable_i |Input |1 |Active-high disable for the SEP OTP JTAG2AXIL bridge (1 = bridge disabled)
-|===
+Packed control and bus types remain bundles at the `jtag_ptap` boundary; their
+members are not separate scalar ports.
 
-===== Dependencies
+ifdef::backend-html5[]
+The parameters and ports of `jtag_ptap` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/jtag_ptap/jtag_ptap.adoc[jtag_ptap].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `jtag_ptap` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+=== Dependencies
 
 The PTAP depends on the following components:
 
-* `hw/common/och_prim` - Primitive cells (synchronizers, clock gating)
-* `hw/ip/jtag/jtag_stap` - Secondary TAP (when 3DIC support enabled)
+* https://github.com/tenstorrent/tt-oca-harness/tree/829b09cf54dde1969dc309733f97f8fb32cefbdd/hw/common/ocah_prim[`hw/common/ocah_prim`] — Primitive cells (synchronizers, clock gating)
+ifdef::backend-html5[]
+* xref:ip:jtag_stap/doc/index.adoc[`hw/ip/jtag/jtag_stap`] — Secondary TAP (when 3DIC support enabled)
+endif::backend-html5[]
+ifdef::backend-pdf[]
+* <<jtag-stap,`hw/ip/jtag/jtag_stap`>> — Secondary TAP (when 3DIC support enabled)
+endif::backend-pdf[]

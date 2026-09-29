@@ -1,39 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[[key-manager-km-key-manager-km]]
-==== Key Manager (KM)
+[[key-manager-architecture]]
+= Architecture
 
-The KM module aims to support a superset of the
-https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key
-Manager] use cases. It utilizes a small RISC-V CPU for control which
-provides flexibility to implement all currently required key management
-operations:
+The KM uses a small RISC-V CPU to isolate key storage and delivery from the
+SEP host. Its architecture targets the
+https://opentitan.org/book/hw/ip/keymgr/index.html[OpenTitan Key Manager]
+use cases, including deterministic derivation and policy-bound key lifetimes.
 
-* Derivation
-* Storage and destruction
-* Policy Checking
-* Transfer to cryptographic accelerator
-
-The CPU implementation enables future key management feature
-enhancements to be delivered with firmware. One example of this is TPM
-2.0 attestation.
+[[km-implemented-services]]
+The firmware in this tree implements random key generation from the DRBG,
+key loading, KPV storage, explicit revocation, transfer to engines, and engine
+shredding. Software explicitly manages key lifetime and revocation.
 
 The Key Manager register map is reported in the SEP detailed register map.
-
-To summarize, KM uses a collection of device identity and
-root key data to generate a set of keys using a derivation function.
-This data comes from the following sources:
-
-* Entropy stream from DRBG
-* Life Cycle (LC) state stored in OTP and managed by the LC controller
-* Demotion state (CSR)
-* OTP secret fields: CHIPLET_UID, SIP_UID, SYS_UID, CLASS_KEY
-** Once these fields have been pushed into the Key Manager, the corresponding read lock bits will be set in order to prevent software from accessing these values
-* OTP public fields: SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID
-** Per-owner public identity values that personalize each owner's identity root. Being public, only their integrity matters
-* Test control signals
-* Configuration parameters e.g. version numbers
+The firmware command reference describes the implemented mailbox interface.
 
 The SEP cryptographic subsystem physically separates key and data
 processing facilities. The KM straddles the two domains and enforces
@@ -66,51 +48,64 @@ parity error interrupts the KM CPU, which treats it as an unrecoverable
 fault: the KM notifies the SEP host and halts (see
 <<unrecoverable-faults,Unrecoverable Faults>>).
 
+<<key-manager-architecture-figure>> shows the Key Manager CPU, vault, mailbox, and
+accelerator interfaces.
+
+[[key-manager-architecture-figure]]
+.Key Manager architecture
 image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
 
-===== Parameters
+== Parameters
 
-[cols="<25%,<15%,<15%,<45%",options="header"]
-|===
-|Parameter |Type |Default |Description
-|`ROM_SIZE_BYTES` |`int unsigned` |16384 |Size of the KM boot ROM in bytes (16 KB).
-|`SRAM_SIZE_BYTES` |`int unsigned` |32768 |Size of the KM data SRAM in bytes (32 KB).
-|`MAILBOX_DEPTH` |`int unsigned` |16 |Minimum FIFO depth for each mailbox direction (must be a power of two).
-|`LATCHED_MEM_RDATA` |`bit` |`1'b0` |When set, the PicoRV32 core treats memory read data as latched (hold until next request).
-|===
+The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
+the read-data behaviour of its memories, and the address of the eFuse controller.
 
-===== Memory Map
+ifdef::backend-html5[]
+The parameters of `key_manager` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters of `key_manager` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+[[key-manager-memory-map]]
+== Memory Map
 
 The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.
 
 Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.
 
-[cols="<25%,<25%,<50%",options="header"]
-|===
-|Address Range |Component |Description
-|`0x0000_0000` – `0x0000_3FFF` |ROM |16 KB boot ROM (read-only, parity-protected).
-|`0x0000_4000` – `0x0000_7FFF` |Reserved |Unmapped; returns a decode error.
-|`0x0000_8000` – `0x0000_FFFF` |SRAM |32 KB data SRAM (parity-protected, optional scrambling, region-based write-lock).
-|`0x0001_0000` – `0x0001_001F` |Mailbox |KM-side mailbox read/write and control registers.
-|`0x0001_1000` – `0x0001_1FFF` |OTP/eFuse |External AXI4-Lite pass-through to SEP eFuse controller. Hardware remaps KM-local addresses to `OTP_EFUSE_REMAP_BASE`, which needs the whole page.
-|`0x0001_2000` – `0x0001_3FFF` |KPV |Key and Policy Vault register and key storage region (8 KB, 8 KB-aligned).
-|`0x0001_4000` – `0x0001_47FF` |KMCSR |Key Manager Control and Status Registers.
-|`0x0001_5000` – `0x0001_500F` |DRBG Sampler |DRBG random data, configuration, and status registers.
-|`0x0001_8000` – `0x0001_807F` |OTBN |External AXI4-Lite master port for OTBN key storage.
-|`0x0001_9000` – `0x0001_907F` |AES |External AXI4-Lite master port for AES key storage.
-|`0x0001_A000` – `0x0001_A07F` |KMAC |External AXI4-Lite master port for KMAC key storage.
-|`0x0001_B000` – `0x0001_B07F` |HMAC |External AXI4-Lite master port for HMAC key storage.
-|`0x0001_C000` – `0x0001_C7FF` |ABR |External AXI4-Lite master port for Adams Bridge key storage.
-|===
+The OTP/eFuse window is the exception: hardware preserves its lower 12 address
+bits and replaces the upper bits with the integration parameter
+`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP.
 
-===== Reset Conditioning
+ifdef::backend-html5[]
+include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../regs/gen/adoc/memory_map.adoc[]
+endif::backend-pdf[]
+
+== Reset Conditioning
+
+<<key-manager-reset-diagram>> shows how cold and warm reset requests are conditioned for
+the Key Manager.
+
+[[key-manager-reset-diagram]]
+.Key Manager cold and warm reset conditioning
+image::SEP_KMResetDomains_FIG003.2.png[alt="Key Manager cold and warm reset conditioning",width=100%,pdfwidth=100%]
 
 The KM exposes two independent external reset inputs that map to two
 distinct reset domains. This split allows the SEP host to recover the KM
 CPU and volatile state without disturbing non-volatile configuration or
 forcing a full power-on style reset of the subsystem.
 
-[cols="<20%,<15%,<15%,<50%",options="header"]
+<<key-manager-reset-inputs-table>> identifies the two external reset inputs and their
+SEP connections.
+
+[[key-manager-reset-inputs-table]]
+[cols="<22%,<16%,<22%,<40%",options="header"]
+.Key Manager reset inputs
 |===
 |Input port |Polarity |Synchronicity |Integration tie-off (SEP)
 |`cold_rst_ni` |Active-low |Asynchronous |SEP system cold reset (`sep_reset_n`).
@@ -143,8 +138,8 @@ the synchronous trigger term to avoid a CDC hazard inside the
 posedge-only counter.)
 * Pulse extension: the warm reset is held asserted for a minimum of
 `MIN_RESET_CYCLES` clock cycles (default 10) after the trigger deasserts.
-* Scope: resets the KM CPU and volatile state only — see the domain table
-below.
+* Scope: resets the KM CPU and volatile state only — see
+<<key-manager-reset-domain-assignment-table>>.
 
 Scan-mode multiplexers (`scan_rst_ni` / `scanmode_i`) allow the DFT
 infrastructure to override both output paths consistently. An assertion
@@ -153,9 +148,12 @@ is asserted.
 
 *Reset domain assignment*
 
-The two output resets are distributed across the KM components as follows:
+<<key-manager-reset-domain-assignment-table>> lists the components reset by the cold and
+warm reset domains.
 
-[cols="<25%,<75%",options="header"]
+[[key-manager-reset-domain-assignment-table]]
+[cols="<30%,<70%",options="header"]
+.Key Manager reset-domain assignment
 |===
 |Reset domain |Components
 |Cold only (`rst_cold_aasd_no`)
@@ -211,7 +209,12 @@ legality checks are entirely firmware-defined. The mailbox hardware does
 not parse message headers, compute or verify CRCs, or enforce command
 legality — it behaves as a raw 32-bit word FIFO transport.
 
+<<key-manager-message-with-payload-table>> shows the firmware-defined header, payload
+words, and payload checksum.
+
+[[key-manager-message-with-payload-table]]
 [width="100%",cols="^25%,^25%,^25%,^25%",options="header",]
+.Key Manager message with payload
 |===
 |header_crc8[31:24] |message_length[23:16] |function_id[15:8]
 |sequence_number[7:0]
@@ -224,9 +227,11 @@ legality — it behaves as a raw 32-bit word FIFO transport.
 |===
 
 Command/response messages without a data payload (message_length = 0x00)
-drop the payload CRC32 and only contain the header:
+drop the payload CRC32 and only contain the header (<<key-manager-header-only-message-table>>).
 
+[[key-manager-header-only-message-table]]
 [cols="^,^,^,^",options="header",]
+.Key Manager header-only message
 |=================================================================
 |header_crc8[31:24] |0x00 |function_id[15:8] |sequence_number[7:0]
 |=================================================================
@@ -276,6 +281,11 @@ will flush the entire mailbox and an interrupt will be transmitted to
 the sender. The SEP will perform the exact same message validations as
 the KM.
 
+<<key-manager-mailbox-transport-figure>> shows the mailbox paths used for SEP commands
+and Key Manager responses.
+
+[[key-manager-mailbox-transport-figure]]
+.Key Manager mailbox transport
 image::SEP_KM_Mailbox.png[SEP_KM_Mailbox,scaledwidth=90.0%]
 
 Cryptographic keys are stored in the Key and Policy Vault (KPV) block.
@@ -293,48 +303,14 @@ It is implemented in firmware running on the KM CPU. This function is
 stored in the KM ROM. Other KDFs could also be implemented in firmware
 loaded into the instruction/data SRAM.
 
-The 32-bit memory map of the KM subsystem is shown below. KM only
-consumes the bottom 4MB of address space leaving the remaining space
-unallocated.
-
-[width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
-|=======================================================================
-|Base Address |End Address |Size |Unit |Description
-|0x0000_0000 |0x0000_3FFF |16 kB |KM ROM |Key Manager Program ROM
-
-|0x0000_4000 |0x0000_7FFF | | |_Reserved_ (decode error)
-
-|0x0000_8000 |0x0000_FFFF |32 kB |KM SRAM |Key Manager Prgm/Data SRAM
-
-|0x0001_0000 |0x0001_001F |32 B |MB |Mailbox Message
-
-|0x0001_1000 |0x0001_1FFF |4kB |OTP/eFuse |SEP eFuse pass-through. KM-local addresses remapped to SEP the value of `OTP_EFUSE_REMAP_BASE`.
-
-|0x0001_2000 |0x0001_3FFF |8kB |KPV |Key and Policy Vault
-
-|0x0001_4000 |0x0001_47FF |2kB |KMCSR |Configuration, Status, Interrupt
-and Interrupt Mask Registers
-
-|0x0001_5000 |0x0001_500F |16 B |DRBG |DRBG Sampling Interface
-
-|0x0001_8000 |0x0001_807F |128 B |OTBN |Public Key Cryptography
-Accelerator key storage
-
-|0x0001_9000 |0x0001_907F |128 B |AES |AES block cipher key storage
-
-|0x0001_A000 |0x0001_A07F |128 B |KMAC |KMAC key storage
-
-|0x0001_B000 |0x0001_B07F |128 B |HMAC |HMAC key storage
-
-|0x0001_C000 |0x0001_C7FF |2kB |Adams Bridge |ABR key storage
-
-|0x0001_D000 |0xFFFF_FFFF | | |_Reserved_
-|=======================================================================
+The KM CPU map is generated once in <<key-manager-memory-map>>. KM uses only
+the low portion of its 32-bit address space; every address outside the listed
+windows is unallocated and returns a decode error.
 
 Separating the key and data domains explicitly as described above
 increases security as it makes it more difficult for an adversary to
 compromise the secret key information via a software based attack. In
-the figure below, the secrets which must be protected reside in the red
+<<key-manager-accelerator-key-path-figure>>, the secrets which must be protected reside in the red
 blocks. The secret data is physically separated from the software
 accessible bus.
 
@@ -346,10 +322,15 @@ accessible devices such as automobiles and not those in data centers. To
 detect faults, we recommend including a CRC32 checksum field to the key
 data structure as described below.
 
+<<key-manager-accelerator-key-path-figure>> shows the separation between accelerator key
+delivery and software-accessible data paths.
+
+[[key-manager-accelerator-key-path-figure]]
+.Key Manager accelerator key path
 image::SEP_Crypto_Block.png[SEP_Crypto_Block,scaledwidth=90.0%]
 
 [[adams-bridge-key-sideload]]
-===== Adams Bridge Key Sideload Interfaces
+== Adams Bridge Key Sideload Interfaces
 
 The KM provides dedicated sideload interfaces to the Adams Bridge (ABR)
 post-quantum engine, exposed as a single AXI4-Lite register block mapped at
@@ -357,9 +338,11 @@ post-quantum engine, exposed as a single AXI4-Lite register block mapped at
 the KM drives into ABR, and one shared-key output ABR drives back into the KM.
 
 *Seed sideload inputs (KM → ABR).* The four seed inputs carry key material the
-KM side-loads into ABR:
+KM side-loads into ABR (<<adams-bridge-seed-sideload-inputs-table>>).
 
-[cols="<32%,<10%,<58%",options="header"]
+[[adams-bridge-seed-sideload-inputs-table]]
+[cols="<30%,<15%,<55%",options="header"]
+.Adams Bridge seed sideload inputs
 |===
 |Interface |Width |Description
 |ML-DSA seed |256-bit |Seed for ML-DSA key generation.
@@ -396,7 +379,7 @@ KPV slot in response to a SEP `CMD_ABR_SK_TRANSFER` command (see the firmware
 documentation).
 
 [[key-manager-cpu-interrupt-processing]]
-===== Key Manager CPU Interrupt Processing
+== Key Manager CPU Interrupt Processing
 
 The KM receives interrupts from the KM Management CSR register block.
 The register block collects error and information status from the
@@ -419,8 +402,22 @@ aggregated into an interrupt signal which is forwarded to the KM CPU.
 All event signals can also be triggered by a parallel software interrupt
 register to enable testing of interrupt service routines (ISR).
 
+[[key-manager-host-coordination]]
+== Host Coordination
+
+The SEP host submits key-load and key-transfer commands through the mailbox.
+The Key Manager validates the request and policy before accessing the vault
+or delivering key material to a cryptographic engine.
+
+<<key-manager-coordination-diagram>> shows the command, validation, vault-access, and
+key-delivery sequence.
+
+[[key-manager-coordination-diagram]]
+.SEP host and Key Manager key-load and key-transfer sequence
+image::SEP_KM_Key_Load_Transfer_FIG017.png[alt="SEP host and Key Manager key-load and key-transfer sequence",width=100%,pdfwidth=100%]
+
 [[key-and-policy-vault-kpv]]
-===== Key and Policy Vault (KPV)
+== Key and Policy Vault (KPV)
 
 The Key and Policy Vault (KPV) is a custom implementation with a
 single-port AXI4-Lite interface for full read/write access by KM
@@ -506,7 +503,7 @@ must not connect reset to key entry storage flops.
 
 
 [[kpv-scrambling]]
-===== KPV Scrambling
+== KPV Scrambling
 
 The KPV supports address and data scrambling during normal operation for
 all key entry data reads and writes, using the same PRESENT-based
@@ -538,7 +535,7 @@ _wipe_state_), the entire KPV is reset to zero including key data,
 control registers, and the KPV scrambler key and control registers.
 
 [[wipe-state]]
-===== Wipe State
+== Wipe State
 
 The KM has a _wipe_state_ control input for emergency wipe. The
 _wipe_state_ signal must be held high for at least one complete KM clock
@@ -561,7 +558,7 @@ the register itself. The emergency wipe is software-initiated only: no
 hardware tamper or alarm source asserts _wipe_state_.
 
 [[km-scan-and-scan-dump-protection]]
-===== Scan and Scan-Dump Protection
+== Scan and Scan-Dump Protection
 
 For simplicity, the *entire* KM -- every register and downstream logic block,
 including the KPV, KMCSR, mailbox, and DRBG sampler -- is treated
@@ -614,7 +611,7 @@ General-logic debug enablement does not apply to the Key Manager's
 secret-bearing scan chain.
 
 [[remote-attestation-support-in-kpv-and-pcrv]]
-===== Remote Attestation Support in KPV and PCRV
+== Remote Attestation Support in KPV and PCRV
 
 This section describes facilities to support TPM 2.0 attestation. Here
 are the basic constraints and procedures:
@@ -647,7 +644,7 @@ firmware. Once the entries are in place, the KM can read them and derive
 further keys, populating other KPV slots with the KDF results.
 
 [[pk-key-generation-support]]
-===== PK Key Generation support
+== PK Key Generation support
 
 KM must be able to generate a public-private key pair during device test
 and provisioning manufacturing steps. RSA is a complicated process as
@@ -661,7 +658,7 @@ and the public key is exported. Export is performed through the outbound
 mailbox path.
 
 [[key-manager-control-and-status-kmcsr]]
-===== Key Manager Control and Status Registers (KMCSR)
+== Key Manager Control and Status Registers (KMCSR)
 
 This block of 32-bit registers is separate from the Key and Policy
 register block. Its purpose is to manage the configuration and operation
@@ -680,9 +677,11 @@ The KMCSR is implemented in `km_csr` using a PeakRDL-generated register block (`
 The `VERSION` register (offset `0x000`) is a read-only register that reports
 the Key Manager hardware revision using semantic versioning. It uses the
 following canonical 32-bit layout, mandated so all software and testbenches
-decode the version identically:
+decode the version identically (<<key-manager-version-fields-table>>).
 
+[[key-manager-version-fields-table]]
 [cols="<20%,<20%,<60%",options="header"]
+.Key Manager VERSION fields
 |===
 |Bits |Field |Description
 |`[7:0]` |`PATCH` |Patch version component.
@@ -702,7 +701,12 @@ single CPU interrupt. Each source has a sticky status bit in `IRQ_STATUS`
 `IRQ_SET` for ISR testing. The aggregated interrupt output is the logical OR of
 the masked status bits (`IRQ_STATUS & IRQ_ENABLE`).
 
+<<key-manager-interrupt-sources-table>> maps hardware events to the sticky
+interrupt-status bits.
+
+[[key-manager-interrupt-sources-table]]
 [cols="<10%,<30%,<60%",options="header"]
+.Key Manager interrupt sources
 |===
 |Bit |Source |Description
 |0 |ROM Parity Error |Parity mismatch detected on a ROM read.
@@ -777,9 +781,11 @@ which (if unmasked) routes to the ISR and triggers the unrecoverable fault
 is reported on `ROM_ACCESS_VIOLATION` instead, so the two bits are disjoint.
 
 The whitelist mode is controlled by the `KMCSR.SRAM_EXEC_MODE.enable` bit
-(write-1-only, warm-reset domain):
+(write-1-only, warm-reset domain) (<<key-manager-executable-regions-table>>).
 
+[[key-manager-executable-regions-table]]
 [width="100%",cols="^15%,55%,30%",options="header"]
+.Key Manager executable regions
 |===
 |`enable` |Executable regions |Forbidden regions
 |`0` (ROM mode) |ROM (`0x0000`–`0x3FFF`) and VROM* |All SRAM; Peripheral/AXI
@@ -1034,9 +1040,11 @@ values. DRBG Sampler datapath registers (prefetch data register,
 assembled word buffer, response data slot) have no reset value: they
 power up with random (undefined) values.
 
-The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. The states and their transitions are summarised in the table below.
+The sampler hardware is implemented as a five-state FSM in `km_drbg_sampler`. The states and their transitions are summarised in <<key-manager-drbg-sampler-states-table>>.
 
-[cols="<20%,<80%",options="header"]
+[[key-manager-drbg-sampler-states-table]]
+[cols="<25%,<75%",options="header"]
+.Key Manager DRBG sampler states
 |===
 |State |Description
 |`StIdle` |No active request. If a CPU read arrives for the DATA register and a prefetched word is available, the FSM returns the prefetched value and transitions to `StRespond`. Otherwise it advances to `StRequest`.
@@ -1054,16 +1062,14 @@ values cannot be spoofed by software. SEP dual-rail-encodes each 256-bit field
 at the SEP-to-KM boundary (`{~value, value}`) from the sensed eFuse shadow:
 
 * the fuse-provisioned secrets — `CHIPLET_UID`, `SIP_UID`, `SYS_UID`,
-`CLASS_KEY` — the UIDs from which the KM derives the root keys, and the class
-root key;
+`CLASS_KEY` — inputs intended for the root-key design described below;
 * the three 256-bit public identities — `SEP_CHIPLET_ID`, `SEP_SIP_ID`,
 `SEP_SYS_ID` — per-owner values that personalize each owner's identity root;
 * the life-cycle state, one of the contexts a derived key is bound to (see
 <<chip-configuration>>).
 
-*UID delivery and protection.* The UIDs are held in a KM-local copy. ROM reads
-that copy to derive the root keys, after which it is protected by the KM's own
-warm-domain read-lock (see <<uid-provisioning-and-access>>) so mutable firmware
+*UID delivery and protection.* The UIDs are held in a KM-local copy. The KM's own
+warm-domain read-lock protects that copy at mutable-firmware handover (see <<uid-provisioning-and-access>>) so mutable firmware
 cannot read it. This KM-local lock is separate from, and additional to, the
 eFuse controller's own locks.
 
@@ -1077,20 +1083,19 @@ words only.
 
 *Life-cycle state.* The life-cycle state is hardwired into the KM as
 authoritative, software-readable status. Being non-secret it is neither locked
-nor wiped; the KM uses it directly when binding a key, and ROM can compare it
-against the value a live key was bound to (see <<key-revocation>>).
+nor wiped. The design target uses it for key bindings (see <<key-revocation>>);
+the current registry does not track such bindings.
 
 *eFuse access path.* The KM also has a programmatic (AXI-Lite) path to the eFuse
 controller — for example to request a read or a program operation. That path is
 treated exactly like a system-host access: same access filtering, and it honors
 the eFuse controller's native per-field read/write locks, so the KM gains no
-read privilege over the fuse array beyond the SEP host's. Key binding always
-uses the hardwired life-cycle value above, not a value fetched over this path.
+read privilege over the fuse array beyond the SEP host's. The key-binding design target uses the hardwired life-cycle value above.
 
 *Demotion and PCR.* The owner demotion state is hardwired from the Life Cycle
-Controller (LCC); PCR values come from the KM's internal PCR Vault (PCRV).
-Together with the life-cycle state, these are the life-cycle/runtime contexts a
-key can be bound to (see <<chip-configuration>>).
+Controller (LCC). A PCR Vault (PCRV) and PCR-change interrupt are not present
+in this integration. PCR binding in <<chip-configuration>> requires additional
+hardware and firmware support.
 
 *KMCSR readout registers.* The OTP-derived fields above are exposed to KM
 firmware in the KMCSR region as hardware-driven, read-only registers. Each field
@@ -1098,7 +1103,12 @@ is delivered to the KMCSR as dual-rail complementary values (`{~value, value}`)
 and decoded within the KMCSR, which continuously verifies the complement
 relationship.
 
-[cols="2,1,3", options="header"]
+<<key-manager-otp-readout-registers-table>> lists the OTP-derived fields exposed to Key
+Manager firmware.
+
+[[key-manager-otp-readout-registers-table]]
+[cols="<40%,<15%,<45%", options="header"]
+.Key Manager OTP readout registers
 |===
 |Register |Width |Contents
 |`OTP_LIFE_CYCLE` |8-bit |Differential-encoded life-cycle state `{~lc[3:0], lc[3:0]}`.
@@ -1130,42 +1140,17 @@ has been captured after cold reset.
 [[uid-provisioning-and-access]]
 *Unique Identifiers (UID) — provisioning and access*
 
-The KM consumes three fuse-provisioned Unique Identifiers — `CHIPLET_UID`,
+The KM receives three fuse-provisioned Unique Identifiers — `CHIPLET_UID`,
 `SIP_UID`, and `SYS_UID` (256 bits each) — provisioned respectively by the
-chiplet creator, the SiP owner, and the system owner. Each UID is the root
-secret from which the KM derives that owner's software and hardware root
-keys (see the *Root keys and the key hierarchy* section below).
+chiplet creator, the SiP owner, and the system owner. The root-key design
+below proposes deriving each owner's keys from its UID; the current firmware
+does not implement that derivation.
 
-The KM is a *ROM-firmware-based key server*: its CPU runs immutable ROM
-firmware as its steady-state firmware, at cold boot and throughout run time,
-and keeps servicing commands from ROM while the main SEP CPU is in its own
-run time. SRAM-loaded firmware is an *optional future extension* for adding
-KM functions; the baseline performs all required key-management functions,
-including run-time key derivation, from ROM alone. Consequently the UIDs and
-hardware root keys are only ever handled by trusted, immutable code.
-
-UIDs and hardware root keys are *ROM-only secrets*: they must never be
-readable by *mutable* (SRAM-loaded) KM firmware, nor by the SEP host. In the
-ROM-only baseline this holds by construction — no mutable firmware runs — and
-the SEP host has no access path to them. For the future SRAM-firmware
-extension the KM provides a confidentiality safeguard: a read-lock
-(write-one-to-set, *warm* reset domain) on the UID and hardware-root-key
-registers. Before ROM ever transfers control to SRAM-loaded firmware it wipes
-the hardware secrets and sets these locks, so the mutable firmware cannot read
-them; once locked, reads return zero and the lock cannot be cleared by
-software — only a reset clears it.
-
-The read-locks live in the *warm* (not cold) reset domain because the KM CPU
-core is itself warm-reset: any cold, warm, or soft reset restarts the CPU at
-its ROM reset vector and re-runs boot before any SRAM-loaded firmware can
-execute. ROM therefore re-establishes the protection on *every* boot — it
-re-reads the UIDs, re-derives key material, wipes the hardware key from any
-downstream crypto engine, and re-applies the read-locks before handing control
-to mutable firmware. Because
-the CPU is always forced back into ROM first, there is no window in which
-mutable firmware can run with the locks clear; the locks need not survive a
-warm reset, and no cold reset is required to restore keys in the ROM-only
-baseline.
+The CPU services mailbox commands from ROM and supports loading and executing
+SRAM firmware. Before handing control to that firmware, ROM applies the OTP
+read locks and wipes secrets from the shared execution environment. A warm
+reset returns the CPU to ROM, where the handover protections are re-established;
+it does not trigger an implemented UID-root derivation service.
 
 Concretely, this safeguard is the `OTP_READ_LOCK` register: one
 write-one-to-set bit per OTP readout field (life-cycle, demotion, the four
@@ -1190,9 +1175,14 @@ to establish read-locks that persist across warm resets for the entire duration
 of a power cycle, independently of the warm-reset lock applied by ROM firmware.
 
 [[root-keys-and-hierarchy]]
-*Root keys and the key hierarchy*
+*Root keys and the key hierarchy (design target)*
 
-From each UID the KM (ROM firmware) derives two domain-separated root keys.
+The remainder of this design description, through ECC signing metadata,
+requires firmware and PCR integration beyond <<km-implemented-services>>.
+It specifies intended behavior, including automatic revocation, without
+providing a current software guarantee.
+
+The proposed ROM service derives two domain-separated root keys from each UID.
 The current life-cycle state is an input to both derivations:
 
 * a *software root key* — `SW_root = KDF(UID, "SW_ROOT", lc_state)`
@@ -1238,13 +1228,15 @@ the UID copy and the KPV slot(s) holding `HW_root` (ROM cannot clear a KPV slot,
 but a read-lock renders it inaccessible and unusable), preserving this property.
 
 [[chip-configuration]]
-*Chip configuration and key lifetime*
+*Chip configuration and key lifetime (design target)*
 
 The *chip configuration* is the named bundle of context that a derived key is
 bound to. The requester *selects the chip configuration* for a derivation;
-together with `user_input` it determines the key:
+together with `user_input` it determines the key (<<key-derivation-chip-configuration-fields-table>>).
 
+[[key-derivation-chip-configuration-fields-table]]
 [cols="<22%,<78%",options="header"]
+.Key derivation chip-configuration fields
 |===
 |Field |Description
 |`uid_select` |Which owner's root is used: chiplet, SiP, or system.
@@ -1273,7 +1265,7 @@ unaffected. The life-cycle state is the exception: because the roots bind it,
 a life-cycle transition invalidates the roots and, with them, the entire
 UID-derived hierarchy — regardless of each key's selected binding. A revoked
 key must be re-derived before use. The mechanism is described in
-*Key revocation* below.
+*Key revocation (design target)* below.
 
 [[key-revocation]]
 *Key revocation*
@@ -1351,7 +1343,7 @@ key storage and shredded in the crypto engines — using the same parent-revoke
 mechanism as configuration-driven revocation (see *Key revocation* above).
 
 [[ecc-key-metadata]]
-*ECC key metadata in signatures*
+*ECC key metadata in signatures (design target)*
 
 The *metadata* associated with a derived ECC private key is the *selected chip
 configuration* under which that key was generated (the same configuration
@@ -1366,7 +1358,7 @@ demotion, PCR, and so on). Inclusion is selected per signing operation; only
 inclusion in the signed hash cryptographically attests the configuration.
 
 [[crc-accelerator]]
-===== CRC Accelerator
+== CRC Accelerator
 
 The KM CPU is fitted with a CRC accelerator attached through the PicoRV32
 PCPI (Pico Co-Processor Interface). It provides hardware versions of the
@@ -1382,8 +1374,12 @@ The accelerator exposes three R-type custom instructions on the PicoRV32
 chaining state (`rs1`) and the next input unit (`rs2`) — and writes the
 updated chaining state to `rd`.
 
+<<crc-accelerator-instructions-table>> lists the instruction encodings and input units
+for the hardware CRC updates.
+
+[[crc-accelerator-instructions-table]]
 .CRC Accelerator Instructions
-[cols="<30%,^10%,^12%,^12%,<36%",options="header"]
+[cols="<28%,^17%,^12%,^14%,<29%",options="header"]
 |===
 | Instruction | `funct7` | `funct3` | opcode | Input unit
 | CRC-32C word update | `7'b0101100` | `3'b000` | `custom0` | `rs2[31:0]`, four bytes little-endian
@@ -1425,7 +1421,7 @@ the PicoRV32 built-in multiply/divide support remains enabled and
 unchanged.
 
 [[key-manager-rom-code]]
-===== Key Manager ROM Code
+== Key Manager ROM Code
 
 The KM ROM will be as minimal as possible and support just a few
 functions described next. Any other functions will be loaded dynamically
@@ -1469,10 +1465,11 @@ segment of local SRAM
 unlock data or perform action if message is deemed to be valid and legal
 
 [[hmac-kdf]]
-*Key derivation function (HMAC-SHA256)*
+*Key derivation function (HMAC-SHA256 design target)*
 
-HMAC-SHA256 is the underlying primitive for both deterministic key
-derivation and random key generation. The two uses are kept distinct:
+HMAC-SHA256 is the proposed deterministic derivation primitive. This KDF
+service is not implemented by the current ROM command dispatcher. Random
+key generation is implemented separately by filling the key buffer from the DRBG:
 
 *Deterministic derivation (root keys and the key hierarchy).* Root keys and
 all UID-derived hierarchy keys are derived deterministically: the inputs are
@@ -1499,7 +1496,7 @@ not tied to a configuration; they are used where a unique secret — not a
 deterministic derivation — is needed.
 
 [[rom-and-sram-error-detection]]
-===== ROM and SRAM Error Detection
+== ROM and SRAM Error Detection
 
 Data will be stored with byte-wise odd parity. This feature cannot be
 turned off, but the interrupt mask register can disable this event from
@@ -1507,7 +1504,7 @@ propagating up the interrupt tree to the KM CPU as well as to the
 external error event signal output.
 
 [[parity-error-protection]]
-===== Parity Error Protection
+== Parity Error Protection
 
 Parity bits will be ``out-of-band'' from the data and hence not part of
 the scrambled word. The motivation for this is to minimize any data path
@@ -1516,7 +1513,7 @@ descrambling. Parity is on a byte-wise basis so will add an additional 4
 bits next to the 32-bit data word.
 
 [[sram-write-locking]]
-===== SRAM Write Locking
+== SRAM Write Locking
 
 The SRAM interface incorporates a write-locking mechanism to designate
 specific 1 KB memory regions as read-only; 32 regions cover the whole 32 KB
@@ -1537,7 +1534,7 @@ the KM CPU always re-enters ROM after a warm reset, mutable firmware never
 executes against an unlocked SRAM region.
 
 [[rom-warm-persist-region]]
-===== ROM Warm-Persistent SRAM Region
+== ROM Warm-Persistent SRAM Region
 
 The highest 1 KB of KM SRAM (region 31, `0x0000_FC00`–`0x0000_FFFF`) are
 reserved as a ROM-managed warm-persistent data structure (`rom_persist`). The
@@ -1560,9 +1557,11 @@ boot) and calls `rom_persist_cold_init()`, which writes known-zero values to
 all fields. On a warm or soft reset, `COLD_BOOT_DONE` already reads 1 and
 `rom_persist_cold_init()` is skipped, preserving the contents of the region.
 
-*Contents.* The `rom_persist_t` structure currently contains one field:
+*Contents.* The `rom_persist_t` structure currently contains one field (<<key-manager-warm-persistent-sram-contents-table>>).
 
+[[key-manager-warm-persistent-sram-contents-table]]
 [cols="<20%,<20%,<60%",options="header"]
+.Key Manager warm-persistent SRAM contents
 |===
 |Field |Type |Description
 |`sram_fw_size` |`uint32_t` |Byte count of the mutable firmware image currently loaded in SRAM (`FW_WORDS × 4`). Zero means no mutable firmware is present. Written by `CMD_SRAM_LOAD_EXEC` on a successful load and verified by `CMD_SRAM_EXEC` before jumping.
@@ -1576,7 +1575,7 @@ is cleared on the next warm or cold reset; ROM re-establishes it
 before transferring control to mutable code.
 
 [[mutable-firmware-model]]
-===== Mutable Firmware Model
+== Mutable Firmware Model
 
 The KM ROM supports loading and executing a mutable software image from SRAM,
 controlled by the `CMD_SRAM_LOAD_EXEC` and `CMD_SRAM_EXEC` mailbox commands.
@@ -1675,5 +1674,5 @@ ifdef::backend-html5[]
 xref:ip:scrambler/doc/index.adoc[Scrambler]
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::../../../ip/scrambler/doc/architecture.adoc[]
+include::../../../ip/scrambler/doc/architecture.adoc[leveloffset=+1]
 endif::backend-pdf[]

@@ -15,6 +15,26 @@
 control/status registers, mailbox, and external crypto engine ports.
 This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:description>
       <ipxact:addressBlock>
+        <ipxact:name>rom</ipxact:name>
+        <ipxact:displayName>Key Manager ROM</ipxact:displayName>
+        <ipxact:description>Key Manager boot ROM</ipxact:description>
+        <ipxact:baseAddress>'h0</ipxact:baseAddress>
+        <ipxact:range>'h4000</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:usage>memory</ipxact:usage>
+        <ipxact:access>read-only</ipxact:access>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
+        <ipxact:name>sram</ipxact:name>
+        <ipxact:displayName>Key Manager SRAM</ipxact:displayName>
+        <ipxact:description>Key Manager data and executable SRAM</ipxact:description>
+        <ipxact:baseAddress>'h8000</ipxact:baseAddress>
+        <ipxact:range>'h8000</ipxact:range>
+        <ipxact:width>32</ipxact:width>
+        <ipxact:usage>memory</ipxact:usage>
+        <ipxact:access>read-write</ipxact:access>
+      </ipxact:addressBlock>
+      <ipxact:addressBlock>
         <ipxact:name>mailbox_km</ipxact:name>
         <ipxact:displayName>Key Manager Mailbox KM Side</ipxact:displayName>
         <ipxact:description>Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</ipxact:description>
@@ -528,7 +548,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_map</ipxact:name>
-        <ipxact:description></ipxact:description>
+        <ipxact:displayName>SEP eFuse Map Address Map</ipxact:displayName>
+        <ipxact:description>Per-field write-lock and read-lock registers for the SEP eFuse map.</ipxact:description>
         <ipxact:baseAddress>'h11000</ipxact:baseAddress>
         <ipxact:range>'h400</ipxact:range>
         <ipxact:width>256</ipxact:width>
@@ -2705,6 +2726,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_ctrl</ipxact:name>
+        <ipxact:displayName>eFuse Interface Control Address Map</ipxact:displayName>
+        <ipxact:description>Program and read command, address, data, status, and timeout registers for the eFuse interface.</ipxact:description>
         <ipxact:baseAddress>'h11400</ipxact:baseAddress>
         <ipxact:range>'h1c</ipxact:range>
         <ipxact:width>32</ipxact:width>
@@ -2964,7 +2987,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>read_status</ipxact:name>
-            <ipxact:description>0: No Error.  1: Logic error, assert read_go when read is not enabled</ipxact:description>
+            <ipxact:description>0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.</ipxact:description>
             <ipxact:bitOffset>26</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3089,6 +3112,8 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       </ipxact:addressBlock>
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_mmr</ipxact:name>
+        <ipxact:displayName>eFuse Token Registers Address Map</ipxact:displayName>
+        <ipxact:description>Security-token input and match-status registers for RMA and secure-disable eFuse tokens.</ipxact:description>
         <ipxact:baseAddress>'h11500</ipxact:baseAddress>
         <ipxact:range>'h74</ipxact:range>
         <ipxact:width>32</ipxact:width>

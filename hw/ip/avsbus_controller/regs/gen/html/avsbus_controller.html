@@ -6,8 +6,9 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: avsbus_controller</h2>
-<h2>Register List:</h2>
+<h2 id="regmap-avsbus_controller">AVSBus Controller Address Map</h2>
+<p>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p>
+<p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#AVS_CMD">AVS_CMD</a></td><td>W</td><td>The command+data to be transferred to the AVS bus</td></tr>
@@ -24,7 +25,7 @@
 <tr><td>0x54</td><td><a href="#AVS_CFG_1">AVS_CFG_1</a></td><td>RW</td><td>Configuration register for APB2AVS bridge block</td></tr>
 <tr><td>0x58</td><td><a href="#AVS_CONFIG">AVS_CONFIG</a></td><td>RW</td><td>AVS Configuration Register</td></tr>
 </table>
-<h2>Register Details:</h2>
+<p><strong>Register Details:</strong></p>
 <h3 id="AVS_CMD">AVS_CMD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>

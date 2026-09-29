@@ -1,16 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-gpio_poc_pbias_ctrl]
+== GPIO POC and PBIAS Control Address Map
+
+GPIO POC and PBIAS Control Register Interface
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | CONTROL | RW a| -
-| 0x8 | ACCESS_FILTER | RW a| -
+| 0x0 | <<reg-{regmap-instance}-gpio_poc_pbias_ctrl-CONTROL,CONTROL>> | RW a| -
+| 0x8 | <<reg-{regmap-instance}-gpio_poc_pbias_ctrl-ACCESS_FILTER,ACCESS_FILTER>> | RW a| -
 |===
 
+[#reg-{regmap-instance}-gpio_poc_pbias_ctrl-CONTROL]
+=== CONTROL
+
 [cols="1,3,1,1,6", options="header"]
-.CONTROL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
@@ -20,8 +28,10 @@ PSW=0 at 1.8V I/O supply
 PSW=1 at 1.2V I/O supply
 |===
 
+[#reg-{regmap-instance}-gpio_poc_pbias_ctrl-ACCESS_FILTER]
+=== ACCESS_FILTER
+
 [cols="1,3,1,1,6", options="header"]
-.ACCESS_FILTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:19 | `Reserved` | - | - a| Reserved

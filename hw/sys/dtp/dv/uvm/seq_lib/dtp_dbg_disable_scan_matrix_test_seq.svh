@@ -26,6 +26,17 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_dbg_disable_scan_matrix_test_seq)
 
   localparam int unsigned ScanFieldCount = 8;
+  // The scan-side paths of the debug-disable table, one row bit each.
+  localparam dtp_dbg_path_e ScanPaths[ScanFieldCount] = '{
+      DTP_DBG_PATH_STAP_IO,
+      DTP_DBG_PATH_STAP_SMC,
+      DTP_DBG_PATH_STAP_SEP,
+      DTP_DBG_PATH_STAP_EXTRA,
+      DTP_DBG_PATH_STAP_HOST,
+      DTP_DBG_PATH_DFT_SECURE,
+      DTP_DBG_PATH_DFT_NONSECURE,
+      DTP_DBG_PATH_DFD
+  };
 
   int unsigned multi_hot_rows = 6;
 
@@ -49,14 +60,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
   protected static function sep_lifecycle_ctrl_pkg::dbg_disable_t scan_mask_from_bits(
       bit [ScanFieldCount-1:0] bits);
     sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0;
-    d.stap_io       = bits[0];
-    d.stap_smc      = bits[1];
-    d.stap_sep      = bits[2];
-    d.stap_extra    = bits[3];
-    d.stap_host     = bits[4];
-    d.dft_secure    = bits[5];
-    d.dft_nonsecure = bits[6];
-    d.dfd           = bits[7];
+    for (int unsigned i = 0; i < ScanFieldCount; i++) dtp_dbg_path_set(d, ScanPaths[i], bits[i]);
     return d;
   endfunction
 
@@ -110,15 +114,14 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain(d, {context_s, ".observe"}, captured);
     stop_scan_window(edges, counts);
-    family_check("CHK-SCAN-WIN", "window edges nonvacuous", 64'(edges > 0), 64'd1, {
-                 context_s, ".window"});
+    check_window_shifted("CHK-SCAN-WIN", {context_s, ".window"});
 
     // Gated ports stop forwarding with tms parked at the stored
     // tms_hold=1; ungated ports keep forwarding.
     for (int unsigned s = 0; s < DtpStapCount; s++)
       check_stap_forwarding(edges, counts, s, ~gates[s], context_s);
 
-    if (d.stap_host) begin
+    if (dtp_dbg_path_disabled(d, DTP_DBG_PATH_STAP_HOST)) begin
       family_check("CHK-SCAN-WIN", "stap_host select gated quiet",
                    64'(counts["jtag_stap_host_select"]), 64'd0, context_s);
       family_check("CHK-SCAN-WIN", "stap_host shift_en gated quiet",

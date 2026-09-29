@@ -30,12 +30,12 @@ from seq_lib.sep_abr_keygen_seq import (
     ABR_PUBKEY,
     ABR_SEED,
     ABR_STATUS,
+    ABR_VERSION0,
+    ABR_VERSION1,
     CMD_KEYGEN,
     CTRL_ZEROIZE,
     IRQ_ABR_ERROR,
     IRQ_ABR_NOTIF,
-    NAME0_EXP,
-    NAME1_EXP,
     PK_WORDS,
     ST_ERROR,
     ST_READY,
@@ -57,7 +57,9 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
 
     async def _irq(self, idx: int) -> int:
         await RisingEdge(cocotb.top.clk_i)
-        return (self.rd(cocotb.top.sep_internal_interrupts_probe_o) >> idx) & 1
+        # Only bit ``idx`` must be known: it is the bit the must-be-0 and
+        # must-be-1 legs compare, and an X there raises instead of reading 0.
+        return self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, 1 << idx) >> idx
 
     async def _wait_status(self, abr: SepAbr, mask: int, expect: int, *, what: str) -> int:
         for _ in range(_POLL_ITERS):
@@ -89,13 +91,20 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         await self.bring_up_no_cpu()
         abr = SepAbr(self)
 
+        # Logged for the record, not graded: abr_reg.rdl declares NAME and
+        # VERSION sw=r with no reset, and no SEP document gives their values.
         name0 = await abr.rd32(ABR_NAME0)
         name1 = await abr.rd32(ABR_NAME1)
-        assert name0 == NAME0_EXP and name1 == NAME1_EXP, (
-            f"MLDSA NAME 0x{name0:08x}_0x{name1:08x}, "
-            f"expected 0x{NAME0_EXP:08x}_0x{NAME1_EXP:08x} (MLDSA-87)"
+        ver0 = await abr.rd32(ABR_VERSION0)
+        ver1 = await abr.rd32(ABR_VERSION1)
+        self.logger.info(
+            "ABR ML-DSA identity words (information only): NAME0=0x%08x NAME1=0x%08x "
+            "VERSION0=0x%08x VERSION1=0x%08x",
+            name0,
+            name1,
+            ver0,
+            ver1,
         )
-        self.logger.info("CHK-NAME PASS: NAME0=0x%08x NAME1=0x%08x (MLDSA-87)", name0, name1)
 
         st0 = await abr.rd32(ABR_STATUS)
         assert (st0 & ST_READY) and not (st0 & ST_VALID) and not (st0 & ST_ERROR), (

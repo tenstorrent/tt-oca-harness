@@ -17,11 +17,15 @@ from __future__ import annotations
 from sep_efuse_field_map import spec_secure_tm_blocked
 from sep_efuse_image import LOCK_BITS_PER_SLOT
 from sep_seeded_rng import SepSeededRng
+from sep_spec_tables import agg_from_pic
 
-SENTINEL = 0xBADCAB1E
-IRQ_LOCKED_FIELD = 33
-RESP_OKAY = 0
+IRQ_LOCKED_FIELD = agg_from_pic("Locked field access")
+# Error-slave read data named by hw/ip/efuse/doc/architecture.adoc (access
+# control). It is not an expected value here: no staged pattern may equal it, so
+# a read-lock readback that returns it still differs from the stored field.
+DENY_DATA_MARKER = 0xBADCAB1E
 SPARE_COUNT = 8
+# otp_fuse_controller.adoc LOCKS slots 0–31, LOCKS_SPARE slots 32–40. Spare k is slot 32+k.
 SPARE0_SLOT = 32
 
 
@@ -30,7 +34,7 @@ def spare_field_name(spare_idx: int) -> str:
 
 
 def spare_write_lock_bit(spare_idx: int) -> int:
-    """Global lock-vector bit of spare ``k``'s write-lock."""
+    """Global lock-vector bit of spare ``k``'s write-lock (otp_fuse_controller.adoc)."""
     if not 0 <= spare_idx < SPARE_COUNT:
         raise ValueError(f"spare_idx {spare_idx} not in 0..{SPARE_COUNT - 1}")
     return (SPARE0_SLOT + spare_idx) * LOCK_BITS_PER_SLOT
@@ -51,20 +55,23 @@ def _locks_spare_bit(vector_bit: int) -> int:
 def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
     for _ in range(8):
         v = rng.getrandbits(32)
-        if v not in forbidden and v != 0 and v != SENTINEL:
+        if v not in forbidden and v != 0 and v != DENY_DATA_MARKER:
             return v
-    return 0xA5A5A5A5
+    for v in (0xA5A5A5A5, 0x5A5A5A5A, 0x3C3C3C3C, 0xC3C3C3C3):
+        if v not in forbidden:
+            return v
+    raise ValueError("no fallback pattern left outside the forbidden set")
 
 
 # Fields the specification says must refuse a write while SECURE_TM=1
-# (periphs.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
+# (otp_fuse_controller.adoc). LOCKS and LOCKS_SPARE are one 96-bit LOCK field.
 SECURE_TM_LOCK_FIELDS = spec_secure_tm_blocked()
 
 # LC_STATE bytes [31:8] OR-merge as ordinary shadow bytes and do not disturb the
 # lifecycle nibble, so they are the safe payload for this field.
 LC_STATE_UPPER_MASK = 0xFFFF_FF00
 
-# Lock slot 31 is SEP_SYS_ID (periphs.adoc); write-lock is bit 2n = 62.
+# Lock slot 31 is SEP_SYS_ID (otp_fuse_controller.adoc); write-lock is bit 2n = 62.
 SEP_SYS_ID_WRITE_LOCK_BIT = 62
 SEP_SYS_ID_WRITE_LOCK_WORD = SEP_SYS_ID_WRITE_LOCK_BIT // 32
 
@@ -164,7 +171,8 @@ def _selftest() -> None:
     cfg = SepLockedFieldIrqCfg(1)
     assert len({cfg.write_spare, cfg.read_spare, cfg.unlocked_spare}) == 3
     assert cfg.locks_spare != 0
-    assert cfg.write_pattern not in (0, SENTINEL)
+    for pat in (cfg.write_pattern, cfg.read_pattern, cfg.unlocked_pattern, cfg.unlocked_write):
+        assert pat not in (0, DENY_DATA_MARKER)
     pins = cfg.image_fixed()
     assert pins["LOCKS_SPARE"] == cfg.locks_spare
     assert cfg.sectm_spare not in (cfg.write_spare, cfg.read_spare, cfg.unlocked_spare)

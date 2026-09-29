@@ -10,7 +10,10 @@
 
 This document tracks internal revisions and updates to the OCAH documentation.
 
-.Internal Revision History
+<<internal-revision-history-table>> tracks the internal documentation revisions.
+
+[[internal-revision-history-table]]
+.Internal revision history
 [width="100%",cols="15%,15%,15%,55%",options="header",]
 |=======================================================================
 |Version |Date |Author |Description
@@ -185,4 +188,12 @@ SLVERR and no-alias decode is an integrator constraint.
 shadow, dual-rail encoded like the secrets, and not blanked in secure test mode.
 |0.5.33 |2026-09-11 |Alessandro Ottaviano |Recorded that the SMC PLIC accepts
 active-high level sources or pulses long enough to be sampled on `clk_smc`.
+|0.5.34 |2026-09-18 |Haohao Liao |SEP SPI host is the unmodified OpenTitan IP
+behind an AXI4-Lite to TL-UL bridge, so the OpenTitan register map and interrupt
+semantics are authoritative. The published register map now carries the
+OpenTitan register names; the error and SPI-event interrupts share one line into
+the SEP interrupt controller, so software reads INTR_STATE to tell them apart;
+the access-control and SPI pass-through interfaces are unused and tied off. The
+SPI busy output is withdrawn from the SEP interface, since the OpenTitan host
+reports activity only through STATUS.ACTIVE.
 |=======================================================================

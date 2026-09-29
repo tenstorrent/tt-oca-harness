@@ -18,7 +18,7 @@
 
 #define TEST_FILTER_IDX 15u
 
-#define MAILBOX_0_APERTURE_SIZE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
+#define MAILBOX_0_APERTURE_SIZE SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
 
 static int check_eq32(const char *name, uint32_t actual, uint32_t expected) {
     int ok = (actual == expected);
@@ -33,7 +33,7 @@ static int check_bit(const char *name, uint32_t value) {
 }
 
 static uint32_t inbound_addr(uint32_t base) {
-    return base + (TEST_FILTER_IDX * OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE);
+    return base + (TEST_FILTER_IDX * SEP_TOP_INBOUND_FILTER_CTRL_STRIDE);
 }
 
 static void write64_split(uint32_t addr, uint64_t value) {
@@ -43,9 +43,9 @@ static void write64_split(uint32_t addr, uint64_t value) {
 
 int main(void) {
     int pass = 1;
-    uint32_t cfg_addr = inbound_addr(OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0));
-    uint32_t start_addr = inbound_addr(OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0));
-    uint32_t end_addr = inbound_addr(OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0));
+    uint32_t cfg_addr = inbound_addr(SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0));
+    uint32_t start_addr = inbound_addr(SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0));
+    uint32_t end_addr = inbound_addr(SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0));
     uint32_t cfg_src3;
     uint32_t cfg_rb;
     uint32_t cfg_hi;
@@ -62,25 +62,25 @@ int main(void) {
     /* CLOCK_GATE_CTRL is a reserved placeholder;
      * mailbox/filter clocks are always on, so no ungate step is required. */
 
-    WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR, (uint32_t)ctrl.w);
-    WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR, 0x7);
+    WRITE_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR, (uint32_t)ctrl.w);
+    WRITE_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR, 0x7);
 
-    WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR, 0xA5A50053);
-    WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + 4, 0x5A5A0053);
+    WRITE_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR, 0xA5A50053);
+    WRITE_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR + 4, 0x5A5A0053);
 
-    status.w = READ_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR);
     if (!check_bit("Mailbox write-level-above-threshold", status.f.write_level_above_thresh)) {
         pass = 0;
     }
 
-    irqs.w = READ_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR);
+    irqs.w = READ_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR);
     if (!check_bit("Mailbox wtirq", irqs.f.wtirq)) {
         pass = 0;
     }
 
-    write64_split(start_addr, OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
-    write64_split(end_addr, OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR +
-                                MAILBOX_0_APERTURE_SIZE - 1u);
+    write64_split(start_addr, SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR);
+    write64_split(end_addr,
+                  SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR + MAILBOX_0_APERTURE_SIZE - 1u);
 
     cfg_src3 =
         FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm | FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm |
@@ -105,8 +105,8 @@ int main(void) {
         pass = 0;
     }
 
-    WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR, 0x7);
-    WRITE_REG(OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR, (uint32_t)ctrl.w);
+    WRITE_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR, 0x7);
+    WRITE_REG(SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_CTRL_BASE_ADDR, (uint32_t)ctrl.w);
 
     if (pass) {
         printf("=== FABRIC MAILBOX ISS LOCK RESET TEST PASSED ===\n");

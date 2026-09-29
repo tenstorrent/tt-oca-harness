@@ -16,9 +16,11 @@
  * axi_lite_mailbox channels (sep.h AXIL_MAILBOX_*). For channel ch=0..7:
  *   SEP-local  OUTBOUND_MAILBOX_ch @ 0x10A00000 + 0x1000*ch  (the SEP pushes the token here)
  *   SMC-facing INBOUND_MAILBOX_ch  @ 0x10A00800 + 0x1000*ch  (the SMC pops / W1C-clears here)
- * A WRITE_DATA push at the SEP-local (outbound) port makes the SMC-facing (inbound) port's RX
- * FIFO non-empty, which asserts that channel's read-data-available IRQ ->
+ * A WRITE_DATA push at the SEP-local (outbound) port asserts that channel's outbound IRQ, which
+ * hw/sys/sep/rtl/sep.sv routes out of the block as
  * smc_mailbox_interrupt_o[ch] -> sep_mailbox_interrupts[ch] -> cpu_interrupts[256+ch].
+ * The paired inbound IRQ does NOT appear here: it reaches the SEP CPU's own PIC
+ * (sep_internal_interrupts[7:0]), which is what sep_mailbox_plic_test grades.
  *
  * Rendezvous / progress -- the SEP reaches SMC CPU_CTRL scratch through the SEP->SMC alias
  * (SEP-view 0x4000_0000 -> SMC-local 0xC000_0000); the SMC accesses the same scratch locally.
@@ -40,7 +42,7 @@
 /* Mailbox port bases + per-channel stride + per-port register offsets.
  *
  * The SEP fw includes sep.h BEFORE this header, so it sources these DIRECTLY from the
- * generated OCH_SEP_TOP_AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
+ * generated SEP_TOP_AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
  * sep.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
  * COLLIDE with the SMC's own smc_top_regs.h ("conflicting types"), so the SMC toolchain uses the
  * literal mirror below. sep_mbox_golden.py
@@ -48,35 +50,35 @@
  * drifts from RDL lands at an address the golden does not expect and the
  * test fails. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
  * stride = OUTBOUND_1-OUTBOUND_0 (= 2*MAILBOX_SIZE = 0x1000). */
-#ifdef OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth \
-                                                              */
-#define SMU015_MBOX_OUTBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
-#define SMU015_MBOX_INBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
+#ifdef SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth \
+                                                          */
+#define SMU015_MBOX_OUTBOUND_BASE SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
+#define SMU015_MBOX_INBOUND_BASE SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_CH_STRIDE \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_WRITE_DATA_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_READ_DATA_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_STATUS_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_RIRQT_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_IRQS_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_IRQEN_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
 #define MBOX_IRQP_OFFSET \
-    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR - \
-     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
-#define SMU015_MBOX_REG_BLOCK_SIZE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
+    (SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR - \
+     SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define SMU015_MBOX_REG_BLOCK_SIZE SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
 #else /* SMC fw: literal mirror */
 #define SMU015_MBOX_OUTBOUND_BASE 0x10A00000
 #define SMU015_MBOX_INBOUND_BASE 0x10A00800
@@ -150,8 +152,8 @@
 
 /* SEP COLD scratch6 (SEP-only; the SEP fw has the generated macro). Cold-reset domain: resets to 0,
  * so a ==SMU015_SEP_PASS read is a positive write-landed proof. */
-#ifdef OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
-#define SMU015_SEP_COLD_SCRATCH6 OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
+#ifdef SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
+#define SMU015_SEP_COLD_SCRATCH6 SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
 #else
 #define SMU015_SEP_COLD_SCRATCH6 0x10802030
 #endif

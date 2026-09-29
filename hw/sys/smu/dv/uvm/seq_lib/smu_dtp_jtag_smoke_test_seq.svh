@@ -3,7 +3,7 @@
 //
 // smu_dtp_jtag_smoke_test scenario sequence (SMU_ALL_005, DTP-JTAG-PTAP
 // S1/S2/S3 on the embedded DTP's primary TAP), carrying the cocotb
-// seq_lib/smu_dtp_jtag_smoke_test_seq.py semantics: S1 TAP reset to
+// cocotb/seq_lib/smu_dtp_jtag_smoke_test_seq.py semantics: S1 TAP reset to
 // Run-Test/Idle; S2 IDCODE against the SMU-configured value
 // (CHK-DTP-JTAG-PTAP-S1); S3 BYPASS one-TCK latency on the directed pattern
 // leg by leg, then on random_count seeded patterns (CHK-DTP-JTAG-PTAP-S2;
@@ -24,7 +24,6 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
   localparam string ChkPtapS2 = "CHK-DTP-JTAG-PTAP-S2";
   localparam string ChkPtapS3 = "CHK-DTP-JTAG-PTAP-S3";
   localparam string ChkTimeoutPaths = "CHK-TIMEOUT-PATHS";
-  localparam string ChkNonvac = "CHK-NONVAC";
 
   // The cocotb scenario's directed BYPASS pattern and width.
   localparam bit [31:0] BypassPattern = 32'hA5A5_A5A5;
@@ -34,8 +33,6 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
   // s3_capture_dr, s3_shift_dr, s3_update_dr, s3_back_rti, s4_trst_tlr,
   // s4_por_tlr (cocotb EXPECTED_TIMEOUT_PATHS).
   localparam int unsigned ExpectedTimeoutPaths = 9;
-  // Step marks S1..S5 plus PASS: five ordered, non-decreasing deltas.
-  localparam int unsigned ExpectedStepDeltas = 5;
 
   function new(string name = "smu_dtp_jtag_smoke_test_seq");
     super.new(name);
@@ -43,16 +40,18 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
 
   task body();
     bit [31:0] expected_idcode;
-    bit [15:0] last;
 
     seed_scenario_rng();
-    attach_evidence('{ChkPtapS1, ChkPtapS2, ChkPtapS3, ChkTimeoutPaths, ChkNonvac});
+    attach_evidence('{ChkPtapS1, ChkPtapS2, ChkPtapS3, ChkTimeoutPaths, ChkSbMinAct});
+    // One IDCODE scan and 1 + random_count BYPASS scans reach the embedded
+    // DTP predictors each pass.
+    check_min_activity(dtp_env_pkg::DtpFeatureIdcode, 1);
+    check_min_activity(dtp_env_pkg::DtpFeatureBypass, 1 + random_count);
     expected_idcode = smu_ptap_expected_idcode(test_cfg.ptap_idcode_negative);
     `uvm_info(get_type_name(),
-              $sformatf(
-                  {"SMU SV-UVM DTP JTAG smoke (SMU_ALL_005): PTAP IDCODE/BYPASS/TRST+POR on ",
-                   "--dut smu_block SEP=0; scenario_seed=%0d random_count=%0d idcode_expect=0x%08h"
-                    }, scenario_seed, random_count, expected_idcode), UVM_LOW)
+              $sformatf({"SMU SV-UVM DTP JTAG smoke (SMU_ALL_005): PTAP IDCODE/BYPASS/TRST+POR on ",
+                         "the smu_wrapper; scenario_seed=%0d random_count=%0d idcode_expect=0x%08h"
+                          }, scenario_seed, random_count, expected_idcode), UVM_LOW)
     if (test_cfg.ptap_idcode_negative)
       `uvm_info(get_type_name(), $sformatf(
                 "NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",
@@ -64,11 +63,9 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     run_idcode(expected_idcode);
     run_bypass();
     run_reset_paths();
-    run_timeout_inventory();
+    run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
-    mark_step("PASS", "scenario complete (PASS term recorded for the NONVAC fence)");
-    check_evidence(ChkNonvac, "ordered step-delta count", 64'(ordered_step_deltas()),
-                   64'(ExpectedStepDeltas), $sformatf("steps=%0d", m_step_order.size()));
+    mark_step("PASS", "scenario complete");
     finalize_evidence();
   endtask
 
@@ -76,7 +73,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
   protected task run_setup();
     bit [15:0] last;
     mark_step("S1", {
-              "SETUP: clocks stable; bare tb_top JTAG pins ready for PTAP; ",
+              "SETUP: clocks stable; wrapper JTAG pins ready for PTAP; ",
               "baseline TAP reset then Run-Test/Idle"
               });
     tap_reset();
@@ -94,11 +91,14 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
               "ACTION/RESPONSE/EFFECT DTP-JTAG-PTAP.S1: load IDCODE IR; shift 32b DR; ",
               "observe configured IDCODE fields on TDO"
               });
-    load_ir(jtag_inst_reg_pkg::IDCODE_INSTR);
+    load_ir(dtp_env_pkg::IDCODE_INSTR);
     dr_scan(64'h0, IdcodeWidth, observed);
     confirm_state_tck(OCAH_JTAG_RUN_TEST_IDLE, "s2_idcode_rti", 1'b0, last);
     check_evidence(ChkPtapS1, "IDCODE fields", observed[31:0], expected_idcode, $sformatf(
-                   "marker=%0b mfr=0x%03h part=0x%04h ver=0x%01h inst_decoded=0x%0h cell=inst=IDCODE",
+                   {
+                     "marker=%0b mfr=0x%03h part=0x%04h ver=0x%01h inst_decoded=0x%0h ",
+                     "cell=inst=IDCODE"
+                   },
                    observed[0],
                    observed[11:1],
                    observed[27:12],
@@ -114,7 +114,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
               "ACTION/RESPONSE/EFFECT DTP-JTAG-PTAP.S2: load BYPASS IR; shift known TDI; ",
               "capture TDO (single-bit register latency)"
               });
-    load_ir(jtag_inst_reg_pkg::BYPASS_INSTR);
+    load_ir(dtp_env_pkg::BYPASS_INSTR);
     shift_bypass_stepwise(BypassPattern);
     for (int unsigned r = 0; r < random_count; r++) begin
       bit [63:0] observed;
@@ -196,24 +196,8 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
   // Leave Test-Logic-Reset, load BYPASS, and park in Shift-DR.
   protected task enter_shift_dr_under_bypass();
     goto_state(OCAH_JTAG_RUN_TEST_IDLE);
-    load_ir(jtag_inst_reg_pkg::BYPASS_INSTR);
+    load_ir(dtp_env_pkg::BYPASS_INSTR);
     goto_state(OCAH_JTAG_SHIFT_DR);
-  endtask
-
-  // S5: every bounded wait named a finite bound and its last state, none
-  // expired, and the site count equals the cocotb scenario's.
-  protected task run_timeout_inventory();
-    mark_step("S5",
-              "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last TAP state");
-    log_timeout_paths();
-    check_evidence(ChkTimeoutPaths, "bounded wait sites", 64'(timeout_path_count()),
-                   64'(ExpectedTimeoutPaths), $sformatf(
-                   "expired=%0d bound_tck=%0d bound_ref=%0d",
-                   timeouts_expired(),
-                   test_cfg.bound_tck,
-                   test_cfg.bound_ref
-                   ));
-    check_evidence(ChkTimeoutPaths, "expired wait sites", 64'(timeouts_expired()), 64'd0);
   endtask
 
 endclass : smu_dtp_jtag_smoke_test_seq

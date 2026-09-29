@@ -126,7 +126,7 @@ static void gen_pt_block(uint32_t pt[4]) {
 /* Per-block status check: OUTPUT_LOST + alert                        */
 /* ------------------------------------------------------------------ */
 static int check_block_status(uint32_t block, const char *phase) {
-    aes__STATUS_t st = {.w = READ_REG(OCH_SEP_TOP_AES_STATUS_BASE_ADDR)};
+    aes__STATUS_t st = {.w = READ_REG(SEP_TOP_AES_STATUS_BASE_ADDR)};
     if (st.f.OUTPUT_LOST) {
         printf("  ERROR: OUTPUT_LOST at %s block %u (STATUS=0x%08x)\n", phase, block, st.w);
         return -1;
@@ -159,13 +159,13 @@ static int run_golden_anchor(void) {
 /* cocotb handshake: publish ready, read packed {block_count, seed}    */
 /* ------------------------------------------------------------------ */
 static int get_config(uint16_t *seed_o, uint32_t *blocks_o) {
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0); /* pre-clear */
-    WRITE_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7), 0); /* pre-clear */
+    WRITE_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6), FW_READY_MAGIC);
 
     uint32_t word = 0;
     int to = HANDSHAKE_TIMEOUT;
     while (to-- > 0) {
-        word = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7));
+        word = READ_REG(SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7));
         if (word != 0) break;
     }
     if (word == 0) {
@@ -258,7 +258,7 @@ int main(void) {
     printf("\n========================================\n");
     printf("sep_aes_large_payload_test (STRESS-002)\n");
     printf("========================================\n");
-    printf("AES base=0x%08x  ceiling=%u blocks (%u bytes)\n", OCH_SEP_TOP_AES_BASE_ADDR,
+    printf("AES base=0x%08x  ceiling=%u blocks (%u bytes)\n", SEP_TOP_AES_BASE_ADDR,
            AES_LARGE_PAYLOAD_MAX_BLOCKS, AES_LARGE_PAYLOAD_MAX_BLOCKS * 16u);
 
     if (rc == 0) rc = run_golden_anchor();

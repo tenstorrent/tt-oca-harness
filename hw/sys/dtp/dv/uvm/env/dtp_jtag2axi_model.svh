@@ -232,8 +232,11 @@ class dtp_jtag2axi_model;
     if (r.op != DTP_J2A_OP_NOP) begin
       m_bridge[n].series_op             = r.op;
       m_bridge[n].series_size           = r.size;
-      m_bridge[n].series_pipeline_depth = (r.pipeline_depth > DtpJ2aMaxPipelineDepth)
-                                                ? DtpJ2aMaxPipelineDepth : r.pipeline_depth;
+      // Series read requests one CTRL programming may enqueue: pl_depth + 1,
+      // where pl_depth ranges up to the bridge's rd_pl_depth (PTAP document,
+      // "*_AXI_SERIES_CTRL").
+      m_bridge[n].series_pipeline_depth = (r.pipeline_depth > t.rd_pl_depth)
+                                                ? t.rd_pl_depth : r.pipeline_depth;
       m_bridge[n].series_addr           = r.addr & ocah_rng::bit_mask(t.addr_width);
       m_bridge[n].series_reads_pushed   = 0;
     end
@@ -257,7 +260,7 @@ class dtp_jtag2axi_model;
       e.is_read = 1'b0;
       m_issued_q[n].push_back(e);
       exp = make_item(t, OCAH_AXI_DIR_WRITE, addr, size);
-      exp.data_words.push_back(dtp_j2a_series_wdata(t, r.data, addr));
+      exp.data_words.push_back(dtp_j2a_series_wdata(t, r.data, addr, size));
       exp.strobes.push_back(dtp_j2a_series_wstrb(t, addr, size));
       return 1'b1;
     end
@@ -314,7 +317,7 @@ class dtp_jtag2axi_model;
       if (e.is_read)
         m_bridge[n].last_read_data = obs.first_data() & ocah_rng::bit_mask(t.data_width);
     end else if (e.with_status && e.is_read)
-      m_bridge[n].last_read_data = dtp_j2a_series_rdata(t, obs.first_data(), obs.address);
+      m_bridge[n].last_read_data = dtp_j2a_series_rdata(t, obs.first_data(), obs.address, e.size);
     if (!e.single && e.incr)
       m_bridge[n].series_addr = (m_bridge[n].series_addr + dtp_j2a_size_bytes(
           e.size

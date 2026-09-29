@@ -1,20 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Matrix Package
+// Define types, port counts, and AXI-Lite typedefs for the cross-trigger matrix.
 //
-// Description:
-// Package containing types, parameters, and constants for the Cross Trigger Matrix
-//------------------------------------------------------------------------------
+// NUM_CT_SRC and NUM_CT_DST match the generated RDL geometry.
+// ctm_axil_req_t and ctm_axil_resp_t type the CSR port.
 
 `ifndef CROSS_TRIGGER_MATRIX_PKG_SV
 `define CROSS_TRIGGER_MATRIX_PKG_SV
-
-// Import AXI package (required for typedef macros)
 import axi_pkg::*;
-// Include AXI typedef macros
-
 package cross_trigger_matrix_pkg;
 
   `include "axi/typedef.svh"

@@ -9,6 +9,9 @@ binary = "verilator"
 # Verilator has no SV-UVM support, so it runs the cocotb framework only.
 frameworks = ["cocotb"]
 license_env = []
+# cocotb's documented Verilator floor, the `VLT_MIN` of its Makefile flow. cocotb's Python
+# runner enforces no floor, so the doctor compares the release the binary reports against this.
+min_version = "5.036"
 supports_waves = ["fst", "vcd"]
 supports_cov = ["line", "toggle", "branch", "expression", "user"]
 default_waves = "fst"
@@ -55,7 +58,8 @@ binary = "vcs"
 frameworks = ["cocotb", "uvm"]
 license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
 supports_waves = ["vpd", "fsdb"]
-supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional"]
+# `user` is the cover-property half of urg's assert metric, read from asserts.txt.
+supports_cov = ["line", "cond", "toggle", "fsm", "branch", "assert", "functional", "user"]
 default_waves = "vpd"
 
 [vcs.build_defaults]
@@ -79,6 +83,10 @@ design_artifact = "{build_cov_dir}"
 input_glob = "**/coverage/simv.vdb"
 merged_name = "merged.vdb"
 merge_cmd = ["urg", "-full64", "-dir", "{design_db}", "-dir", "{inputs}", "-dbname", "{merged}"]
+# `--cov-combine`: the inputs are the design and merged databases of finished runs. Runs
+# of different frameworks elaborate different harness tops, and only a flexible union merge
+# keeps the DUT subtree the databases share.
+combine_cmd = ["urg", "-full64", "-flex_merge", "union", "-dir", "{inputs}", "-dbname", "{merged}"]
 report_cmd = ["urg", "-full64", "-dir", "{merged}", "-report", "{report}", "-format", "both"]
 
 [vcs.parser_extensions]

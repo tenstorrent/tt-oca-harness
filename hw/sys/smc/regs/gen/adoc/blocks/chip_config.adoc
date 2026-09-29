@@ -1,39 +1,53 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+:regmap-instance: {counter:regmap-number}
+
+[#regmap-{regmap-instance}-chip_config]
+== Chip Configuration Address Map
+
+Chip version, identification, and lifecycle-state registers.
+
 [cols="1,4,1,6", options="header"]
-.Register Map
 |===
 | Address | Name | Access | Description
-| 0x0 | VERSION_LO | R a| -
-| 0x4 | VERSION_HI | R a| -
-| 0x8 | CHIP_ID | R a| -
-| 0xC | LC_STATE | R a| -
+| 0x0 | <<reg-{regmap-instance}-chip_config-VERSION_LO,VERSION_LO>> | R a| -
+| 0x4 | <<reg-{regmap-instance}-chip_config-VERSION_HI,VERSION_HI>> | R a| -
+| 0x8 | <<reg-{regmap-instance}-chip_config-CHIP_ID,CHIP_ID>> | R a| -
+| 0xC | <<reg-{regmap-instance}-chip_config-LC_STATE,LC_STATE>> | R a| -
 |===
 
+[#reg-{regmap-instance}-chip_config-VERSION_LO]
+=== VERSION_LO
+
 [cols="1,3,1,1,6", options="header"]
-.VERSION_LO Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `version_lo` | R | 0x100A0 a| SMC version, lower 32 bits
 |===
 
+[#reg-{regmap-instance}-chip_config-VERSION_HI]
+=== VERSION_HI
+
 [cols="1,3,1,1,6", options="header"]
-.VERSION_HI Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `version_hi` | R | 0x0 a| SMC version, upper 32 bits
 |===
 
+[#reg-{regmap-instance}-chip_config-CHIP_ID]
+=== CHIP_ID
+
 [cols="1,3,1,1,6", options="header"]
-.CHIP_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `chip_id` | R | 0x0 a| Chip ID (e.g. 0 = Memory, 1 = CPU, 2 = AI Compute, 3 = Ethernet)
 |===
 
+[#reg-{regmap-instance}-chip_config-LC_STATE]
+=== LC_STATE
+
 [cols="1,3,1,1,6", options="header"]
-.LC_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved

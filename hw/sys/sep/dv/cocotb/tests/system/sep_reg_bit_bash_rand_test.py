@@ -4,7 +4,15 @@
 
 no_cpu / +skip_fuse_sense. RANDCFG: block order and complement-vs-ones
 order come from the run seed. The reset walk is the inventory after
-reasoned skips, not the raw OFFSET export. Full-mask write-lands covers the
+reasoned skips, not the raw OFFSET export.
+
+Two of those skips are read off the RDL rather than named: a write-only
+register returns no storage on a read, and a read-only register the RDL gives
+no reset value is driven by hardware, so the generated DEFAULT is a field
+default and not a POR value. Both read back 0 against a DEFAULT of 0 in most
+cases, so keeping them would pass without the DUT having shown anything. The
+ABR identity registers in that second group are proven frontdoor by the ABR
+KAT tests, and the entropy-pool pair by sep_entropy_pool_aperture_test. Full-mask write-lands covers the
 scratch-cold, scratch-warm and CPU_CTRL registers; the inbound START/END
 registers use the wrap model.
 
@@ -20,7 +28,10 @@ safety gate admits -- ``touch_reason`` clear (plain storage) AND
 write seed-derived ``x`` inside the software-usable mask, check
 ``(readback & mask) == (x & mask)``, restore reset. No key / lock / remap /
 outbound filter / GO. The seed picks the values and the block order, not the
-register set, so the touch count is the same at every seed.
+register set, so the touch count is the same at every seed. Always-on
+threshold registers stay busy until ``prim_reg_cdc`` finishes on
+``clk_wdt_i``; this sweep runs that clock at eight core periods so the
+readback retires inside the AXI timeout.
 
 CSRNG, EDN and ENTROPY_SOURCE reach the write side through this gate; those
 rows are the write coverage of the entropy complex CSRs.
@@ -33,7 +44,7 @@ from __future__ import annotations
 
 import pyuvm
 from sep_base_test import sep_base_test
-from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg
+from seq_lib.sep_reg_bit_bash_seq import SepRegBitBash, SepRegBitBashCfg, write_mask
 
 
 @pyuvm.test()
@@ -43,6 +54,16 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
     async def run_scenario(self) -> None:
         cfg = SepRegBitBashCfg(self.random_seed())
         self.logger.info("bit-bash config: %s", cfg.summary())
+        # Threshold writes return on clk_i. prim_reg_cdc then holds the register
+        # busy until the pulse synchronizer finishes on clk_wdt_i, and the next
+        # read waits for that. Eight core periods keeps the handshake inside the
+        # AXI timeout. The readback compare is still the written value.
+        self.cfg.wdt_clk_period_ns = 8 * self.cfg.sys_clk_period_ns
+        self.logger.info(
+            "WDT sim-timing knob: clk_wdt=%s ns (8x core) so a threshold "
+            "readback retires inside the AXI timeout",
+            self.cfg.wdt_clk_period_ns,
+        )
         await self.bring_up_no_cpu()
         bash = SepRegBitBash(self)
 
@@ -117,7 +138,7 @@ class sep_reg_bit_bash_rand_test(sep_base_test):
                     info.name,
                     info.addr,
                     x,
-                    info.mask,
+                    write_mask(info),
                 )
             except AssertionError as exc:
                 touch_fails.append(str(exc))

@@ -44,7 +44,7 @@ name = "smc_fw_hello_world_test"
 module = "smc_fw_hello_world_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "pyuvm"]
+tags = ["firmware", "cpu"]
 run_modes = ["smoke"]
 firmware = "hello_world"
 args = [
@@ -62,7 +62,7 @@ name = "smc_fw_plic_claim_test"
 module = "smc_fw_plic_claim_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "interrupt", "pyuvm"]
+tags = ["firmware", "cpu", "interrupt"]
 run_modes = ["smoke"]
 firmware = "plic_sanity"
 args = [
@@ -78,7 +78,7 @@ name = "smc_fw_hello_world_multicore_test"
 module = "smc_fw_hello_world_multicore_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "pyuvm"]
+tags = ["firmware", "cpu"]
 run_modes = ["smoke"]
 firmware = "hello_world_multicore"
 args = [
@@ -94,7 +94,7 @@ name = "smc_fw_octs_p0_primary_test"
 module = "smc_fw_octs_p0_primary_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "octs", "pyuvm"]
+tags = ["firmware", "cpu", "octs"]
 run_modes = ["smoke"]
 firmware = "octs_p0_primary_test"
 args = [
@@ -113,7 +113,7 @@ name = "smc_fw_i2c_sanity_test"
 module = "smc_fw_i2c_sanity_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_sanity"
 args = [
@@ -129,7 +129,7 @@ name = "smc_fw_i2c_target_sanity_test"
 module = "smc_fw_i2c_target_sanity_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_target_sanity"
 args = [
@@ -146,7 +146,7 @@ name = "smc_fw_i2c_acq_fifo_stretch_reset_test"
 module = "smc_fw_i2c_acq_fifo_stretch_reset_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_acq_fifo_stretch_reset"
 args = [
@@ -160,7 +160,7 @@ name = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 module = "smc_fw_i2c_p1_fifo_depth_xfer_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_p1_fifo_depth_xfer"
 args = [
@@ -174,7 +174,7 @@ name = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
 module = "smc_fw_i2c_tx_stretch_timeout_recovery_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_tx_stretch_timeout_recovery"
 args = [
@@ -189,7 +189,7 @@ name = "smc_fw_i2c_fifo_full_test"
 module = "smc_fw_i2c_fifo_full_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "i2c", "pyuvm"]
+tags = ["firmware", "cpu", "i2c"]
 run_modes = ["smoke"]
 firmware = "i2c_fifo_full"
 args = [
@@ -208,7 +208,7 @@ name = "smc_fw_uart_log_engine_single_entry_test"
 module = "smc_fw_uart_log_engine_single_entry_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_single_entry"
 args = [
@@ -221,7 +221,7 @@ name = "smc_fw_uart_log_engine_boundary_backpressure_test"
 module = "smc_fw_uart_log_engine_boundary_backpressure_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_boundary_backpressure"
 args = [
@@ -234,7 +234,7 @@ name = "smc_fw_uart_log_engine_disable_during_xfer_test"
 module = "smc_fw_uart_log_engine_disable_during_xfer_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_disable_during_xfer"
 args = [
@@ -247,12 +247,28 @@ name = "smc_fw_uart_log_engine_fetch_err_test"
 module = "smc_fw_uart_log_engine_fetch_err_test"
 seed = 1
 timeout_sec = 3600
-tags = ["firmware", "cpu", "uart", "pyuvm"]
+tags = ["firmware", "cpu", "uart"]
 run_modes = ["smoke"]
 firmware = "uart_log_engine_fetch_err"
 args = [
     "+smc_hold_cpu_boot",
     "+smc_scratch_ram_hex=uart_log_engine_fetch_err.ecc.hex",
+]
+
+[[tests]]
+# Word stores into the half of a 64-bit register word whose fields they do not
+# address. The core replicates the word onto the fields' lanes with the strobes
+# clear, a case SEP_IN cannot make because its master zero-fills those lanes.
+name = "smc_fw_narrow_store_lane_test"
+module = "smc_fw_narrow_store_lane_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "register"]
+run_modes = ["smoke"]
+firmware = "narrow_store_lane"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=narrow_store_lane.ecc.hex",
 ]
 
 [[groups]]
@@ -266,6 +282,7 @@ tests = [
     "smc_fw_i2c_sanity_test",
     "smc_fw_i2c_target_sanity_test",
     "smc_fw_i2c_tx_stretch_timeout_recovery_test",
+    "smc_fw_narrow_store_lane_test",
     "smc_fw_octs_p0_primary_test",
     "smc_fw_plic_claim_test",
     "smc_fw_uart_log_engine_boundary_backpressure_test",
@@ -273,4 +290,4 @@ tests = [
     "smc_fw_uart_log_engine_fetch_err_test",
     "smc_fw_uart_log_engine_single_entry_test",
 ]
-expected_count = 14
+expected_count = 15

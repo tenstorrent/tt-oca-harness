@@ -76,7 +76,7 @@ fault paths, illegal encodings. Named below. Not collected.
 |Inbound filter |`sep_inbound_filter_allow_cg`
 |eFuse |`sep_efuse_sense_cg`
 |eFuse fail-closed |`sep_efuse_fail_closed_cg`
-|Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`
+|Lifecycle |`sep_lc_state_cg`, `sep_feat_ctrl_cg`, `sep_sec_dis_boot_cg`
 |Mailbox / PIC |`sep_mailbox_pic_cg`
 |WDT |`sep_wdt_bark_cg`
 |Warm / cold scratch |`sep_scratch_reset_cg`
@@ -110,7 +110,7 @@ human. Other members may fill a group in passing.
 |`sep_abr_mlkem_cg` |`sep_abr_mlkem_kat_test`
 |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`; KM sink `sep_drbg_real_sink_multi_km_aes_test`; the four `cp_edn_*` client coverpoints `sep_crypto_edn_round_robin_grant_test` (it is the only leaf that drives every adapter client in one run)
 |`sep_km_generate_cg` |`sep_km_command_set_rand_test`
-|`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test` (MUST-fill for HMAC/KMAC/AES/OTBN). `sep_km_command_set_rand_test` writes one seed-selected classic dest plus a directed ABR ML-DSA seed dest every seed. `sep_km_abr_seed_sideload_test` also writes dest ABR. One seed of the command-set leaf does not fill all four classic cells.
+|`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test` (MUST-fill for HMAC/KMAC/AES/OTBN). `sep_km_command_set_rand_test` writes one seed-selected classic dest plus a directed ABR ML-DSA seed dest every seed. `sep_km_abr_seed_sideload_test` also writes the ML-DSA seed dest. The three ML-KEM cells -- `abr_mlkem_seed_d`, `abr_mlkem_seed_z`, `abr_mlkem_msg` -- are MUST-fill for `sep_km_abr_mlkem_sideload_test`, the only leaf that transfers to them. One seed of the command-set leaf does not fill all four classic cells.
 |`sep_km_host_cmd_cg` |`sep_km_command_set_rand_test` (`CMD_HW_VER` / `CMD_ROM_VER` / `CMD_SRAM_VER` / `CMD_RECOV_ACK` / `CMD_OTP_READ_LOCK_COLD`); `sep_km_handover_test` (`CMD_EXEC_ROM` / `CMD_SRAM_LOAD_EXEC` / `CMD_SRAM_EXEC`)
 |`sep_km_wipe_cg` |`sep_km_wipe_reset_test`
 |`sep_km_sw_reset_cg` |`sep_km_wipe_reset_test`, `sep_km_handover_test`
@@ -125,6 +125,7 @@ human. Other members may fill a group in passing.
 |`sep_lc_transition_cg` |`sep_lcc_lc_state_w1s_prod_test` and `_prod_demote_test` (PROD to RMA_SIP_1), `_rma_sip_test` (RMA_SIP_1 to RMA_CHIP_1)
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
 |`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the six W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
+|`sep_sec_dis_boot_cg` |`sep_sec_dis_override_test` (`cp_hold`, `cp_release`, `cp_rehold`, `cp_alone`, `cp_map_resp`). `cp_map_resp.okay` fills when the pre-sense `LC_STATE` read returns AXI OKAY. `sep_sec_dis_reset_reach_test` fills `cp_release`, `cp_rehold`, `cp_alone`, and `cp_reach`
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_axil_mailbox_iface_rand_test`, `sep_mailbox_plic_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture)
 |`sep_wdt_bark_cg` |threshold `sep_wdt_aon_timer_internals_test`; bark and NMI `sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`
@@ -133,11 +134,12 @@ human. Other members may fill a group in passing.
 
 Per-test detail is in link:SEP_VPLAN.adoc[SEP_VPLAN].
 
-Thirty-two Phase 1 covergroups, compiled and sampled for VCS only
+Thirty-three Phase 1 covergroups, compiled and sampled for VCS only
 (`ifndef VERILATOR`). Several IPs carry more than one group, because their
 Phase 1 contract has independent halves that different tests reach: the Key
 Manager splits generate from consume; lifecycle splits the sensed state, the
-transition taken, the `FEAT_CTRL` profile and demotion; eFuse splits sense from
+transition taken, the `FEAT_CTRL` profile, demotion, and the SEC_DIS window
+while sensing is still open; eFuse splits sense from
 the program/lock matrix; and the DMA splits the transfer from which completion
 route reported it. Phase 2 names are listed at the end of this document.
 
@@ -408,13 +410,14 @@ bin needs the KM's own answer. Silence cannot score it.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_dest` |HMAC, KMAC, AES, OTBN, ABR ML-DSA seed -- one cell each, taken from `RETURN_ARG` dest_engine of a successful `CMD_KEY_TRANSFER`
+|`cp_dest` |HMAC, KMAC, AES, OTBN, ABR ML-DSA seed, ABR ML-KEM seed D, ABR ML-KEM seed Z, ABR ML-KEM message -- one cell each for all eight destinations the KM firmware decodes, taken from `RETURN_ARG` dest_engine of a successful `CMD_KEY_TRANSFER`
 |===
 
 The consumer's use of the sideloaded key (the KAT digest) stays on the four
 `sep_km_*_sideload_kat_test` checkers for HMAC/KMAC/AES/OTBN, and on
-`sep_km_abr_seed_sideload_test` for ABR. Those leaves are the MUST-fill
-owners for consume. `sep_km_command_set_rand_test` also writes one
+`sep_km_abr_seed_sideload_test` for the ABR ML-DSA seed and
+`sep_km_abr_mlkem_sideload_test` for the three ML-KEM cells. Those leaves are
+the MUST-fill owners for consume. `sep_km_command_set_rand_test` also writes one
 seed-selected classic dest and a directed ABR dest every seed. The sampler
 scores `RETURN_ARG` dest_engine when `RESP_CMD` echoes `CMD_KEY_TRANSFER`
 with rc 0. A refused dest cannot fill a cell. A raw `WRITE_DATA` fill
@@ -740,6 +743,31 @@ read-only source cannot observe `RMA_SIP_0` or `RMA_CHIP_0` at all.
 The decode-matches-golden claim stays on `sep_lcc_golden`. Token faults and the
 `sigint` fail-closed matrix are Phase 2.
 
+==== `sep_sec_dis_boot_cg`
+
+*Description*: SEC_DIS while fuse sensing is still open. A match leaves
+`sep_reset_n` held. The `sep_reset_n` override releases it, and clearing the
+override holds it again. The `LC_STATE` shadow-map read in that window is
+recorded by its AXI response.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_hold` |SEC_DIS rises while sensing is still open, `sep_cpu_reset_n` held, override clear
+|`cp_release` |Override select and value set, sensing still open, `sep_cpu_reset_n` rises
+|`cp_rehold` |Override clear after that release, sensing still open, `sep_cpu_reset_n` falls
+|`cp_alone` |That release while SEC_DIS is still off
+|`cp_map_resp` |`okay`, `slverr` on the `LC_STATE` shadow read while sensing is still open and SEC_DIS is on
+|`cp_reach` |OKAY read of `SW_RESET_N` while sensing is still open and `sep_cpu_reset_n` is released
+|===
+
+`sep_sec_dis_override_test` owns `cp_hold`, the match while the reset stays
+held, and `cp_map_resp`, the `LC_STATE` response in that window. `okay` fills
+when that read returns AXI OKAY. The same leaf walks `cp_release`, `cp_rehold`,
+and `cp_alone` from the override pins. `sep_sec_dis_reset_reach_test` walks
+those three from the IC_RESET TDR and fills `cp_reach`. Both probes of the
+reset pair stay on the checker; this group samples `sep_cpu_reset_n` only.
+
 ==== `sep_lc_demote_cg`
 
 *Description*: Volatile PROD debug demotion.
@@ -763,17 +791,18 @@ cells for a walk that exercises the PROD rows only
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_raise` / `cp_clear` |Rising and falling edge of the SEP AXI mailbox sources, `sep_internal_interrupts[7:0]` (`sep.sv:534`)
+|`cp_raise` / `cp_clear` |Rising and falling edge of the SEP AXI mailbox sources, `sep_internal_interrupts[7:0]`, driven from `inbound_interrupt_o` in `sep.sv`
 |`cp_km_raise` / `cp_km_clear` |Rising and falling edge of the KM mailbox, `sep_internal_interrupts[14]`
-|`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`, the only path into the host aperture's receive FIFO. Every other bin in this group is an IRQ edge the transmit path raises, so none of them shows the receive direction was driven. Both 4-byte halves alias to the register, so the address compare masks bit 2.
+|`cp_peer_fill` |A completed external-master write to the inbound mailbox `WRITE_DATA`. The SEP CPU can raise the same inbound source itself, so an IRQ edge alone does not show an external master drove the receive direction. Both 4-byte halves alias to the register, so the address compare masks bit 2.
 |===
 
 The two domains are separate coverpoints because they are separate sources with
 separate owners; one shared pair would let a KM-mailbox edge stand in for the
 SEP mailbox.
 
-The EL2 PIC claim stays on the CPU test. The 42-source exclusivity map is
-Phase 2.
+The EL2 PIC claim stays on the CPU test. `sep_mailbox_plic_test` walks all eight
+outbound channels, so `cp_raise` / `cp_clear` observe each of
+`sep_internal_interrupts[7:0]`. The 42-source exclusivity map is Phase 2.
 
 ==== `sep_wdt_bark_cg`
 
@@ -839,7 +868,8 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 
 `sep_aperture_reserved_access_cg` also owns the refused-access response codes:
 DECERR / SLVERR on a reserved or unmapped address, walked by
-`sep_axi_map_refuse_test` and `sep_fabric_deadspace_decode_test`. Those are an
+`sep_axi_map_refuse_test`, `sep_fabric_deadspace_decode_test`,
+`sep_unmapped_access_policy_test` and `sep_fabric_burst_wrap_test`. Those are an
 error path, so they stay out of `sep_axi_decode_cg`, whose `cp_resp` records
 only that a legal access completed OKAY.
 
@@ -886,11 +916,11 @@ only that a legal access completed OKAY.
 
 === Phase 3 — named set
 
-Not instrumented. No Phase 3 VPLAN card is required at this stage. These
-names record leftover KM vehicles that are not Phase 1 or Phase 2.
+Not instrumented. No Phase 3 VPLAN card is required at this stage.
 
-`sep_km_abr_shared_key_cg` (`CMD_ABR_SK_TRANSFER` consume after a live ABR
-capture).
+The `CMD_ABR_SK_TRANSFER` consume after a live ABR capture is a Phase 1
+checker on `sep_km_abr_mlkem_sideload_test`. No covergroup samples that
+handshake.
 
 === Exclusions
 

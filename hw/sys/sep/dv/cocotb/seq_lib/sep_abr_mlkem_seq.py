@@ -5,7 +5,9 @@
 ML-KEM has its own register block beside ML-DSA in the Caliptra ``abr_reg.rdl``:
 a separate ``MLKEM_CTRL`` / ``MLKEM_STATUS`` pair and its own key, ciphertext
 and shared-key windows. Offsets come from that RDL by symbol, the same way
-``sep_abr_keygen_seq`` resolves the ML-DSA ones.
+``sep_abr_keygen_seq`` resolves the ML-DSA ones. The RDL declares the
+``MLKEM_NAME`` / ``MLKEM_VERSION`` identity words ``sw = r`` with no reset, and
+no SEP document gives their values, so this driver holds their addresses only.
 
 Two properties of this block shape the driver, and both are false-pass hazards:
 
@@ -20,7 +22,13 @@ Two properties of this block shape the driver, and both are false-pass hazards:
 
 from __future__ import annotations
 
-from env.sep_spec_tables import abr_off, mldsa_name_words, window
+from env.sep_spec_tables import (
+    abr_ctrl_cmd,
+    abr_field_mask,
+    abr_off,
+    kv_field_mask,
+    window,
+)
 
 from seq_lib.sep_abr_keygen_seq import SepAbr
 
@@ -28,6 +36,8 @@ ABR_BASE = window("ABR").base
 
 MLKEM_NAME0 = ABR_BASE + abr_off("MLKEM_NAME")
 MLKEM_NAME1 = MLKEM_NAME0 + 4
+MLKEM_VERSION0 = ABR_BASE + abr_off("MLKEM_VERSION")
+MLKEM_VERSION1 = MLKEM_VERSION0 + 4
 MLKEM_CTRL = ABR_BASE + abr_off("MLKEM_CTRL")
 MLKEM_STATUS = ABR_BASE + abr_off("MLKEM_STATUS")
 MLKEM_SEED_D = ABR_BASE + abr_off("MLKEM_SEED_D")
@@ -38,18 +48,30 @@ MLKEM_DECAPS_KEY = ABR_BASE + abr_off("MLKEM_DECAPS_KEY")
 MLKEM_ENCAPS_KEY = ABR_BASE + abr_off("MLKEM_ENCAPS_KEY")
 MLKEM_CIPHERTEXT = ABR_BASE + abr_off("MLKEM_CIPHERTEXT")
 
-# MLKEM_CTRL.CTRL, the 3-bit command field.
-KEM_CMD_NONE = 0x0
-KEM_CMD_KEYGEN = 0x1
-KEM_CMD_ENCAPS = 0x2
-KEM_CMD_DECAPS = 0x3
-KEM_CMD_KEYGEN_DECAPS = 0x4
-KEM_CTRL_ZEROIZE = 1 << 3
+# Caliptra Key-Vault controls for the ML-KEM lanes. SEP has no Caliptra KV; the
+# facade is sep_abr_kv_shim, which serves the KM-written sideload CSR on the KV
+# ports. read_en / write_en (kv_def.rdl) are hwclr, so each one arms a single
+# transfer and the engine clears it. abr_reg.rdl anchors this block at
+# kv_mlkem_seed_rd_ctrl and packs the other instances after it; abr_offsets()
+# resolves each by name. The selftest pins all three against the generated
+# decoder in abr_reg.sv, so a layout change fails at import rather than writing
+# a wrong address mid-simulation.
+MLKEM_KV_SEED_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_seed_rd_ctrl")
+MLKEM_KV_MSG_RD_CTRL = ABR_BASE + abr_off("kv_mlkem_msg_rd_ctrl")
+MLKEM_KV_SK_WR_CTRL = ABR_BASE + abr_off("kv_mlkem_sharedkey_wr_ctrl")
+KV_READ_EN = kv_field_mask("kv_read_ctrl_reg", "read_en")
+KV_WRITE_EN = kv_field_mask("kv_write_ctrl_reg", "write_en")
 
-# MLKEM_STATUS
-KEM_ST_READY = 1 << 0
-KEM_ST_VALID = 1 << 1
-KEM_ST_ERROR = 1 << 2
+KEM_CMD_NONE = abr_ctrl_cmd("MLKEM_CTRL", "NONE")
+KEM_CMD_KEYGEN = abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN")
+KEM_CMD_ENCAPS = abr_ctrl_cmd("MLKEM_CTRL", "ENCAPS")
+KEM_CMD_DECAPS = abr_ctrl_cmd("MLKEM_CTRL", "DECAPS")
+KEM_CMD_KEYGEN_DECAPS = abr_ctrl_cmd("MLKEM_CTRL", "KEYGEN_DECAPS")
+KEM_CTRL_ZEROIZE = abr_field_mask("MLKEM_CTRL", "ZEROIZE")
+
+KEM_ST_READY = abr_field_mask("MLKEM_STATUS", "READY")
+KEM_ST_VALID = abr_field_mask("MLKEM_STATUS", "VALID")
+KEM_ST_ERROR = abr_field_mask("MLKEM_STATUS", "ERROR")
 
 # ML-KEM-1024 window sizes, in 32-bit words.
 KEM_SEED_WORDS = 8
@@ -58,11 +80,6 @@ KEM_K_WORDS = 8
 KEM_EK_WORDS = 392
 KEM_DK_WORDS = 792
 KEM_CT_WORDS = 392
-
-# Identity words. The Caliptra NAME packing is the same half-word swap for
-# every core in this block, so the ML-DSA helper derives the ML-KEM pair from
-# its label rather than the value being copied in.
-KEM_NAME0_EXP, KEM_NAME1_EXP = mldsa_name_words("KEM-1024")
 
 
 class SepAbrMlkem(SepAbr):
@@ -86,14 +103,18 @@ def _selftest() -> None:
     assert MLKEM_DECAPS_KEY - ABR_BASE == 0xA000
     assert MLKEM_ENCAPS_KEY - ABR_BASE == 0xB000
     assert MLKEM_CIPHERTEXT - ABR_BASE == 0xB800
+    # The KV control block sits at its own anchor in abr_reg.rdl; ML-DSA's is
+    # 0x8000 and ML-KEM's is 0xC000, with ctrl/status alternating from there.
+    # abr_reg.sv decoded_reg_strb: 16'hc000 / 16'hc008 / 16'hc010.
+    assert MLKEM_KV_SEED_RD_CTRL - ABR_BASE == 0xC000
+    assert MLKEM_KV_MSG_RD_CTRL - ABR_BASE == 0xC008
+    assert MLKEM_KV_SK_WR_CTRL - ABR_BASE == 0xC010
     # The three large windows a command touches must not overlap each other.
     assert MLKEM_DECAPS_KEY + 4 * KEM_DK_WORDS <= MLKEM_ENCAPS_KEY
     assert MLKEM_ENCAPS_KEY + 4 * KEM_EK_WORDS <= MLKEM_CIPHERTEXT
     # And the whole ML-KEM aperture must stay inside the ABR decode window.
     assert MLKEM_CIPHERTEXT + 4 * KEM_CT_WORDS <= window("ABR").end
-    # abr_params_pkg MLKEM_CORE_NAME is 64'h32343130_4D2D4B45, low word first.
-    assert KEM_NAME0_EXP == 0x4D2D4B45
-    assert KEM_NAME1_EXP == 0x32343130
+    assert MLKEM_VERSION0 - MLKEM_NAME0 == 0x8
 
 
 _selftest()

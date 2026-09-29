@@ -12,12 +12,11 @@
 
 #include "sep.h"
 
-// CFG_REGWEN / RANGE_REGWEN multi-bit-bool encodings. Unlocked is the reset
-// value and comes from the generated header rather than being copied. Locked
-// has no generated symbol: it is the multi-bit-bool complement the DMA writes
-// when it auto-locks, and stays a DV-owned constant.
-#define SEP_DMA_REGWEN_UNLOCKED SECURE_DMA__CFG_REGWEN__REGWEN_reset
-#define SEP_DMA_REGWEN_LOCKED 0x9u
+// CFG_REGWEN / RANGE_REGWEN multi-bit-bool encodings from the generated
+// MULTIBITBOOL4 pair. Unlocked is TRUE (the REGWEN reset); locked is FALSE
+// (the value the engine writes when it auto-locks).
+#define SEP_DMA_REGWEN_UNLOCKED MULTIBITBOOL4__TRUE
+#define SEP_DMA_REGWEN_LOCKED MULTIBITBOOL4__FALSE
 
 // CONTROL.OPCODE encodings. PeakRDL carries only the field, so the legal set
 // is transcribed here from the IP register specification:
@@ -65,25 +64,25 @@ static inline void sep_dma_wr(uint32_t addr, uint32_t value) {
 // dst are OT-internal, 4-byte width, incrementing. DIGEST_SWAP makes the
 // hardware digest big-endian to match software SHA-256.
 static inline void sep_dma_sha256_start(uint32_t src, uint32_t dst, uint32_t len) {
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
 
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     uint32_t asid = SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset;
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, SEP_DMA_ASID_PAIR(asid, asid));
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR,
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, SEP_DMA_ASID_PAIR(asid, asid));
+    sep_dma_wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR,
                SECURE_DMA__INTR_ENABLE__DMA_DONE_bm | SECURE_DMA__INTR_ENABLE__DMA_ERROR_bm);
 
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
                SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
                    SECURE_DMA__CONTROL__DIGEST_SWAP_bm | SEP_DMA_OPCODE_SHA256);
 }
@@ -92,25 +91,25 @@ static inline void sep_dma_sha256_start(uint32_t src, uint32_t dst, uint32_t len
 // hash). Non-blocking and interrupt-free: CONTROL.GO returns immediately and
 // the caller polls STATUS.
 static inline void sep_dma_copy_start(uint32_t src, uint32_t dst, uint32_t len) {
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_BASE_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0xFFFFFFFFu);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1);
 
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_LO_BASE_ADDR, src);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, 0x0);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, dst);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, 0x0);
     uint32_t asid = SECURE_DMA__ADDR_SPACE_ID__SRC_ASID_reset;
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, SEP_DMA_ASID_PAIR(asid, asid));
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR, SEP_DMA_ASID_PAIR(asid, asid));
+    sep_dma_wr(SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, SEP_DMA_WIDTH_4B);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CHUNK_DATA_SIZE_BASE_ADDR, len);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_TOTAL_DATA_SIZE_BASE_ADDR, len);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_SRC_CONFIG_BASE_ADDR, SECURE_DMA__SRC_CONFIG__INCREMENT_bm);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_DST_CONFIG_BASE_ADDR, SECURE_DMA__DST_CONFIG__INCREMENT_bm);
 
-    sep_dma_wr(OCH_SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR,
-               SECURE_DMA__CONTROL__GO_bm | SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
-                   SEP_DMA_OPCODE_COPY);
+    sep_dma_wr(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, SECURE_DMA__CONTROL__GO_bm |
+                                                         SECURE_DMA__CONTROL__INITIAL_TRANSFER_bm |
+                                                         SEP_DMA_OPCODE_COPY);
 }
 
 #endif // SEP_DMA_H

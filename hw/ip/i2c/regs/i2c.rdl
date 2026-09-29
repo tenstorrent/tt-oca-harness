@@ -5,6 +5,8 @@
 `define I2C_RDL
 
 addrmap i2c {
+    name = "I2C Address Map";
+    desc = "Interrupt status, enable, and test registers for a single I2C controller and target.";
 
     //////////////////////////
     // Register Definitions //

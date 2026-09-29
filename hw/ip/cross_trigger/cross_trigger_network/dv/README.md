@@ -14,7 +14,11 @@ Layout
   the shared AXI VIP's AXI4-Lite master; the external CTP GPIO pads, the
   internal CT ports, and the clock-stop controls are exposed directly. The
   internal CT ports are built with the lower half in wire-OR mode and the
-  upper half in point-to-point mode.
+  upper half in point-to-point mode. Every CT_Req_out pad sits on an
+  open-drain shared wire (`ocah_open_drain_bus` from
+  `hw/common/dv/shims/analog/`): a private wire with one bench-side chiplet
+  driver, or the group wire the pads in `ctp_wire_group` share; each port's
+  receive pulse is exposed for cycle checks.
 * `cocotb/tests/` — test modules; `ctn_base_test.py` carries the shared
   bench helpers (address map, packed-vector drivers, pulse watchers). CSR
   offsets inside each endpoint window come from the embedded IPs' generated
@@ -50,10 +54,12 @@ Tests
 * `ctn_routing_test` — one CTM route per scenario across every source/target
   mode combination (external wire-OR/P2P pads, internal wire-OR/P2P ports),
   deterministic corners plus a randomized sweep, each with an unrouted-port
-  isolation check.
-* `ctn_loopback_test` — complete multi-hop paths over bench-emulated pad
-  wiring: a wire-OR repeater chain, an external P2P pair completing the
-  four-phase handshake autonomously, and an internal P2P duplex exchange.
+  isolation check; a wire-OR source's port fires exactly once,
+  `CT_DST_LATENCY` cycles after its wire or CLA request asserts.
+* `ctn_loopback_test` — complete multi-hop paths over chip-to-chip wiring: a
+  wire-OR repeater pulling a shared wire with two listening CTPs, an
+  external P2P pair completing the four-phase handshake autonomously over
+  pad mirrors, and an internal P2P duplex exchange.
 * `ctn_clock_stop_test` — clock-stop OR aggregation: walking-one and
   randomized request subsets, and the JTAG stop's discrimination from the
   CLA status output.
