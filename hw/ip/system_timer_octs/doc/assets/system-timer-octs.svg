@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="736" viewBox="0 0 1040 736" role="img" aria-labelledby="title desc">
+<title id="title">System Timer OCTS</title>
+<desc id="desc">The system_timer_octs block holds the timer core u_timer_core and its register block u_reg. The inbound timer_sync_load_i and timer_cnt_credit_i pulses are each flopped in clk_i and pass through a prim_edge_detector, u_sync_load_detector and u_credit_cnt_detector, which synchronizes them with two flops and detects the rising edge; the resulting pulses are masked while is_primary_i selects PRIMARY mode. In SECONDARY mode the sync-load pulse sets the sticky enable, and both pulses reset the credit tracking, which accumulates cur_credits by STEP, keeps the expected count and counts credit-starved cycles as credit_expired_o. The 64-bit count timer_count_q loads the preset, advances by one in PRIMARY mode, and in SECONDARY mode advances by STEP while credits are left or jumps to the expected count plus CREDIT_VAL on a credit pulse; it drives timer_count_o. In PRIMARY mode the credit counter runs from 0 to CREDIT_VAL-1 and the pulse state machine drives timer_sync_load_o after START and timer_cnt_credit_o at each credit period, each for PULSE_WIDTH cycles. The wrapper keeps the largest credit_expired_o value for CREDIT_EXPIRED. The AXI-Lite register block supplies START, CTRL and the preset, reads back mode, running and count, and drives timer_gpio_enable_o.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="736" fill="#ffffff"/>
+<rect class="smu" x="150" y="20" width="740" height="640" rx="6"/>
+<text class="b" x="162" y="648" text-anchor="start">system_timer_octs</text>
+<rect class="smu" x="170" y="40" width="700" height="440" rx="6"/>
+<text class="bs" x="182" y="470" text-anchor="start">u_timer_core</text>
+<rect class="smu opt" x="190" y="56" width="370" height="396" rx="6"/>
+<text class="bs" x="202" y="440" text-anchor="start">SECONDARY only</text>
+<rect class="smu opt" x="590" y="256" width="260" height="196" rx="6"/>
+<text class="bs" x="602" y="440" text-anchor="start">PRIMARY only</text>
+<path class="sigo" d="M10,88 L202,88"/>
+<text class="s" x="14" y="80" text-anchor="start">timer_sync_load_i</text>
+<rect class="core" x="206" y="72" width="50" height="32" rx="4"/>
+<text class="s" x="231" y="93" text-anchor="middle">flop</text>
+<path class="sigo" d="M256,88 L276,88"/>
+<rect class="core" x="280" y="64" width="220" height="48" rx="6"/>
+<text class="t" x="390" y="84.5" text-anchor="middle">u_sync_load_detector</text>
+<text class="s" x="390" y="101.5" text-anchor="middle">2-flop sync, rising edge</text>
+<path class="sigo" d="M10,168 L202,168"/>
+<text class="s" x="14" y="160" text-anchor="start">timer_cnt_credit_i</text>
+<rect class="core" x="206" y="152" width="50" height="32" rx="4"/>
+<text class="s" x="231" y="173" text-anchor="middle">flop</text>
+<path class="sigo" d="M256,168 L276,168"/>
+<rect class="core" x="280" y="144" width="220" height="48" rx="6"/>
+<text class="t" x="390" y="164.5" text-anchor="middle">u_credit_cnt_detector</text>
+<text class="s" x="390" y="181.5" text-anchor="middle">2-flop sync, rising edge</text>
+<path class="sigo" d="M10,240 L166,240"/>
+<text class="s" x="14" y="232" text-anchor="start">is_primary_i</text>
+<rect class="core" x="206" y="290" width="264" height="130" rx="6"/>
+<text class="t" x="338" y="324" text-anchor="middle">Credit tracking</text>
+<text class="s" x="338" y="342" text-anchor="middle">cur_credits += STEP</text>
+<text class="s" x="338" y="360" text-anchor="middle">credits_left, expected count</text>
+<text class="s" x="338" y="378" text-anchor="middle">u_adder_expected_credit</text>
+<text class="s" x="338" y="396" text-anchor="middle">credit_expired_o</text>
+<path class="sigo" d="M500,88 L596,88"/>
+<circle cx="540" cy="88" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M540,88 L540,320 L474,320"/>
+<text class="s" x="510" y="80" text-anchor="start">sync_load</text>
+<path class="sigo" d="M500,168 L533,168 M547,168 L596,168"/>
+<circle cx="525" cy="168" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M525,168 L525,346 L474,346"/>
+<text class="s" x="568" y="160" text-anchor="middle">credit</text>
+<rect class="core" x="600" y="68" width="120" height="40" rx="6"/>
+<text class="t" x="660" y="85.5" text-anchor="middle">enable</text>
+<text class="s" x="660" y="100.5" text-anchor="middle">sticky</text>
+<path class="sigo" d="M660,108 L660,146"/>
+<rect class="core" x="600" y="150" width="240" height="80" rx="6"/>
+<text class="t" x="720" y="171" text-anchor="middle">64-bit count</text>
+<text class="s" x="720" y="187" text-anchor="middle">timer_count_q</text>
+<text class="s" x="720" y="203" text-anchor="middle">preset, +1, +STEP, or</text>
+<text class="s" x="720" y="219" text-anchor="middle">expected + CREDIT_VAL</text>
+<path class="sigo" d="M470,385 L580,385 L580,210 L596,210"/>
+<text class="s" x="478" y="405" text-anchor="start">credits_left,</text>
+<text class="s" x="478" y="421" text-anchor="start">expected</text>
+<path class="sigo" d="M840,190 L1030,190"/>
+<text class="s" x="1030" y="182" text-anchor="end">timer_count_o</text>
+<rect class="core" x="610" y="272" width="220" height="46" rx="6"/>
+<text class="t" x="720" y="291.5" text-anchor="middle">Credit counter</text>
+<text class="s" x="720" y="308.5" text-anchor="middle">0 to CREDIT_VAL-1</text>
+<path class="sigo" d="M720,318 L720,352"/>
+<rect class="core" x="610" y="356" width="220" height="64" rx="6"/>
+<text class="t" x="720" y="376" text-anchor="middle">Pulse FSM</text>
+<text class="s" x="720" y="393" text-anchor="middle">IDLE, SYNC_LOAD, CREDIT</text>
+<text class="s" x="720" y="410" text-anchor="middle">PULSE_WIDTH cycles</text>
+<path class="sigo" d="M830,376 L1030,376"/>
+<text class="s" x="1030" y="370" text-anchor="end">timer_sync_load_o</text>
+<path class="sigo" d="M830,402 L1030,402"/>
+<text class="s" x="1030" y="396" text-anchor="end">timer_cnt_credit_o</text>
+<path class="sigo" d="M420,420 L420,491"/>
+<text class="s" x="428" y="468" text-anchor="start">credit_expired_o</text>
+<rect class="core" x="325" y="495" width="190" height="36" rx="4"/>
+<text class="s" x="420" y="518" text-anchor="middle">CREDIT_EXPIRED max hold</text>
+<path class="sigo" d="M420,531 L420,551"/>
+<rect class="core" x="170" y="555" width="700" height="70" rx="6"/>
+<text class="t" x="520" y="577" text-anchor="middle">u_reg</text>
+<text class="s" x="520" y="595" text-anchor="middle">TIMER_START, CTRL, TIMER_PRESET_LO/HI, STATUS, TIMER_COUNT_LO/HI,</text>
+<text class="s" x="520" y="613" text-anchor="middle">CREDIT_EXPIRED, TIMER_GPIO_ENABLE</text>
+<path class="sig" d="M720,484 L720,551"/>
+<text class="s" x="728" y="506" text-anchor="start">START, CTRL, preset</text>
+<text class="s" x="728" y="522" text-anchor="start">mode, running, count</text>
+<path class="axil" d="M10,590 L170,590"/>
+<text class="s" x="14" y="582" text-anchor="start">AXI-Lite</text>
+<path class="sigo" d="M870,590 L1030,590"/>
+<text class="s" x="1030" y="582" text-anchor="end">timer_gpio_enable_o</text>
+<rect class="core" x="14" y="681" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="694.5" text-anchor="start">RTL block</text>
+<rect class="smu" x="146.1" y="681" width="36" height="18" rx="4"/>
+<text class="s" x="190.1" y="694.5" text-anchor="start">Module boundary</text>
+<rect class="smu opt" x="319.6" y="681" width="36" height="18" rx="4"/>
+<text class="s" x="363.6" y="694.5" text-anchor="start">Mode-specific logic</text>
+<text class="s" x="573.6" y="694.5" text-anchor="start">Synchronized input</text>
+<path class="axil" d="M17,718 L59,718"/>
+<text class="s" x="70" y="722.5" text-anchor="start">AXI-Lite</text>
+<path class="sigo" d="M154.2,718 L196.2,718"/>
+<text class="s" x="207.2" y="722.5" text-anchor="start">Signal</text>
+<path class="sig" d="M277.6,718 L319.6,718"/>
+<text class="s" x="330.6" y="722.5" text-anchor="start">Register fields</text>
+<path class="sigplain" d="M460.1,718 L490.1,718 M475.1,718 L475.1,727"/>
+<circle cx="475.1" cy="718" r="3.5" fill="#5b6670"/>
+<text class="s" x="498.1" y="722.5" text-anchor="start">Fan-out</text>
+<rect class="pc" x="134.6" y="79.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="150" y="92.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="134.6" y="159.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="150" y="172.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="532.2" y="681.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="547.6" y="694.5" text-anchor="middle">CDC</text>
+</svg>

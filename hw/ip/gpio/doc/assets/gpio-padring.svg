@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="876" viewBox="0 0 1040 876" role="img" aria-labelledby="title desc">
+<title id="title">SMC pad ring GPIO interfaces and adopter pad shims</title>
+<desc id="desc">The SMC peripheral crossbar u_smc_periph_axi_lite_xbar sends the GPIO interface window to u_smc_padring and the smc_external window out of the SMC. Inside u_smc_padring, u_gpio_intf_demux decodes one 16-byte slot per pad to the 65 gpio controllers gen_gpio_intf[0] to gen_gpio_intf[64].u_gpio_interface and answers any other address with DECERR from u_intf_demux_err_slv. The combinational LSIO pad map assigns the SMC peripheral pad functions to fixed pads and drives each controller's LSIO plane. Each controller's pad-facing wires leave the SMC for the adopter's pad integration, where a gpio_shim per pad drives the technology pad macro. The adopter decodes the smc_external window and gives each gpio_shim its gpio_ctrl slot; the remaining targets of that window are PLL, PVT and strap registers.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="876" fill="#ffffff"/>
+<rect class="smu" x="20" y="50" width="1000" height="420" rx="6"/>
+<text class="b" x="48" y="458" text-anchor="start">smc</text>
+<path class="axil" d="M150,12 L150,80"/>
+<text class="s" x="160" y="30" text-anchor="start">from smc_local_xbar</text>
+<rect class="fabric" x="50" y="80" width="200" height="50" rx="4"/>
+<text class="bs" x="150" y="101.5" text-anchor="middle">Peripheral crossbar</text>
+<text class="s" x="150" y="118.5" text-anchor="middle">u_smc_periph_axi_lite_xbar</text>
+<path class="axil" d="M250,105 L300,105"/>
+<text class="s" x="306" y="110" text-anchor="start">other peripheral targets</text>
+<rect class="smu" x="110" y="160" width="860" height="290" rx="6"/>
+<text class="bs" x="122" y="438" text-anchor="start">u_smc_padring</text>
+<path class="axil" d="M200,130 L200,184"/>
+<path class="fabric" d="M192.8,180 L327.2,180 L380,225 L140,225 Z"/>
+<text class="s" x="390" y="208" text-anchor="start">u_gpio_intf_demux, one 16-byte slot per pad</text>
+<path class="axil" d="M170,225 L170,290"/>
+<path class="axil" d="M230,225 L230,260 L380,260 L380,290"/>
+<path class="axil" d="M290,225 L290,250 L620,250 L620,290"/>
+<path class="axil" d="M350,225 L350,240 L875,240 L875,290"/>
+<rect class="core" x="140" y="290" width="170" height="50" rx="6"/>
+<text class="t" x="225" y="311.5" text-anchor="middle">u_gpio_interface</text>
+<text class="s" x="225" y="328.5" text-anchor="middle">gen_gpio_intf[0]</text>
+<rect class="core" x="350" y="290" width="170" height="50" rx="6"/>
+<text class="t" x="435" y="311.5" text-anchor="middle">u_gpio_interface</text>
+<text class="s" x="435" y="328.5" text-anchor="middle">gen_gpio_intf[1]</text>
+<rect class="core" x="590" y="290" width="170" height="50" rx="6"/>
+<text class="t" x="675" y="311.5" text-anchor="middle">u_gpio_interface</text>
+<text class="s" x="675" y="328.5" text-anchor="middle">gen_gpio_intf[64]</text>
+<text class="b" x="560" y="322" text-anchor="middle">...</text>
+<rect class="external" x="800" y="290" width="150" height="40" rx="4"/>
+<text class="s" x="875" y="307.5" text-anchor="middle">u_intf_demux_err_slv</text>
+<text class="s" x="875" y="322.5" text-anchor="middle">DECERR</text>
+<rect class="fabric" x="800" y="372" width="150" height="48" rx="4"/>
+<text class="t" x="875" y="392.5" text-anchor="middle">LSIO pad map</text>
+<text class="s" x="875" y="409.5" text-anchor="middle">combinational</text>
+<path class="n-slate" d="M170,396 L253,396 M267,396 L463,396 M477,396 L703,396 M717,396 L800,396"/>
+<path class="sig" d="M170,396 L170,344"/>
+<circle cx="170" cy="396" r="3.5" fill="#5b6670"/>
+<path class="sig" d="M380,396 L380,344"/>
+<circle cx="380" cy="396" r="3.5" fill="#5b6670"/>
+<path class="sig" d="M620,396 L620,344"/>
+<circle cx="620" cy="396" r="3.5" fill="#5b6670"/>
+<text class="s" x="178" y="414" text-anchor="start">lsio_*[64:0]</text>
+<path class="sig" d="M995,60 L995,396 L954,396"/>
+<text class="s" x="985" y="76" text-anchor="end">peripheral pad functions</text>
+<rect class="external" x="20" y="510" width="1000" height="290" rx="6"/>
+<path class="sig" d="M260,340 L260,560"/>
+<path class="sig" d="M470,340 L470,560"/>
+<path class="sig" d="M710,340 L710,560"/>
+<text class="s" x="480" y="491.5" text-anchor="start">core2pad, core2pad_en,</text>
+<text class="s" x="480" y="506.5" text-anchor="start">pad2core, pad2core_en</text>
+<text class="bs" x="32" y="788" text-anchor="start">Adopter pad integration</text>
+<path class="axil" d="M50,115 L36,115 L36,720 L60,720"/>
+<text class="s" x="44" y="148" text-anchor="start">smc_external</text>
+<path class="fabric" d="M60,696 L100,680 L100,760 L60,744 Z"/>
+<text class="s" x="48" y="670" text-anchor="start">window decode</text>
+<path class="axil" d="M100,690 L140,690 L140,580 L160,580"/>
+<rect class="core" x="160" y="560" width="150" height="40" rx="6"/>
+<text class="t" x="235" y="577" text-anchor="middle">gpio_shim</text>
+<text class="s" x="235" y="593" text-anchor="middle">pad 0</text>
+<path class="sig" d="M235,600 L235,630"/>
+<rect class="external" x="160" y="630" width="150" height="40" rx="4"/>
+<text class="t" x="235" y="647" text-anchor="middle">Pad macro</text>
+<text class="s" x="235" y="663" text-anchor="middle">GPIO_PAD[0]</text>
+<path class="axil" d="M100,710 L350,710 L350,580 L370,580"/>
+<rect class="core" x="370" y="560" width="150" height="40" rx="6"/>
+<text class="t" x="445" y="577" text-anchor="middle">gpio_shim</text>
+<text class="s" x="445" y="593" text-anchor="middle">pad 1</text>
+<path class="sig" d="M445,600 L445,630"/>
+<rect class="external" x="370" y="630" width="150" height="40" rx="4"/>
+<text class="t" x="445" y="647" text-anchor="middle">Pad macro</text>
+<text class="s" x="445" y="663" text-anchor="middle">GPIO_PAD[1]</text>
+<path class="axil" d="M100,730 L590,730 L590,580 L610,580"/>
+<rect class="core" x="610" y="560" width="150" height="40" rx="6"/>
+<text class="t" x="685" y="577" text-anchor="middle">gpio_shim</text>
+<text class="s" x="685" y="593" text-anchor="middle">pad 64</text>
+<path class="sig" d="M685,600 L685,630"/>
+<rect class="external" x="610" y="630" width="150" height="40" rx="4"/>
+<text class="t" x="685" y="647" text-anchor="middle">Pad macro</text>
+<text class="s" x="685" y="663" text-anchor="middle">GPIO_PAD[64]</text>
+<text class="b" x="560" y="620" text-anchor="middle">...</text>
+<path class="axil" d="M100,750 L790,750"/>
+<text class="s" x="798" y="755" text-anchor="start">PLL, PVT, straps</text>
+<rect class="fabric" x="14" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="834.5" text-anchor="start">Crossbar, pad map</text>
+<path class="fabric" d="M201.3,825 L223.3,820 L223.3,840 L201.3,835 Z"/>
+<text class="s" x="231.3" y="834.5" text-anchor="start">Demux</text>
+<rect class="core" x="291.8" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="335.8" y="834.5" text-anchor="start">RTL block</text>
+<rect class="external" x="423.9" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="467.9" y="834.5" text-anchor="start">Pad macro, DECERR, adopter</text>
+<rect class="smu" x="673.3" y="821" width="36" height="18" rx="4"/>
+<text class="s" x="717.3" y="834.5" text-anchor="start">Module boundary</text>
+<path class="axil" d="M17,858 L59,858"/>
+<text class="s" x="70" y="862.5" text-anchor="start">AXI-Lite</text>
+<path class="sig" d="M154.2,858 L196.2,858"/>
+<text class="s" x="207.2" y="862.5" text-anchor="start">Bidirectional signals</text>
+<path class="sigplain" d="M378.1,858 L408.1,858 M393.1,858 L393.1,867"/>
+<circle cx="393.1" cy="858" r="3.5" fill="#5b6670"/>
+<text class="s" x="416.1" y="862.5" text-anchor="start">Fan-out</text>
+</svg>

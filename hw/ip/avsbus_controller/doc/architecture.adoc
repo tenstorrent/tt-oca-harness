@@ -15,11 +15,14 @@ FSM that serializes and deserializes subframes, a CRC-3 engine shared between
 transmit and receive, and the AVS clock generation logic.
 
 <<avsbus-controller-diagram>> shows the FIFO, protocol-engine, and clock-generation
-paths.
+paths. The two clock-domain boxes hold the logic clocked by `clk_reg_i` and by the
+generated `avs_clk`; the FIFOs and synchronizers that straddle the gap between them carry
+every crossing. The clock generation is drawn in full in <<avsbus-clock-select-diagram>>,
+and the protocol FSM in <<avsbus-protocol-fsm-diagram>>.
 
 [[avsbus-controller-diagram]]
-.AVSBus controller and protocol state machine
-image::SMC_AVSBusV1p3_FIG026.png[alt="AVSBus controller and protocol state machine",width=100%,pdfwidth=100%]
+.AVSBus controller block diagram
+image::avsbus-controller.svg[alt="AVSBus controller with the AXI-Lite to APB bridge, register file and interrupts in the register clock domain, command and readback FIFOs and synchronizers crossing to the AVS clock domain, the protocol FSM and CRC-3 engines, and the AVS clock generation and output clock gate",width=100%,pdfwidth=100%]
 
 === AVS Protocol Engine
 
@@ -230,6 +233,19 @@ variants
 Command transmission and response reception overlap: the reply to a command
 arrives during the subframe that carries the next command, which is why the
 mid-subframe states do both at once.
+
+<<avsbus-protocol-fsm-diagram>> shows the transitions between these states. Each subframe
+box stands for a SHIFT state, which holds for the 32 bits of a subframe, and the END state
+that follows it, where the transition is decided. RDY means that a command is waiting, the
+readback FIFO has room and no resync is due. A retry transition is taken when the received
+subframe has a bad CRC, a resource-unavailable or bad-CRC acknowledgment, or no response,
+and `MAX_RETRIES` is above zero; with `MAX_RETRIES` at zero the RDY and not-RDY transitions
+apply instead. A reply that arrives during a retry of the preceding command is held and
+processed after the retries finish. Every retry sequence ends with a slave resync.
+
+[[avsbus-protocol-fsm-diagram]]
+.AVSBus protocol state machine
+image::avsbus-protocol-fsm.svg[alt="AVSBus protocol state machine from reset through slave resync, idle and the first, middle and last subframes, with the retry transmit, transmit-and-receive and receive states and the held-reply processing state returning to the slave resync",width=100%,pdfwidth=100%]
 
 === Error Handling and Diagnostics
 
