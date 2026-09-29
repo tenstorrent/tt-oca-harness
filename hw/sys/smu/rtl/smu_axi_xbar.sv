@@ -65,7 +65,7 @@ module smu_axi_xbar
   // not connected to ext_out, so its unmatched accesses still decode-error.
   addr_rule_t [NumAddrRules-1:0] addr_map;
 
-  // reject when sep_region_size_i is 0 by setting to an arbitrary all 1s start and end adress
+  // reject when sep_region_size_i is 0 by setting to an arbitrary all 1s start and end address
   function automatic addr_rule_t aperture_rule(int unsigned idx, logic [55:0] base,
                                                logic [31:0] size);
     aperture_rule.idx = idx;
