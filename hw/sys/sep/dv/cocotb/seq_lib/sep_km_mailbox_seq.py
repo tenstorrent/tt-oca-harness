@@ -43,6 +43,9 @@ KM_MBOX_STATUS = sym("KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET")
 KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
+# Byte size of the SEP-side window. SEP_CTRL is its last register, so the
+# first offset past the window is the upper word of a 64-bit beat at SEP_CTRL.
+KM_MBOX_SIZE = sym("KM_MAILBOX_SEP_REG_MAP_SIZE")
 
 # SEP_STATUS bit positions, from the generated export like the offsets above.
 # km_mailbox_sep.rdl declares SEP_STATUS with the `status_reg` typedef, so the

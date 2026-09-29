@@ -1885,6 +1885,85 @@ module sep_uvm_top
             u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
     end
 
+    // KM SRAM read-response timing at the wrapper port (km_sram_mem_req/rsp,
+    // after the KM scrambler). km_sram_interface descrambles a response with
+    // the address it loaded on the accepting edge, so a response must arrive
+    // exactly one cycle after its accepted read. Counts:
+    //   rd_accept   accepted reads (req && !we && gnt)
+    //   rd_lat1     rvalid one cycle after an accepted read
+    //   rd_lat_err  rvalid with no accept one cycle earlier, or an accept one
+    //               cycle earlier with no rvalid (same-cycle, late or lost)
+    //   rd_b2b_diff rvalid in the same cycle as a new accepted read of a
+    //               different physical address (pipelined back-to-back reads)
+    //   scr_rd      accepted reads while the KMCSR SRAM scrambler is enabled
+    // Observation-only: continuous reads of the wrapper nets and of the KM
+    // scrambler enable; drives nothing; outside the tb s_axi / m_axi
+    // ready/valid cones. Reset to 0 by rst_n_int, so every leaf sees 0 or a
+    // count, never X.
+    logic km_sram_rd_acc, km_sram_rd_acc_q, km_sram_rvalid;
+    logic [km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH-1:0] km_sram_rd_addr_q;
+    logic [31:0] km_sram_rd_acc_cnt_q, km_sram_rd_lat1_cnt_q, km_sram_rd_lat_err_cnt_q;
+    logic [31:0] km_sram_rd_b2b_diff_cnt_q, km_sram_scr_rd_cnt_q;
+    assign km_sram_rd_acc = (u_dut.km_sram_mem_req.req === 1'b1) &&
+                            (u_dut.km_sram_mem_req.we === 1'b0) &&
+                            (u_dut.km_sram_mem_rsp.gnt === 1'b1);
+    assign km_sram_rvalid = (u_dut.km_sram_mem_rsp.rvalid === 1'b1);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_sram_rd_acc_q          <= 1'b0;
+            km_sram_rd_addr_q         <= '0;
+            km_sram_rd_acc_cnt_q      <= '0;
+            km_sram_rd_lat1_cnt_q     <= '0;
+            km_sram_rd_lat_err_cnt_q  <= '0;
+            km_sram_rd_b2b_diff_cnt_q <= '0;
+            km_sram_scr_rd_cnt_q      <= '0;
+        end else begin
+            km_sram_rd_acc_q <= km_sram_rd_acc;
+            if (km_sram_rd_acc) begin
+                km_sram_rd_addr_q    <= u_dut.km_sram_mem_req.addr;
+                km_sram_rd_acc_cnt_q <= km_sram_rd_acc_cnt_q + 32'd1;
+                if (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1)
+                    km_sram_scr_rd_cnt_q <= km_sram_scr_rd_cnt_q + 32'd1;
+            end
+            if (km_sram_rvalid && km_sram_rd_acc_q)
+                km_sram_rd_lat1_cnt_q <= km_sram_rd_lat1_cnt_q + 32'd1;
+            if (km_sram_rvalid != km_sram_rd_acc_q)
+                km_sram_rd_lat_err_cnt_q <= km_sram_rd_lat_err_cnt_q + 32'd1;
+            if (km_sram_rvalid && km_sram_rd_acc &&
+                (u_dut.km_sram_mem_req.addr != km_sram_rd_addr_q))
+                km_sram_rd_b2b_diff_cnt_q <= km_sram_rd_b2b_diff_cnt_q + 32'd1;
+        end
+    end
+    assign km_sram_rd_accept_count_o   = km_sram_rd_acc_cnt_q;
+    assign km_sram_rd_lat1_count_o     = km_sram_rd_lat1_cnt_q;
+    assign km_sram_rd_lat_err_count_o  = km_sram_rd_lat_err_cnt_q;
+    assign km_sram_rd_b2b_diff_count_o = km_sram_rd_b2b_diff_cnt_q;
+    assign km_sram_scr_rd_count_o      = km_sram_scr_rd_cnt_q;
+
+    // SEP-side KM mailbox register block (km_mailbox_sep_reg, PeakRDL
+    // --err-if-bad-addr): count the write requests its own address decode
+    // refuses, and keep the 5-bit block offset of the last one. The single
+    // BRESP of a split 64-bit beat cannot say which half, or which block,
+    // refused it; this names the block and the offset. Observation-only
+    // continuous read of the regblock decode; drives nothing; outside the tb
+    // s_axi / m_axi ready/valid cones. Reset to 0 by rst_n_int.
+    `define KM_MBOX_SEP_REGS `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.u_mailbox.u_sep_regs
+    logic [31:0] km_mbox_sep_wr_err_cnt_q;
+    logic [4:0]  km_mbox_sep_wr_err_addr_q;
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_mbox_sep_wr_err_cnt_q  <= '0;
+            km_mbox_sep_wr_err_addr_q <= '0;
+        end else if ((`KM_MBOX_SEP_REGS.decoded_err === 1'b1) &&
+                     (`KM_MBOX_SEP_REGS.decoded_req_is_wr === 1'b1)) begin
+            km_mbox_sep_wr_err_cnt_q  <= km_mbox_sep_wr_err_cnt_q + 32'd1;
+            km_mbox_sep_wr_err_addr_q <= `KM_MBOX_SEP_REGS.decoded_addr;
+        end
+    end
+    `undef KM_MBOX_SEP_REGS
+    assign km_mbox_sep_wr_err_count_o = km_mbox_sep_wr_err_cnt_q;
+    assign km_mbox_sep_wr_err_addr_o  = km_mbox_sep_wr_err_addr_q;
+
     // Outbound mailbox responder + firmware-console/PASS-magic monitor.
     sep_outbound_mbx u_mbx (
         .clk_i           (clk_i),

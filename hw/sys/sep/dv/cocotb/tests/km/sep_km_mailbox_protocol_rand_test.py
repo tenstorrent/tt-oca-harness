@@ -18,10 +18,14 @@ mailbox under the host. A SEP_CTRL write after a deliberate underflow is a
 register-block access, independent of the FIFO error path, and a 32-bit beat
 must stay OKAY. A 64-bit beat at SEP_CTRL (offset 0x18) reaches past the
 register file, and its single write response must be SLVERR or DECERR. One
-BRESP covers the whole beat, so it cannot say which half was refused; the
-SEP_CTRL value after the beat is logged and not graded (VPLAN known
-limitation "Dead-space per-beat refusal on writes"). SEP_CTRL is then
-rewritten with a 32-bit beat so the cells after it start from a known value.
+BRESP covers the whole beat, so it cannot say which half, or which block,
+refused it. The mailbox register block's own address decode is observed
+instead (tb_top probe km_mbox_sep_wr_err_count_o / _addr_o): it must refuse
+exactly one write, at the first offset past the RDL window, and the legal
+32-bit writes must not trip it. The SEP_CTRL value after the beat is logged
+and not graded (VPLAN known limitation "Dead-space per-beat refusal on
+writes"). SEP_CTRL is then rewritten with a 32-bit beat so the cells after it
+start from a known value.
 
 Checkers:
   CHK-HELD     SW_RESET_N bit 0 reads 0: KM is held, so no firmware peer
@@ -32,6 +36,11 @@ Checkers:
                OKAY and reads back; the register is not the FIFO error path.
                A 64-bit write beat at SEP_CTRL returns SLVERR or DECERR
                with no timeout; the SEP_CTRL value after it is logged only
+  CHK-CTRL-EP  the mailbox register block's address decode refuses the upper
+               word of that 64-bit beat: its write-refusal count steps by
+               exactly one, at the first offset past the RDL window
+               (KM_MAILBOX_SEP_REG_MAP_SIZE), and does not step on the
+               32-bit SEP_CTRL writes before and after it
   CHK-UFL-RESP SEP_CTRL.outbound_underflow_resp turns the same empty read
                into OKAY; the sticky bits stay set
   CHK-UFL-W1C  write-1-to-clear drops both sticky copies
@@ -73,8 +82,10 @@ from seq_lib.sep_km_mailbox_seq import (
     KM_IRQ_INBOUND_OVERFLOW,
     KM_IRQ_INBOUND_SPACE_AVAIL,
     KM_IRQ_OUTBOUND_UNDERFLOW,
+    KM_MBOX_CTRL,
     KM_MBOX_DEPTH,
     KM_MBOX_IRQ_AGG,
+    KM_MBOX_SIZE,
     KM_STATUS_INBOUND_DEPTH_LSB,
     KM_STATUS_INBOUND_DEPTH_MASK,
     KM_STATUS_INBOUND_EMPTY,
@@ -185,6 +196,9 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self._chk_irq()
         await self._chk_flush()
 
+    def _mbox_wr_err_count(self) -> int:
+        return self.rd(cocotb.top.km_mbox_sep_wr_err_count_o)
+
     def _irq_agg(self) -> int:
         vec = self.rd_known(cocotb.top.sep_internal_interrupts_probe_o, mask=1 << KM_MBOX_IRQ_AGG)
         return (vec >> KM_MBOX_IRQ_AGG) & 1
@@ -227,10 +241,16 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         # This 32-bit write is also the positive control for the 64-bit leg:
         # the same register, reached with a legal beat, accepts the write.
         ctrl_32 = 1 << KM_CTRL_OUTBOUND_UNDERFLOW_RESP
+        ep_err0 = self._mbox_wr_err_count()
         await self.mb.write_ctrl(ctrl_32)
         ctrl = await self.mb.read_ctrl()
         assert ctrl == ctrl_32, (
             f"CHK-CTRL FAIL: 32-bit SEP_CTRL write 0x{ctrl_32:08x} read back 0x{ctrl:08x}"
+        )
+        ep_err1 = self._mbox_wr_err_count()
+        assert ep_err1 == ep_err0, (
+            f"CHK-CTRL-EP FAIL: the legal 32-bit SEP_CTRL write stepped the mailbox "
+            f"register-block write-refusal count {ep_err0} -> {ep_err1}"
         )
 
         # 64-bit beat at SEP_CTRL: its upper half is past the register file.
@@ -250,6 +270,19 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
             f"CHK-CTRL FAIL: 64-bit write beat at SEP_CTRL returned resp={resp} "
             f"timed_out={timed_out}, expected SLVERR or DECERR"
         )
+        ep_err2 = self._mbox_wr_err_count()
+        ep_addr = self.rd(cocotb.top.km_mbox_sep_wr_err_addr_o)
+        past_window = KM_MBOX_SIZE & 0x1F
+        assert KM_MBOX_CTRL + 4 == KM_MBOX_SIZE, (
+            f"test bug: SEP_CTRL (0x{KM_MBOX_CTRL:02x}) is not the last word of the "
+            f"0x{KM_MBOX_SIZE:02x}-byte window, so a 64-bit beat there does not reach past it"
+        )
+        assert ep_err2 == ep_err1 + 1 and ep_addr == past_window, (
+            f"CHK-CTRL-EP FAIL: after the 64-bit beat the mailbox register-block "
+            f"write-refusal count went {ep_err1} -> {ep_err2} (expected +1) and the last "
+            f"refused offset is 0x{ep_addr:02x} (expected 0x{past_window:02x}, the first "
+            "offset past the RDL window)"
+        )
         ctrl_after_wide = await self.mb.read_ctrl()
         self.logger.info(
             "CHK-CTRL info: SEP_CTRL after the 64-bit beat reads 0x%08x "
@@ -264,10 +297,26 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         assert ctrl == ctrl_32, (
             f"CHK-CTRL FAIL: 32-bit SEP_CTRL rewrite 0x{ctrl_32:08x} read back 0x{ctrl:08x}"
         )
+        ep_err3 = self._mbox_wr_err_count()
+        assert ep_err3 == ep_err2, (
+            f"CHK-CTRL-EP FAIL: the legal 32-bit SEP_CTRL rewrite stepped the mailbox "
+            f"register-block write-refusal count {ep_err2} -> {ep_err3}"
+        )
         self.logger.info(
             "CHK-CTRL PASS: 32-bit SEP_CTRL write after underflow is OKAY and reads "
             "back 0x%08x; 64-bit beat at SEP_CTRL returned resp=%d",
             ctrl_32,
+            resp,
+        )
+        self.logger.info(
+            "CHK-CTRL-EP PASS: the mailbox register block refused exactly one write, "
+            "at offset 0x%02x (first offset past the 0x%02x-byte window), during the "
+            "64-bit beat (count %d -> %d); the 32-bit SEP_CTRL writes before and after "
+            "left the count unchanged; beat resp=%d",
+            ep_addr,
+            KM_MBOX_SIZE,
+            ep_err1,
+            ep_err2,
             resp,
         )
 

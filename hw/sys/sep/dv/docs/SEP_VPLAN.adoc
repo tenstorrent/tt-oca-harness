@@ -196,7 +196,7 @@ never when it was written.
 |`sep_km_mem_smoke_test`
 |no_cpu
 |ocah_axi_vip, KM path / golden
-|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive.
+|Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, that consecutive SRAM reads of different words through the enabled SRAM scrambler return their plaintexts, and that every SRAM read response arrives one cycle after its accept.
 |`sep_otbn_mem_smoke_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -778,7 +778,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_abr_seed_sideload_test`. Mailbox dest ABR ML-DSA seed plus KEYGEN public-key equality against a direct-seed KEYGEN. The command-set leaf hits the dest cell every seed; this leaf is the consume proof.
 
 |KM mailbox protocol (FIFO status, over/underflow, flush)
-|`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties the full inbound FIFO without clearing either sticky error in STATUS or `IRQ_STATUS` (outbound flush is a known limitation). KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
+|`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, the 64-bit `SEP_CTRL` beat refused by the mailbox register block's own address decode (tb probe), STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties the full inbound FIFO without clearing either sticky error in STATUS or `IRQ_STATUS` (outbound flush is a known limitation). KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
 
 |KM key/policy vault (extent + write-lock + seal)
 |`sep_km_key_policy_vault_test`. The seal walk lives here rather than on the command set: no mailbox command seals a slot, so over the command set an erase always frees and the retire path has no vehicle there.
@@ -1200,17 +1200,20 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *BFM / Model*: ocah_axi_vip, KM path / golden
 
-*Objective*: Proves the Key Manager's private instruction ROM and data SRAM are wired and alive.
+*Objective*: Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, and that the SRAM read path descrambles each response with the address of its own read.
 
-*Test Coverage*: Key Manager instruction ROM and data SRAM reachability.
+*Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; SRAM read-response latency.
+
+*Why the latency is graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. The integrated `prim_ram_1p_adv` KM SRAM has a one-cycle read latency, and this entry records that as a measured precondition rather than an assumption.
 
 *Test Procedure*:
 
 [arabic]
-. Bring up in `no_cpu` mode and stage the small Key Manager ROM image.
+. Bring up in `no_cpu` mode and stage the small Key Manager ROM image (`cocotb/tests/km_fw/km_rom.S`).
 . Release the Key Manager from software reset.
-. Poll until both a ROM fetch and an SRAM write have been observed, or time out.
-. Read the traffic counters and the first SRAM word.
+. The image writes the KMCSR SRAM scrambler key, sets `SCRAMBLER_CTRL.ENABLE` (LOCK clear), stores four different plaintexts to four different SRAM words (two adjacent, one mid-window, the last word of the window), and loads them back with four consecutive loads. It clears ENABLE, stores the four loaded values to SRAM words 1..4, and stores the marker to word 0 last.
+. Poll SRAM word 0 for the marker, bounded, or fail.
+. Read the traffic counters, SRAM words 0..4, and the tb read-latency monitor at the wrapper SRAM port.
 
 *Checkers*:
 
@@ -1221,9 +1224,15 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |The Key Manager processor fetches from its ROM — a non-zero request count, so a processor held in reset fails.
 |CHK-SRAM-WRITE
 |The processor writes to its SRAM, and the stored first word is the value the ROM program was built to write.
+|CHK-KM-SRAM-SCR-RT
+|Four consecutive loads of four different SRAM words, each written with a different plaintext through the enabled scrambler, return exactly those plaintexts (SRAM words 1..4). At least four SRAM reads are accepted while the KMCSR scrambler enable is set, so the loads went through the descrambler. The scrambler tweaks its key with the word address (`hw/ip/scrambler/doc/architecture.adoc`, Address Tweaking), so a response descrambled with another read's address returns a different word and fails the compare.
+|CHK-KM-SRAM-RD-LAT
+|Every KM SRAM read the wrapper accepts (`req && !we && gnt`) returns `rvalid` exactly one cycle later, and no `rvalid` arrives without an accept one cycle earlier: the one-cycle-latency count equals the accept count and the mismatch count is 0. The number of `rvalid` cycles that also accept a read of a different address is logged, not graded.
 |===
 
-*Evidence*: one aggregate record, `CHK-KM-MEM` (`cocotb/tests/km/sep_km_mem_smoke_test.py`), covers CHK-ROM-FETCH (`rom_count > 0`) and CHK-SRAM-WRITE (`sram_writes > 0` and the exact `word0` compare).
+*Evidence*: `CHK-KM-MEM` (`cocotb/tests/km/sep_km_mem_smoke_test.py`) covers CHK-ROM-FETCH (`rom_count > 0`) and CHK-SRAM-WRITE (`sram_writes > 0` and the exact `word0` compare). `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-RD-LAT` are their own records. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets and the KM scrambler enable.
+
+*Not claimed*: a KM SRAM with a zero-cycle read response. This integration has none, and CHK-KM-SRAM-RD-LAT fails if one appears. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -7212,9 +7221,15 @@ firmware cannot flush or fault the mailbox under the host. A `SEP_CTRL` write
 after a deliberate underflow is a register-block access, independent of the
 FIFO error path, and a 32-bit beat must stay OKAY. A 64-bit beat at
 `SEP_CTRL` (offset 0x18) reaches past the register file, and its single write
-response must be SLVERR or DECERR. One `BRESP` covers the whole beat, so the
-`SEP_CTRL` value after it is logged and not graded (known limitation
-_Dead-space per-beat refusal on writes_). Negative accesses are marked `expect_error` so the
+response must be SLVERR or DECERR. One `BRESP` covers the whole beat, so it
+cannot say which half, or which block, refused it. The crypto demux routes the
+beat on its start address, so it reaches the Key Manager port; the mailbox
+register block's own address decode (PeakRDL `--err-if-bad-addr`) is then
+observed through the tb_top probe `km_mbox_sep_wr_err_count_o` /
+`km_mbox_sep_wr_err_addr_o`, and it must refuse exactly the upper word, at the
+first offset past the RDL window. The `SEP_CTRL` value after the beat is
+logged and not graded (known limitation _Dead-space per-beat refusal on
+writes_). Negative accesses are marked `expect_error` so the
 environment scoreboard does not fail them as real errors.
 
 *Randomization*: RANDCFG. The 16 inbound fill words and the overflow poke come
@@ -7232,8 +7247,11 @@ flush) walks in one invocation.
 . Write `SEP_CTRL` with a 32-bit beat immediately after that underflow;
   require OKAY and an exact readback. Then write `SEP_CTRL` with one 64-bit
   beat whose low word sets one more response-mode bit; require SLVERR or
-  DECERR with no timeout and log the readback. Rewrite `SEP_CTRL` with the
-  32-bit value and require an exact readback.
+  DECERR with no timeout and log the readback. Require the mailbox register
+  block's write-refusal count to step by exactly one across the beat, at
+  offset `KM_MAILBOX_SEP_REG_MAP_SIZE`, and not to step across the 32-bit
+  writes. Rewrite `SEP_CTRL` with the 32-bit value and require an exact
+  readback.
 . Set `outbound_underflow_resp`; the same empty read must be OKAY with the
   stickies still set. Write-1-to-clear both copies.
 . Write 16 seeded words; after each write, `STATUS` depth/full/empty and
@@ -7261,6 +7279,8 @@ flush) walks in one invocation.
 |Empty `SEP_READ_DATA` returns SLVERR and 0, and `outbound_underflow` latches in both `STATUS` and `IRQ_STATUS`.
 |CHK-CTRL
 |A 32-bit `SEP_CTRL` write immediately after that underflow is OKAY and reads back exactly. The register is not the FIFO error path. A 64-bit write beat at offset 0x18 reaches past the register file and returns SLVERR or DECERR with no timeout. One `BRESP` covers the beat, so which half was refused is not graded; the readback after it is logged. The 32-bit write to the same register is the positive control.
+|CHK-CTRL-EP
+|The mailbox register block's own address decode refuses the upper word of that 64-bit beat: its write-refusal count steps by exactly one during the beat, and the refused block offset is the first offset past the RDL window (`KM_MAILBOX_SEP_REG_MAP_SIZE`, the word after `SEP_CTRL`). The 32-bit `SEP_CTRL` writes before and after the beat do not step the count, so the probe does not count legal writes. This shows the `--err-if-bad-addr` check is reachable from the SEP host; the beat's `BRESP` is logged.
 |CHK-UFL-RESP
 |`SEP_CTRL.outbound_underflow_resp` turns the same empty read into OKAY; the sticky bits stay set.
 |CHK-UFL-W1C
@@ -7515,7 +7535,7 @@ constraint is not an open defect.
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
 
 |Dead-space per-beat refusal on writes (AXI)
-|Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.
+|Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves. Where the refusing block's own decode is observed, the refusal is named per word: `sep_km_mailbox_protocol_rand_test` CHK-CTRL-EP shows the KM mailbox register block refuses the upper word of a 64-bit beat at `SEP_CTRL`, at the first offset past its window.
 
 |Inbound global-to-local remap consume (outside this DUT)
 |`fabric.adoc` names `SEP_GLOBAL_BASE_ADDR` and `SEP_REGION_SIZE` as the global SEP aperture "used by the SMU crossbar and by SEP inbound global-to-local remap", which reads as a datapath this suite could drive. It is not one here. Bare SEP exports both CSR values on output ports (`sep_global_base_addr_o`, `sep_region_size_o`, `sep.sv:203-204`) and nothing inside the DUT consumes them to translate an address; the remapper is in the SMU integration logic above this level. Measured rather than assumed: with the reset aperture programmed, an external read at the aperture-relative address of a scratch CSR returns DECERR while the same register answers at its own address, so the external master presents SEP-local addresses and no in-DUT remap stands between them. The CSR read/write path is graded by `sep_fabric_remap_filter_csr_bank_test`; the consume belongs to whoever integrates SEP, and a leaf here could only re-prove the register. The sixteen programmable `axi_alias_remap` regions are a different mechanism and are graded by `sep_fabric_local_alias_datapath_test`.

@@ -327,6 +327,17 @@
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
 `SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
+// KM SRAM read-response timing counters at the wrapper port; see the monitor
+// in tb_top. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_sram_rd_accept_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_lat1_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
+// SEP-side KM mailbox regblock address-decode write refusals: count and the
+// block offset of the last one. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_mbox_sep_wr_err_count_o)
+`SEP_TB_OUT(logic [4:0], km_mbox_sep_wr_err_addr_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)
