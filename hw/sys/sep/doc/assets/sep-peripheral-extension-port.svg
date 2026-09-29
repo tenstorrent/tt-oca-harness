@@ -122,8 +122,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="246" y="248.5" text-anchor="middle">remap</text>
 <path class="axi" d="M296,236 L320,236"/>
 <path class="fabric" d="M320,221 L350,206 L350,266 L320,251 Z"/>
-<text class="s" x="360" y="256" text-anchor="start">route demux; SMU, AP, STEE and local legs:</text>
-<text class="si" x="360" y="272" text-anchor="start">see the output fabric</text>
+<text class="s" x="360" y="256" text-anchor="start">route demux; SMU, AP, STEE and local legs</text>
+<text class="si" x="360" y="272" text-anchor="start">in the SEP output fabric figure</text>
 <path class="axi" d="M350,222 L780,222 L780,304"/>
 <text class="s" x="360" y="216" text-anchor="start">SMC aperture</text>
 <path class="axin" d="M780,304 L780,350"/>
