@@ -157,7 +157,7 @@ class sep_km_mem_smoke_test(sep_base_test):
         try:
             wr_count = self.rd_known(dut.km_sram_scr_wr_count_o)
             addrs = self.rd_known(dut.km_sram_scr_wr_addr_o)
-            datas = self.rd_known(dut.km_sram_scr_wr_data_o)
+            packed_data = self.rd_known(dut.km_sram_scr_wr_data_o)
             cells = self.rd_known(dut.km_sram_scr_wr_cell_o)
         except AssertionError as exc:
             raise AssertionError(f"{tag} FAIL: scrambled-write monitor not known: {exc}") from exc
@@ -166,7 +166,7 @@ class sep_km_mem_smoke_test(sep_base_test):
             f"want the image's {n} plaintext stores"
         )
         rows = [(addrs >> (aw * i)) & ((1 << aw) - 1) for i in range(n)]
-        data = [(datas >> (32 * i)) & 0xFFFF_FFFF for i in range(n)]
+        data = [(packed_data >> (32 * i)) & 0xFFFF_FFFF for i in range(n)]
         held = [(cells >> (32 * i)) & 0xFFFF_FFFF for i in range(n)]
         logical = [off // 4 for off in KM_SMOKE_SCR_CELL_OFFSETS]
         faults = []
