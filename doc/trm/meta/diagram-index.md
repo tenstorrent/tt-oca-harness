@@ -97,7 +97,7 @@ and token-processing figures remain canonical.
 | FIG025 | SMC log-engine wrapper | [hw/ip/uart/log_engine/doc/index.adoc](../../../hw/ip/uart/log_engine/doc/index.adoc) | [hw/ip/uart/log_engine/doc/assets/log-engine-wrapper.svg](../../../hw/ip/uart/log_engine/doc/assets/log-engine-wrapper.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG026 | AVSBus block diagram | [hw/ip/avsbus_controller/doc/architecture.adoc](../../../hw/ip/avsbus_controller/doc/architecture.adoc) | [hw/ip/avsbus_controller/doc/assets/SMC_AVSBusV1p3_FIG026.png](../../../hw/ip/avsbus_controller/doc/assets/SMC_AVSBusV1p3_FIG026.png) | Imported |
 | FIG027 | SMC mailbox wrapper and interrupt routing | [hw/ip/axi_lite_mailbox_unit/doc/index.adoc](../../../hw/ip/axi_lite_mailbox_unit/doc/index.adoc) | [hw/ip/axi_lite_mailbox_unit/doc/assets/smc-mailbox.svg](../../../hw/ip/axi_lite_mailbox_unit/doc/assets/smc-mailbox.svg) | Redrawn as hand-authored SVG from the imported figure |
-| FIG028 | DFD block (CLA etc) block  diagram | [hw/sys/smc/doc/dfd.adoc](../../../hw/sys/smc/doc/dfd.adoc) | [hw/sys/smc/doc/assets/SMC_DFD_FIG028.png](../../../hw/sys/smc/doc/assets/SMC_DFD_FIG028.png) | Imported |
+| FIG028 | SMC DFD block diagram | [hw/sys/smc/doc/dfd.adoc](../../../hw/sys/smc/doc/dfd.adoc) | [hw/sys/smc/doc/assets/smc-dfd.svg](../../../hw/sys/smc/doc/assets/smc-dfd.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG029 | Clock tree and domains | [hw/sys/smc/doc/clk_rst.adoc](../../../hw/sys/smc/doc/clk_rst.adoc) | [hw/sys/smc/doc/assets/SMC_CLOCKING_FIG029.svg](../../../hw/sys/smc/doc/assets/SMC_CLOCKING_FIG029.svg) | Imported |
 
 ## DTP
