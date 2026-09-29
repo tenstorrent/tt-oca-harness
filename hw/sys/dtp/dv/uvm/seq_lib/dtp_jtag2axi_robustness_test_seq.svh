@@ -368,8 +368,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   endtask
 
   // System reset while the bridge is observed mid-flight on a held write;
-  // `recovered` is 1 when the bridge's status left BUSY_OR_FULL afterwards
-  // and the recovery write ran.
+  // `recovered` is 1 when the bridge reported the discarded write as DECERR
+  // afterwards and the recovery write ran.
   protected task reset_abort_mid_flight(
       dtp_j2a_target_t t, string channel, int unsigned reset_cycles, int unsigned addr_idx,
       bit [63:0] recovery_xor, string context_s, output bit recovered);
@@ -437,8 +437,8 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     recovered = record_abort_check(
         DtpJ2aAbortRecoveryCheckId,
         {context_s, ".recovery_status"},
-        64'(st != DTP_J2A_BUSY_OR_FULL),
-        64'd1,
+        64'(st),
+        64'(DTP_J2A_DECERR),
         $sformatf(
             "status=%s max_captures=%0d after the mid-flight reset", st.name(), AbortRecoveryPolls)
     );
@@ -484,7 +484,10 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
     end
     if (stuck != "")
       `uvm_error("jtag2axi_abort_chk", $sformatf(
-                 "%s: %s stayed BUSY_OR_FULL after the mid-flight reset", label, stuck))
+                 "%s: %s did not report the discarded write as DECERR after the mid-flight reset",
+                 label,
+                 stuck
+                 ))
   endtask
 
   protected task run_back_to_back_reset();

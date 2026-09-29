@@ -373,8 +373,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
 
         With the AXI scoreboard attached every judgement is recorded rather
         than raised, so all three bridges leave evidence; without it the
-        first failing judgement raises. Returns True when the bridge's status
-        left BUSY_OR_FULL afterwards and the recovery write ran.
+        first failing judgement raises. Returns True when the bridge reported
+        the discarded write as DECERR afterwards and the recovery write ran.
         """
         tb_if = self.cfg.tb_if
         size = self.target_cfg(target).default_size
@@ -463,8 +463,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             target,
             ABORT_RECOVERY_CHECK_ID,
             f"{context}.recovery_status",
-            int(status != DtpJtag2AxiStatus.BUSY_OR_FULL),
-            1,
+            status,
+            DtpJtag2AxiStatus.DECERR,
             f"status={DtpJtag2AxiStatus(status).name} "
             f"captures={captures}/{ABORT_RECOVERY_POLLS} after the mid-flight reset",
         )
@@ -505,7 +505,8 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 stuck.append(target)
         if stuck:
             raise AssertionError(
-                f"{label}: {', '.join(stuck)} stayed BUSY_OR_FULL after the mid-flight reset"
+                f"{label}: {', '.join(stuck)} did not report the discarded write as DECERR "
+                "after the mid-flight reset"
             )
 
     async def run_backpressure_abort_at_data_w(self) -> None:
