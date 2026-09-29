@@ -7,4 +7,4 @@ version = 1
 name = "cross-trigger-network"
 title = "Cross Trigger Network Address Map"
 include_all = true
-columns = ["base", "end", "size", "occupied_size", "label", "instances", "stride", "description"]
+columns = ["base", "end", "size", "occupied_size", "label", "instances", "stride", "description", "hole_resp", "past_resp"]

@@ -10,6 +10,10 @@ mem km_rom {
     mementries = 4096;
     memwidth = 32;
     sw = r;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_note = "A write completes without an error response, is dropped, and sets IRQ_STATUS.ROM_WRITE_ERR.";
+`endif
 };
 
 mem km_sram {

@@ -79,6 +79,9 @@ addrmap axil_mailbox_smc_wrap {
     axil_mailbox     outbound_mailbox_31     @0x001_F000;
     axil_mailbox     inbound_mailbox_31      @0x001_F800;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };
 
 `endif
