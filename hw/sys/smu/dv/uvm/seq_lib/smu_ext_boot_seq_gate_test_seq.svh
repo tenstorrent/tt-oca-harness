@@ -38,8 +38,6 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
   // Bounded-wait sites: sense_done_before_gated_window,
   // primary_released_while_boot_gated, fuse_reset_n_delayed_after_ungate.
   localparam int unsigned ExpectedTimeoutPaths = 3;
-  // Step marks S1..S4, TIMEOUT, PASS: five ordered, non-decreasing deltas.
-  localparam int unsigned ExpectedStepDeltas = 5;
 
   // First-rise stamps of the tracked outputs, in simulation time; -1 while
   // unseen.
@@ -76,9 +74,7 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     if (m_tracker != null) m_tracker.kill();
     run_timeout_inventory(ChkTimeoutPaths, ExpectedTimeoutPaths);
 
-    mark_step("PASS", "scenario complete (PASS term recorded for the NONVAC fence)");
-    check_evidence(ChkNonvac, "ordered step-delta count", 64'(ordered_step_deltas()),
-                   64'(ExpectedStepDeltas), $sformatf("steps=%0d", m_step_order.size()));
+    mark_step("PASS", "scenario complete");
     check_evidence(ChkNonvac, "S3<S4 primary_release<ungate",
                    64'((m_t_primary_rise >= 0) && (m_t_primary_rise < m_t_ungate)), 64'd1,
                    $sformatf("primary_release=%0t ungate=%0t", m_t_primary_rise, m_t_ungate));

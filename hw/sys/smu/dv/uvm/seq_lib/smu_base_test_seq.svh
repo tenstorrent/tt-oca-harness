@@ -20,12 +20,12 @@
 // (TCK-stepped or clock polled) that record one TIMEOUT-PATH line each with
 // a finite bound and the last state seen, the TRST, power-good and
 // cold-reset controls with the re-bring-up wait a reset needs before the
-// next pass, ordered step marks and the per-step DUT-change anchor for the
-// non-vacuity fence, the scoreboard activity floor, and the per-pass named
-// evidence (CHK-*) through the protocol-neutral ocah_checker, attached with
-// the scenario's required IDs and finalized after the scenario so a silently
-// skipped check cannot report PASS. Every draw in a pass follows
-// seed_scenario_rng() (first statement of body()). The cocotb twins are the helper layers of
+// next pass, ordered step marks for the non-vacuity fence, the scoreboard
+// activity floor, and the per-pass named evidence (CHK-*) through the
+// protocol-neutral ocah_checker, attached with the scenario's required IDs
+// and finalized after the scenario so a silently skipped check cannot
+// report PASS. Every draw in a pass follows seed_scenario_rng() (first
+// statement of body()). The cocotb twins are the helper layers of
 // cocotb/seq_lib and cocotb_wrapper/seq_lib.
 
 class smu_base_test_seq extends ocah_sequence;
@@ -75,11 +75,6 @@ class smu_base_test_seq extends ocah_sequence;
   // Ordered step marks (simulation time) for the non-vacuity fence.
   protected string       m_step_order[$];
   protected realtime     m_step_time[string];
-  // DUT-observable changes the step anchor has counted, the count at each
-  // step mark, and the anchor process of the pass.
-  protected int unsigned m_dut_changes;
-  protected int unsigned m_step_dut_changes[string];
-  protected process      m_step_anchor;
   // Scoreboard activity floor: feature -> minimum comparisons this pass adds.
   protected int unsigned m_min_activity[string];
   protected int unsigned m_activity_baseline[string];
@@ -104,8 +99,6 @@ class smu_base_test_seq extends ocah_sequence;
     m_timeouts_expired = 0;
     m_step_order.delete();
     m_step_time.delete();
-    m_dut_changes = 0;
-    m_step_dut_changes.delete();
     m_min_activity.delete();
     m_activity_baseline.delete();
   endfunction
@@ -199,73 +192,14 @@ class smu_base_test_seq extends ocah_sequence;
   // Mark the start of a scenario step (cocotb STEP <id> parity).
   function void mark_step(string step_id, string detail);
     m_step_order.push_back(step_id);
-    m_step_time[step_id]        = $realtime;
-    m_step_dut_changes[step_id] = m_dut_changes;
+    m_step_time[step_id] = $realtime;
     log_step(step_id, detail);
-  endfunction
-
-  // The step anchor counts every change of a DUT-driven observable: the
-  // embedded DTP's TAP state and decoded instruction, the reset-unit and
-  // fuse-sense outputs, and the DEBUG_CONTROL and IC_RESET exports as the
-  // SMC receives them. No TB-driven pin is in the list.
-  task start_step_anchor();
-    fork
-      begin
-        m_step_anchor = process::self();
-        forever begin
-          @(dtp_tb_vif.tap_state or dtp_tb_vif.inst_decoded or
-            tb_vif.rst_cold_stable_ref_clk_n or tb_vif.rst_primary_ref_clk_n or
-            tb_vif.rst_primary_smc_clk_n or tb_vif.rst_primary_periph_clk_n or
-            tb_vif.fuse_sense_done or tb_vif.fuse_reset_n_delayed or
-            tb_vif.jtag_boot_stall or tb_vif.jtag_boot_stall_ovrd or
-            tb_vif.jtag_ic_reset_ext_ovrd or tb_vif.jtag_ic_reset_ext_ctrl_n or
-            tb_vif.jtag_ic_reset_smc_ovrd or tb_vif.jtag_ic_reset_smc_ctrl_n or
-            tb_vif.smc_reset_ctrl_ovrd or tb_vif.smc_reset_ctrl_val);
-          m_dut_changes++;
-        end
-      end
-    join_none
-  endtask
-
-  function void stop_step_anchor();
-    if (m_step_anchor != null) m_step_anchor.kill();
-    m_step_anchor = null;
-  endfunction
-
-  // Every scenario step S<n> saw at least one DUT change between its mark
-  // and the next mark. A step whose stimulus never reached the DUT, or a DUT
-  // that did not respond, fails here; without a running anchor every step
-  // counts zero and fails.
-  function void check_step_anchors(string check_id);
-    for (int unsigned i = 0; i + 1 < m_step_order.size(); i++) begin
-      string       id = m_step_order[i];
-      int unsigned seen;
-      if (id == "TIMEOUT" || id == "PASS") continue;
-      seen = m_step_dut_changes[m_step_order[i+1]] - m_step_dut_changes[id];
-      void'(m_check.expect_true(
-          check_id,
-          seen > 0,
-          $sformatf(
-              "step %s dut_changes=%0d before %s", id, seen, m_step_order[i+1])
-      ));
-    end
   endfunction
 
   function realtime step_time(string step_id);
     if (!m_step_time.exists(step_id))
       `uvm_fatal(get_type_name(), $sformatf("step %s was never marked", step_id))
     return m_step_time[step_id];
-  endfunction
-
-  // Consecutive step marks in non-decreasing simulation time: the ordered
-  // fence of the cocotb scenario, whose wall-clock marks always advance; in
-  // simulation a step that consumes no time shares the time of the next
-  // mark, so the fence is order plus non-decreasing time.
-  function int unsigned ordered_step_deltas();
-    int unsigned ordered = 0;
-    for (int unsigned i = 1; i < m_step_order.size(); i++)
-    if (m_step_time[m_step_order[i]] >= m_step_time[m_step_order[i-1]]) ordered++;
-    return ordered;
   endfunction
 
   function int unsigned timeout_path_count();

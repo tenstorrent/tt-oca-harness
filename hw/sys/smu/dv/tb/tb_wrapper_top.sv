@@ -1854,7 +1854,7 @@ module smu_wrapper_uvm_top
   assign xtrig_ctm_src_ack  = '0;
   assign xtrig_clk_stop_req = 1'b0;
 
-  // Every telemetry ATB receiver idle.
+  // Telemetry ATB channel 0 idle.
   assign tb_telemetry_atdata  = '0;
   assign tb_telemetry_atid    = '0;
   assign tb_telemetry_atvalid = '0;
@@ -1889,68 +1889,42 @@ module smu_wrapper_uvm_top
   assign tb_xtrig_ctp_req_in_din      = '0;
   assign tb_xtrig_ctp_ack_in_din      = '0;
 
-  // Under UVM an assertion-macro failure (OCAH_ASSERT_ERROR) is a UVM_ERROR,
-  // which no [pass_fail] ignore pattern waives, so this shape holds off
-  // exactly the embedded-SEP assertions the SEP entries of
-  // extra_ignore_patterns in smu_sim_cfg.toml waive for the cocotb shape.
-  // Every other SEP assertion, the SEP SRAM interface's included, stays armed
-  // and fails the run. The SPI host's checks are held off only for the first
-  // microsecond, the window the ignore pattern waives them in.
-  `define SMU_UVM_SEP u_dut.u_smu.gen_sep.u_sep
-  `define SMU_UVM_SEP_CRYPTO `SMU_UVM_SEP.u_sep_crypto
+  // Under UVM the simulator reports an assertion failure through the UVM
+  // report server, where it counts as an error of the run, so the SEP checks
+  // the cocotb flow ignores through [pass_fail] in smu_sim_cfg.toml are held
+  // off here by the same names: the entropy source and the EDN endpoints, the
+  // key manager, the secure DMA and its alert receivers (blocks the wrapper
+  // leaves never program), the SPI host for the first microsecond of X before
+  // its reset completes, the ValidDigestModeFlag_A of the SHA-256-only
+  // prim_sha2_32 instances of the eFuse token processing, and otbn_rnd's
+  // UrndNoReseedOnReset_A. Every other SEP assertion fails the run.
+  `define SMU_TB_SEP u_dut.u_smu.gen_sep.u_sep
+  `define SMU_TB_SEP_TOKEN_SHA(inst) \
+    `SMU_TB_SEP.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller \
+    .gen_mmr_reg.u_efuse_token_processing.inst.u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256
   initial begin
-    // The ABR register block's two unlabelled external wr/rd-ack immediate
-    // asserts, the only assertions of that instance.
-    $assertoff(1, `SMU_UVM_SEP_CRYPTO.u_sep_crypto_abr_wrapper_s3c_scan.u_abr_top
-                      .abr_reg_inst);
-    // The TRNG and the two EDN endpoints, whole subtrees.
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_trng);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_axis_edn_crypto_s3c_scan);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_axis_edn_pool_s3c_scan);
-    // ValidDigestModeFlag_A on the SHA-256-only token-processing hashes.
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_efuse_wrapper.u_efuse_interface_controller
-                      .gen_mmr_reg.u_efuse_token_processing.u_sha256_rma_sip_token
-                      .u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256
-                      .ValidDigestModeFlag_A);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_efuse_wrapper.u_efuse_interface_controller
-                      .gen_mmr_reg.u_efuse_token_processing.u_sha256_rma_sip_token
-                      .u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256.u_pad
-                      .ValidDigestModeFlag_A);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_efuse_wrapper.u_efuse_interface_controller
-                      .gen_mmr_reg.u_efuse_token_processing.u_sha256_rma_chiplet_token
-                      .u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256
-                      .ValidDigestModeFlag_A);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_efuse_wrapper.u_efuse_interface_controller
-                      .gen_mmr_reg.u_efuse_token_processing.u_sha256_rma_chiplet_token
-                      .u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256.u_pad
-                      .ValidDigestModeFlag_A);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_efuse_wrapper.u_efuse_interface_controller
-                      .gen_mmr_reg.u_efuse_token_processing.u_sha256_sec_disable_token
-                      .u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256
-                      .ValidDigestModeFlag_A);
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_efuse_wrapper.u_efuse_interface_controller
-                      .gen_mmr_reg.u_efuse_token_processing.u_sha256_sec_disable_token
-                      .u_prim_sha2_32.gen_sha256_logic.u_prim_sha2_256.u_pad
-                      .ValidDigestModeFlag_A);
-    // otbn_rnd's UrndNoReseedOnReset_A.
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn
-                      .u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
-    // Known-value checks of blocks the wrapper never programs: the key manager
-    // and the secure DMA (its alert receivers below).
-    $assertoff(0, `SMU_UVM_SEP_CRYPTO.u_key_manager_s3c_scan);
-    $assertoff(0, `SMU_UVM_SEP.u_sep_dma_wrap.u_secure_dma);
-    // The SPI host, for the first microsecond only.
-    $assertoff(0, `SMU_UVM_SEP.u_sep_io.u_sep_ot_spi_wrap.u_spi_host);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_sep_trng);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_axis_edn_pool_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_key_manager_s3c_scan);
+    $assertoff(0, `SMU_TB_SEP.u_sep_dma_wrap.u_secure_dma);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_sip_token).ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_sip_token).u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_chiplet_token).ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_rma_chiplet_token).u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_sec_disable_token).ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP_TOKEN_SHA(u_sha256_sec_disable_token).u_pad.ValidDigestModeFlag_A);
+    $assertoff(0, `SMU_TB_SEP.u_sep_crypto.u_sep_crypto_otbn_wrapper_s3c_scan.u_otbn.u_otbn_core
+                  .u_otbn_rnd.UrndNoReseedOnReset_A);
+    $assertoff(0, `SMU_TB_SEP.u_sep_io.u_sep_ot_spi_wrap.u_spi_host);
     #1us;
-    $asserton(0, `SMU_UVM_SEP.u_sep_io.u_sep_ot_spi_wrap.u_spi_host);
+    $asserton(0, `SMU_TB_SEP.u_sep_io.u_sep_ot_spi_wrap.u_spi_host);
   end
-  // The secure DMA's alert receivers, one per alert.
-  for (genvar i = 0; i < secure_dma_reg_pkg::NumAlerts; i++) begin : gen_sep_dma_alert_rx_off
-    initial $assertoff(0, `SMU_UVM_SEP.u_sep_dma_wrap.gen_alert_receivers[i]
-                              .u_alert_receiver);
+  for (genvar i = 0; i < secure_dma_reg_pkg::NumAlerts; i++) begin : gen_sep_dma_alert_off
+    initial $assertoff(0, `SMU_TB_SEP.u_sep_dma_wrap.gen_alert_receivers[i].u_alert_receiver);
   end
-  `undef SMU_UVM_SEP_CRYPTO
-  `undef SMU_UVM_SEP
+  `undef SMU_TB_SEP_TOKEN_SHA
+  `undef SMU_TB_SEP
 
   // Test classes (one per scenario) and the base test.
   `include "smu_tests.sv"

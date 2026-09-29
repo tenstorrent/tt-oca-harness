@@ -262,20 +262,14 @@ protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
 idle value `smu_base_test.drive_idle_inputs` uses, the `uvm_config_db`
 publication of every virtual interface, and `run_test()`. The outbound SMN
 responder interface `u_axi_out_if` lives above the harness block, in both
-shapes. Under UVM a failure of an assertion macro (`OCAH_ASSERT_ERROR`) is
-reported as a `UVM_ERROR`, which no `[pass_fail]` ignore pattern waives, so
-the harness holds off, with `$assertoff`, exactly the embedded-SEP assertions
-the SEP entries of the sim config's `[pass_fail]` `extra_ignore_patterns`
-waive for the cocotb shape: the ABR register block's two unlabelled external
-wr/rd-ack asserts (`abr_reg_inst`, level 1), the entropy source (`u_sep_trng`)
-and the two EDN endpoint scopes, `ValidDigestModeFlag_A` on the six
-SHA-256-only token-processing hash instances, `otbn_rnd`'s
-`UrndNoReseedOnReset_A`, the key manager, and the secure DMA with its alert
-receivers. The SPI host's checks are the one time-windowed entry: the ignore
-pattern waives them only below 1 us, so the harness turns them off at time 0
-and back on with `$asserton` at 1 us. Every other SEP assertion, the SEP SRAM
-interface's included, stays armed, and the UVM shape fails on the same SEP
-assertions the cocotb shape fails on.
+shapes. Under UVM the simulator reports an assertion failure through the UVM
+report server, where it counts as an error of the run, so the harness holds
+off, by name, the SEP checks the sim config's `[pass_fail]` patterns ignore
+for the cocotb flow: the entropy source and the EDN endpoints, the key
+manager, the secure DMA and its alert receivers, the SPI host for its first
+microsecond, the `ValidDigestModeFlag_A` of the SHA-256-only eFuse token
+hashes, and otbn_rnd's `UrndNoReseedOnReset_A`. Every other SEP assertion
+fails the UVM run, as it fails the cocotb run.
 
 The class library mirrors the cocotb conventions under `uvm/` with identical
 basenames, one class per file, on the shared framework bases of
