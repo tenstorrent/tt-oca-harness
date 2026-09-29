@@ -749,16 +749,14 @@ them unused&#8201;&#8212;&#8201;most on a 4 kB boundary, the interrupt block at 
 at <code>0xC018</code>, leaving the last 16,360 bytes undefined.</p>
 </div>
 <div class="paragraph">
-<p>A word access to any unpopulated offset completes with <code>OKAY</code>: a write is
-discarded and a read returns <code>0x0000_0000</code>. A partial-word write is answered
-with SLVERR wherever it lands (<a href="#abr-access-size">ABR access size</a>). ABR never drives <code>hresp</code>
-to error, so the AHB error response its slave interface implements is
-unreachable. This is narrower than
-every other answer in the subsystem: an address outside the aperture, or any
-burst, is answered with DECERR by the demux (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>), and
-the wrapper&#8217;s own <code>abr_wrapper_key_reg</code> CSRs answer an unmapped access with
-SLVERR. Software shall not rely on a bus error to detect a malformed ABR
-register address.</p>
+<p>The <a href="memory_map.html#sep-memory-map" class="xref page">SEP memory map</a> states how a word
+access to an unpopulated offset answers.
+A partial-word write is answered with SLVERR wherever it lands
+(<a href="#abr-access-size">ABR access size</a>). ABR never drives <code>hresp</code> to error, so the AHB error
+response its slave interface implements is unreachable. A burst is answered
+with DECERR by the demux (<a href="crypto.html#crypto-single-beat-only" class="xref page">Single-Beat Access Only</a>).
+Software shall not rely on a bus error to detect a malformed ABR register
+address.</p>
 </div>
 <div class="admonitionblock note">
 <table>

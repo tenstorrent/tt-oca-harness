@@ -1313,14 +1313,16 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 <table id="trm-table-6" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 6. Cross Trigger Network Address Map</caption>
 <colgroup>
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
-<col style="width: 12.5%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
+<col style="width: 10%;">
 </colgroup>
 <thead>
 <tr>
@@ -1332,6 +1334,8 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 <th class="tableblock halign-left valign-top">Instances</th>
 <th class="tableblock halign-left valign-top">Stride</th>
 <th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Hole in Extent (R / W)</th>
+<th class="tableblock halign-left valign-top">Past Extent (R / W)</th>
 </tr>
 </thead>
 <tbody>
@@ -1344,6 +1348,8 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 instance</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration registers for the cross trigger matrix</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aliases registers<sup><a href="#cross-trigger-network-note-1">[1]</a></sup></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00000200</p></td>
@@ -1354,13 +1360,27 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration and status registers for the cross trigger port</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#cross-trigger-network-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#cross-trigger-network-note-2">[2]</a></sup></p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
+<div class="title">Notes</div>
+<p><a id="cross-trigger-network-note-1"></a><sup>[1]</sup> 0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY, except byte address 0x1FF, which answers DECERR, 0xBADCAB1E / DECERR.<br>
+<a id="cross-trigger-network-note-2"></a><sup>[2]</sup> The last byte of each port&#8217;s 16-byte window answers DECERR, 0xBADCAB1E / DECERR.</p>
+</div>
+<div class="paragraph">
 <p>The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
 onto the CTM and CTP blocks it instantiates. The composite SystemRDL top is the
 common source for these addresses and for the generated RTL constants.</p>
+</div>
+<div class="paragraph">
+<p>The last two columns state how the network answers a 32-bit access that no
+register backs, as seen at its AXI-Lite CSR port, and
+<a href="../../../memory_map.html#ocah-decode-response-codes" class="xref page">Decode Response Codes</a>
+defines them and their codes. An address above <code>0x2FF</code> matches no block and
+answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 </div>
 <p class="block-references">Figures and tables: <a href="#trm-table-6">Table 6</a>.</p>
 <div class="sect2">

@@ -349,20 +349,12 @@ remap.</p>
 <p>The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.</p>
 </div>
 <div class="paragraph">
-<p>Each row below is the address aperture reserved for a unit, not the
-extent that decodes.</p>
-</div>
-<div class="paragraph">
-<p>The fabric refuses an address that falls between unit windows, or past
-the extent a unit allocates; such an access never reaches a unit.</p>
-</div>
-<div class="paragraph">
-<p>Inside a unit&#8217;s allocated extent, an offset that owns no register is
-accepted by the unit: reads return zero and writes are discarded, both
-with an OKAY response. Software gets no indication that it addressed
-nothing. Such an offset cannot alias a live register, because register
-decode is an exact address match rather than a range&#8201;&#8212;&#8201;not because the
-access is refused.</p>
+<p>Each row below is the aperture reserved for a unit, and the Decoded Extent
+column gives the part of it that registers or memory back. The last two
+columns state how SEP answers a 32-bit access that no register or memory
+backs, as seen at its inbound AXI port, and
+<a href="../../../ocah-docs/latest/memory_map.html#ocah-decode-response-codes" class="xref page">Decode Response Codes</a>
+defines them and their codes.</p>
 </div>
 <div class="paragraph">
 <p>The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
@@ -388,17 +380,19 @@ serves the mailbox and system CSR windows, and forwards all other addresses
 below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
 crossbar. Addresses above 0x4000_0000 and the units listed above are not
 reachable through this external path and receive error responses from the
-<code>smn_inbound</code> port.</p>
+<code>smn_inbound</code> port. Their rows in the table below state what the SEP CPU sees.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 3. SEP Component Address Map</caption>
 <colgroup>
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.667%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
 </colgroup>
 <thead>
 <tr>
@@ -408,6 +402,8 @@ reachable through this external path and receive error responses from the
 <th class="tableblock halign-left valign-top">Decoded Extent</th>
 <th class="tableblock halign-left valign-top">Unit</th>
 <th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Hole in Extent (R / W)</th>
+<th class="tableblock halign-left valign-top">Past Extent (R / W)</th>
 </tr>
 </thead>
 <tbody>
@@ -418,6 +414,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">sep_sram</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP scratch SRAM.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10040000</p></td>
@@ -426,6 +424,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">sep_boot_rom</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BL0 immutable instruction memory.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10050000</p></td>
@@ -434,6 +434,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">7872 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10800000</p></td>
@@ -442,6 +444,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">336 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure DMA control and status registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR<sup><a href="#sep-components-note-3">[3]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10801000</p></td>
@@ -450,6 +454,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">56 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Always-On Timer</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Wakeup and watchdog timers running on a low-power, always-on clock</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10802000</p></td>
@@ -458,6 +464,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Scratch Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cold-reset scratch register bank.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10802040</p></td>
@@ -466,6 +474,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10802080</p></td>
@@ -474,6 +484,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">64 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Scratch Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Warm-reset scratch register bank.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x108020C0</p></td>
@@ -482,6 +494,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">3904 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10803000</p></td>
@@ -490,6 +504,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Reset Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Software resets for KM, OTBN, AES, HMAC, KMAC, the internal TRNG, and Adams Bridge.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10804000</p></td>
@@ -498,6 +514,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">1008 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10900000</p></td>
@@ -506,6 +524,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">48 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan Big Number Accelerator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Programmable coprocessor for asymmetric cryptography with SCA and FI countermeasures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10910000</p></td>
@@ -514,6 +534,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">140 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES Accelerator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES block-cipher accelerator.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10911000</p></td>
@@ -522,6 +544,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HMAC Accelerator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Accelerator for SHA-2 256/384/512-based keyed HMAC and the hash function</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10913000</p></td>
@@ -530,6 +554,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KMAC Accelerator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xFFFFFFFF / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10914000</p></td>
@@ -538,6 +564,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10915000</p></td>
@@ -546,6 +574,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">96 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cryptographically Secure Random Number Generator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10915800</p></td>
@@ -554,6 +584,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">72 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Distribution Network</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Distributes random numbers produced by CSRNG to hardware blocks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10916000</p></td>
@@ -562,6 +594,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">380 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy Source Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Entropy-source configuration, status, and data registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10917000</p></td>
@@ -570,6 +604,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External TRNG register passthrough; the register layout is adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined<sup><a href="#sep-components-note-4">[4]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10918000</p></td>
@@ -578,6 +614,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Lifecycle Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state and transition control.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10920000</p></td>
@@ -586,6 +624,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Mailbox SEP Side</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Register interface for SEP host to access mailbox (write to inbound FIFO, read from outbound FIFO)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10921000</p></td>
@@ -594,6 +634,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">60 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10930000</p></td>
@@ -602,6 +644,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse Map Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cached eFuse shadow registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10930400</p></td>
@@ -610,6 +654,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse command and status registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xBADCAB1E / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10930500</p></td>
@@ -618,6 +664,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Token Registers Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse security-token registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10930600</p></td>
@@ -626,6 +674,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">64000 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10940000</p></td>
@@ -634,6 +684,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">49176 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">abr</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge post-quantum accelerator for ML-DSA and ML-KEM.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10950000</p></td>
@@ -642,6 +694,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">24 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Entropy Pool</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR<sup><a href="#sep-components-note-5">[5]</a></sup></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10960000</p></td>
@@ -650,22 +704,18 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">640 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A00000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A07FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A0FFFF</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">30800 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP AXI-Lite Mailbox Wrapper Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Eight bidirectional mailbox pairs.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A08000</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x10A0FFFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10000</p></td>
@@ -674,6 +724,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">504 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI Alias Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">TLB Registers for address remapping and attribute tagging</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10200</p></td>
@@ -682,6 +734,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10280</p></td>
@@ -690,6 +744,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10300</p></td>
@@ -698,6 +754,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output Remap Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Address-translation registers that remap outbound transactions and tag their attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A10380</p></td>
@@ -706,6 +764,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">64640 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A20000</p></td>
@@ -714,6 +774,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">1016 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A20400</p></td>
@@ -722,6 +784,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">3 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A21000</p></td>
@@ -730,6 +794,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">504 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI Filter Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Per-filter access-control registers defining permitted address ranges and transaction attributes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A21200</p></td>
@@ -738,6 +804,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">60928 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A30000</p></td>
@@ -746,6 +814,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">4104 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP CPU control and interrupt registers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10A32000</p></td>
@@ -754,6 +824,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">824 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10B00000</p></td>
@@ -762,6 +834,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">56 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SPI Host</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External I/O SPI controller bridge.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x10C00000</p></td>
@@ -770,6 +844,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">4 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x11000000</p></td>
@@ -778,6 +854,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ap_region</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Remapped regions, either ECAM, M-Mode or XVisor</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x11800000</p></td>
@@ -786,6 +864,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">stee_region</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Remapped regions, either ECAM, M-Mode or XVisor</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x12000000</p></td>
@@ -794,6 +874,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">224 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E<sup><a href="#sep-components-note-1">[1]</a></sup> / DECERR<sup><a href="#sep-components-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x20000000</p></td>
@@ -802,6 +884,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 MiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP External</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP external address map (eFuse SHIM control and execute-in-place window).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC0000000</p></td>
@@ -810,6 +894,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">sep_iccm</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled instruction SRAM for the SEP CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC0040000</p></td>
@@ -818,6 +904,8 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">128 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">sep_dccm</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tightly coupled data SRAM for the SEP CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0xC0080000</p></td>
@@ -826,9 +914,19 @@ reachable through this external path and receive error responses from the
 <td class="tableblock halign-left valign-top"><p class="tableblock">21 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">EL2_PIC</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers. Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<div class="title">Notes</div>
+<p><a id="sep-components-note-1"></a><sup>[1]</sup> A 32-bit read with address bit 2 set returns 0xCA11AB1E.<br>
+<a id="sep-components-note-2"></a><sup>[2]</sup> A write to a reserved address in 0x1080_2000-0x1080_20FF or 0x10A1_0000-0x10A4_FFFF answers SLVERR.<br>
+<a id="sep-components-note-3"></a><sup>[3]</sup> An access to an unmapped offset also latches PIC source 41.<br>
+<a id="sep-components-note-4"></a><sup>[4]</sup> With no TRNG fitted, the reference integration answers DECERR, 0xBADCAB1E / SLVERR.<br>
+<a id="sep-components-note-5"></a><sup>[5]</sup> A 32-bit read of the upper word of a register also answers SLVERR, 0x0.</p>
+</div>
 </div>
 </div>
 <div class="sect1">

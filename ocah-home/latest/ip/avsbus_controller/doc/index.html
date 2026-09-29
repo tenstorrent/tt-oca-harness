@@ -1210,9 +1210,10 @@ allocated offset is <code>0x58</code>; offsets <code>0x5C</code> through <code>0
 reserved.</p>
 </div>
 <div class="paragraph">
-<p>The controller decodes only the low 7 address bits, so an access above <code>0x7F</code>
-aliases back onto a live register rather than erroring. The integrating
-address decoder is responsible for confining the block to its 128-byte window.</p>
+<p>The controller decodes only the low 7 address bits, so the integrating address
+decoder is responsible for confining the block to its 128-byte window. The
+<a href="../../../smc/memmap.html#smc-memory-map" class="xref page">SMC memory map</a>
+states how the SMC answers an access outside it.</p>
 </div>
 <div class="paragraph">
 <p>Stored registers honour byte strobes, so a partial write updates only the

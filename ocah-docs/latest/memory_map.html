@@ -629,6 +629,8 @@
 </aside>
 <article class="doc">
 <h1 class="page">OCAH Memory Map</h1>
+<div id="preamble">
+<div class="sectionbody">
 <div id="ocah-memory-map" class="paragraph">
 <p>OCAH separates the chiplet-visible SMU aperture from the internal address
 maps used by SEP and SMC firmware. The chiplet integrator decides which
@@ -700,7 +702,86 @@ The hardware does not derive these CSR values from a chiplet ID: any
 chiplet-ID-based address assignment is a platform policy that firmware
 must implement.</p>
 </div>
+</div>
+</div>
 <p class="block-references">Figures and tables: <a href="#ocah-address-map-configuration-layers-table">Table 1</a>.</p>
+<div class="sect1">
+<h2 id="ocah-decode-response-codes"><a class="anchor" href="#ocah-decode-response-codes"></a><a class="link" href="#ocah-decode-response-codes">1. Decode Response Codes</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The SMC, SEP, Key Manager and cross-trigger network address maps state, for
+each unit, how a 32-bit access that no register or memory backs is answered.
+A cell reads <em>read response, read data / write response</em>, for example
+<code>DECERR, 0xBADCAB1E / SLVERR</code>. <code>OKAY</code>, <code>SLVERR</code> and <code>DECERR</code> are the AXI
+response codes returned on <code>RRESP</code> and <code>BRESP</code>.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>The <em>Hole in Extent</em> column covers an unbacked offset inside the unit&#8217;s
+decoded extent. Where the space between a wrapper&#8217;s sub-blocks, or the
+padding after each element of an array, answers differently, the cell names
+it separately as <code>between sub-blocks</code> or <code>between instances</code>.</p>
+</li>
+<li>
+<p>The <em>Past Extent</em> column covers the rest of the unit&#8217;s aperture, the range
+its Size column gives.</p>
+</li>
+<li>
+<p>A <code>Reserved</code> row is an address between unit apertures.</p>
+</li>
+</ul>
+</div>
+<table id="ocah-decode-response-codes-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Decode response codes</caption>
+<colgroup>
+<col style="width: 24%;">
+<col style="width: 76%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Code</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OKAY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The access completes. A read returns the listed data, and a write has no
+effect.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SLVERR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The access reaches a component that refuses it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DECERR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No unit or sub-block claims the address, and a decoder refuses the access
+before it reaches one.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Aliases registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The access reaches a live register at another offset, which answers it.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The subsystem passes the access on without decoding it, and its target
+answers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter-defined</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The adopter&#8217;s implementation answers.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>-</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The region does not exist: the unit is memory, its registers fill its
+extent, or its aperture ends at its extent.</p></td>
+</tr>
+</tbody>
+</table>
+<p class="block-references">Figures and tables: <a href="#ocah-decode-response-codes-table">Table 2</a>.</p>
+</div>
+</div>
 <nav class="pagination">
   <span class="prev"><a href="overview.html">Platform Overview</a></span>
   <span class="next"><a href="power_domains.html">Power Domains</a></span>

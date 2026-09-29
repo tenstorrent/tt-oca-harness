@@ -270,8 +270,10 @@ decoded from a port that is <code>ADDR_WIDTH</code> bits wide</p>
 <div class="paragraph">
 <p>The 64-bit data width handles addresses, data payloads and status
 information without multi-word transfers. The 2KB allocation per aperture
-leaves the ten registers sparsely mapped; offsets above the register map are
-unmapped rather than aliased.</p>
+leaves the ten registers sparsely mapped; the
+<a href="../../../smc/memmap.html#smc-memory-map" class="xref page">SMC</a> and
+<a href="../../../sep/memory_map.html#sep-memory-map" class="xref page">SEP</a> memory maps
+state how the offsets above them answer.</p>
 </div>
 </div>
 <div class="sect2">
@@ -586,8 +588,9 @@ access and no error flag</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Access to an unmapped offset inside an aperture (0x50 and above)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read returns
-0 with SLVERR; write is ignored with SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Stated in the
+<a href="../../../smc/memmap.html#smc-memory-map" class="xref page">SMC</a> and
+<a href="../../../sep/memory_map.html#sep-memory-map" class="xref page">SEP</a> memory maps</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Read of ERROR_FLAGS</p></td>
@@ -1379,7 +1382,9 @@ flush bits are pulses rather than stored state, so reads return zero with an
 OKAY response.</p>
 </div>
 <div class="paragraph">
-<p>Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.</p>
+<p>The <a href="../../../smc/memmap.html#smc-memory-map" class="xref page">SMC</a> and
+<a href="../../../sep/memory_map.html#sep-memory-map" class="xref page">SEP</a> memory maps state how an offset
+above the registers answers.</p>
 </div>
 </div>
 <div class="sect2">

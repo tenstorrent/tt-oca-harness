@@ -766,7 +766,9 @@ address and excludes <code>base + size</code>; the addition uses 57 bits to pres
 carry from the 56-bit address. A match selects the corresponding subordinate,
 subject to the connectivity in <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>.
 An unmatched SEP or SMC request uses <code>ext_out</code>. An unmatched external request
-returns <code>DECERR</code>, because <code>ext_in</code> cannot loop back to <code>ext_out</code>.</p>
+returns <code>DECERR</code>, because <code>ext_in</code> cannot loop back to <code>ext_out</code>. A SEP request
+to the SEP aperture, or an SMC request to the SMC aperture, also returns
+<code>DECERR</code>, because the connectivity gives neither subsystem a path to itself.</p>
 </div>
 <p class="block-references">Figures and tables: <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>; <a href="#smu-axi-crossbar-ports-table">Table 1</a>; <a href="#smu-crossbar-decode-diagram">Figure 3</a>.</p>
 </div>

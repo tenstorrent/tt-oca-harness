@@ -277,7 +277,9 @@ The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler
 <p>The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.</p>
 </div>
 <div class="paragraph">
-<p>Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.</p>
+<p>Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. The last two columns of the map state how the crossbar and the register blocks answer an access that no register or memory backs, and
+<a href="../../../../../ocah-docs/latest/memory_map.html#ocah-decode-response-codes" class="xref page">Decode Response Codes</a>
+defines them and their codes. The KM CPU does not see these responses: an error sets <code>AXI_SLVERR</code> or <code>AXI_DECERR</code> in the KMCSR <code>IRQ_STATUS</code> register.</p>
 </div>
 <div class="paragraph">
 <p>The OTP/eFuse window is the exception: hardware preserves its lower 12 address
@@ -287,12 +289,14 @@ bits and replaces the upper bits with the integration parameter
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Key Manager CPU Memory Map</caption>
 <colgroup>
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.6666%;">
-<col style="width: 16.667%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
+<col style="width: 12.5%;">
 </colgroup>
 <thead>
 <tr>
@@ -302,6 +306,8 @@ bits and replaces the upper bits with the integration parameter
 <th class="tableblock halign-left valign-top">Decoded Extent</th>
 <th class="tableblock halign-left valign-top">Unit</th>
 <th class="tableblock halign-left valign-top">Description</th>
+<th class="tableblock halign-left valign-top">Hole in Extent (R / W)</th>
+<th class="tableblock halign-left valign-top">Past Extent (R / W)</th>
 </tr>
 </thead>
 <tbody>
@@ -312,6 +318,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager ROM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager boot ROM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-<sup><a href="#km-cpu-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00004000</p></td>
@@ -320,6 +328,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00008000</p></td>
@@ -328,6 +338,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">32 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager SRAM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager data and executable SRAM</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00010000</p></td>
@@ -336,6 +348,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Mailbox KM Side</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Register interface for KM CPU to access mailbox (write to outbound FIFO, read from inbound FIFO)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00010020</p></td>
@@ -344,6 +358,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">4064 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00011000</p></td>
@@ -352,6 +368,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">1 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse Map Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse shadow-register pass-through.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00011400</p></td>
@@ -360,6 +378,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">28 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse command and status pass-through.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00011500</p></td>
@@ -368,6 +388,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">116 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Token Registers Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse security-token pass-through.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00011600</p></td>
@@ -376,6 +398,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">2560 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR<sup><a href="#km-cpu-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00012000</p></td>
@@ -384,6 +408,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">4360 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key and Policy Vault (KM Port)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key entry storage and KM control registers. Access conditioned by lock_write/lock_use.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00014000</p></td>
@@ -392,6 +418,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">1216 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager Control and Status Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Control and status registers for the Key Manager subsystem</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00014800</p></td>
@@ -400,6 +428,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00015000</p></td>
@@ -408,6 +438,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DRBG Sampler</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DRBG random data interface and configuration/status registers</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00015010</p></td>
@@ -416,6 +448,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">12272 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00018000</p></td>
@@ -424,6 +458,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">100 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OTBN Wrapper Key Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the OTBN sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT OTBN core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00018080</p></td>
@@ -432,6 +468,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00019000</p></td>
@@ -440,6 +478,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">68 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AES Wrapper Key Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the AES sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT AES core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00019080</p></td>
@@ -448,6 +488,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001A000</p></td>
@@ -456,6 +498,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">68 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">KMAC Wrapper Key Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the KMAC sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT KMAC core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001A080</p></td>
@@ -464,6 +508,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001B000</p></td>
@@ -472,6 +518,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">68 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">HMAC Wrapper Key Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Key storage registers for the HMAC sideload interface. Written by Key Manager CPU, drives keymgr_key_i on the OT HMAC core.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001B080</p></td>
@@ -480,6 +528,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">3968 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001C000</p></td>
@@ -488,6 +538,8 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">1068 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge Key Sideload Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge. Contains four dual-share secret-seed inputs and one shared-key output.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0x0 / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0001C800</p></td>
@@ -496,9 +548,16 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<div class="title">Notes</div>
+<p><a id="km-cpu-note-1"></a><sup>[1]</sup> A write completes without an error response, is dropped, and sets IRQ_STATUS.ROM_WRITE_ERR.<br>
+<a id="km-cpu-note-2"></a><sup>[2]</sup> The OTP/eFuse pass-through forwards this range to SEP, so an access here is answered there rather than with DECERR.</p>
+</div>
 </div>
 <div class="sect2">
 <h3 id="reset-conditioning"><a class="anchor" href="#reset-conditioning"></a><a class="link" href="#reset-conditioning">Reset Conditioning</a></h3>
@@ -849,8 +908,7 @@ loaded into the instruction/data SRAM.</p>
 </div>
 <div class="paragraph">
 <p>The KM CPU map is generated once in <a href="#key-manager-memory-map">Memory Map</a>. KM uses only
-the low portion of its 32-bit address space; every address outside the listed
-windows is unallocated and returns a decode error.</p>
+the low portion of its 32-bit address space.</p>
 </div>
 <div class="paragraph">
 <p>Separating the key and data domains explicitly as described above
