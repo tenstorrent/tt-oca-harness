@@ -1,4 +1,6 @@
-# scripts/docker-run.sh
+<!--SPDX-License-Identifier: CC-BY-4.0-->
+<!--SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.-->
+# `scripts/docker-run.sh`
 
 Helper for running repo commands inside the OCAH container. The container
 image is built by Nix and identified by a hash derived from the flake output,
