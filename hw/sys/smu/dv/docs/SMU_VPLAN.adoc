@@ -1306,7 +1306,7 @@ row's EXPECT sentence is worth, read the check.
 *Test Coverage*:
 
 * The TDR is 155 bits on this wrapper: 68 SMC + 8 SEP + 1 EXT ports, two bits each, plus `reset_hold` (`doc/integrator/src/smu.adoc` "IC_RESET TDR Structure"). The EXT port sits nearest TDO, so a helper geometry short of the TDR lands the EXT fields in the SEP slice and the EXT leg below fails; this is the leaf that catches a wrong slice width.
-* Default IC_RESET readback is all-ones over the whole DR, with TDO required resolvable on every readback.
+* Default IC_RESET readback is all-ones over the whole DR, with TDO required resolvable on every readback: the JTAG VIP reads an X/Z TDO bit as 0, so during each IC_RESET readback the leaf samples the bench's `jtag_tdo` on every TCK rising edge while `jtag_tdo_oen` (high in Shift-IR and Shift-DR) is high, and an X/Z bit, an X/Z enable, or fewer driven bits than the 155-bit DR fails the run. Verilator is two-state, so there the guard cannot fire; it bites on a four-state simulator.
 * The EXT override is applied and released in two Update-DRs each, `reset_control` first and `reset_enable` second, the order the DTP JTAG chapter (`hw/sys/dtp/doc/jtag.adoc`) gives so a hazard-free consumer multiplexer never sees its select and data move together. `.ovrd` is active high and `.val` carries `reset_control`, so each staging update is visible on the EXT slice alone.
 * EXT control=0 staged under enable=1 drives ctrl_n=0 with ovrd still 0; enable=0 then asserts ovrd=1 with ctrl_n=0 while the whole override half of both the SMC and the SEP slice reads 0; control=1 staged under enable=0 drives ctrl_n=1 with ovrd still 1.
 * SMC cold_reset port override updates the hierarchical SMC slice while the EXT override is released: the SMC slice's override half reads exactly the cold-reset bit, the SEP slice's override half reads 0 and the EXT override reads 0.
@@ -1326,7 +1326,7 @@ row's EXPECT sentence is worth, read the check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-IC-DEFAULT` |Evidence token `IC_RESET_DEFAULT`: IC_RESET default all-ones
+|`CHK-IC-DEFAULT` |Evidence token `IC_RESET_DEFAULT`: IC_RESET default all-ones, every driven TDO bit of the scan resolvable
 |`CHK-IC-EXT-STAGED` |Evidence token `IC_RESET_EXT_STAGED`: EXT control staged low reaches `jtag_ic_reset_ext_o.val` while `.ovrd` stays 0
 |`CHK-IC-EXT-RELEASE-STAGED` |Evidence token `IC_RESET_EXT_RELEASE_STAGED`: EXT control staged high reaches `.val` while `.ovrd` stays 1
 |`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: with the EXT override applied, the EXT override is 1 and the SMC and SEP slices' whole override halves are 0; with the SMC cold override applied, the SMC override half is exactly the cold-reset bit and the EXT override and the SEP override half are 0

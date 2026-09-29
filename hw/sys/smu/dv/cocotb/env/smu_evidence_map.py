@@ -798,7 +798,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ),
     ],
     "smu_jtag_reset_override_test": [
-        ("CHK-IC-DEFAULT", "IC_RESET_DEFAULT", "IC_RESET default all-ones"),
+        (
+            "CHK-IC-DEFAULT",
+            "IC_RESET_DEFAULT",
+            "IC_RESET default all-ones, every driven TDO bit of the scan resolvable",
+        ),
         (
             "CHK-IC-EXT-STAGED",
             "IC_RESET_EXT_STAGED",

@@ -37,11 +37,12 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, RisingEdge
 from seq_lib.smu_compose_helpers import hier
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_EXT_PORT,
+    SMU_IC_RESET_LEN,
     SMU_IC_RESET_NUM_SEP_PORTS,
     SMU_IC_RESET_NUM_SMC_PORTS,
     SMU_IC_RESET_SMC_COLD_PORT,
@@ -79,6 +80,46 @@ def _override_slices(dut) -> tuple[int, int, int, int]:
     return (smc >> n_smc, smc & ((1 << n_smc) - 1), sep >> n_sep, sep & ((1 << n_sep) - 1))
 
 
+async def _read_ic_reset(jtag, dut, shift_value: int, where: str, log) -> int:
+    """Read IC_RESET, failing on any X/Z TDO bit while the PTAP drives TDO.
+
+    The JTAG VIP reads an X/Z TDO bit as 0, so the bench's `jtag_tdo` and
+    `jtag_tdo_oen` (high during Shift-IR and Shift-DR) are sampled on every TCK
+    rising edge of the scan, and at least one DR length of driven bits must be
+    seen.
+    """
+    driven = [0]
+    bad: list[str] = []
+
+    async def watch() -> None:
+        while True:
+            await RisingEdge(dut.jtag_tck)
+            oen = dut.jtag_tdo_oen.value
+            tdo = dut.jtag_tdo.value
+            if not oen.is_resolvable:
+                bad.append(f"jtag_tdo_oen={oen}")
+            elif int(oen):
+                driven[0] += 1
+                if not tdo.is_resolvable:
+                    bad.append(f"jtag_tdo={tdo} at driven bit {driven[0] - 1}")
+
+    watcher = cocotb.start_soon(watch())
+    try:
+        readback = await jtag.read("IC_RESET", shift_value=shift_value)
+    finally:
+        watcher.cancel()
+    require_jtag_tdo_resolved(where)
+    log.info("%s: %d driven TDO bits sampled, %d X/Z", where, driven[0], len(bad))
+    if bad:
+        raise AssertionError(f"X/Z on TDO during {where}: {bad[:8]}")
+    if driven[0] < SMU_IC_RESET_LEN:
+        raise AssertionError(
+            f"{where}: {driven[0]} driven TDO bits sampled, fewer than the "
+            f"{SMU_IC_RESET_LEN}-bit IC_RESET DR"
+        )
+    return int(readback)
+
+
 @pyuvm.test()
 class smu_jtag_reset_override_test(smu_base_test):
     """IC_RESET override/release on EXT and SMC cold-reset slices."""
@@ -94,11 +135,12 @@ class smu_jtag_reset_override_test(smu_base_test):
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 8)
 
-        default = await jtag.read("IC_RESET", shift_value=SMU_IC_RESET_DEFAULT)
-        require_jtag_tdo_resolved("IC_RESET default readback")
+        default = await _read_ic_reset(
+            jtag, dut, SMU_IC_RESET_DEFAULT, "IC_RESET default readback", self.logger
+        )
         sb.expect_eq(
             "IC_RESET default",
-            int(default),
+            default,
             SMU_IC_RESET_DEFAULT,
             evidence="IC_RESET_DEFAULT",
         )
@@ -155,11 +197,12 @@ class smu_jtag_reset_override_test(smu_base_test):
             (1, 0, 0),
             evidence="IC_RESET_DOMAIN_EXCL",
         )
-        rb = await jtag.read("IC_RESET", shift_value=ext_assert)
-        require_jtag_tdo_resolved("IC_RESET EXT pattern readback")
+        rb = await _read_ic_reset(
+            jtag, dut, ext_assert, "IC_RESET EXT pattern readback", self.logger
+        )
         sb.expect_eq(
             "IC_RESET EXT pattern readback",
-            int(rb),
+            rb,
             ext_assert,
         )
 
@@ -256,22 +299,24 @@ class smu_jtag_reset_override_test(smu_base_test):
             )
             await jtag.write("IC_RESET", word)
             await ClockCycles(dut.clk_smu_i, 16)
-            readback = await jtag.read("IC_RESET", shift_value=word)
-            require_jtag_tdo_resolved("IC_RESET SS/SEP walk readback")
+            readback = await _read_ic_reset(
+                jtag, dut, word, "IC_RESET SS/SEP walk readback", self.logger
+            )
             observed.append(
                 (
-                    int(readback) == word,
+                    readback == word,
                     _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
                     *_override_slices(dut),
                 )
             )
         await jtag.write("IC_RESET", SMU_IC_RESET_DEFAULT)
         await ClockCycles(dut.clk_smu_i, 16)
-        readback = await jtag.read("IC_RESET", shift_value=SMU_IC_RESET_DEFAULT)
-        require_jtag_tdo_resolved("IC_RESET SS/SEP walk clear readback")
+        readback = await _read_ic_reset(
+            jtag, dut, SMU_IC_RESET_DEFAULT, "IC_RESET SS/SEP walk clear readback", self.logger
+        )
         observed.append(
             (
-                int(readback) == SMU_IC_RESET_DEFAULT,
+                readback == SMU_IC_RESET_DEFAULT,
                 _sample(dut.ic_reset_smc_ovrd_o, "ic_reset_smc_ovrd_o"),
                 *_override_slices(dut),
             )
