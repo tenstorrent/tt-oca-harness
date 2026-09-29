@@ -68,6 +68,7 @@ and DTP figures remain canonical.
 | FIG025 | Life Cycle Controller block diagram | [hw/sys/sep/doc/lifecycle_controller.adoc](../../../hw/sys/sep/doc/lifecycle_controller.adoc) | [hw/sys/sep/doc/assets/sep-lifecycle-controller.svg](../../../hw/sys/sep/doc/assets/sep-lifecycle-controller.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG026 | Token Processing | [hw/sys/sep/doc/token_processing.adoc](../../../hw/sys/sep/doc/token_processing.adoc) | [hw/sys/sep/doc/assets/sep-token-processing.svg](../../../hw/sys/sep/doc/assets/sep-token-processing.svg) | Redrawn as hand-authored SVG from the imported figure |
 | FIG029 | eFuse Sense FSM | [hw/sys/sep/doc/otp_fuse_controller.adoc](../../../hw/sys/sep/doc/otp_fuse_controller.adoc) | [hw/sys/sep/doc/assets/sep-efuse-sensing.svg](../../../hw/sys/sep/doc/assets/sep-efuse-sensing.svg) | Redrawn as hand-authored SVG from the imported figure |
+| FIG030 | AXI isolation diagram | [hw/sys/sep/doc/reset_controller.adoc](../../../hw/sys/sep/doc/reset_controller.adoc) | [hw/sys/sep/doc/assets/sep-crypto-axi-isolation.svg](../../../hw/sys/sep/doc/assets/sep-crypto-axi-isolation.svg) | Redrawn as hand-authored SVG from the imported figure |
 
 ## SMC
 
