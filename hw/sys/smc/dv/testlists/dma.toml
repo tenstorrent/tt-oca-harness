@@ -45,6 +45,14 @@ tags = ["ci", "zeroer"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_zeroer_unaligned_test"
+module = "smc_zeroer_unaligned_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "zeroer"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_dma_backpressure_test"
 module = "smc_dma_backpressure_test"
 seed = 1

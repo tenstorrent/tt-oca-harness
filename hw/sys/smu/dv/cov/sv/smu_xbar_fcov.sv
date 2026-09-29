@@ -107,10 +107,12 @@ module smu_xbar_fcov #(
   `OCAH_FCOV_COVER(c_map_smc_size_programmed, smc_size_programmed_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_map_smc_size_reprogrammed, smc_size_reprogrammed_e, clk_smu_i, in_reset)
 
-  // A zero-size window denies the whole region; it is a legal programmed
-  // state the filter tests use and is worth naming separately.
+  // smc_base_config REGION_SIZE must be a non-zero power of two, so a zero
+  // SMC window is an illegal programming. Phase 2 (SMU_FCOV.adoc).
   wire smc_size_zero_e = smc_size_prog_q && (smc_region_size_i === '0);
+`ifdef SMU_FCOV_PHASE2
   `OCAH_FCOV_COVER(c_map_smc_size_zero, smc_size_zero_e, clk_smu_i, in_reset)
+`endif
 
   // The SEP aperture, watched the same way. Only elaborated with SEP
   // present: base and size are tied to '0 without it and never move.
@@ -146,27 +148,30 @@ module smu_xbar_fcov #(
     `OCAH_FCOV_COVER(c_map_sep_size_zero, sep_size_zero_e, clk_smu_i, in_reset)
 
 `ifndef VERILATOR
-    // Commercial-simulator covergroup: the programmed and zero-size states
-    // of the SEP window, which a flat point list cannot cross.
-    covergroup cg_sep_window with function sample (logic prog, logic zero);
+    // Commercial-simulator covergroup: the states the SEP window passes
+    // through. A zero size is only recorded once the size has been
+    // programmed, so an unprogrammed zero-size state does not exist.
+    covergroup cg_sep_window with function sample (logic [1:0] prog_zero);
       option.per_instance = 1;
-      cp_prog: coverpoint prog;
-      cp_zero: coverpoint zero;
-      x_programmed: cross cp_prog, cp_zero;
+      cp_state: coverpoint prog_zero {
+        bins unprogrammed = {2'b00}; bins programmed = {2'b10}; bins programmed_zero = {2'b11};
+      }
     endgroup
 
     cg_sep_window u_cg_sep_window = new();
 
     always_ff @(posedge clk_smu_i) begin
-      if (!in_reset) u_cg_sep_window.sample(sep_size_prog_q, sep_size_zero_e);
+      if (!in_reset) u_cg_sep_window.sample({sep_size_prog_q, sep_size_zero_e});
     end
 `endif
   end
 
   // ------------------------------------------------------------------
-  // Inbound AXI handshake and response codes. All four response
-  // encodings get a point, so an encoding the suite never produces is a
-  // named hole rather than absent from the model.
+  // Inbound AXI handshake and response codes. EXOKAY answers an exclusive
+  // access, and no subordinate behind the crossbar has an exclusive monitor:
+  // every AXI interconnect in the SEP and SMC is built without atomics and
+  // the memory adapters tie exokay off. Its two points are Phase 2
+  // (SMU_FCOV.adoc).
   // ------------------------------------------------------------------
   wire aw_accept_e = (s_axi_awvalid_i === 1'b1) && (s_axi_awready_i === 1'b1);
   wire aw_stall_e = (s_axi_awvalid_i === 1'b1) && (s_axi_awready_i === 1'b0);
@@ -186,21 +191,23 @@ module smu_xbar_fcov #(
   wire b_accept = (s_axi_bvalid_i === 1'b1) && (s_axi_bready_i === 1'b1);
   wire r_accept = (s_axi_rvalid_i === 1'b1) && (s_axi_rready_i === 1'b1);
   wire bresp_okay_e = b_accept && (s_axi_bresp_i == 2'b00);
-  wire bresp_exokay_e = b_accept && (s_axi_bresp_i == 2'b01);
   wire bresp_slverr_e = b_accept && (s_axi_bresp_i == 2'b10);
   wire bresp_decerr_e = b_accept && (s_axi_bresp_i == 2'b11);
   wire rresp_okay_e = r_accept && (s_axi_rresp_i == 2'b00);
-  wire rresp_exokay_e = r_accept && (s_axi_rresp_i == 2'b01);
   wire rresp_slverr_e = r_accept && (s_axi_rresp_i == 2'b10);
   wire rresp_decerr_e = r_accept && (s_axi_rresp_i == 2'b11);
   `OCAH_FCOV_COVER(c_axi_in_bresp_okay, bresp_okay_e, clk_smu_i, in_reset)
-  `OCAH_FCOV_COVER(c_axi_in_bresp_exokay, bresp_exokay_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axi_in_bresp_slverr, bresp_slverr_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axi_in_bresp_decerr, bresp_decerr_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axi_in_rresp_okay, rresp_okay_e, clk_smu_i, in_reset)
-  `OCAH_FCOV_COVER(c_axi_in_rresp_exokay, rresp_exokay_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axi_in_rresp_slverr, rresp_slverr_e, clk_smu_i, in_reset)
   `OCAH_FCOV_COVER(c_axi_in_rresp_decerr, rresp_decerr_e, clk_smu_i, in_reset)
+`ifdef SMU_FCOV_PHASE2
+  wire bresp_exokay_e = b_accept && (s_axi_bresp_i == 2'b01);
+  wire rresp_exokay_e = r_accept && (s_axi_rresp_i == 2'b01);
+  `OCAH_FCOV_COVER(c_axi_in_bresp_exokay, bresp_exokay_e, clk_smu_i, in_reset)
+  `OCAH_FCOV_COVER(c_axi_in_rresp_exokay, rresp_exokay_e, clk_smu_i, in_reset)
+`endif
 
   // ------------------------------------------------------------------
   // Routing outcome. An inbound write that advances the inbound counter
@@ -252,17 +259,17 @@ module smu_xbar_fcov #(
       bins okay = {2'b00};
       bins slverr = {2'b10};
       bins decerr = {2'b11};
-      // No subordinate behind the crossbar answers an exclusive access: every
-      // AXI interconnect in the SEP and SMC is built without atomics and the
-      // memory adapters tie exokay off.
+      // No subordinate behind the crossbar answers an exclusive access.
       ignore_bins exokay = {2'b01};
     }
   endgroup
 
+  // A zero SMC REGION_SIZE is illegal (smc_base_config: a non-zero power of
+  // two), so only the non-zero window is graded.
   covergroup cg_map_window with function sample (logic prog, logic zero);
     option.per_instance = 1;
     cp_prog: coverpoint prog;
-    cp_zero: coverpoint zero;
+    cp_zero: coverpoint zero {ignore_bins illegal_size = {1'b1};}
     x_programmed: cross cp_prog, cp_zero;
   endgroup
 
