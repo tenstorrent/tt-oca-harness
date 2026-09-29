@@ -109,7 +109,7 @@ jobs:
     name: sep-vp (native)
     if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    timeout-minutes: 60
     permissions: { contents: read }
     env:
       OCAH_ENGINE: docker
@@ -147,7 +147,7 @@ jobs:
     name: sep-vp (container)
     if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    timeout-minutes: 60
     permissions: { contents: read, packages: read }
     env:
       OCAH_ENGINE: docker
@@ -201,7 +201,7 @@ jobs:
     name: smc-vp + smu-vp (native)
     if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    timeout-minutes: 60
     permissions: { contents: read }
     env:
       OCAH_ENGINE: docker
@@ -239,7 +239,7 @@ jobs:
     name: smc-vp + smu-vp (container)
     if: github.event_name != 'pull_request'
     runs-on: ${{ vars.VP_CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 180
+    timeout-minutes: 60
     permissions: { contents: read, packages: read }
     env:
       OCAH_ENGINE: docker
