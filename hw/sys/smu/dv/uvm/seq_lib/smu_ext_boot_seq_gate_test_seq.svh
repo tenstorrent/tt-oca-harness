@@ -35,9 +35,9 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
   localparam int unsigned ReleaseBound = 2000;
   // Fuse-reset releases a pass causes: the ungate.
   localparam int unsigned FuseReleasesPerPass = 1;
-  // Bounded-wait sites: primary_released_while_boot_gated,
-  // fuse_reset_n_delayed_after_ungate.
-  localparam int unsigned ExpectedTimeoutPaths = 2;
+  // Bounded-wait sites: sense_done_before_gated_window,
+  // primary_released_while_boot_gated, fuse_reset_n_delayed_after_ungate.
+  localparam int unsigned ExpectedTimeoutPaths = 3;
   // Step marks S1..S4, TIMEOUT, PASS: five ordered, non-decreasing deltas.
   localparam int unsigned ExpectedStepDeltas = 5;
 
@@ -129,11 +129,17 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     end
   endtask
 
-  // S2: the gated window.
+  // S2: the gated window, entered only once the sense is done, so a fuse
+  // reset still low is the gate and not a sense in progress.
   protected task run_gated_window();
     int unsigned fuse_breaks = 0;
     int unsigned gate_breaks = 0;
+    int cycles;
     mark_step("S2", "GATED: ext_boot_seq_done_i=0 holds smc_fuse_reset_n_delayed_o low");
+    wait_pin_level("fuse_sense_done", 1'b1, test_cfg.fuse_sense_bound_cycles,
+                   "sense_done_before_gated_window", cycles);
+    check_pin(ChkBootSeqGate, "sense done before the window", "fuse_sense_done", 1'b1,
+              $sformatf("after %0d smu clocks", cycles));
     for (int unsigned s = 0; s < GatedSamples; s++) begin
       @(posedge tb_vif.clk_smu);
       if (!pin_is("fuse_reset_n_delayed", 1'b0)) fuse_breaks++;
@@ -170,14 +176,15 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     check_pin(ChkPrimaryNotGated, "gate still shut", "ext_boot_seq_done", 1'b0);
   endtask
 
-  // S4: the ungate, then the release.
+  // S4: the ungate, then the release within the gate-path bound (the sense
+  // is already done, so the sense latency is not in the wait).
   protected task run_ungate();
     int cycles;
     mark_step("S4", "UNGATE: drive ext_boot_seq_done_i=1; fuse reset release permitted");
     m_t_ungate = $realtime;
     tb_vif.ext_boot_seq_done <= 1'b1;
-    wait_pin_level("fuse_reset_n_delayed", 1'b1, ReleaseBound, "fuse_reset_n_delayed_after_ungate",
-                   cycles);
+    wait_pin_level("fuse_reset_n_delayed", 1'b1, test_cfg.fuse_gate_release_bound_cycles,
+                   "fuse_reset_n_delayed_after_ungate", cycles);
     if ((cycles >= 0) && (m_t_fuse_rise < 0) && pin_is("fuse_reset_n_delayed", 1'b1))
       m_t_fuse_rise = $realtime;
     check_pin(ChkBootSeqGate, "fuse reset released after ungate", "fuse_reset_n_delayed", 1'b1,

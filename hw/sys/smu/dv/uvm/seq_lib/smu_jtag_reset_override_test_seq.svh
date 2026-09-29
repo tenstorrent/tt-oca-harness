@@ -41,9 +41,9 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
   // IC_RESET scans a pass issues: default readback, EXT write, EXT readback,
   // SMC write, clear -- each one capture the ic_reset_tdr predictor compares.
   localparam int unsigned IcResetScansPerPass = 5;
-  // Bounded-wait sites: s1_rti, s3_ext_ovrd, s4_smc_ovrd, s5_ext_clear,
-  // s5_smc_clear, s5_primary_released.
-  localparam int unsigned ExpectedTimeoutPaths = 6;
+  // Bounded-wait sites: s1_rti, s3_ext_ovrd, s4_smc_ovrd, s4_primary_held,
+  // s5_ext_clear, s5_smc_clear, s5_primary_released.
+  localparam int unsigned ExpectedTimeoutPaths = 7;
   // Step marks S1..S5, TIMEOUT, PASS: six ordered, non-decreasing deltas.
   localparam int unsigned ExpectedStepDeltas = 6;
 
@@ -129,6 +129,9 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
                         256'(smu_ic_reset_smc_ovrd_of(image)));
     check_evidence_wide(ChkIcSmcCold, "SMC slice val vector", 256'(tb_vif.smc_reset_ctrl_val),
                         256'(smu_ic_reset_smc_val_of(image)));
+    wait_pin_level("rst_primary_smc_clk_n", 1'b0, ExportBound, "s4_primary_held", cycles);
+    check_pin(ChkIcSmcCold, "SMC primary reset held by the cold override", "rst_primary_smc_clk_n",
+              1'b0, $sformatf("after %0d smu clocks", cycles));
   endtask
 
   // S5: the reset image releases both overrides; the SMC comes back out of
