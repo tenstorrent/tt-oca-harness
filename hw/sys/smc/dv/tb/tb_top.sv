@@ -3348,21 +3348,6 @@ module smc_uvm_top
 
     // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
-    assign tb_cpu_isolate_req       = 1'b0;
-    assign tb_cpu_drained           = 1'b0;
-    assign tb_cpu_reset_timeout     = 1'b0;
-    assign tb_cpu_reset_applied     = 1'b0;
-    assign tb_cpu_uncore_reset_n    = 1'b0;
-    assign tb_cpu_l2_isolated       = 1'b0;
-    assign tb_cpu_l2_pending_aw     = '0;
-    assign tb_cpu_l2_pending_w      = '0;
-    assign tb_cpu_l2_pending_ar     = '0;
-    assign tb_cpu_l2_flush_active   = 1'b0;
-    assign tb_cpu_mmio_isolated     = 1'b0;
-    assign tb_cpu_mmio_pending_aw   = '0;
-    assign tb_cpu_mmio_pending_w    = '0;
-    assign tb_cpu_mmio_pending_ar   = '0;
-    assign tb_cpu_mmio_flush_active = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
     // parked (TMS high, reset asserted); UART0 RX idle-high.
