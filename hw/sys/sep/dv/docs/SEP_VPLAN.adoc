@@ -1229,6 +1229,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *BFM / Model*: ocah_axi_vip, KM path / golden
 
+*Probe*: `km_sram_rd_*_count_o` / `km_sram_scr_rd_count_o` (`tb/tb_top.sv`) count KM SRAM read accepts and their accept-to-`rvalid` latency at the wrapper port. Observation-only: they read DUT nets and drive nothing. Signed off by yenhenglai on 2026-09-29.
+
 *Objective*: Proves the Key Manager's private instruction ROM and data SRAM are wired and alive, and that the SRAM read path descrambles each response with the address of its own read.
 
 *Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; SRAM read-response latency.
@@ -7440,6 +7442,8 @@ No `+km_rom_hex`: this leaf grades the SEP-side registers, not a command stream.
 *Source Module*: `sep_km_mailbox_protocol_rand_test`
 
 *BFM / Model*: ocah_axi_vip
+
+*Probe*: `km_mbox_sep_wr_err_count_o` / `km_mbox_sep_wr_err_addr_o` (`tb/tb_top.sv`) count the write refusals of the SEP-side mailbox regblock decode and hold the last refused offset. Observation-only: they read DUT nets and drive nothing. Signed off by yenhenglai on 2026-09-29.
 
 *Objective*: the SEP-side KM mailbox as a REGISTER surface rather than a
 transport. `STATUS` depth and full/empty, the two SEP-reachable sticky error
