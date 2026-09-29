@@ -249,10 +249,19 @@ def oca_images(request):
             container_ok=False,
         )
         if res.returncode != 0:
+            detail = f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}"
+            # Skipping is for a dependency this checkout does not have -- the
+            # manifest submodule is private, and a tree without it should not
+            # report 51 failures. A build that fails with the submodule in place
+            # is broken, and a skip there hides it behind a green run.
+            if (paths.MANIFEST_DIR / "pyproject.toml").is_file():
+                pytest.fail(
+                    f"oca-images build failed with {paths.MANIFEST_DIR.name} present:\n{detail}",
+                    pytrace=False,
+                )
             pytest.skip(
-                "oca-images build failed (tt-oca-manifest submodule initialized? "
-                "uv and a RISC-V toolchain on PATH?):\n"
-                f"{res.stdout[-1500:]}\n{res.stderr[-1500:]}"
+                f"oca-images build failed and {paths.MANIFEST_DIR} is not checked out; "
+                f"initialise the submodule to run these tests:\n{detail}"
             )
     missing = [str(p) for p in imgs.values() if not p.is_file()]
     if missing:

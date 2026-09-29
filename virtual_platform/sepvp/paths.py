@@ -33,6 +33,9 @@ ENV_SCRIPT = VP_DIR / "setup_environment.sh"
 
 # --- SEP boot ROM (the production tree) --------------------------------------
 BOOTCODE_DIR = OCAH_ROOT / "hw" / "sys" / "sep" / "bootrom" / "prod"
+# Private submodule: absent in a checkout without access, which is what
+# separates "cannot build the OCA images" from "the build is broken".
+MANIFEST_DIR = BOOTCODE_DIR / "tools" / "tt-oca-manifest"
 # The SEP VP models the OpenTitan SPI host only (the Cadence xSPI controller is
 # closed-source IP, not modeled), so the VP always uses the OpenTitan boot-ROM
 # build in build_ot/ (the Makefile's ot-toolchain-images target), never the

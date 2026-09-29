@@ -130,6 +130,16 @@ runs:
         extra_nix_config: |
           access-tokens = github.com=${{ inputs.oca_pat }}
 
+    # nix/load-uv-env.nix installs the uv workspace members -- tt-oca-manifest
+    # and ocah-dv -- editable, resolved through $REPO_ROOT when they are
+    # imported. Nothing else in the tree sets it, so an interpreter from that
+    # env cannot import them: the SEP ROM's pack_images step fails with
+    # ModuleNotFoundError: No module named 'tt_boot_manifest'.
+    - name: Point the editable workspace installs at the checkout
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
+      shell: bash
+      run: echo "REPO_ROOT=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+
     - name: Install VP build dependencies
       if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash

@@ -59,6 +59,11 @@ jobs:
   #   gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
   build-and-publish:
     name: Build and publish Nix image
+    # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
+    # granted neither packages: write to publish nor the access a private
+    # package needs to pull. Skip rather than fail a contributor's run for
+    # something they cannot fix; main republishes the image on merge.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 240
     outputs:
@@ -174,6 +179,11 @@ jobs:
   # build+load did not. Only after this passes is the consumed :main tag moved.
   verify-and-promote:
     name: Verify image and promote main
+    # A pull request from a fork gets a read-only GITHUB_TOKEN, so it is
+    # granted neither packages: write to publish nor the access a private
+    # package needs to pull. Skip rather than fail a contributor's run for
+    # something they cannot fix; main republishes the image on merge.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     needs: build-and-publish
     runs-on: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 60
