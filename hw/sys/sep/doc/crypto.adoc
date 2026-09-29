@@ -51,7 +51,30 @@ external memory interfaces.
 
 [[sep-crypto-diagram]]
 .SEP cryptographic subsystem and external memory interfaces
-image::SEP_Crypto_TopLevel_FIG010.drawio.png[alt="SEP cryptographic subsystem and external memory interfaces",width=100%,pdfwidth=100%]
+image::sep-crypto-subsystem.svg[alt="SEP cryptographic subsystem: the crypto AXI interconnect serves the TRNG, the accelerators, the Key Manager mailbox, the lifecycle controller and the eFuse wrapper; the Key Manager writes the key CSR block of each accelerator over its private key bus; entropy streams from the TRNG feed the Key Manager, the accelerators and the entropy pool; memory macros sit outside sep_crypto",width=100%,pdfwidth=100%]
+
+In <<sep-crypto-diagram>>, dark lines are host AXI4 and AXI4-Lite paths from the
+crypto AXI interconnect, and brown lines are the Key Manager private key buses.
+Each accelerator's key CSR block is the `<accelerator>_wrapper_key_reg` block that
+receives the `KEY_SHARE0`, `KEY_SHARE1` and `KEY_CTRL` writes described in
+<<km-key-delivery>> and drives the core's sideload key port. The Key Manager
+reaches the key CSR blocks through its internal crossbar; the Adams Bridge key bus
+leaves on the right, beside the ML-KEM shared-key interrupt that Adams Bridge
+returns. The host paths to the Key Manager mailbox, the external TRNG registers,
+the eFuse wrapper and the lifecycle controller are not isolated, and the eFuse and
+lifecycle legs leave the interconnect as AXI4. All six Key Manager paths, including
+its eFuse access, pass an isolation stage in `sep_crypto_axi_interconnect`.
+
+The Key Manager also receives OTP data: the eFuse shadow registers supply the
+lifecycle state and the identity and class-key fields, and the lifecycle
+controller supplies the two demotion states. Grey arrows carry entropy, OTP data
+and status one way; the three entropy streams from the DRBG pass through a source
+select that can take the external TRNG instead, as the TRNG and DRBG page
+describes. Grey boxes are outside `sep_crypto`: the memory macros live in the
+integration layer, and the entropy pool is `u_entropy_fifo` in `sep`. The Adams
+Bridge SRAMs are 13 macros with masking enabled and 9 without. Interrupts and
+OpenTitan alerts are not drawn; <<sep-crypto-alert-and-fault-routing-table>> lists
+them.
 
 The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
 connect them through the dedicated `abr_mem` request/response interface.
