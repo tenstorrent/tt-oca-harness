@@ -355,7 +355,7 @@ The access control mechanism uses an AXI-Lite demux that routes blocked
 requests to an error slave. When a request is blocked, the error slave
 returns an error response with data value `0xbadcab1e`.
 
-*JTAG_PUBLIC_IDENTITY Exception (SMC):*
+*SMC exception for JTAG_PUBLIC_IDENTITY:*
 
 Even in PROD or RMA_SOP states, JTAG read access to the JTAG_PUBLIC_IDENTITY
 register is permitted. This allows identification of the chip for manufacturing
