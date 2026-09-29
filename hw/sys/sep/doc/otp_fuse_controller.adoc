@@ -9,7 +9,16 @@
 
 [[sep-otp-fuse-bank-diagram]]
 .SEP OTP fuse bank
-image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
+image::sep-otp-fuse-map.svg[alt="SEP fuse map: 256 32-bit words drawn eight per row with each field at its offset, coloured by storage class, and the nine spare fields compressed into one band",width=100%,pdfwidth=100%]
+
+Each row of <<sep-otp-fuse-bank-diagram>> is 32 bytes, eight 32-bit words, at
+the offset given on the left from the base of the MAP window; a field that
+crosses a row boundary continues at the start of the next row. The shading
+gives the storage class of each field's shadow register. The lock field, the
+lifecycle state, the two disable vectors and the two RMA token digests are held
+in non-scannable storage. CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are
+non-scannable as well and read as zero downstream while SECURE_TM is 1. The
+nine spare fields fill the last nine rows and are drawn as one band.
 
 The One-Time Programmable (OTP) fuse controller stores persistent
 chiplet policy.
