@@ -46,9 +46,9 @@ typedef union {
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bp 12
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_bw 44
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__OFFSET_reset 0x0
-#define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm 0x4000000000000000
-#define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bp 62
-#define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bw 1
+#define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bm 0xf00000000000000
+#define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bp 56
+#define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_bw 4
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__CACHEABLE_reset 0x0
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bm 0x8000000000000000
 #define ALIAS_REMAP__REMAP_REGION__REGION_ATTRS__VALID_bp 63
@@ -58,8 +58,8 @@ typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t :12;
         uint64_t offset :44;
-        uint64_t :6;
-        uint64_t cacheable :1;
+        uint64_t cacheable :4;
+        uint64_t :3;
         uint64_t valid :1;
     } f;
     uint64_t w;

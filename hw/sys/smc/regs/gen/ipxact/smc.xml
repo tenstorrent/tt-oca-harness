@@ -15,7 +15,7 @@
         <ipxact:displayName>SMC Top-Level Address Map</ipxact:displayName>
         <ipxact:description>Top-level SMC address map exposing the resources accessible to external agents.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'hc8013030</ipxact:range>
+        <ipxact:range>'hc8015000</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>
@@ -906,6 +906,192 @@ KEY reg must be written to before any other register in this addrmap can be writ
               </ipxact:resets>
               <ipxact:bitWidth>16</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+        </ipxact:registerFile>
+        <ipxact:registerFile>
+          <ipxact:name>debug_module</ipxact:name>
+          <ipxact:displayName>Debug Module Hart Interface</ipxact:displayName>
+          <ipxact:description>Memory region through which a hart in Debug Mode exchanges state with the Debug Module: handshake mailboxes, generated instructions, program buffer, data registers, per-hart flags and the debug ROM. The debugger-facing Debug Module registers (dmcontrol, dmstatus, abstractcs, sbcs, ...) are reached over the Debug Module Interface and do not appear in this map.</ipxact:description>
+          <ipxact:addressOffset>'hc0001000</ipxact:addressOffset>
+          <ipxact:range>'h868</ipxact:range>
+          <ipxact:register>
+            <ipxact:name>HALTED</ipxact:name>
+            <ipxact:addressOffset>'h100</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write its hart ID here when it is in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>GOING</ipxact:name>
+            <ipxact:addressOffset>'h104</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write 0 here when it begins executing Debug Mode instructions.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>RESUMING</ipxact:name>
+            <ipxact:addressOffset>'h108</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write its hart ID here when it leaves Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>EXCEPTION</ipxact:name>
+            <ipxact:addressOffset>'h10c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>hartid</ipxact:name>
+              <ipxact:description>Debug ROM causes the hart to write 0 here if it takes an exception in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>10</ipxact:bitWidth>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>WHERETO</ipxact:name>
+            <ipxact:addressOffset>'h300</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Jump instruction filled in by the Debug Module to direct the hart in Debug Mode.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ABSTRACT</ipxact:name>
+            <ipxact:dim>5</ipxact:dim>
+            <ipxact:addressOffset>'h328</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Instruction generated by the Debug Module for the current abstract command.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PROGBUF</ipxact:name>
+            <ipxact:dim>16</ipxact:dim>
+            <ipxact:addressOffset>'h33c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Program buffer word shared with the debugger. Byte accesses are supported.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>IMPEBREAK</ipxact:name>
+            <ipxact:addressOffset>'h37c</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>instr</ipxact:name>
+              <ipxact:description>Implicit EBREAK instruction following the program buffer.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h100073</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DATA</ipxact:name>
+            <ipxact:dim>4</ipxact:dim>
+            <ipxact:addressOffset>'h380</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Abstract command data word shared with the debugger. Byte accesses are supported.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>FLAGS</ipxact:name>
+            <ipxact:description>One flag byte per hart, at byte offset equal to the hart ID. Bit 0 is go (execute the command at WHERETO); bit 1 is resume (leave Debug Mode). Bits 7:2 read as 0.</ipxact:description>
+            <ipxact:addressOffset>'h400</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>flags_0</ipxact:name>
+              <ipxact:description>Hart 0 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_1</ipxact:name>
+              <ipxact:description>Hart 1 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>8</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_2</ipxact:name>
+              <ipxact:description>Hart 2 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>flags_3</ipxact:name>
+              <ipxact:description>Hart 3 go/resume flags.</ipxact:description>
+              <ipxact:bitOffset>24</ipxact:bitOffset>
+              <ipxact:bitWidth>8</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>ROM</ipxact:name>
+            <ipxact:dim>26</ipxact:dim>
+            <ipxact:addressOffset>'h800</ipxact:addressOffset>
+            <ipxact:size>32</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>data</ipxact:name>
+              <ipxact:description>Debug ROM word. Holds the fixed Debug Mode entry, exception and resume handlers.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:bitWidth>32</ipxact:bitWidth>
+              <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
         </ipxact:registerFile>
@@ -8702,14 +8888,14 @@ This register is sticky 1 and will hold the value until reset</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>cacheable</ipxact:name>
-                <ipxact:description>If set, top two bits of a*cache will be tied high</ipxact:description>
-                <ipxact:bitOffset>62</ipxact:bitOffset>
+                <ipxact:description>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</ipxact:description>
+                <ipxact:bitOffset>56</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
                     <ipxact:value>'h0</ipxact:value>
                   </ipxact:reset>
                 </ipxact:resets>
-                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:bitWidth>4</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
               <ipxact:field>
