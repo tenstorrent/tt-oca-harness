@@ -24,25 +24,44 @@ image::sep-reset-distribution.svg[alt="SEP reset distribution from the boundary 
 
 Boundary reset inputs enter on the left and the generated resets run in the
 channel on the right, each net in its own colour, with the port it drives named
-at the instance edge. Inside `u_sep_crypto` the figure shows which sub-instances
-each reset reaches.
+at the instance edge. The cream boxes are the reset logic inside
+`u_sep_efuse_wrapper` and `u_sep_reset_ctrl`. The stacked row inside
+`u_sep_reset_ctrl` repeats once for each `SW_RESET_N` bit. Inside the other
+instances the figure shows which sub-instances each reset reaches.
 
-`rst_ni` resets the isolation sequencers and JTAG override synchronizers of
-`u_sep_reset_ctrl`, the eFuse wrapper, the crypto interconnect, life cycle
-controller and EDN adapters, the watchdog, the local crossbar, the eFuse shim
-demux and the entropy pool. The eFuse wrapper releases
-`sep_intermediate_reset_no` once fuse sensing and `ext_boot_seq_done_i` are
-done. The Reset Controller passes it through the JTAG `sep_reset_n` override
-and a 2-flop synchronizer to produce `sep_reset_no`, which resets the Reset
-Controller's own register block, the Key Manager cold domain, the system
-peripherals, the SPI host, the DMA and the SRAM and boot ROM interfaces.
-`sep_cpu_reset_no` is `sep_reset_no` ANDed with `wdt_rst_ni`; it resets the CPU
-and the warm scratch registers. The seven bits of `sep_crypto_gated_rst_no`
-reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key Manager warm
-domain. The watchdog synchronizes `rst_ni` into `clk_wdt_i` for its counter, and
-its bite leaves the SEP on `wdt_timer_rst_req_o`. While `test_en_i` is high,
-`scan_rst_ni` replaces every generated reset; the figure does not draw the scan
-path.
+`u_sep_efuse_wrapper`, part of `u_sep_crypto`, ANDs `rst_ni`,
+`ext_boot_seq_done_i` and fuse-sense done and synchronizes the result into
+`sep_intermediate_reset_n`. The Reset Controller builds its three outputs from
+it:
+
+* `sep_reset_no`: the JTAG `sep_reset_n` override mux (`u_sep_reset_ovrd_mux`)
+  selects `sep_intermediate_reset_n` or the JTAG value, and the 2-flop
+  `u_sep_reset_sync` asserts the result asynchronously and releases it
+  synchronously to `clk_i`. It resets the Reset Controller's own register block,
+  the Key Manager cold domain, the system peripherals, the SPI host, the DMA and
+  the SRAM and boot ROM interfaces.
+* `sep_cpu_reset_no`: `sep_reset_n` ANDed with `wdt_rst_ni`
+  (`u_sep_cpu_rst_and`), then the scan bypass `u_sep_cpu_rst_scan_bypass`. It
+  resets the EL2 core (`rst_l`) and the warm scratch registers.
+* `sep_crypto_gated_rst_no[6:0]`: for each bit, the output of
+  `u_<blk>_isolate_seq` ANDed with `sep_reset_n` (`u_<blk>_rst_and`), then the
+  per-IP JTAG override mux `u_<blk>_rst_ovrd_mux`, then the scan bypass
+  `u_<blk>_rst_scan_bypass`. The per-IP override bits reach the muxes through
+  the 2-flop synchronizers `u_jtag_ip_ovrd_sync` and `u_jtag_ip_val_sync`. The
+  seven bits reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key
+  Manager warm domain.
+
+`rst_ni` resets the isolation sequencers and the JTAG override synchronizers.
+It also resets, directly, the crypto interconnect, life cycle controller, eFuse
+shim mux, alert receivers, encoders and EDN AXIS adapters, the TRNG power-on
+reset `por_rst_ni`, the watchdog, the local crossbar, the eFuse shim demux and
+the entropy pool. When the build does not define `SEP_ABR_EN`, the Adams Bridge
+error responders take `rst_ni` in place of the Adams Bridge wrapper. The
+watchdog synchronizes `rst_ni` into `clk_wdt_i` for its counter, and its bite
+leaves the SEP on `wdt_timer_rst_req_o`. `dbg_rstb_i` resets the EL2 debug
+module and `u_mpc_reset_run_req_sync`, and `jtag_trst_ni` resets the EL2 JTAG
+TAP. While `test_en_i` is high, `scan_rst_ni` replaces the outputs of
+`u_sep_reset_sync` and of each scan bypass.
 
 == Software Reset Register
 

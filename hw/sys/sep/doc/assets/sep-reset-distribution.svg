@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1050" viewBox="0 0 1040 1050" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1420" viewBox="0 0 1040 1420" role="img" aria-labelledby="title desc">
 <title id="title">SEP reset distribution</title>
-<desc id="desc">Reset distribution inside the SEP. Boundary reset inputs enter on the left and the watchdog reset request leaves on the right. rst_ni fans out to u_sep_reset_ctrl, to the eFuse wrapper and the always-reset logic of u_sep_crypto, to u_sep_wdt_wrap, and to the local crossbar, the eFuse shim demux and the entropy pool. The eFuse wrapper releases sep_intermediate_reset_no once fuse sensing and ext_boot_seq_done_i are done; u_sep_reset_ctrl applies the JTAG IC_RESET override from jtag_sep_reset_ctrl_i and synchronises the result into sep_reset_no. sep_reset_no resets the Key Manager cold domain, the system peripherals, the SPI host, the DMA and the SRAM and boot ROM interfaces. sep_cpu_reset_no is sep_reset_no ANDed with wdt_rst_ni and resets the CPU and the warm scratch registers. The seven isolation-sequenced resets sep_crypto_gated_rst_no reset the crypto engines, the TRNG and the Key Manager warm domain. dbg_rstb_i and jtag_trst_ni reset the CPU debug module and TAP.</desc>
+<desc id="desc">Reset distribution inside the SEP. Boundary inputs enter on the left and the watchdog reset request leaves on the right. In u_sep_efuse_wrapper, part of u_sep_crypto, rst_ni, ext_boot_seq_done_i and fuse-sense done are ANDed and synchronised into sep_intermediate_reset_n. In u_sep_reset_ctrl the JTAG IC_RESET override mux and the 2-flop u_sep_reset_sync turn it into sep_reset_n; sep_cpu_reset_n is sep_reset_n ANDed with wdt_rst_ni, then a scan bypass. For each of the seven SW_RESET_N bits, an isolate sequencer output is ANDed with sep_reset_n, passed through a JTAG IP override mux fed by synchronised override bits, then a scan bypass, forming sep_crypto_gated_rst_n. In test mode scan_rst_ni replaces each output. sep_reset_n resets the Key Manager cold domain, the system peripherals, the SPI host, the DMA and the SRAM and boot ROM interfaces. sep_cpu_reset_n resets the EL2 core and the warm scratch registers. The gated resets reach the TRNG, OTBN, AES, HMAC, KMAC, Adams Bridge and the Key Manager warm domain. rst_ni resets the crypto interconnect, life cycle controller, eFuse shim mux, alert receivers, encoders, EDN AXIS adapters, the TRNG power-on reset, the watchdog, the local crossbar, the eFuse shim demux and the entropy pool. dbg_rstb_i and jtag_trst_ni reset the EL2 debug module and JTAG TAP.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -77,106 +77,203 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
 .n-bus { fill: none; stroke: #b2566c; stroke-width: 3; }
 .a-bus { fill: none; stroke: #b2566c; stroke-width: 3; marker-end: url(#m-bus); }
+.n-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.a-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
 </style>
 </defs>
-<rect width="1040" height="1050" fill="#ffffff"/>
-<rect class="smu" x="226" y="14" width="584" height="986" rx="8"/>
-<text class="b" x="238" y="988" text-anchor="start">sep</text>
-<rect class="core" x="290" y="30" width="350" height="144" rx="6"/>
-<text class="bs" x="300" y="50" text-anchor="start">u_sep_reset_ctrl</text>
-<text class="s" x="632" y="81" text-anchor="end">sep_reset_no</text>
-<text class="s" x="632" y="105" text-anchor="end">sep_cpu_reset_no</text>
-<text class="s" x="632" y="129" text-anchor="end">sep_crypto_gated_rst_no[6:0]</text>
-<text class="s" x="632" y="153" text-anchor="end">sep_intermediate_reset_ni</text>
-<text class="s" x="14" y="70" text-anchor="start">jtag_sep_reset_ctrl_i</text>
-<path class="a-jtag" d="M17,76 L284,76"/>
-<text class="s" x="14" y="94" text-anchor="start">wdt_rst_ni</text>
-<path class="a-tel" d="M17,100 L284,100"/>
-<text class="s" x="14" y="118" text-anchor="start">rst_ni</text>
-<path class="a-smu" d="M17,124 L284,124"/>
-<circle cx="250" cy="124" r="4" fill="#103525"/>
-<rect class="core" x="290" y="198" width="350" height="272" rx="6"/>
-<text class="bs" x="300" y="218" text-anchor="start">u_sep_crypto</text>
-<rect class="core" x="310" y="230" width="150" height="42" rx="4"/>
-<text class="s" x="385" y="256" text-anchor="middle">u_sep_efuse_wrapper</text>
-<rect class="core" x="310" y="284" width="180" height="46" rx="4"/>
-<text class="s" x="400" y="304.5" text-anchor="middle">Interconnect, life cycle,</text>
-<text class="s" x="400" y="319.5" text-anchor="middle">eFuse mux, EDN adapters</text>
-<rect class="core" x="310" y="342" width="180" height="46" rx="4"/>
-<text class="s" x="400" y="362.5" text-anchor="middle">OTBN, AES, HMAC, KMAC,</text>
-<text class="s" x="400" y="377.5" text-anchor="middle">Adams Bridge, u_sep_trng</text>
-<rect class="core" x="310" y="396" width="180" height="60" rx="4"/>
-<text class="s" x="400" y="431" text-anchor="middle">u_key_manager_s3c_scan</text>
-<path class="a-smu" d="M250,240 L304,240"/>
-<circle cx="250" cy="240" r="4" fill="#103525"/>
-<text class="s" x="14" y="256" text-anchor="start">ext_boot_seq_done_i</text>
-<path class="sigo" d="M17,262 L304,262"/>
-<path class="a-smu" d="M250,307 L304,307"/>
-<circle cx="250" cy="307" r="4" fill="#103525"/>
-<text class="s" x="632" y="245" text-anchor="end">sep_intermediate_reset_no</text>
-<path class="n-wdt" d="M460,251 L680,251 L680,148"/>
-<path class="a-wdt" d="M680,148 L646,148"/>
-<text class="s" x="632" y="359" text-anchor="end">gated_rst_ni[6:0]</text>
-<path class="n-bus" d="M640,124 L710,124 L710,365 L510,365"/>
-<path class="a-bus" d="M510,365 L498,365"/>
-<path class="n-bus" d="M510,365 L510,412"/>
-<path class="a-bus" d="M510,412 L498,412"/>
-<circle cx="510" cy="365" r="4.5" fill="#b2566c"/>
-<text class="s" x="518" y="417" text-anchor="start">km bit: warm_rst_ni</text>
-<text class="s" x="632" y="438" text-anchor="end">sep_reset_ni</text>
-<text class="s" x="500" y="462" text-anchor="start">cold_rst_ni</text>
-<rect class="core" x="290" y="494" width="350" height="82" rx="6"/>
-<text class="bs" x="300" y="514" text-anchor="start">u_sep_cpu</text>
-<text class="s" x="632" y="545" text-anchor="end">rst_ni</text>
-<text class="s" x="14" y="534" text-anchor="start">dbg_rstb_i</text>
-<path class="a-pg" d="M17,540 L284,540"/>
-<text class="s" x="14" y="558" text-anchor="start">jtag_trst_ni</text>
-<path class="a-jtag" d="M17,564 L284,564"/>
-<rect class="core" x="290" y="600" width="350" height="74" rx="6"/>
-<text class="bs" x="300" y="620" text-anchor="start">u_sep_system_peripherals</text>
-<text class="s" x="632" y="635" text-anchor="end">rst_warm_ni</text>
-<text class="s" x="632" y="659" text-anchor="end">rst_ni</text>
-<rect class="core" x="290" y="698" width="350" height="108" rx="6"/>
-<text class="bs" x="300" y="718" text-anchor="start">u_sep_io</text>
-<text class="bs" x="300" y="736" text-anchor="start">u_sep_dma_wrap</text>
-<text class="bs" x="300" y="754" text-anchor="start">u_sram_memory_interface</text>
-<text class="bs" x="300" y="772" text-anchor="start">u_boot_rom_axi_mux</text>
-<text class="bs" x="300" y="790" text-anchor="start">u_boot_rom_memory_interface</text>
-<text class="s" x="632" y="735" text-anchor="end">rst_ni</text>
-<rect class="core" x="290" y="830" width="350" height="56" rx="6"/>
-<text class="bs" x="300" y="850" text-anchor="start">u_sep_wdt_wrap</text>
-<text class="s" x="300" y="872" text-anchor="start">rst_ni synchronised to clk_wdt_i</text>
-<text class="s" x="820" y="868" text-anchor="start">wdt_timer_rst_req_o</text>
-<path class="a-slate" d="M640,874 L1023,874"/>
-<path class="a-smu" d="M250,874 L284,874"/>
-<circle cx="250" cy="874" r="4" fill="#103525"/>
-<rect class="core" x="290" y="910" width="350" height="70" rx="6"/>
-<text class="bs" x="300" y="930" text-anchor="start">u_sep_local_axi_xbar_wrapper</text>
-<text class="bs" x="300" y="948" text-anchor="start">u_efuse_shim_demux</text>
-<text class="bs" x="300" y="966" text-anchor="start">u_entropy_fifo</text>
-<path class="a-smu" d="M250,945 L284,945"/>
-<path class="n-smu" d="M250,124 L250,257 M250,267 L250,535 M250,545 L250,559 M250,569 L250,945"/>
-<path class="n-ref" d="M640,76 L770,76"/>
-<path class="n-ref" d="M770,76 L770,730"/>
-<path class="a-ref" d="M770,444 L498,444"/>
-<path class="a-ref" d="M770,654 L646,654"/>
-<path class="a-ref" d="M770,730 L646,730"/>
-<circle cx="770" cy="444" r="4" fill="#2f7f79"/>
-<circle cx="770" cy="654" r="4" fill="#2f7f79"/>
-<path class="n-per" d="M640,100 L740,100"/>
-<path class="n-per" d="M740,100 L740,439 M740,449 L740,630"/>
-<path class="a-per" d="M740,540 L646,540"/>
-<path class="a-per" d="M740,630 L646,630"/>
-<circle cx="740" cy="540" r="4" fill="#937027"/>
-<rect class="core" x="14" y="1017" width="40" height="18" rx="4"/>
-<text class="s" x="62" y="1031" text-anchor="start">SEP RTL instance or group</text>
-<path class="n-bus" d="M262,1026 L302,1026"/>
-<text class="s" x="312" y="1031" text-anchor="start">Seven-bit reset bus</text>
-<path class="sigplain" d="M540,1026 L600,1026"/>
-<path class="sigplain" d="M570,1026 L570,1038"/>
-<circle cx="570" cy="1026" r="3.5" fill="#5b6670"/>
-<text class="s" x="612" y="1031" text-anchor="start">Fan-out</text>
-<path class="sigplain" d="M700,1026 L760,1026"/>
-<path class="sigplain" d="M730,1014 L730,1021 M730,1031 L730,1038"/>
-<text class="s" x="772" y="1031" text-anchor="start">Crossing, not connected</text>
+<rect width="1040" height="1420" fill="#ffffff"/>
+<rect class="smu" x="226" y="14" width="674" height="1330" rx="8"/>
+<text class="b" x="238" y="1334" text-anchor="start">sep</text>
+<rect class="core" x="262" y="24" width="278" height="108" rx="6"/>
+<text class="bs" x="272" y="44" text-anchor="start">u_sep_crypto.u_sep_efuse_wrapper</text>
+<rect class="core" x="290" y="104" width="80" height="20" rx="4"/>
+<text class="s" x="330" y="119" text-anchor="middle">fuse sense</text>
+<rect class="fabric" x="400" y="56" width="40" height="68" rx="4"/>
+<text class="s" x="420" y="95" text-anchor="middle">AND</text>
+<rect class="fabric" x="460" y="78" width="60" height="22" rx="4"/>
+<text class="s" x="490" y="94" text-anchor="middle">sync</text>
+<path class="a-slate" d="M370,114 L396,114"/>
+<path class="a-slate" d="M440,89 L456,89"/>
+<text class="s" x="14" y="86" text-anchor="start">ext_boot_seq_done_i</text>
+<path class="sigo" d="M17,92 L396,92"/>
+<text class="s" x="14" y="60" text-anchor="start">rst_ni</text>
+<path class="a-smu" d="M17,66 L396,66"/>
+<circle cx="240" cy="66" r="4" fill="#103525"/>
+<rect class="core" x="262" y="146" width="538" height="336" rx="6"/>
+<text class="bs" x="272" y="166" text-anchor="start">u_sep_reset_ctrl</text>
+<rect class="fabric" x="560" y="184" width="90" height="32" rx="4"/>
+<text class="s" x="605" y="205" text-anchor="middle">JTAG ovrd</text>
+<rect class="fabric" x="668" y="184" width="118" height="32" rx="4"/>
+<text class="s" x="727" y="205" text-anchor="middle">u_sep_reset_sync</text>
+<path class="n-wdt" d="M520,89 L545,89 L545,192"/>
+<path class="a-wdt" d="M545,192 L556,192"/>
+<path class="a-ref" d="M650,200 L664,200"/>
+<path class="n-ref" d="M786,200 L875,200"/>
+<text class="s" x="14" y="202" text-anchor="start">jtag_sep_reset_ctrl_i</text>
+<path class="a-jtag" d="M17,208 L556,208"/>
+<circle cx="270" cy="208" r="3.5" fill="#42759b"/>
+<circle cx="793" cy="200" r="4" fill="#2f7f79"/>
+<path class="n-ref" d="M793,200 L793,229 L544,229"/>
+<path class="n-ref" d="M544,229 L544,253 M544,263 L544,312"/>
+<path class="n-ref" d="M544,312 L578,312"/>
+<path class="a-ref" d="M578,229 L578,240"/>
+<circle cx="578" cy="229" r="4" fill="#2f7f79"/>
+<path class="a-ref" d="M578,312 L578,322"/>
+<rect class="fabric" x="556" y="244" width="44" height="28" rx="4"/>
+<text class="s" x="578" y="263" text-anchor="middle">AND</text>
+<rect class="fabric" x="698" y="244" width="92" height="28" rx="4"/>
+<text class="s" x="744" y="263" text-anchor="middle">Scan bypass</text>
+<path class="a-per" d="M600,258 L694,258"/>
+<path class="n-per" d="M790,258 L850,258"/>
+<text class="s" x="14" y="252" text-anchor="start">wdt_rst_ni</text>
+<path class="a-tel" d="M17,258 L552,258"/>
+<text class="s" x="282" y="312" text-anchor="start">×7, one per SW_RESET_N bit</text>
+<rect class="core" x="280" y="328" width="100" height="36" rx="4"/>
+<text class="s" x="330" y="343.5" text-anchor="middle">u_reg</text>
+<text class="s" x="330" y="358.5" text-anchor="middle">SW_RESET_N</text>
+<rect class="fabric" x="398" y="326" width="138" height="28" rx="4"/>
+<rect class="fabric" x="395" y="329" width="138" height="28" rx="4"/>
+<rect class="fabric" x="392" y="332" width="138" height="28" rx="4"/>
+<text class="s" x="461" y="351" text-anchor="middle">u_&lt;blk&gt;_isolate_seq</text>
+<rect class="fabric" x="562" y="326" width="44" height="28" rx="4"/>
+<rect class="fabric" x="559" y="329" width="44" height="28" rx="4"/>
+<rect class="fabric" x="556" y="332" width="44" height="28" rx="4"/>
+<text class="s" x="578" y="351" text-anchor="middle">AND</text>
+<rect class="fabric" x="620" y="326" width="70" height="28" rx="4"/>
+<rect class="fabric" x="617" y="329" width="70" height="28" rx="4"/>
+<rect class="fabric" x="614" y="332" width="70" height="28" rx="4"/>
+<text class="s" x="649" y="351" text-anchor="middle">JTAG ovrd</text>
+<rect class="fabric" x="704" y="326" width="92" height="28" rx="4"/>
+<rect class="fabric" x="701" y="329" width="92" height="28" rx="4"/>
+<rect class="fabric" x="698" y="332" width="92" height="28" rx="4"/>
+<text class="s" x="744" y="351" text-anchor="middle">Scan bypass</text>
+<path class="a-slate" d="M380,346 L388,346"/>
+<path class="a-slate" d="M530,346 L552,346"/>
+<path class="a-slate" d="M600,346 L610,346"/>
+<path class="a-slate" d="M684,346 L694,346"/>
+<path class="n-bus" d="M790,346 L825,346"/>
+<rect class="fabric" x="594" y="384" width="110" height="26" rx="4"/>
+<text class="s" x="649" y="402" text-anchor="middle">JTAG IP sync</text>
+<path class="a-jtag" d="M649,384 L649,364"/>
+<path class="n-jtag" d="M270,208 L270,253 M270,263 L270,397"/>
+<path class="a-jtag" d="M270,397 L590,397"/>
+<path class="a-smu" d="M240,426 L649,426 L649,414"/>
+<circle cx="240" cy="426" r="4" fill="#103525"/>
+<circle cx="461" cy="426" r="4" fill="#103525"/>
+<path class="n-smu" d="M461,426 L461,402"/>
+<path class="a-smu" d="M461,392 L461,364"/>
+<text class="s" x="14" y="440" text-anchor="start">scan_rst_ni</text>
+<path class="a-slate" d="M17,446 L256,446"/>
+<text class="s" x="14" y="464" text-anchor="start">test_en_i</text>
+<path class="a-dash" d="M17,470 L256,470"/>
+<text class="s" x="272" y="462" text-anchor="start">Test mode: scan_rst_ni replaces the u_sep_reset_sync and scan bypass outputs</text>
+<rect class="core" x="290" y="502" width="510" height="326" rx="6"/>
+<text class="bs" x="300" y="522" text-anchor="start">u_sep_crypto</text>
+<rect class="core" x="310" y="536" width="478" height="86" rx="4"/>
+<text class="s" x="320" y="560" text-anchor="start">u_sep_crypto_axi_interconnect, u_sep_lifecycle_ctrl</text>
+<text class="s" x="320" y="576" text-anchor="start">u_efuse_shim_axi_mux, u_efuse_shim_id_conv</text>
+<text class="s" x="320" y="592" text-anchor="start">gen_alert_receivers, u_*_enc, u_axis_edn_*</text>
+<text class="s" x="320" y="608" text-anchor="start">u_abr_*_err_slv (SEP_ABR_EN undefined)</text>
+<path class="a-smu" d="M240,579 L306,579"/>
+<circle cx="240" cy="579" r="4" fill="#103525"/>
+<rect class="core" x="310" y="634" width="300" height="30" rx="4"/>
+<text class="s" x="460" y="654" text-anchor="middle">u_sep_trng</text>
+<text class="s" x="602" y="654" text-anchor="end">rst_ni</text>
+<text class="s" x="318" y="654" text-anchor="start">por_rst_ni</text>
+<path class="a-smu" d="M240,649 L306,649"/>
+<circle cx="240" cy="649" r="4" fill="#103525"/>
+<rect class="core" x="310" y="676" width="300" height="42" rx="4"/>
+<text class="s" x="320" y="694" text-anchor="start">u_sep_crypto_otbn_wrapper_s3c_scan</text>
+<text class="s" x="320" y="710" text-anchor="start">u_{aes,hmac,kmac}_wrapper_s3c_scan</text>
+<text class="s" x="602" y="702" text-anchor="end">rst_ni</text>
+<rect class="core opt" x="310" y="730" width="300" height="30" rx="4"/>
+<text class="s" x="320" y="750" text-anchor="start">u_sep_crypto_abr_wrapper_s3c_scan</text>
+<text class="s" x="602" y="750" text-anchor="end">rst_ni</text>
+<rect class="core" x="310" y="772" width="300" height="46" rx="4"/>
+<text class="s" x="320" y="800" text-anchor="start">u_key_manager_s3c_scan</text>
+<text class="s" x="602" y="789" text-anchor="end">warm_rst_ni</text>
+<text class="s" x="602" y="811" text-anchor="end">cold_rst_ni</text>
+<text class="s" x="792" y="643" text-anchor="end">gated_rst_ni[6:0]</text>
+<path class="n-bus" d="M825,346 L825,649 L636,649 L636,784"/>
+<path class="a-bus" d="M636,649 L616,649"/>
+<circle cx="636" cy="649" r="4.5" fill="#b2566c"/>
+<path class="a-bus" d="M636,697 L616,697"/>
+<text class="s" x="644" y="702" text-anchor="start">.otbn .aes .hmac .kmac</text>
+<circle cx="636" cy="697" r="4.5" fill="#b2566c"/>
+<path class="a-bus" d="M636,745 L616,745"/>
+<text class="s" x="644" y="750" text-anchor="start">.abr</text>
+<circle cx="636" cy="745" r="4.5" fill="#b2566c"/>
+<path class="a-bus" d="M636,784 L616,784"/>
+<text class="s" x="644" y="789" text-anchor="start">.km</text>
+<text class="s" x="792" y="800" text-anchor="end">sep_reset_ni</text>
+<path class="a-ref" d="M875,806 L616,806"/>
+<circle cx="875" cy="806" r="4" fill="#2f7f79"/>
+<rect class="core" x="290" y="852" width="510" height="140" rx="6"/>
+<text class="bs" x="300" y="872" text-anchor="start">u_sep_cpu</text>
+<rect class="core" x="310" y="884" width="300" height="26" rx="4"/>
+<text class="s" x="320" y="902" text-anchor="start">u_el2_veer_wrapper.rst_l</text>
+<text class="s" x="602" y="902" text-anchor="end">rst_ni</text>
+<rect class="core" x="310" y="918" width="300" height="34" rx="4"/>
+<text class="s" x="320" y="932" text-anchor="start">u_el2_veer_wrapper.dbg_rst_l,</text>
+<text class="s" x="320" y="948" text-anchor="start">u_mpc_reset_run_req_sync</text>
+<rect class="core" x="310" y="960" width="300" height="22" rx="4"/>
+<text class="s" x="320" y="976" text-anchor="start">u_el2_veer_wrapper.jtag_trst_n</text>
+<path class="a-per" d="M850,897 L616,897"/>
+<circle cx="850" cy="897" r="4" fill="#937027"/>
+<text class="s" x="14" y="929" text-anchor="start">dbg_rstb_i</text>
+<path class="a-pg" d="M17,935 L306,935"/>
+<text class="s" x="14" y="965" text-anchor="start">jtag_trst_ni</text>
+<path class="a-jtag" d="M17,971 L306,971"/>
+<rect class="core" x="290" y="1016" width="510" height="90" rx="6"/>
+<text class="bs" x="300" y="1036" text-anchor="start">u_sep_system_peripherals</text>
+<rect class="core" x="310" y="1046" width="300" height="22" rx="4"/>
+<text class="s" x="320" y="1062" text-anchor="start">u_sep_system_csr.u_sep_scratch_reg_warm</text>
+<text class="s" x="792" y="1051" text-anchor="end">rst_warm_ni</text>
+<text class="s" x="320" y="1092" text-anchor="start">All other system peripherals logic</text>
+<text class="s" x="792" y="1082" text-anchor="end">rst_ni</text>
+<path class="a-per" d="M850,1057 L616,1057"/>
+<path class="a-ref" d="M875,1087 L806,1087"/>
+<circle cx="875" cy="1087" r="4" fill="#2f7f79"/>
+<rect class="core" x="290" y="1130" width="510" height="50" rx="6"/>
+<text class="bs" x="300" y="1151" text-anchor="start">u_sep_io, u_sep_dma_wrap, u_sram_memory_interface,</text>
+<text class="bs" x="300" y="1169" text-anchor="start">u_boot_rom_axi_mux, u_boot_rom_memory_interface</text>
+<text class="s" x="792" y="1160" text-anchor="end">rst_ni</text>
+<path class="a-ref" d="M875,1155 L806,1155"/>
+<rect class="core" x="290" y="1204" width="510" height="50" rx="6"/>
+<text class="bs" x="300" y="1225" text-anchor="start">u_sep_wdt_wrap</text>
+<text class="s" x="300" y="1244" text-anchor="start">u_rst_wdt_sync: rst_ni synchronised to clk_wdt_i</text>
+<path class="a-smu" d="M240,1234 L284,1234"/>
+<circle cx="240" cy="1234" r="4" fill="#103525"/>
+<path class="a-slate" d="M800,1229 L1023,1229"/>
+<text class="s" x="910" y="1223" text-anchor="start">wdt_timer_rst_req_o</text>
+<rect class="core" x="290" y="1278" width="510" height="46" rx="6"/>
+<text class="bs" x="300" y="1298" text-anchor="start">u_sep_local_axi_xbar_wrapper,</text>
+<text class="bs" x="300" y="1316" text-anchor="start">u_efuse_shim_demux, u_entropy_fifo</text>
+<path class="a-smu" d="M240,1301 L284,1301"/>
+<path class="n-smu" d="M240,66 L240,87 M240,97 L240,203 M240,213 L240,253 M240,263 L240,441 M240,451 L240,465 M240,475 L240,930 M240,940 L240,966 M240,976 L240,1301"/>
+<path class="n-ref" d="M875,200 L875,1155"/>
+<path class="n-per" d="M850,258 L850,801 M850,811 L850,1057"/>
+<path class="n-smu" d="M14,1370 L48,1370"/>
+<text class="s" x="56" y="1375" text-anchor="start">rst_ni</text>
+<path class="n-wdt" d="M124,1370 L158,1370"/>
+<text class="s" x="166" y="1375" text-anchor="start">sep_intermediate_reset_n</text>
+<path class="n-ref" d="M344,1370 L378,1370"/>
+<text class="s" x="386" y="1375" text-anchor="start">sep_reset_n</text>
+<path class="n-per" d="M494,1370 L528,1370"/>
+<text class="s" x="536" y="1375" text-anchor="start">sep_cpu_reset_n</text>
+<path class="n-bus" d="M664,1370 L698,1370"/>
+<text class="s" x="706" y="1375" text-anchor="start">sep_crypto_gated_rst_n[6:0]</text>
+<rect class="core" x="14" y="1387" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="1401" text-anchor="start">Instance</text>
+<rect class="fabric" x="140" y="1387" width="40" height="18" rx="4"/>
+<text class="s" x="188" y="1401" text-anchor="start">Reset logic</text>
+<rect class="core opt" x="290" y="1387" width="40" height="18" rx="4"/>
+<text class="s" x="338" y="1401" text-anchor="start">Present only with SEP_ABR_EN</text>
+<path class="sigplain" d="M560,1396 L600,1396"/>
+<path class="sigplain" d="M580,1396 L580,1408"/>
+<circle cx="580" cy="1396" r="3.5" fill="#5b6670"/>
+<text class="s" x="610" y="1401" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M690,1396 L730,1396"/>
+<path class="sigplain" d="M710,1384 L710,1391 M710,1401 L710,1408"/>
+<text class="s" x="742" y="1401" text-anchor="start">Crossing, not connected</text>
 </svg>
