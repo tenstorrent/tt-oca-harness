@@ -7,7 +7,7 @@
 [[smc-fcov-owners]]
 ==== Owning tests, measured
 
-Measured on `--items hosted` at commit `8c30ad11edeb` with Verilator 5.050: 294 leaves, 453 points, 453 hit, 0 unhit, 77 hit by exactly one leaf.
+Measured on `--items hosted fw` at commit `8c30ad11edeb` with Verilator 5.050: 294 leaves, 453 points, 453 hit, 0 unhit, 77 hit by exactly one leaf.
 
 A point one leaf alone reaches depends on that leaf: retire or narrow it and
 the point goes dark. A point no leaf reaches carries its policy disposition,
