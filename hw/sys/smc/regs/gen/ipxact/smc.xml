@@ -8910,7 +8910,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9088,7 +9092,11 @@ to that granule.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>locked</ipxact:name>
-              <ipxact:description>Lock filter configurations. Write once register</ipxact:description>
+              <ipxact:description>Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.</ipxact:description>
               <ipxact:bitOffset>63</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9150,7 +9158,11 @@ Defaults to 7 on reset to match the 8B granule that applies while bursts are dis
         <ipxact:registerFile>
           <ipxact:name>smc_mailbox</ipxact:name>
           <ipxact:displayName>SMC AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
-          <ipxact:description>SMC-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.</ipxact:description>
+          <ipxact:description>SMC-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
           <ipxact:addressOffset>'hc0018000</ipxact:addressOffset>
           <ipxact:range>'h1f850</ipxact:range>
           <ipxact:registerFile>
