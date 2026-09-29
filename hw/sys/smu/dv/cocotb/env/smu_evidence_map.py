@@ -657,14 +657,16 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SEP-MBOX-IRQ",
             "CHK-SEP-MBOX-IRQ",
-            "a write into each outbound mailbox raises only its own interrupt lane, and "
-            "flush, acknowledge and disable return every lane low",
+            "the mailbox interrupt vector is 0 with IRQEN set and the FIFO empty, a write into "
+            "each outbound mailbox raises only its own interrupt lane, and flush, acknowledge "
+            "and disable return every lane low",
         ),
         (
             "CHK-SEP-SPI-QUAD",
             "CHK-SEP-SPI-QUAD",
             "quad-mode transmits drive all four data lanes and their enables, a quad receive "
-            "completes with every enable low, and INTR_STATE.SPI_EVENT and the interrupt stay "
+            "fills one RX FIFO word and completes with every enable low, and "
+            "INTR_STATE.SPI_EVENT and the interrupt stay "
             "high across a write to INTR_STATE and fall when EVENT_ENABLE.IDLE is cleared",
         ),
         (

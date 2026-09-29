@@ -7,14 +7,16 @@ S0..S3 are ``smu_dtp_sep_dm_dmi_test``. Every later access is a system-bus acces
 
 S4: the SEP-to-SMC mailboxes. Each outbound mailbox raises its interrupt to the
     SMC while its write FIFO holds more words than WIRQT with the write-threshold
-    interrupt enabled (``axil_mailbox`` register description). For every mailbox
-    a word written with WIRQT 0 and IRQEN.wtirq set raises the mailbox's lane of
-    the SEP mailbox interrupt vector alone; flushing the FIFO, acknowledging
-    IRQS and clearing IRQEN drops it.
+    interrupt enabled (``axil_mailbox`` register description). For every mailbox,
+    with WIRQT 0 and IRQEN.wtirq set and the FIFO empty the SEP mailbox
+    interrupt vector is 0, and a word written then raises the mailbox's lane
+    of it alone; flushing the FIFO, acknowledging IRQS and clearing IRQEN
+    drops it.
 S5: the SEP SPI host (``spi_host.hjson``, ``hw/sys/sep/doc/spi.adoc``). With
     the host enabled and its output driven, a quad-speed transmit of four
     bytes drives every data lane and its output enable, and a quad-speed
-    receive, which completes with the host idle, leaves the enables low. With
+    receive of four bytes, which completes with the host idle, leaves the
+    enables low and takes STATUS.RXQD from 0 to one word. With
     EVENT_ENABLE.IDLE set, INTR_STATE.SPI_EVENT follows the idle event and
     the interrupt line is high while INTR_ENABLE.SPI_EVENT is set; a write to
     INTR_STATE.SPI_EVENT, which the RDL makes read-only, leaves both high,
@@ -110,6 +112,8 @@ SPI_SPIEN = _spi("CONTROL__SPIEN_bm")
 SPI_OUTPUT_EN = _spi("CONTROL__OUTPUT_EN_bm")
 SPI_TX_WATERMARK = 4 << _spi("CONTROL__TX_WATERMARK_bp")
 SPI_ACTIVE = _spi("STATUS__ACTIVE_bm")
+SPI_RXQD = _spi("STATUS__RXQD_bm")
+SPI_RXQD_SHIFT = _spi("STATUS__RXQD_bp")
 SPI_EVENT_IDLE = _spi("EVENT_ENABLE__IDLE_bm")
 SPI_INTR_EVENT = _spi("INTR_STATE__SPI_EVENT_bm")
 SPI_LEN_SHIFT = _spi("COMMAND__LEN_bp")
@@ -119,6 +123,9 @@ SPI_SPEED_SHIFT = _spi("COMMAND__SPEED_bp")
 SPI_SPEED_QUAD = 2
 SPI_DIR_RX = 1
 SPI_DIR_TX = 2
+# COMMAND.LEN 3 is a four-byte segment, one 32-bit word of the RX FIFO
+# (spi_host.hjson COMMAND.LEN, STATUS.RXQD).
+SPI_RX_WORDS = 1
 SPI_REQ_PATH = "sep_io_spi_req"
 RX_PATH = "sep_spi_rxd"
 RX_PAD_MASK = 0xF
@@ -208,14 +215,15 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             base = _sep(f"AXIL_MAILBOX_OUTBOUND_MAILBOX_{mbox}_BASE_ADDR")
             await self._sb_ok(jtag, base + MBOX_WIRQT, 2, 0)
             await self._sb_ok(jtag, base + MBOX_IRQEN, 2, MBOX_WTIRQ)
+            before = self._smu(MBOX_IRQ_PATH)
             await self._sb_ok(jtag, base + MBOX_WRITE_DATA, 3, 0x0B0B_0000 | mbox)
             raised = await self._settle(MBOX_IRQ_PATH, 1 << mbox)
             await self._sb_ok(jtag, base + MBOX_CTRL, 2, MBOX_FLUSH)
             await self._sb_ok(jtag, base + MBOX_IRQS, 2, MBOX_ALL_IRQS)
             await self._sb_ok(jtag, base + MBOX_IRQEN, 2, 0)
             dropped = await self._settle(MBOX_IRQ_PATH, 0)
-            observed[mbox] = (raised, dropped)
-            want[mbox] = (1 << mbox, 0)
+            observed[mbox] = (before, raised, dropped)
+            want[mbox] = (0, 1 << mbox, 0)
         self._log(f"CHK-SEP-MBOX-IRQ {observed}")
         sb.expect_eq("CHK-SEP-MBOX-IRQ", observed, want, evidence="CHK-SEP-MBOX-IRQ")
         self.steps["s4"] = True
@@ -269,8 +277,10 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
             await self._sb_ok(jtag, SPI_COMMAND, 2, self._command(SPI_DIR_TX))
             idle.append(await self._spi_wait_idle(jtag))
         phase[0] = "rx"
+        rx_depth = [(await self._read_ok(jtag, SPI_STATUS) & SPI_RXQD) >> SPI_RXQD_SHIFT]
         await self._sb_ok(jtag, SPI_COMMAND, 2, self._command(SPI_DIR_RX))
         idle.append(await self._spi_wait_idle(jtag))
+        rx_depth.append((await self._read_ok(jtag, SPI_STATUS) & SPI_RXQD) >> SPI_RXQD_SHIFT)
         stop[0] = True
         await watcher
         seen_sd, seen_oe, oe_in_rx = lanes["tx_sd"], lanes["tx_oe"], lanes["rx_oe"]
@@ -288,16 +298,17 @@ class smu_sep_sba_peripheral_test_seq(smu_sep_sba_fabric_sweep_test_seq):
         await self._sb_ok(jtag, SPI_CONTROL, 2, 0)
         self._log(
             f"CHK-SEP-SPI-QUAD sd=0x{seen_sd:x} oe=0x{seen_oe:x} rx_oe=0x{oe_in_rx:x} "
-            f"idle={idle} intr_state_irq={intr}"
+            f"rxqd={rx_depth} idle={idle} intr_state_irq={intr}"
         )
         self._log(f"OBSERVATION SEP SPI trigger_empty={trigger_empty} rx_lanes={rx_lanes}")
         sb.expect_eq(
             "CHK-SEP-SPI-QUAD",
-            (seen_sd, seen_oe, oe_in_rx, idle, intr),
+            (seen_sd, seen_oe, oe_in_rx, rx_depth, idle, intr),
             (
                 0xF,
                 0xF,
                 0,
+                [0, SPI_RX_WORDS],
                 [True, True, True],
                 [(SPI_INTR_EVENT, 1), (SPI_INTR_EVENT, 1), (0, 0)],
             ),
