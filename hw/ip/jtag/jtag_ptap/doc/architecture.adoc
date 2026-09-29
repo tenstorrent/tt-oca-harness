@@ -15,19 +15,31 @@ through the PTAP.
 
 [[ptap-module-architecture-figure]]
 .PTAP module architecture
-image::ptap_module_diagram.svg[alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",scaledwidth=90%]
+image::ptap-architecture.svg[alt="PTAP module diagram showing the TAP controller, TMP controller, the instruction register and test data registers with the IR opcodes that select each one, the JTAG2AXI bridges, and the TDR, zero-length-bypass, STAP and retimer-bypass multiplexers on the TDO path",width=100%,pdfwidth=100%]
 
-Blue arrows show TAP Controller control signals (Capture/Shift/Update) and
-decoded instruction/selection signals from the Instruction Decoder.
-Grey arrows show scan-data paths: solid grey carries PTAP_TDI scan-in (fanning
-out directly to IR, all TDR scan-in inputs, `BSR_SI`, and `IJTAG_SI`); dashed
-grey carries scan-out returns — the selected IR or TDR scan-out is chosen by the
-Scan Path Mux and forwarded to PTAP_TDO (retimed on falling TCK edge; zero-length
-bypass uses the ZLB path, which bypasses the retimer).
-The TDR Bank registers (`BYPASS`, `IDCODE`, `DBG_CTRL`, and others) are listed in
-<<ptap-module-hierarchy-table>>.
-`BSR_SI`/`IJTAG_SI` scan-in arrives directly from PTAP_TDI fan-out;
-`BSR_SO`/`IJTAG_SO` scan-out returns are selected by the Scan Path Mux.
+Blue lines carry scan data and grey lines carry control. `client_tdi_i` feeds the
+instruction register and every register in the scan-register group, whose last
+column gives the IR opcodes, in hex, that select each register for a DR scan. The
+6-bit instruction register captures `6'b000001`, resets to IDCODE and decodes its
+opcode one-hot onto `inst_decoded_o[63:0]`. An opcode with no register of its own,
+or one whose enable parameter is 0, selects BYPASS. Dashed registers and bridges
+are present only when their parameter enables them
+(<<ptap-module-hierarchy-table>>). The boundary-scan chain and the iJTAG network
+lie outside the PTAP: `client_tdi_i` is forwarded to them, and their returns enter
+the TDR multiplexer.
+
+`tdr_mux` selects the instruction register during an IR scan and the selected
+register otherwise. `u_zlb_tdr_mux` substitutes `client_tdi_i` for
+ZERO_LENGTH_BYPASS during a DR scan, and its output also leaves on
+`stap_host_scan_out_o` toward the STAP chain. `u_tdo_mux` selects the chain return
+`stap_host_scan_in_i` while the TAP_3DCR select bit is set. The retimer registers
+the result on the falling TCK edge, and `u_tdo_bypass_mux` bypasses the retimer
+for ZERO_LENGTH_BYPASS. The TAP controller forwards TCK, TMS and TRST on
+`host_tap_ctrl_o`, and the IR and DR scan controls, ORed together, on
+`stap_host_scan_ctrl_o`. `pwr_on_rst_ni` is ANDed with the client TRST before it
+reaches the PTAP logic. The AXI side of each JTAG2AXI bridge runs on `clk_i` and
+`rst_n_i`, which the figure omits, and each bridge has its own
+`*_security_disable_i` input (<<ptap-debug-disable-inputs-table>>).
 
 === Module Hierarchy
 
@@ -187,7 +199,7 @@ survive TEST_LOGIC_RESET state transitions while in persistence mode.
 
 === TDR Multiplexer
 
-The PTAP implements a 41-case instruction-dependent data register multiplexer.
+The PTAP implements an instruction-dependent data register multiplexer.
 During IR scan operations, the instruction register connects to the scan path.
 During DR scan operations, the appropriate data register is selected based on
 the currently decoded instruction. Each test data register has dedicated scan
@@ -524,11 +536,14 @@ otherwise. The single-operation TDR has `2 + S + D/8 + D + A` bits.
 For `D=64` and `A=51`, it has 127 bits.
 
 <<jtag2axi-single-operation-layout-figure>> shows the single-operation TDR for a 64-bit
-data bus and a 51-bit address bus.
+data bus and a 51-bit address bus. In this and the following layout figures the most
+significant bit is on the left, nearest TDI, and bit 0 on the right shifts out to TDO
+first. The bit range of each field is above it and its width below it; field widths
+are not drawn to scale.
 
 [[jtag2axi-single-operation-layout-figure]]
 .JTAG2AXI single-operation layout
-image::jtag2axi_single_op.svg[AXI Single OP Instruction layout with size==3 and addr_size==51,scaledwidth=90.0%]
+image::jtag2axi-single-op.svg[alt="AXI_SINGLE_OP register layout for 64-bit data and 51-bit addresses: address 126:76, data 75:12, wstrb 11:4, size 3:2, op 1:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-single-operation-fields-table>> defines the address, data, byte-enable, size,
 and operation fields.
@@ -566,7 +581,7 @@ For `D=64`, `A=51`, and `FIFO_DEPTH=3`, the length is 58 bits.
 
 [[jtag2axi-series-control-layout-figure]]
 .JTAG2AXI series-control layout
-image::jtag2axi_series_ctrl.svg[AXI Series Control Instruction layout with addr_size==51,scaledwidth=90.0%]
+image::jtag2axi-series-ctrl.svg[alt="AXI_SERIES_CTRL register layout for 64-bit data, 51-bit addresses and FIFO_DEPTH=3: reset 57, address 56:6, pl_depth 5:4, size 3:2, op 1:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-series-control-fields-table>> defines the control fields used to start and
 manage a series of AXI accesses.
@@ -602,7 +617,8 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-The incrementing payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3 are
+The data field is drawn as the payload bytes it holds, with bit 0 aligned across the
+four sizes. The incrementing payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3 are
 shown in <<jtag2axi-incrementing-data-layout-for-size-0-figure>>,
 <<jtag2axi-incrementing-data-layout-for-size-1-figure>>,
 <<jtag2axi-incrementing-data-layout-for-size-2-figure>>,
@@ -610,19 +626,19 @@ shown in <<jtag2axi-incrementing-data-layout-for-size-0-figure>>,
 
 [[jtag2axi-incrementing-data-layout-for-size-0-figure]]
 .JTAG2AXI incrementing data layout for size 0
-image::jtag2axi_series_data_incr0.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
+image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 0: data 7:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-incrementing-data-layout-for-size-1-figure]]
 .JTAG2AXI incrementing data layout for size 1
-image::jtag2axi_series_data_incr1.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 1: data 15:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-incrementing-data-layout-for-size-2-figure]]
 .JTAG2AXI incrementing data layout for size 2
-image::jtag2axi_series_data_incr2.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 2: data 31:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-incrementing-data-layout-for-size-3-figure]]
 .JTAG2AXI incrementing data layout for size 3
-image::jtag2axi_series_data_incr3.svg[.AXISeriesDataIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
+image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 3: data 63:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-incrementing-data-fields-table>> defines the payload shifted through the
 incrementing data instruction.
@@ -652,27 +668,28 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-The non-incrementing payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3
-are shown in <<jtag2axi-non-incrementing-data-layout-for-size-0-figure>>,
+The non-incrementing data register has the same layout as the incrementing one, so
+the same figures apply. The non-incrementing payload layouts for `AXI_SERIES_CTRL.size`
+values 0, 1, 2, and 3 are shown in <<jtag2axi-non-incrementing-data-layout-for-size-0-figure>>,
 <<jtag2axi-non-incrementing-data-layout-for-size-1-figure>>,
 <<jtag2axi-non-incrementing-data-layout-for-size-2-figure>>,
 <<jtag2axi-non-incrementing-data-layout-for-size-3-figure>>, respectively.
 
 [[jtag2axi-non-incrementing-data-layout-for-size-0-figure]]
 .JTAG2AXI non-incrementing data layout for size 0
-image::jtag2axi_series_data_incr0.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==0,scaledwidth=90.0%]
+image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 0: data 7:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-non-incrementing-data-layout-for-size-1-figure]]
 .JTAG2AXI non-incrementing data layout for size 1
-image::jtag2axi_series_data_incr1.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 1: data 15:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-non-incrementing-data-layout-for-size-2-figure]]
 .JTAG2AXI non-incrementing data layout for size 2
-image::jtag2axi_series_data_incr2.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 2: data 31:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-non-incrementing-data-layout-for-size-3-figure]]
 .JTAG2AXI non-incrementing data layout for size 3
-image::jtag2axi_series_data_incr3.svg[.AXISeriesDataNoIncr when AXISeriesCtrl.size==3,scaledwidth=90.0%]
+image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 3: data 63:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-non-incrementing-data-fields-table>> defines the payload shifted through the
 non-incrementing data instruction.
@@ -681,7 +698,7 @@ non-incrementing data instruction.
 [width="100%",cols="2,2,1,1,6",options="header"]
 .JTAG2AXI non-incrementing data fields
 |===
-|Bits |Field |Description |Access |Reset
+|Bits |Field |Access |Reset |Description
 |n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
 
@@ -710,19 +727,19 @@ shown in <<jtag2axi-error-status-data-layout-for-size-0-figure>>,
 
 [[jtag2axi-error-status-data-layout-for-size-0-figure]]
 .JTAG2AXI error-status data layout for size 0
-image::jtag2axi_series_data_error0.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0,scaledwidth=90.0%]
+image::jtag2axi-series-data-error-status-size0.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 0: increment/status 8, data 7:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-error-status-data-layout-for-size-1-figure]]
 .JTAG2AXI error-status data layout for size 1
-image::jtag2axi_series_data_error1.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1,scaledwidth=90.0%]
+image::jtag2axi-series-data-error-status-size1.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 1: increment/status 16, data 15:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-error-status-data-layout-for-size-2-figure]]
 .JTAG2AXI error-status data layout for size 2
-image::jtag2axi_series_data_error2.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2,scaledwidth=90.0%]
+image::jtag2axi-series-data-error-status-size2.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 2: increment/status 32, data 31:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-error-status-data-layout-for-size-3-figure]]
 .JTAG2AXI error-status data layout for size 3
-image::jtag2axi_series_data_error3.svg[.AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3,scaledwidth=90.0%]
+image::jtag2axi-series-data-error-status-size3.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 3: increment/status 64, data 63:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-data-and-error-status-fields-table>> defines the data payload and the shared
 increment-control and error-status bit.
