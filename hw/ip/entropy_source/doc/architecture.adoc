@@ -94,7 +94,13 @@ domain and grey lines are in the `clk_i` domain or are controls.
 
 == Decorrelation and BIW Mixing
 
-Each sampled noise bit enters a serial decorrelator (`entropy_decorrelator`), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the `sample_clk_div` CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.
+Each sampled noise bit enters a serial decorrelator (`entropy_decorrelator`), which shifts bits through a 29-stage shift register with XOR feedback from the last stage, as <<entropy-decorrelator-diagram>> shows. A downsample counter reloaded from `DECORRELATOR_CTRL.SAMPLE_CLK_DIV` latches the top 8 bits of the shift register as an entropy byte every `SAMPLE_CLK_DIV` + 1 `clk_i` cycles, 64 cycles at the reset value of 63, and pulses the byte-valid strobe for one cycle. The byte is ANDed with `DECORRELATOR_MASK.ENTROPY_BYTE_MASK`, so a cleared mask bit reads as zero; the mask and the divider are shared by all 12 lanes. Setting a lane's bit in `DECORRELATOR_CTRL.BYPASS` forces the feedback to zero, so raw noise bits shift through the chain unmixed; the byte is still taken from the top 8 stages, downsampled and masked.
+
+[[entropy-decorrelator-diagram]]
+.Entropy source decorrelator
+image::entropy-source-decorrelator.svg[alt="Entropy source decorrelator: noise_i is XORed with the gated feedback from ff_stage[28] into a 29-stage shift chain; ff_stage[28:21] is ANDed with byte_mask_i and captured by the output register when the downsample counter reaches zero",width=100%,pdfwidth=100%]
+
+<<entropy-decorrelator-diagram>> shows one lane's decorrelator. The chain shifts on every `clk_i` cycle while `enable_i` is high, and the eight taps from `ff_stage[21]` to `ff_stage[28]` join into one byte-wide bundle. The output register loads when the counter reaches zero. While `enable_i` is low, the chain holds its contents and the counter reloads from `sample_clk_div_i`.
 
 The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.
 
