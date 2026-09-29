@@ -228,13 +228,14 @@ Features:
 ** Circular (wrapping) address range for buffers and queues in
 memories
 * Inline hashing during data transfer
-** SHA2-256 or SHA2-384
+** SHA2-256, SHA2-384 or SHA2-512
 ** Digest stored in DMA CSR
 * Interrupt Outputs: full transaction done, chunk transaction done,
 error
 * Hardware handshake via interrupt inputs
-** Interrupts from IP peripherals enable streaming data transfers: UART,
-SPI
+** Interrupts from IP peripherals enable streaming data transfers; in
+SEP only the SPI host drives a trigger, on `lsio_trigger` bit 0, and the
+other trigger bits are tied off
 ** Peripheral signals read FIFO data available and transmit FIFO space
 available to DMA for automatic flow control
 
@@ -248,13 +249,28 @@ to its AXI fabric as described below.
 [[och-modifications]]
 === OCAH Modifications
 
-The DMA exposes full AXI4 at both external boundaries:
+<<sep-dma-integration-figure>> shows how `sep_dma_wrap` connects the DMA core
+to the SEP local crossbar. The register path runs left to right along the top
+and the host path right to left along the bottom; green boxes are converters,
+and the dashed ports are tied off.
 
-* 64-bit AXI4 register slave interface (for control and status)
-* 64-bit AXI4 data master interface (for memory transfers)
+[[sep-dma-integration-figure]]
+.SEP secure DMA integration
+image::sep-dma.svg[alt="sep_dma_wrap with the secure_dma core, its register-path and host-path converters, the local alias remap and the tied-off CTN and SYS ports",width=100%,pdfwidth=100%]
 
-Internally, the DMA core uses the TL-UL protocol, which is translated to/from AXI4
-by protocol converters at the boundary.
+* 64-bit AXI4 register interface from the local crossbar, downsized to
+32 bits, rebased to the DMA register offset and bridged through AXI-Lite to
+the core's 32-bit TL-UL register port
+* 64-bit AXI4 master interface: the core's TL-UL host port is bridged to
+AXI-Lite, with a command integrity check, then to AXI4 with AxCACHE 0,
+upsized to 64 bits and passed through the same local alias remap as the CPU
+masters. The master path leaves AxUSER at zero.
+* The CTN and SYS ports of the core are tied off, so only transfers that
+select the OpenTitan internal address space reach the SEP fabric; a transfer
+that selects the CTN or SYS address space does not complete
+* Both TL-UL bridges latch faults on `dma_reg_bus_err_o` and
+`dma_host_intg_err_o`, cleared through `DMA_BUS_ERR_CLEAR`, and the core's
+alerts end in local alert receivers whose OR is `dma_alert_o`
 
 [[future-enhancements]]
 === Future Enhancements
@@ -270,13 +286,6 @@ streaming interfaces
 
 Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)
-
-<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
-described in this section.
-
-[[proposed-sep-dma-extensions-figure]]
-.Proposed SEP DMA extensions
-image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]
 == Alarm Aggregation Processor (AGP)

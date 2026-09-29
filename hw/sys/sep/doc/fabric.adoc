@@ -159,11 +159,16 @@ OTBN IMEM, OTBN DMEM
 
 [[sep-system-peripheral-traffic-management-figure]]
 .SEP system-peripheral traffic management
-image::SEP_System.png[SEP_System,scaledwidth=90.0%]
+image::sep-system-peripherals.svg[alt="Overview of sep_system_peripherals: the outbound path through the alias remap, route demux, AP and STEE remaps and outbound filter, and the inbound path through the inbound filter, global-to-local remap and peripheral crossbar to the mailboxes, system CSRs and local crossbar",width=100%,pdfwidth=100%]
 
 <<sep-system-peripheral-traffic-management-figure>> illustrates the AXI4 traffic management performed by
-the Systems Peripheral block. The AXI4 slave port is driven by one of
-the local masters from the SEP i.e. the CPU or the DMA controller.
+the system peripherals block. Its left edge faces the SEP local crossbar and
+its right edge the SMU; the upper lane is the outbound path and the lower lane
+the inbound path, drawn in the notation of <<sep-fabric-topology>>. The figure
+is an overview: <<sep-output-fabric-diagram>> and <<sep-input-fabric-diagram>>
+give every element with its instance name and address window. The AXI4
+subordinate port on the left is driven by the local masters that the local
+crossbar connects to it: the CPU LSU, the CPU debug master and the secure DMA.
 Traffic may be local to the SEP or outbound to external resources either
 within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
 the chiplet or remote chiplets will bridge to the system NOC also known
@@ -214,18 +219,22 @@ only STEE has access to the STEE address remapper.
 When SEP accesses external private memory or the system’s memory mapped
 IO, the SEP traffic is directly routed to SMN.
 
-SEP’s outbound traffic carries a source ID. Traffic destined to the SMN
-uses SEP’s unique source ID. Traffic that traverses through the AP
-controlled remapper uses the regular source ID termed ``others''.
-Traffic then traverses the outbound filter after traversing the
+SEP’s outbound traffic carries a source ID in AxUSER. Traffic that
+traverses the AP or STEE controlled remapper has its source ID replaced
+with the regular source ID termed ``others''. Other traffic keeps the
+source ID of its initiator: the CPU masters drive SEP’s unique source ID,
+while the secure DMA master path leaves AxUSER at zero, which is the
+``others'' encoding. The fabric passes AxPROT, and with it the NS bit,
+unchanged. Traffic then traverses the outbound filter after traversing the
 remapper. SEP works with M-mode software to program the outbound filters
 so that traffic with source ID ``others'' cannot access M-mode assets.
 The outbound filter enables filtering based on address, NS and source
 ID.
 
 The SEP’s inbound traffic filter is configured by default to block all
-traffic from entering the SEP. Only the SEP CPU can program these
-filters. Again, these filters enable filtering based on address, NS and
+traffic from entering the SEP. The filter entries sit in the system CSRs,
+which the local masters reach directly and external masters only through an
+inbound filter entry that SEP firmware enables. Again, these filters enable filtering based on address, NS and
 source ID.
 
 [[sep-traffic-filter-decode]]
