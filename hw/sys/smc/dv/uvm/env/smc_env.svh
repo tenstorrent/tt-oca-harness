@@ -20,7 +20,7 @@
 //   * one reference model per scoreboard feature on the SEP_IN stream
 //     (smc_scratch_csr_ref_model, smc_default_reg_ref_model,
 //     smc_lock_csr_ref_model, smc_mutex_sema_ref_model,
-//     smc_spm_mem_ref_model), and the
+//     smc_spm_mem_ref_model, smc_regblock_wide_ref_model), and the
 //     always-on smc_scoreboard pairing each feature's expected stream with
 //     the observed one.
 //
@@ -52,6 +52,7 @@ class smc_env extends ocah_env;
   smc_lock_csr_ref_model    m_lock_csr_ref_model;
   smc_mutex_sema_ref_model  m_mutex_sema_ref_model;
   smc_spm_mem_ref_model     m_spm_mem_ref_model;
+  smc_regblock_wide_ref_model m_regblock_wide_ref_model;
   smc_scoreboard            m_scoreboard;
   smc_virtual_sequencer     m_vseqr;
 
@@ -89,6 +90,9 @@ class smc_env extends ocah_env;
     m_spm_mem_ref_model =
             smc_spm_mem_ref_model::type_id::create("m_spm_mem_ref_model", this);
     m_spm_mem_ref_model.tb_vif = tb_vif;
+    m_regblock_wide_ref_model =
+        smc_regblock_wide_ref_model::type_id::create("m_regblock_wide_ref_model", this);
+    m_regblock_wide_ref_model.tb_vif = tb_vif;
     m_scoreboard = smc_scoreboard::type_id::create("m_scoreboard", this);
 
     m_vseqr = smc_virtual_sequencer::type_id::create("m_vseqr", this);
@@ -120,6 +124,10 @@ class smc_env extends ocah_env;
     m_sep_in_axi_env.item_ap.connect(m_spm_mem_ref_model.analysis_export);
     m_spm_mem_ref_model.expected_ap.connect(m_scoreboard.spm_expected_export);
     m_sep_in_axi_env.item_ap.connect(m_scoreboard.spm_observed_export);
+    // regblock_wide: selected 64-bit words merged under their generated RW masks.
+    m_sep_in_axi_env.item_ap.connect(m_regblock_wide_ref_model.analysis_export);
+    m_regblock_wide_ref_model.expected_ap.connect(m_scoreboard.regblock_wide_expected_export);
+    m_sep_in_axi_env.item_ap.connect(m_scoreboard.regblock_wide_observed_export);
   endfunction
 
   // ------------------------------------------------------------------

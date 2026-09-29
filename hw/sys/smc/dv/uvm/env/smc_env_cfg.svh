@@ -24,6 +24,7 @@ class smc_env_cfg extends ocah_env_cfg;
   bit lock_scoreboard_negative;
   bit mutex_scoreboard_negative;
   bit spm_mem_scoreboard_negative;
+  bit regblock_wide_scoreboard_negative;
   // Backing memory of the SYS_OUT responder, in bytes (addresses wrap).
   int unsigned sys_out_mem_bytes = 32'h8000_0000;
 
@@ -42,6 +43,7 @@ class smc_env_cfg extends ocah_env_cfg;
     c.lock_scoreboard_negative = t.lock_scoreboard_negative;
     c.mutex_scoreboard_negative = t.mutex_scoreboard_negative;
     c.spm_mem_scoreboard_negative = t.spm_mem_scoreboard_negative;
+    c.regblock_wide_scoreboard_negative = t.regblock_wide_scoreboard_negative;
     c.required_features       = t.required_features;
     return c;
   endfunction

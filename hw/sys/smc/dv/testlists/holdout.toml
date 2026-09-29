@@ -8,7 +8,7 @@ schema_version = 1
 # documented as a hold-out in docs/SMC_VPLAN.adoc (Known Limitations,
 # "Held-out testcases"). Nothing here counts toward a PASS of the package.
 #
-# Three kinds of entry:
+# Four kinds of entry:
 #
 #   * `rtl_issue` -- reproducers for filed RTL defects, EXPECTED TO FAIL against
 #     current RTL. Each carries `expect_fail = "<reason>"`, which the runner
@@ -34,6 +34,10 @@ schema_version = 1
 #     it from clk_smc_i. A leaf whose blocker is a filed RTL defect goes here
 #     too, with the issue in its comment, and returns to its feature testlist,
 #     `all` and `hosted` when the fix merges.
+#   * scope-named UVM groups -- UVM-only leaves excluded from `all` and
+#     `hosted` because those groups do not run the UVM framework. Each group is
+#     named for the verification scope it exercises (`csr_uvm_extended`) and
+#     runs on demand.
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
@@ -119,6 +123,24 @@ seed = 1
 timeout_sec = 1800
 tags = ["clock"]
 run_modes = ["smoke"]
+
+[[tests]]
+# Checks sparse byte strobes on side-effect-free wide register-block words.
+name = "smc_regblock_sparse_strobe_test"
+module = { uvm = "smc_regblock_sparse_strobe_test" }
+seed = 1
+timeout_sec = 1800
+tools = ["vcs"]
+tags = ["uvm", "csr"]
+run_modes = ["smoke"]
+
+[[groups]]
+# Wide register-block CSR scenarios.
+name = "csr_uvm_extended"
+expected_count = 1
+tests = [
+    "smc_regblock_sparse_strobe_test",
+]
 
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
