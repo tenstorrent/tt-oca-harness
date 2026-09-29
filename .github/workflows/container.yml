@@ -35,12 +35,15 @@ on:
       - 'scripts/docker.md'
   workflow_dispatch:
 
-# A superseded pull-request run can only rebuild what the run replacing it will
-# build, so cancel it. Pushes to main are never cancelled: each one publishes
-# the revision some consumer goes on to pull.
+# Serialise runs per ref, and let the one in flight finish. The content tag is
+# write-once and names a closure rather than a commit, so an image built for an
+# earlier push satisfies every later tree that resolves to the same hash --
+# which most pushes do, since only the flake inputs move it. Cancelling
+# discards work the next run would have reused, and on a branch that is pushed
+# to often it can restart a multi-hour build indefinitely and publish nothing.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
