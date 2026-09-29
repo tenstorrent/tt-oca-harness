@@ -149,6 +149,10 @@ module sep_uvm_top
             (jtag_trng_rst_hold_i === 1'b1);
         jtag_sep_reset_ctrl_drive.ovrd.abr_jtag_rst_n_ovrd =
             (jtag_abr_rst_hold_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.ovrd.sep_reset_n_ovrd =
+            (jtag_sep_reset_n_ovrd_i === 1'b1);
+        jtag_sep_reset_ctrl_drive.val.sep_reset_n_val =
+            (jtag_sep_reset_n_val_i === 1'b1);
     end
 
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
@@ -2279,6 +2283,8 @@ module sep_uvm_top
     assign jtag_hmac_rst_hold_i     = 1'b0;
     assign jtag_kmac_rst_hold_i     = 1'b0;
     assign jtag_trng_rst_hold_i     = 1'b0;
+    assign jtag_sep_reset_n_ovrd_i  = 1'b0;
+    assign jtag_sep_reset_n_val_i   = 1'b0;
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
@@ -2401,7 +2407,9 @@ module sep_uvm_top
         .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
-        .spi_sck_i             (spi_sck_o)
+        .spi_sck_i             (spi_sck_o),
+        .jtag_sep_reset_n_ovrd_i (jtag_sep_reset_n_ovrd_i),
+        .jtag_sep_reset_n_val_i  (jtag_sep_reset_n_val_i)
     );
 `endif
 

@@ -53,6 +53,11 @@
 `SEP_TB_IN(logic, jtag_kmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_trng_rst_hold_i)
 `SEP_TB_IN(logic, jtag_abr_rst_hold_i)
+// JTAG sep_reset_n override (frontdoor jtag_sep_reset_ctrl_i). ovrd=0 selects
+// sep_intermediate_reset_n, which stays low until fuse sense completes. ovrd=1
+// selects val. Default 0 on both, so every other leaf keeps the sense-gated reset.
+`SEP_TB_IN(logic, jtag_sep_reset_n_ovrd_i)
+`SEP_TB_IN(logic, jtag_sep_reset_n_val_i)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
 // pair onto the LCC decoder input (no legal OTP image can present one). See
 // the force block below.

@@ -313,6 +313,8 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "jtag_kmac_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_trng_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_abr_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_sep_reset_n_ovrd_i", 0)
+        self._set_if_exists(dut, "jtag_sep_reset_n_val_i", 0)
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
