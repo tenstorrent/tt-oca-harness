@@ -114,6 +114,10 @@ SEP connections.
 |`warm_rst_ni` |Active-low |Synchronous to `clk_i` |SEP KM sub-component software-reset CSR bit (`km_sw_rst_ni`).
 |===
 
+SEP isolates the Key Manager's AXI paths before asserting the warm reset; see
+ifdef::backend-html5[xref:sep:reset_controller.adoc#sep-km-reset[Resetting the Key Manager].]
+ifdef::backend-pdf[<<sep-km-reset>>.]
+
 The `km_reset_conditioner` submodule conditions these inputs and the
 KMCSR-sourced soft reset into two clean, glitch-free, active-low output
 resets:
