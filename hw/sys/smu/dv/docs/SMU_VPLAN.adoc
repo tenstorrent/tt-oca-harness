@@ -10,7 +10,7 @@
 |===
 |Field |Value
 |Design Under Test |`hw/top/smu_wrapper.sv` through `hw/sys/smu/dv/tb/tb_wrapper_top.sv`
-|Framework |PyUVM on cocotb
+|Framework |PyUVM on cocotb; an SV-UVM view (`--framework uvm`, VCS) for the five scenarios that carry one
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
 |Executable contract |the enrolled groups in `testlists/all.toml` (`--dut smu`)
@@ -19,6 +19,17 @@
 This plan describes what the SMU open-source suite verifies and against which
 RTL. The executable contract is the enrolled testlist groups; this document
 describes them, it does not replace them.
+
+Five scenarios carry a second implementation in SystemVerilog UVM under the
+same name (`module = { cocotb = "<name>", uvm = "<name>" }` in
+`testlists/all.toml`; `hw/sys/smu/dv/README.md`, "SystemVerilog UVM
+framework"). The enrolled groups run the cocotb view; every `result.json` a
+regression writes under `build/runs/` records `framework: cocotb`. The
+checker rows marked `SV-UVM shape only` below describe the SV-UVM view of a
+card and close nothing for the cocotb regression's sign-off; a card's cocotb
+checkers alone carry its Pass Criteria there. Under `--framework uvm` the
+SV-UVM rows are the governing set of that card instead, and the card's
+negative plusarg must fail the run.
 
 === Verification Strategy
 
@@ -65,7 +76,8 @@ through the SMU
 a testlist. Sequences live in `cocotb/seq_lib/` (those written against the
 SMU's own interfaces) and `cocotb_wrapper/seq_lib/` (those written against
 the wrapper's), two halves of one namespace package, where scenarios differ
-only in stimulus
+only in stimulus. The SV-UVM view keeps the same basenames: one test class per
+scenario under `uvm/tests/`, its scenario sequence under `uvm/seq_lib/`
 |===
 
 === BFM Policy
@@ -113,7 +125,7 @@ membership for `--dut smu` is `testlists/all.toml`.
 |Field |Value
 |DUT |`--dut smu` → `hw/top/smu_wrapper.sv` under `smu_wrapper_uvm_top`, on its compile profile `compile_smu_chiplet` (alias `smu_wrapper`)
 |Spec / plan |<<smu-feature-list,hosted feature list>> Features 1–7
-|Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens. Verilator toggle on the wrapper's ports plus the `cov/sv` FCOV points (`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc`)
+|Coverage intent |`TEST_EVIDENCE` tokens for feature credit; the `cov/sv` cover properties (the `user` family) on Verilator and VCS, and toggle over the SMU's own logic on VCS (`hw/sys/smu/doc/dv/SMU_COVERAGE_POLICY.adoc`)
 |Checker |`SmuScoreboard` named `evidence=` / `expect_*` tokens + `results.xml`
 |CI |`.github/workflows/sim.yml` (PR gate) runs `smoke`; `.github/workflows/regress.yml` runs `hosted`
 |===
@@ -160,17 +172,17 @@ Signoff Package; this table is the credit decision.
 [cols="1,2,2,2,3,1",options="header",]
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
-|F1 SMC boot / firmware observe |reset / mailbox / WDT / OCTS cluster (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`) |`hosted` |`smc_boot_cg` / `wdt_cg` |`RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES for the cluster. `smu_smc_smoke_test` (`SMC_TEST_PASS_OK`) is in `fw_boot` / `all` only, which nothing schedules, and adds no credit here
-|F1 GPIO strap |none: `smc_wrapper` declares no `captured_straps_i`, so the feature has no testcase in this package (`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`) |none |`smc_boot_cg` |none |NO
-|F1 boot-sequence gate |`smu_ext_boot_seq_gate_test` |`hosted`, `smoke` |`smc_boot_cg` |`CHK-BOOT-SEQ-GATE` |YES
-|F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`hosted`, `smc_under_smu` |`smc_boot_cg` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
-|F2 Real SEP under SMU |— |wrapper `sep_rtl` only |— |wrapper `DUT_TAG=WRAPPER` boot tokens |NO
-|F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`hosted` |`dtp_debug_cg` / `reset_clock_cg` |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `J2A_*` |YES
-|F4 AXI fabric |ID convert, filters, alias remap, fabric BAR |`hosted` |`xbar_route_cg` / `reg_access_cg` |`AXI_ID_WIDTH_OK`, `AXI_NON_ATOP_OK` (non-ATOP path completes), `AXI_FILTER_OKAY` |YES for the SEP=1 fabric. The SEP=0 shape (`smu_axi_xbar` absent, direct ID converters) is OUT: no target elaborates it
-|F4 ATOP reject — no stimulus path |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |`xbar_route_cg` |none — `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver |NO
-|F5 SMC↔SEP interop |— |— |— |— |NO
-|F6 Cross-trigger and clock-stop |`smu_clock_stop_coordination_test`, `smu_xtrig_ctm_illegal_phase_test`, `smu_xtrig_ctm_remap_test` |`hosted` |`xtrig_cg` / `reset_clock_cg` |`CHK-DTP-BOOT-STALL-S1`, `XT_ILLEGAL_PHASE`, `XT_CTM_REMAP` |YES
-|F7 Lifecycle observe-only |— |— |`fuse_lifecycle_cg` |none |NO. The lifecycle observe credit is OUT: the SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) needs `smu #(.SEP(0))`, which this package does not build, and is `not-runnable` in the disposition record; `feat_ctrl` / policy matrices stay OUT.
+|F1 SMC boot / firmware observe |reset / mailbox / WDT / OCTS cluster (`smu_smc_reset_ctrl_test`, `smu_smc_mailbox_sanity_test`, `smu_smc_wdt_sanity_test`, `smu_system_timer_octs_test`) |`hosted` |`smu_boot_fcov` (`c_release_primary_smc`, `c_init_mem_done`, `c_fuse_sense_done`), `smu_rst_fcov` (`c_smc_released`, `c_auto_init_runs`), `smu_ext_fcov` (`c_ss_reset_ctrl_array_32`, `c_ss_config_present`) |`RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES for the cluster. `smu_smc_smoke_test` (`SMC_TEST_PASS_OK`) is in `fw_boot` / `all` only, which nothing schedules, and adds no credit here
+|F1 GPIO strap |none: `smc_wrapper` declares no `captured_straps_i`, so the feature has no testcase in this package (`hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`) |none |none |none |NO
+|F1 boot-sequence gate |`smu_ext_boot_seq_gate_test` |`hosted`, `smoke` |`smu_boot_fcov` `c_ext_boot_seq_done`, `smu_rst_fcov` `c_reset_release_after_boot_seq_done` |`CHK-BOOT-SEQ-GATE` |YES
+|F1 mailbox IRQ export |`smu_smc_mailbox_int_test` |`hosted`, `smc_under_smu` |`smu_ext_fcov` `c_mailbox_irq_out_width_32` |`CHK-SMC-MBX-IRQ-EXT-S2` |YES
+|F2 Real SEP under SMU |`smu_sep_smoke_test` |`fw_boot`, `all` |none |`SEP_BOOT_ROM_OK` (F1 observe / F6 export on the wrapper) |NO. OUT of `hosted` credit: the leaf boots SEP firmware, so its `c_build` stage needs the RISC-V toolchain and it sits in `fw_boot` / `all`, which no workflow schedules; `regress.yml` schedules `hosted` alone
+|F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`hosted` |`smu_dbg_fcov` (`c_jtag2axi_write_reaches_smc_csr`, `c_jtag2axi_read_returns_csr_value`, `c_smc_otp_read_response_returned`, `g_sep.c_sep_otp_read_response_returned`), `smu_dtp_fcov` override slice (`c_ovrd_field_present`, `c_val_field_active_low`), `smu_boot_fcov` (`c_boot_stall_jtag_applied`, `c_boot_stall_jtag_released`) |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `J2A_*` |YES
+|F4 AXI fabric |ID convert, filters, alias remap, fabric BAR |`hosted` |`smu_xbar_fcov` (`c_map_smc_base_programmed`, `c_axi_in_aw_accept`, `c_axi_in_rresp_okay`, `c_axi_in_bresp_decerr`, `c_no_route_ext_in_to_ext_out`), `smu_alias_fcov` (`g_sep.c_alias_path_bypasses_xbar`, `g_sep.c_sep_access_outside_window_observed_at_xbar`), `smu_ext_fcov` `c_inbound_id_width_8` |`AXI_ID_WIDTH_OK`, `AXI_NON_ATOP_OK` (non-ATOP path completes), `AXI_FILTER_OKAY` |YES for the SEP=1 fabric. The SEP=0 shape (`smu_axi_xbar` absent, direct ID converters) is OUT: no target elaborates it
+|F4 ATOP reject — no stimulus path |`smu_axi_atomic_operation_test` covers the non-ATOP path only |`hosted` |none |none — `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0` and the package has no ATOP driver |NO
+|F5 SMC↔SEP interop |`smu_sep_bidirect_test`, `smu_sep_smc_notify_test` |`sep_real_fw`, `all` |none |none in `TEST_EVIDENCE`; the verdict is the firmware's terminal loop |NO. OUT of `hosted` credit: both leaves run SEP DV firmware, so they need the RISC-V toolchain and sit in `sep_real_fw` / `all`, which no workflow schedules
+|F6 Cross-trigger and clock-stop |`smu_clock_stop_coordination_test`, `smu_xtrig_ctm_illegal_phase_test`, `smu_xtrig_ctm_remap_test` |`hosted` |`smu_clkstop_fcov` (`c_clk_stop_req_delivered`, `c_stop_clks_from_debug_control`, `c_stop_clks_released`), `smu_dtp_fcov` CTP points (`c_ctp_req_out_width_16`, `c_ctp_ack_in_width_16`, `c_ctp_unused_input_tied_zero_inert`) |`CHK-DTP-BOOT-STALL-S1`, `XT_ILLEGAL_PHASE`, `XT_CTM_REMAP` |YES
+|F7 Lifecycle observe-only |— |— |`smu_lc_fcov` (`c_lc_state_width_8`, `c_demote_1_width_2`, `c_demote_2_width_2`), `smu_boot_fcov` (`c_lc_state_changed`, `g_sep.c_lcc_demote_state_1`, `g_sep.c_lcc_demote_state_2`, `g_sep.c_lcc_demote_both`), `smu_dbg_fcov` (`g_sep.c_dbg_disable_blocks_smc_fabric_bridge`) |none |NO. The lifecycle observe credit is OUT: the lifecycle stimulus is SEP firmware (`smu_sep_lcc_flow_test` in `sep_real_fw`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`, the one group `regress.yml` schedules; the SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`) needs `smu #(.SEP(0))`, which this package does not build, and is `not-runnable` in the disposition record; `feat_ctrl` / policy matrices stay OUT.
 |===
 
 `smu_sep_smoke_test` on `--dut smu` is F1 observe / F6 export on the
@@ -376,8 +388,8 @@ row's EXPECT sentence is worth, read the check.
 * smu_axi_atomic_operation_test - non-ATOP SMN read path on the wrapper.
 * `tb/tb_wrapper_top.sv` ties `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
 * This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
-* What it proves: a plain 32-bit read on the SMN path completes rather than hanging, and the RID sampled off the live R channel mirrors the ARID issued.
-* DECERR / err_slv poison deny semantics stay deferred until a filter-allow / OKAY positive control exists (NEGATIVE-NEEDS-POSITIVE-CONTROL).
+* What it proves: with the SMC aperture and an INBOUND0 window programmed over JTAG, a plain 32-bit read of `VERSION_LO` on the SMN path is answered OKAY with the register's reset value, and the RID sampled off the live R channel mirrors the ARID issued.
+* DECERR / err_slv poison deny semantics stay OUT for this leaf: no ATOP can be driven to provoke them.
 
 *Test Procedure*:
 
@@ -998,6 +1010,18 @@ row's EXPECT sentence is worth, read the check.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb test body
+`smu_boot_stall_jtag_cold_reset_matrix_test.py` and the SV-UVM
+`smu_boot_stall_jtag_cold_reset_matrix_test_seq.svh` (`--framework uvm`). The SV-UVM
+shape runs the same eight legs per pass on the real sense (the testlist entry
+carries no `+skip_fuse_sense` in either framework), including the GPIO-pad legs
+(pad alone, both sources, override low over the pad), with the sense-done and
+fuse-reset observables read through `smu_tb_if` and every bounded wait recorded.
+Independently of the sequence, `smu_debug_control_tdr_ref_model` predicts the
+capture of every DEBUG_CONTROL scan from the register shadow and the TAP resets it
+observes, and `smu_boot_gate_ref_model` requires the boot gate open and the sense
+complete at every fuse-reset release `smu_reset_pin_monitor` observes.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -1006,9 +1030,21 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold; the sensed `smc_fuse_reset_n_delayed_o` stays 0 for 64 `clk_smu` with `smc_fuse_sense_done_o` high
 |`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall; with the sense already done, the release follows the clear within the gate path and stays released
 |`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
+|`CHK-STALL-BASELINE` |SV-UVM shape only (`--framework uvm`): after the TAP reset the fuse reset is released, the sense is done and the stall override idle
+|`CHK-DEBUG-CONTROL-READBACK` |SV-UVM shape only (`--framework uvm`): the written DEBUG_CONTROL image reads back on its four software-owned bits and on the SMC exports
+|`CHK-STALL-STICKY` |SV-UVM shape only (`--framework uvm`): `STALL_COLD_STICKY` in the SV-UVM shape: the stall exports survive the cold reset and the fuse reset reads 0 on every hold-window clock after the sense completes
+|`CHK-STALL-TRST` |SV-UVM shape only (`--framework uvm`): `STALL_TRST_CLEAR` in the SV-UVM shape: with the sense done and the gate shut, the TRST pulse clears both exports, the release follows within the gate-path bound and holds, and the release latency counted from the instant the clear stimulus began fits inside the hold window the sticky claim rests on
+|`CHK-STALL-REASSERT` |SV-UVM shape only (`--framework uvm`): `STALL_REASSERT_STICKY` in the SV-UVM shape: the re-asserted stall does not re-gate the released fuse reset
+|`CHK-STALL-PAD-ONLY` |SV-UVM shape only (`--framework uvm`): the GPIO pad alone gates the fuse reset across a cold reset while the JTAG override is idle
+|`CHK-STALL-BOTH-SOURCES` |SV-UVM shape only (`--framework uvm`): pad and JTAG stall asserted together keep the gate shut
+|`CHK-STALL-OVRD-MASKS-PAD` |SV-UVM shape only (`--framework uvm`): the override forced low over the driving pad opens the gate within the gate-path bound and holds, and the release latency counted from the end of the clearing DR scan fits inside the hold window
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): eight bounded waits (the TAP-state confirmation, the baseline release, two sense completions, two primary releases, two gate releases) each name a finite bound and their last state; none expired
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `debug_control_tdr` feature compares at least the seven scans the pass issues and `boot_gate` at least the two releases it causes, both counts from the always-on scoreboard
+|`CHK-SB-DEBUG-CONTROL-TDR` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `debug_control_tdr`: `smu_debug_control_tdr_ref_model` predicts every DEBUG_CONTROL capture from the previous update and zero after any TAP reset (TRST, Test-Logic-Reset, power-on reset), the TCK-domain register untouched by the cold reset
+|`CHK-SB-BOOT-GATE` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `boot_gate`: `smu_boot_gate_ref_model` requires `ext_boot_seq_done_i` = 1 and `smc_fuse_sense_done_o` = 1 in the SMU clock of every `smc_fuse_reset_n_delayed_o` 0 -> 1 the pin monitor observes
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE` and `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` must each fail the run.
 
 '''''
 
@@ -1173,6 +1209,19 @@ row's EXPECT sentence is worth, read the check.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb
+`smu_ext_boot_seq_gate_test_seq.py` and the SV-UVM `smu_ext_boot_seq_gate_test_seq.svh`
+(`--framework uvm`). The SV-UVM shape re-runs the cold reset with the gate shut at
+the start of every pass (the base test's bring-up releases with the gate open), so
+the gated window, the negative control and the ungate are proved once per pass, and
+stamps the first primary and fuse rises, and the gate level in the clock of the primary
+rise, with a tracker armed while the cold reset holds both low, so the negative control
+and the fence are taken from DUT edges rather than from levels found after the settle.
+Independently of the sequence,
+`smu_boot_gate_ref_model` requires the boot gate open and the sense complete at
+every fuse-reset release `smu_reset_pin_monitor` observes, so a release inside the
+gated window fails the scoreboard as well as the sequence.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -1183,9 +1232,15 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-TIMEOUT-PATHS` |Both bounded waits (primary release while gated; fuse release after ungate) completed within RELEASE_BOUND clk_smu_i cycles and none expired: the compare is the list of (label, expired, bound) records against the expected list, so a missing, expired or differently bounded wait fails
 |`CHK-NONVAC` |Ordered fence from DUT edges, simulation-time stamped: the first rise of `rst_primary_smc_clk_no` precedes the `ext_boot_seq_done_i` drive, and the first rise of `smc_fuse_reset_n_delayed_o` follows both the end of the gated sample window and the ungate drive; a fuse release inside the gated or pre-ungate window fails
 |`CHK-BOOT-SEQ-REGATE` |with `ext_boot_seq_done_i` low across a second cold reset, `smc_fuse_reset_n_delayed_o` stays low for the whole gated sample window after the release and rises within RELEASE_BOUND cycles of raising the pin
+|`CHK-BOOT-SEQ-GATE` |SV-UVM shape only (`--framework uvm`): the sense is done before the gated window, the gate reads 0 and the fuse reset reads 0 on every one of the 64 gated samples, and the fuse reset releases within the gate-path bound after the ungate
+|`CHK-PRIMARY-NOT-GATED` |SV-UVM shape only (`--framework uvm`): the primary reset is low under the cold reset, its 0 -> 1 is observed by the tracker with the gate reading 0 in that clock, and it reads 1 within the bound while the gate still reads 0
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): the three bounded waits (the sense done before the gated window, the primary release while gated, the fuse release after the ungate within the gate-path bound) name a finite bound and their last level; none expired
+|`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): the DUT-edge fence, simulation-time stamped: first primary rise before the ungate, first fuse rise after the gated window's end and after the ungate
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `boot_gate` feature compares at least the one release the pass causes, from the always-on scoreboard
+|`CHK-SB-BOOT-GATE` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `boot_gate`: `smu_boot_gate_ref_model` requires `ext_boot_seq_done_i` = 1 and `smc_fuse_sense_done_o` = 1 in the SMU clock of every `smc_fuse_reset_n_delayed_o` 0 -> 1 the pin monitor observes
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `smoke`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc_under_smu`, `smoke`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE` must fail the run.
 
 '''''
 
@@ -1321,6 +1376,18 @@ row's EXPECT sentence is worth, read the check.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb test body
+`smu_jtag_reset_override_test.py` and the SV-UVM `smu_jtag_reset_override_test_seq.svh`
+(`--framework uvm`). The SV-UVM shape holds the TDR geometry as a DV-owned table
+transcribed from the integrator guide (68 SMC ports, 8 SEP ports, one external port,
+two bits each plus `reset_hold`), scans the 155-bit register through the wide DR path,
+and reads the override exports and the whole SMC slice (`jtag_smc_reset_ctrl.ovrd`
+/ `.val`) through `smu_tb_if`; it also confirms the SMC primary reset releases again
+once the cold override is cleared, so the next pass starts from the same baseline.
+Independently of the sequence, `smu_ic_reset_tdr_ref_model` predicts the capture of
+every IC_RESET scan from the register shadow it rebuilds from the updates and the
+TAP resets it observes, and the always-on scoreboard pairs the two.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -1331,9 +1398,18 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-IC-EXT-RELEASE-STAGED` |Evidence token `IC_RESET_EXT_RELEASE_STAGED`: EXT control staged high reaches `.val` while `.ovrd` stays 1
 |`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: with the EXT override applied, the EXT override is 1 and the SMC and SEP slices' whole override halves are 0; with the SMC cold override applied, the SMC override half is exactly the cold-reset bit and the EXT override and the SEP override half are 0
 |`CHK-IC-SS-SEP-WALK` |Evidence token `IC_RESET_SS_SEP_WALK`: the SS and SEP ports staged, applied, released and cleared, with every SMC and SEP slice port's override and value following each update
+|`CHK-IC-DEFAULT` |SV-UVM shape only (`--framework uvm`): the reset image (all ones over the whole 155-bit register) reads back and both override exports are idle
+|`CHK-IC-EXT-OVERRIDE` |SV-UVM shape only (`--framework uvm`): the external port overridden with reset_control 0 asserts `jtag_ic_reset_ext_ovrd` and drives `jtag_ic_reset_ext_ctrl_n` low, within a bounded wait
+|`CHK-IC-READBACK` |SV-UVM shape only (`--framework uvm`): the written EXT image reads back whole
+|`CHK-IC-SMC-COLD-OVERRIDE` |SV-UVM shape only (`--framework uvm`): the SMC cold port overridden likewise asserts the SMC cold override, drives it low, and the SMC slice the reset controller receives (`ovrd` and `val` vectors) equals the slice the image encodes; the SMC primary reset is held low while the override stands
+|`CHK-IC-DOMAIN` |SV-UVM shape only (`--framework uvm`): while one slice is overridden the other's export stays idle
+|`CHK-IC-CLEAR` |SV-UVM shape only (`--framework uvm`): the reset image restores both exports and the SMC primary reset releases again
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): seven bounded waits (the TAP-state confirmation, the four export transitions, the primary reset held by the cold override, the primary release) each name a finite bound and their last state; none expired
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `ic_reset_tdr` feature's comparison count, from the always-on scoreboard, is at or above the five scans the pass issues
+|`CHK-SB-IC-RESET-TDR` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, feature `ic_reset_tdr`: `smu_ic_reset_tdr_ref_model` predicts every IC_RESET capture from the previous update, the reset image after TRST or power-on reset, and after Test-Logic-Reset the reset image only while `reset_hold` is 1 (PTAP document, IC_RESET fields). A required feature with zero comparisons fails the run
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_IC_RESET_SCOREBOARD_NEGATIVE` must fail the run.
 
 '''''
 
@@ -2267,6 +2343,18 @@ row's EXPECT sentence is worth, read the check.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb
+`smu_dtp_jtag_smoke_test_seq.py` and the SV-UVM `smu_dtp_jtag_smoke_test_seq.svh`
+(`--framework uvm`). The SV-UVM shape drives the same S1..S5 through the shared
+JTAG VIP on the primary TAP, samples the DUT's one-hot TAP state through
+`dtp_tb_if`, and runs the scenario at least 16 passes in one simulation, the
+power-on reset leg restoring the released-reset baseline before the next pass.
+Independently of the sequence, the embedded DTP's reference models predict the
+decoded instruction of every IR load, the IDCODE capture from the documented default
+identification fields (all zero over the marker bit) and the BYPASS capture from the
+shifted pattern, and the always-on scoreboard pairs
+them with the reconstructed scans.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -2277,9 +2365,12 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-DTP-JTAG-PTAP-S3` |Evidence token, emitted only after the compares it names have held
 |`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): nine bounded waits (TAP-state confirmations, the TRST and POR returns to Test-Logic-Reset) each name a finite bound and their last state; the site count and the expired count are compared
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `idcode` and `bypass` features' comparison counts, from the always-on scoreboard, are at or above the floor the pass implies (one IDCODE scan; one directed plus `random_count` BYPASS scans)
+|`CHK-SB-IR-DECODE`, `CHK-SB-IDCODE`, `CHK-SB-BYPASS` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, the embedded DTP's `ir_decode`, `idcode` and `bypass` features reused unchanged (`dtp_ir_decode_ref_model`, `dtp_idcode_ref_model`, `dtp_bypass_ref_model` on the JTAG event and scan streams). A required feature with zero comparisons fails the run
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `smoke`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `smoke`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_PTAP_IDCODE_NEGATIVE` must fail the run.
 
 '''''
 
@@ -2527,6 +2618,20 @@ row's EXPECT sentence is worth, read the check.
 . Compare every access against its stated expectation in the scoreboard.
 . Emit the evidence tokens listed under Checkers.
 
+The scenario has two implementations that share this claim: the cocotb
+`smu_smc_dtp_jtag2axi_smoke_test_seq.py` and the SV-UVM
+`smu_smc_dtp_jtag2axi_smoke_test_seq.svh` (`--framework uvm`). The SV-UVM shape packs
+and decodes every bridge register through the `dtp_env_pkg` codec the DTP bench
+uses for this bridge, takes the expected CAPS word from the integrator guide's
+default parameters and the addresses from the generated `smc_top_addrmap_pkg`, runs
+the directed patterns
+on pass 0 and seeded patterns on the later passes, and raises the TCK period to at
+least four SMU clocks (the cocotb `min_jtag_smu_ratio` clamp). Independently of the
+sequence, the embedded DTP's `dtp_jtag2axi_req_ref_model` pairs every transaction a
+passive monitor sees on the DTP's SMC debug port with the request the scan encoded,
+and `dtp_jtag2axi_status_ref_model` pairs every SINGLE_OP and SERIES_CTRL capture
+with the completion the bus returned.
+
 *Checkers*:
 
 [cols="1,2",options="header",]
@@ -2538,9 +2643,17 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-JTAG2AXI-SMOKE-SPM` |Evidence token, emitted only after the compares it names have held
 |`CHK-JTAG2AXI-SMOKE-SERIES-INCR` |Evidence token, emitted only after the compares it names have held
 |assertion |jtag2axi_smoke incomplete s1=<value> s2=<value> s3=<value> s4=<value>
+|`CHK-JTAG2AXI-SMOKE-JTAG-READY` |SV-UVM shape only (`--framework uvm`): IDCODE equals the SMU-configured value after the TAP reset
+|`CHK-JTAG2AXI-SMOKE-GATE-OPEN` |SV-UVM shape only (`--framework uvm`): the bridge's lifecycle gate reads 0 and SMC_JTAG2AXI_CAPS equals the geometry the integrator guide's default parameters state (rd/wr pipeline depth 3, 8-byte data, 56-bit address, AXI4)
+|`CHK-JTAG2AXI-SMOKE-SCRATCH` |SV-UVM shape only (`--framework uvm`): SINGLE_OP 32-bit write and readback of CPU_CTRL SCRATCH_15, both SUCCESS, data equal
+|`CHK-JTAG2AXI-SMOKE-SPM` |SV-UVM shape only (`--framework uvm`): SINGLE_OP 64-bit write and readback of the SPM base word, both SUCCESS, data equal
+|`CHK-JTAG2AXI-SMOKE-SERIES-INCR` |SV-UVM shape only (`--framework uvm`): SERIES_CTRL + SERIES_DATA_INCR write then readback at SPM+0x40, both SUCCESS, data equal
+|`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): eight bounded waits (the TAP-state confirmation and seven status polls, the last draining the pipelined series read) each name a finite bound and their last status; none expired
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `jtag2axi_req` and `jtag2axi_status` features' comparison counts, from the always-on scoreboard, are at or above the seven bridge transactions the pass launches
+|`CHK-SB-JTAG2AXI-REQ`, `CHK-SB-JTAG2AXI-STATUS` |SV-UVM shape only (`--framework uvm`): always-on scoreboard, the embedded DTP's features reused unchanged: every bridge transaction observed by the passive monitor on `smu.dtp_axi_smc_dbg_req/resp` matches the direction, address, size, strobes and strobed data of the request the scan encoded, and every status capture carries the completion's status and, after a read, its data. A required feature with zero comparisons fails the run
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp_under_smu`, `hosted`. Under `--framework uvm` the SV-UVM rows above govern instead, and `+SMU_J2A_SCOREBOARD_NEGATIVE` must fail the run.
 
 '''''
 
@@ -5220,12 +5333,12 @@ disposition record.
 |===
 |ID |SPEC feature |Scope |What is in |What stays OUT
 |F1 |SMC boot and firmware execution |IN (observe) |Bring-up, reset release, mailbox CSR, WDT, GPIO strap, OCTS free-run |SMC CPU firmware boot, ROM regression
-|F2 |Real SEP RTL under the SMU |OUT |— |SEP=1 instantiate / fetch / retire
+|F2 |Real SEP RTL under the SMU |OUT |— |SEP boot and firmware execution as credit: `smu_sep_smoke_test` retires SEP instructions on the wrapper, but it boots SEP firmware, so it needs the RISC-V toolchain and sits in `fw_boot` / `all`, outside `hosted`; observe-only
 |F3 |DTP debug and test access |IN |PTAP IDCODE/BYPASS, JTAG2AXI, OTP MAP, STAP, BSR select, boot-stall, IC_RESET, SEP DMI `IR=5'h11` |Closed JTAG2AXI security gate (the default SEP eFuse preload leaves debug enabled), lifecycle policy, iJTAG model depth
 |F4 |AXI crossbar fabric |IN |External-port ID conversion through the crossbar, filters, ATOP reject, alias remap, fabric BAR |The crossbar routing matrix beyond the SMC aperture; the SEP=0 shape (direct ID converters, `smu_axi_xbar` absent), which needs `smu #(.SEP(0))`, an elaboration this package does not build
-|F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response with a live SEP
+|F5 |SMC↔SEP interoperability |OUT |— |Mailbox challenge-response and SEP→SMC notify (`smu_sep_bidirect_test`, `smu_sep_smc_notify_test`): SEP DV firmware leaves, which need the RISC-V toolchain and sit in `sep_real_fw` / `all`, outside `hosted`; observe-only
 |F6 |Cross-trigger and clock-stop |IN (pin-level) |Clock-stop coordination, product-pin CTM remap, illegal-phase corners |Four-phase CTM handshake / CLA loop (no product pin or frontdoor for CLA feedback or the CTM handshake)
-|F7 |Lifecycle and security |OUT |— |The SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`, needs `smu #(.SEP(0))`, which this package does not build); `feat_ctrl` matrices, lifecycle policy (need a real SEP under SMU)
+|F7 |Lifecycle and security |OUT |— |The SEP=0 demote / `lc_state` observe (`smu_smc_security_demote_pm_test`, needs `smu #(.SEP(0))`, which this package does not build); `feat_ctrl` matrices and lifecycle policy: the lifecycle stimulus is SEP firmware (`smu_sep_lcc_flow_test`, the `sep_lifecycle` and `sep_chain` groups), which needs the RISC-V toolchain and sits outside `hosted`
 |===
 
 [[smu-enrolled-mapping]]
@@ -5334,10 +5447,10 @@ bench and its `hosted` is the mandatory job.
 |Tier |Command |Seeds |Blocks
 |PR |`--dut smu --tool verilator --items smoke` |1 |PR merge (`sim.yml`)
 |Nightly |`--dut smu --tool verilator --items hosted` |1 |release qualification (`regress.yml`)
-|Weekly |`--dut smu --tool verilator --items hosted` |3 |Coverage / dashboard; same group as nightly
+|Weekly |`--dut smu --tool verilator --items hosted` |1 |Dashboard (`dashboard.yml` publishes the weekly); collects no coverage (`coverage: false`); same group as nightly
 |===
 
-Nightly is one seed; weekly is three. A red nightly is not a PR merge gate
+Nightly and weekly each run one seed (`reseed: 1`). A red nightly is not a PR merge gate
 (`regress.yml` says so) but it blocks release qualification.
 
 `smu` `smoke` members: `smu_dtp_jtag_smoke_test`, `smu_ext_boot_seq_gate_test`,

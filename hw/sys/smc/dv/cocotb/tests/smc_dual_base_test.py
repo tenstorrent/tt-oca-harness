@@ -150,7 +150,8 @@ class DualCsr:
     def _axi_size(length: int) -> int:
         return max(0, length.bit_length() - 1)
 
-    # Only the *_result APIs check BRESP/RRESP; init_write/init_read return a DECERR as data.
+    # Only the *_result APIs check BRESP/RRESP; the bulk helpers below drive
+    # init_write/init_read and grade the response themselves.
     async def write(self, name: str, addr: int, data: int, length: int = 4) -> None:
         result = await self.seq.write_result(
             addr,
@@ -176,12 +177,19 @@ class DualCsr:
         )
         return value
 
+    def _require_okay(self, what: str, addr: int, raw) -> None:
+        resp = getattr(raw, "resp", None)
+        codes = resp if isinstance(resp, (list, tuple)) else [resp]
+        if resp is None or any(int(c) > 1 for c in codes):
+            raise AssertionError(f"{self.prefix} {what} @ {addr:#010x} returned resp={resp}")
+
     async def write_bytes(self, name: str, addr: int, data: bytes) -> None:
         # The scratch banks answer AXI only once the CPU cluster is out of reset.
         for off in range(0, len(data), BULK_CHUNK_BYTES):
             chunk = data[off : off + BULK_CHUNK_BYTES]
             event = self.seq.init_write(address=addr + off, data=chunk, size=3, prot=0)
             await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+            self._require_okay(f"write_bytes {name}", addr + off, event.data)
         cocotb.log.info(
             "%s write_bytes %s %#010x <- %d bytes in %d-byte chunks",
             self.prefix,
@@ -197,6 +205,7 @@ class DualCsr:
             n = min(BULK_CHUNK_BYTES, length - off)
             event = self.seq.init_read(address=addr + off, length=n, size=3, prot=0)
             await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
+            self._require_okay(f"read_bytes {name}", addr + off, event.data)
             out += bytes(event.data.data)
         cocotb.log.debug("%s read_bytes %s %#010x -> %d bytes", self.prefix, name, addr, length)
         return bytes(out)
