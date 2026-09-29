@@ -16,7 +16,9 @@ the override with the reset value released, a read returns the register's
 reset default while sensing is still open. Restoring the TDR enable holds
 the reset again, graded on the reset probes. Feature control stays the
 withheld profile. After sensing completes with the override off, the reset
-releases and the same read returns the reset default again.
+releases, the same read returns the reset default again, and FEAT_CTRL reads
+the PROD golden of the pinned image, so the withheld read is not a register
+stuck at zero.
 """
 
 from __future__ import annotations
@@ -40,6 +42,10 @@ _RESET_SYNC_CYCLES = 32
 # hw/sys/sep/doc/lifecycle_controller.adoc: INVALID feature-control profile
 # before sensing completes.
 _WITHHELD_LC = 0xF
+# Fixed disable vectors, so the sensed PROD FEAT_CTRL is a known non-zero word.
+# SYS_DIS bit 0 stays clear.
+_SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
+_SYS_DIS = 0x00FF_00FF_00FF_00FF
 # Integrator Guide, SEP slice (TDI to TDO). The first name is nearest TDI.
 # doc/integrator/src/smu.adoc. reset_hold is the TDO-end bit and is not a port.
 _SEP_SLICE_TDI_TO_TDO = (
@@ -94,6 +100,22 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             f"{label} FAIL: sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst} "
             f"want {want}/{want} within {_RESET_SYNC_CYCLES} cycles"
         )
+
+    async def _hold_probes(self, want: int, label: str) -> None:
+        """Both probes read ``want`` on every edge of the release bound.
+
+        CHK-TDR-RELEASE requires a release within the same bound, so a step
+        that released the reset shows inside this window.
+        """
+        dut = cocotb.top
+        for cycle in range(1, _RESET_SYNC_CYCLES + 1):
+            await RisingEdge(dut.clk_i)
+            self._require_sense_open(label)
+            cpu_rst, fabric_rst = self._probes()
+            assert (cpu_rst, fabric_rst) == (want, want), (
+                f"{label} FAIL: sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst} "
+                f"at cycle {cycle} of {_RESET_SYNC_CYCLES}, want {want}/{want} throughout"
+            )
 
     def _pins_stay_clear(self, label: str) -> None:
         dut = cocotb.top
@@ -188,7 +210,9 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         return got
 
     async def run_scenario(self) -> None:
-        image = self.select_efuse_image(lc_raw=LC_PROD)
+        image = self.select_efuse_image(
+            lc_raw=LC_PROD, fixed={"SIP_DIS": _SIP_DIS, "SYS_DIS": _SYS_DIS}
+        )
         self.write_efuse_image(image)
         await self.release_no_cpu_reset()
         self._require_sense_open("CHK-TDR-IDLE")
@@ -199,11 +223,12 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
 
         await self._reset_tdr()
         self._require_sense_open("CHK-TDR-IDLE")
-        await self._wait_probes(0, "CHK-TDR-IDLE")
+        await self._hold_probes(0, "CHK-TDR-IDLE")
         self._pins_stay_clear("CHK-TDR-IDLE")
         self.logger.info(
             "CHK-TDR-IDLE PASS: TDR selected at its reset value, "
-            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0, override pins 0"
+            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 for %d cycles, override pins 0",
+            _RESET_SYNC_CYCLES,
         )
 
         # reset_control first, with reset_enable still at its reset 1, so the
@@ -215,7 +240,7 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             f"CHK-TDR-CAPTURE FAIL: shifted-out 0x{captured:x} want 0x{idle:x} "
             "(the TDR reset value)"
         )
-        await self._wait_probes(0, "CHK-TDR-CTRL")
+        await self._hold_probes(0, "CHK-TDR-CTRL")
         self.logger.info(
             "CHK-TDR-CAPTURE PASS: shifted-out 0x%x (reset_hold and every "
             "reset_enable/reset_control at 1)",
@@ -223,7 +248,8 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         )
         self.logger.info(
             "CHK-TDR-CTRL PASS: Update-DR of reset_control leaves "
-            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0"
+            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 for %d cycles",
+            _RESET_SYNC_CYCLES,
         )
 
         await self._capture_shift_update(self._pack(enable_port=_SEP_RESET_N_PORT))
@@ -293,4 +319,23 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             "after sense-done with the TDR override off",
             SEP_RESET_CTRL_SW_RESET_N,
             got,
+        )
+
+        withheld = feat_ctrl_expected(_WITHHELD_LC, 0, 0, sec_dis=0)
+        sensed = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, sec_dis=0)
+        assert sensed != withheld, (
+            f"test bug: sensed PROD golden 0x{sensed:016x} equals the withheld golden, "
+            "so CHK-FEAT-SENSED could not tell them apart"
+        )
+        ctl = SepLccFeatCtrlCheckSeq(sensed)
+        await self.start_seq(ctl)
+        assert ctl.feat_ctrl == sensed, (
+            f"CHK-FEAT-SENSED FAIL: FEAT_CTRL=0x{ctl.feat_ctrl:016x} after sense-done, "
+            f"want the PROD golden 0x{sensed:016x}"
+        )
+        self.logger.info(
+            "CHK-FEAT-SENSED PASS: after sense-done FEAT_CTRL=0x%016x, the PROD golden; "
+            "the same read returned the withheld 0x%016x while sensing was open",
+            ctl.feat_ctrl,
+            withheld,
         )

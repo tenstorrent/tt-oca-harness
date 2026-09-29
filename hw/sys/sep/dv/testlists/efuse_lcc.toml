@@ -142,8 +142,9 @@ target = "lsu_stub_all_live"
 # SEP reachable through the IC_RESET TDR before sense finishes. RAND-NONE.
 # Real fuse sense. No token. The TDR is jtag_ic_reset_reg sized to the SEP
 # slice. Override pins stay 0. SW_RESET_N returns its reset default once the
-# TDR releases sep_reset_n, and the same read does not complete after the
-# TDR holds the reset again. FEAT_CTRL stays the withheld profile.
+# TDR releases sep_reset_n. Restoring the TDR enable holds the reset again, and
+# sense-done releases it. FEAT_CTRL stays the withheld profile before sense and
+# reads the PROD golden after it.
 name = "sep_sec_dis_reset_reach_test"
 module = "efuse.sep_sec_dis_reset_reach_test"
 seed = 1

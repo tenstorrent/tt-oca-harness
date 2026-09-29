@@ -6737,7 +6737,7 @@ error path works.
 
 *BFM / Model*: ocah_axi_vip, `jtag_ic_reset_reg`
 
-*Randomization*: RAND-NONE
+*Randomization*: RAND-NONE — the eFuse image is PROD with fixed `SIP_DIS` / `SYS_DIS`
 
 *Objective*: `hw/sys/sep/doc/security_disable.adoc` says the IC_RESET `sep_reset_n` override alone releases the SEP reset and leaves life-cycle control closed. `hw/sys/sep/doc/reset_controller.adoc` says JTAG drives `sep_reset_n` through the SEP slice of the IC_RESET TDR. This leaf shifts `jtag_ic_reset_reg`, sized to `jtag_sep_reset_ctrl_t` and packed the way `jtag_ptap` packs the SEP slice. The TAP instruction that selects the TDR is outside this DUT. The per-port override pins stay 0. `SW_RESET_N` is in the `sep_reset_n` domain (`hw/sys/sep/rtl/sep_reset_ctrl.sv`). No token is written.
 
@@ -6755,6 +6755,7 @@ error path works.
 . Shift the all-ones word again. Both probes read 0 while sensing is still open.
 . Wait for sense-done. Both probes read 1 with the TDR override off.
 . Read `SW_RESET_N` again. The access returns AXI OKAY and the register reset default.
+. Read `FEAT_CTRL`. It equals the PROD golden of the pinned image.
 
 *Checkers*:
 
@@ -6762,11 +6763,11 @@ error path works.
 |===
 |Checker |Contract
 |CHK-TDR-IDLE
-|Selecting the TDR at its reset value, with `sep_fuse_sense_done_o=0`, leaves both reset probes at 0. `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` stay 0.
+|Selecting the TDR at its reset value, with `sep_fuse_sense_done_o=0`, leaves both reset probes at 0 on every clock of the release bound CHK-TDR-RELEASE uses. `jtag_sep_reset_n_ovrd_i` and `jtag_sep_reset_n_val_i` stay 0.
 |CHK-TDR-CAPTURE
 |The word shifted out of the TDR after reset is all ones: `reset_hold` and every `reset_enable` and `reset_control` are 1.
 |CHK-TDR-CTRL
-|An Update-DR that rewrites that reset value leaves both probes at 0. `reset_control` moves without `reset_enable`.
+|An Update-DR that rewrites that reset value leaves both probes at 0 on every clock of the same release bound. `reset_control` moves without `reset_enable`.
 |CHK-TDR-RELEASE
 |Clearing `reset_enable` for `sep_reset_n`, with `reset_control` at 1, makes both probes read 1 while `sep_fuse_sense_done_o=0`. The override pins stay 0.
 |CHK-REACH
@@ -6779,6 +6780,8 @@ error path works.
 |After sense-done, with the TDR override off, both probes read 1.
 |CHK-SENSE-REACH
 |After that release, a read of `SW_RESET_N` returns AXI OKAY and the register reset default, with both probes at 1.
+|CHK-FEAT-SENSED
+|After sense-done, `FEAT_CTRL` equals the PROD golden of the pinned image (`SIP_DIS` and `SYS_DIS` fixed), which differs from the withheld-map golden. It is the positive control for CHK-FEAT-CLOSED: the same register leaves the withheld value once sensing completes.
 |===
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
