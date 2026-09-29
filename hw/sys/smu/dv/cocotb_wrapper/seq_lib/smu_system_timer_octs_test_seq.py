@@ -61,8 +61,8 @@ POLL_STEP = 32
 # Timer ticks of STATUS/J2A overhead after START before the pin sample, at a
 # 10 ns timer clock; the check scales it to the sys-clock period in use.
 RELOAD_PIN_SLACK_10NS = 4096
-# Every bit from 13 up set, and 8192 counts short of the 64-bit wrap, so the
-# count cannot wrap inside the reload slack.
+# Every bit from 13 up set; the extremes leg backs it off by whole low-bit
+# spans so the count cannot wrap inside the reload slack before the pin sample.
 PRESET_HIGH = ((1 << 64) - 1) & ~((1 << 13) - 1)
 LOW_BITS = 13
 LOW_BIT_BOUND = 1 << 18
@@ -282,7 +282,10 @@ class smu_system_timer_octs_test_seq:
         sb.expect_true("CHK-OCTS-PRESET-RELOAD-ADVANCE", pin3 > pin2)
 
         pins = []
-        for preset in (PRESET_HIGH, 0):
+        span = 1 << LOW_BITS
+        backoff = ((2 * slack + span - 1) // span) * span
+        preset_high = PRESET_HIGH - backoff
+        for preset in (preset_high, 0):
             await self._j2a_wr32(jtag, ADDR_PRESET_LO, preset & 0xFFFFFFFF, "PRESET_LO_EXTREME")
             await self._j2a_wr32(jtag, ADDR_PRESET_HI, preset >> 32, "PRESET_HI_EXTREME")
             await self._j2a_wr32(jtag, ADDR_START, 1, "TIMER_START_EXTREME")
