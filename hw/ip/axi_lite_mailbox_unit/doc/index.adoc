@@ -31,10 +31,26 @@ low-latency data exchange.
 
 [[mailbox-wrapper-diagram]]
 .SMC mailbox wrapper and interrupt routing
-image::SMC_AXILMailbox_FIG027.png[alt="SMC mailbox wrapper and interrupt routing",width=100%,pdfwidth=100%]
+image::smc-mailbox.svg[alt="u_smc_axil_mailbox: an AXI-Lite demux in front of 32 mailboxes, each an outbound and an inbound port joined by two FIFOs; inbound interrupts go to the SMC CPU and outbound interrupts leave the SMC",width=100%,pdfwidth=100%]
 
-<<mailbox-wrapper-diagram>> shows the SMC wrapper around the mailbox and its
-interrupt connections.
+<<mailbox-wrapper-diagram>> shows the SMC instance of the mailbox,
+`u_smc_axil_mailbox`, and its interrupt connections. The SMC configures 32
+mailboxes of depth 2, with 32-bit address and 64-bit data. The port comes
+from the mailbox target of `smc_internal_axi_lite_xbar`, and the unit runs on
+a copy of the SMC clock that `u_mailbox_cg` gates while the port is idle.
+The demux `u_mailbox_demux` selects one of 64 ports from address bits
+[16:11] above `0xC001_8000`. Mailbox `m` places its outbound port at
+`0xC001_8000` + `m` × `0x1000` and its inbound port `0x800` above it.
+
+Within a mailbox, the arrows between the ports show the direction of data:
+`WRITE_DATA` in one port pushes the FIFO that `READ_DATA` in the other port
+pops. The 32 inbound-port interrupts are SMC CPU interrupts 288 to 319. The
+32 outbound-port interrupts leave the SMC on `smc_ext_mailbox_interrupts_o`,
+which the SMU passes out of its boundary.
+
+The SEP holds a second instance of this unit with eight mailboxes, described
+in the SEP fabric chapter. The outbound interrupts of that instance reach the SMC as
+peripheral interrupts 0 to 7, SMC CPU interrupts 256 to 263.
 
 ifdef::backend-html5[]
 include::partial$axi_lite_mailbox_unit/doc/architecture.adoc[]

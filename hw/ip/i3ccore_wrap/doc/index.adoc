@@ -34,9 +34,29 @@ reverse-lookup memories, one interrupt, and the recovery pins.
 
 [[i3c-wrapper-diagram]]
 .OCAH I3C wrapper
-image::SMC_I3C_FIG024.png[alt="OCAH I3C wrapper",width=100%,pdfwidth=100%]
+image::i3c-wrapper.svg[alt="i3ccore_wrapper: an AXI-Lite demux in front of NUM_I3C i3c_wrapper instances, each passing a 12-bit offset as single-beat AXI4 to the CHIPS Alliance i3c-core and deriving open-drain pad enables",width=100%,pdfwidth=100%]
 
-<<i3c-wrapper-diagram>> shows that wrapper around the CHIPS Alliance core.
+<<i3c-wrapper-diagram>> shows that wrapper around the CHIPS Alliance core,
+which it draws as a black box. `i3ccore_wrapper` runs on one clock, `clk_i`;
+in the SMC that is the gated peripheral clock, and its AXI4-Lite port, with
+32-bit address and data, arrives through `smc_peripherals_cdc`. The demux
+`u_axil_demux` registers every channel and allows eight outstanding
+transactions. It has no error slave: an address outside every instance
+window reaches instance 0. Each generate block subtracts its index times
+`0x1000` from the address before `i3c_wrapper` sees it.
+
+Inside `i3c_wrapper`, the converter tie-offs are `awlen`/`arlen` 0, `wlast` 1,
+and zero ID and user. The small blocks below the core are the pad-enable
+logic: `scl_o` is tied low and `scl_oe_o` is the inverse of the core's SCL
+level, so the pad only pulls SCL low; `sda_o` is the core's SDA level and
+`sda_oe_o` is `sel_od_pp_o` OR the inverse of `sda_o`. The core's own SDA
+output enable, which it drives only in target mode, is not used.
+
+`irq_o`, the five recovery signals and the DAT, DCT and reverse-lookup
+memory ports pass straight through to per-instance vectors on the
+`i3ccore_wrapper` boundary. In the SMC the recovery outputs are unconnected,
+`peripheral_reset_done_i` is tied low and the interrupts reach peripheral
+interrupts 12 to 17.
 
 Consult the https://github.com/chipsalliance/i3c-core[i3c-core documentation]
 for the controller. The register map of this wrapper follows.
