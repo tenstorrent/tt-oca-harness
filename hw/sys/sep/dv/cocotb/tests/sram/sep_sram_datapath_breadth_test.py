@@ -29,7 +29,9 @@ Checks (each value-compares an exact read-back against the cfg golden + logs a
 positive PASS line):
   CHK-WSTRB    : every contiguous WSTRB mask changes ONLY its byte lanes; all
                  neighbor lanes preserved (independent ``apply_wstrb`` golden).
-  CHK-PATTERN  : each cfg data pattern reads back exactly.
+  CHK-PATTERN  : each cfg data pattern reads back exactly: 0xAAAA/0x5555, a
+                 walking one and a walking zero over all 64 bit positions, and
+                 seed-random extras.
   CHK-BOUNDARY : the base word and the top valid word R/W read back exactly.
   CHK-SEQ      : a run of consecutive single-beat 64-bit words, per-word integrity.
   CHK-NONVAC   : two addresses hold complementary written values, so a
@@ -43,6 +45,8 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_sram_breadth_seq import (
+    WALKING_ONE_PATTERNS,
+    WALKING_ZERO_PATTERNS,
     SepSramBreadth,
     SepSramBreadthCfg,
 )
@@ -94,14 +98,22 @@ class sep_sram_datapath_breadth_test(sep_base_test):
     async def _chk_pattern(self) -> None:
         cfg = self.scfg
         addr = cfg.base_addr + cfg.pattern_offset
+        walked = set(WALKING_ONE_PATTERNS) | set(WALKING_ZERO_PATTERNS)
+        missing = walked - set(cfg.pattern_values)
+        assert not missing, (
+            f"CHK-PATTERN FAIL: {len(missing)} walking-one/zero words are not in the pattern set"
+        )
         for p in cfg.pattern_values:
             await self.sram.write(addr, p, length=8)
             rb = await self.sram.read(addr, length=8)
             assert rb == p, f"CHK-PATTERN 0x{p:016x} readback 0x{rb:016x}"
         self.logger.info(
-            "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x",
+            "CHK-PATTERN PASS: %d 64-bit data patterns read back exactly @0x%08x, "
+            "including a walking one (%d positions) and a walking zero (%d positions)",
             len(cfg.pattern_values),
             addr,
+            len(WALKING_ONE_PATTERNS),
+            len(WALKING_ZERO_PATTERNS),
         )
 
     async def _chk_boundary(self) -> None:

@@ -56,7 +56,7 @@ UNITS: tuple[tuple[str, str], ...] = (
     ("uart_core", "hw/ip/uart/uart_16550/rtl/uart_core.sv"),
     ("uart_rx", "hw/ip/uart/uart_16550/rtl/uart_rx.sv"),
     ("uart_tx", "hw/ip/uart/uart_16550/rtl/uart_tx.sv"),
-    ("prim_clock_mux2", "hw/common/och_prim_generic/rtl/prim_clock_mux2.sv"),
+    ("prim_clock_mux2", "hw/common/ocah_prim_generic/rtl/prim_clock_mux2.sv"),
 )
 
 T1 = (

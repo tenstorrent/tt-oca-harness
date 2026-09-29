@@ -172,9 +172,9 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         ):
             r = base + region * REMAP_STRIDE
             lo, hi = r + REMAP_ATTRS, r + REMAP_ATTRS + 4
-            rb = await self.fab.rw_readback(lo, plo)  # offset [31:20], 1MB-aligned
+            rb = await self.fab.rw_readback(lo, plo)  # offset lo word
             assert rb == plo, f"{name} r{region} remap ATTRS_lo R/W: 0x{rb:08x} != 0x{plo:08x}"
-            rb = await self.fab.rw_readback(hi, phi)  # offset [55:32] = hi[23:0]
+            rb = await self.fab.rw_readback(hi, phi)  # offset hi word
             assert rb == phi, f"{name} r{region} remap ATTRS_hi R/W: 0x{rb:08x} != 0x{phi:08x}"
         self.logger.info(
             "CHK-AP-STEE-RW PASS: AP r%d + STEE r%d output-remap CSRs R/W (64-bit)",

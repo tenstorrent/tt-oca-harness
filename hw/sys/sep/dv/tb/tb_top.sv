@@ -1084,6 +1084,57 @@ module sep_uvm_top
     // observation-only mirror for the IP->aggregator test. CSRNG INTR sources
     // map to bits [23:26], EDN to [27:28] (sep.sv:548-553).
     assign sep_internal_interrupts_probe_o = `SEP_CORE.sep_internal_interrupts;
+
+    // CPU/DMA SRAM contention. BUSY is a job-level status and does not prove
+    // that both masters requested the SRAM together; no CSR mirrors per-cycle
+    // crossbar arbitration. Count cycles
+    // where both local-crossbar inputs present the same SRAM address channel.
+    // This monitor observes requests only and drives no DUT signal.
+    logic cpu_lsu_sram_aw_pending;
+    logic cpu_lsu_sram_ar_pending;
+    logic dma_sram_aw_pending;
+    logic dma_sram_ar_pending;
+    logic dma_cpu_sram_overlap;
+    assign cpu_lsu_sram_aw_pending =
+        `SEP_CORE.lsu_xbar_axi_req.aw_valid &&
+        (`SEP_CORE.lsu_xbar_axi_req.aw.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.lsu_xbar_axi_req.aw.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign cpu_lsu_sram_ar_pending =
+        `SEP_CORE.lsu_xbar_axi_req.ar_valid &&
+        (`SEP_CORE.lsu_xbar_axi_req.ar.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.lsu_xbar_axi_req.ar.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign dma_sram_aw_pending =
+        `SEP_CORE.dma_axi_req.aw_valid &&
+        (`SEP_CORE.dma_axi_req.aw.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.dma_axi_req.aw.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign dma_sram_ar_pending =
+        `SEP_CORE.dma_axi_req.ar_valid &&
+        (`SEP_CORE.dma_axi_req.ar.addr >=
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR)) &&
+        (`SEP_CORE.dma_axi_req.ar.addr <
+            32'(sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR +
+                sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE));
+    assign dma_cpu_sram_overlap =
+        (cpu_lsu_sram_aw_pending && dma_sram_aw_pending) ||
+        (cpu_lsu_sram_ar_pending && dma_sram_ar_pending);
+
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            dma_cpu_sram_overlap_count_o <= '0;
+        end else if (dma_cpu_sram_overlap && !(&dma_cpu_sram_overlap_count_o)) begin
+            dma_cpu_sram_overlap_count_o <= dma_cpu_sram_overlap_count_o + 1'b1;
+        end
+    end
+
     assign entropy_pool_packer_depth_o = `SEP_CORE.u_entropy_fifo.packer_depth;
     assign trng_gated_rst_n_probe_o =
         `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.trng;
@@ -1144,6 +1195,13 @@ module sep_uvm_top
     // top-level probe port; word i occupies bits [32*i +: 32], matching values[i].
     assign efuse_shadow_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
+
+    assign km_otp_sep_chiplet_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_chiplet_id;
+    assign km_otp_sep_sip_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sip_id;
+    assign km_otp_sep_sys_id_o =
+        `SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.otp_data_i.sep_sys_id;
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the
@@ -1380,9 +1438,13 @@ module sep_uvm_top
     // landed; it is not fail-closed evidence. After release the recovered
     // encoding must be a legal idle/wait value (DUT-driven). Command
     // withdraw and the error/done/busy/data terms are claimed only on the
-    // in-flight leg. Owner: sep_efuse_illegal_state_fail_closed_test. Review
-    // at the next change to the state encoding in efuse_read_interface.sv or
-    // efuse_program_interface.sv.
+    // in-flight leg. Accepted claim: the legal encodings 2'b01 idle and
+    // 2'b10 wait are taken from the design's state encoding, because no
+    // document names them; this leaf grades recovery against that set and
+    // injects its complement. Owner: sep_efuse_illegal_state_fail_closed_test.
+    // Approved against ad4ae87ec, the commit that set both encodings.
+    // Review at the next change to the state encoding in
+    // efuse_read_interface.sv or efuse_program_interface.sv.
     //
     // The registers are enum-typed and the injected encodings are, by
     // construction, not members of those enums -- that is the property under
@@ -1774,6 +1836,12 @@ module sep_uvm_top
     assign km_sram_word0_o =
         u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[0][31:0];
 
+    localparam int unsigned KmSramProbeWords = $bits(km_sram_probe_o) / 32;
+    for (genvar i = 0; i < KmSramProbeWords; i++) begin : g_km_sram_probe
+        assign km_sram_probe_o[32*i +: 32] =
+            u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[i][31:0];
+    end
+
     // Outbound mailbox responder + firmware-console/PASS-magic monitor.
     sep_outbound_mbx u_mbx (
         .clk_i           (clk_i),
@@ -2009,8 +2077,8 @@ module sep_uvm_top
     sep_tb_if u_tb_if ();
 
     // Four free-running clocks with the periods the env publishes on
-    // sep_tb_if from the seeded test cfg (cocotb SepEnvCfg parity: sys
-    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns, reference 40 ns).
+    // sep_tb_if (cocotb SepEnvCfg parity: sys 1.25 ns, WDT 5000 ns,
+    // entropy sample 3 ns, reference 10 ns).
     initial begin
         clk_i                     = 1'b0;
         clk_wdt_i                 = 1'b0;

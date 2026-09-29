@@ -8,8 +8,9 @@
 `include "gpio_ctrl.rdl"
 
 addrmap gpio_wrap {
-    desc = "Top-level addrmap for gpio_intf and gpio_shim";
-    
+    name = "GPIO Wrapper Address Map";
+    desc = "Top-level GPIO address map composing the interface and control register blocks.";
+        
 
     gpio_intf     gpio_intf      @0x000_0000;
     gpio_ctrl     gpio_ctrl      @0x000_0010;

@@ -21,7 +21,7 @@ static int test_errors = 0;
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for KMAC idle\n");
@@ -40,10 +40,10 @@ static void write_cfg_and_verify(const char *label, uint32_t kmac_en, uint32_t m
     cfg.f.state_endianness = state_endian;
     cfg.f.entropy_ready = 0;
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
-    kmac__CFG_SHADOWED_t rb = {.w = READ_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR)};
+    kmac__CFG_SHADOWED_t rb = {.w = READ_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR)};
 
     int pass = 1;
     if (rb.f.kmac_en != kmac_en) pass = 0;
@@ -119,8 +119,8 @@ int main(void) {
                          SEP_KMAC_ENTROPY_MODE_EDN, 0, 0);
 
     /* Restore default */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, 0u);
 
     printf("\n========================================\n");
     if (test_errors == 0) {

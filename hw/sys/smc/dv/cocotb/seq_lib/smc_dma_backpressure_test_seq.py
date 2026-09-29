@@ -28,9 +28,10 @@ The queue holds, in order:
 * **A zero-length descriptor**, which the backend answers without a transfer.
 * **A 64-byte copy whose source crosses a 4 KB boundary** and whose
   destination does not, so the read side needs two bursts where the write side
-  needs one.
+  needs one. `CONFIG.DECOUPLE_RW` is set for it, so each side is split at its
+  own boundary rather than both at the nearer one.
 * **A 64-byte copy whose destination crosses a 4 KB boundary** and whose
-  source does not.
+  source does not, also with `DECOUPLE_RW` set.
 * **Further 64-byte copies** until the frontend reports it cannot take more.
 
 A last leg reads a 64-byte source from the output-fabric window with the
@@ -47,6 +48,7 @@ from cocotb.triggers import ClockCycles, FallingEdge, ReadOnly, RisingEdge
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from ._one_shot import _OneShot
+from .smc_addr_map import DMA_CONFIG_DECOUPLE_RW as DECOUPLE_RW
 from .smc_addr_map import SPM_MEMORY_BASE
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_dma_sanity_test_seq import (
@@ -99,8 +101,11 @@ ERR_LEN = 64
 
 
 class _Desc:
-    def __init__(self, name: str, src: int, dst: int, length: int, reps: int = 1) -> None:
+    def __init__(
+        self, name: str, src: int, dst: int, length: int, reps: int = 1, config: int = 0
+    ) -> None:
         self.name = name
+        self.config = DMA_CONFIG_ENABLED_ND | config
         self.src = src
         self.dst = dst
         self.length = length
@@ -175,7 +180,7 @@ class smc_dma_backpressure_test_seq(SmcCsrSeq):
     async def _program(self, d: _Desc) -> None:
         stride = d.length if d.reps > 1 else 0
         for reg, value in (
-            (DMA_CTRL_CONFIG, DMA_CONFIG_ENABLED_ND),
+            (DMA_CTRL_CONFIG, d.config),
             (DMA_CTRL_DST_ADDRESS_LO, d.dst & 0xFFFF_FFFF),
             (DMA_CTRL_DST_ADDRESS_HI, d.dst >> 32),
             (DMA_CTRL_SRC_ADDRESS_LO, d.src & 0xFFFF_FFFF),
@@ -227,8 +232,8 @@ class smc_dma_backpressure_test_seq(SmcCsrSeq):
             _Desc("UNALIGNED", SRC_BASE, DST_BASE + 4, 64),
             _Desc("ROWS", SRC_BASE + 0x100, DST_BASE + 0x100, WORD, rows),
             _Desc("ZERO", SRC_BASE + 0x400, DST_BASE + 0x400, 0),
-            _Desc("SRC_PAGE", SRC_BASE + PAGE - 0x20, DST_BASE + 0x500, 64),
-            _Desc("DST_PAGE", SRC_BASE + 0x1100, DST_BASE + PAGE - 0x20, 64),
+            _Desc("SRC_PAGE", SRC_BASE + PAGE - 0x20, DST_BASE + 0x500, 64, config=DECOUPLE_RW),
+            _Desc("DST_PAGE", SRC_BASE + 0x1100, DST_BASE + PAGE - 0x20, 64, config=DECOUPLE_RW),
         ]
         for i in range(MAX_LAUNCHES - len(queue)):
             queue.append(

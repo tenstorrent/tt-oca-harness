@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMC internal AXI-Lite crossbar.
-// Address rules derive from smc_top_addrmap_pkg; arrayed blocks use their
-// generated total extents.
+// Route the SMC internal AXI-Lite CSR crossbar.
+//
+// Steers one local AXI-Lite initiator to internal CSR targets such as base config,
+// filters, remaps, mailbox, and DFX.
+// Address rules derive from smc_top_addrmap_pkg; arrayed blocks use their generated total
+// extents. Addresses outside every rule receive DECERR.
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
@@ -12,52 +15,48 @@ module smc_internal_axi_lite_xbar
   import axi_pkg::*;
   import smc_internal_axi_lite_xbar_pkg::*;
 (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_i,
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock.
+  input  logic test_i,                  // Scan test mode enable, forwarded to the test input of the
+                                        // AXI-Lite crossbar.
 
-  // ===========================================================================
-  // Initiator Ports
-  // ===========================================================================
-  // local_in (AXI4_LITE, 64-bit)
-  input  axi_lite64_req_t  local_in_req_i,
-  output axi_lite64_resp_t local_in_resp_o,
+  input  axi_lite64_req_t  local_in_req_i,  // Request from the SMC local crossbar's
+                                            // internal-register port.
+  output axi_lite64_resp_t local_in_resp_o,  // Response to the SMC local crossbar.
 
-  // ===========================================================================
-  // Target Ports
-  // ===========================================================================
-  // smc_base_config (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  smc_base_config_req_o,
-  input  axi_lite64_resp_t smc_base_config_resp_i,
+  output axi_lite64_req_t  smc_base_config_req_o,  // Request for the SMC base configuration
+                                                   // registers.
+  input  axi_lite64_resp_t smc_base_config_resp_i,  // Response from the SMC base
+                                                    // configuration registers.
 
-  // aR_ctrl (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  aR_ctrl_req_o,
-  input  axi_lite64_resp_t aR_ctrl_resp_i,
+  output axi_lite64_req_t  aR_ctrl_req_o,  // Request for the alias remap control windows
+                                           // of every instance.
+  input  axi_lite64_resp_t aR_ctrl_resp_i,  // Response from the alias remap controls.
 
-  // mR_ctrl (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  mR_ctrl_req_o,
-  input  axi_lite64_resp_t mR_ctrl_resp_i,
+  output axi_lite64_req_t  mR_ctrl_req_o,  // Request for the M-mode remap control windows
+                                           // of every instance.
+  input  axi_lite64_resp_t mR_ctrl_resp_i,  // Response from the M-mode remap controls.
 
-  // xR_ctrl (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  xR_ctrl_req_o,
-  input  axi_lite64_resp_t xR_ctrl_resp_i,
+  output axi_lite64_req_t  xR_ctrl_req_o,  // Request for the Xvisor remap control windows
+                                           // of every instance.
+  input  axi_lite64_resp_t xR_ctrl_resp_i,  // Response from the Xvisor remap controls.
 
-  // inbound_filter_ctrl (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  inbound_filter_ctrl_req_o,
-  input  axi_lite64_resp_t inbound_filter_ctrl_resp_i,
+  output axi_lite64_req_t  inbound_filter_ctrl_req_o,  // Request for the inbound filter
+                                                       // control windows of every filter.
+  input  axi_lite64_resp_t inbound_filter_ctrl_resp_i,  // Response from the inbound filter
+                                                        // controls.
 
-  // outbound_filter_ctrl (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  outbound_filter_ctrl_req_o,
-  input  axi_lite64_resp_t outbound_filter_ctrl_resp_i,
+  output axi_lite64_req_t  outbound_filter_ctrl_req_o,  // Request for the outbound filter
+                                                        // control windows of every filter.
+  input  axi_lite64_resp_t outbound_filter_ctrl_resp_i,  // Response from the outbound
+                                                         // filter controls.
 
-  // mailbox (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  mailbox_req_o,
-  input  axi_lite64_resp_t mailbox_resp_i,
+  output axi_lite64_req_t  mailbox_req_o,  // Request for the SMC mailbox window.
+  input  axi_lite64_resp_t mailbox_resp_i,  // Response from the SMC mailbox.
 
-  // dfx_csr (AXI4_LITE, 64-bit)
-  output axi_lite64_req_t  dfx_csr_req_o,
-  input  axi_lite64_resp_t dfx_csr_resp_i
-
+  output axi_lite64_req_t  dfx_csr_req_o,  // Request for the DFX control register window.
+  input  axi_lite64_resp_t dfx_csr_resp_i  // Response from the DFX control registers.
 );
 
   // ===========================================================================

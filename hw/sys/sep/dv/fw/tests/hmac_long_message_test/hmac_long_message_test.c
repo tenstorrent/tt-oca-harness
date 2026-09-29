@@ -26,8 +26,8 @@
 static int wait_for_completion(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
             break;
         }
@@ -38,10 +38,10 @@ static int wait_for_completion(void) {
     }
 
     // Clear hmac_done if set
-    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.hmac_done) {
         hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-        WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+        WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     }
     return 0;
 }
@@ -49,7 +49,7 @@ static int wait_for_completion(void) {
 static int wait_for_fifo_space(void) {
     int timeout = 10000;
     while (timeout-- > 0) {
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (!sts.f.fifo_full) {
             return 0; // FIFO has space
         }
@@ -81,11 +81,11 @@ static int feed_long_message(const char *pattern, int total_bytes) {
             if (wait_for_fifo_space() != 0) return -1;
 
             // Write word to MSG FIFO
-            WRITE_REG(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word_buffer);
+            WRITE_REG(SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word_buffer);
 
             if ((bytes_sent % 64) == 0 || bytes_sent == total_bytes) {
                 // Monitor FIFO depth periodically
-                hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+                hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
                 printf("    Sent %d bytes, FIFO depth=%u, full=%u\n", bytes_sent, sts.f.fifo_depth,
                        sts.f.fifo_full);
             }
@@ -107,12 +107,12 @@ static int test_long_message_sha256(void) {
     cfg.f.hmac_en = 0;                                 // SHA only
     cfg.f.sha_en = 1;                                  // SHA enabled
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA-256
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
     printf("  CFG: 0x%08x (SHA-256, SHA mode)\n", cfg.w);
 
     // Start new hash
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Started new hash\n");
 
     // Send long message (200 bytes, pattern "ABCDEFGH")
@@ -122,8 +122,8 @@ static int test_long_message_sha256(void) {
 
     /* Assert HW-maintained length; do not overwrite MSG_LENGTH_*. */
     uint64_t msg_len_bits = (uint64_t)total_bytes * 8ull;
-    uint32_t ml = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
-    uint32_t mu = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    uint32_t ml = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t mu = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
     printf("  Message length HW: %u:%u expected %llu bits\n", ml, mu,
            (unsigned long long)msg_len_bits);
     if (ml != (uint32_t)msg_len_bits || mu != (uint32_t)(msg_len_bits >> 32)) {
@@ -134,7 +134,7 @@ static int test_long_message_sha256(void) {
     // Trigger hash processing
     cmd.w = 0;
     cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Processing hash...\n");
 
     // Wait for completion
@@ -146,7 +146,7 @@ static int test_long_message_sha256(void) {
                                          0x37702fadu, 0x88949f82u, 0x1e53c2cau, 0x3b216c61u};
     uint32_t digest[8];
     for (int i = 0; i < 8; i++) {
-        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
+        digest[i] = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
 
     printf("  SHA-256 digest of long message:\n");
@@ -170,11 +170,11 @@ static int test_very_long_message(void) {
     cfg.f.hmac_en = 0;                                 // SHA only
     cfg.f.sha_en = 1;                                  // SHA enabled
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA-256
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start new hash
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Started new hash\n");
 
     // Send very long message (1000 bytes, pattern "0123456789")
@@ -183,8 +183,8 @@ static int test_very_long_message(void) {
     if (feed_long_message(pattern, total_bytes) != 0) return -1;
 
     uint64_t msg_len_bits = (uint64_t)total_bytes * 8ull;
-    uint32_t ml = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
-    uint32_t mu = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    uint32_t ml = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t mu = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
     printf("  Message length HW: %u:%u expected %llu bits\n", ml, mu,
            (unsigned long long)msg_len_bits);
     if (ml != (uint32_t)msg_len_bits || mu != (uint32_t)(msg_len_bits >> 32)) {
@@ -195,7 +195,7 @@ static int test_very_long_message(void) {
     // Trigger hash processing
     cmd.w = 0;
     cmd.f.hash_process = 1;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     printf("  Processing hash...\n");
 
     // Wait for completion
@@ -206,7 +206,7 @@ static int test_very_long_message(void) {
                                          0x20b3fd63u, 0x8794a804u, 0xf0ed5549u, 0xd5041734u};
     uint32_t digest[8];
     for (int i = 0; i < 8; i++) {
-        digest[i] = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
+        digest[i] = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
 
     printf("  SHA-256 digest of very long message:\n");
@@ -233,7 +233,7 @@ int main(void) {
 
     // Enable hmac_done interrupt
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     // Test 200-byte message (> FIFO capacity of 128 bytes)
     if (test_long_message_sha256() != 0) {

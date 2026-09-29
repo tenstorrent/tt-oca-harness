@@ -23,11 +23,11 @@ module prim_clock_gating_sync (
     .q_o(en_o)
   );
 
-  prim_clkgater i_cg (
-    .clk_i(clk_i),
+  prim_clock_gating i_cg (
+    .clk_i,
     .en_i(en_o),
-    .te_i(test_en_i),
-    .clk_o(clk_o)
+    .test_en_i,
+    .clk_o
   );
 
 

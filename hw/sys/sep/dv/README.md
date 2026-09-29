@@ -95,10 +95,8 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress \
 builds the images with it (see [Prerequisites](#prerequisites)). `rom_fw` stays
 out of `all`; run it with `--items rom_fw`.
 
-`all` enrolls 110 leaves. `cpu_stub` (89) and `cpu` (20) are disjoint. The
-remaining leaf, `sep_periph_bus_err_misaligned_test`, is in neither class
-group. Its checker contract is the VPLAN card. The class commands below are the
-pre-merge gate.
+`all` enrolls 112 leaves. `cpu_stub` (92) and `cpu` (20) are disjoint and
+together hold all of them. The class commands below are the pre-merge gate.
 
 ### Scheduled tiers
 
@@ -215,11 +213,10 @@ python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
   --target default --sim-jobs 32 --build-jobs 32
 ```
 
-`all` is the coverage set: 110 leaves, `cpu_stub` (89) plus `cpu` (20) plus
-`sep_periph_bus_err_misaligned_test`, which is in neither class group.
+`all` is the coverage set: 112 leaves, `cpu_stub` (92) plus `cpu` (20).
 Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third RTL
 target, firmware rather than hardware contracts -- so reaching those tests
-means naming `rom_fw`. `expected_count` is 110.
+means naming `rom_fw`. `expected_count` is 112.
 
 `--target default` compiles the full CPU once. no_cpu leaves force-splice the
 LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
@@ -235,18 +232,37 @@ What the resulting number is not:
   interface event happened, never that it was correct, so "did the DUT do the
   right thing" stays with the checkers in
   [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
-* **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
-  excludes the testbench top, the outbound mailbox, the AXI SVA module and the
-  CPU subtree at compile time, across both code and
-  assertion coverage (`-cm_hier` with `-cm_common_hier`), so the excluded
-  instances never enter the database. The percentage is the SEP DUT **with the
-  CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
-  `cov/config/vcs/README.md` records the scope.
+* **TT-owned SEP integration RTL, not the whole DUT.**
+  `cov/config/vcs/sep_cov_scope.hier` removes the testbench, CPU subtree,
+  library-class cells, DV models and complete third-party IP modules at compile
+  time across code and assertion coverage (`-cm_hier` with
+  `-cm_common_hier`). Quote that scope with the percentage; never call it bare
+  "SEP DUT coverage". `urg -hier` at report time prunes report pages and still
+  grades the whole database, so the scope is this compile-time file.
 * **Not a read on assertions.** Assertion coverage counts elaborated assertions
   only, and SEP gates those through the `prim_assert` shim. Confirm assertions
   are live before reading that column.
 * **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
   test contributes one sample. Pin seeds for any number that gets cited.
+
+### Boot ROM firmware coverage
+
+Boot ROM C source coverage is separate from simulator-native RTL coverage.
+Run the `rom_fw` group with `--plusarg +sep_rom_fw_coverage`; the existing
+CPU trace monitor then writes a Renode-format retired-PC trace into each
+simulation leaf. Generate the report from that exact run directory:
+
+```bash
+uv run --locked python3 tools/dv/fw_coverage/gen_sep_rom_coverage.py \
+  --run-dir "$RUN_DIR"
+```
+
+The generator accepts only passing, complete traces and uses the leaf-local
+`boot_rom.elf` staged by the firmware profile. It reports `boot_rom`,
+`boot_rom_ot`, and `boot_rom_ot_pio` separately because their PCs cannot be
+interpreted with one shared ELF. See
+[`tools/dv/fw_coverage/README.md`](../../../../tools/dv/fw_coverage/README.md)
+for the complete command and tool prerequisites.
 
 ## Run modes, targets, and groups
 
@@ -257,7 +273,7 @@ entries below are entry points — use `--items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate: `sep_axi_smoke_test` only |
-| `all` | 110 leaves: `cpu_stub` (89), `cpu` (20), and `sep_periph_bus_err_misaligned_test` in neither class group. `expected_count` is 110 |
+| `all` | 112 leaves: `cpu_stub` (92) and `cpu` (20). `expected_count` is 112 |
 | `cpu_stub` | CPU not alive (`sep_cpu` stub, `target = lsu_stub_all_live`) |
 | `cpu` | full-CPU firmware daily class (fallback `target = default`) |
 | `rom_fw` | production Boot ROM firmware; `rom_boot` target; not a member of `all` |
@@ -321,11 +337,11 @@ Bender RTL recipe, stubs, and shims), and `--dut sep --framework uvm` selects
 it. A testlist entry binds both implementations of one scenario
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
-the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-`sep_axi_smoke_test` is the scenario with a `uvm` binding. VCS only: Verilator
-has no SV-UVM support. The bench architecture is in `docs/SEP_TB_ARCH.adoc`
-("SystemVerilog UVM Realization"); the framework conventions it follows are in
+the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
+naming a scenario with no `uvm` entry errors. `sep_axi_smoke_test` is the
+scenario with a `uvm` binding. VCS only: Verilator has no SV-UVM support. The
+bench architecture is in `docs/SEP_TB_ARCH.adoc` ("SystemVerilog UVM
+Realization"); the framework conventions it follows are in
 `hw/common/dv/docs/uvm-framework.adoc`.
 
 `tb/tb_top.sv` is one module with two shapes: the cocotb pin port list by
@@ -336,16 +352,15 @@ the sole LSU driver and the shared `ocah_axi_vip` master drives the `s_axi_*`
 splice through it.
 
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# the group holds cocotb-only scenarios.
-python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only --skip-unimplemented
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
 
 # Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke
 
 # Negative validation: a corrupted scoreboard prediction must make the run FAIL
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \

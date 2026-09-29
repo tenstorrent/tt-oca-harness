@@ -10,8 +10,9 @@
 
 
 addrmap misc_wrap {
-    desc = "Top-level addrmap for SMC misc registers including scratch and chip config";
-
+    name = "SMC Miscellaneous Wrapper Address Map";
+    desc = "Aggregates the SMC scratch, chip-configuration, and NDM-reset register blocks.";
+    
     /////////////////
     // Address Map //
     /////////////////

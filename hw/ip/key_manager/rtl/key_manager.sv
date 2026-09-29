@@ -2,152 +2,135 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Copyright 2026 Tenstorrent Inc.
 
-/**
- * @file key_manager.sv
- * @brief Key Manager top-level module.
- *
- * @details Integrates all Key Manager subsystem components into a single
- *          hierarchical block:
- *          - PicoRV32 CPU with direct ROM/SRAM memory interfaces
- *          - AXI-Lite crossbar for internal peripheral access
- *          - KMCSR (Control/Status Registers) with IRQ aggregation
- *          - Mailbox for bidirectional SEP-KM communication
- *          - DRBG sampler for random number acquisition
- *          - KPV (Key and Policy Vault) for key storage
- *          - External crypto engine master ports (OTBN, AES, KMAC, HMAC)
- *
- *          Reset is conditioned internally via km_reset_conditioner, which
- *          produces two clean resets:
- *          - Cold (AASD, rst_cold_aasd_no): all KM components; source = cold_rst_ni.
- *          - Warm (synchronous, rst_warm_sync_no): CPU + internal AXI fabric + warm
- *            KMCSR/KPV/DRBG/mailbox fields; source = warm_rst_ni | soft_rst_n | cold.
- *
- *
- * @param ROM_SIZE_BYTES       ROM size in bytes (default 16 KB).
- * @param SRAM_SIZE_BYTES      SRAM size in bytes (default 32 KB).
- * @param MAILBOX_DEPTH        Words per FIFO direction (default 16).
- * @param LATCHED_MEM_RDATA    Set to 1 if ROM/SRAM latch read data for
- *                             look-ahead optimization.
- */
+// Integrate the Key Manager CPU, memories, peripherals and crypto master ports into one
+// hierarchical block.
+//
+// Components:
+//
+// - PicoRV32 CPU with direct ROM/SRAM memory interfaces
+// - AXI-Lite crossbar for internal peripheral access
+// - KMCSR (control/status registers) with IRQ aggregation
+// - Mailbox for bidirectional SEP-KM communication
+// - DRBG sampler for random number acquisition
+// - KPV (Key and Policy Vault) for key storage
+// - External crypto engine master ports (OTBN, AES, KMAC, HMAC, Adams Bridge) and the
+//   OTP/eFuse master
+//
+// km_reset_conditioner conditions reset internally and produces two clean resets:
+//
+// - Cold (AASD, rst_cold_aasd_no): resets all KM components; source is cold_rst_ni.
+// - Warm (synchronous, rst_warm_sync_no): resets the CPU, the internal AXI fabric and the
+//   warm KMCSR/KPV/DRBG/mailbox fields; sources are warm_rst_ni, soft_rst_n from KMCSR
+//   and cold reset.
+//
+// LATCHED_MEM_RDATA is 1 when ROM/SRAM latch read data, so it stays valid after the
+// request deasserts, and 0 when read data is valid only while rvalid is asserted. Setting
+// it lets the CPU use look-ahead optimization when the memory supports it.
+//
+// OTP_EFUSE_REMAP_BASE is the absolute address of the eFuse controller as seen on
+// efuse_req_o. Transactions from the internal OTP crossbar port (xbar port 8, KM-local
+// 0x0001_1xxx) have their upper 20 bits replaced with OTP_EFUSE_REMAP_BASE[31:12] before
+// being driven onto efuse_req_o; the lower 12 bits (register offset) are preserved. The
+// integrator sets it to the system-level address of the eFuse controller and must connect
+// efuse_req_o/efuse_resp_i to that controller.
+//
+// The ROM and SRAM hard macros are instantiated at integration level and connect through
+// the exposed memory ports.
 
 module key_manager
   import km_intf_pkg::*;
   import axi_pkg::*;
   import prim_mubi_pkg::*;
 #(
-  //=========================================================================
-  // Parameters
-  //=========================================================================
-  parameter int unsigned ROM_SIZE_BYTES   = 16384,  // 16KB ROM
-  parameter int unsigned SRAM_SIZE_BYTES  = 32768,  // 32KB SRAM
-  parameter int unsigned MAILBOX_DEPTH    = 16,     // Words per FIFO direction
-  // LATCHED_MEM_RDATA: Set to 1 if ROM/SRAM latch read data (data stays valid after request deasserts)
-  //                    Set to 0 if memory read data is only valid when rvalid is asserted
-  //                    This allows the CPU to use look-ahead optimization when supported by memory
-  parameter bit          LATCHED_MEM_RDATA = 1'b0,
-  // OTP/eFuse remap base: the absolute address of the eFuse controller as seen
-  // on efuse_req_o.  Transactions from the internal OTP crossbar port have their
-  // upper 20 bits replaced with OTP_EFUSE_REMAP_BASE[31:12] before being driven
-  // onto efuse_req_o; the lower 12 bits (register offset) are preserved.
-  // Set by the integrator to match the system-level address of the eFuse controller.
-  parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000
+  parameter int unsigned ROM_SIZE_BYTES   = 16384,          // Size of the KM boot ROM in bytes.
+                                                            // Must equal the ROM window of the
+                                                            // KM memory map in km_intf_pkg.
+  parameter int unsigned SRAM_SIZE_BYTES  = 32768,          // Size of the KM data SRAM in bytes.
+                                                            // Must equal the SRAM window of the
+                                                            // KM memory map in km_intf_pkg.
+  parameter int unsigned MAILBOX_DEPTH    = 16,             // Words per mailbox FIFO direction.
+                                                            // Must be a power of two from 16
+                                                            // to 256.
+  parameter bit          LATCHED_MEM_RDATA = 1'b0,          // 1 if ROM/SRAM keep read data valid
+                                                            // after the request deasserts, which
+                                                            // lets the CPU use it directly for
+                                                            // look-ahead.
+  parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000  // Absolute eFuse controller
+                                                            // address on efuse_req_o;
+                                                            // replaces addr[31:12].
 ) (
-  //=========================================================================
-  // Clock and Reset
-  //=========================================================================
-  input  logic   clk_i,              // System clock
-  input  logic   cold_rst_ni,        // Cold reset: asynchronous active-low
-  input  logic   warm_rst_ni,        // Warm reset: synchronous active-low
+  input  logic   clk_i,        // System clock.
+  input  logic   cold_rst_ni,  // Cold reset, asynchronous active-low; the conditioner releases
+                               // it synchronously to clk_i.
+  input  logic   warm_rst_ni,  // Warm reset, active-low and synchronous to clk_i; the warm
+                               // reset stays asserted at least 10 clk_i cycles after it
+                               // releases.
 
-  //=========================================================================
-  // Mailbox AXI4-Lite Slave Interface (SEP Host Access)
-  //=========================================================================
-  // SEP host uses this interface to send/receive messages to/from KM
-  input  km_axil_req_t mbox_sep_req_i,   // SEP request
-  output km_axil_resp_t mbox_sep_resp_o,  // SEP response
+  input  km_axil_req_t mbox_sep_req_i,    // Mailbox AXI4-Lite slave request from the SEP
+                                          // host, which sends and receives messages to and
+                                          // from KM here.
+  output km_axil_resp_t mbox_sep_resp_o,  // Mailbox AXI4-Lite slave response to the SEP host.
 
-  //=========================================================================
-  // Mailbox Interrupts
-  //=========================================================================
-  output logic        mbox_irq_to_sep_o,  // Outbound data available (KM→SEP)
+  output logic        mbox_irq_to_sep_o,  // Level mailbox interrupt to the SEP: OR of the
+                                          // SEP-side sources (outbound data available,
+                                          // inbound space available, inbound overflow,
+                                          // outbound underflow, flushed by KM) masked by
+                                          // SEP_IRQ_ENABLE.
 
-  //=========================================================================
-  // Error Condition Outputs
-  //=========================================================================
-  output logic        unrecoverable_err_o,  // Active-high: KM in trap state (no longer executing)
-  output logic        recoverable_err_o,    // Recoverable fault occurred (KMCSR register bit)
+  output logic        unrecoverable_err_o,  // Active-high: KM is in trap state (no longer
+                                            // executing).
+  output logic        recoverable_err_o,    // Level of the firmware-written KMCSR
+                                            // RECOVERABLE_ERR register bit.
 
-  //=========================================================================
-  // Crypto Engine AXI4-Lite Master Ports (External)
-  //=========================================================================
-  // These ports connect to external crypto accelerators
+  output km_axil_req_t  otbn_req_o,   // External crypto AXI4-Lite master to OTBN (Big Number
+                                      // Accelerator).
+  input  km_axil_resp_t otbn_resp_i,  // AXI4-Lite response from OTBN.
 
-  // OTBN (Big Number Accelerator)
-  output km_axil_req_t  otbn_req_o,
-  input  km_axil_resp_t otbn_resp_i,
+  output km_axil_req_t  aes_req_o,   // External crypto AXI4-Lite master to the AES
+                                     // accelerator.
+  input  km_axil_resp_t aes_resp_i,  // AXI4-Lite response from the AES accelerator.
 
-  // AES Accelerator
-  output km_axil_req_t  aes_req_o,
-  input  km_axil_resp_t aes_resp_i,
+  output km_axil_req_t  kmac_req_o,   // External crypto AXI4-Lite master to the KMAC
+                                      // accelerator.
+  input  km_axil_resp_t kmac_resp_i,  // AXI4-Lite response from the KMAC accelerator.
 
-  // KMAC Accelerator
-  output km_axil_req_t  kmac_req_o,
-  input  km_axil_resp_t kmac_resp_i,
+  output km_axil_req_t  hmac_req_o,   // External crypto AXI4-Lite master to the HMAC
+                                      // accelerator.
+  input  km_axil_resp_t hmac_resp_i,  // AXI4-Lite response from the HMAC accelerator.
 
-  // HMAC Accelerator
-  output km_axil_req_t  hmac_req_o,
-  input  km_axil_resp_t hmac_resp_i,
+  output km_axil_req_t  abr_req_o,   // External crypto AXI4-Lite master to the Adams Bridge
+                                     // accelerator.
+  input  km_axil_resp_t abr_resp_i,  // AXI4-Lite response from the Adams Bridge accelerator.
 
-  // Adams Bridge Accelerator
-  output km_axil_req_t  abr_req_o,
-  input  km_axil_resp_t abr_resp_i,
+  input  logic abr_mlkem_sharedkey_irq_i,  // Adams Bridge ML-KEM shared-key valid IRQ
+                                           // (level-sensitive, active-high).
 
-  // Adams Bridge ML-KEM shared-key valid IRQ (level-sensitive, active-high)
-  input  logic abr_mlkem_sharedkey_irq_i,
+  output km_axil_req_t  efuse_req_o,   // OTP/eFuse AXI-Lite master from xbar port 8, remapped
+                                       // to OTP_EFUSE_REMAP_BASE.
+  input  km_axil_resp_t efuse_resp_i,  // AXI-Lite response from the system eFuse controller.
 
-  // OTP/eFuse AXI-Lite master — driven by xbar port 8 (KM-local 0x0001_1xxx).
-  // addr[31:12] is replaced with OTP_EFUSE_REMAP_BASE[31:12] before the
-  // transaction is driven here; the lower 12 bits (register offset) are preserved.
-  // The integrator must connect this port to the system eFuse controller.
-  output km_axil_req_t  efuse_req_o,
-  input  km_axil_resp_t efuse_resp_i,
+  output km_rom_mem_req_t  rom_mem_req_o,  // Request to the ROM hard macro.
+  input  km_rom_mem_rsp_t rom_mem_rsp_i,   // Response from the ROM hard macro.
 
-  //=========================================================================
-  // ROM Memory Interface (Exposed for Hard Macro Connection)
-  //=========================================================================
-  // Constitution XXIII: Hard macros instantiated at integration level
-  output km_rom_mem_req_t  rom_mem_req_o,
-  input  km_rom_mem_rsp_t rom_mem_rsp_i,
+  output km_sram_mem_req_t sram_mem_req_o,  // Request to the SRAM hard macro.
+  input  km_sram_mem_rsp_t sram_mem_rsp_i,  // Response from the SRAM hard macro.
 
-  //=========================================================================
-  // SRAM Memory Interface (Exposed for Hard Macro Connection)
-  //=========================================================================
-  // Constitution XXIII: Hard macros instantiated at integration level
-  output km_sram_mem_req_t sram_mem_req_o,
-  input  km_sram_mem_rsp_t sram_mem_rsp_i,
+  input  km_drbg_axis_req_t drbg_axis_req_i,    // DRBG AXI-Stream request (KM is slave, DRBG
+                                                // is master).
+  output km_drbg_axis_resp_t drbg_axis_resp_o,  // DRBG AXI-Stream response.
 
-  //=========================================================================
-  // DRBG AXI-Stream Interface (KM is slave, DRBG is master)
-  //=========================================================================
-  input  km_drbg_axis_req_t drbg_axis_req_i,
-  output km_drbg_axis_resp_t drbg_axis_resp_o,
+  input  km_otp_data_t otp_data_i,  // Differentially encoded SEP OTP data.
 
-  //=========================================================================
-  // SEP OTP Data Interface
-  //=========================================================================
-  input  km_otp_data_t otp_data_i,       // Differentially encoded OTP data
+  input  logic    wipe_state_i,  // Wipe state. A rising edge sets IRQ_STATUS.WIPE_STATE and
+                                 // zeros the entire KPV on the next cycle. It is ORed with
+                                 // the CPU trap before edge detection, so a CPU trap wipes
+                                 // the same way and masks this input while it lasts.
 
-  //=========================================================================
-  // Wipe State
-  //=========================================================================
-  // Rising edge sets IRQ_STATUS.WIPE_STATE and zeros entire KPV next cycle
-  input  logic    wipe_state_i,
-
-  //=========================================================================
-  // Test/Debug
-  //=========================================================================
-  input  logic   test_en_i,          // DFT test-enable
-  input  logic   scan_rst_ni         // Scan reset (active-low, bypasses reset synchronizer)
+  input  logic   test_en_i,   // DFT test-enable, active-high; selects scan_rst_ni for both
+                              // conditioned resets and drives the crossbar and mailbox test
+                              // inputs.
+  input  logic   scan_rst_ni  // Scan reset, active-low; replaces both the cold and warm
+                              // conditioned resets while test_en_i is high.
 );
 
   `include "prim_assert.sv"
@@ -155,7 +138,7 @@ module key_manager
   //=========================================================================
   // Parameter Validation
   //=========================================================================
-  // Constitution VI: Parameter validation with ASSERT_INIT
+  // Validate parameters at elaboration.
 
   // Pinned against the address map rather than a literal: the memory sizes and
   // the decode ranges have to agree, and the map is the one that also feeds the
@@ -180,7 +163,7 @@ module key_manager
 
   // CPU IRQ inputs
   logic cpu_irq;       // KMCSR aggregated (sticky error sources)
-  logic cpu_mbox_irq;  // Mailbox inbound (direct level)
+  logic cpu_mbox_irq;  // Mailbox IRQ to the KM CPU: level OR of its masked KM-side sources
 
   // ROM/SRAM parity errors (from CPU wrapper)
   logic cpu_rom_parity_err;
@@ -423,7 +406,7 @@ module key_manager
     .MAILBOX_DEPTH(MAILBOX_DEPTH),
     .km_axil_req_t (km_axil_req_t),
     .km_axil_resp_t(km_axil_resp_t),
-    .sep_axil_req_t (km_axil_req_t),  // SEP uses same types as KM for now
+    .sep_axil_req_t (km_axil_req_t),  // SEP side uses the KM types
     .sep_axil_resp_t(km_axil_resp_t)
   ) u_mailbox (
     .clk_i              (clk_i),

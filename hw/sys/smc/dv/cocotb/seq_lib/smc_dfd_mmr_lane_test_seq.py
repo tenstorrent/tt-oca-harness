@@ -26,10 +26,10 @@ exercised:
   have to hold their values across the write. The DST offset chosen is the
   offset of the sink's RAM data port in its own block, so a read there has to
   be decoded as an ordinary register read rather than a RAM read.
-* **Past the window.** The SMC's crossbar forwards a 1 MB range to the DFD port,
-  far more than the RDL's SMC_CLA window. A read and a write at the first word
-  past that window and at the last word of the forwarded range have to
-  complete, a read that completes OKAY has to return 0, and none of the swept
+* **Past the window.** The SMC's local crossbar decodes the DFD port to the
+  generated SMC_CLA size and sends every address above it to the error slave.
+  A read and a write at the first word past that window and at the last word
+  of the unmapped gap above it have to answer DECERR, and none of the swept
   registers may move.
 """
 
@@ -40,7 +40,7 @@ from functools import lru_cache
 import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr
+from .smc_addr_map import generated_decoded_extent, smc_addr, smc_deadspace_ranges
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_rdl_regmap import RdlReg, rdl_registers_under
 
@@ -58,11 +58,23 @@ _NOT_SWEPT = ("Trdstramdata",)
 # port offset.
 _UNMAPPED = {"dst": (0x40,), "dst_sink": (0x8,), "funnel": (0x10, 0x14, 0x18, 0x1C)}
 _BYTE_MASK = 0xFF
-# The SMC local crossbar forwards 0xC0160000 up to 0xC0260000 to the DFD port,
-# an integration fact the register map does not describe; the RDL's SMC_CLA
-# window ends 0x4000 above its base. Accesses past the RDL window but inside
-# the forwarded range reach the DFD MMR bridge with no MMR block to select.
-_XBAR_DFD_WINDOW_END = 0xC0260000
+_AXI_RESP_DECERR = 3
+# The DFD port's window is the generated SMC_CLA block: base and size from
+# smc_addr.h, cross-checked against the Decoded Extent column of the generated
+# memory map.
+_CLA_BASE = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
+_CLA_END = _CLA_BASE + smc_addr("SMC_TOP_SMC_CLA_SIZE")
+assert generated_decoded_extent(_CLA_ADDRMAP) == smc_addr("SMC_TOP_SMC_CLA_SIZE")
+
+
+def _gap_above_cla() -> tuple[int, int]:
+    """The unmapped ``[base, end)`` gap that starts where the SMC_CLA window ends."""
+    for lo, hi in smc_deadspace_ranges():
+        if lo == _CLA_END:
+            return lo, hi
+    raise AssertionError(
+        f"no unmapped gap starts at the SMC_CLA window end 0x{_CLA_END:08x} in the generated map"
+    )
 
 
 def _writable_mask(reg: RdlReg) -> int:
@@ -192,22 +204,21 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         return {r.path: await self._read(r, label) for r in _swept()}
 
     async def _past_window(self) -> None:
-        """Read and write past the RDL window, inside the crossbar's DFD range."""
-        base = smc_addr("SMC_TOP_SMC_CLA_BASE_ADDR")
-        end = base + smc_addr("SMC_TOP_SMC_CLA_SIZE")
+        """Read and write past the SMC_CLA window; the crossbar's error slave answers."""
+        gap_lo, gap_hi = _gap_above_cla()
         before = await self._snapshot_blocks("past_before")
-        for addr in (end, _XBAR_DFD_WINDOW_END - 4):
+        for addr in (gap_lo, gap_hi - 4):
             rd = await self._access(SmcSysAxiOp.READ, f"past_{addr:x}", addr)
-            if rd.resp_code == 0:
-                assert rd.rdata == 0, (
-                    f"a read at 0x{addr:08x}, past the RDL SMC_CLA window, completed OKAY with "
-                    f"0x{rd.rdata:x}; nothing the map declares lives there, so it has to read 0"
-                )
             wr = await self._access(SmcSysAxiOp.WRITE, f"past_{addr:x}", addr, 0xFFFFFFFF)
+            assert (rd.resp_code, wr.resp_code) == (_AXI_RESP_DECERR, _AXI_RESP_DECERR), (
+                f"0x{addr:08x}, past the SMC_CLA window ending 0x{_CLA_END:08x}, answered "
+                f"read resp={rd.resp_code} and write resp={wr.resp_code}; the crossbar decodes "
+                f"no block there, so both have to be DECERR"
+            )
             self.past_window[addr] = (rd.resp_code, wr.resp_code)
         after = await self._snapshot_blocks("past_after")
         moved = {p: (hex(before[p]), hex(after[p])) for p in before if before[p] != after[p]}
-        assert not moved, f"registers moved across the accesses past the RDL window: {moved}"
+        assert not moved, f"registers moved across the accesses past the SMC_CLA window: {moved}"
         self.value_checks += 2
 
     async def body(self) -> None:
@@ -244,9 +255,8 @@ class smc_dfd_mmr_lane_test_seq(SmcCsrSeq):
         await self._past_window()
         cocotb.log.info(
             "CHK-DFD-MMR-PAST-WINDOW: a read and an all-ones write at the first word past the "
-            "RDL SMC_CLA window and at the last word the crossbar forwards to the DFD port "
-            "completed (%s, as read/write response codes); a read that completed OKAY returned "
-            "0, and none of the %d swept registers moved",
+            "SMC_CLA window and at the last word of the unmapped gap above it answered DECERR "
+            "(%s, as read/write response codes), and none of the %d swept registers moved",
             {f"0x{a:08x}": f"rd={r} wr={w}" for a, (r, w) in self.past_window.items()},
             len(_swept()),
         )

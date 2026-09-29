@@ -13,7 +13,7 @@
 #include "occp_test_common.h"
 #include "smc_defines.h"
 #include "smc_test.h"
-#include <string.h> // For memcpy
+#include <string.h>
 
 static void run_test_suite(test_context_t *ctx) {
     simputs("=== Starting Simple OCCP Sanity Test ===\n");
@@ -80,7 +80,6 @@ int main(void) {
     // Run the test suite
     run_test_suite(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

@@ -50,7 +50,8 @@ that bridge to have completed a burst in the pass; and every system or power-on
 reset a scenario drives records the tb_top reset-assertion counter advancing across
 the pulse (`CHK-RESET-COUNT`). On VCS the inline assertions of the vendored
 `common_cells` on DTP's AXI, CDC, and cross-trigger paths are compiled in and live
-in every test (`hw/sys/dtp/doc/defines.adoc`, `COMMON_CELLS_ASSERTS_OFF`).
+in every test (`COMMON_CELLS_ASSERTS_OFF` in the Integrator Guide's Project
+Defines chapter, `doc/integrator/src/defines.adoc`).
 . *Debug disables*: DTP takes eleven pre-resolved active-high disables
 (`sep_lifecycle_ctrl_pkg::dbg_disable_t`, `dbg_disable_i`); deriving them from
 lifecycle policy is SEP-level verification. The testbench bring-up clears all
@@ -109,7 +110,7 @@ them.
 [cols="1,2",options="header",]
 |===
 |Behaviour |Why it is out of scope here
-|DTP inside the SMU, and the SMU's parameterization of it (`XTRIG_INT_CT_MODE`, the `JTAG_*_ENABLE` flags, the pipeline depths, the IDCODE fields) |Nothing in this repository other than `tb_top.sv` instantiates `dtp`; every entry here is closed for the default configuration only
+|DTP inside the SMU, and the SMU's parameterization of it (`XTRIG_INT_CT_MODE`, the `JTAG_*_ENABLE` flags, the bridge types and pipeline depths, the IDCODE fields) |Nothing in this repository other than `tb_top.sv` instantiates `dtp`; every entry here is closed for the bench configuration (`tb/dtp_dv_cfg_pkg.sv`) only
 |The `dbg_disable_i` producer (deriving the eleven disables from lifecycle policy) |SEP-level verification; the bench drives the pre-resolved vector directly
 |The CLA clock-stop loop, the CTM ack handshake, and the CTM lane partition as the SMU wires them |Subsystem tie-offs and wiring outside DTP
 |Address decode on the three JTAG2AXI bridge paths |The bench responders map every address; the fabric's decoder and default subordinate are SMC-level, so the decode scenarios prove responder-injected error handling (section 4)
@@ -246,8 +247,8 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F3.6 Every scan-side disable field gates exactly its path, with no replay after release and full recovery |`dtp_scan_dbg_disable_matrix_test` |scan, dbg_disable |`dbg_disable_cg`: the sixteen scan-side cells |Ledger `require_cells`; `CHK-SCAN-WIN`, `CHK-SCAN-CHAIN`, `CHK-SCAN-OBS` (SV-UVM) |YES
 |F4.1 Single-operation write and read on the SMC fabric, SMC OTP, and SEP OTP bridges, with data verification |`+dtp_jtag2axi_<target>_single_write_test+`, `+dtp_jtag2axi_<target>_single_write_data_verify_test+`, `+dtp_jtag2axi_<target>_single_write_read_test+` |jtag2axi; functional also carries `dtp_jtag2axi_smc_axi_single_write_test` and `dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS, `otp_jtag2axi_cg` |`CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-AXI-RDATA`, `CHK-AXI-WMEM`, `CHK-AXI-STREAM-MIN`, `CHK-AXI-NONVAC`; `jtag2axi_req` and `jtag2axi_status` scoreboard features |YES
 |F4.2 Series operations: INCR, NO_INCR, WITH_ERROR_STATUS, narrow beat offset, randomized sequences, per-bridge independence |`+dtp_jtag2axi_<target>_series_write_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_series_write_read_{incr,no_incr,incr_with_error}_test+`, `+dtp_jtag2axi_<target>_random_ops_test+`, `+dtp_jtag2axi_<target>_read_random_ops_test+`, `dtp_jtag2axi_smc_axi_series_write_incr_narrow_test`, `dtp_jtag2axi_smc_axi_series_write_read_incr_narrow_test`, `dtp_jtag2axi_series_corner_all_bridges_test` |jtag2axi |`jtag2axi_robustness_cg` series bins; `otp_jtag2axi_cg` series bins |`CHK-AXI-WADDR`, `CHK-AXI-RADDR`, `CHK-AXI-WDATA` (SV-UVM), `CHK-AXI-RDATA`, `CHK-AXI-WMEM`, `CHK-AXI-COMPLETION`, `CHK-J2A-STATUS-BIT` (the WITH_ERROR_STATUS bit on every shift of the with-error series); `jtag2axi_req` and `jtag2axi_status` scoreboard features |YES
-|F4.3 Response status: SLVERR and DECERR on single and series operations, the error-status TDR, recovery after an error |`+dtp_jtag2axi_<target>_error_{single_write,single_read,series_incr_write,series_incr_read,series_no_incr_write,series_no_incr_read,series_incr_write_with_status,series_incr_read_with_status}_test+`, `+dtp_jtag2axi_<target>_series_write{,_read}_incr_with_error_test+`, `dtp_jtag2axi_decode_error_decerr_write_test`, `dtp_jtag2axi_decode_error_decerr_read_test`, `dtp_jtag2axi_decode_error_mixed_test` |jtag2axi |`jtag2axi_response_cg` status bins; `otp_jtag2axi_cg` response bins |Armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-CREDITS`, `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-J2A-FAULT-STATUS` (the sequence's judgement of the fault beat's status), `CHK-J2A-STATUS-BIT` (the with-error series' per-shift status bit), `CHK-J2A-ERR-RDATA` (the errored read beat's data on the single-read and decode-error read scenarios), `CHK-J2A-SERIES-ADDR` (the per-beat SERIES_CTRL address on the SMC fabric incrementing read error); `jtag2axi_status` scoreboard feature |YES
-|F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test` |jtag2axi |`jtag2axi_robustness_cg` skew bins; its reset-timing request-issued and response-wait bins and its CDC clear bins carry dispositions in `coverage_policy.toml` |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-CREDITS` (cocotb); `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-CDC-CLEAR`, `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-RECOVERY` on the two reset-abort leaves; `jtag2axi_req` and `jtag2axi_status` scoreboard features |YES for skew and for a reset after completion; NO for a reset that lands mid-transaction, which the two reset-abort leaves drive
+|F4.3 Response status: SLVERR and DECERR on single and series operations, the error-status TDR, recovery after an error |`+dtp_jtag2axi_<target>_error_{single_write,single_read,series_incr_write,series_incr_read,series_no_incr_write,series_no_incr_read,series_incr_write_with_status,series_incr_read_with_status}_test+`, `+dtp_jtag2axi_<target>_series_write{,_read}_incr_with_error_test+`, `dtp_jtag2axi_decode_error_decerr_write_test`, `dtp_jtag2axi_decode_error_decerr_read_test`, `dtp_jtag2axi_decode_error_mixed_test` |jtag2axi |`jtag2axi_response_cg` status bins; `otp_jtag2axi_cg` response bins |Armed non-OKAY response (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM), `CHK-AXI-CREDITS` (cocotb), `CHK-AXI-NONVAC`, `CHK-AXI-RESP`, `CHK-J2A-FAULT-STATUS` (the sequence's judgement of the fault beat's status), `CHK-J2A-STATUS-BIT` (the with-error series' per-shift status bit), `CHK-J2A-ERR-RDATA` (the errored read beat's data on the single-read, plain series read, and decode-error read scenarios), `CHK-J2A-SERIES-ADDR` (the per-beat SERIES_CTRL address on the SMC fabric incrementing read error); `jtag2axi_status` scoreboard feature |YES
+|F4.4 Backpressure and reset recovery: AW-before-W skew, long READY stalls, reset around the data phase, narrow and back-to-back resets |`dtp_jtag2axi_backpressure_aw_before_w_test`, `dtp_jtag2axi_backpressure_long_stall_test`, `dtp_jtag2axi_backpressure_abort_at_data_w_test`, `dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test`, `dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test` |jtag2axi |`jtag2axi_robustness_cg` skew bins; its reset-timing request-issued and response-wait bins and its CDC clear bins carry dispositions in `coverage_policy.toml` |`CHK-AXI-COMPLETION`, `CHK-AXI-RESP`, `CHK-AXI-CREDITS` (cocotb); `CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY` on the two backpressure leaves; `CHK-J2A-ABORT-MIDFLIGHT`, `CHK-J2A-ABORT-FSM`, `CHK-J2A-CDC-CLEAR`, `CHK-J2A-ABORT-ESCAPE`, `CHK-J2A-ABORT-RECOVERY` on the two reset-abort leaves; `jtag2axi_req` and `jtag2axi_status` scoreboard features |YES for skew and for a reset after completion; NO for a reset that lands mid-transaction, which the two reset-abort leaves drive
 |F4.5 Each bridge's disable field: a gated bridge latches no TDR update, drops buffered requests, and generates no AXI traffic; release without replay; recovery |`+dtp_jtag2axi_<target>_{write,read,error}_security_gating_test+`, `dtp_jtag2axi_smc_axi_read_security_gating_no_axi_activity_test`, `dtp_jtag2axi_dbg_disable_matrix_test` |jtag2axi, dbg_disable |`otp_jtag2axi_cg` gating bins; `dbg_disable_cg`: the six bridge cells |`CHK-AXI-NOACT`, `CHK-AXI-BLOCKED` (cocotb), `CHK-AXI-GATE-AW`, `CHK-AXI-GATE-W`, `CHK-AXI-GATE-AR`, `CHK-AXI-GATE-EXACT` (SV-UVM); `jtag2axi_req` proves no transaction while disabled; ledger `require_cells` |YES
 |F5.1 CTP wire-OR mode: pulse routing, configurable stretcher, inversion, the shared open-drain wire |`dtp_xtrig_wire_or_test`, `dtp_xtrig_wire_or_bus_test`, `dtp_ctm_wire_or_cla_to_ctp_test`, `dtp_ctm_wire_or_ctp_to_cla_test`, `dtp_ctm_wire_or_cla_to_cla_test`, `dtp_ctm_wire_or_ctp_to_ctp_test`, `dtp_ctm_rand_wire_or_only_test` |xtrig |`ctp_cg` mode, inversion, and stretch bins; `ctp_wire_or_rx_cg` sense and listener bins |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-STRETCH`, `CHK-XTRIG-ROUTE-MODEL`, `CHK-XTRIG-QUIET`, `CHK-XTRIG-WIRE`; `xtrig_csr` scoreboard feature |YES
 |F5.2 CTP point-to-point four-phase handshake |`dtp_xtrig_p2p_test`, `dtp_ctm_p2p_cla_to_ctp_test`, `dtp_ctm_p2p_ctp_to_cla_test`, `dtp_ctm_p2p_cla_to_cla_test`, `dtp_ctm_p2p_ctp_to_ctp_test`, `dtp_ctm_rand_p2p_only_test` |xtrig |`ctp_cg` P2P state bins |`CHK-XTRIG-SIGNAL`, `CHK-XTRIG-ROUTE-MODEL` |YES
@@ -1094,7 +1095,7 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 *Test Coverage*:
 
 * CLAMP_RELEASE (IR=0x0B) TMP instruction releases the persistent clamp state
-* CLAMP_RELEASE DR is 2 bits wide and transitions TMP from Persistence-On to Persistence-Off
+* CLAMP_RELEASE transitions TMP from Persistence-On to Persistence-Off; like CLAMP_HOLD's, its data register is the one-bit bypass (its DR scan returns TDI one TCK late), and the 2-bit register is TMP_STATUS
 * TMP_STATUS transitions 1 -++>++ 0 after CLAMP_RELEASE
 * After the release, SAMPLE/PRELOAD selects the looped-back chain again and returns its pattern
 * `tmp_ic_reset_cg` TMP persistence bins (CLAMP_RELEASE, Persistence-On to Persistence-Off)
@@ -1103,7 +1104,7 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 
 [arabic]
 . Engage CLAMP_HOLD (per the 0.15 setup) and confirm TMP_STATUS.persistence = 1.
-. Load CLAMP_RELEASE (IR=0x0B) through `OcahJtagMasterDriver` and perform a 2-bit DR scan.
+. Load CLAMP_RELEASE (IR=0x0B) through `OcahJtagMasterDriver` and perform a DR scan; TDI returns on TDO one TCK late.
 . Confirm the TMP controller exits Persistence-On.
 . Read TMP_STATUS and verify TMP_STATUS = 0.
 . Load SAMPLE/PRELOAD and verify the chain is selected and loops the pattern back one TCK late.
@@ -1113,12 +1114,12 @@ c. Run a seeded random 32-bit DR scan and confirm the same 1-bit bypass behavior
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`clamp_release_dr_len_chk` |CLAMP_RELEASE DR is exactly 2 bits wide
+|`clamp_release_dr_len_chk` |CLAMP_RELEASE decodes as itself and scans the one-bit bypass register, TDI one TCK late (`CHK-IR-DECODE`, `CHK-BYPASS-DELAY`)
 |`clamp_release_tmp_status_chk` |TMP_STATUS transitions from 1 to 0 after CLAMP_RELEASE
 |`clamp_release_chain_chk` |SAMPLE/PRELOAD after the release selects the chain and returns the looped-back pattern (`CHK-BSR-LOOPBACK`)
 |===
 
-*Pass Criteria*: CLAMP_RELEASE clears persistence via a 2-bit DR, drives TMP_STATUS 1-++>++0, and the chain scans again after the release, with zero scoreboard/reference-model errors.
+*Pass Criteria*: CLAMP_RELEASE clears persistence and scans the one-bit bypass, drives TMP_STATUS 1-++>++0, and the chain scans again after the release, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -1329,7 +1330,7 @@ a. Verify TMP_STATUS[1] = 0 after the escape.
 
 * IC_RESET (IR=0x0D) TDR independently overrides each chiplet reset domain across three slices — SMC (nearest TDI), SEP, and External (nearest TDO) — each gated by its `+IC_RESET_{SMC,SEP,EXT}_ENABLE+` parameter
 * Active-low `reset_enable` per IEEE 1149.1 §17: `reset_enable=1` (default) disables the override (upstream reset passes through), `reset_enable=0` enables it; the PTAP exports `jtag_ic_reset_ovrd_o[n] = !reset_enable[n]` and `jtag_ic_reset_ctrl_n_o[n] = reset_control[n]`
-* RESET_HOLD = 0 protects the IC_RESET register across TLR in the RTL encoding
+* RESET_HOLD = 0 keeps every reset_enable and reset_control bit across TLR (PTAP document, "PTAP IC_RESET fields" table)
 * RESET_HOLD = 1 allows TLR to restore the default all-ones value; TRST always restores defaults
 * Seeded random reset_enable/reset_control patterns exercise reset_hold=0 persistence
 
@@ -3559,7 +3560,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 
 * JTAG2AXI fixed-address (no-incr) read series through the SMC fabric AXI4 bridge, carried by SMC_AXI_SERIES_CTRL (IR=0x29) and SMC_AXI_SERIES_DATA_NO_INCR (IR=0x2B)
 * Mid-series SLVERR/DECERR injected on one beat while the AXI address remains fixed
-* Good beats return the reference value at the fixed address; failing beat marks invalid data
+* Good beats return the reference value at the fixed address; the failing beat's capture is the errored beat's RDATA, not the preload
 * SERIES_CTRL status matches the injected fault; bridge recovers afterward
 
 *Test Procedure*:
@@ -3569,7 +3570,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 . For each beat: load SMC_AXI_SERIES_CTRL (IR=0x29) with op=0b01 (Read), size, and the fixed address; Update-DR.
 . Shift SMC_AXI_SERIES_DATA_NO_INCR (IR=0x2B) once to launch the read and wait for the AXI read handshake; shift it again to capture the returned beat.
 . After the faulting beat, capture SMC_AXI_SERIES_CTRL and read its status field.
-. Verify good beats return the reference data, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and the address never incremented.
+. Verify good beats return the reference data, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's capture equal to the errored beat's RDATA rather than the preload, and the address never incremented.
 . Issue a follow-up legal SMC_AXI_SINGLE_OP (IR=0x28) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -3578,7 +3579,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |===
 |Checker |Description
 |`smc_axi_err_noincr_rd_status_chk` |SERIES_CTRL status captured after the failing read beat carries the injected error code
-|`smc_axi_err_noincr_rd_rdata_chk` |Good beats match the fixed-address reference; failing beat data is invalid
+|`smc_axi_err_noincr_rd_rdata_chk` |Good beats match the fixed-address reference; the failing beat's capture is the errored beat's RDATA and differs from the preload (`CHK-J2A-ERR-RDATA`)
 |`smc_axi_err_noincr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
@@ -3645,7 +3646,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 . For each beat i: load SMC_AXI_SERIES_CTRL (IR=0x29) with op=0b01 (Read), size, and address base{plus}i*stride; Update-DR.
 . Shift SMC_AXI_SERIES_DATA_INCR (IR=0x2A) once to launch the read and wait for the AXI read handshake; shift it again to capture the returned beat.
 . After every beat, capture SMC_AXI_SERIES_CTRL: its address field must equal base{plus}i*stride{plus}stride, and after the faulting beat its status field must carry the injected code.
-. Verify good beats return the reference data at their addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and every capture's address matches the expected increment.
+. Verify good beats return the reference data at their addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's capture equal to the errored beat's RDATA rather than the preload, and every capture's address matches the expected increment.
 . Issue a follow-up legal SMC_AXI_SINGLE_OP (IR=0x28) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -3655,7 +3656,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 |Checker |Description
 |`smc_axi_err_incr_rd_status_chk` |`CHK-J2A-FAULT-STATUS`: SERIES_CTRL status captured after the failing read beat carries the injected error code
 |`smc_axi_err_incr_rd_addr_chk` |`CHK-J2A-SERIES-ADDR`: the SERIES_CTRL capture after each beat holds that beat's address plus one stride (the launched read advances the address, errored or not)
-|`smc_axi_err_incr_rd_rdata_chk` |Good beats match the reference data at their addresses
+|`smc_axi_err_incr_rd_rdata_chk` |Good beats match the reference data at their addresses; the failing beat's capture is the errored beat's RDATA and differs from the preload (`CHK-J2A-ERR-RDATA`)
 |`smc_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
@@ -3749,7 +3750,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 *Test Coverage*:
 
 * SMC fabric bridge gating: `dbg_disable_i.smc_jtag2axi = 1`
-* When gated, SMC_AXI_SINGLE_OP (IR=0x28) requests are suppressed: no AXI traffic on `axi_smc_dbg_req_o`, even on error-path attempts, and no error-status update
+* When gated, SMC_AXI_SINGLE_OP (IR=0x28) requests are dropped (DTP JTAG document, \"Debug Disable\"): no AXI traffic on `axi_smc_dbg_req_o`, even on error-path attempts, so no response reaches the error status, and none replays after the release
 * Two assert/release passes prove the gate is repeatable; each release restores normal and error-path operation
 
 *Test Procedure*:
@@ -3757,7 +3758,7 @@ b. Update-DR to launch the AXI4 read on `axi_smc_dbg_req_o`.
 [arabic]
 . With the subordinate configured to return errors on the target region, assert `dbg_disable_i.smc_jtag2axi = 1` to gate the bridge.
 . Load SMC_AXI_SINGLE_OP (IR=0x28) and attempt an error-region write:
-a. Verify no AXI transaction is issued on `axi_smc_dbg_req_o` and no error-status latches.
+a. Verify no AXI transaction is issued on `axi_smc_dbg_req_o` while gated or after the release.
 . Clear the disable without reset; verify a normal (and error-path) JTAG2AXI access resumes and the error is reported as expected.
 . Repeat steps 1–3 as a second pass of the same disable.
 . Confirm that with all disables clear, ungated error-path accesses complete and report SLVERR/DECERR normally.
@@ -3913,7 +3914,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 . For each beat i: load SMC_OTP_AXI_SERIES_CTRL (IR=0x1D) with op=0b01 (Read), size, and address base{plus}i*stride; Update-DR.
 . Shift SMC_OTP_AXI_SERIES_DATA_INCR (IR=0x1E) once to launch the read and wait for the AXI-Lite read handshake; shift it again to capture the returned beat.
 . After the faulting beat, capture SMC_OTP_AXI_SERIES_CTRL and read its status field.
-. Verify good beats return the reference data at their incremented addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and the address progression matches the expected increment.
+. Verify good beats return the reference data at their incremented addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's capture equal to the errored beat's RDATA rather than the preload, and the address progression matches the expected increment.
 . Issue a follow-up legal SMC_OTP_AXI_SINGLE_OP (IR=0x1C) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -3922,7 +3923,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |===
 |Checker |Description
 |`smc_otp_axi_err_incr_rd_status_chk` |SERIES_CTRL status captured after the failing read beat carries the injected error code
-|`smc_otp_axi_err_incr_rd_rdata_chk` |Good beats match the incremented-address reference data
+|`smc_otp_axi_err_incr_rd_rdata_chk` |Good beats match the incremented-address reference data; the failing beat's capture is the errored beat's RDATA and differs from the preload (`CHK-J2A-ERR-RDATA`)
 |`smc_otp_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
@@ -3979,7 +3980,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 
 * JTAG2AXI fixed-address (no-incr) read series through the SMC OTP AXI4-Lite bridge, carried by SMC_OTP_AXI_SERIES_CTRL (IR=0x1D) and SMC_OTP_AXI_SERIES_DATA_NO_INCR (IR=0x1F)
 * Mid-series SLVERR/DECERR injected on one beat while the AXI-Lite address remains fixed
-* Good beats return the reference value at the fixed address; failing beat marks invalid data
+* Good beats return the reference value at the fixed address; the failing beat's capture is the errored beat's RDATA, not the preload
 * SERIES_CTRL status matches the injected fault; bridge recovers afterward
 
 *Test Procedure*:
@@ -3989,7 +3990,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 . For each beat: load SMC_OTP_AXI_SERIES_CTRL (IR=0x1D) with op=0b01 (Read), size, and the fixed address; Update-DR.
 . Shift SMC_OTP_AXI_SERIES_DATA_NO_INCR (IR=0x1F) once to launch the read and wait for the AXI-Lite read handshake; shift it again to capture the returned beat.
 . After the faulting beat, capture SMC_OTP_AXI_SERIES_CTRL and read its status field.
-. Verify good beats return the reference data, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and the address never incremented.
+. Verify good beats return the reference data, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's capture equal to the errored beat's RDATA rather than the preload, and the address never incremented.
 . Issue a follow-up legal SMC_OTP_AXI_SINGLE_OP (IR=0x1C) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -3998,7 +3999,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 |===
 |Checker |Description
 |`smc_otp_axi_err_noincr_rd_status_chk` |SERIES_CTRL status captured after the failing read beat carries the injected error code
-|`smc_otp_axi_err_noincr_rd_rdata_chk` |Good beats match the fixed-address reference; failing beat data is invalid
+|`smc_otp_axi_err_noincr_rd_rdata_chk` |Good beats match the fixed-address reference; the failing beat's capture is the errored beat's RDATA and differs from the preload (`CHK-J2A-ERR-RDATA`)
 |`smc_otp_axi_err_noincr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
@@ -4092,7 +4093,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 *Test Coverage*:
 
 * SMC OTP bridge gating: `dbg_disable_i.smc_otp_jtag2axi = 1`
-* When gated, SMC_OTP_AXI_SINGLE_OP (IR=0x1C) requests are suppressed: no AXI-Lite traffic on `axil_smc_otp_jtag_req_o`, even on error-path attempts, and no error-status update
+* When gated, SMC_OTP_AXI_SINGLE_OP (IR=0x1C) requests are dropped (DTP JTAG document, \"Debug Disable\"): no AXI-Lite traffic on `axil_smc_otp_jtag_req_o`, even on error-path attempts, so no response reaches the error status, and none replays after the release
 * Two assert/release passes prove the gate is repeatable; each release restores normal and error-path operation
 
 *Test Procedure*:
@@ -4100,7 +4101,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_smc_otp_jtag_req_o`.
 [arabic]
 . With the AXI-Lite subordinate configured to return errors on the target region, assert `dbg_disable_i.smc_otp_jtag2axi = 1` to gate the bridge.
 . Load SMC_OTP_AXI_SINGLE_OP (IR=0x1C) and attempt an error-region write:
-a. Verify no AXI-Lite transaction is issued on `axil_smc_otp_jtag_req_o` and no error-status latches.
+a. Verify no AXI-Lite transaction is issued on `axil_smc_otp_jtag_req_o` while gated or after the release.
 . Clear the disable without reset; verify normal/error-path operation resumes and the error is reported as expected.
 . Repeat steps 1–3 as a second pass of the same disable.
 . Confirm that with all disables clear, ungated error-path accesses complete and report SLVERR/DECERR normally.
@@ -4256,7 +4257,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 . For each beat i: load SEP_OTP_AXI_SERIES_CTRL (IR=0x23) with op=0b01 (Read), size, and address base{plus}i*stride; Update-DR.
 . Shift SEP_OTP_AXI_SERIES_DATA_INCR (IR=0x24) once to launch the read and wait for the AXI-Lite read handshake; shift it again to capture the returned beat.
 . After the faulting beat, capture SEP_OTP_AXI_SERIES_CTRL and read its status field.
-. Verify good beats return the reference data at their incremented addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and the address progression matches the expected increment.
+. Verify good beats return the reference data at their incremented addresses, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's capture equal to the errored beat's RDATA rather than the preload, and the address progression matches the expected increment.
 . Issue a follow-up legal SEP_OTP_AXI_SINGLE_OP (IR=0x22) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -4265,7 +4266,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |===
 |Checker |Description
 |`sep_otp_axi_err_incr_rd_status_chk` |SERIES_CTRL status captured after the failing read beat carries the injected error code
-|`sep_otp_axi_err_incr_rd_rdata_chk` |Good beats match the incremented-address reference data
+|`sep_otp_axi_err_incr_rd_rdata_chk` |Good beats match the incremented-address reference data; the failing beat's capture is the errored beat's RDATA and differs from the preload (`CHK-J2A-ERR-RDATA`)
 |`sep_otp_axi_err_incr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
@@ -4322,7 +4323,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 
 * JTAG2AXI fixed-address (no-incr) read series through the SEP OTP AXI4-Lite bridge, carried by SEP_OTP_AXI_SERIES_CTRL (IR=0x23) and SEP_OTP_AXI_SERIES_DATA_NO_INCR (IR=0x25)
 * Mid-series SLVERR/DECERR injected on one beat while the AXI-Lite address remains fixed
-* Good beats return the reference value at the fixed address; failing beat marks invalid data
+* Good beats return the reference value at the fixed address; the failing beat's capture is the errored beat's RDATA, not the preload
 * SERIES_CTRL status matches the injected fault; bridge recovers afterward
 
 *Test Procedure*:
@@ -4332,7 +4333,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 . For each beat: load SEP_OTP_AXI_SERIES_CTRL (IR=0x23) with op=0b01 (Read), size, and the fixed address; Update-DR.
 . Shift SEP_OTP_AXI_SERIES_DATA_NO_INCR (IR=0x25) once to launch the read and wait for the AXI-Lite read handshake; shift it again to capture the returned beat.
 . After the faulting beat, capture SEP_OTP_AXI_SERIES_CTRL and read its status field.
-. Verify good beats return the reference data, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's read data treated as invalid, and the address never incremented.
+. Verify good beats return the reference data, the SERIES_CTRL status after the failing beat carries the injected SLVERR/DECERR code with that beat's capture equal to the errored beat's RDATA rather than the preload, and the address never incremented.
 . Issue a follow-up legal SEP_OTP_AXI_SINGLE_OP (IR=0x22) read; verify OKAY and correct data, proving recovery.
 
 *Checkers*:
@@ -4341,7 +4342,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 |===
 |Checker |Description
 |`sep_otp_axi_err_noincr_rd_status_chk` |SERIES_CTRL status captured after the failing read beat carries the injected error code
-|`sep_otp_axi_err_noincr_rd_rdata_chk` |Good beats match the fixed-address reference; failing beat data is invalid
+|`sep_otp_axi_err_noincr_rd_rdata_chk` |Good beats match the fixed-address reference; the failing beat's capture is the errored beat's RDATA and differs from the preload (`CHK-J2A-ERR-RDATA`)
 |`sep_otp_axi_err_noincr_rd_recover_chk` |A subsequent legal read returns the reference data with OKAY
 |===
 
@@ -4435,7 +4436,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 *Test Coverage*:
 
 * SEP OTP bridge gating: `dbg_disable_i.sep_otp_jtag2axi = 1`
-* When gated, SEP_OTP_AXI_SINGLE_OP (IR=0x22) requests are suppressed: no AXI-Lite traffic on `axil_sep_otp_jtag_req_o`, even on error-path attempts, and no error-status update
+* When gated, SEP_OTP_AXI_SINGLE_OP (IR=0x22) requests are dropped (DTP JTAG document, \"Debug Disable\"): no AXI-Lite traffic on `axil_sep_otp_jtag_req_o`, even on error-path attempts, so no response reaches the error status, and none replays after the release
 * Two assert/release passes prove the gate is repeatable; each release restores normal and error-path operation
 
 *Test Procedure*:
@@ -4443,7 +4444,7 @@ b. Update-DR to launch the AXI4-Lite read on `axil_sep_otp_jtag_req_o`.
 [arabic]
 . With the AXI-Lite subordinate configured to return errors on the target region, assert `dbg_disable_i.sep_otp_jtag2axi = 1` to gate the bridge.
 . Load SEP_OTP_AXI_SINGLE_OP (IR=0x22) and attempt an error-region write:
-a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no error-status latches.
+a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` while gated or after the release.
 . Clear the disable without reset; verify normal/error-path operation resumes and the error is reported as expected.
 . Repeat steps 1–3 as a second pass of the same disable.
 . Confirm that with all disables clear, ungated error-path accesses complete and report SLVERR/DECERR normally.
@@ -4457,7 +4458,7 @@ a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no 
 |`sep_otp_axi_err_gating_restore_chk` |Each release restores normal/error-path operation
 |===
 
-*Pass Criteria*: The asserted disable forces BYPASS with no AXI-Lite traffic on the error path, and operation is fully restored after each release, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The asserted disable issues no AXI-Lite traffic on the error path, none replays after the release, and operation is fully restored after each release, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4472,7 +4473,7 @@ a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no 
 
 * Maximum AW/W channel skew on the JTAG2AXI single-op write path with AW ready asserted while W ready is held low
 * AXI-Lite `aw_valid_stable` / `w_valid_stable` and payload-stability assertions while ready is low
-* The bench does not sample the FSM state sequence; the skewed write is judged by the AXI-Lite stability assertions and its OKAY completion
+* The bench does not sample the FSM state sequence: it observes the bridge on the write path under the stall, and judges the skewed write by the AXI-Lite stability assertions and its OKAY completion
 
 *Test Procedure*:
 
@@ -4508,16 +4509,16 @@ b. Configure the `ocah_axi_vip` subordinate to skew the channels: accept AW (rea
 
 *Test Coverage*:
 
-* Long subordinate ready stalls on AW, W, AR, and R channels exercised one channel at a time and combined
-* Real success hits on the AXI-Lite `aw_valid_stable` / `w_valid_stable` / `ar_valid_stable` and corresponding payload `+*_stable+` assertions
-* Reachable JTAG2AXI state-machine dwell on the write path (address, data, response wait) and on the read path (address issue, data wait) under prolonged stall
+* Long subordinate READY stalls on every bridge: AW and W held together on a write, AR on a read (4.28 holds W alone)
+* The protocol SVA's `aw_valid_stable` / `w_valid_stable` / `ar_valid_stable` and payload `+*_stable+` assertions stay silent across stall windows the bridge is observed inside
+* The JTAG2AXI state machine observed on the write path and on the read path under a prolonged stall (the `dtp_tb_if` path flags)
 * No premature timeout, abort, or status corruption while a legal stall is in progress
 
 *Test Procedure*:
 
 [arabic]
 . Set up stall stimulus on the `ocah_axi_vip` subordinate:
-a. Configure long, deterministic ready-low intervals on AW/W (write path) and AR/R (read path) that remain inside the architectural stall budget.
+a. Configure long, deterministic READY-low intervals on AW/W (write path) and AR (read path) that remain inside the architectural stall budget.
 . Issue write traffic through `OcahJtagMasterDriver`:
 a. Launch a single-op write while AW/W ready are stalled for longer than the first status poll; observe valid/payload hold stable across the full stall window, the bridge FSM on the write path, and the first status capture reading Busy (`CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`).
 b. Release the stall and confirm OKAY completion with the written word in memory.
@@ -4531,12 +4532,12 @@ b. Release the stall and confirm the returned data matches the reference model.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_long_stall_assert_chk` |AW/W/AR valid and payload `+*_stable+` assertions hold across the full stall window
+|`j2a_long_stall_assert_chk` |The protocol SVA's AW/W/AR valid and payload `+*_stable+` assertions stay silent across the full stall window
 |`j2a_long_stall_status_chk` |While each stall holds the bridge FSM is on the stalled path and the first status poll reads Busy (`CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY`); no premature timeout/abort; each op reaches its expected terminal status after stall release
 |`j2a_long_stall_data_chk` |Post-stall write-back and read-data compare against the reference model
 |===
 
-*Pass Criteria*: All AW/W/AR stable assertions receive real success hits under long stalls, every stall is observed from the bridge's side, no operation times out or aborts during a legal stall, and every read/write completes correctly after release with zero scoreboard/reference-model errors.
+*Pass Criteria*: No AW/W/AR stability assertion fires under long stalls, every stall is observed from the bridge's side (`CHK-J2A-STALL-FSM`, `CHK-J2A-STALL-BUSY` on all three bridges), no operation times out or aborts during a legal stall, and every read/write completes correctly after release with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -4685,7 +4686,7 @@ b. Release the stall and confirm the returned data matches the reference model.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_decerr_wr_status_chk` |The write status reports DECERR for the responder-injected response on every target, and `CHK-AXI-RESP-EXPECTED` classifies the observed DECERR as armed
+|`j2a_decerr_wr_status_chk` |The write status reports DECERR for the responder-injected response on every target, and the observed DECERR is classified as armed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |`j2a_decerr_wr_mem_chk` |The errored slot's word is unchanged after the DECERR write
 |`j2a_decerr_wr_recovery_chk` |A subsequent legal write completes with OKAY and lands its bytes (`CHK-AXI-WMEM`)
 |===
@@ -4720,7 +4721,7 @@ b. Release the stall and confirm the returned data matches the reference model.
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`j2a_decerr_rd_status_chk` |The read status reports DECERR for the responder-injected response on every target, and `CHK-AXI-RESP-EXPECTED` classifies the observed DECERR as armed
+|`j2a_decerr_rd_status_chk` |The read status reports DECERR for the responder-injected response on every target, and the observed DECERR is classified as armed (`CHK-AXI-RESP-EXPECTED` cocotb, `CHK-AXI-ERR-INJ` SV-UVM)
 |`j2a_decerr_rd_rdata_chk` |`CHK-J2A-ERR-RDATA`: returned read data equals the RDATA returned on the errored beat and differs from the preloaded slot value
 |`j2a_decerr_rd_recovery_chk` |A subsequent legal read returns the preloaded data with OKAY (`CHK-AXI-RDATA`)
 |===
@@ -5783,7 +5784,7 @@ b. Verify the CTM select readback matches.
 
 *Test Coverage*:
 
-* Unmapped XTRIG reads decoded to the crossbar's error subordinate, which answers DECERR with its response data word; the xbar's default-master-port path is disabled in this integration, so every decode error comes from the error subordinate
+* Unmapped XTRIG reads answered DECERR: no subordinate decodes the address
 * Two outstanding reads through the shared AXI-Lite master: the second AR is presented while RREADY is held on the first DECERR, and the demux, which admits one read in flight, holds it with ARREADY low (`axi_lite_demux.ar_valid_stable` / `ar_stable`) until the first response is accepted
 * Both unmapped reads return DECERR; no deadlock on the backpressured read path
 * Stable ARADDR and read data through the decode-backpressure window
@@ -5795,7 +5796,7 @@ b. Verify the CTM select readback matches.
 . Issue two unmapped reads at seeded offsets as one pair: hold the first DECERR response by keeping RREADY=0 for 4..8 cycles while the second AR is presented.
 a. Verify the second AR stalled (VIP AR stall cycles > 0) with ARVALID and ARADDR stable across the stall, and that the bench counter `xtrig_axil_ar_stall_count` advanced by the same count.
 b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
-. Release RREADY, allow the second AR to complete, and verify both responses are DECERR carrying the error subordinate's data word.
+. Release RREADY, allow the second AR to complete, and verify both responses are DECERR.
 . Verify exactly two AR beats were accepted (ARVALID cycles minus stall cycles).
 
 *Checkers*:
@@ -5805,7 +5806,6 @@ b. Verify RVALID/RDATA/RRESP stayed stable across the hold.
 |Checker |Description
 |`xtrig_read_decerr_chk` |Both unmapped reads return DECERR
 |`xtrig_read_ar_stable_chk` |The second AR is held with ARREADY low while the first response is held (stall cycles > 0), ARVALID and ARADDR stay stable through the stall, the bench AR stall counter equals the VIP's count, and exactly two AR beats are accepted
-|`xtrig_read_default_ar_chk` |Each decode error is answered by the crossbar's error subordinate: the read data is its response word (`0xBADCAB1E`); the xbar default master port is disabled in this integration
 |`xtrig_read_no_deadlock_chk` |Both responses complete once RREADY is released, and RVALID/RDATA/RRESP hold stable across the RREADY-low window
 |===
 
@@ -6401,9 +6401,9 @@ e. Program a second point-to-point route on a disjoint source and destination wi
 *Test Coverage*:
 
 * Randomized CTM routes restricted to internal CLA sources targeting external CTP destinations
-* Random single-bit and multi-bit `CT_DST_SELECT` masks and random trigger timing within the CLA-to-CTP class
+* Random single-bit and multi-bit `CT_DST_SELECT` masks and random trigger timing within the CLA-to-CTP class: each iteration draws a pulse width of 2 to 8 system clocks and an idle lead of 0 to 3
 * Selected CTP destinations match the random configuration; non-selected stay quiet
-* Coverage of diverse CLA-source x CTP-destination route combinations
+* Every CLA-source x CTP-destination route driven within one test: the iterations walk a seeded order of the routes, starting each from the first route not yet driven
 
 *Test Procedure*:
 
@@ -6413,7 +6413,7 @@ a. Randomize `CT_DST_SELECT` masks for CLA sources, with destination bits restri
 b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive CLA triggers via the OCAH-local CTM BFM with randomized timing.
 d. Observe CTP destinations via the OCAH-local CTP monitor and verify the selected CTP ports respond.
-e. Sample the source x destination coverage of the exercised CLA-to-CTP combinations.
+e. Sample the CLA source x CTP destination cross of `ctm_route_cg` for every route the matrix carried.
 
 *Checkers*:
 
@@ -6425,7 +6425,7 @@ e. Sample the source x destination coverage of the exercised CLA-to-CTP combinat
 |`ctm_rand_cla_to_ctp_nospur_chk` |No non-selected CTP destination toggles
 |===
 
-*Pass Criteria*: Every random CLA-to-CTP configuration routes correctly to its selected CTP destinations with no spurious activity and full route-combination coverage, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every random CLA-to-CTP configuration routes correctly to its selected CTP destinations with no spurious activity, with zero scoreboard/reference-model errors; every seed closes the CLA source x CTP destination cross of `ctm_route_cg`.
 
 '''''
 
@@ -6439,9 +6439,9 @@ e. Sample the source x destination coverage of the exercised CLA-to-CTP combinat
 *Test Coverage*:
 
 * Randomized CTM routes restricted to external CTP sources targeting internal CLA destinations
-* Random single-bit and multi-bit `CT_DST_SELECT` masks and random trigger timing within the CTP-to-CLA class
+* Random single-bit and multi-bit `CT_DST_SELECT` masks and random trigger timing within the CTP-to-CLA class: each iteration draws a pulse width of 2 to 8 system clocks and an idle lead of 0 to 3
 * Selected CLA destinations match the random configuration; non-selected stay quiet
-* Coverage of diverse CTP-source x CLA-destination route combinations
+* Every CTP-source x CLA-destination route driven within one test: the iterations walk a seeded order of the routes, starting each from the first route not yet driven
 
 *Test Procedure*:
 
@@ -6451,7 +6451,7 @@ a. Randomize `CT_DST_SELECT` masks for CTP sources, with destination bits restri
 b. Write the active `+CT_SRC[N]_CONFIG_0+` registers via `OcahAxiLiteMasterAgent` and read each back.
 c. Drive CTP triggers via the OCAH-local CTP BFM with randomized timing.
 d. Observe CLA destinations via the OCAH-local CTM monitor and verify the selected CLA channels respond.
-e. Sample the source x destination coverage of the exercised CTP-to-CLA combinations.
+e. Sample the CTP source x CLA destination cross of `ctm_route_cg` for every route the matrix carried.
 
 *Checkers*:
 
@@ -6463,7 +6463,7 @@ e. Sample the source x destination coverage of the exercised CTP-to-CLA combinat
 |`ctm_rand_ctp_to_cla_nospur_chk` |No non-selected CLA destination toggles
 |===
 
-*Pass Criteria*: Every random CTP-to-CLA configuration routes correctly to its selected CLA destinations with no spurious activity and full route-combination coverage, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Every random CTP-to-CLA configuration routes correctly to its selected CLA destinations with no spurious activity, with zero scoreboard/reference-model errors; every seed closes the CTP source x CLA destination cross of `ctm_route_cg`.
 
 '''''
 

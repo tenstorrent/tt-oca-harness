@@ -280,6 +280,7 @@ class smu_base_test(uvm_test):
         "tb_chiplet_secondary",
         "tb_cool_reset_pin",
         "tb_secure_tm_req",
+        "tb_smc_sram_auto_init_restore",
         "tb_gpio0_drive_en",
         "tb_gpio0_drive_val",
         "tb_gpio_drive_en",

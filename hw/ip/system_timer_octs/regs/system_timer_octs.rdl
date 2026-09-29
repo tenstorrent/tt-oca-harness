@@ -5,8 +5,9 @@
 `define SYSTEM_TIMER_OCTS_RDL
 
 addrmap system_timer_octs {
+    name = "OCTS System Timer Address Map";
     desc = "Open Chiplet Time Synchronization (OCTS) System Timer Registers";
-
+    
     //////////////////////////
     // Register Definitions //
     //////////////////////////

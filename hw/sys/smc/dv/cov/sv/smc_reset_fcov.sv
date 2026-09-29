@@ -156,6 +156,15 @@ module smc_reset_fcov #(
       bins all_held = {4'b0000};
       bins all_released = {4'b1111};
       bins partial[] = {[4'b0001 : 4'b1110]};
+      // The vector is {powergood, cold_stable_ref, primary_ref, primary_smc}.
+      // powergood low holds the cold-stable reset and every primary derives
+      // from it, so no lower bit rises while powergood is low.
+      ignore_bins powergood_low = {[4'b0001 : 4'b0111]};
+      // The ref-domain primary derives from the ref-domain cold-stable reset.
+      ignore_bins primary_ref_before_cold = {4'b1010, 4'b1011};
+      // Both primaries synchronise one request; the ref-domain copy, on the
+      // slower clock, releases after the smc-domain copy.
+      ignore_bins primary_ref_before_smc = {4'b1110};
     }
   endgroup
 

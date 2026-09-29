@@ -51,10 +51,10 @@
 // ============================================================================
 
 // Memory access - word-indexed access to IMEM and DMEM
-#define OTBN_IMEM(word) READ_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, word)
-#define OTBN_DMEM(word) READ_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, word)
-#define OTBN_IMEM_WRITE(word, value) WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_IMEM_BASE_ADDR, word, value)
-#define OTBN_DMEM_WRITE(word, value) WRITE_MEM_WORD(OCH_SEP_TOP_OTBN_DMEM_BASE_ADDR, word, value)
+#define OTBN_IMEM(word) READ_MEM_WORD(SEP_TOP_OTBN_IMEM_BASE_ADDR, word)
+#define OTBN_DMEM(word) READ_MEM_WORD(SEP_TOP_OTBN_DMEM_BASE_ADDR, word)
+#define OTBN_IMEM_WRITE(word, value) WRITE_MEM_WORD(SEP_TOP_OTBN_IMEM_BASE_ADDR, word, value)
+#define OTBN_DMEM_WRITE(word, value) WRITE_MEM_WORD(SEP_TOP_OTBN_DMEM_BASE_ADDR, word, value)
 
 // OTBN DMEM offsets for P256 verification operation (extracted from ELF symbol table)
 #define DMEM_MODE_OFFSET OTBN_ADDR_T_INIT(p256_ecdsa, mode) // mode (operation mode selection)
@@ -110,7 +110,7 @@ static int otbn_wait_for_idle(void) {
     int print_counter = 0; // Debug: print every 100k iterations
 
     while (timeout-- > 0) {
-        uint32_t status = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+        uint32_t status = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
 
         // Debug: Print status periodically
         if (++print_counter >= 100000) {
@@ -157,7 +157,7 @@ static int otbn_dmem_zero_init(void) {
 
     // Reset the checksum register to 0 after DMEM initialization
     printf("  Resetting LOAD_CHECKSUM register to 0...\n");
-    WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0x00000000);
+    WRITE_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0x00000000);
 
     printf("OTBN DMEM zero initialization completed (%u words written)\n", dmem_size_words);
     return 0;
@@ -185,7 +185,7 @@ static int otbn_load_program(void) {
 
     // Verify the checksum if available
     if (OTBN_P256_ECDSA_EXPECTED_CRC != 0) {
-        uint32_t actual_crc = READ_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);
+        uint32_t actual_crc = READ_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR);
         printf("Expected CRC: 0x%08x\n", OTBN_P256_ECDSA_EXPECTED_CRC);
         printf("Actual CRC:   0x%08x\n", actual_crc);
 
@@ -426,16 +426,16 @@ static int execute_verification(void) {
     printf("Executing OTBN P256 ECDSA verification...\n");
 
     // Debug: Check status before sending command
-    uint32_t status_before = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+    uint32_t status_before = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
     printf("  [DEBUG] OTBN status before execute: 0x%02x\n", status_before);
     printf("  [DEBUG] Writing 0x%02x to OTBN_CMD_REG (addr=0x%08x)\n", OTBN_CMD_EXECUTE,
-           OCH_SEP_TOP_OTBN_CMD_BASE_ADDR);
+           SEP_TOP_OTBN_CMD_BASE_ADDR);
 
     // Send execute command
-    WRITE_REG(OCH_SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
+    WRITE_REG(SEP_TOP_OTBN_CMD_BASE_ADDR, OTBN_CMD_EXECUTE);
 
     // Debug: Check status after sending command
-    uint32_t status_after = READ_REG(OCH_SEP_TOP_OTBN_STATUS_BASE_ADDR);
+    uint32_t status_after = READ_REG(SEP_TOP_OTBN_STATUS_BASE_ADDR);
     printf("  [DEBUG] OTBN status after execute: 0x%02x\n", status_after);
 
     // Wait for completion
@@ -444,7 +444,7 @@ static int execute_verification(void) {
     }
 
     // Check for errors
-    uint32_t err_bits = READ_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
+    uint32_t err_bits = READ_REG(SEP_TOP_OTBN_ERR_BITS_BASE_ADDR);
     if (err_bits != 0) {
         printf("ERROR: OTBN execution failed with error bits: 0x%08x\n", err_bits);
         return -1;

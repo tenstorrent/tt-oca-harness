@@ -35,6 +35,7 @@ from sep_reg_meta import (
     INBOUND_FILTER_CTRL_0,
     LOCAL_MASTER_ALIAS_REMAP_CTRL_0,
     SEP_CPU_CTRL,
+    RegBlock,
     indexed_block_count,
     sym,
 )
@@ -67,7 +68,13 @@ AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
 REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
-# 64-bit; lo [31:20] offset (1MB-aligned), hi [23:0] offset
+# REGION_ATTRS.offset is sw=rw over its whole RDL width (output_remap.rdl), so
+# the CSR R/W stimulus drives every bit of it, the SEP 512 KB granule (bit 19
+# and up) included. AP and STEE are both instances of the output_remap type.
+_OUTPUT_REMAP = RegBlock("OUTPUT_REMAP")
+REMAP_OFFSET_MASK = _OUTPUT_REMAP.field_mask("REGION_REGION_ATTRS", "offset")
+REMAP_OFFSET_LO_MASK = REMAP_OFFSET_MASK & 0xFFFF_FFFF
+REMAP_OFFSET_HI_MASK = REMAP_OFFSET_MASK >> 32
 
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
@@ -136,7 +143,7 @@ class SepFabricCsrCfg:
     woset lock (the lock is permanent, so it must not be the R/W entry). It also
     generates masked-random field values so the data varies while still reading back
     exactly (START 4KB-aligned nonzero, START_hi addr[55:32], END 4KB-aligned, ATTRS remap
-    offset [31:12], AP/STEE offset [31:20]/[23:0], filter RW fields excluding the RO
+    offset [31:12], AP/STEE offset over its full RDL field, filter RW fields excluding the RO
     data_bus_width). The CSR R/W / woset / RO contract is identical for every index.
     Seed + resolved choices logged; regression mode can sweep this via TOML ``reseed = N``.
     """
@@ -164,10 +171,10 @@ class SepFabricCsrCfg:
         self.start_hi = rng.getrandbits(24)  # addr[55:32]
         self.end_lo = rng.getrandbits(32) & ALIAS_END_MASK  # 4KB-aligned
         self.attrs_lo = rng.getrandbits(32) & ALIAS_ATTRS_MASK  # remap offset [31:12]
-        self.ap_lo = rng.getrandbits(32) & 0xFFF0_0000  # offset [31:20]
-        self.ap_hi = rng.getrandbits(24)  # offset [55:32]
-        self.stee_lo = rng.getrandbits(32) & 0xFFF0_0000
-        self.stee_hi = rng.getrandbits(24)
+        self.ap_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
+        self.ap_hi = rng.getrandbits(32) & REMAP_OFFSET_HI_MASK
+        self.stee_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
+        self.stee_hi = rng.getrandbits(32) & REMAP_OFFSET_HI_MASK
         # Random legal FILTER_CONFIG RW fields (never the RO data_bus_width [14:12]).
         p = 0
         for b in (F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_ALLOW_BURST):

@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Pattern Verification Test Module
- *
- * Tests for pattern verification with different data patterns
+ * Writes and reads back six 64-bit data patterns over OCCP and compares each one.
  */
 
 #include "occp_test_common.h"

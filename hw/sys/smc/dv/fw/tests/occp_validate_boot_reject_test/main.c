@@ -18,13 +18,11 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
     int retval;
     uint32_t status_data = 0;
 
-    // Execute 10 random OCCP commands before the test command
     simputs("=== Random OCCP Commands (10 before rejection test) ===\n");
     execute_random_commands(ctx, 10);
 
     simputs("=== Validate and Boot Rejection Test ===\n");
 
-    // Attempt to send a VALIDATE_AND_BOOT command (should be rejected in non-secure mode)
     uint64_t random_addr = ctx->test_base_addr +
                            (get_random_int() % (ctx->test_upper_addr_bound - ctx->test_base_addr));
     simputshex64("Attempting VALIDATE_AND_BOOT to random address: ", random_addr);
@@ -37,7 +35,6 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
         return;
     }
 
-    // Check if the command was rejected
     retval = occp_send_get_status_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get status after command\n");
@@ -50,7 +47,6 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
     check_occp_status_data(ctx, status_data, exp_interface_status, exp_boot_status);
     increment_cmd_count(ctx);
 
-    // Execute 10 more random commands to ensure ROM is still responsive
     simputs("=== Random OCCP Commands (10 after rejection test) ===\n");
     execute_random_commands(ctx, 10);
 

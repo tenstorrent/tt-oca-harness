@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// System Management Controller Reset Unit Wrap Package
+// Declare types and helpers for the SMC reset unit.
 //
-//-----------------------------------------------------------------------------
+// Defines reset_ctrl_t, the per-subsystem cold and warm resets, hold qualifiers and
+// force-to-reference-clock select. Also declares a select_t enumeration of the reset-unit
+// and FLR register maps and a max() helper; the SMC RTL references neither.
 
 package smc_reset_unit_pkg;
 

@@ -425,16 +425,11 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
             addr_a, addr_b, hold, first.worst_resp().name(), second.worst_resp().name(),
             first.first_data(), second.first_data(), first.ax_stall_cycles, first.ax_stable,
             first.hold_stable), UVM_LOW)
-    // The crossbar's error subordinate, not a register block, answers an
-    // unmapped read: its data word says so.
+    // No subordinate decodes an unmapped address: AXI answers DECERR.
     check_evidence(ChkAxil, "read_decode.first.resp", 64'(first.worst_resp()),
                    64'(OCAH_AXI_RESP_DECERR));
-    check_evidence(ChkAxil, "read_decode.first.err_slv_data", first.first_data(),
-                   64'(XtrigDecerrData));
     check_evidence(ChkAxil, "read_decode.second.resp", 64'(second.worst_resp()),
                    64'(OCAH_AXI_RESP_DECERR));
-    check_evidence(ChkAxil, "read_decode.second.err_slv_data", second.first_data(),
-                   64'(XtrigDecerrData));
     check_evidence(ChkAxil, "read_decode.first.hold_stable", 64'(first.hold_stable), 64'd1);
     check_evidence(ChkArStall, "read_decode.second_ar_held", 64'(first.ax_stall_cycles > 0), 64'd1);
     check_evidence(ChkArStall, "read_decode.ar_stable", 64'(first.ax_stable), 64'd1);

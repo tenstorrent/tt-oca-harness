@@ -110,8 +110,14 @@ class smu_axi_id_width_conversion_test(smu_base_test):
             )
         # The first probe is VERSION_LO: the value can only be the RDL reset if the
         # read reached the SMC register and not the error slave.
-        first_value, _resp, _issued, _rid = await axi_read32_resp_ids_bounded(
+        first_value, first_resp, _issued, _rid = await axi_read32_resp_ids_bounded(
             master, SMC_CHIP_CONFIG_VERSION_LO, arid=arids[0], label="id_width_rd@version_lo"
+        )
+        sb.expect_eq(
+            "VERSION_LO through the SEP=1 crossbar to SYS_IN is answered OKAY",
+            first_resp,
+            RESP_OKAY,
+            evidence="AXI_ID_WIDTH_OK",
         )
         sb.expect_eq(
             "VERSION_LO through the SEP=1 crossbar to SYS_IN reads its RDL reset value",

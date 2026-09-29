@@ -94,6 +94,7 @@ to Test-Logic-Reset regardless of the TCK or TMS state.
 All registers reset to safe states. The JTAG TAP returns to Test-Logic-Reset
 on either TRST_n or power-on reset.
 
+[[dtp-ic-reset-overrides]]
 == IC_RESET Overrides
 
 The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset

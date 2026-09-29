@@ -5,8 +5,9 @@
 `define ZEROER_REG_RDL
 
 addrmap zeroer_ctrl {
-    desc = "AXI zeroer control register";
-
+    name = "Zeroer Control Address Map";
+    desc = "Control and status registers for the AXI memory-zeroing engine.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////

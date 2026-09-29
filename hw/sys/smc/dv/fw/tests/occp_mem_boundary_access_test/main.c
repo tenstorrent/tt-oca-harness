@@ -2,35 +2,25 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Memory Boundary Access Test with Scoreboarding
- *
- * This test focuses on memory boundary access testing by maintaining
- * scoreboards for the top and bottom 256 bytes of the accessible
- * memory space (0xc0066400 to 0xc0160000).
- *
- * The test:
- * - Maintains scoreboard arrays for the lowest and highest SCOREBOARD_SIZE bytes
- *   of the accessible range
- * - Performs random reads and writes with data verification
+ * Issues random OCCP READs and WRITEs in the lowest and highest SCOREBOARD_SIZE bytes of the
+ * test range and checks each READ against a scoreboard of earlier WRITEs.
  */
 
 #include "occp_test_common.h"
-#include <string.h> // For memcmp
+#include <string.h>
 
 #define SCOREBOARD_SIZE 256
 #define NUM_RANDOM_COMMANDS 5
 
-// Scoreboard structure
 typedef struct {
-    uint8_t lower_scoreboard[SCOREBOARD_SIZE]; // Lowest SCOREBOARD_SIZE bytes of the range
-    uint8_t upper_scoreboard[SCOREBOARD_SIZE]; // Highest SCOREBOARD_SIZE bytes of the range
+    uint8_t lower_scoreboard[SCOREBOARD_SIZE];
+    uint8_t upper_scoreboard[SCOREBOARD_SIZE];
 } boundary_scoreboard_t;
 
 static boundary_scoreboard_t scoreboard = {0};
 
 static void update_scoreboard(uint64_t addr, uint8_t *data, uint16_t len, uint64_t lower_base,
                               uint64_t upper_base) {
-    /* Apply payload bytes */
     for (int i = 0; i < len; i++) {
         uint64_t byte_addr = addr + (uint64_t)i;
         if (byte_addr >= lower_base && byte_addr < (lower_base + SCOREBOARD_SIZE)) {
@@ -59,7 +49,6 @@ static bool verify_scoreboard(test_context_t *ctx, uint64_t addr, uint8_t *data,
         }
 
         if (byte_addr >= lower_base && byte_addr < (lower_base + SCOREBOARD_SIZE)) {
-            // Lower boundary verification
             uint32_t offset = byte_addr - lower_base;
             if (scoreboard.lower_scoreboard[offset] != data[i]) {
                 simputshex32("Data mismatch at lower offset 0x", offset);
@@ -68,7 +57,6 @@ static bool verify_scoreboard(test_context_t *ctx, uint64_t addr, uint8_t *data,
                 return false;
             }
         } else if (byte_addr >= upper_base && byte_addr < (upper_base + SCOREBOARD_SIZE)) {
-            // Upper boundary verification
             uint32_t offset = byte_addr - upper_base;
             if (scoreboard.upper_scoreboard[offset] != data[i]) {
                 simputshex32("Data mismatch at upper offset 0x", offset);
@@ -92,11 +80,9 @@ static void execute_random_boundary_commands(test_context_t *ctx, int num_comman
     simputshex32(" to 0x", (uint32_t)(upper_base + SCOREBOARD_SIZE - 1));
 
     for (int i = 0; i < num_commands; i++) {
-        // 50% chance to target lower boundary, 50% for upper boundary
         bool target_lower = (get_random_int() % 2) == 0;
         uint64_t base_addr = target_lower ? lower_base : upper_base;
 
-        // Generate random offset within scoreboard range
         uint32_t offset = get_random_int() % SCOREBOARD_SIZE;
         uint64_t target_addr = (base_addr + offset) & 0xfffffffc;
 
@@ -104,10 +90,8 @@ static void execute_random_boundary_commands(test_context_t *ctx, int num_comman
 
         if (is_read) {
             uint16_t len = get_random_int() % (MAX_OCCP_READ_SIZE - 1) + 1;
-            // ensure the read/write does not go out of the scoreboard range
             len = (len % (SCOREBOARD_SIZE - offset)) + 1;
 
-            // Perform read and verify against scoreboard
             uint8_t recv_data[MAX_OCCP_READ_SIZE];
 
             simputshex32("READ ", len);
@@ -128,13 +112,10 @@ static void execute_random_boundary_commands(test_context_t *ctx, int num_comman
             }
         } else {
             uint16_t len = get_random_int() % (MAX_OCCP_WRITE_SIZE - 1) + 1;
-            // ensure the read/write does not go out of the scoreboard range
             len = (len % (SCOREBOARD_SIZE - offset)) + 1;
 
-            // Perform write and update scoreboard
             uint8_t write_data[MAX_OCCP_WRITE_SIZE];
 
-            // Generate random data
             for (int j = 0; j < len; j++) {
                 write_data[j] = get_random_int() & 0xFF;
             }
@@ -146,7 +127,6 @@ static void execute_random_boundary_commands(test_context_t *ctx, int num_comman
             int retval =
                 occp_send_write_command(ctx, ctx->slave_addr, target_addr, write_data, len);
             if (retval == OCCP_SUCCESS) {
-                // Update scoreboard with written data
                 update_scoreboard(target_addr, write_data, len, lower_base, upper_base);
                 simputs("WRITE: PASS (scoreboard updated)\n");
             } else {
@@ -164,7 +144,6 @@ static void run_test_suite(test_context_t *ctx) {
 
     ctx->overall_result = true;
 
-    // Execute random boundary access commands with scoreboarding
     execute_random_boundary_commands(ctx, NUM_RANDOM_COMMANDS);
 }
 
@@ -192,19 +171,15 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context with specified memory boundaries
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR; // Lower boundary
-    test_ctx.test_upper_addr_bound =
-        OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // Upper boundary (not inclusive)
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
+    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
     test_ctx.sram_scoreboard_idx = 0;
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test suite
     run_test_suite(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done\n");

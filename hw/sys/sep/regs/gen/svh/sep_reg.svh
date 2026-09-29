@@ -9,24 +9,24 @@
  * ... from this input file:
  *       sep.rdl
  * ... using this as the target address space:
- *       och_sep_top
+ *       sep_top
  *
  * This file should not be modified by hand.
  *
  ******************************************************************************/
 
-`ifndef OCH_SEP_TOP_REG_SVH
-`define OCH_SEP_TOP_REG_SVH
+`ifndef SEP_TOP_REG_SVH
+`define SEP_TOP_REG_SVH
 
 
 
 //==============================================================================
-// Addresses for Address Map: och_sep_top
+// Addresses for Address Map: sep_top
 //==============================================================================
 
 
-localparam int unsigned OCH_SEP_TOP_REG_MAP_BASE_ADDR                                                             = 32'h10000000;
-localparam int unsigned OCH_SEP_TOP_REG_MAP_SIZE                                                                  = 32'hB0085400;
+localparam int unsigned SEP_TOP_REG_MAP_BASE_ADDR                                                                 = 32'h10000000;
+localparam int unsigned SEP_TOP_REG_MAP_SIZE                                                                      = 32'hB0085400;
 
 
 
@@ -6802,7 +6802,7 @@ localparam longint unsigned EL2_PIC_MEIGWCLR_REG_DEFAULT                        
 
 
 //==============================================================================
-// Bit Fields for Address Map: och_sep_top
+// Bit Fields for Address Map: sep_top
 //==============================================================================
 
 localparam longint unsigned SEP_SRAM_MEM_WORD_DATA_MASK                                                           = 64'hFFFFFFFFFFFFFFFF;

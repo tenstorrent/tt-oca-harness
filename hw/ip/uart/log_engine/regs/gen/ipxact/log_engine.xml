@@ -12,7 +12,8 @@
       <ipxact:name>log_engine_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>log_engine</ipxact:name>
-        <ipxact:description>Log Engine</ipxact:description>
+        <ipxact:displayName>Log Engine Address Map</ipxact:displayName>
+        <ipxact:description>Configuration and status registers for the UART log engine, including the log region and write pointers.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h80</ipxact:range>
         <ipxact:width>64</ipxact:width>

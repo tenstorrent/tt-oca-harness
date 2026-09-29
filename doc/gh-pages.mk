@@ -16,7 +16,7 @@ OCAH_DOC_SITE_URL ?=
 
 ## Build the combined multi-book site (Home + every book, one Antora run).
 .PHONY: ocah-doc-combined-html
-ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup
+ocah-doc-combined-html: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup ocah-doc-rtl-modules
 	@command -v $(OCAH_ANTORA) >/dev/null 2>&1 || { \
 		echo "error: node/npx is required to build the Antora site."; \
 		echo "install Node.js, or run: ./scripts/docker-run.sh doc-html all"; \

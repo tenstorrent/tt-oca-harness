@@ -1,133 +1,176 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-----------------------------------------------------------------------------
-// Efuse Interface Controller
+// Control eFuse MAP/CTRL/MMR windows, shadow sense, and the fuse-command path to the SHIM.
 //
-//-----------------------------------------------------------------------------
+// Arbitrate the functional and JTAG AXI-Lite ports onto one path. Addresses from the MAP
+// base to the MMR end (the CTRL end without HAS_LC_STATE) are bridged to APB and decoded
+// into the MAP, CTRL and MMR windows, with SLVERR for any other address in that span; all
+// other addresses go to the SHIM bank control port. The windows must therefore be ordered
+// MAP, CTRL, MMR.
+//
+// SEP_SEC_DISABLE_TOKEN is embedded in RTL. HAS_LC_STATE, CLASS1_SHADOW_RANGES,
+// SECRET_SHADOW_RANGES, and LC_STATE_BIT_POSITION configure lifecycle and secret masking.
+//
+// Sequence sense/program/read through fuse_command_req/resp, with sensing first, then program, then
+// read; apply field locks and token processing, and export shadow_regs_o. ext_boot_seq_done_i gates
+// boot until memory repair / shadow override completes.
+//
+// Raise locked_field_access_interrupt_o and token_match_fault_o. Debug outputs expose
+// lock, timeout, and token-match state.
 
 module efuse_interface_controller #(
-  // Xbar interface configuration parameters
-  parameter int unsigned ADDR_WIDTH = 32,
-  parameter int unsigned DATA_WIDTH = 32,
+  parameter int unsigned ADDR_WIDTH = 32,  // AXI4-Lite address width at the AXI-Lite to APB bridge.
+  parameter int unsigned DATA_WIDTH = 32,  // AXI4-Lite data width at the AXI-Lite to APB bridge.
 
-  // Xbar interface types
-  parameter type addr_t = logic,
-  parameter type data_t = logic,
-  parameter type strb_t = logic,
+  parameter type addr_t = logic,        // Address type.
+  parameter type data_t = logic,        // Data type.
+  parameter type strb_t = logic,        // Write-strobe type; declared but not used in this module.
 
-  parameter type efuse_axil_req_t = logic,
-  parameter type efuse_axil_resp_t = logic,
+  parameter type efuse_axil_req_t = logic,  // eFuse AXI-Lite request type.
+  parameter type efuse_axil_resp_t = logic,  // eFuse AXI-Lite response type.
 
-  parameter type efuse_axil_aw_chan_t = logic,
-  parameter type efuse_axil_w_chan_t = logic,
-  parameter type efuse_axil_b_chan_t = logic,
-  parameter type efuse_axil_ar_chan_t = logic,
-  parameter type efuse_axil_r_chan_t = logic,
-  parameter type efuse_apb_req_t = logic,
-  parameter type efuse_apb_resp_t = logic,
+  parameter type efuse_axil_aw_chan_t = logic,  // eFuse AXI-Lite AW channel type.
+  parameter type efuse_axil_w_chan_t = logic,  // eFuse AXI-Lite W channel type.
+  parameter type efuse_axil_b_chan_t = logic,  // eFuse AXI-Lite B channel type.
+  parameter type efuse_axil_ar_chan_t = logic,  // eFuse AXI-Lite AR channel type.
+  parameter type efuse_axil_r_chan_t = logic,  // eFuse AXI-Lite R channel type.
+  parameter type efuse_apb_req_t = logic,  // eFuse APB request type.
+  parameter type efuse_apb_resp_t = logic,  // eFuse APB response type.
 
-  // Efuse SHIM interface types - support bit addressing
-  parameter type efuse_addr_t = logic,
-  parameter type efuse_data_t = logic,
-  parameter type efuse_word_counter_t = logic,
-  parameter type fuse_command_req_t = logic,
-  parameter type fuse_command_resp_t = logic,
+  parameter type efuse_addr_t = logic,  // Fuse bit-address type.
+  parameter type efuse_data_t = logic,  // Fuse data-word type.
+  parameter type efuse_word_counter_t = logic,  // Fuse access-length counter type.
+  parameter type fuse_command_req_t = logic,  // Fuse-command request type.
+  parameter type fuse_command_resp_t = logic,  // Fuse-command response type.
 
-  // Secure Disable Token - Embedded in RTL
-  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,
+  parameter bit [255:0] SEP_SEC_DISABLE_TOKEN = 256'b0,  // Expected SHA-256 digest of the
+                                                         // security-disable token, used by token
+                                                         // processing when HAS_LC_STATE is set.
 
-  // Fuse Map interface configuration parameters
-  parameter bit [31:0] EFUSE_MAP_REG_MAP_BASE_ADDR = 32'h0,
-  parameter bit [31:0] EFUSE_MAP_REG_MAP_SIZE = 32'h1000,
-  localparam bit [31:0] EFUSE_MAP_REG_MAP_END_ADDR = EFUSE_MAP_REG_MAP_BASE_ADDR + EFUSE_MAP_REG_MAP_SIZE - 32'd1,
-  localparam bit [31:0] EFUSE_MAP_REG_MAP_WIDTH = $clog2(EFUSE_MAP_REG_MAP_SIZE),
+  parameter bit [31:0] EFUSE_MAP_REG_MAP_BASE_ADDR = 32'h0,  // Base address of the MAP window
+                                                             // holding the shadow registers.
+  parameter bit [31:0] EFUSE_MAP_REG_MAP_SIZE = 32'h1000,  // Size of the MAP window in bytes.
+  localparam bit [31:0] EFUSE_MAP_REG_MAP_END_ADDR = EFUSE_MAP_REG_MAP_BASE_ADDR + EFUSE_MAP_REG_MAP_SIZE - 32'd1,  // Last byte address of the MAP window.
+  localparam bit [31:0] EFUSE_MAP_REG_MAP_WIDTH = $clog2(EFUSE_MAP_REG_MAP_SIZE),  // Offset address width of the MAP window.
 
-  // MMR interface configuration parameters
-  parameter bit [31:0] EFUSE_MMR_REG_MAP_BASE_ADDR = 32'h1000,
-  parameter bit [31:0] EFUSE_MMR_REG_MAP_SIZE = 32'h1000,
-  localparam bit [31:0] EFUSE_MMR_REG_MAP_END_ADDR = EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32'd1,
-  localparam bit [31:0] EFUSE_MMR_REG_MAP_WIDTH = $clog2(EFUSE_MMR_REG_MAP_SIZE),
+  parameter bit [31:0] EFUSE_CTRL_REG_MAP_BASE_ADDR = 32'h1000,  // Base address of the CTRL window
+                                                                 // holding the interface control
+                                                                 // registers.
+  parameter bit [31:0] EFUSE_CTRL_REG_MAP_SIZE = 32'h1000,  // Size of the CTRL window in bytes.
+  localparam bit [31:0] EFUSE_CTRL_REG_MAP_END_ADDR = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,  // Last byte address of the CTRL window.
 
-  // Efuse Control Register interface configuration parameters
-  parameter bit [31:0] EFUSE_CTRL_REG_MAP_BASE_ADDR = 32'h2000,
-  parameter bit [31:0] EFUSE_CTRL_REG_MAP_SIZE = 32'h1000,
-  localparam bit [31:0] EFUSE_CTRL_REG_MAP_END_ADDR = EFUSE_CTRL_REG_MAP_BASE_ADDR + EFUSE_CTRL_REG_MAP_SIZE - 32'd1,
-  localparam bit [31:0] EFUSE_CTRL_REG_MAP_WIDTH = $clog2(EFUSE_CTRL_REG_MAP_SIZE),
+  parameter bit [31:0] EFUSE_MMR_REG_MAP_BASE_ADDR = 32'h2000,  // Base address of the MMR window
+                                                                // holding the token registers;
+                                                                // decoded only when HAS_LC_STATE is
+                                                                // set.
+  parameter bit [31:0] EFUSE_MMR_REG_MAP_SIZE = 32'h1000,  // Size of the MMR window in bytes.
+  localparam bit [31:0] EFUSE_MMR_REG_MAP_END_ADDR = EFUSE_MMR_REG_MAP_BASE_ADDR + EFUSE_MMR_REG_MAP_SIZE - 32'd1,  // Last byte address of the MMR window.
 
-  // Efuse Bank configuration parameters
-  parameter int unsigned SHADOW_REG_BITS = 8192,
-  localparam int unsigned SHADOW_REG_BYTES = SHADOW_REG_BITS / 8,
-  parameter int unsigned EFUSE_MACRO_WORD_WIDTH = 32,
+  parameter int unsigned SHADOW_REG_BITS = 8192,  // Shadow register file size in bits; program and
+                                                  // read CSR bit addresses at or above it are
+                                                  // rejected as out of bounds.
+  localparam int unsigned SHADOW_REG_BYTES = SHADOW_REG_BITS / 8,  // Shadow register file size in
+                                                                   // bytes.
+  parameter int unsigned EFUSE_MACRO_WORD_WIDTH = 32,  // Macro word width in bits.
 
-  parameter int unsigned EFUSE_FIELDS = 16,
+  parameter int unsigned EFUSE_FIELDS = 16,  // eFuse field-map entry count.
 
-  // SEP has LC state, SMC does not
-  parameter bit HAS_LC_STATE = 1'b1,
-  parameter efuse_pkg::shadow_word_range_map_t CLASS1_SHADOW_RANGES = '0,
-  parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,
-  parameter int unsigned LC_STATE_WIDTH = 4,
-  parameter int unsigned LC_STATE_BIT_POSITION = 0,
+  parameter bit HAS_LC_STATE = 1'b1,    // Set for SEP: adds the MMR window with token processing,
+                                        // the lifecycle state and the RMA token gates; clear for
+                                        // SMC, where MMR accesses return an error.
+  parameter efuse_pkg::shadow_word_range_map_t CLASS1_SHADOW_RANGES = '0,  // Class-1 shadow word ranges, kept in
+                                                                           // separately named storage for scan
+                                                                           // exclusion.
+  parameter efuse_pkg::shadow_word_range_map_t SECRET_SHADOW_RANGES = '0,  // Secret shadow ranges masked under secure_tm.
+  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width.
+  parameter int unsigned LC_STATE_BIT_POSITION = 0,  // Bit address of the lifecycle-state field.
 
-  parameter type efuse_map_t = logic
+  parameter type efuse_map_t = logic    // Shadow eFuse map type.
 ) (
-  input  logic                     clk_i,
-  input  logic                     rst_ni,
+  input  logic                     clk_i,  // System clock.
+  input  logic                     rst_ni,  // Active-low asynchronous reset.
 
-  // AXI4-Lite Register Interface
 
-  input  efuse_axil_req_t       axil_req_i,
-  output efuse_axil_resp_t      axil_resp_o,
+  input  efuse_axil_req_t       axil_req_i,  // AXI4-Lite functional-access request.
+  output efuse_axil_resp_t      axil_resp_o,  // AXI4-Lite functional-access response.
 
-  input  efuse_axil_req_t       axil_jtag_req_i,
-  output efuse_axil_resp_t      axil_jtag_resp_o,
+  input  efuse_axil_req_t       axil_jtag_req_i,  // AXI4-Lite debug-access request from JTAG.
+  output efuse_axil_resp_t      axil_jtag_resp_o,  // AXI4-Lite debug-access response to JTAG.
 
-  // SHIM CSR Interface AXI4-Lite
-  output efuse_axil_req_t       fuse_bank_ctrl_req_o,
-  input  efuse_axil_resp_t      fuse_bank_ctrl_resp_i,
+  output efuse_axil_req_t       fuse_bank_ctrl_req_o,  // AXI4-Lite request to the eFuse bank
+                                                       // control registers in the SHIM.
+  input  efuse_axil_resp_t      fuse_bank_ctrl_resp_i,  // AXI4-Lite response from the eFuse bank
+                                                        // control registers.
 
-  // Fuse Command Interface - custom interface for SHIM state machine
-  output fuse_command_req_t                     fuse_command_req_o,  // {address, program data, access_length_words, command, valid}
-  input  fuse_command_resp_t                    fuse_command_resp_i, // {read data, command status, valid}
+  output fuse_command_req_t                     fuse_command_req_o,  // Fuse command request to the SHIM after the guard: {address,
+                                                                     // program data, access_length_words, command, valid}.
+  input  fuse_command_resp_t                    fuse_command_resp_i,  // Fuse command response from the SHIM: {read data, command
+                                                                      // status, valid}.
 
-  // Additional control signals
-  input  logic                                  secure_tm_i,
-  input  logic                                  test_en_i,
-  input  logic                                  scan_rst_ni,
-  input  logic                                  security_disable_i,
-  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,
+  input  logic                                  secure_tm_i,  // Secure test mode enable,
+                                                              // active-high; blocks fuse commands
+                                                              // and zeroes the secret shadow words
+                                                              // on shadow_regs_o.
+  input  logic                                  test_en_i,  // DFT test enable.
+  input  logic                                  scan_rst_ni,  // DFT scan reset, active-low.
+  input  logic                                  security_disable_i,  // Security disable override, active-high; skips fuse
+                                                                     // sensing and opens APB access to the shadow registers.
+  input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Per-field access-control rules.
 
-  // outputs
-  output logic                                  reset_n_o,
-  output logic                                  fuse_sense_done_o,
-  output logic                                  security_disable_o,
-  output efuse_map_t                            shadow_regs_o,
+  output logic                                  reset_n_o,  // Active-low reset, released through a
+                                                            // synchronizer once fuse sensing and
+                                                            // the external boot sequence are done;
+                                                            // also resets the program and read
+                                                            // interfaces.
+  output logic                                  fuse_sense_done_o,  // High once shadow-register loading from the fuses completes.
+  output logic                                  security_disable_o,  // Security disable status from token processing;
+                                                                     // low when HAS_LC_STATE is clear.
+  output efuse_map_t                            shadow_regs_o,  // Shadow register contents; before
+                                                                // fuse sensing completes they read
+                                                                // as zero, with an invalid
+                                                                // lifecycle state when HAS_LC_STATE
+                                                                // is set, unless security_disable_o
+                                                                // (with HAS_LC_STATE) or
+                                                                // security_disable_i (without it)
+                                                                // is set.
 
-  // External boot-sequence gate (memory repair / shadow reg override done)
-  input  logic                                  ext_boot_seq_done_i,
+  input  logic                                  ext_boot_seq_done_i,  // External boot sequence complete, such as memory
+                                                                      // repair and shadow override; gates the
+                                                                      // release of reset_n_o.
 
-  // Debug signals
-  output logic                                  is_write_locked_shadow_regs_o,
-  output logic                                  is_read_locked_shadow_regs_o,
-  output logic                                  is_program_locked_o,
-  output logic                                  is_read_locked_o,
-  output logic                                  is_write_setup_only_o,
-  output logic                                  is_lc_state_access_o,
-  output logic                                  is_read_timeout_debug_o,
-  output logic                                  is_program_timeout_debug_o,
-  output logic                                  is_efuse_req_err_o,
-  output logic                                  is_secure_tm_blocked_o,
+  output logic                                  is_write_locked_shadow_regs_o,  // High during an APB write to the MAP window that a
+                                                                                // field lock blocks.
+  output logic                                  is_read_locked_shadow_regs_o,  // High when the MAP window APB address falls in a
+                                                                               // read-locked field.
+  output logic                                  is_program_locked_o,  // High when the program interface's target bit address is
+                                                                      // write locked or is an RMA token bit without a token match.
+  output logic                                  is_read_locked_o,  // High when the read interface's
+                                                                   // target bit address falls in a
+                                                                   // read-locked field.
+  output logic                                  is_write_setup_only_o,  // High when the MAP window APB address falls in a set-only
+                                                                        // field: bits may be set, not cleared.
+  output logic                                  is_lc_state_access_o,  // High when the MAP window APB address falls in the
+                                                                       // lifecycle-state field.
+  output logic                                  is_read_timeout_debug_o,  // One-cycle pulse when a read command times out waiting on
+                                                                          // the SHIM or bank.
+  output logic                                  is_program_timeout_debug_o,  // One-cycle pulse when a program command times out waiting
+                                                                             // on the SHIM or bank.
+  output logic                                  is_efuse_req_err_o,  // Sticky guard error set when a lock blocks a program or read;
+                                                                     // cleared through the CSR efuse_req_error_clear bit.
+  output logic                                  is_secure_tm_blocked_o,  // High when fuse traffic is blocked by active secure test mode.
 
-  output logic [5:0]                            is_rma_sip_token_match_debug,
-  output logic [5:0]                            is_rma_chiplet_token_match_debug,
+  output logic [5:0]                            is_rma_sip_token_match_debug_o,  // RMA SiP token match status code; 6'b010101 indicates a match
+                                                                                 // and is tied there when HAS_LC_STATE is clear.
+  output logic [5:0]                            is_rma_chiplet_token_match_debug_o,  // RMA chiplet token match status code; 6'b010101
+                                                                                     // indicates a match and is tied there when
+                                                                                     // HAS_LC_STATE is clear.
 
-  output logic [7:0][31:0]                      sec_disable_token_o,
+  output logic                                  locked_field_access_interrupt_o,  // High during an APB access to the MAP
+                                                                                  // window that a field lock blocks.
 
-  // Locked Field Access Interrupt
-  output logic                                  locked_field_access_interrupt_o,
-
-  // Token Comparator Redundancy Fault Interrupt
-  output logic                                  token_match_fault_o
+  output logic                                  token_match_fault_o  // Token comparator redundancy fault, sticky until
+                                                                     // reset; tied low when HAS_LC_STATE is clear.
 );
 
   localparam fuse_command_resp_t FUSE_COMMAND_RESP_DEFAULT = '0;
@@ -412,7 +455,6 @@ module efuse_interface_controller #(
 
       efuse_token_processing #(
         .SEP_SEC_DISABLE_TOKEN (SEP_SEC_DISABLE_TOKEN),
-        .LC_STATE_WIDTH        (LC_STATE_WIDTH),
         .TOKEN_MATCH_CODE      (TOKEN_MATCH_CODE),
         .efuse_apb_req_t       (efuse_apb_req_t),
         .efuse_apb_resp_t      (efuse_apb_resp_t),
@@ -427,7 +469,7 @@ module efuse_interface_controller #(
         .apb_resp_o                 (apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP]),
         .rma_sip_token_match_q_o    (rma_sip_token_match),
         .rma_chiplet_token_match_q_o(rma_chiplet_token_match),
-        .sec_disable_token_o        (sec_disable_token_o),
+        .sec_disable_token_o        (),
 
         .security_disable_o         (security_disable_o),
 
@@ -445,7 +487,6 @@ module efuse_interface_controller #(
 
       assign rma_sip_token_match = 6'b010101;
       assign rma_chiplet_token_match = 6'b010101;
-      assign sec_disable_token_o = '0;
       assign security_disable_o = '0;
       assign token_match_fault_o = '0;
 
@@ -453,8 +494,8 @@ module efuse_interface_controller #(
     end
   endgenerate
 
-  assign is_rma_sip_token_match_debug = rma_sip_token_match;
-  assign is_rma_chiplet_token_match_debug = rma_chiplet_token_match;
+  assign is_rma_sip_token_match_debug_o = rma_sip_token_match;
+  assign is_rma_chiplet_token_match_debug_o = rma_chiplet_token_match;
 
   ///////////////////////////////////////////////
   // Efuse Interface CSR
@@ -686,7 +727,6 @@ module efuse_interface_controller #(
     .HAS_LC_STATE        (HAS_LC_STATE),
     .CLASS1_SHADOW_RANGES(CLASS1_SHADOW_RANGES),
     .SECRET_SHADOW_RANGES(SECRET_SHADOW_RANGES),
-    .LC_STATE_WIDTH      (LC_STATE_WIDTH),
 
     .TOKEN_MATCH_CODE    (TOKEN_MATCH_CODE),
 
@@ -733,8 +773,8 @@ module efuse_interface_controller #(
     .rma_sip_token_match_i     (rma_sip_token_match),
 
     // Fuse Command Request/Response to populate shadow registers during fuse sensing
-    .fuse_command_req     (fuse_command_req_shadow_regs),
-    .fuse_command_resp    (fuse_command_resp_shadow_regs),
+    .fuse_command_req_o   (fuse_command_req_shadow_regs),
+    .fuse_command_resp_i  (fuse_command_resp_shadow_regs),
 
     // Debug ports
     .is_write_locked_o        (is_write_locked_shadow_regs_o),

@@ -214,6 +214,17 @@ class OcahVendorDefineAliases(unittest.TestCase):
             ["+define+VERILATOR", "-Wno-fatal", "+define+TARGET_VERILATOR"],
         )
 
+    def test_emulation_gains_pulp_assert_override(self):
+        self.assertEqual(
+            expand_ocah_vendor_define_aliases(["+define+EMULATION", "+define+SYNTHESIS"]),
+            [
+                "+define+EMULATION",
+                "+define+SYNTHESIS",
+                "+define+TARGET_SYNTHESIS",
+                "+define+ASSERTS_OVERRIDE_ON",
+            ],
+        )
+
     def test_unrelated_defines_are_unchanged(self):
         self.assertEqual(expand_ocah_vendor_define_aliases(["A=1", "B"]), ["A=1", "B"])
 

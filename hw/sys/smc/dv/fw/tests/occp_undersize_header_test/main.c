@@ -28,7 +28,6 @@ int main(void) {
 
     execute_random_commands(&ctx, 5);
 
-    // re-latch to recover
     uint32_t status_data = 0;
     int retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -36,13 +35,12 @@ int main(void) {
         ctx.overall_result = false;
     }
     increment_cmd_count(&ctx);
-    /* Enable undersize header injection */
     ctx.inject_undersize_header_err = true;
     execute_random_commands(&ctx, 4);
 
-    // disable and recover
     ctx.inject_undersize_header_err = false;
 
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     retval = occp_send_get_version_command(&ctx, ctx.slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");

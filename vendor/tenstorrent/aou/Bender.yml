@@ -4,6 +4,7 @@
 # OCAH. Source order mirrors upstream/RTL/filelist.f (and the nested
 # AXI4MUX_3X1/ and LIB/ filelist.f's it -f includes). Do not edit upstream/
 # files directly; use patches/ if this package needs a local delta.
+# patches/0009 documents AOU_TOP. Drop it once that text is upstream.
 
 package:
   name: aou

@@ -75,6 +75,59 @@ addrmap top {
             self.assertEqual(len(anchors), len(set(anchors)))
             self.assertEqual(anchors, links)
 
+    def test_addrmap_name_renders_as_heading_with_desc_below(self):
+        with TemporaryDirectory() as temp:
+            source = Path(temp) / "named.rdl"
+            source.write_text("""
+addrmap plic {
+    name = "PLIC Address Map";
+    desc = "Platform-Level Interrupt Controller register interface.";
+    reg { field { sw = rw; hw = r; } value[31:0]; } control @0x0;
+};
+""")
+            root = compile_root(str(source), None, [])
+            adoc = Path(temp) / "named.adoc"
+            html = Path(temp) / "named.html"
+            write_adoc(root, str(adoc))
+            write_html(root, str(html))
+
+            # The authored name is the visible heading; the identifier stays in
+            # the anchor and the <h2> id that the catalog tooling keys off.
+            self.assertIn(
+                "[#regmap-{regmap-instance}-plic]\n== PLIC Address Map\n", adoc.read_text()
+            )
+            self.assertIn('<h2 id="regmap-plic">PLIC Address Map</h2>', html.read_text())
+            self.assertNotIn("Address Map: plic", adoc.read_text())
+            self.assertNotIn("Address Map: plic", html.read_text())
+            # The description is added below the heading.
+            self.assertIn(
+                "Platform-Level Interrupt Controller register interface.",
+                adoc.read_text(),
+            )
+            self.assertIn(
+                "<p>Platform-Level Interrupt Controller register interface.</p>",
+                html.read_text(),
+            )
+
+    def test_addrmap_without_name_falls_back_to_the_identifier_heading(self):
+        with TemporaryDirectory() as temp:
+            source = Path(temp) / "bare.rdl"
+            source.write_text("""
+addrmap bare { reg { field { sw = rw; hw = r; } value[31:0]; } control @0x0; };
+""")
+            root = compile_root(str(source), None, [])
+            adoc = Path(temp) / "bare.adoc"
+            html = Path(temp) / "bare.html"
+            write_adoc(root, str(adoc))
+            write_html(root, str(html))
+            # No authored name: the heading falls back to "Address Map: <ident>",
+            # and with no desc it runs straight into the register list.
+            self.assertIn("== Address Map: bare\n", adoc.read_text())
+            self.assertIn(
+                '<h2 id="regmap-bare">Address Map: bare</h2>\n<p><strong>Register List:</strong></p>',
+                html.read_text(),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

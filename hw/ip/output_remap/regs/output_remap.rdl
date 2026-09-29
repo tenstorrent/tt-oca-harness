@@ -5,8 +5,9 @@
 `define OUTPUT_REMAP_REG_RDL
 
 addrmap output_remap {
-    desc = "TLB Registers for address remapping and attribute tagging";
-
+    name = "Output Remap Address Map";
+    desc = "Address-translation registers that remap outbound transactions and tag their attributes.";
+    
     ////////////////////////////////////////////////////////////////////////////
     // Register Definitions
     ////////////////////////////////////////////////////////////////////////////
