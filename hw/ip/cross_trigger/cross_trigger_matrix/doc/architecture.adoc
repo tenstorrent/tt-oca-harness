@@ -13,7 +13,14 @@ registered destination.
 
 [[ctm-routing-structure-figure]]
 .CTM routing structure
-image::ctm_module_diagram.png[Cross Trigger Matrix Module Diagram,scaledwidth=90.0%]
+image::ctm-routing-structure.svg["Cross Trigger Matrix: the ct_dst_i bus and a CT_DST_SELECT field from u_reg feed the AND gates of each u_src_selector, whose OR-reduced result is registered as ct_src_o",width=720,pdfwidth=70%]
+
+The figure draws two of the 26 selectors, for `ct_src_o[0]` and `ct_src_o[25]`,
+and in each the AND gates for inputs 0, 1 and 25; the dots stand for the rest.
+The thick lines are buses whose taps carry the bit index: the `ct_dst_i` bus
+fans out to every selector, and each selector reads its own
+`CT_SRC[j].CONFIG_0.CT_DST_SELECT` field from `u_reg`, the matrix CSR block
+reached over AXI-Lite.
 
 The CTM is programmed at runtime via firmware or debug transactions. Proper
 configuration of the CTMs in each chiplet will minimize trigger latency and
