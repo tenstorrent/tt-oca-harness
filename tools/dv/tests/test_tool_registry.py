@@ -201,6 +201,38 @@ class SelectedToolAvailabilityTest(RegistryFixture):
         self.assertIn(f"`{tool}` needs a commercial license", message)
         self.assertIn("(licensed)", message)
 
+    def test_flist_only_skips_binary_check(self) -> None:
+        # The flist stage only invokes bender, never the simulator binary. A caller
+        # asking for --stage flist must not be rejected because the simulator is absent
+        # (the update-integration-filelists workflow runs without a simulator installed).
+        tool = "verilator"
+        flow = formal_flow([tool], tool)
+        with mock.patch("shutil.which", side_effect=which_from({})):
+            # Must not raise even though verilator is absent.
+            cli.validate_selected_tool_available(
+                tool, self.merged, Namespace(dry_run=False, stage=["flist"]), flow
+            )
+
+    def test_flist_alias_skips_binary_check(self) -> None:
+        tool = "verilator"
+        flow = formal_flow([tool], tool)
+        with mock.patch("shutil.which", side_effect=which_from({})):
+            cli.validate_selected_tool_available(
+                tool, self.merged, Namespace(dry_run=False, stage=["filelist"]), flow
+            )
+
+    def test_mixed_stages_still_check_binary(self) -> None:
+        # If any non-flist stage is requested alongside flist, the binary check runs.
+        tool = "sby"
+        flow = formal_flow([tool], tool)
+        with (
+            mock.patch("shutil.which", side_effect=which_from({})),
+            self.assertRaises(ConfigError),
+        ):
+            cli.validate_selected_tool_available(
+                tool, self.merged, Namespace(dry_run=False, stage=["flist", "formal"]), flow
+            )
+
 
 class ListFlowsMarkingTest(RegistryFixture):
     def list_row(self, flow: Dut, simulators: dict) -> str:

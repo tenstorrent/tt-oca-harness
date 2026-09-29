@@ -77,7 +77,11 @@ addrmap filter_ctrl {
             sw = rw;
             onwrite=woset;
             hw = r;
-            desc = "Lock filter configurations. Write once register";
+            desc = "Lock filter configurations. Write once register.
+                    Once set, this bit cannot be cleared, and every subsequent write to this
+                    filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+                    to the AXI error subordinate and terminates with a DECERR response; reads
+                    still return the locked configuration.";
         } locked[63:63] = 0x0;
     };
 
