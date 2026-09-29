@@ -1,3 +1,5 @@
+<!--SPDX-License-Identifier: CC-BY-4.0-->
+<!--SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.-->
 # OCAH Package Dependencies
 
 This directory contains dependencies of OCAH that are built from source, or

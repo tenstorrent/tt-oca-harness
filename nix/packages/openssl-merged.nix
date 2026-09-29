@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   symlinkJoin,
   # nixpkgs openssl3 already carries the correct build patches; take it as-is.

@@ -1,3 +1,5 @@
+<!--SPDX-License-Identifier: CC-BY-4.0-->
+<!--SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.-->
 # OCAH Nix Infrastructure
 
 If you are new to Nix, see [`nix/glossary.md`](./glossary.md) for an
