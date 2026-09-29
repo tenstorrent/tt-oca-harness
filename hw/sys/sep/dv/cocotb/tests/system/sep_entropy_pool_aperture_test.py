@@ -188,13 +188,21 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
 
         await pool.disable_esrc()
-        for off in (*cfg.alias_offs, *cfg.unmapped_offs):
-            unmapped = POOL_STATUS + off
-            um = await pool.access(unmapped, expect_error=True)
-            assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
-                f"unmapped 0x{unmapped:08x} resp={um.resp_code} rdata=0x{um.rdata:x}, "
-                f"expected SLVERR + RDATA=0"
-            )
+        # The driver packs X/Z read bits as 0, and the s_axi monitor lane-checks
+        # error beats only inside an error-RDATA window. Open it so an X/Z on a
+        # refused beat fails instead of passing the RDATA=0 compare below.
+        mon = self.env.axi_monitor
+        mon.open_error_rdata_window()
+        try:
+            for off in (*cfg.alias_offs, *cfg.unmapped_offs):
+                unmapped = POOL_STATUS + off
+                um = await pool.access(unmapped, expect_error=True)
+                assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
+                    f"unmapped 0x{unmapped:08x} resp={um.resp_code} rdata=0x{um.rdata:x}, "
+                    f"expected SLVERR + RDATA=0"
+                )
+        finally:
+            mon.close_error_rdata_window()
         self.logger.info(
             "CHK-UNMAPPED PASS: %d alias + %d unique-dead offsets -> SLVERR rdata=0",
             len(cfg.alias_offs),
