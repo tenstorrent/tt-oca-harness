@@ -701,6 +701,18 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
 |KPV scrambler: stored word and address mapping both transform while enabled, and the vault passes through while disabled.
+|`sep_km_rom_write_slverr_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, KM CPU image
+|A KM CPU store to KM ROM leaves the ROM word unchanged and sets `IRQ_STATUS.ROM_WRITE_ERR`. `CHK-KM-ROM-WRITE-SLVERR` requires the store to return SLVERR (`IRQ_STATUS.AXI_SLVERR`), as `key_manager.rdl` states for a ROM write. The ROM answers the store at once with no error, so the leaf fails there.
+|`sep_km_otp_shim_unreachable_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, KM CPU image
+|A KM CPU load and store past the `OTP_EFUSE_MMR` aperture must be refused and must not reach the eFuse shim register, which `key_manager.rdl` excludes from the KM path. The host programs and reads the shim register on its SEP-side window. The KM accesses reach the shim, so `CHK-KM-OTP-SHIM-EXCLUDED` fails.
+|`sep_km_vrom_decerr_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, KM CPU image
+|A KM CPU load from the testbench virtual ROM base must complete with DECERR: `key_manager.rdl` maps every address outside its listed windows to DECERR. The load does not complete, so `CHK-KM-VROM-DECERR` fails against an image shown alive up to the load.
 |===
 
 [[iconic-scorecard]]
@@ -7606,6 +7618,150 @@ the wipe security contract.
 
 '''''
 
+[[sep_km_rom_write_slverr_test]]
+===== `sep_km_rom_write_slverr_test`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_bus_err.parhex`
+
+*Source Module*: `sep_km_rom_write_slverr_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image
+
+*Tracking*: #2494
+
+*Randomization*: RAND-NONE — one directed store.
+
+*Objective*: `hw/ip/key_manager/regs/key_manager.rdl` (memory-map Access Notes) says the KM ROM is read-only and "returns SLVERR on write attempts". The KM CPU observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` bit (`km_csr.rdl`); `IRQ_STATUS.ROM_WRITE_ERR` is a separate bit that reports a detected ROM write. The KM ROM answers a store at once with no error response, so the store completes as if it succeeded and `CHK-KM-ROM-WRITE-SLVERR` fails.
+
+*Test Coverage*: KM ROM write refusal, ROM content after a write, and the error the KM CPU observes.
+
+*Test Procedure*:
+
+[arabic]
+. Dedicated `km_rom_bus_err` on the KM CPU bus, not `rom_main`. The image makes each access, copies raw words to KM SRAM and grades nothing; the host holds every verdict (`seq_lib/sep_km_bus_err_seq.py` holds the word layout).
+. Before each access the image writes 1 to clear `AXI_SLVERR`, `AXI_DECERR` and `ROM_WRITE_ERR` and stores the readback. The host requires it clear, so a bit a row reports belongs to that row's access. After each access the image polls `IRQ_STATUS` a bounded number of times and stores the last value.
+. Control: a store to `KM_KPV_SIZE` past the KPV base, inside the 8 KB KPV window.
+. The image loads a ROM word, stores its complement to it, polls, and loads the word again.
+. The host waits for the image's marker in KM SRAM word 0 and reads the dump words through `km_sram_probe_o`.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KM-SLVERR-LIVE
+|Control. A store past the KPV register map sets `IRQ_STATUS.AXI_SLVERR`, so the bit and the image's poll work.
+|CHK-KM-ROM-UNCHANGED
+|The ROM word reads the image constant before the store and after a store of its complement.
+|CHK-KM-ROM-WRITE-ERR
+|The store sets `IRQ_STATUS.ROM_WRITE_ERR`.
+|CHK-KM-ROM-WRITE-SLVERR
+|The store sets `IRQ_STATUS.AXI_SLVERR`: `key_manager.rdl` says a ROM write attempt returns SLVERR. The ROM answers the store with no error, so this checker fails.
+|===
+
+*Pass Criteria*: `CHK-KM-ROM-WRITE-SLVERR` fails. Every other named checker PASSes. The leaf's failure is that checker.
+
+'''''
+
+[[sep_km_otp_shim_unreachable_test]]
+===== `sep_km_otp_shim_unreachable_test`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_bus_err.parhex`
+
+*Source Module*: `sep_km_otp_shim_unreachable_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image
+
+*Tracking*: #2516
+
+*Randomization*: RANDCFG — the value the host programs into `EFUSE_BANK_INIT_TIME`, from the run seed, distinct from its reset and from the value the KM image stores.
+
+*Objective*: `hw/ip/key_manager/regs/key_manager.rdl` (OTP / eFuse Pass-Through) says only the MAP, CTRL and MMR sub-regions of the 4 KB OTP window are decoded, and that `efuse_shim_ctrl` is intentionally excluded from the KM AXI-Lite path. Its memory-map summary says an unmapped offset inside a window answers SLVERR and an address outside every window answers DECERR. A KM CPU load from, and a store to, the first word after the 0x100-byte `OTP_EFUSE_MMR` aperture must therefore be refused and must not reach the shim register. Both accesses reach it: the load returns the shim register with no error, and the store changes it. `CHK-KM-OTP-SHIM-EXCLUDED` fails.
+
+*Test Coverage*: KM OTP window decode past the MMR aperture, and the separation of the KM path from the eFuse shim CSR port.
+
+*Test Procedure*:
+
+[arabic]
+. The host reads `EFUSE_BANK_INIT_TIME` on its SEP-side window (`SEP_EXTERNAL_EFUSE_SHIM_CTRL`) and requires its RDL reset, writes the seeded value, and reads it back.
+. The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_slverr_test>> for the clear-then-poll rule of each row).
+. Control: a KM load from the Reserved ROM-growth row (ROM base + ROM size) of the `key_manager.rdl` memory-map summary.
+. The image loads from, then stores a fixed value to, the first word after the MMR aperture.
+. The host reads `EFUSE_BANK_INIT_TIME` again on its SEP-side window.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KM-SHIM-HOST-PATH
+|Control. The host read of `EFUSE_BANK_INIT_TIME` is OKAY at its RDL reset, and the seeded value the host writes reads back, so the no-alias rows below can fail.
+|CHK-KM-DECERR-LIVE
+|Control. A KM load from the Reserved ROM-growth row sets `IRQ_STATUS.AXI_DECERR`, so the bit and the image's poll work.
+|CHK-KM-OTP-SHIM-EXCLUDED
+|The KM load and the KM store each set `AXI_SLVERR` or `AXI_DECERR`; the load does not return the host value; the shim register still holds the host value after the KM store. All four observations are logged before the verdict. The accesses reach the shim, so this checker fails.
+|===
+
+*Pass Criteria*: `CHK-KM-OTP-SHIM-EXCLUDED` fails. Every other named checker PASSes. The leaf's failure is that checker.
+
+*Not claimed*: which of SLVERR and DECERR the refusal returns. `key_manager.rdl` describes the address both as inside the OTP window and as outside the decoded sub-regions, so either refusal meets the contract.
+
+'''''
+
+[[sep_km_vrom_decerr_test]]
+===== `sep_km_vrom_decerr_test`
+
+*Phase*: 2
+
+*Bucket*: Key Manager vault
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_bus_err.parhex`
+
+*Source Module*: `sep_km_vrom_decerr_test`
+
+*BFM / Model*: ocah_axi_vip, KM CPU image
+
+*Tracking*: #2511
+
+*Randomization*: RAND-NONE — one directed load.
+
+*Objective*: The memory-map summary in `hw/ip/key_manager/regs/key_manager.rdl` lists every KM CPU window and ends with "Every other address | Reserved/Unmapped | DECERR". The testbench virtual ROM base `0x1000_0000` (`hw/ip/key_manager/doc/architecture.adoc`) is in no listed window, so a KM CPU load from it must complete and answer DECERR. Nothing answers that window in this integration, so the load never completes and `CHK-KM-VROM-DECERR` fails.
+
+*Test Coverage*: KM CPU decode of an address outside every `key_manager.rdl` window, on the virtual ROM range.
+
+*Test Procedure*:
+
+[arabic]
+. The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_slverr_test>> for the clear-then-poll rule of each row). The virtual ROM load is the image's last access.
+. Control: a KM load from the Reserved ROM-growth row, as in <<sep_km_otp_shim_unreachable_test>>.
+. The image stores a pre-load marker to KM SRAM word 0, loads from the virtual ROM base, stores the data and the polled `IRQ_STATUS`, then stores a post-load marker.
+. The host waits for the post-load marker for a fixed bound after the pre-load marker.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-KM-DECERR-LIVE
+|Control. A KM load from the Reserved ROM-growth row sets `IRQ_STATUS.AXI_DECERR`, so an erroring load completes on this bus and the bit reports it.
+|CHK-KM-VROM-PRE
+|The image reached the virtual ROM load, with the watched `IRQ_STATUS` bits clear just before it.
+|CHK-KM-VROM-DECERR
+|The post-load marker appears within the bound, and the load set `IRQ_STATUS.AXI_DECERR`. The claim is completion, so expiry of the bound is a failure, graded against an image shown alive up to the load. The load does not complete, so this checker fails.
+|===
+
+*Pass Criteria*: `CHK-KM-VROM-DECERR` fails. Every other named checker PASSes. The leaf's failure is that checker.
+
+'''''
+
 === Regression Groups
 
 `README.md` owns the group table and the commands, including which group to
@@ -7639,6 +7795,9 @@ constraint is not an open defect.
 
 |KM application ROM wipe paths
 |Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.
+
+|KM CPU bus responses outside the RDL (hardware)
+|Three KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A store to KM ROM completes with no error response and sets only `IRQ_STATUS.ROM_WRITE_ERR`, where the RDL says it returns SLVERR (`sep_km_rom_write_slverr_test`). A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the testbench virtual ROM base never completes, where the RDL maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
 
 |KM mailbox outbound flush
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
