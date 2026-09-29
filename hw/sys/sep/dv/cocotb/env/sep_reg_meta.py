@@ -572,6 +572,22 @@ def block_size(block: str) -> int:
         ) from exc
 
 
+_SEP_ADDR_H = _GEN_PY.parent / "c" / "sep_addr.h"
+
+
+def sep_addr_define(name: str) -> int:
+    """Integer value of ``#define <name>`` in the generated ``sep_addr.h``.
+
+    The C address header carries the RDL array geometry (``_NUM``, ``_STRIDE``,
+    ``_TOTAL_SIZE``) that the Python export does not.
+    """
+    for line in _SEP_ADDR_H.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[0] == "#define" and parts[1] == name:
+            return int(parts[2], 0)
+    raise KeyError(f"{name} not found in {_SEP_ADDR_H}; regenerate it or check the symbol name")
+
+
 def _load_py_module(path: Path, name: str):
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:

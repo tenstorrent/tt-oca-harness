@@ -26,7 +26,7 @@
  * NMI, turning a clean stop into a loop. These paths report through
  * cold_scratch, a SEP register that is always present. The C runtime may use the
  * mailbox; it runs later, after the outbound filter is open. */
-.equ SEP_COLD_SCRATCH_1, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
+.equ SEP_COLD_SCRATCH_1, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(1)
 
 /* DCCM base from EL2 snapshot: sadr=0xC0040000, size=128KiB → top=0xC0060000.
  * (Actual stack pointer uses __stack_top from the linker script.) */
@@ -53,8 +53,8 @@
  * sep_reset_n & wdt_rst_ni -- so a watchdog reset would clear the very register
  * the handler address was parked in.
  */
-.equ SEP_COLD_SCRATCH_7, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
-.equ SEP_COLD_SCRATCH_0, OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+.equ SEP_COLD_SCRATCH_7, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7)
+.equ SEP_COLD_SCRATCH_0, SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 
 /* ICCM address range for warm handler jump validation.
  *
@@ -62,10 +62,10 @@
  * (sep-boot-flow.puml). A range of [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE) is a
  * different memory entirely -- and a comment claiming "must be within ICCM" while
  * the constants said SRAM, so the code and its own documentation disagreed. */
-.equ WARM_HANDLER_ICCM_BASE,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
-.equ WARM_HANDLER_ICCM_END,    OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
-.equ WARM_HANDLER_SRAM_BASE,   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
-.equ WARM_HANDLER_SRAM_END,    OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE
+.equ WARM_HANDLER_ICCM_BASE,   SEP_TOP_SEP_ICCM_BASE_ADDR
+.equ WARM_HANDLER_ICCM_END,    SEP_TOP_SEP_ICCM_BASE_ADDR + SEP_TOP_SEP_ICCM_SIZE
+.equ WARM_HANDLER_SRAM_BASE,   SEP_TOP_SEP_SRAM_BASE_ADDR
+.equ WARM_HANDLER_SRAM_END,    SEP_TOP_SEP_SRAM_BASE_ADDR + SEP_TOP_SEP_SRAM_SIZE
 
 /* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
  * these numbers, so they must be changed in both places together. Kept as .equ
@@ -133,7 +133,7 @@
  * another chip's map, not an allocated one awaiting a declaration (F23/F25). The register's existing `sw = r` / `hw = rw`
  * access is already correct for this: software cannot assert it, only the fuse can.
  */
-.equ SEP_EFUSE_STATUS_RPT,     OCH_SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
+.equ SEP_EFUSE_STATUS_RPT,     SEP_TOP_SEP_EFUSE_MAP_STATUS_RPT_BASE_ADDR
 .equ STATUS_RPT_SKIP_MEM_CHECK, (1 << 2)
 
 /* Bound on the wait for mbist_done. PLACEHOLDER, NOT CALIBRATED -- no expected
@@ -320,19 +320,19 @@ cold_boot:
      *          (read_en | write_en | addr_mode | allow_burst)
      * CONFIG must be written LAST so address range is set before enable.
      */
-    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
+    li      t0, SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
     li      t1, 0x80000000
     sw      t1, 0(t0)           /* start_addr[31:0] */
     sw      zero, 4(t0)         /* start_addr[63:32] = 0 */
 
-    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
+    li      t0, SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
     li      t1, 0x80000003
     sw      t1, 0(t0)           /* end_addr[31:0] */
     sw      zero, 4(t0)         /* end_addr[63:32] = 0 */
 
     fence   w, w                /* ensure START/END committed before CONFIG */
 
-    li      t0, OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
+    li      t0, SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
     li      t1, 0x01000013
     sw      t1, 0(t0)           /* config[31:0] */
     li      t1, 0x00000001

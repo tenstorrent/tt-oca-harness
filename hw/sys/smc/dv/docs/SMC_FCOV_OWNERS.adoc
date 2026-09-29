@@ -7,7 +7,7 @@
 [[smc-fcov-owners]]
 ==== Owning tests, measured
 
-Measured on `--items hosted fw` at commit `006348edb916` with Verilator 5.050: 192 leaves, 467 points, 411 hit, 56 unhit, 84 hit by exactly one leaf.
+Measured on `--items hosted fw` at commit `8c30ad11edeb` with Verilator 5.050: 294 leaves, 453 points, 453 hit, 0 unhit, 77 hit by exactly one leaf.
 
 A point one leaf alone reaches depends on that leaf: retire or narrow it and
 the point goes dark. A point no leaf reaches carries its policy disposition,
@@ -18,10 +18,10 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_avsbus_on_clk_periph` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (428900) |
-|`c_cpu_retires_on_clk_smc` |121 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (210190) |
-|`c_octs_tick_on_clk_ref` |2 |`smc_fw_octs_p0_primary_test` (7455) |
-|`c_uart_on_clk_periph` |22 |`smc_uart_baud_word_parity_format_test` (537) |
+|`c_avsbus_on_clk_periph` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (428706) |
+|`c_cpu_retires_on_clk_smc` |218 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (218395) |
+|`c_octs_tick_on_clk_ref` |4 |`smc_fw_octs_p0_primary_test` (9296) |
+|`c_uart_on_clk_periph` |30 |`smc_uart_baud_word_parity_format_test` (537) |
 |===
 
 ===== `u_smc_clk_fcov`
@@ -29,46 +29,44 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_activity_detected_clock_restored` |15 |`smc_state_fault_inject_test` (952) |
-|`c_atb_capture_on_clk_telemetry` |1 |`smc_telemetry_receiver_csr_test` (10) |single
-|`c_cg_test_en_override` |2 |`smc_cg_test_mode_bypass_test` (49) |
-|`c_clk_periph_at_minimum_100mhz` |131 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1287121) |
-|`c_clk_periph_stalled_window` |0 |none |waive: missing_stimulus
-|`c_clk_ratio_periph_equal_ref` |19 |`smc_fw_i2c_target_sanity_test` (337) |
-|`c_clk_ratio_periph_faster_than_ref` |29 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (837) |
-|`c_clk_ratio_periph_faster_than_smc` |0 |none |waive: missing_stimulus
-|`c_clk_ratio_periph_slower_than_ref` |25 |`smc_fw_uart_log_engine_fetch_err_test` (291) |
-|`c_clk_ratio_smc_equal_ref` |0 |none |waive: missing_stimulus
-|`c_clk_ratio_smc_faster_than_periph` |73 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (837) |
-|`c_clk_ratio_smc_faster_than_ref` |73 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (837) |
-|`c_clk_ratio_smc_slower_than_ref` |0 |none |waive: missing_stimulus
-|`c_clk_smc_stalled_window` |0 |none |waive: missing_stimulus
-|`c_dma_busy_fe0_be0` |9 |`smc_clk_multi_window_test` (2703) |
-|`c_dma_busy_fe0_be1` |6 |`smc_hang_detector_data_timeout_test` (116) |
+|`c_activity_detected_clock_restored` |7 |`smc_dma_cg_activity_test` (39) |
+|`c_atb_capture_on_clk_telemetry` |3 |`smc_telemetry_buffer_overflow_test` (167) |
+|`c_cg_test_en_override` |2 |`smc_cg_dft_reset_bringup_test` (100) |
+|`c_clk_periph_at_minimum_100mhz` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286539) |
+|`c_clk_ratio_periph_equal_ref` |51 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (682) |
+|`c_clk_ratio_periph_faster_than_ref` |86 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (837) |
+|`c_clk_ratio_periph_faster_than_smc` |1 |`smc_clk_smc_slower_than_ref_test` (2) |single
+|`c_clk_ratio_periph_slower_than_ref` |27 |`smc_i2c_target_bus_timeout_test` (432) |
+|`c_clk_ratio_smc_equal_ref` |1 |`smc_clk_smc_equal_ref_test` (2) |single
+|`c_clk_ratio_smc_faster_than_periph` |162 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (837) |
+|`c_clk_ratio_smc_faster_than_ref` |162 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (837) |
+|`c_clk_ratio_smc_slower_than_ref` |1 |`smc_clk_smc_slower_than_ref_test` (2) |single
+|`c_dma_busy_fe0_be0` |16 |`smc_periph_regblock_sweep_test` (9085) |
+|`c_dma_busy_fe0_be1` |10 |`smc_dma_decouple_rw_test` (13589) |
 |`c_dma_busy_fe1_be0` |1 |`smc_address_window_top_decode_test` (1) |single
-|`c_dma_busy_fe1_be1` |6 |`smc_clk_running_test` (32) |
-|`c_dma_busy_seen` |7 |`smc_hang_detector_data_timeout_test` (118) |
-|`c_dma_cg_closed` |2 |`smc_rdl_field_sweep_test` (760) |
-|`c_dma_cg_open` |7 |`smc_clk_multi_window_test` (2850) |
-|`c_dma_gate_closed_when_idle` |2 |`smc_rdl_field_sweep_test` (760) |
-|`c_dma_gate_hysteresis_window` |7 |`smc_clk_multi_window_test` (2490) |
-|`c_dma_gate_open_on_busy` |4 |`smc_clk_multi_window_test` (360) |
+|`c_dma_busy_fe1_be1` |10 |`smc_dma_decouple_rw_test` (70197) |
+|`c_dma_busy_seen` |11 |`smc_dma_decouple_rw_test` (83786) |
+|`c_dma_cg_closed` |2 |`smc_rdl_field_sweep_test` (762) |
+|`c_dma_cg_open` |7 |`smc_clk_multi_window_test` (3333) |
+|`c_dma_gate_closed_when_idle` |2 |`smc_rdl_field_sweep_test` (762) |
+|`c_dma_gate_hysteresis_window` |7 |`smc_clk_multi_window_test` (2893) |
+|`c_dma_gate_open_on_busy` |4 |`smc_clk_multi_window_test` (440) |
 |`c_dma_gated_clk_held` |1 |`smc_dma_cg_activity_test` (1) |single
-|`c_dma_gated_clk_running` |7 |`smc_clk_multi_window_test` (1980) |
+|`c_dma_gated_clk_running` |7 |`smc_clk_multi_window_test` (2380) |
 |`c_i2c_cg_closed` |8 |`smc_canonical_smoke_test` (498) |
-|`c_i2c_cg_open` |8 |`smc_rdl_field_sweep_test` (24) |
+|`c_i2c_cg_open` |8 |`smc_rdl_field_sweep_test` (37) |
 |`c_module_gate_disabled` |12 |`smc_canonical_smoke_test` (1243) |
-|`c_module_gate_enabled` |12 |`smc_clk_multi_window_test` (1980) |
-|`c_zeroer_bus_active` |10 |`smc_state_fault_inject_test` (123) |
-|`c_zeroer_cg_closed` |5 |`smc_static_cg_sanity_test` (830) |
-|`c_zeroer_cg_open` |10 |`smc_zeroer_axiclk_cg_test` (625) |
-|`c_zeroer_gate_closed_when_idle` |5 |`smc_static_cg_sanity_test` (830) |
+|`c_module_gate_enabled` |12 |`smc_clk_multi_window_test` (2380) |
+|`c_zeroer_bus_active` |15 |`smc_zeroer_multi_burst_test` (1641) |
+|`c_zeroer_cg_closed` |5 |`smc_static_cg_sanity_test` (832) |
+|`c_zeroer_cg_open` |10 |`smc_zeroer_axiclk_cg_test` (628) |
+|`c_zeroer_gate_closed_when_idle` |5 |`smc_static_cg_sanity_test` (832) |
 |`c_zeroer_gate_open_on_busy` |3 |`smc_zeroer_axiclk_cg_test` (96) |
 |`c_zeroer_gated_axi_clk_held` |5 |`smc_zeroer_regclk_cg_test` (2) |
-|`c_zeroer_gated_axi_clk_running` |10 |`smc_zeroer_axiclk_cg_test` (98) |
+|`c_zeroer_gated_axi_clk_running` |10 |`smc_zeroer_axiclk_cg_test` (99) |
 |`c_zeroer_gated_reg_clk_held` |3 |`smc_zeroer_regclk_cg_test` (2) |
-|`c_zeroer_gated_reg_clk_running` |10 |`smc_state_fault_inject_test` (123) |
-|`c_zeroer_reg_clk_resume_on_access` |10 |`smc_state_fault_inject_test` (123) |
+|`c_zeroer_gated_reg_clk_running` |15 |`smc_zeroer_multi_burst_test` (1641) |
+|`c_zeroer_reg_clk_resume_on_access` |15 |`smc_zeroer_multi_burst_test` (1641) |
 |===
 
 ===== `u_smc_cpu_fcov`
@@ -76,25 +74,25 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_core0_retire` |121 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (210190) |
-|`c_core1_retire` |124 |`smc_i2c_fifo_full_test` (84820) |
-|`c_core2_retire` |128 |`smc_i2c_fifo_full_test` (84829) |
-|`c_core3_retire` |131 |`smc_i2c_fifo_full_test` (84835) |
-|`c_cpu_to_sram_read` |22 |`smc_fw_plic_claim_test` (16058) |
-|`c_cpu_to_sram_write` |20 |`smc_fw_plic_claim_test` (14272) |
-|`c_custom_action_output_driven` |0 |none |waive: missing_stimulus
-|`c_first_fetch_at_c0040000` |105 |`smc_state_fault_inject_test` (4) |
-|`c_first_fetch_at_rom_vector` |105 |`smc_state_fault_inject_test` (4) |
-|`c_init_done_high_after_init` |147 |`smc_state_fault_inject_test` (5) |
-|`c_init_done_low_during_init` |9 |`smc_primary_reset_scope_test` (1106) |
-|`c_internal_range_323_320` |4 |`smc_state_fault_inject_test` (4) |
-|`c_mmio_write_peripheral` |17 |`smc_fw_uart_log_engine_fetch_err_test` (927) |
-|`c_no_step_out_of_order` |145 |`smc_state_fault_inject_test` (5) |
-|`c_ordered_powergood_fusesense_repair_mbist_release` |145 |`smc_state_fault_inject_test` (5) |
-|`c_release_requires_cores_out_of_reset` |147 |`smc_state_fault_inject_test` (5) |
-|`c_release_requires_init_done` |147 |`smc_state_fault_inject_test` (5) |
-|`c_rom_req_issued` |120 |`smc_state_fault_inject_test` (176) |
-|`c_self_isolated_at_cold_boot` |192 |`smc_cold_reset_test` (7) |
+|`c_core0_retire` |218 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (218395) |
+|`c_core1_retire` |221 |`smc_i2c_target_bus_timeout_test` (196314) |
+|`c_core2_retire` |227 |`smc_i2c_target_bus_timeout_test` (196322) |
+|`c_core3_retire` |232 |`smc_i2c_target_bus_timeout_test` (196328) |
+|`c_cpu_to_sram_read` |29 |`smc_fw_plic_claim_test` (16618) |
+|`c_cpu_to_sram_write` |27 |`smc_fw_plic_claim_test` (14328) |
+|`c_custom_action_output_driven` |1 |`smc_dfd_cla_live_bus_test` (1) |single
+|`c_first_fetch_at_c0040000` |202 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_first_fetch_at_rom_vector` |202 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_init_done_high_after_init` |247 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_init_done_low_during_init` |13 |`smc_dfd_trace_writeout_phase_test` (52276) |
+|`c_internal_range_323_320` |7 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_mmio_write_peripheral` |18 |`smc_fw_uart_log_engine_fetch_err_test` (927) |
+|`c_no_step_out_of_order` |245 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_ordered_powergood_fusesense_repair_mbist_release` |245 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_release_requires_cores_out_of_reset` |246 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_release_requires_init_done` |246 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_rom_req_issued` |219 |`smc_dfd_trace_writeout_phase_test` (2924) |
+|`c_self_isolated_at_cold_boot` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
 |===
 
 ===== `u_smc_dma_fcov`
@@ -102,22 +100,21 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_all_three_blocks_gated_together` |6 |`smc_dma_cg_activity_test` (1147) |
-|`c_dest_contents_match` |4 |`smc_clk_multi_window_test` (7) |
-|`c_dma_wlast_accepted` |6 |`smc_clk_running_test` (32) |
-|`c_done0_cleared_after_read` |0 |none |waive: missing_stimulus
-|`c_done0_set_on_completion` |192 |`smc_clk_multi_window_test` (9) |
-|`c_enable_from_backend_busy` |4 |`smc_clk_multi_window_test` (88) |
-|`c_enable_from_frontend_wakeup` |4 |`smc_clk_multi_window_test` (256) |
-|`c_gated_when_neither` |2 |`smc_rdl_field_sweep_test` (760) |
-|`c_len_multi_burst` |1 |`smc_dma_cg_activity_test` (1) |single
+|`c_all_three_blocks_gated_together` |6 |`smc_dma_cg_activity_test` (1112) |
+|`c_dest_contents_match` |8 |`smc_clk_multi_window_test` (7) |
+|`c_dma_wlast_accepted` |10 |`smc_dma_decouple_rw_test` (1296) |
+|`c_done0_holds_after_read` |11 |`smc_dma_decouple_rw_test` (2570) |
+|`c_done0_set_on_completion` |294 |`smc_dma_decouple_rw_test` (19) |
+|`c_enable_from_backend_busy` |4 |`smc_clk_multi_window_test` (168) |
+|`c_enable_from_frontend_wakeup` |4 |`smc_clk_multi_window_test` (248) |
+|`c_gated_when_neither` |2 |`smc_rdl_field_sweep_test` (762) |
+|`c_len_multi_burst` |4 |`smc_dma_decouple_rw_test` (5) |
 |`c_len_one_byte` |1 |`smc_dma_sanity_test` (1) |single
-|`c_len_single_beat` |4 |`smc_clk_multi_window_test` (7) |
-|`c_next_id_0_launches_transfer` |5 |`smc_clk_multi_window_test` (7) |
-|`c_next_id_0_nonzero_on_valid_setup` |7 |`smc_clk_multi_window_test` (8) |
-|`c_next_id_0_zero_on_invalid_setup` |0 |none |waive: missing_stimulus
-|`c_shared_registers_consumed` |5 |`smc_clk_multi_window_test` (7) |
-|`c_status0_busy_during` |5 |`smc_clk_multi_window_test` (168) |
+|`c_len_single_beat` |7 |`smc_dma_decouple_rw_test` (1287) |
+|`c_next_id_0_launches_transfer` |8 |`smc_dma_decouple_rw_test` (17) |
+|`c_next_id_0_nonzero_on_valid_setup` |11 |`smc_dma_decouple_rw_test` (18) |
+|`c_shared_registers_consumed` |8 |`smc_dma_decouple_rw_test` (17) |
+|`c_status0_busy_during` |8 |`smc_dma_decouple_rw_test` (83694) |
 |===
 
 ===== `u_smc_efuse_fcov`
@@ -127,22 +124,22 @@ or `unclassified` when the policy has none.
 |Point |Leaves |Owner (hits) |Note
 |`c_bank_ctrl_read` |15 |`smc_axil_downstream_concurrency_test` (16) |
 |`c_bank_ctrl_response_returned` |15 |`smc_axil_downstream_concurrency_test` (16) |
-|`c_bank_ctrl_write` |0 |none |waive: missing_stimulus
-|`c_fuse_reset_delayed_16_stages` |145 |`smc_state_fault_inject_test` (5) |
-|`c_fuse_sense_done_asserted` |145 |`smc_state_fault_inject_test` (5) |
+|`c_bank_ctrl_write` |1 |`smc_efuse_shim_ctrl_test` (2) |single
+|`c_fuse_reset_delayed_16_stages` |243 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_fuse_sense_done_asserted` |245 |`smc_dfd_trace_writeout_phase_test` (65) |
 |`c_jtag_otp_read` |2 |`smc_efuse_jtag_lc_access_matrix_test` (12) |
 |`c_jtag_otp_write` |2 |`smc_efuse_jtag_lc_access_matrix_test` (6) |
 |`c_lc_state_test_dev_tie` |2 |`smc_efuse_jtag_lc_negative_test` (30) |
-|`c_locks_cleared_access_permitted` |0 |none |waive: missing_stimulus
-|`c_locks_set_access_refused` |4 |`smc_efuse_jtag_lc_access_matrix_test` (5) |
-|`c_read_locked_field_masked` |3 |`smc_state_fault_inject_test` (652) |
-|`c_read_unlocked_field_returned` |0 |none |waive: missing_stimulus
+|`c_locks_cleared_access_permitted` |1 |`smc_efuse_guard_target_test` (857) |single
+|`c_locks_set_access_refused` |5 |`smc_efuse_lock_guard_test` (12) |
+|`c_read_locked_field_masked` |1 |`smc_efuse_guard_target_test` (97) |single
+|`c_read_unlocked_field_returned` |1 |`smc_efuse_guard_target_test` (668) |single
 |`c_repair_triggered_by_fuse_sense_done` |1 |`smc_cold_reset_repeated_test` (1) |single
-|`c_shadow_regs_reflect_sensed_values` |145 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1714798) |
-|`c_shim_command_issued` |192 |`smc_state_fault_inject_test` (4206) |
-|`c_shim_response_consumed` |192 |`smc_state_fault_inject_test` (1290) |
-|`c_write_locked_field_unchanged` |4 |`smc_state_fault_inject_test` (1206) |
-|`c_write_unlocked_field_updated` |0 |none |waive: missing_stimulus
+|`c_shadow_regs_reflect_sensed_values` |245 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (1745580) |
+|`c_shim_command_issued` |294 |`smc_dfd_trace_writeout_phase_test` (52130) |
+|`c_shim_response_consumed` |294 |`smc_dfd_trace_writeout_phase_test` (16640) |
+|`c_write_locked_field_unchanged` |1 |`smc_efuse_guard_target_test` (145) |single
+|`c_write_unlocked_field_updated` |1 |`smc_efuse_guard_target_test` (317) |single
 |===
 
 ===== `u_smc_fabric_fcov`
@@ -150,74 +147,68 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_axil_any_master_active` |20 |`smc_gpio_ctrl_full_sweep_test` (65) |
+|`c_axil_any_master_active` |21 |`smc_cpuif_handshake_test` (268) |
 |`c_axil_concurrent_masters` |1 |`smc_axil_downstream_concurrency_test` (3) |single
-|`c_axil_dtp_csr_active` |0 |none |waive: missing_stimulus
 |`c_axil_efuse_bank_active` |15 |`smc_axil_downstream_concurrency_test` (16) |
-|`c_axil_external_active` |11 |`smc_gpio_ctrl_full_sweep_test` (65) |
+|`c_axil_external_active` |12 |`smc_cpuif_handshake_test` (268) |
 |`c_efuse_jtag_ar_accept` |2 |`smc_efuse_jtag_lc_access_matrix_test` (12) |
 |`c_efuse_jtag_aw_accept` |2 |`smc_efuse_jtag_lc_access_matrix_test` (6) |
 |`c_efuse_jtag_bresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test` (3) |
 |`c_efuse_jtag_bresp_okay` |1 |`smc_efuse_jtag_lc_access_matrix_test` (3) |single
-|`c_efuse_jtag_bresp_slverr` |0 |none |waive: unreachable
 |`c_efuse_jtag_rresp_decerr` |2 |`smc_efuse_jtag_lc_access_matrix_test` (4) |
 |`c_efuse_jtag_rresp_okay` |2 |`smc_efuse_jtag_lc_access_matrix_test` (8) |
-|`c_efuse_jtag_rresp_slverr` |0 |none |waive: unreachable
 |`c_efuse_jtag_w_accept` |2 |`smc_efuse_jtag_lc_access_matrix_test` (6) |
-|`c_full_64bit_beat` |60 |`smc_remap_cla_test` (94) |
-|`c_internal_addr_high` |185 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15458) |
-|`c_internal_addr_low` |0 |none |waive: missing_stimulus
-|`c_partial_strobe_beat` |132 |`smc_uart_baud_word_parity_format_test` (350) |
-|`c_response_id_matches_request_port` |184 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15458) |
-|`c_sep_in_arsize_word` |151 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`c_sep_in_awburst_fixed` |1 |`smc_sep_in_axi_shape_test` (1) |single
-|`c_sep_in_awburst_incr` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`c_sep_in_awburst_wrap` |1 |`smc_sep_in_axi_shape_test` (1) |single
-|`c_sep_in_awsize_byte` |1 |`smc_sep_in_axi_shape_test` (1) |single
-|`c_sep_in_awsize_dword` |60 |`smc_remap_cla_test` (94) |
-|`c_sep_in_awsize_half` |2 |`smc_rdl_field_sweep_test` (73) |
-|`c_sep_in_awsize_word` |132 |`smc_uart_baud_word_parity_format_test` (350) |
-|`c_sep_in_r_hold_engaged` |2 |`smc_cpu_l2_read_wedge_test` (211) |
-|`c_sep_in_wstrb_full` |60 |`smc_remap_cla_test` (94) |
-|`c_sep_in_wstrb_none` |0 |none |waive: unreachable
-|`c_sep_in_wstrb_partial` |132 |`smc_uart_baud_word_parity_format_test` (350) |
+|`c_full_64bit_beat` |99 |`smc_dfd_trace_flush_corner_test` (2145) |
+|`c_internal_addr_high` |287 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16438) |
+|`c_internal_addr_low` |1 |`smc_dual_base_addressing_test` (2) |single
+|`c_partial_strobe_beat` |229 |`smc_dfd_trace_writeout_phase_test` (1495) |
+|`c_response_id_matches_request_port` |286 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16438) |
+|`c_sep_in_arsize_word` |240 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`c_sep_in_awburst_fixed` |1 |`smc_sep_in_axi_shape_test` (4) |single
+|`c_sep_in_awburst_incr` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`c_sep_in_awburst_wrap` |1 |`smc_sep_in_axi_shape_test` (4) |single
+|`c_sep_in_awsize_byte` |8 |`smc_dfd_mmr_lane_test` (23) |
+|`c_sep_in_awsize_dword` |99 |`smc_dfd_trace_flush_corner_test` (2145) |
+|`c_sep_in_awsize_half` |8 |`smc_gpio_intf_regblock_sweep_test` (650) |
+|`c_sep_in_awsize_word` |228 |`smc_dfd_trace_writeout_phase_test` (1495) |
+|`c_sep_in_r_hold_engaged` |3 |`smc_cpu_l2_read_wedge_test` (211) |
+|`c_sep_in_wstrb_full` |99 |`smc_dfd_trace_flush_corner_test` (2145) |
+|`c_sep_in_wstrb_partial` |229 |`smc_dfd_trace_writeout_phase_test` (1495) |
 |`c_sys_in_r_hold_engaged` |2 |`smc_hang_detector_sys_timeout_test` (101) |
-|`c_sys_out_ar_accept` |117 |`smc_clk_running_test` (33) |
-|`c_sys_out_aw_accept` |18 |`smc_dma_cg_activity_test` (66) |
+|`c_sys_out_ar_accept` |214 |`smc_dma_decouple_rw_test` (1310) |
+|`c_sys_out_aw_accept` |25 |`smc_dma_decouple_rw_test` (1316) |
 |`c_sys_out_bresp_decerr` |1 |`smc_output_fabric_slverr_inject_test` (1) |single
-|`c_sys_out_bresp_okay` |18 |`smc_dma_cg_activity_test` (66) |
+|`c_sys_out_bresp_okay` |25 |`smc_dma_decouple_rw_test` (1316) |
 |`c_sys_out_bresp_slverr` |1 |`smc_output_fabric_slverr_inject_test` (1) |single
-|`c_sys_out_read_count_advanced` |116 |`smc_clk_running_test` (33) |
-|`c_sys_out_resp_hold_engaged` |1 |`smc_hang_detector_data_timeout_test` (436) |single
+|`c_sys_out_read_count_advanced` |213 |`smc_dma_decouple_rw_test` (1310) |
+|`c_sys_out_resp_hold_engaged` |3 |`smc_log_engine_fetch_error_test` (3564) |
 |`c_sys_out_rresp_decerr` |1 |`smc_output_fabric_slverr_inject_test` (1) |single
-|`c_sys_out_rresp_okay` |117 |`smc_state_fault_inject_test` (128) |
-|`c_sys_out_rresp_slverr` |1 |`smc_output_fabric_slverr_inject_test` (1) |single
-|`c_sys_out_w_accept` |18 |`smc_zeroer_sanity_test` (259) |
-|`c_sys_out_write_count_advanced` |18 |`smc_dma_cg_activity_test` (66) |
-|`u_*.c_ar_accept` |177 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`u_*.c_ar_multi_beat` |2 |`smc_cpu_l2_read_wedge_test` (4) |
-|`u_*.c_ar_single_beat` |177 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`u_*.c_ar_stall` |2 |`smc_sep_in_axi_flow_control_test` (60) |
-|`u_*.c_aw_accept` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`u_*.c_aw_multi_beat` |2 |`smc_sep_in_axi_shape_test` (3) |
-|`u_*.c_aw_single_beat` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`u_*.c_aw_stall` |1 |`smc_sep_in_axi_flow_control_test` (55) |single
-|`u_*.c_b_accept` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`u_*.c_b_stall` |1 |`smc_sep_in_axi_flow_control_test` (47) |single
-|`u_*.c_bresp_decerr` |2 |`smc_output_filter_remap_security_test` (1) |
-|`u_*.c_bresp_exokay` |0 |none |waive: unreachable
-|`u_*.c_bresp_okay` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`u_*.c_bresp_slverr` |5 |`smc_mailbox_data_error_test` (3) |
-|`u_*.c_r_accept` |177 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`u_*.c_r_last` |177 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`u_*.c_r_stall` |1 |`smc_sep_in_axi_flow_control_test` (48) |single
-|`u_*.c_rresp_decerr` |11 |`smc_gpio_ctrl_full_sweep_test` (65) |
-|`u_*.c_rresp_exokay` |0 |none |waive: unreachable
-|`u_*.c_rresp_okay` |175 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`u_*.c_rresp_slverr` |6 |`smc_mailbox_data_error_test` (2) |
-|`u_*.c_w_accept` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`u_*.c_w_last` |160 |`smc_uart_baud_word_parity_format_test` (350) |
-|`u_*.c_w_stall` |18 |`smc_dma_cg_activity_test` (64) |
+|`c_sys_out_rresp_okay` |214 |`smc_dfd_trace_writeout_phase_test` (2080) |
+|`c_sys_out_rresp_slverr` |2 |`smc_output_fabric_slverr_inject_test` (1) |
+|`c_sys_out_w_accept` |25 |`smc_zeroer_multi_burst_test` (2633) |
+|`c_sys_out_write_count_advanced` |25 |`smc_dma_decouple_rw_test` (1316) |
+|`u_*.c_ar_accept` |279 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`u_*.c_ar_multi_beat` |5 |`smc_cpu_l2_read_wedge_test` (4) |
+|`u_*.c_ar_single_beat` |279 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`u_*.c_ar_stall` |5 |`smc_cpuif_handshake_test` (305) |
+|`u_*.c_aw_accept` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`u_*.c_aw_multi_beat` |5 |`smc_sep_in_axi_shape_test` (10) |
+|`u_*.c_aw_single_beat` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`u_*.c_aw_stall` |4 |`smc_cpuif_handshake_test` (432) |
+|`u_*.c_b_accept` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`u_*.c_b_stall` |4 |`smc_cpuif_handshake_test` (543) |
+|`u_*.c_bresp_decerr` |11 |`smc_cluster_beu_test` (5) |
+|`u_*.c_bresp_okay` |261 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`u_*.c_bresp_slverr` |16 |`smc_filter_config_field_sweep_test` (64) |
+|`u_*.c_r_accept` |279 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`u_*.c_r_last` |279 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`u_*.c_r_stall` |4 |`smc_cpuif_handshake_test` (584) |
+|`u_*.c_rresp_decerr` |21 |`smc_gpio_intf_regblock_sweep_test` (65) |
+|`u_*.c_rresp_okay` |277 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`u_*.c_rresp_slverr` |10 |`smc_mailbox_data_error_test` (2) |
+|`u_*.c_w_accept` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`u_*.c_w_last` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
+|`u_*.c_w_stall` |29 |`smc_cpuif_handshake_test` (702) |
 |===
 
 ===== `u_smc_filt_fcov`
@@ -225,14 +216,14 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_arprot_exact_match` |1 |`smc_gpio_filter_access_sep_test` (2) |single
-|`c_arprot_one_bit_off` |1 |`smc_gpio_filter_access_sep_test` (1) |single
-|`c_awprot_exact_match` |1 |`smc_gpio_filter_access_sep_test` (1) |single
-|`c_awprot_one_bit_off` |1 |`smc_gpio_filter_access_sep_test` (1) |single
+|`c_arprot_exact_match` |4 |`smc_gpio_filter_access_sep_test` (19) |
+|`c_arprot_one_bit_off` |3 |`smc_gpio_filter_access_sep_test` (25) |
+|`c_awprot_exact_match` |4 |`smc_gpio_filter_access_sep_test` (18) |
+|`c_awprot_one_bit_off` |3 |`smc_gpio_filter_access_sep_test` (25) |
 |`c_inbound_filter_admitted` |1 |`smc_sys_axi_in_port_test` (8) |single
-|`c_inbound_filter_blocked` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1716162) |
-|`c_jtag2axi_filtered` |16 |`smc_dma_cg_activity_test` (64) |
-|`c_jtag2axi_remapped` |16 |`smc_dma_cg_activity_test` (64) |
+|`c_inbound_filter_blocked` |294 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (1747083) |
+|`c_jtag2axi_filtered` |25 |`smc_dma_backpressure_test` (480) |
+|`c_jtag2axi_remapped` |25 |`smc_dma_backpressure_test` (480) |
 |===
 
 ===== `u_smc_gpio_fcov`
@@ -240,13 +231,10 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_default_input_count_62` |192 |`smc_cold_reset_test` (7) |
-|`c_default_output_count_3` |192 |`smc_cold_reset_test` (7) |
-|`c_pad_output_low` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (857798) |
-|`c_per_instance_default_matches_map` |0 |none |waive: missing_stimulus
-|`c_straps_all_ones` |0 |none |waive: missing_stimulus
-|`c_straps_all_zero` |0 |none |waive: missing_stimulus
-|`c_straps_mixed_pattern` |192 |`smc_cold_reset_test` (7) |
+|`c_default_input_count_62` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_default_output_count_3` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_pad_output_low` |294 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (873193) |
+|`c_per_instance_default_matches_map` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
 |===
 
 ===== `u_smc_int_fcov`
@@ -254,18 +242,18 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_arbitrary_bit_plus_one` |0 |none |waive: missing_stimulus
-|`c_bit0_source1` |0 |none |waive: missing_stimulus
-|`c_bit323_source324` |0 |none |waive: missing_stimulus
-|`c_claim_returns_highest_priority` |1 |`smc_fw_plic_claim_test` (2) |single
-|`c_claim_returns_zero_when_none_pending` |0 |none |waive: missing_stimulus
-|`c_delivery_after_full_initialization` |1 |`smc_fw_plic_claim_test` (652) |single
-|`c_hang_or_bit286` |6 |`smc_rdl_field_sweep_test` (174) |
+|`c_arbitrary_bit_plus_one` |2 |`smc_fw_plic_claim_test` (69706) |
+|`c_bit0_source1` |2 |`smc_fw_plic_claim_test` (68796) |
+|`c_bit323_source324` |5 |`smc_zeroer_multi_burst_test` (7254) |
+|`c_claim_returns_highest_priority` |1 |`smc_fw_plic_claim_test` (127) |single
+|`c_claim_returns_zero_when_none_pending` |1 |`smc_fw_plic_claim_test` (8) |single
+|`c_delivery_after_full_initialization` |1 |`smc_fw_plic_claim_test` (9230) |single
+|`c_hang_or_bit286` |7 |`smc_rdl_field_sweep_test` (174) |
 |`c_ndm_or_reduced_to_bit267` |1 |`smc_ndm_reset_test` (258) |single
-|`c_ndm_request_cleared` |1 |`smc_ndm_reset_test` (327) |single
+|`c_ndm_request_cleared` |1 |`smc_ndm_reset_test` (329) |single
 |`c_ndm_request_synchronized` |1 |`smc_ndm_reset_test` (243) |single
-|`c_sync_bit_cleared` |7 |`smc_rdl_field_sweep_test` (1) |
-|`c_sync_bit_set` |7 |`smc_rdl_field_sweep_test` (1) |
+|`c_sync_bit_cleared` |8 |`smc_irq_observe_test` (2) |
+|`c_sync_bit_set` |8 |`smc_irq_observe_test` (2) |
 |===
 
 ===== `u_smc_iso_fcov`
@@ -273,14 +261,14 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_cool_reset_from_gpio_pin_61` |11 |`smc_primary_reset_scope_test` (291) |
-|`c_flr_isolate_disabled` |2 |`smc_cool_reset_x_cold_reset_test` (1058) |
-|`c_flr_isolate_enabled` |2 |`smc_cool_reset_x_cold_reset_test` (134) |
-|`c_no_sequence_on_level_hold` |2 |`smc_cool_reset_x_cold_reset_test` (101) |
-|`c_single_sequence_per_rising_edge` |2 |`smc_cool_reset_x_cold_reset_test` (6) |
-|`c_sw_isolate_per_subsystem` |1 |`smc_reset_unit_sanity_test` (35) |single
+|`c_cool_reset_from_gpio_pin_61` |13 |`smc_primary_reset_scope_test` (243) |
+|`c_flr_isolate_disabled` |3 |`smc_cool_reset_x_cold_reset_test` (1108) |
+|`c_flr_isolate_enabled` |2 |`smc_cool_reset_x_cold_reset_test` (168) |
+|`c_no_sequence_on_level_hold` |3 |`smc_cool_reset_x_cold_reset_test` (101) |
+|`c_single_sequence_per_rising_edge` |3 |`smc_cool_reset_x_cold_reset_test` (6) |
+|`c_sw_isolate_per_subsystem` |2 |`smc_reset_unit_sanity_test` (35) |
 |`c_warm_from_external_wdt` |1 |`smc_reset_unit_sanity_test` (16) |single
-|`c_warm_from_internal_wdt` |1 |`smc_wdt_timeout_pin_test` (2) |single
+|`c_warm_from_internal_wdt` |1 |`smc_wdt_timeout_pin_test` (8) |single
 |===
 
 ===== `u_smc_map_fcov`
@@ -288,144 +276,142 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_alias_region_0_configured` |2 |`smc_remap_cla_test` (12) |
-|`c_alias_region_7_configured` |2 |`smc_remap_cla_test` (6) |
+|`c_alias_region_0_configured` |5 |`smc_cpuif_handshake_test` (14) |
+|`c_alias_region_7_configured` |3 |`smc_remap_cla_test` (6) |
 |`c_all_16_banks_decode` |1 |`smc_address_window_top_decode_test` (1) |single
-|`c_avsbus_aperture_decode` |25 |`smc_uart_error_conditions_test` (653) |
-|`c_avsbus_decode` |25 |`smc_uart_error_conditions_test` (653) |
-|`c_axil_external_region` |15 |`smc_efuse_shim_ctrl_test` (5) |
-|`c_base_config_read` |73 |`smc_rdl_field_sweep_test` (42) |
+|`c_avsbus_aperture_decode` |21 |`smc_avsbus_slave_reply_test` (968) |
+|`c_avsbus_decode` |21 |`smc_avsbus_slave_reply_test` (968) |
+|`c_axil_external_region` |17 |`smc_cpuif_handshake_test` (38) |
+|`c_base_config_read` |114 |`smc_rdl_field_sweep_test` (42) |
 |`c_beu0_decode` |1 |`smc_region_size_plic_clint_beu_decode_test` (6) |single
 |`c_beu1_decode` |1 |`smc_region_size_plic_clint_beu_decode_test` (5) |single
 |`c_beu2_decode` |1 |`smc_region_size_plic_clint_beu_decode_test` (5) |single
 |`c_beu3_decode` |1 |`smc_region_size_plic_clint_beu_decode_test` (6) |single
 |`c_beu_instance_3` |1 |`smc_region_size_plic_clint_beu_decode_test` (6) |single
-|`c_beyond_region_does_not` |49 |`smc_dma_cg_activity_test` (14) |
-|`c_chip_config_read` |16 |`smc_efuse_permission_boundary_test` (4) |
-|`c_chip_config_write` |1 |`smc_alias_remap_spare_block_decode_test` (1) |single
-|`c_cla_base_decodes` |2 |`smc_remap_cla_test` (2) |
-|`c_cla_decode` |4 |`smc_remap_cla_test` (91) |
-|`c_cla_region` |4 |`smc_remap_cla_test` (91) |
-|`c_cla_top_decodes` |0 |none |waive: needs_review
+|`c_beyond_region_does_not` |65 |`smc_dfd_trace_writeout_phase_test` (518) |
+|`c_chip_config_read` |18 |`smc_cpuif_handshake_test` (27) |
+|`c_chip_config_write` |3 |`smc_cpuif_handshake_test` (14) |
+|`c_cla_base_decodes` |14 |`smc_dfd_trace_writeout_phase_test` (518) |
+|`c_cla_decode` |24 |`smc_dfd_trace_flush_corner_test` (3946) |
+|`c_cla_region` |24 |`smc_dfd_trace_flush_corner_test` (3946) |
+|`c_cla_top_decodes` |4 |`smc_dfd_mmr_lane_test` (14) |
 |`c_clint_base_access` |1 |`smc_region_size_plic_clint_beu_decode_test` (4) |single
 |`c_clint_top_access` |1 |`smc_region_size_plic_clint_beu_decode_test` (1) |single
-|`c_config_reg_read` |80 |`smc_remap_cla_test` (126) |
-|`c_config_reg_write` |85 |`smc_remap_cla_test` (92) |
-|`c_data_processing_region` |17 |`smc_clk_multi_window_test` (136) |
-|`c_debug_region` |0 |none |waive: needs_review
-|`c_dfx_status_decode` |0 |none |waive: needs_review
-|`c_dma_aperture_base` |7 |`smc_dma_cg_activity_test` (14) |
-|`c_dma_aperture_top` |1 |`smc_address_window_top_decode_test` (1) |single
-|`c_dma_just_above_top_not_dma` |10 |`smc_zeroer_regclk_cg_test` (8) |
-|`c_dtp_ctrl_decode` |0 |none |waive: needs_review
-|`c_efuse_if_interface_decode` |4 |`smc_octs_dual_sync_test` (20) |
-|`c_efuse_if_map_decode` |3 |`smc_telemetry_receiver_csr_test` (47) |
-|`c_efuse_interface_decode` |4 |`smc_octs_dual_sync_test` (20) |
-|`c_efuse_map_decode` |3 |`smc_telemetry_receiver_csr_test` (47) |
-|`c_efuse_shim_decodes` |1 |`smc_peripheral_instance_decode_test` (1) |single
+|`c_config_reg_read` |124 |`smc_filter_config_field_sweep_test` (288) |
+|`c_config_reg_write` |129 |`smc_filter_config_field_sweep_test` (224) |
+|`c_data_processing_region` |28 |`smc_dma_decouple_rw_test` (2842) |
+|`c_dfx_status_decode` |27 |`smc_dfd_trace_sink_concurrent_test` (470) |
+|`c_dma_aperture_base` |13 |`smc_dma_decouple_rw_test` (31) |
+|`c_dma_aperture_top` |13 |`smc_dma_decouple_rw_test` (36) |
+|`c_dma_just_above_top_not_dma` |14 |`smc_cpuif_handshake_test` (42) |
+|`c_efuse_if_interface_decode` |13 |`smc_efuse_guard_target_test` (78) |
+|`c_efuse_if_map_decode` |8 |`smc_efuse_lock_guard_test` (34) |
+|`c_efuse_interface_decode` |13 |`smc_efuse_guard_target_test` (78) |
+|`c_efuse_map_decode` |8 |`smc_efuse_lock_guard_test` (34) |
+|`c_efuse_shim_decodes` |14 |`smc_efuse_shim_ctrl_test` (5) |
 |`c_enables_written_to_disabled` |1 |`smc_region_size_plic_clint_beu_decode_test` (1) |single
-|`c_fabric_control_region` |91 |`smc_remap_cla_test` (218) |
-|`c_global_base_readable` |6 |`smc_dual_base_addressing_test` (3) |
-|`c_gpio_instance_0` |19 |`smc_gpio_p0_mux_test` (7) |
-|`c_gpio_instance_64` |3 |`smc_peripheral_instance_decode_test` (4) |
-|`c_gpio_interface_decode` |28 |`smc_gpio_intf_full_sweep_test` (65) |
-|`c_gpio_poc_pbias_decode` |0 |none |waive: needs_review
-|`c_gpio_refclk_ctrl_decode` |0 |none |waive: needs_review
-|`c_gpio_region` |28 |`smc_gpio_intf_full_sweep_test` (65) |
-|`c_hang_det_control_fields_present` |6 |`smc_rdl_field_sweep_test` (18) |
-|`c_i2c_decode` |6 |`smc_efuse_map_read_test` (16) |
-|`c_i3c_count_6` |0 |none |waive: missing_stimulus
-|`c_i3c_decode` |27 |`smc_i2c_fifo_full_test` (304) |
-|`c_i3c_instance_0` |7 |`smc_sideband_protocol_smoke_test` (15) |
-|`c_i3c_instance_5` |0 |none |waive: needs_review
-|`c_i3c_region` |27 |`smc_i2c_fifo_full_test` (304) |
-|`c_inbound_entry_0` |22 |`smc_state_fault_inject_test` (12) |
-|`c_inbound_entry_15` |1 |`smc_filter_multi_entry_test` (5) |single
+|`c_fabric_control_region` |138 |`smc_filter_config_field_sweep_test` (512) |
+|`c_global_base_readable` |8 |`smc_dual_base_addressing_test` (3) |
+|`c_gpio_instance_0` |23 |`smc_gpio_filter_access_sep_test` (39) |
+|`c_gpio_instance_64` |5 |`smc_gpio_intf_regblock_sweep_test` (23) |
+|`c_gpio_interface_decode` |61 |`smc_gpio_intf_regblock_sweep_test` (1495) |
+|`c_gpio_poc_pbias_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
+|`c_gpio_refclk_ctrl_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
+|`c_gpio_region` |61 |`smc_gpio_intf_regblock_sweep_test` (1495) |
+|`c_hang_det_control_fields_present` |8 |`smc_rdl_field_sweep_test` (18) |
+|`c_i2c_decode` |60 |`smc_i2c_target_bus_timeout_test` (5259) |
+|`c_i3c_count_6` |2 |`smc_peripheral_instance_decode_test` (1) |
+|`c_i3c_decode` |5 |`smc_i3c_dxt_table_test` (108) |
+|`c_i3c_instance_0` |5 |`smc_i3c_private_write_test` (36) |
+|`c_i3c_instance_5` |3 |`smc_i3c_dxt_table_test` (18) |
+|`c_i3c_region` |5 |`smc_i3c_dxt_table_test` (108) |
+|`c_inbound_entry_0` |26 |`smc_filter_config_field_sweep_test` (16) |
+|`c_inbound_entry_15` |2 |`smc_filter_config_field_sweep_test` (16) |
 |`c_inbound_pair_0` |6 |`smc_mailbox_field_sweep_test` (7) |
 |`c_inbound_pair_31` |4 |`smc_mailbox_multi_instance_test` (10) |
-|`c_jtag_axi_in_read` |10 |`smc_dma_sanity_test` (6) |
-|`c_jtag_axi_in_write` |16 |`smc_dma_cg_activity_test` (64) |
+|`c_jtag_axi_in_read` |18 |`smc_dma_backpressure_test` (129) |
+|`c_jtag_axi_in_write` |25 |`smc_dma_backpressure_test` (351) |
 |`c_just_above_clint_not_clint` |1 |`smc_region_size_plic_clint_beu_decode_test` (1) |single
-|`c_just_above_plic_not_plic` |1 |`smc_region_size_plic_clint_beu_decode_test` (1) |single
-|`c_lc_state_readback_matches_input` |5 |`smc_register_boundary_depth_test` (1) |
+|`c_just_above_plic_not_plic` |1 |`smc_region_size_plic_clint_beu_decode_test` (2) |single
+|`c_lc_state_readback_matches_input` |6 |`smc_cpuif_wrong_direction_test` (2) |
 |`c_local_alias_base_reaches_local_resource` |2 |`smc_wdt_timeout_pin_test` (1) |
 |`c_local_base_readonly_c0000000` |3 |`smc_dual_base_addressing_test` (2) |
 |`c_local_base_reads_c0000000` |3 |`smc_dual_base_addressing_test` (2) |
-|`c_local_base_write_has_no_effect` |1 |`smc_dual_base_addressing_test` (1) |single
+|`c_local_base_write_has_no_effect` |3 |`smc_dual_base_addressing_test` (1) |
 |`c_mailbox_pair_0` |13 |`smc_mailbox_irq_test` (18) |
 |`c_mailbox_pair_31` |4 |`smc_mailbox_multi_instance_test` (11) |
 |`c_mailbox_region` |13 |`smc_mailbox_multi_instance_test` (83) |
 |`c_mandatory_region_base_decodes` |14 |`smc_efuse_shim_ctrl_test` (5) |
-|`c_memory_region` |8 |`smc_address_window_top_decode_test` (16) |
-|`c_misc_wrap_base_decodes` |11 |`smc_rdl_field_sweep_test` (20) |
-|`c_misc_wrap_decode` |38 |`smc_rdl_field_sweep_test` (88) |
-|`c_misc_wrap_top_decodes` |0 |none |waive: needs_review
-|`c_ndm_reset_block_decode` |6 |`smc_ndm_reset_test` (33) |
-|`c_octs_aperture_decode` |0 |none |waive: needs_review
-|`c_octs_decode` |0 |none |waive: needs_review
-|`c_outbound_entry_0` |23 |`smc_state_fault_inject_test` (12) |
-|`c_outbound_entry_15` |2 |`smc_filter_multi_entry_test` (5) |
-|`c_outbound_entry_stride_32b` |2 |`smc_filter_multi_entry_test` (1) |
+|`c_memory_region` |12 |`smc_log_engine_transfer_test` (64) |
+|`c_misc_wrap_base_decodes` |14 |`smc_cpuif_handshake_test` (38) |
+|`c_misc_wrap_decode` |45 |`smc_cpuif_handshake_test` (114) |
+|`c_misc_wrap_top_decodes` |8 |`smc_cpuif_handshake_test` (38) |
+|`c_ndm_reset_block_decode` |9 |`smc_cpuif_handshake_test` (38) |
+|`c_octs_aperture_decode` |12 |`smc_periph_regblock_sweep_test` (60) |
+|`c_octs_decode` |12 |`smc_periph_regblock_sweep_test` (60) |
+|`c_outbound_entry_0` |32 |`smc_cpuif_handshake_test` (41) |
+|`c_outbound_entry_15` |4 |`smc_filter_config_field_sweep_test` (16) |
+|`c_outbound_entry_stride_32b` |5 |`smc_output_remap_window_test` (1) |
 |`c_outbound_pair_0` |12 |`smc_mailbox_irq_test` (18) |
 |`c_outbound_pair_31` |3 |`smc_peripheral_instance_decode_test` (4) |
-|`c_per_pad_block_first` |0 |none |waive: needs_review
-|`c_per_pad_block_last` |0 |none |waive: needs_review
-|`c_per_pad_instance_0` |0 |none |waive: needs_review
-|`c_per_pad_instance_64` |0 |none |waive: needs_review
-|`c_per_pad_stride_0x20` |0 |none |waive: needs_review
-|`c_peripheral_region` |34 |`smc_uart_error_conditions_test` (653) |
+|`c_per_pad_block_first` |3 |`smc_external_window_pad_ctrl_decode_test` (2) |
+|`c_per_pad_block_last` |2 |`smc_gpio_ctrl_full_sweep_test` (1) |
+|`c_per_pad_instance_0` |3 |`smc_external_window_pad_ctrl_decode_test` (2) |
+|`c_per_pad_instance_64` |2 |`smc_gpio_ctrl_full_sweep_test` (1) |
+|`c_per_pad_stride_0x20` |2 |`smc_gpio_ctrl_full_sweep_test` (1) |
+|`c_peripheral_region` |106 |`smc_i2c_target_bus_timeout_test` (5259) |
 |`c_plic_base_access` |1 |`smc_region_size_plic_clint_beu_decode_test` (8) |single
 |`c_plic_region` |1 |`smc_region_size_plic_clint_beu_decode_test` (14) |single
 |`c_plic_top_access` |1 |`smc_region_size_plic_clint_beu_decode_test` (1) |single
-|`c_pll_obs_ctrl_decode` |0 |none |waive: needs_review
-|`c_pll_obs_intf_decode` |14 |`smc_efuse_shim_ctrl_test` (5) |
-|`c_pll_wrapper_decodes` |0 |none |waive: needs_review
+|`c_pll_obs_ctrl_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
+|`c_pll_obs_intf_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
+|`c_pll_wrapper_decodes` |4 |`smc_canonical_smoke_test` (1) |
 |`c_priority_written_to_zero` |1 |`smc_region_size_plic_clint_beu_decode_test` (2) |single
-|`c_pvt_obs_ctrl_decode` |0 |none |waive: needs_review
-|`c_pvt_obs_intf_decode` |0 |none |waive: needs_review
-|`c_pvt_wrapper_decode` |4 |`smc_canonical_smoke_test` (1) |
-|`c_pvt_wrapper_decodes` |4 |`smc_canonical_smoke_test` (1) |
+|`c_pvt_obs_ctrl_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
+|`c_pvt_obs_intf_decode` |1 |`smc_external_window_pad_ctrl_decode_test` (1) |single
+|`c_pvt_wrapper_decode` |1 |`smc_peripheral_instance_decode_test` (1) |single
+|`c_pvt_wrapper_decodes` |1 |`smc_peripheral_instance_decode_test` (1) |single
 |`c_readback_matches` |1 |`smc_region_size_plic_clint_beu_decode_test` (3) |single
-|`c_region_base_decodes` |60 |`smc_dma_cg_activity_test` (14) |
-|`c_region_top_decodes` |3 |`smc_address_window_top_decode_test` (8) |
-|`c_remap_region` |0 |none |waive: needs_review
-|`c_reset_unit_decode` |16 |`smc_reset_unit_sanity_test` (40) |
+|`c_region_base_decodes` |103 |`smc_dfd_trace_writeout_phase_test` (518) |
+|`c_region_top_decodes` |6 |`smc_address_window_top_decode_test` (15) |
+|`c_remap_region` |1 |`smc_output_remap_window_test` (6) |single
+|`c_reset_unit_decode` |21 |`smc_reset_unit_sanity_test` (40) |
 |`c_rom_base_read` |1 |`smc_address_map_region_decode_test` (1) |single
 |`c_rom_just_above_top_not_rom` |3 |`smc_address_window_top_decode_test` (3) |
 |`c_rom_top_read` |1 |`smc_address_window_top_decode_test` (2) |single
 |`c_scratch_all_ones` |1 |`smc_alias_remap_spare_block_decode_test` (1) |single
-|`c_scratch_all_zeros` |9 |`smc_rdl_field_sweep_test` (12) |
-|`c_scratch_write_readback` |10 |`smc_rdl_field_sweep_test` (21) |
-|`c_security_timing_dft_region` |11 |`smc_telemetry_receiver_csr_test` (47) |
-|`c_sep_axi_in_read` |173 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (15450) |
-|`c_sep_axi_in_write` |160 |`smc_uart_baud_word_parity_format_test` (350) |
+|`c_scratch_all_zeros` |12 |`smc_cpuif_handshake_test` (14) |
+|`c_scratch_write_readback` |12 |`smc_cpuif_handshake_test` (26) |
+|`c_security_timing_dft_region` |49 |`smc_dfd_trace_sink_concurrent_test` (470) |
+|`c_sep_axi_in_read` |275 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (16428) |
+|`c_sep_axi_in_write` |263 |`smc_dfd_trace_flush_corner_test` (2983) |
 |`c_spm_region_base` |3 |`smc_address_window_top_decode_test` (7) |
 |`c_spm_region_top` |3 |`smc_address_window_top_decode_test` (7) |
-|`c_spm_write_then_read` |3 |`smc_address_window_top_decode_test` (6) |
-|`c_strap_write_has_no_effect` |1 |`smc_rdl_field_sweep_test` (1) |single
-|`c_straps_hi_decodes` |1 |`smc_rdl_field_sweep_test` (2) |single
-|`c_straps_hi_read` |1 |`smc_rdl_field_sweep_test` (2) |single
-|`c_straps_lo_decodes` |1 |`smc_rdl_field_sweep_test` (2) |single
-|`c_straps_lo_read` |1 |`smc_rdl_field_sweep_test` (2) |single
+|`c_spm_write_then_read` |6 |`smc_log_engine_transfer_test` (32) |
+|`c_strap_write_has_no_effect` |2 |`smc_cpuif_handshake_test` (26) |
+|`c_straps_hi_decodes` |2 |`smc_rdl_field_sweep_test` (2) |
+|`c_straps_hi_read` |2 |`smc_rdl_field_sweep_test` (2) |
+|`c_straps_lo_decodes` |3 |`smc_cpuif_handshake_test` (27) |
+|`c_straps_lo_read` |3 |`smc_cpuif_handshake_test` (27) |
 |`c_supplementary_region_base_decodes` |1 |`smc_address_map_region_decode_test` (1) |single
-|`c_sys_axi_in_read` |2 |`smc_sys_axi_in_port_test` (11) |
-|`c_sys_axi_in_write` |1 |`smc_sys_axi_in_port_test` (9) |single
-|`c_system_control_region` |46 |`smc_rdl_field_sweep_test` (112) |
-|`c_telemetry_decode` |8 |`smc_rdl_field_sweep_test` (25) |
+|`c_sys_axi_in_read` |2 |`smc_sys_axi_in_port_test` (40) |
+|`c_sys_axi_in_write` |1 |`smc_sys_axi_in_port_test` (37) |single
+|`c_system_control_region` |55 |`smc_cpuif_handshake_test` (152) |
+|`c_telemetry_decode` |10 |`smc_periph_regblock_sweep_test` (117) |
 |`c_timer_buserror_region` |1 |`smc_region_size_plic_clint_beu_decode_test` (30) |single
 |`c_transparent_at_reset` |2 |`smc_wdt_timeout_pin_test` (1) |
-|`c_uart_decode` |9 |`smc_efuse_read_program_timeout_test` (43) |
-|`c_uart_instance_0` |9 |`smc_efuse_read_program_timeout_test` (43) |
-|`c_uart_instance_3` |0 |none |waive: needs_review
-|`c_wdt0_decode` |6 |`smc_wdt_key_csr_test` (12) |
-|`c_wdt1_decode` |2 |`smc_wdt_key_csr_test` (12) |
-|`c_wdt2_decode` |2 |`smc_wdt_key_csr_test` (12) |
-|`c_wdt3_decode` |3 |`smc_wdt_key_csr_test` (12) |
-|`c_wdt_instance_3` |3 |`smc_wdt_key_csr_test` (12) |
-|`c_wdt_region` |6 |`smc_wdt_key_csr_test` (48) |
-|`c_zeroer_aperture_base` |10 |`smc_zeroer_regclk_cg_test` (8) |
-|`c_zeroer_aperture_top` |1 |`smc_address_window_top_decode_test` (1) |single
-|`c_zeroer_distinct_from_dma_aperture` |2 |`smc_address_window_top_decode_test` (1) |
+|`c_uart_decode` |43 |`smc_log_engine_transfer_test` (4096) |
+|`c_uart_instance_0` |43 |`smc_uart_core_mode_select_test` (1570) |
+|`c_uart_instance_3` |14 |`smc_log_engine_transfer_test` (1024) |
+|`c_wdt0_decode` |8 |`smc_wdt_key_csr_test` (12) |
+|`c_wdt1_decode` |3 |`smc_wdt_key_csr_test` (12) |
+|`c_wdt2_decode` |3 |`smc_wdt_key_csr_test` (12) |
+|`c_wdt3_decode` |4 |`smc_wdt_key_csr_test` (12) |
+|`c_wdt_instance_3` |4 |`smc_wdt_key_csr_test` (12) |
+|`c_wdt_region` |8 |`smc_wdt_key_csr_test` (48) |
+|`c_zeroer_aperture_base` |14 |`smc_cpuif_handshake_test` (42) |
+|`c_zeroer_aperture_top` |10 |`smc_zeroer_multi_burst_test` (540) |
+|`c_zeroer_distinct_from_dma_aperture` |3 |`smc_zeroer_multi_burst_test` (1) |
 |===
 
 ===== `u_smc_periph_fcov`
@@ -433,70 +419,70 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_atb_transfer_accepted` |1 |`smc_telemetry_receiver_csr_test` (48) |single
-|`c_axil_cdc_bridge_read` |27 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (38176) |
-|`c_axil_cdc_bridge_write` |26 |`smc_fw_i2c_fifo_full_test` (183) |
-|`c_axil_cdc_request_seen` |27 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (38330) |
-|`c_controller_read` |7 |`smc_fw_i2c_fifo_full_test` (74442) |
-|`c_controller_repeated_start` |4 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (63) |
-|`c_controller_write` |10 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (753479) |
+|`c_atb_transfer_accepted` |3 |`smc_telemetry_buffer_overflow_test` (185) |
+|`c_axil_cdc_bridge_read` |66 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (38175) |
+|`c_axil_cdc_bridge_write` |65 |`smc_i2c_window_landing_test` (429) |
+|`c_axil_cdc_request_seen` |67 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (38329) |
+|`c_controller_read` |14 |`smc_fw_i2c_fifo_full_test` (74442) |
+|`c_controller_repeated_start` |10 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (63) |
+|`c_controller_write` |20 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (753127) |
 |`c_distinct_atid_values` |1 |`smc_telemetry_receiver_csr_test` (32) |single
-|`c_gpio_boot_stall_pad_high` |1 |`smc_gpio_boot_stall_test` (7) |single
-|`c_gpio_boot_stall_pad_low` |19 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286241) |
-|`c_gpio_core2pad_active` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286702) |
-|`c_gpio_core2pad_en_active` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286702) |
-|`c_gpio_multi_pad_enabled` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286702) |
-|`c_gpio_output_value_driven` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286702) |
-|`c_gpio_pad2core_en_active` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1287122) |
-|`c_gpio_single_pad_enabled` |0 |none |waive: missing_stimulus
-|`c_i2c0_clock_stretch_by_dut` |19 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (600589) |
-|`c_i2c0_enabled` |23 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1280622) |
-|`c_i2c0_scl_contention` |0 |none |waive: missing_stimulus
-|`c_i2c0_scl_driven_by_dut` |19 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (600589) |
-|`c_i2c0_scl_driven_by_ext` |6 |`smc_smbus_hostnotify_test` (46250) |
-|`c_i2c0_scl_falling` |22 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1216) |
-|`c_i2c0_scl_rising` |22 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1216) |
-|`c_i2c0_sda_contention` |6 |`smc_smbus_hostnotify_test` (1845) |
-|`c_i2c0_sda_driven_by_dut` |22 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (795213) |
-|`c_i2c0_sda_driven_by_ext` |10 |`smc_smbus_pmbus_test` (63752) |
-|`c_i2c0_sense_tracks_bus` |23 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1280622) |
-|`c_i2c0_smbalert_asserted` |3 |`smc_i2c_target_smbus_test` (25636) |
-|`c_i2c0_start_condition` |22 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (64) |
-|`c_i2c0_stop_condition` |22 |`smc_fw_i2c_target_sanity_test` (8) |
-|`c_i3c0_scl_driven_by_dut` |0 |none |waive: missing_stimulus
-|`c_i3c0_scl_falling` |1 |`smc_i3c_to_fabric_test` (1) |single
-|`c_i3c0_sda_driven_by_dut` |0 |none |waive: missing_stimulus
-|`c_irq_avsbus` |0 |none |waive: missing_stimulus
-|`c_irq_axi_hang_any` |6 |`smc_rdl_field_sweep_test` (174) |
+|`c_gpio_boot_stall_pad_high` |1 |`smc_gpio_boot_stall_test` (10) |single
+|`c_gpio_boot_stall_pad_low` |20 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1285659) |
+|`c_gpio_core2pad_active` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286120) |
+|`c_gpio_core2pad_en_active` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286120) |
+|`c_gpio_multi_pad_enabled` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286120) |
+|`c_gpio_output_value_driven` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286120) |
+|`c_gpio_pad2core_en_active` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1286540) |
+|`c_gpio_single_pad_enabled` |9 |`smc_gpio_pad_input_readback_test` (84) |
+|`c_i2c0_clock_stretch_by_dut` |42 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (600237) |
+|`c_i2c0_enabled` |50 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1280097) |
+|`c_i2c0_scl_contention` |12 |`smc_i2c_controller_edge_timing_test` (414) |
+|`c_i2c0_scl_driven_by_dut` |42 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (600237) |
+|`c_i2c0_scl_driven_by_ext` |26 |`smc_i2c_target_bus_timeout_test` (173100) |
+|`c_i2c0_scl_falling` |49 |`smc_i2c_controller_exits_test` (2477) |
+|`c_i2c0_scl_rising` |49 |`smc_i2c_controller_exits_test` (2477) |
+|`c_i2c0_sda_contention` |25 |`smc_smbus_hostnotify_test` (1470) |
+|`c_i2c0_sda_driven_by_dut` |48 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (795213) |
+|`c_i2c0_sda_driven_by_ext` |35 |`smc_i2c_target_bus_timeout_test` (146325) |
+|`c_i2c0_sense_tracks_bus` |50 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1280097) |
+|`c_i2c0_smbalert_asserted` |4 |`smc_i2c_target_smbus_test` (25636) |
+|`c_i2c0_start_condition` |49 |`smc_i2c_protocol_interruption_test` (167) |
+|`c_i2c0_stop_condition` |49 |`smc_i2c_protocol_interruption_test` (101) |
+|`c_i3c0_scl_driven_by_dut` |1 |`smc_i3c_private_write_test` (114) |single
+|`c_i3c0_scl_falling` |2 |`smc_i3c_private_write_test` (10) |
+|`c_i3c0_sda_driven_by_dut` |1 |`smc_i3c_private_write_test` (167) |single
+|`c_irq_avsbus` |2 |`smc_avsbus_interrupt_sources_test` (2810) |
+|`c_irq_axi_hang_any` |7 |`smc_rdl_field_sweep_test` (174) |
 |`c_irq_axi_hang_data` |4 |`smc_hang_detector_sanity_test` (63) |
 |`c_irq_axi_hang_multi_leg` |2 |`smc_hang_detector_sanity_test` (46) |
-|`c_irq_axi_hang_periph30` |6 |`smc_rdl_field_sweep_test` (174) |
-|`c_irq_axi_hang_plic_src` |6 |`smc_rdl_field_sweep_test` (174) |
-|`c_irq_axi_hang_sep` |5 |`smc_hang_detector_sanity_test` (62) |
-|`c_irq_axi_hang_single_leg` |6 |`smc_rdl_field_sweep_test` (174) |
+|`c_irq_axi_hang_periph30` |7 |`smc_rdl_field_sweep_test` (174) |
+|`c_irq_axi_hang_plic_src` |7 |`smc_rdl_field_sweep_test` (174) |
+|`c_irq_axi_hang_sep` |6 |`smc_hang_detector_sanity_test` (62) |
+|`c_irq_axi_hang_single_leg` |7 |`smc_rdl_field_sweep_test` (174) |
 |`c_irq_axi_hang_sys` |4 |`smc_hang_detector_sanity_test` (62) |
-|`c_irq_efuse_locked_access` |4 |`smc_efuse_jtag_lc_access_matrix_test` (5) |
-|`c_irq_ext_interrupt_0` |2 |`smc_fw_plic_claim_test` (4659) |
-|`c_irq_gpio` |10 |`smc_gpio_irq_mask_deassert_test` (64) |
+|`c_irq_efuse_locked_access` |5 |`smc_efuse_lock_guard_test` (12) |
+|`c_irq_ext_interrupt_0` |2 |`smc_fw_plic_claim_test` (69707) |
+|`c_irq_gpio` |11 |`smc_gpio_irq_mask_deassert_test` (64) |
 |`c_irq_mailbox` |3 |`smc_mailbox_irq_test` (5) |
-|`c_irq_multiple_concurrent` |0 |none |waive: missing_stimulus
-|`c_irq_sync` |7 |`smc_rdl_field_sweep_test` (68) |
-|`c_irq_telemetry` |1 |`smc_telemetry_receiver_csr_test` (35) |single
-|`c_irq_temp_interrupt` |1 |`smc_temp_interrupt_test` (4) |single
-|`c_irq_uart` |13 |`smc_fw_uart_log_engine_fetch_err_test` (362313) |
+|`c_irq_multiple_concurrent` |1 |`smc_irq_observe_test` (127) |single
+|`c_irq_sync` |8 |`smc_irq_observe_test` (227) |
+|`c_irq_telemetry` |2 |`smc_telemetry_buffer_overflow_test` (887) |
+|`c_irq_temp_interrupt` |2 |`smc_fw_plic_claim_test` (69707) |
+|`c_irq_uart` |20 |`smc_fw_uart_log_engine_fetch_err_test` (362231) |
 |`c_mailbox_count_32` |1 |`smc_mailbox_multi_instance_test` (40) |single
 |`c_mailbox_depth_2_full_at_two_entries` |1 |`smc_mailbox_data_error_test` (27) |single
-|`c_octs_count_advances` |2 |`smc_fw_octs_p0_primary_test` (7455) |
-|`c_octs_count_monotonic` |2 |`smc_fw_octs_p0_primary_test` (7455) |
-|`c_receiver_0_decode` |1 |`smc_telemetry_receiver_csr_test` (16) |single
+|`c_octs_count_advances` |4 |`smc_fw_octs_p0_primary_test` (9296) |
+|`c_octs_count_monotonic` |4 |`smc_fw_octs_p0_primary_test` (9296) |
+|`c_receiver_0_decode` |3 |`smc_telemetry_buffer_overflow_test` (185) |
 |`c_receiver_1_decode` |1 |`smc_telemetry_receiver_csr_test` (16) |single
 |`c_receiver_2_decode` |1 |`smc_telemetry_receiver_csr_test` (16) |single
 |`c_single_entry_message` |2 |`smc_mailbox_data_error_test` (40) |
-|`c_target_read_served` |7 |`smc_i2c_target_smbus_test` (35625) |
-|`c_target_write_received` |7 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (694963) |
+|`c_target_read_served` |14 |`smc_i2c_target_loopback_test` (90375) |
+|`c_target_write_received` |20 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (665212) |
 |`c_two_entry_message` |1 |`smc_mailbox_data_error_test` (27) |single
-|`c_tx_multi_char` |3 |`smc_uart_baud_word_parity_format_test` (131795) |
-|`c_tx_single_char` |5 |`smc_uart_baud_word_parity_format_test` (131891) |
+|`c_tx_multi_char` |5 |`smc_uart_baud_word_parity_format_test` (131327) |
+|`c_tx_single_char` |7 |`smc_uart_baud_word_parity_format_test` (131423) |
 |===
 
 ===== `u_smc_reset_fcov`
@@ -505,27 +491,27 @@ or `unclassified` when the policy has none.
 |===
 |Point |Leaves |Owner (hits) |Note
 |`c_reassert_cold_after_release` |7 |`smc_state_fault_inject_test` (4) |
-|`c_reassert_primary_smc_after_release` |16 |`smc_state_fault_inject_test` (4) |
-|`c_release_cold_stable_ref` |192 |`smc_state_fault_inject_test` (5) |
-|`c_release_fuse_reset` |147 |`smc_state_fault_inject_test` (5) |
-|`c_release_powergood_stable` |192 |`smc_cold_reset_test` (3) |
-|`c_release_primary_ref` |192 |`smc_cold_reset_test` (7) |
-|`c_release_primary_smc` |192 |`smc_cold_reset_test` (7) |
-|`c_release_warm_smc` |147 |`smc_state_fault_inject_test` (5) |
-|`c_reset_op_cold_asserted` |192 |`smc_cold_reset_repeated_test` (205) |
-|`c_reset_op_cool_asserted` |11 |`smc_primary_reset_scope_test` (129) |
-|`c_reset_op_cool_from_flr` |3 |`smc_cool_reset_x_cold_reset_test` (97) |
-|`c_reset_op_flr_pf_active` |2 |`smc_cool_reset_x_cold_reset_test` (107) |
+|`c_reassert_primary_smc_after_release` |19 |`smc_dfd_trace_writeout_phase_test` (64) |
+|`c_release_cold_stable_ref` |294 |`smc_state_fault_inject_test` (5) |
+|`c_release_fuse_reset` |245 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_release_powergood_stable` |294 |`smc_cold_reset_test` (3) |
+|`c_release_primary_ref` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_release_primary_smc` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_release_warm_smc` |247 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_reset_op_cold_asserted` |294 |`smc_cold_reset_repeated_test` (205) |
+|`c_reset_op_cool_asserted` |13 |`smc_dfd_trace_writeout_phase_test` (2112) |
+|`c_reset_op_cool_from_flr` |4 |`smc_cool_reset_x_cold_reset_test` (97) |
+|`c_reset_op_flr_pf_active` |3 |`smc_cool_reset_x_cold_reset_test` (107) |
 |`c_reset_op_ndm_irq` |1 |`smc_ndm_reset_test` (258) |single
 |`c_reset_op_ndm_processed` |1 |`smc_ndm_reset_test` (308) |single
 |`c_reset_op_ndm_requested` |1 |`smc_ndm_reset_test` (258) |single
-|`c_reset_op_sep_wdt_asserted` |1 |`smc_reset_unit_sanity_test` (12) |single
+|`c_reset_op_sep_wdt_asserted` |1 |`smc_reset_unit_sanity_test` (8) |single
 |`c_reset_op_ss0_warm_asserted` |2 |`smc_ss_reset_complete_test` (35) |
-|`c_reset_op_warm_asserted` |192 |`smc_state_fault_inject_test` (6168) |
-|`c_reset_op_wdt_asserted` |2 |`smc_reset_unit_sanity_test` (20) |
-|`c_reset_state_all_held` |192 |`smc_cold_reset_test` (96) |
-|`c_reset_state_all_released` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (857799) |
-|`c_reset_state_partial_release` |192 |`smc_cold_reset_test` (1314) |
+|`c_reset_op_warm_asserted` |294 |`smc_dfd_trace_writeout_phase_test` (53909) |
+|`c_reset_op_wdt_asserted` |2 |`smc_wdt_timeout_pin_test` (24) |
+|`c_reset_state_all_held` |294 |`smc_cold_reset_test` (96) |
+|`c_reset_state_all_released` |294 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (857411) |
+|`c_reset_state_partial_release` |294 |`smc_cold_reset_test` (1314) |
 |===
 
 ===== `u_smc_rst_seq_fcov`
@@ -533,26 +519,26 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_async_assert_observed` |1 |`smc_cool_reset_x_cold_reset_test` (1) |single
-|`c_cold_reset_async_assert` |1 |`smc_cool_reset_x_cold_reset_test` (1) |single
-|`c_cold_reset_gated_before_powergood` |192 |`smc_cold_reset_test` (86) |
-|`c_cold_reset_released_after_powergood` |192 |`smc_state_fault_inject_test` (5) |
-|`c_cold_reset_sync_deassert` |192 |`smc_cold_reset_test` (7) |
-|`c_config_registers_at_reset_value` |192 |`smc_cold_reset_test` (7) |
-|`c_cores_held_in_primary_reset` |10 |`smc_state_fault_inject_test` (1653) |
-|`c_fabric_held_in_primary_reset` |0 |none |waive: missing_stimulus
-|`c_multi_stage_sync_present` |192 |`smc_cold_reset_test` (7) |
-|`c_peripherals_held_in_primary_reset` |16 |`smc_state_fault_inject_test` (1653) |
-|`c_powergood_rise_stretched` |192 |`smc_cold_reset_test` (3) |
-|`c_region_size_reset_16mib` |192 |`smc_cold_reset_test` (7) |
-|`c_release_primary_periph` |192 |`smc_cold_reset_test` (7) |
+|`c_async_assert_observed` |2 |`smc_cool_reset_x_cold_reset_test` (1) |
+|`c_cold_reset_async_assert` |2 |`smc_cool_reset_x_cold_reset_test` (1) |
+|`c_cold_reset_gated_before_powergood` |294 |`smc_cold_reset_test` (86) |
+|`c_cold_reset_released_after_powergood` |294 |`smc_state_fault_inject_test` (5) |
+|`c_cold_reset_sync_deassert` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_config_registers_at_reset_value` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_cores_held_in_primary_reset` |13 |`smc_cold_reset_repeated_test` (2267) |
+|`c_fabric_held_in_primary_reset` |19 |`smc_cold_reset_repeated_test` (2267) |
+|`c_multi_stage_sync_present` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_peripherals_held_in_primary_reset` |19 |`smc_cold_reset_repeated_test` (2267) |
+|`c_powergood_rise_stretched` |294 |`smc_cold_reset_test` (3) |
+|`c_region_size_reset_16mib` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_release_primary_periph` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
 |`c_reset_held_before_boot_seq_done` |1 |`smc_efuse_boundary_signals_test` (46) |single
-|`c_reset_released_after_boot_seq_done` |147 |`smc_state_fault_inject_test` (5) |
+|`c_reset_released_after_boot_seq_done` |245 |`smc_dfd_trace_writeout_phase_test` (65) |
 |`c_ss_config_driven` |2 |`smc_reset_unit_sanity_test` (2) |
-|`c_sync_deassert_observed` |192 |`smc_cold_reset_test` (7) |
-|`c_telemetry_reset_asserted` |192 |`smc_cold_reset_repeated_test` (272) |
-|`c_telemetry_reset_released` |192 |`smc_state_fault_inject_test` (5) |
-|`c_warm_cascaded_from_primary` |10 |`smc_state_fault_inject_test` (1653) |
+|`c_sync_deassert_observed` |294 |`smc_dfd_trace_writeout_phase_test` (65) |
+|`c_telemetry_reset_asserted` |294 |`smc_cold_reset_repeated_test` (509) |
+|`c_telemetry_reset_released` |294 |`smc_state_fault_inject_test` (5) |
+|`c_warm_cascaded_from_primary` |13 |`smc_cold_reset_repeated_test` (2267) |
 |===
 
 ===== `u_smc_zeroer_fcov`
@@ -560,27 +546,27 @@ or `unclassified` when the policy has none.
 [cols="4,1,4,2",options="header",]
 |===
 |Point |Leaves |Owner (hits) |Note
-|`c_address_phase_issues_aw` |6 |`smc_zeroer_axiclk_cg_test` (8) |
-|`c_axi_clk_gated_when_idle` |10 |`smc_zeroer_axiclk_cg_test` (519) |
+|`c_address_phase_issues_aw` |8 |`smc_zeroer_multi_burst_test` (10) |
+|`c_axi_clk_gated_when_idle` |10 |`smc_zeroer_axiclk_cg_test` (521) |
 |`c_axi_clk_on_busy` |3 |`smc_zeroer_axiclk_cg_test` (88) |
-|`c_axi_clk_on_disable_cg` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1715602) |
-|`c_axi_clk_on_reset` |192 |`smc_cold_reset_test` (4144) |
-|`c_busy_cleared_on_completion` |6 |`smc_zeroer_axiclk_cg_test` (7) |
-|`c_busy_set_on_start` |6 |`smc_zeroer_axiclk_cg_test` (8) |
-|`c_completion_status_updated` |6 |`smc_zeroer_axiclk_cg_test` (8) |
-|`c_data_phase_beat_count_matches_addresses` |0 |none |waive: missing_stimulus
-|`c_dest_addr_readback` |6 |`smc_zeroer_regclk_cg_test` (3) |
-|`c_every_beat_is_zero` |6 |`smc_zeroer_sanity_test` (257) |
-|`c_idle_state_no_axi_activity` |6 |`smc_zeroer_axiclk_cg_test` (675) |
-|`c_reg_clk_gated_when_idle` |8 |`smc_clk_running_test` (332) |
+|`c_axi_clk_on_disable_cg` |294 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (1746384) |
+|`c_axi_clk_on_reset` |294 |`smc_cold_reset_test` (2772) |
+|`c_busy_cleared_on_completion` |8 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_busy_set_on_start` |8 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_completion_status_updated` |8 |`smc_zeroer_axiclk_cg_test` (16) |
+|`c_data_phase_beat_count_matches_addresses` |8 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_dest_addr_readback` |9 |`smc_zeroer_size_corners_test` (3) |
+|`c_every_beat_is_zero` |8 |`smc_zeroer_multi_burst_test` (2560) |
+|`c_idle_state_no_axi_activity` |8 |`smc_zeroer_multi_burst_test` (1010) |
+|`c_reg_clk_gated_when_idle` |8 |`smc_clk_running_test` (362) |
 |`c_reg_clk_on_activity` |4 |`smc_zeroer_axiclk_cg_test` (64) |
-|`c_reg_clk_on_disable_cg` |192 |`smc_fw_i2c_p1_fifo_depth_xfer_test` (1715602) |
-|`c_reg_clk_on_reset` |192 |`smc_cold_reset_test` (4140) |
-|`c_return_to_idle` |6 |`smc_zeroer_axiclk_cg_test` (8) |
-|`c_size_readback` |2 |`smc_zeroer_sanity_test` (1) |
-|`c_trigger_write_starts_operation` |6 |`smc_zeroer_axiclk_cg_test` (8) |
-|`c_zeroer_first_aw_at_dest` |6 |`smc_zeroer_axiclk_cg_test` (8) |
-|`c_zeroer_multi_beat_burst` |3 |`smc_zeroer_sanity_test` (1) |
-|`c_zeroer_status_read` |3 |`smc_zeroer_sanity_test` (27) |
-|`c_zeroer_write_response` |6 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_reg_clk_on_disable_cg` |294 |`smc_fw_i2c_acq_fifo_stretch_reset_test` (1746384) |
+|`c_reg_clk_on_reset` |294 |`smc_cold_reset_test` (2772) |
+|`c_return_to_idle` |8 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_size_readback` |4 |`smc_zeroer_size_corners_test` (2) |
+|`c_trigger_write_starts_operation` |8 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_zeroer_first_aw_at_dest` |8 |`smc_zeroer_axiclk_cg_test` (8) |
+|`c_zeroer_multi_beat_burst` |5 |`smc_zeroer_multi_burst_test` (10) |
+|`c_zeroer_status_read` |7 |`smc_zeroer_multi_burst_test` (535) |
+|`c_zeroer_write_response` |8 |`smc_zeroer_multi_burst_test` (10) |
 |===

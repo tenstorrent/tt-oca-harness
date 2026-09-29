@@ -45,7 +45,7 @@
 `include "sep_scratch.rdl"
 `include "el2_pic.rdl"
 
-addrmap och_sep_top #(
+addrmap sep_top #(
     longint unsigned BASE_ADDR = 0x0000_0000
 ) {
     name = "OCAH SEP Top-Level Address Map";

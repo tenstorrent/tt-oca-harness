@@ -49,11 +49,11 @@
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-#define SEP_LOCAL_BASE_ADDR_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR
+#define SEP_LOCAL_BASE_ADDR_REG SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR
 #define WINDOW_BASE SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset
 // Distinct probe value, used only to prove the base CSR is writable at all.
 #define ALT_WINDOW_BASE 0xE0000000u
-#define TARGET_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+#define TARGET_BASE SEP_TOP_SEP_SRAM_BASE_ADDR
 #define ADJUST (WINDOW_BASE - TARGET_BASE) // 0xC000_0000 = base - target
 #define ADJUST_ALT (ALT_WINDOW_BASE - TARGET_BASE)
 

@@ -100,8 +100,8 @@ module sep_wdt_wrap (
   // Convert absolute address to offset by subtracting base address
   always_comb begin
     sep_wdt_tlul_axi_req_offset         = sep_wdt_tlul_axi_req;
-    sep_wdt_tlul_axi_req_offset.ar.addr = sep_wdt_tlul_axi_req.ar.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR;
-    sep_wdt_tlul_axi_req_offset.aw.addr = sep_wdt_tlul_axi_req.aw.addr - och_sep_top_addrmap_pkg::OCH_SEP_TOP_WDT_TIMER_BASE_ADDR;
+    sep_wdt_tlul_axi_req_offset.ar.addr = sep_wdt_tlul_axi_req.ar.addr - sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR;
+    sep_wdt_tlul_axi_req_offset.aw.addr = sep_wdt_tlul_axi_req.aw.addr - sep_top_addrmap_pkg::SEP_TOP_WDT_TIMER_BASE_ADDR;
   end
 
   tlul_pkg::tl_h2d_t tl_d_i;

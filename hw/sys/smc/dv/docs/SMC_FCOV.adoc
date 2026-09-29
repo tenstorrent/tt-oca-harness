@@ -1,59 +1,405 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-[[smc-coverage-policy]]
-=== SMC coverage targets and closure policy
 
-This chapter defines *what* the SMC coverage set is graded on and *how* a
-hole is waived. The numeric floors live in
-`cov/config/verilator/coverage_policy.toml` and fail
-`run_dv --dut smc --items hosted fw --tool verilator --cov` when unmet.
+[[smc-dv-functional-coverage]]
+== SMC OCAH Open-Source Functional Coverage Plan
 
-[cols=",",options="header",]
+=== Overview
+
+This plan covers the legal operating modes of the SMC subsystem that the
+`smc_wrapper` bench can present, and states which of them the suite must
+reach. It is the functional-coverage contract for the cocotb/PyUVM flow.
+
+The functional points are SystemVerilog cover properties in
+`hw/sys/smc/dv/cov/sv/`, written with `OCAH_FCOV_COVER`. Each collector is a
+passive module that `tb/tb_top.sv` instantiates once and drives from
+`smc_tb_signal_list.svh` signals and `smc_wrapper` boundary ports; none of
+them drives anything. Unlike `OCAH_COVER`, the macro stays live on every
+simulator, so the same points land in the `user` family of a Verilator run
+and of a VCS run. `smc_fabric_fcov` instantiates `smc_axi_chan_fcov` once per
+inbound manager (`u_sep_in`, `u_sys_in`, `u_jtag_axi`), so those points exist
+once per instance.
+
+Several collectors also carry covergroups under `ifndef VERILATOR`. They are
+the commercial simulator's `group` metric, crossing what a flat point list
+cannot. They are not part of the `user` family, and <<smc-fcov-groups>>
+states the contract they are held to.
+
+Feature checkers stay on the VPLAN scorecard. A cover point records that the
+suite presented a legal event and that it completed; the claim that the
+response was right belongs to the checker of the leaf that reached it.
+
+[cols=",",options="header"]
 |===
 |Field |Value
-|Coverage set |`--dut smc --items hosted fw`: the package regression `all` less
-the three `dual` leaves, whose second build target the coverage merge cannot
-combine with `default` (SEP names its set the same way, `all` less `rom_fw`).
-`hosted` alone is the toolchain-free nightly and weekly tier (`regress.yml`);
-the fw leaves need the RISC-V toolchain, so the run of record is a developer
-or self-hosted run. `--dut smc` already instantiates `smc_wrapper`; there is
-no second wrapper job.
-|Public metrics |line, branch, expression, and the native `user` family
-|Numeric target |`user` 100.0 effective with `max_unclassified_points = 0`;
-line 78.0 / branch 75.9 / expression 69.0 effective
-|Signed |SMC DV owner, on a 168-leaf `hosted`
-measurement (Verilator 5.050). Re-measured on the 192-leaf
-`hosted fw` set: line 97.50, branch 89.07, expression 86.46, user 407 of 467
+|DUT |`smc_wrapper`
+|Reference specification |`hw/sys/smc/doc/`, the generated map `hw/sys/smc/regs/gen/`
+|Reference VPLAN |<<smc-vplan,SMC_VPLAN>>
+|Open-source framework |cocotb with PyUVM
+|Simulators |Verilator (public), VCS (commercial)
 |===
 
-[[smc-cov-paths]]
-==== Public versus commercial evidence
+[[smc-fcov-goals]]
+=== Coverage Goals
 
-[cols="2,3,3",options="header",]
+[cols="2,2,3",options="header"]
+|===
+|Metric |Contract |Collection path
+|Phase 1 functional coverage |Every compiled cover point hit; no accepted
+waiver for a `user` point |`user` family of a `--dut smc --items hosted fw
+--cov` run, Verilator or VCS
+|Phase 2 functional coverage |The named set in <<smc-fcov-phase2>> |Not collected
+|Line / branch / expression |Floors in the Verilator policy (line 78.0,
+branch 75.9, expression 69.0 effective) |`--coverage-line`, `--coverage-expr`
+|Condition / FSM / toggle / assertion / covergroups |Commercial sign-off |VCS
+|===
+
+The coverage set is `--dut smc --items hosted fw`: the package regression
+`all` less the three `dual` leaves, whose second build target the coverage
+merge cannot combine with `default` (SEP names its set the same way, `all`
+less `rom_fw`). `hosted` alone is the toolchain-free nightly and weekly tier
+(`regress.yml`); the fw leaves need the RISC-V toolchain, so the run of record
+is a developer or self-hosted run. `--dut smc` already instantiates
+`smc_wrapper`; there is no second wrapper job.
+
+The numeric floors live in `cov/config/verilator/coverage_policy.toml` and
+fail `run_dv --dut smc --items hosted fw --tool verilator --cov` when unmet.
+The `user` row carries `max_unclassified_points = 0`, which fails a run on
+any point that is neither hit nor classified. The VCS policy,
+`cov/config/vcs/coverage_policy.toml`, names the exclusion files the report
+applies and grades no floor.
+
+Do not mix line coverage with the Phase 1 points: the line population of this
+DUT would mask them.
+
+[[smc-fcov-scope]]
+=== Two-Phase Scope
+
+[cols="1,4",options="header"]
+|===
+|Phase |Scope
+|**Phase 1** |Every cover point compiled into the collectors below. Each
+records a legal behaviour of this bench that a named `all`-group leaf walks,
+expressed against the specification or the generated map.
+|**Phase 2** |Points that need a mode this bench cannot present: a responder
+the bench leaves out by policy, a stimulus shape the bench manager cannot
+drive, an input clock stopping, a strap capture the reference integration
+does not implement. Each sits under `ifdef SMC_FCOV_PHASE2`, which no target
+defines, and is listed in <<smc-fcov-phase2>> with what would bring it back.
+|===
+
+A point is closed by a hit, by rewriting it to express the behaviour the
+specification describes, or by moving it to Phase 2 with its reason. A point
+that describes an event the design cannot produce under any stimulus (an
+encoding no subordinate returns, a region the map does not have) is removed,
+not deferred: there is no later phase in which it becomes reachable.
+
+[[smc-cov-paths]]
+=== Collection
+
+[cols="2,3,3",options="header"]
 |===
 |Path |What it collects |Where it runs
 |Public Verilator |line, branch and expression (`--coverage-line`,
-`--coverage-expr`) plus the `user` family from the `hw/sys/smc/dv/cov/sv/`
-cover properties, scoped at compile time by `smc_cov_scope.vlt` |local
+`--coverage-expr`) plus the `user` family from the `cov/sv/` cover
+properties, scoped at compile time by `smc_cov_scope.vlt` |local
 `run_dv --dut smc --items hosted fw --tool verilator --cov`. Nightly and
 weekly `hosted` do not collect (`coverage: false` in `regress.yml`)
-|Commercial |code + assertion + covergroups under `ifndef VERILATOR`
-|licensed VCS; not a public CI job
+|Commercial |code, assertion, the `user` family and the covergroups under
+`ifndef VERILATOR` |licensed VCS; not a public CI job
 |===
 
-`FUNC_COV_VALUE` log text from `SmcScoreboard` is not a mergeable
-metric. Nothing under `tools/` or `.github/` reads it. Do not credit
-it as the release functional-coverage gate.
+The address windows are the generated map's. Unit bases, strides and
+instance counts come from `smc_top_addrmap_pkg`; a unit's aperture is the
+`Size` column and its top the `Decoded Extent` column of
+`regs/gen/adoc/memory_map.adoc`, whose functional-organization table also
+gives the layout regions. Placements inside the adopter external window are
+the reference integration's, from `bootrom/prod/registers/smc_top_regs.h`
+(`SMC_TOP_SMC_EXTERNAL_*`). A collector attributes a response to an address
+only while exactly one transaction is outstanding in that direction, so an
+overlapped burst under-counts rather than pairing one access's response with
+another's address.
 
-There is no checked-in 98%-after-waiver figure. SMC does not inherit
-an unwritten default. Do not invent one.
+`FUNC_COV_VALUE` log text from `SmcScoreboard` is not a mergeable metric.
+Nothing under `tools/` or `.github/` reads it; do not credit it as the
+functional-coverage gate. SAMPLE-only Python bins that saturate at unique=1
+(`i2c_state`, `gpio_state`, `irq_state`, `axil_master`) are stimulus holes,
+not coverpoints to publish as 100%; the collectors carry their intent as one
+point per observable.
 
-SAMPLE-only Python bins that saturate at unique=1 (`i2c_state`,
-`gpio_state`, `irq_state`, `axil_master`) are stimulus holes, not
-coverpoints to publish as 100%.
+[[smc-fcov-definitions]]
+=== Phase 1 coverage definitions
+
+Each section names a collector in `cov/sv/` and groups its points by what
+they record. The points listed in <<smc-fcov-phase2>> are not in these
+tables.
+
+==== `smc_map_fcov`
+
+*Description*: address decode on the SEP_IN manager, with the external
+managers' completions. A decode point is hit by a completion inside the
+window, OKAY unless the row says otherwise.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_wdt0_decode` .. `c_wdt3_decode`, `c_wdt_instance_3` |Each 1 KiB watchdog window
+|`c_rom_base_read`, `c_rom_top_read`, `c_rom_just_above_top_not_rom` |ROM first and last word; any completion of the word above the ROM
+|`c_spm_region_base`, `c_spm_region_top`, `c_spm_write_then_read` |Scratchpad first and last word, and a read after a write landed there
+|`c_dma_aperture_base`, `c_dma_aperture_top`, `c_dma_just_above_top_not_dma`, `c_zeroer_aperture_base`, `c_zeroer_aperture_top`, `c_zeroer_distinct_from_dma_aperture`, `c_all_16_banks_decode` |DMA and zeroer bases and decoded-extent tops, the word above the DMA aperture, both apertures reached in one run, and every DMA stream bank's `NEXT_ID` read
+|`c_gpio_interface_decode`, `c_i3c_decode`, `c_i3c_region`, `c_avsbus_decode`, `c_avsbus_aperture_decode`, `c_i2c_decode`, `c_uart_decode`, `c_efuse_map_decode`, `c_efuse_if_map_decode`, `c_efuse_interface_decode`, `c_efuse_if_interface_decode`, `c_telemetry_decode`, `c_octs_decode`, `c_octs_aperture_decode`, `c_dfx_status_decode`, `c_reset_unit_decode`, `c_misc_wrap_decode`, `c_cla_decode`, `c_cla_region` |Each peripheral unit's aperture at its generated base. Two labels on one window are two spec cells over the same aperture
+|`c_gpio_instance_0`, `c_gpio_instance_64`, `c_i3c_instance_0`, `c_i3c_instance_5`, `c_i3c_count_6`, `c_uart_instance_0`, `c_uart_instance_3`, `c_mailbox_pair_0`, `c_mailbox_pair_31`, `c_outbound_pair_0`, `c_inbound_pair_0`, `c_outbound_pair_31`, `c_inbound_pair_31` |First and last instance at the generated stride; all six I3C CSR windows in one run; both halves of the first and last mailbox pair
+|`c_config_reg_read`, `c_config_reg_write`, `c_alias_region_0_configured`, `c_alias_region_7_configured`, `c_local_alias_base_reaches_local_resource`, `c_transparent_at_reset`, `c_global_base_readable`, `c_local_base_readonly_c0000000`, `c_local_base_reads_c0000000`, `c_local_base_write_has_no_effect`, `c_base_config_read`, `c_hang_det_control_fields_present` |Fabric control block: base configuration, alias remap regions, the local alias at reset, `LOCAL_BASE` unchanged after a write, hang-detector controls
+|`c_inbound_entry_0`, `c_inbound_entry_15`, `c_outbound_entry_0`, `c_outbound_entry_15`, `c_outbound_entry_stride_32b` |First and last filter entry of each direction, and the 32 B entry stride
+|`c_scratch_write_readback`, `c_scratch_all_zeros`, `c_scratch_all_ones`, `c_chip_config_read`, `c_chip_config_write`, `c_misc_wrap_base_decodes`, `c_misc_wrap_top_decodes`, `c_ndm_reset_block_decode`, `c_lc_state_readback_matches_input` |Miscellaneous wrapper: scratch patterns, chip configuration, the last decoded register, the NDM reset block, `LC_STATE` matching the driven lifecycle input
+|`c_pll_obs_intf_decode`, `c_pll_obs_ctrl_decode`, `c_pvt_obs_intf_decode`, `c_pvt_obs_ctrl_decode`, `c_gpio_poc_pbias_decode`, `c_gpio_refclk_ctrl_decode`, `c_per_pad_instance_0`, `c_per_pad_block_first`, `c_per_pad_instance_64`, `c_per_pad_block_last`, `c_per_pad_stride_0x20` |Mandatory adopter blocks the reference integration terminates: a completion, whatever its response, that the external port carried
+|`c_mandatory_region_base_decodes`, `c_efuse_shim_decodes`, `c_pll_wrapper_decodes`, `c_pvt_wrapper_decode`, `c_pvt_wrapper_decodes`, `c_supplementary_region_base_decodes` |eFuse SHIM at the window base, the bench PLL and PVT models, and a supplementary-region completion the external port carried
+|`c_straps_lo_read`, `c_straps_lo_decodes`, `c_straps_hi_read`, `c_straps_hi_decodes`, `c_strap_write_has_no_effect` |Captured-straps block read, and unchanged after a write
+|`c_plic_region`, `c_plic_base_access`, `c_plic_top_access`, `c_just_above_plic_not_plic`, `c_priority_written_to_zero`, `c_enables_written_to_disabled`, `c_readback_matches`, `c_clint_base_access`, `c_clint_top_access`, `c_just_above_clint_not_clint`, `c_timer_buserror_region`, `c_beu0_decode` .. `c_beu3_decode`, `c_beu_instance_3` |PLIC, CLINT and bus-error units above the reset aperture, qualified on `REGION_SIZE` covering the offset; the PLIC and CLINT tops are the last words of their decoded extents; the PLIC software initialisation
+|`c_wdt_region`, `c_system_control_region`, `c_gpio_region`, `c_peripheral_region`, `c_security_timing_dft_region`, `c_fabric_control_region`, `c_mailbox_region`, `c_data_processing_region`, `c_memory_region`, `c_axil_external_region`, `c_region_base_decodes`, `c_region_top_decodes`, `c_beyond_region_does_not`, `c_cla_base_decodes`, `c_cla_top_decodes` |Functional-organization regions, their edges, and the word beyond a region top
+|`c_remap_region` |A JTAG-manager completion in the address-remapping region. The remap stages serve the managers `fabric.adoc` lists (DMA, JTAG2AXI, log engine, CPU external path); SEP_IN enters the local fabric directly
+|`c_sep_axi_in_read`, `c_sep_axi_in_write`, `c_sys_axi_in_read`, `c_sys_axi_in_write`, `c_jtag_axi_in_read`, `c_jtag_axi_in_write` |A completed read and write on each inbound manager
+|===
+
+==== `smc_fabric_fcov` and `smc_axi_chan_fcov`
+
+*Description*: downstream AXI-Lite activity, the SEP_IN request shape, the
+eFuse JTAG port, SYS_OUT, and per-manager channel handshakes.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_axil_external_active`, `c_axil_efuse_bank_active`, `c_axil_any_master_active`, `c_axil_concurrent_masters` |Each downstream AXI-Lite master active, and two in one cycle
+|`c_sep_in_awsize_*`, `c_sep_in_awburst_*`, `c_sep_in_arsize_word`, `c_sep_in_wstrb_full`, `c_sep_in_wstrb_partial` |SEP_IN sizes, bursts and strobes the bench manager presents
+|`c_sep_in_r_hold_engaged`, `c_sys_in_r_hold_engaged`, `c_sys_out_resp_hold_engaged` |Response backpressure held on each port
+|`c_efuse_jtag_aw_accept`, `c_efuse_jtag_w_accept`, `c_efuse_jtag_ar_accept`, `c_efuse_jtag_bresp_okay`, `c_efuse_jtag_bresp_decerr`, `c_efuse_jtag_rresp_okay`, `c_efuse_jtag_rresp_decerr` |eFuse JTAG port: an admitted request answered OKAY, and a lifecycle-blocked one answered with the error slave's response (efuse `architecture.adoc`, JTAG Access Control Based on LC_STATE)
+|`c_sys_out_*` |SYS_OUT handshakes, the three response codes the responder returns, and the transaction counters advancing
+|`c_full_64bit_beat`, `c_partial_strobe_beat`, `c_internal_addr_low`, `c_internal_addr_high`, `c_response_id_matches_request_port` |Beat width, local and global internal addresses, and response IDs returning to their port
+|`u_<manager>.c_aw_accept` .. `u_<manager>.c_r_last`, `u_<manager>.c_*_single_beat`, `u_<manager>.c_*_multi_beat`, `u_<manager>.c_bresp_*`, `u_<manager>.c_rresp_*` |Per inbound manager: each channel accepted and stalled, burst length, and the OKAY, SLVERR and DECERR responses. EXOKAY has no point: no subordinate in the SMC fabric supports an exclusive access
+|===
+
+==== `smc_efuse_fcov`
+
+*Description*: fuse sense, the delayed fuse reset, the shadow output, the
+bank-control and SHIM paths, and the per-field lock contract.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_fuse_sense_done_asserted`, `c_fuse_reset_delayed_16_stages`, `c_repair_triggered_by_fuse_sense_done`, `c_shadow_regs_reflect_sensed_values`, `c_lc_state_test_dev_tie` |Sense completion and what follows it
+|`c_bank_ctrl_write`, `c_bank_ctrl_read`, `c_bank_ctrl_response_returned`, `c_shim_command_issued`, `c_shim_response_consumed`, `c_jtag_otp_write`, `c_jtag_otp_read` |Bank-control AXI-Lite (write address and data may arrive on separate cycles), SHIM command and response, and the JTAG OTP window
+|`c_locks_cleared_access_permitted`, `c_locks_set_access_refused`, `c_write_locked_field_unchanged`, `c_write_unlocked_field_updated`, `c_read_locked_field_masked`, `c_read_unlocked_field_returned` |The lock pair of the field an access targets (`smc_efuse_map.rdl` `LOCKS`: write lock at bit 2n and read lock at bit 2n+1 of slot n). An access to an open field completes; a program to an open field reads back set, and one to a write-locked field reads back clear; a read of a read-locked field returns zero
+|===
+
+==== `smc_dma_fcov`
+
+*Description*: the stream-0 launch, what the programmed length becomes on
+the AXI master, completion counting, and the two clock gates.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_next_id_0_nonzero_on_valid_setup`, `c_next_id_0_launches_transfer`, `c_shared_registers_consumed` |`NEXT_ID_0` launch and the value it returns
+|`c_status0_busy_during`, `c_done0_set_on_completion`, `c_done0_holds_after_read` |Busy during a transfer; `DONE_0` advancing on completion and holding the cumulative count across a read (`dma_ctrl.rdl` `DONE`)
+|`c_len_one_byte`, `c_len_single_beat`, `c_len_multi_burst`, `c_dest_contents_match`, `c_dma_wlast_accepted` |Length shapes on the master
+|`c_all_three_blocks_gated_together`, `c_enable_from_frontend_wakeup`, `c_enable_from_backend_busy`, `c_gated_when_neither` |Frontend and backend clock-gate terms
+|===
+
+==== `smc_zeroer_fcov`
+
+*Description*: the zeroer command registers, the FSM walk, the zero payload,
+and its two clock gates term by term.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_dest_addr_readback`, `c_size_readback`, `c_trigger_write_starts_operation`, `c_busy_set_on_start`, `c_busy_cleared_on_completion` |Command and status
+|`c_idle_state_no_axi_activity`, `c_address_phase_issues_aw`, `c_data_phase_beat_count_matches_addresses`, `c_return_to_idle`, `c_completion_status_updated` |FSM phases; beats against addresses over one operation, counted from the trigger sample
+|`c_every_beat_is_zero`, `c_zeroer_first_aw_at_dest`, `c_zeroer_multi_beat_burst`, `c_zeroer_status_read`, `c_zeroer_write_response` |Payload, the first address of each operation, burst shape
+|`c_axi_clk_on_*`, `c_axi_clk_gated_when_idle`, `c_reg_clk_on_*`, `c_reg_clk_gated_when_idle` |Each clock-enable term
+|===
+
+==== `smc_clk_fcov` and `smc_clk_domain_fcov`
+
+*Description*: the relative speeds of the three input clocks over a
+ref-clock window, the clock gates, and blocks advancing in the domain the
+clock chapter assigns them.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_clk_ratio_smc_*_ref`, `c_clk_ratio_periph_*_ref`, `c_clk_ratio_smc_faster_than_periph`, `c_clk_ratio_periph_faster_than_smc`, `c_clk_periph_at_minimum_100mhz` |Which clock relationships a leaf ran with
+|`c_i2c_cg_*`, `c_dma_cg_*`, `c_zeroer_cg_*`, `c_cg_test_en_override`, `c_dma_gated_clk_*`, `c_zeroer_gated_*`, `c_dma_busy_fe*_be*`, `c_dma_gate_*`, `c_dma_busy_seen`, `c_zeroer_gate_*`, `c_zeroer_bus_active`, `c_zeroer_reg_clk_resume_on_access`, `c_module_gate_*`, `c_activity_detected_clock_restored` |Clock gates open, closed, overridden and resumed
+|`c_atb_capture_on_clk_telemetry`, `c_cpu_retires_on_clk_smc`, `c_octs_tick_on_clk_ref`, `c_avsbus_on_clk_periph`, `c_uart_on_clk_periph` |A block advancing on its clock
+|===
+
+==== `smc_cpu_fcov`
+
+*Description*: cores retiring, the reset vector, cluster traffic to ROM,
+scratchpad and peripherals, memory-init and isolation ordering, the cold-boot
+chain, and the cluster's outputs.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_core0_retire` .. `c_core3_retire`, `c_first_fetch_at_c0040000`, `c_first_fetch_at_rom_vector`, `c_rom_req_issued` |Boot
+|`c_cpu_to_sram_read`, `c_cpu_to_sram_write`, `c_mmio_write_peripheral` |Cluster traffic
+|`c_init_done_high_after_init`, `c_init_done_low_during_init`, `c_self_isolated_at_cold_boot`, `c_release_requires_init_done`, `c_release_requires_cores_out_of_reset`, `c_ordered_powergood_fusesense_repair_mbist_release`, `c_no_step_out_of_order` |Init, isolation and the cold-boot order
+|`c_internal_range_323_320`, `c_custom_action_output_driven` |Cluster interrupt range and the CLA custom-action output
+|===
+
+==== `smc_int_fcov`
+
+*Description*: raw interrupt vector bits against the PLIC source each
+becomes (source = bit + 1, `interrupts.adoc`), PLIC claim, the hang OR, the
+NDM request path and the `SYNC_REG` bit. The tb reads PLIC source N from the
+controller's `pending_<N-1>` register, since source 0 is reserved.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_bit0_source1`, `c_bit323_source324`, `c_arbitrary_bit_plus_one` |A raw bit and the pending bit of its source. The zeroer's bit 323 is a one-cycle pulse, held until the pending bit it raised falls
+|`c_claim_returns_highest_priority`, `c_claim_returns_zero_when_none_pending`, `c_delivery_after_full_initialization` |PLIC claim, driven by `smc_fw_plic_claim_test`
+|`c_hang_or_bit286`, `c_ndm_request_synchronized`, `c_ndm_or_reduced_to_bit267`, `c_ndm_request_cleared`, `c_sync_bit_set`, `c_sync_bit_cleared` |Hang OR, NDM request, `SYNC_REG`
+|===
+
+==== `smc_periph_fcov` and `smc_gpio_fcov`
+
+*Description*: I2C and I3C bus events, GPIO pad activity and the default
+direction map, interrupt sources, the peripheral AXI-Lite CDC bridge, mailbox
+depth, telemetry, UART, and OCTS.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_i2c0_*`, `c_i3c0_scl_falling`, `c_i3c0_scl_driven_by_dut`, `c_i3c0_sda_driven_by_dut` |Bus conditions, who drove each line, contention and stretch
+|`c_gpio_core2pad_active`, `c_gpio_core2pad_en_active`, `c_gpio_pad2core_en_active`, `c_gpio_single_pad_enabled`, `c_gpio_multi_pad_enabled`, `c_gpio_output_value_driven`, `c_gpio_boot_stall_pad_*`, `c_pad_output_low` |Pad activity. The single-pad point counts the output enables GPIO software owns; a pad an LSIO function selects takes that function's direction (gpio `programming.adoc`, LSIO Interface Operation)
+|`c_default_output_count_3`, `c_default_input_count_62`, `c_per_instance_default_matches_map` |The `INPUT_BY_DEFAULT` map at primary-reset release (`periphs.adoc`), compared on the pads no LSIO function owns
+|`c_irq_*` |Each interrupt source asserted, the hang legs, and two sources concurrent
+|`c_axil_cdc_*`, `c_mailbox_*`, `c_single_entry_message`, `c_two_entry_message`, `c_atb_transfer_accepted`, `c_receiver_*_decode`, `c_distinct_atid_values`, `c_tx_*`, `c_controller_*`, `c_target_*`, `c_octs_count_*` |CDC bridge, mailbox, telemetry, UART, I2C controller and target transfers, OCTS counter
+|===
+
+==== `smc_reset_fcov`, `smc_rst_seq_fcov`, `smc_iso_fcov` and `smc_filt_fcov`
+
+*Description*: each reset source and release edge, the relationships between
+them, isolation and FLR, and the protection and inbound filters.
+
+[cols="3,4",options="header"]
+|===
+|Points |Records
+|`c_reset_op_*`, `c_release_*`, `c_reassert_*`, `c_reset_state_*` |Each reset source asserted, each release edge, and the held, partial and released states
+|`c_powergood_rise_stretched`, `c_cold_reset_*`, `c_async_assert_observed`, `c_sync_deassert_observed`, `c_multi_stage_sync_present`, `c_release_primary_periph`, `c_*_held_in_primary_reset`, `c_warm_cascaded_from_primary`, `c_region_size_reset_16mib`, `c_config_registers_at_reset_value`, `c_ss_config_driven`, `c_reset_*_boot_seq_done`, `c_telemetry_reset_*` |Power-on ordering, what the primary reset holds, the boot-sequence gate
+|`c_sw_isolate_per_subsystem`, `c_flr_isolate_*`, `c_single_sequence_per_rising_edge`, `c_no_sequence_on_level_hold`, `c_warm_from_*_wdt`, `c_cool_reset_from_gpio_pin_61` |Isolation terms, FLR sequencing, warm and cool reset sources
+|`c_awprot_*`, `c_arprot_*`, `c_jtag2axi_remapped`, `c_jtag2axi_filtered`, `c_inbound_filter_*` |Protection filter exact and nearest-miss matches, the JTAG2AXI path, the inbound filter
+|===
+
+[[smc-fcov-groups]]
+=== Covergroups
+
+Every covergroup bin and cross cell is either walked by an `all`-group leaf
+or carried as an `ignore_bins` whose comment states the specification or bench
+fact that keeps it out of reach, the way the cover points are held. The bins
+and cells that fact removes:
+
+[cols="2,2,4",options="header"]
+|===
+|Group |Bin or cell |Why it is ignored
+|`smc_rst_seq_fcov::cg_primary_holds` |`cp_fabric` released |The primary
+reset covers the fabric infrastructure (`clk_rst.adoc`, Primary Reset), so
+both SEP_IN ready terms are low for the whole hold
+|`smc_fabric_fcov::cg_sep_in_shape` |`cp_wstrb` none |The bench AXI manager
+cannot present a zero-strobe beat; the matching cover point is in
+<<smc-fcov-phase2>>
+|`smc_dma_fcov::cg_dma_burst` |`cp_strb` no byte |A transfer has a non-zero
+length (`dma.adoc`, zero-length transfers are rejected) and the backend
+writes only the bytes of the programmed range, so every beat carries one
+|`smc_map_fcov::cg_map_access` |CLA with an error |The CLA's decoded extent
+fills its region (`memory_map.adoc`), so no address in it is refused
+|`smc_map_fcov::cg_map_access` |Address remapping with OKAY |The remap stages
+serve the DMA, JTAG2AXI, log engine and CPU external-path managers
+(`fabric.adoc`, SMC Fabric Traffic Managers); the group samples SEP_IN
+|`smc_map_fcov::cg_map_access` |Local memories, read, error |In
+<<smc-fcov-phase2>>
+|`smc_iso_fcov::cg_isolate_terms` |Software term set, nothing isolated |Each
+subsystem's isolation is the OR of the software, pin and FLR terms
+(`clk_rst.adoc`, Isolation Control Architecture)
+|`smc_clk_fcov::cg_clk_ratio` |SMC much faster, peripheral slower |The
+peripheral clock is slower than the reference only against the 8 ns
+reference, where the fastest SMC clock is twice the reference
+|`smc_clk_fcov::cg_clk_gate` |Clock held with the gate bypassed or the block
+busy |`cg_enable_i` low bypasses the gate and a busy block keeps its clock
+(`dma.adoc`, `zeroer.adoc`, Clock Gating)
+|`smc_zeroer_fcov::cg_zeroer_gates` |A clock held while one of its enable
+terms is set; the AXI clock running on the reset term alone |`zeroer.adoc`
+(Clock Gating) gives each enable as an OR of its terms; the primary reset
+clears `CLOCK_GATE_CONTROL.ZEROER_CG_EN`, which sets `disable_cg`
+|`smc_dma_fcov::cg_dma_gates` |Frontend clock held, backend clock running
+|The frontend clock runs whenever the backend clock does, with the same
+hysteresis (`dma.adoc`, SMC DMA Clock Gating Configuration)
+|===
+
+`cg_map_access` grades a completion against a refusal rather than the
+response code: `memmap.adoc` and `fabric.adoc` say an address is refused but
+fix no code. `cg_sep_in_shape` crosses every AxSIZE with every burst type;
+`smc_sep_in_axi_shape_test` issues FIXED and WRAP bursts at each size, which
+the SEP_IN path refuses, and the cells record the refusal at that size.
+
+A gated clock is observed through a flop it toggles itself, and the gate
+terms it is crossed with are taken one sample late, because a movement seen at
+one sample is the edge the gate let through on the previous cycle. Sampling
+the clock net on the edge of the clock it is gated from reads the same level
+whether it runs or not.
+
+[[smc-fcov-phase2]]
+=== Phase 2 (not collected)
+
+Each cover point below is compiled only under `SMC_FCOV_PHASE2`, which no
+target defines, so it is absent from every collected database. A covergroup
+cell here is an `ignore_bins` whose comment names this list.
+
+[cols="2,2,4,3",options="header"]
+|===
+|Point |Collector |Why the bench cannot reach it |What brings it back
+|`c_dtp_ctrl_decode` |`smc_map_fcov` |The DTP control window is served by
+the DTP. `smc_wrapper` leaves the DTP CSR port unterminated, and the plan
+forbids a placeholder slave there (<<smc-vplan,SMC_VPLAN>>, DTP CSR on
+smc_wrapper) |Collection on a bench that connects the SMC DTP CSR port to a
+DTP, as `smu.sv` does
+|`c_axil_dtp_csr_active` |`smc_fabric_fcov` |As above: an access the port
+carries never completes, so no leaf drives one |As above
+|`c_next_id_0_zero_on_invalid_setup` |`smc_dma_fcov` |Waits on a ruling
+between `dma_ctrl.rdl` / `dma.adoc`, which have `NEXT_ID` return 0 for a
+command that was not set up correctly, and the stream-0 frontend, which
+returns the transfer-id generator whatever the setup |A ruling: either the
+frontend returns 0 for a rejected command, and a leaf issues one, or the
+specification drops the sentence and the point with it
+|`cg_map_access`, local memories × read × error |`smc_map_fcov` |The ROM and
+scratchpad fill their region, so a read of them is refused only for an
+uncorrectable ECC error, which the bench reaches only by fault injection |A
+leaf that injects an uncorrectable scratchpad error and reads the word over
+SEP_IN
+|`c_sep_in_wstrb_none` |`smc_fabric_fcov` |A zero-strobe beat is legal AXI,
+but the bench AXI manager derives WSTRB from the bytes a payload covers and
+cannot present one |A SEP_IN driver that presents raw AW and W beats
+|`c_clk_smc_stalled_window`, `c_clk_periph_stalled_window` |`smc_clk_fcov`
+|A ref-clock window with no SMC or peripheral clock edge. `clk_rst.adoc`
+defines no mode in which an input clock stops, and `clk_periph_i` has a
+100 MHz minimum |A specified clock-loss behaviour and a leaf that stops the
+input clock
+|`c_straps_all_zero`, `c_straps_all_ones`, `c_straps_mixed_pattern`
+|`smc_gpio_fcov` |The reference integration captures no strap pattern:
+`STRAPS_LO` and `STRAPS_HI` read zero whatever the bonded pads carry, so a
+pattern at the pads has no consequence a check can observe. All-ones would
+also select DFT through `TEST_EN` (`straps.rdl`) |An adopter strap-capture
+latch, and a leaf that holds each pattern through primary-reset release and
+reads it back
+|===
+
+[[smc-coverage-policy]]
+=== Closure Policy
 
 [[smc-cov-out]]
-==== Structural OUT versus a waiver hole
+==== Structural OUT, Phase 2 and waiver holes
 
 [cols="2,3,3",options="header",]
 |===
@@ -62,9 +408,16 @@ coverpoints to publish as 100%.
 scope (`coverage_off` / VCS hier). Vendored RTL and the
 chipyard-generated CPU cluster are SMC-level OUT; they are not this
 package's to close.
+|Phase 2 |the point is not compiled |`ifdef SMC_FCOV_PHASE2` in the
+collector, listed in <<smc-fcov-phase2>>
 |Waiver hole |the point exists and is not hit |`coverage_policy.toml`
 `\[[holes]]`, written from a measured run
 |===
+
+A `user` point takes no accepted waiver. A collected point the run of record
+leaves unhit is an open hole with an owner until a leaf reaches it, the point
+is corrected, or it moves to Phase 2. The code-coverage families keep their
+waivers and floors.
 
 `\[[holes]]` and `\[[thresholds]]` are written from a measured
 `--dut smc --items hosted fw --cov` database. `expected_matches` is a hard
@@ -95,8 +448,11 @@ place. A dispatch of `dashboard.yml` with the weekly's regress run id does
 the same for the published weekly. Both are described on the runner and
 dashboard pages under `tools/dv/doc/`.
 
+There is no checked-in 98%-after-waiver figure. SMC does not inherit
+an unwritten default. Do not invent one.
+
 [[smc-cov-owners]]
-==== Owning tests
+=== Owning tests
 
 SEP's coverage plan names, for every covergroup, the leaf that has to fill
 it: a hole is not gradable without knowing which test was supposed to fill

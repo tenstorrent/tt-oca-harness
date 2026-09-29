@@ -411,7 +411,12 @@ module i2c_core
   // When all qe bits are asserted, fdata is injected into the fifo.
   assign reg_in_o.FDATA.wr_ack = reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr;
   assign fmt_fifo_wvalid       = reg_out_i.FDATA.req && reg_out_i.FDATA.req_is_wr &&
-                                   |reg_out_i.FDATA.wr_biten;
+                                   (|{reg_out_i.FDATA.wr_biten.NAKOK,
+                                      reg_out_i.FDATA.wr_biten.RCONT,
+                                      reg_out_i.FDATA.wr_biten.READB,
+                                      reg_out_i.FDATA.wr_biten.STOP,
+                                      reg_out_i.FDATA.wr_biten.START,
+                                      reg_out_i.FDATA.wr_biten.FBYTE});
   assign fmt_fifo_wdata[7:0]   = reg_out_i.FDATA.wr_data.FBYTE  & reg_out_i.FDATA.wr_biten.FBYTE;
   assign fmt_fifo_wdata[8]     = reg_out_i.FDATA.wr_data.START && reg_out_i.FDATA.wr_biten.START;
   assign fmt_fifo_wdata[9]     = reg_out_i.FDATA.wr_data.STOP  && reg_out_i.FDATA.wr_biten.STOP;
@@ -583,7 +588,7 @@ module i2c_core
   assign tx_fifo_wvalid         = target_loopback ? acq_fifo_rvalid && valid_target_lb_wr :
                                                        reg_out_i.TXDATA.req &&
                                                        reg_out_i.TXDATA.req_is_wr &&
-                                                      |reg_out_i.TXDATA.wr_biten;
+                                                      |reg_out_i.TXDATA.wr_biten.DATA;
   assign tx_fifo_wdata          = target_loopback ? acq_fifo_rdata[7:0] :
                                                       reg_out_i.TXDATA.wr_data.DATA;
 

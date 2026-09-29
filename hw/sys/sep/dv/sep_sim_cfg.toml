@@ -84,6 +84,9 @@ sources = [
   # OCAH_INC_ASSERT, which Verilator does not define. The rules are live
   # under VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
+  # IC_RESET TDR storage for the SEP slice. The TAP that selects it is not
+  # in this DUT.
+  "hw/ip/jtag/jtag_ptap/rtl/jtag_ic_reset_reg.sv",
 ]
 # `stubs` are OVERRIDE sources. Where the runner puts them is tool-dependent
 # (tools/dv/runlib/stages.py), and the one below only takes effect under Verilator:
@@ -348,6 +351,7 @@ argv = [
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
@@ -393,6 +397,7 @@ argv = [
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
@@ -443,6 +448,7 @@ argv = [
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
+  "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.elf",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.itcm.hex",
   "hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.dtcm.hex",
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
@@ -661,6 +667,30 @@ sources = [
 ]
 
 [targets.lsu_stub_all_live.tools.verilator]
+flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+
+# The lsu_stub_all_live model built without Adams Bridge. SEP_ABR_EN comes
+# from the `sep` Bender target, and `bender script flist-plus` emits it as one
+# `+define+SEP_ABR_EN` line of the generated bender filelist. `exclude_files`
+# drops every filelist line that contains a listed string, so the entry below
+# removes that one define line for this target only. CALIPTRA stays defined;
+# the vendored Adams Bridge sources still compile, and nothing instantiates
+# them. sep_crypto then terminates the ABR aperture and the Key Manager ABR key
+# bus with DECERR subordinates, and sep_ip_integration drives the ABR memory
+# response to zero (doc/integrator/src/defines.adoc, Adams Bridge defines).
+[targets.lsu_stub_abr_absent]
+description = "lsu_stub_all_live without Adams Bridge (SEP_ABR_EN not defined); for no_cpu tests of the ABR-absent build"
+build_dir = "hw/sys/sep/dv/build/cocotb"
+defines = ["SEP_CPU_STUB", "SEP_SMN_INBOUND_AXI_LIVE", "SEP_JTAG_AXIL_LIVE"]
+exclude_files = [
+  "hw/sys/sep/rtl/sep_cpu.sv",
+  "+define+SEP_ABR_EN",
+]
+sources = [
+  "hw/sys/sep/dv/shims/cpu/sep_cpu_stub.sv",
+]
+
+[targets.lsu_stub_abr_absent.tools.verilator]
 flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
 
 # SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe

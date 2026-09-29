@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+# EMULATION keeps assertions compiled when SYNTHESIS is also set, drops the
+# #1ps settle in CALIPTRA_ASSERT_INIT_NET, and leaves out the axi_if
+# testbench tasks.
+
+--- a/src/axi/rtl/axi_if.sv
++++ b/src/axi/rtl/axi_if.sv
+@@ -200,6 +200,7 @@ interface axi_if #(parameter integer AW = 32, parameter integer DW = 32, paramet
+     `endif
+ 
+     `ifndef SYNTHESIS
++    `ifndef EMULATION
+     `ifndef XCELIUM
+         task rst_mgr();
+             araddr  `EQ__ '0;
+@@ -445,6 +446,7 @@ interface axi_if #(parameter integer AW = 32, parameter integer DW = 32, paramet
+         endtask
+     `endif
+     `endif
++    `endif
+ 
+     `undef EQ__
+     `undef TIME_ALGN
+--- a/src/caliptra_prim/rtl/caliptra_prim_assert.sv
++++ b/src/caliptra_prim/rtl/caliptra_prim_assert.sv
+@@ -104,6 +104,9 @@
+ 
+ `ifdef VERILATOR
+  `include "caliptra_prim_assert_dummy_macros.svh"
++`elsif EMULATION
++ `include "caliptra_prim_assert_standard_macros.svh"
++ `define CALIPTRA_INC_ASSERT
+ `elsif SYNTHESIS
+  `include "caliptra_prim_assert_dummy_macros.svh"
+ `elsif YOSYS
+--- a/src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh
++++ b/src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh
+@@ -32,8 +32,10 @@
+   initial begin                                                                      \
+     // When a net is assigned with a value, the assignment is evaluated after        \
+     // initial in Xcelium. Add 1ps delay to check value after the assignment is      \
+-    // completed.                                                                    \
++    // completed. The emulation view has no procedural delays.                      \
++`ifndef EMULATION                                                                    \
+     #1ps;                                                                            \
++`endif                                                                               \
+     __name: assert (__prop)                                                          \
+       else begin                                                                     \
+         `CALIPTRA_ASSERT_ERROR(__name)                                                        \

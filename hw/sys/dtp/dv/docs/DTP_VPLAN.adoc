@@ -50,7 +50,8 @@ that bridge to have completed a burst in the pass; and every system or power-on
 reset a scenario drives records the tb_top reset-assertion counter advancing across
 the pulse (`CHK-RESET-COUNT`). On VCS the inline assertions of the vendored
 `common_cells` on DTP's AXI, CDC, and cross-trigger paths are compiled in and live
-in every test (`hw/sys/dtp/doc/defines.adoc`, `COMMON_CELLS_ASSERTS_OFF`).
+in every test (`COMMON_CELLS_ASSERTS_OFF` in the Integrator Guide's Project
+Defines chapter, `doc/integrator/src/defines.adoc`).
 . *Debug disables*: DTP takes eleven pre-resolved active-high disables
 (`sep_lifecycle_ctrl_pkg::dbg_disable_t`, `dbg_disable_i`); deriving them from
 lifecycle policy is SEP-level verification. The testbench bring-up clears all

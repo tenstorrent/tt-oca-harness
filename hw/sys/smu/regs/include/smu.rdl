@@ -18,6 +18,6 @@ addrmap smu_top {
     desc = "Combined SMC and SEP top-level view exposing globally accessible resources.";
     // Default address for the SMC and SEP; the base address can be
     // configured using the global base address.
-    och_sep_top #(.BASE_ADDR(0x0000_0000)) sep @0x0000_0000;
+    sep_top     #(.BASE_ADDR(0x0000_0000)) sep @0x0000_0000;
     smc_top     #(.BASE_ADDR(0x0000_0000)) smc @0x4000_0000;
 };

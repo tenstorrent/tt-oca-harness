@@ -605,12 +605,14 @@ module smc_4core_cpu (
   assign init_mem_done_o = init_mem_complete;
 
 `ifndef SYNTHESIS
+`ifndef EMULATION
   initial begin
     wait (mem_init_reset_ni == 1'b0);
     $display("%m: Initializing SMC Scratch Ram Banks (write zeros)");
     wait (init_mem_complete);
     $display("%m: Initializing complete");
   end
+`endif
 `endif
 
 endmodule

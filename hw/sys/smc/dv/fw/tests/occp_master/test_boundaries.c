@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Boundary Testing Module
- *
- * Tests for memory boundary handling
+ * Writes and reads back a word at fixed addresses around a 4 KiB boundary over OCCP.
  */
 
 #include "occp_test_common.h"
@@ -15,12 +13,11 @@ bool run_boundary_tests(test_context_t *ctx) {
 
     simputs("=== Memory Boundary Tests ===\n");
 
-    // Test at different memory boundaries to ensure proper handling
     uint64_t boundary_addrs[] = {0xC00B0000, 0xC00B0FF8, 0xC00B1000};
     bool boundary_test_pass = true;
 
     for (size_t i = 0; i < sizeof(boundary_addrs) / sizeof(boundary_addrs[0]); i++) {
-        uint32_t boundary_data = 0xB000DA17 + i; // B0UNDARY in hex
+        uint32_t boundary_data = 0xB000DA17 + i;
         uint32_t recv_boundary_data = 0;
 
         test_status = occp_send_write_command(ctx, ctx->slave_addr, boundary_addrs[i],

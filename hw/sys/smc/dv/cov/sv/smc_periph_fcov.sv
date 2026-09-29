@@ -51,6 +51,7 @@ module smc_periph_fcov #(
   input wire gpio_pad2core_en_any_i,
   input wire [GpioWidth-1:0] core2pad_i,
   input wire [GpioWidth-1:0] core2pad_en_i,
+  input wire [GpioWidth-1:0] lsio_select_i,
   input wire gpio_pad57_i,
 
   // Interrupt sources.
@@ -186,15 +187,22 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_core2pad_en_active, gpio_core2pad_en_active_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_pad2core_en_active, gpio_pad2core_en_active_e, clk_periph_i, in_reset)
 
-  logic [$clog2(GpioWidth+1)-1:0] core2pad_en_count;
+  // The single-pad point counts the output enables GPIO software owns: a pad
+  // an LSIO function selects is driven by that function (gpio
+  // programming.adoc, LSIO Interface Operation), and several such pads are
+  // enabled from reset.
+  logic [$clog2(GpioWidth+1)-1:0] core2pad_en_count, sw_core2pad_en_count;
   always_comb begin
     core2pad_en_count = '0;
+    sw_core2pad_en_count = '0;
     for (int unsigned i = 0; i < GpioWidth; i++) begin
       if (core2pad_en_i[i] === 1'b1) core2pad_en_count = core2pad_en_count + 1'b1;
+      if ((core2pad_en_i[i] === 1'b1) && (lsio_select_i[i] === 1'b0))
+        sw_core2pad_en_count = sw_core2pad_en_count + 1'b1;
     end
   end
 
-  wire gpio_single_pad_enabled_e = (core2pad_en_count == 1);
+  wire gpio_single_pad_enabled_e = (sw_core2pad_en_count == 1);
   wire gpio_multi_pad_enabled_e = (core2pad_en_count > 1);
   wire gpio_output_value_set_e = (core2pad_i !== '0) && gpio_core2pad_en_active_e;
   `OCAH_FCOV_COVER(c_gpio_single_pad_enabled, gpio_single_pad_enabled_e, clk_periph_i, in_reset)

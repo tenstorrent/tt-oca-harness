@@ -28,6 +28,7 @@ module tlul_rsp_intg_gen
   output tl_d2h_t tl_o   // D-channel response with integrity fields filled.
 );
   `include "prim_assert.sv"
+  `include "ocah_assert.svh"
 
   logic [D2HRspIntgWidth-1:0] rsp_intg;
   if (EnableRspIntgGen) begin : gen_rsp_intg
@@ -73,8 +74,8 @@ module tlul_rsp_intg_gen
   `OCAH_OT_ASSERT_INIT(DataWidthCheck_A, $bits(tl_i.d_data) <= DataMaxWidth)
 
   // the code below is not meant to be synthesized,
-  // but it is intended to be used in simulation and FPV
-`ifndef SYNTHESIS
+  // but it is intended to be used in simulation, emulation and FPV
+`ifdef OCAH_DEBUG_LIVE
   always @(tl_i) begin
     `OCAH_OT_ASSERT_I(RspZero_A, tl_i.d_valid & RspIntgInIsZero -> ~|tl_i.d_user.rsp_intg)
     `OCAH_OT_ASSERT_I(UserZero_A, tl_i.d_valid & UserInIsZero -> ~|tl_i.d_user)

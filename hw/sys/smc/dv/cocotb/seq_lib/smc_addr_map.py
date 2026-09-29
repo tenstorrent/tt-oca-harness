@@ -196,11 +196,20 @@ def _unit_base_offset(unit: str) -> int:
     The adoc keys each row by ``BASE + <offset>``; the C header gives the same
     window as an absolute ``SMC_TOP_<unit>_BASE_ADDR``. Both derive from the one
     RDL address map, so the offset is the absolute address minus ``LOCAL_BASE``.
+    A unit with instances has an indexed ``SMC_TOP_<unit>_BASE_ADDR(idx)`` macro
+    and one row for the whole array, so it is keyed by instance 0.
     """
+    symbol = f"SMC_TOP_{unit.upper()}_BASE_ADDR"
     try:
-        return smc_addr(f"SMC_TOP_{unit.upper()}_BASE_ADDR") - LOCAL_BASE_RESET
+        return smc_addr(symbol) - LOCAL_BASE_RESET
+    except KeyError:
+        pass
+    try:
+        return smc_indexed_addr(symbol, 0) - LOCAL_BASE_RESET
     except KeyError as exc:
-        raise KeyError(f"{unit} has no SMC_TOP_*_BASE_ADDR in {_SMC_ADDR_H}") from exc
+        raise KeyError(
+            f"{unit} has neither SMC_TOP_*_BASE_ADDR nor SMC_TOP_*_BASE_ADDR(idx) in {_SMC_ADDR_H}"
+        ) from exc
 
 
 def generated_window(unit: str) -> tuple[int, int]:
@@ -568,9 +577,12 @@ def smc_rdl_windows() -> tuple[tuple[int, int], ...]:
     """Merged, ascending ``[base, end)`` ranges of every RDL-declared SMC block.
 
     Built from every ``SMC_TOP_*_BASE_ADDR`` / ``_SIZE`` pair and every indexed
-    ``_BASE_ADDR(idx)`` macro with its ``_TOTAL_SIZE`` (or ``_NUM`` and stride)
-    in ``smc_addr.h``. The root addrmap's own extent is excluded: it spans the
-    holes this function exists to expose.
+    ``_BASE_ADDR(idx)`` block array with its ``_TOTAL_SIZE`` (or ``_NUM`` and
+    ``_SIZE``) in ``smc_addr.h``. These are the sizes the crossbars decode. An
+    indexed macro with neither ``_TOTAL_SIZE`` nor ``_SIZE`` names a register
+    inside an array, whose extent is not its stride, and is skipped: the
+    enclosing block's own span covers it. The root addrmap's own extent is
+    excluded: it spans the holes this function exists to expose.
     """
     defs = _parse_simple_defines(_SMC_ADDR_H)
     spans: list[tuple[int, int]] = []
@@ -584,8 +596,10 @@ def smc_rdl_windows() -> tuple[tuple[int, int], ...]:
         prefix = name[: -len("_BASE_ADDR")]
         total = defs.get(f"{prefix}_TOTAL_SIZE")
         if total is None:
-            num = defs[f"{prefix}_NUM"]
-            total = (num - 1) * stride + defs.get(f"{prefix}_SIZE", stride)
+            size = defs.get(f"{prefix}_SIZE")
+            if size is None:
+                continue
+            total = (defs[f"{prefix}_NUM"] - 1) * stride + size
         spans.append((base, base + total))
     if not spans:
         raise RuntimeError(f"no block windows parsed from {_SMC_ADDR_H}")

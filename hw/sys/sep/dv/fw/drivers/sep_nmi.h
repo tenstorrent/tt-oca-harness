@@ -20,8 +20,8 @@
 
 #include "sep.h"
 
-#define SEP_NMI_VEC_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR
-#define SEP_NMI_VEC_LOCK_ADDR OCH_SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR
+#define SEP_NMI_VEC_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_BASE_ADDR
+#define SEP_NMI_VEC_LOCK_ADDR SEP_TOP_SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_BASE_ADDR
 // Reset value only. It is a placeholder, not a valid handler -- nothing guarantees
 // the image even covers that address, and an uninitialized ICCM fetch there is an
 // uncorrectable ECC error that re-raises NMI. Steps 1-2 above must complete before

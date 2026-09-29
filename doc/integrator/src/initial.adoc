@@ -1,0 +1,179 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[initial-smu-integration]]
+= Initial SMU Integration
+
+The System Management Unit (SMU) is a central part of the Open Chiplet Atlas
+Harness (OCAH). It comprises three peer subsystems: the System Management
+Controller (SMC), the Debug and Test Ports (DTP), and the Security Processor
+(SEP).
+
+The `smu_wrapper` module gives an example structure for the integrator. This has
+ports that can be used to connect to the user subsystem and the outside of the
+chiplet. It also has internal "integration modules". These will need to be
+modified to use memories and fuses that are supplied by the integrator.
+
+== Ports in `smu_wrapper`
+
+There are many groups of ports in `smu_wrapper`. The ports are all described in
+detail in xref:smu.adoc[SMU Top-Level Integration]. The following port groups
+are good starting points in design bring-up: they will be required in any
+integration.
+
+* *Clocks and reset*
+  The integrator needs to provide a primary system clock, together with a reference
+  clock (for timing-sensitive operations) and a peripheral clock (used for the
+  peripherals' interfaces). There is also a master reset for the chiplet. See
+ifdef::backend-html5[]
+  xref:smu.adoc#smc-integration-clk-rst[Clock and Reset]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  __Clock and Reset__
+endif::backend-pdf[]
+  in the top-level integration guide.
+
+* *AXI crossbar*
+  The SMU has an internal AXI crossbar. The
+ifdef::backend-html5[]
+  xref:smu.adoc#smu-axi-xbar-address-map[SMU AXI Crossbar Address Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  __SMU AXI Crossbar Address Map__
+endif::backend-pdf[]
+  section in the top-level integration guide describes the crossbar's address
+  map. This crossbar should have two connections to the user subsystem: one as a
+  manager and one as a subordinate.
+
+* *GPIO pads*
+  The SMU expects direct connections to GPIO pads. These are exposed as inout
+  ports. The detailed requirements for GPIO pad connections are described in the
+ifdef::backend-html5[]
+  xref:smu.adoc#gpio-pad-integration[GPIO Pad Integration]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  __GPIO Pad Integration__
+endif::backend-pdf[]
+  section in the top-level integration guide.
+
+* *Cross-trigger*
+  The SMU has a cross-trigger interface, which can either be exposed as a
+ifdef::backend-html5[]
+  xref:smu.adoc#xtrig-matrix-interface[cross-trigger matrix interface]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  __Cross Trigger Matrix Interface__
+endif::backend-pdf[]
+  or as GPIO-style signals.
+
+* *JTAG*
+  There is a group of JTAG interfaces, each connected to a TAP. These TAPs are
+  exposed separately, to be connected and chained as appropriate by the
+  integrator. Each TAP also exposes an output that shows whether its output is
+  enabled. See
+ifdef::backend-html5[]
+  xref:smu.adoc#stap-scan-chain-topology[STAP Scan Chain Topology]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  __STAP Scan Chain Topology__
+endif::backend-pdf[]
+  for details of these interfaces.
+
+* *Lifecycle*
+  The SMU has a lifecycle controller. Its current lifecycle state is exposed
+  through the `lc_state_o` port. This port is described at
+ifdef::backend-html5[]
+  xref:smu.adoc#smu-lc-state[Lifecycle State]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  __Lifecycle State__
+endif::backend-pdf[]
+  in the top-level integration guide.
+
+== Macros needed by "integration modules"
+
+The `smu_wrapper` module instantiates two "integration modules"
+(`sep_ip_integration` and `smc_ip_integration`). These will need to be modified
+and completed for any integration.
+
+=== Macros needed by SEP
+
+If the SEP is enabled, the macros that must be supplied and instantiated for it
+are the following. As with the top-level ports, there are also several
+connections that an integrator may wish to implement (but which are not
+necessary for the initial structure). The following macros are definitely
+required:
+
+* *Fuses*
+  The SEP expects some fuses to exist. In `sep_ip_integration`, these are
+  implemented with `efuse_bank_model`, which uses a model fuse instance in
+  `efuse_bank_reg`. An integrator will need to implement either
+  `efuse_bank_reg` (or the whole of `efuse_bank_model`) to perform an "APB to
+  fuse" conversion.
+
+* *ROM implementations*
+  The `sep_ip_integration` module contains two ROMs, which are both
+  implemented with the `prim_rom` module. These ROMs are: the boot rom
+  (in `u_sep_boot_rom`) and a key manager ROM (in `u_km_rom`).
+
+* *SRAM implementations*
+  The SRAM implementations expected by the SEP can be split by the components
+  using them as follows:
+** *Adams Bridge `1r1w` RAMs*
+   If `SEP_ABR_EN` is defined, the SEP contains a copy of the Adams Bridge
+   module. This module needs access to either 9 or 13 `1r1w` RAMs (the larger
+   number if masking is enabled). A `1r1w` RAM is a memory with one read and one
+   write port. These memories are simpler than a general dual-port RAM. Such a
+   memory is implemented in the example with the `prim_ram_1r1w` module.
+
+** *The TCM*
+   The VeeR core expects instruction and data memories, split across multiple
+   banks, and communicates with them using `sep_cpu_tcm_req_t` /
+   `sep_cpu_tcm_rsp_t` signals. There is a parameterized example wrapper in
+   `sep_tcm_wrapper`, and this will need to be supplied with single-port RAM
+   instances of appropriate sizes.
+
+** *Other single-port RAMs*
+   As well as the memories described above, there are four other single port RAM
+   instances: the SEP scratch RAM (`u_sep_sram`); the key manager RAM
+   (`u_km_sram`); and OTBN instruction and data memories (`u_otbn_imem_sram`,
+   `u_otbn_dmem_sram`).
+
+=== Macros needed by SMC
+
+The macros that are needed for the SMC are the following:
+
+* *Fuses*
+  Like the SEP, the SMC expects some fuses to exist. In `smc_ip_integration`,
+  these are implemented with `efuse_bank_model`, which uses a model fuse
+  instance in `efuse_bank_reg`. An integrator will need to implement either
+  `efuse_bank_reg` (or the whole of `efuse_bank_model`) to perform an "APB to
+  fuse" conversion.
+
+* *Conversion between core and pad signals*
+  The SMC expects to be able to communicate with GPIO pads (which are exposed
+  through an inout port in `smu_wrapper`). The integrator's wrapper module must
+  convert between the SMC's binary representation of the pad state and the value
+  in that inout port. In the example, this translation is made by a
+  (non-synthesizable) `prim_pad_wrapper` module, which will need a synthesizable
+  implementation.
+
+* *ROM*
+  The four-core cluster in the SMC expects a ROM. In the example, this is
+  implemented with a `prim_rom` instance.
+
+* *SRAM implementations*
+  The SMC expects SRAM implementations for the following components.
+** The four-core cluster in the SMC expects several SRAMs. These back a scratch
+   memory, together with tag and data memories for an I-cache and D-cache. In
+   the example, these are all implemented with instances of `prim_ram_1p`.
+
+** There are also several backing memories for each I3C instance. There is a
+   single-port "DAT" and a "DCT" memory per I3C instance (implemented in the
+   example by instances of `prim_ram_1p`). There is also a two-port RLT
+   (Retransmission Limit Timer) memory, which is implemented in the example with
+   an instance of `prim_ram_2p`.
+
+** Finally, there are multiple trace RAM instances that can be used to capture
+   debug data. In the example, these are implemented with instances of
+   `prim_ram_1p_adv`.

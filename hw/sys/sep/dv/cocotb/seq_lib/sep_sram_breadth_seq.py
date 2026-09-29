@@ -32,7 +32,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 # SEP SRAM aperture (256 KiB). Derived from the generated Python register export
 # rather than a literal, so a map change surfaces as an import error instead of a
 # silently stale constant. The C header spells the same aperture
-# OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
+# SEP_TOP_SEP_SRAM_BASE_ADDR / _SIZE in sep_addr.h, but only the Python export
 # is importable from here.
 SEP_SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 SEP_SRAM_SIZE = sym("SEP_SRAM_MEM_SIZE")
@@ -115,6 +115,19 @@ class SepSramBreadthCfg:
 
         # Boundary: always the base word and the top valid 64-bit word.
         self.boundary_addrs = [self.base_addr, self.base_addr + self.size - 8]
+
+        # Address lines: the base word, one word at every power-of-two offset
+        # from the word stride up to half the generated size, and the top word.
+        # Each holds its own value, so a memory that decodes fewer address bits
+        # than the generated size -- 64 KiB aliased four times over 256 KiB,
+        # say -- fails. Offsets at or above 0x1_0000 are the upper 192 KiB.
+        self.addr_line_offsets = (
+            [0] + [1 << k for k in range(3, self.size.bit_length() - 1)] + [self.size - 8]
+        )
+        self.addr_line_values = [
+            (0xA11E_0000_0000_0000 | (i << 40) | off) & _MASK64
+            for i, off in enumerate(self.addr_line_offsets)
+        ]
 
         # Sequential: >= 4 words (seed-bounded), random aligned base + seed data.
         self.seq_words = rng.randrange(4, 9)

@@ -119,9 +119,11 @@ Both are instances of `avsbus_async_fifo`, which requires a power-of-two
 depth. Pointers cross between the two clock domains as Gray codes through
 three-stage synchronizers.
 
-While the readback FIFO is full the master launches no further commands, so a
-software reader that stops draining `AVS_READBACK` stalls the bus rather than
-losing responses.
+While the readback FIFO is full the master launches no further commands, but
+replies to commands already launched are still pushed as they arrive. A reply
+that meets a full FIFO is dropped and raises `READBACK_OVERFLOW_INT`, so a
+software reader that stops draining `AVS_READBACK` stalls new commands and can
+lose the responses to commands already on the bus.
 
 === Reset and Initialization
 

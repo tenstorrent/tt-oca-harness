@@ -2,14 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Ring Buffer Core Functionality Test
- *
- * Verifies core ring buffer functionality for SMC/SEP status reporting:
- * - Buffer initialization and structure validation
- * - Message format encoding/decoding
- * - Basic write/read operations
- * - Fill and overflow behavior
- * - OCCP status command integration
+ * Reads the SMC and SEP status ring buffers through OCCP status commands: checks the first
+ * SMC boot entry, that the SEP buffer is empty, and the firmware ID of later SMC entries.
  */
 
 #include "occp_test_common.h"
@@ -18,10 +12,8 @@
 #include <string.h>
 #include "smc_status.h"
 
-// Ring buffer constants from specification
 #define SMC_RING_BUFFER_SIZE 512
 
-// Scratch register definitions
 #define SMC_SCRATCH_STATUS_BUFFER_ADDR 11
 #define SMC_SEP_STATUS_BUFFER_READY (1U << 2)
 
@@ -61,11 +53,9 @@ static bool verify_message_format(uint32_t message, uint32_t exp_fw_id, uint32_t
     return true;
 }
 
-// Test 1: Buffer initialization and structure validation
 static bool test_buffer_initialization(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 1: Buffer Initialization ===\n");
 
-    // Test that SMC buffer contains expected initialization status messages
     uint32_t status;
     int result =
         occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
@@ -74,7 +64,6 @@ static bool test_buffer_initialization(ring_buffer_test_context_t *ctx) {
         return false;
     }
 
-    // Expect SMC initialization status message: FW_ID=0x2, Type=0x0, Value=0x000001
     uint32_t expected_smc_init = 0x20000001;
     if (status != expected_smc_init) {
         simputshex32("FAIL: Expected SMC init status 0x", expected_smc_init);
@@ -85,7 +74,7 @@ static bool test_buffer_initialization(ring_buffer_test_context_t *ctx) {
 
     simputs("PASS: SMC buffer contains expected initialization message\n");
 
-    // SEP buffer should be empty as SEP ROM doesn't run in this test
+    // The SEP ROM does not run in this bench, so its buffer stays empty.
     result = occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &status);
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: Could not read SEP status\n");
@@ -103,13 +92,11 @@ static bool test_buffer_initialization(ring_buffer_test_context_t *ctx) {
     return true;
 }
 
-// Test 2: Message format validation
 static bool test_message_format_validation(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 2: Message Format Validation ===\n");
 
-    // Test all valid firmware IDs (0x0-0x3)
-    uint32_t fw_ids[] = {0x0, 0x1, 0x2, 0x3}; // SEP_BL0, SEP_BL1, SMC_BL0, SMC_BL1
-    uint32_t msg_types[] = {0x0, 0x1, 0x2};   // status, warning, error
+    uint32_t fw_ids[] = {0x0, 0x1, 0x2, 0x3};
+    uint32_t msg_types[] = {0x0, 0x1, 0x2};
     uint32_t test_values[] = {0x000001, 0x123456, 0xFFFFFF};
 
     int test_idx = 0;
@@ -132,11 +119,9 @@ static bool test_message_format_validation(ring_buffer_test_context_t *ctx) {
     return true;
 }
 
-// Test 3: Basic operations
 static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 3: Basic OCCP Status Commands ===\n");
 
-    // Test GET_OCCP_STATUS command (this should work independently)
     uint32_t occp_status;
     int result =
         occp_send_get_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &occp_status);
@@ -146,7 +131,6 @@ static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
     }
     simputshex32("OCCP Status: 0x", occp_status);
 
-    // Test SMC status command - should return next message after reading the first one
     uint32_t smc_status;
     result =
         occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status);
@@ -156,10 +140,6 @@ static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
     }
     simputshex32("SMC Status (next message): 0x", smc_status);
 
-    // This could be 0x20000xxx for ROM_STARTED or other initialization messages
-    // Just verify we can read it successfully - exact value depends on ROM boot sequence
-
-    // Test SEP status command (should return 0 for empty buffer)
     uint32_t sep_status;
     result =
         occp_send_get_sep_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &sep_status);
@@ -173,11 +153,9 @@ static bool test_basic_operations(ring_buffer_test_context_t *ctx) {
     return true;
 }
 
-// Test 4: OCCP Command Variations
 static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 4: OCCP Command Variations ===\n");
 
-    // Test GET_VERSION command
     uint32_t version;
     int result = occp_send_get_version_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &version);
     if (result != OCCP_SUCCESS) {
@@ -186,7 +164,6 @@ static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
     }
     simputshex32("ROM Version: 0x", version);
 
-    // Test multiple status command calls to read through ROM initialization messages
     for (int i = 0; i < 5; i++) {
         uint32_t status;
         result =
@@ -195,23 +172,19 @@ static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
             simputs("FAIL: Multiple SMC status calls failed\n");
             return false;
         }
-        // Log all status messages from ROM initialization sequence
         simputshex32("INFO: SMC status (iteration ", i);
         simputshex32("): 0x", status);
 
-        // Validate message format if not empty
         if (status != 0) {
             uint32_t fw_id = (status >> 28) & 0xF;
             uint32_t msg_type = (status >> 24) & 0xF;
-            (void)(status & 0xFFFFFF); // msg_value unused in validation
+            (void)(status & 0xFFFFFF);
 
-            // Should be SMC_BL0 messages (fw_id = 0x2)
             if (fw_id != 0x2) {
                 simputshex32("FAIL: Expected FW_ID 0x2, got 0x", fw_id);
                 return false;
             }
 
-            // Message type should be valid (0-2)
             if (msg_type > 2) {
                 simputshex32("FAIL: Invalid message type 0x", msg_type);
                 return false;
@@ -223,11 +196,9 @@ static bool test_occp_command_variations(ring_buffer_test_context_t *ctx) {
     return true;
 }
 
-// Test 5: Interface robustness
 static bool test_interface_robustness(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 5: Interface Robustness ===\n");
 
-    // Test rapid status command calls to check for race conditions
     for (int i = 0; i < 10; i++) {
         uint32_t smc_status, sep_status, occp_status;
 
@@ -243,14 +214,12 @@ static bool test_interface_robustness(ring_buffer_test_context_t *ctx) {
             return false;
         }
 
-        // Log status values and validate format
         if (smc_status != 0) {
             simputshex32("INFO: SMC status at iteration ", i);
             simputshex32("      Value: 0x", smc_status);
 
-            // Basic format validation
             uint32_t fw_id = (smc_status >> 28) & 0xF;
-            if (fw_id != 0x2) { // Should be SMC_BL0
+            if (fw_id != 0x2) {
                 simputshex32("FAIL: Invalid FW_ID 0x", fw_id);
                 return false;
             }
@@ -261,15 +230,12 @@ static bool test_interface_robustness(ring_buffer_test_context_t *ctx) {
     return true;
 }
 
-// Test 6: Command consistency
 static bool test_command_consistency(ring_buffer_test_context_t *ctx) {
     simputs("\n=== Test 6: Command Consistency ===\n");
 
-    // Test that status commands return consistent results
     uint32_t smc_status1, smc_status2;
     uint32_t sep_status1, sep_status2;
 
-    // First set of calls
     int result1 =
         occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status1);
     int result2 =
@@ -280,7 +246,6 @@ static bool test_command_consistency(ring_buffer_test_context_t *ctx) {
         return false;
     }
 
-    // Second set of calls
     result1 =
         occp_send_get_smc_status_command(ctx->occp_ctx, ctx->occp_ctx->slave_addr, &smc_status2);
     result2 =
@@ -291,7 +256,6 @@ static bool test_command_consistency(ring_buffer_test_context_t *ctx) {
         return false;
     }
 
-    // Log results for analysis
     simputshex32("SMC Status 1: 0x", smc_status1);
     simputshex32("SMC Status 2: 0x", smc_status2);
     simputshex32("SEP Status 1: 0x", sep_status1);

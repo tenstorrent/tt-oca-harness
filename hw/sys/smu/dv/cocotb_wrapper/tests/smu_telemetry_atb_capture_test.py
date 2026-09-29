@@ -13,7 +13,7 @@ specification leaves open. A second leg drives the ATB flush handshake, where
 the request holds until telemetry_afready_i acknowledges it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
-    --items smu_telemetry_atb_capture_test --target compile_smu_chiplet_no_sep
+    --items smu_telemetry_atb_capture_test --target compile_smu_chiplet
 """
 
 from __future__ import annotations
@@ -28,6 +28,16 @@ class smu_telemetry_atb_capture_test(smu_base_test):
     """An ATB message and a flush handshake at the wrapper telemetry pins."""
 
     use_shared_env = True
+
+    #: clk_telemetry_i (clk_ref_i) runs faster than the receiver's clk_smu_i so
+    #: back-to-back ATB beats fill the crossing FIFO (S7).
+    TELEMETRY_CLK_PERIOD_NS = 10
+    RECEIVER_CLK_PERIOD_NS = 12
+
+    def build_phase(self) -> None:
+        super().build_phase()
+        self.cfg.ref_clk_period_ns = self.TELEMETRY_CLK_PERIOD_NS
+        self.cfg.smu_clk_period_ns = self.RECEIVER_CLK_PERIOD_NS
 
     async def run_scenario(self) -> None:
         await smu_telemetry_atb_capture_seq(self).run()

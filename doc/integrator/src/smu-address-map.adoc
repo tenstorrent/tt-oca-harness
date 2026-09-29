@@ -1,0 +1,90 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[address-map-integration]]
+= Address Map Integration
+
+The OCAH address map has three levels, and the assignment contract splits across
+the integrator, SEP firmware, and SMC firmware. Assign and program them from this
+section; the deeper subsystem and crossbar sections referenced below give the
+per-block detail.
+
+* *Chiplet envelope (integrator).* The SoC/chiplet address map assigns each
+  subsystem a global base and reserved size, and the adopter's fabric decoder
+  routes those ranges to the SMU. The SMU crossbar preserves offsets and does not
+  constrain envelope size, so the integrator owns non-overlap and containment at
+  the SoC level.
+* *SEP and SMC chiplet apertures (firmware).* Each subsystem exposes a
+  chiplet-visible aperture whose base and size are programmable at runtime.
+  Inbound transactions to an aperture are remapped global-to-local before they
+  reach the subsystem.
+* *Local-alias views (fixed in RTL).* Internally each subsystem addresses its
+  own resources through a fixed local map: the SMC at `0xC000_0000` (see
+  <<smc-address-map-integration>>), the SEP through its own local map. These are
+  RTL-fixed and not integrator-assigned.
+
+.Address-map assignment contract
+[width="100%",cols="26%,20%,54%",options="header"]
+|=======================================================================
+|Level |Owner |Assigned / programmed by
+|Chiplet envelope |Integrator |SoC/chiplet address map + adopter fabric decode
+|SEP chiplet aperture |SEP firmware |`SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
+(the `sep_cpu_ctrl` CSRs)
+|SMC chiplet aperture |SMC firmware |`GLOBAL_BASE` / `REGION_SIZE` (the SMC CPU
+Control CSRs at `0xC001_0000`)
+|SEP / SMC local view |Fixed (RTL) |Offsets within each subsystem's local map
+(SMC local base `0xC000_0000`)
+|=======================================================================
+
+Programming order and constraints: firmware programs the SEP and SMC aperture
+CSRs during early boot, *before any cross-subsystem AXI traffic is issued*, and
+must keep the two apertures non-overlapping and inside the chiplet envelope the
+integrator assigned. The full runtime crossbar behaviour and the exact CSR
+plumbing are in <<smu-firmware-programming-order>> under <<smu-composition>>.
+
+[[address-map-collateral]]
+== Register collateral
+
+The machine-readable address map ships in the repository tree; integrators
+consume it from the release checkout or tarball rather than a separate package.
+The source of truth is distributed by ownership: each subsystem or IP keeps its
+canonical register sources and generated outputs beside its implementation.
+The `integration/` directory centralizes symlinks to that distributed
+collateral so an integrator does not have to discover every owner-local path.
+
+`integration/rdl/<subsystem>/` is a flat, self-contained list of the SystemRDL
+files required by that subsystem. Filenames remain unchanged, and shared
+dependencies appear in every subsystem that needs them. Non-RDL support files
+needed by relative includes remain at the `integration/rdl/` root -- for
+example, `integration/rdl/i3c_defines.svh` sits there because both
+`integration/rdl/smc/registers.rdl` and `integration/rdl/smu/registers.rdl`
+reach it through the I3C core's own parent-relative include
+(`../i3c_defines.svh`), and that relative path only resolves if the header is
+one directory above every subsystem folder that needs it. The matching
+generated IEEE 1685-2014 component descriptions use the same flat subsystem
+organization under `integration/ipxact/<subsystem>/`.
+
+These directories are generated symlink indexes; run
+`python3 scripts/update_integration_symlinks.py` after adding or moving collateral.
+Their canonical targets remain under `hw/sys/<sys>/regs/`,
+`hw/ip/<ip>/regs/`, and `vendor/...` -- the `regs/` element
+of every component's directory layout, described in
+ifdef::backend-html5[]
+xref:ocah-starting:ROOT:guidelines.adoc#component-directory-organization[the
+Getting Started Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the __Getting Started Guide__.
+endif::backend-pdf[]
+Other generated outputs remain under each owner's
+`regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/` directory.
+
+For the architecture-level responsibility split between the integrator, firmware,
+and the internal SEP/SMC maps, see
+ifdef::backend-html5[]
+xref:ocah-docs:sep:memory_map.adoc[OCAH Memory Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _OCAH Memory Map_ section of the Technical Reference Manual.
+endif::backend-pdf[]
+

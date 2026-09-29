@@ -33,8 +33,13 @@
 `endif
 `endif
 
-// EMULATION is the OCAH emulation-view name. No vendor alias maps from it.
+// EMULATION keeps PULP assertion macros compiled when SYNTHESIS is also set.
 // PULP_FPGA_EMUL is an FPGA clock-mux path, not this view.
+`ifdef EMULATION
+`ifndef ASSERTS_OVERRIDE_ON
+`define ASSERTS_OVERRIDE_ON
+`endif
+`endif
 
 /*
   Unmapped vendor defines
@@ -134,12 +139,11 @@
 
   pulp-platform/common_cells
   - OCAH_PULP_INC_ASSERT: derived in assertions.svh (off on ASSERTS_OFF /
-    SYNTHESIS / XSIM). Does not test VERILATOR. Do not restate.
+    SYNTHESIS / XSIM, on whenever ASSERTS_OVERRIDE_ON is set, which EMULATION
+    maps above). Does not test VERILATOR. Do not restate.
   - ASSERTS_OFF: Verilator DUT flags (smc, smu, dtp) and Verilator lint. Not
     on VCS/Xcelium (PULP macros stay on). Not an alias of VERILATOR. Leave
     unset here.
-  - ASSERTS_OVERRIDE_ON: force-on for OCAH_PULP_INC_ASSERT. Unused. Leave
-    unset.
   - COMMON_CELLS_ASSERTS_OFF: strips inline module-body asserts. Native
     `[target_defaults.default].defines` already sets it on every native tool.
     Do not restate (redefinition). Lint/synth already empty those macros via

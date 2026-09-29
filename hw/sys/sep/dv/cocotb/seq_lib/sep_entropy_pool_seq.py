@@ -76,6 +76,15 @@ _ALIAS_UNMAPPED = (
     0x1000,  # -> status  0x00 if [11:0] only
     0x8000,  # -> status  0x00 if [14:0] only
 )
+# Upper 32-bit word of each live register.
+# hw/sys/sep/regs/include/sep_entropy_pool.rdl declares every register
+# `regwidth = 64; accesswidth = 64;`, so a 32-bit beat at +4 is not a legal
+# access to that register and must be refused without a side effect.
+HALF_UPPER = (
+    ("status", POOL_STATUS + 4),
+    ("irq-cause", POOL_IRQ_CAUSE + 4),
+    ("data", POOL_POP + 4),
+)
 # Unique-dead extras: SLVERR even under a 2-bit [4:3] decode. All three are
 # walked every seed -- 0x18 is the unused [4:3]=11 code and catches a class the
 # other two do not, so a seeded pick of one could miss it.
@@ -95,10 +104,11 @@ EDN_CTRL_DISABLE = (EDN_CTRL_AUTO & ~_EDN_ENABLE["bm"]) | (
 
 
 class SepEntropyPoolCfg:
-    """RANDCFG: extra accepted pops, plus one unique-dead offset.
+    """RANDCFG: extra accepted pops.
 
     Every seed walks ``alias_offs`` (high-bit mirrors of the live
-    registers). The seed only picks the extra unique-dead offset.
+    registers) and all three unique-dead offsets (``unmapped_offs``). The
+    seed only picks the extra pop count.
     """
 
     def __init__(self, seed: int) -> None:
@@ -118,7 +128,10 @@ class SepEntropyPoolCfg:
 
 
 class SepEntropyPool(SepAxiRegDriver):
-    """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit."""
+    """64-bit beats on the pool aperture; ESRC_CTRL writes stay 32-bit.
+
+    ``nbytes=4`` issues one 32-bit beat (AxSIZE=2) at ``addr`` instead.
+    """
 
     _DRIVER_TAG = "POOL"
 
@@ -129,14 +142,17 @@ class SepEntropyPool(SepAxiRegDriver):
         write: bool = False,
         wdata: int = 0,
         expect_error: bool = False,
+        nbytes: int = 8,
     ) -> SepAxiAccessSeq:
+        if nbytes not in (4, 8):
+            raise ValueError(f"pool access is 4 or 8 bytes, not {nbytes}")
         seq = SepAxiAccessSeq(
-            f"pool_{'wr' if write else 'rd'}_0x{addr:08x}",
+            f"pool_{'wr' if write else 'rd'}{'' if nbytes == 8 else '32'}_0x{addr:08x}",
             op=SepAxiOp.WRITE if write else SepAxiOp.READ,
             addr=addr,
             wdata=wdata,
-            length=8,
-            size=None,
+            length=nbytes,
+            size=None if nbytes == 8 else 2,
             expect_error=expect_error,
         )
         await self.test.start_seq(seq)

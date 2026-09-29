@@ -33,7 +33,7 @@
 // Keep the test clear of the top of SRAM; SRAM lies outside the DTCM/stack
 // region in link/modes/tcm.ld.
 #define SRAM_SAFETY_MARGIN 0x4000 // 16KB safety buffer at end
-#define SRAM_USABLE_SIZE (OCH_SEP_TOP_SEP_SRAM_SIZE - SRAM_SAFETY_MARGIN)
+#define SRAM_USABLE_SIZE (SEP_TOP_SEP_SRAM_SIZE - SRAM_SAFETY_MARGIN)
 #define SRAM_WORD_MAX (SRAM_USABLE_SIZE / 4) // Max word offset in usable SRAM
 
 // LFSR seed for reproducible random addresses
@@ -120,7 +120,7 @@ static void generate_random_offsets(void) {
 // SRAM stress test patterns
 //-----------------------------------------------------------------------------
 
-static volatile uint32_t *sram = (volatile uint32_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+static volatile uint32_t *sram = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
 
 // Sequential pattern: Write all locations, then read all back
 static int test_sequential(void) {
@@ -237,10 +237,10 @@ int main(void) {
     printf("    SRAM Performance Test\n");
     printf("    Side-Effect vs Normal Mode\n");
     printf("========================================\n");
-    printf("SRAM Base: 0x%08X\n", OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-    printf("SRAM Size: %d bytes\n", OCH_SEP_TOP_SEP_SRAM_SIZE);
-    printf("Usable Range: 0x%08X - 0x%08X (%d bytes)\n", OCH_SEP_TOP_SEP_SRAM_BASE_ADDR,
-           OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + SRAM_USABLE_SIZE - 1, SRAM_USABLE_SIZE);
+    printf("SRAM Base: 0x%08X\n", SEP_TOP_SEP_SRAM_BASE_ADDR);
+    printf("SRAM Size: %d bytes\n", SEP_TOP_SEP_SRAM_SIZE);
+    printf("Usable Range: 0x%08X - 0x%08X (%d bytes)\n", SEP_TOP_SEP_SRAM_BASE_ADDR,
+           SEP_TOP_SEP_SRAM_BASE_ADDR + SRAM_USABLE_SIZE - 1, SRAM_USABLE_SIZE);
     printf("Test Size: %d bytes (%d random words)\n", NUM_WORDS * 4, NUM_WORDS);
     printf("Iterations: %d\n", NUM_ITERATIONS);
     printf("\n");

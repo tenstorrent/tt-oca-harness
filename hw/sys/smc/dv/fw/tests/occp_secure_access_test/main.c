@@ -2,22 +2,17 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Secure Mode Access Restriction Test
- *
- * Tests that in secure mode, the ROM returns appropriate OCCP errors when
- * attempting READ/WRITE operations to addresses outside the allowed range
- * (0xC0066400 to 0xC015FFFF). For invalid reads, also verifies data is all zeros.
+ * Checks that the ROM rejects OCCP READ/WRITE outside the allowed window with Invalid_address,
+ * logs one access-denied status record per rejection, and still serves the window itself.
  */
 
 #include "occp_test_common.h"
 #include "virt_console.h"
 #include <string.h>
 
-// Track expected secure access violations observed during the test
 static uint32_t expected_read_access_denied = 0;
 static uint32_t expected_write_access_denied = 0;
 
-// Shared buffers reused across the test to reduce ROM/BSS footprint
 static uint8_t shared_write_buffer[MAX_OCCP_WRITE_SIZE];
 static uint8_t shared_read_buffer[MAX_OCCP_READ_SIZE];
 
@@ -59,7 +54,6 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
         } else if (occp_status_matches_expected(smc_status, OCCP_FW_ID_SMC_BL0,
                                                 OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_CMD_FAILED, false)) {
-            // ignore CMD_FAILED entries for this test
         } else if (occp_is_smc_error_code(smc_status)) {
             uint16_t msg_value = OCCP_STATUS_EXTRACT_VALUE(smc_status);
             if (msg_value != 0) {
@@ -72,7 +66,6 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
     simputshex32("Total WRITE access denied errors: ", total_write_access_denied);
     simputshex32("Total unexpected errors: ", unexpected_errors);
 
-    // Compare against expected counts gathered during the test
     if (total_read_access_denied != exp_read_denied) {
         simputshex32("FAIL: READ access denied count mismatch (expected: ", exp_read_denied);
         simputshex32(", actual: ", total_read_access_denied);
@@ -92,30 +85,25 @@ static void validate_smc_status_buffer_for_secure_access(test_context_t *ctx,
     }
 }
 
-// Memory range definitions
-#define INVALID_ADDR_BELOW_START 0xC0000000ULL // Well below allowed range
-#define INVALID_ADDR_ABOVE_END 0xC0200000ULL   // Well above allowed range
+#define INVALID_ADDR_BELOW_START 0xC0000000ULL
+#define INVALID_ADDR_ABOVE_END 0xC0200000ULL
 
-// Test configuration
-#define NUM_RANDOM_OPERATIONS 2 // Number of random read/write operations
-#define NUM_VALID_CONTROL_OPS 2 // Number of valid operations for control
+#define NUM_RANDOM_OPERATIONS 2
+#define NUM_VALID_CONTROL_OPS 2
 
 static uint64_t generate_random_invalid_address_below(void) {
-    // Generate random address below allowed range (0xC0000000 to 0xC005FFFF)
     uint64_t range = OCCP_TEST_BASE_ADDR - INVALID_ADDR_BELOW_START;
     uint32_t offset = get_random_int() % range;
     return (INVALID_ADDR_BELOW_START + offset) & 0xfffffffc;
 }
 
 static uint64_t generate_random_invalid_address_above(void) {
-    // Generate random address above allowed range (0xC0160000 to 0xC01FFFFF)
     uint64_t range = INVALID_ADDR_ABOVE_END - OCCP_TEST_UPPER_ADDR;
     uint32_t offset = get_random_int() % range;
     return (OCCP_TEST_UPPER_ADDR + offset) & 0xfffffffc;
 }
 
 static uint64_t generate_random_invalid_address(void) {
-    // Randomly choose between below or above invalid ranges
     if (get_random_int() % 2) {
         return generate_random_invalid_address_below();
     } else {
@@ -123,10 +111,8 @@ static uint64_t generate_random_invalid_address(void) {
     }
 }
 
-// for unsecure mode, only invalid offsets are inside of the protected range (0xc0060000 to
-// 0xc0066400)
+// In unsecure mode only the protected range below the OCCP window is rejected.
 static uint64_t generate_random_invalid_address_unsecure_mode(void) {
-    // Randomly choose between below or above invalid ranges
     uint64_t range = OCCP_TEST_BASE_ADDR - SMC_SRAM_BASE_ADDR;
     uint32_t offset = get_random_int() % range;
     return (SMC_SRAM_BASE_ADDR + offset) & 0xfffffffc;
@@ -143,7 +129,7 @@ static void send_invalid_occp_write(test_context_t *ctx) {
 
     ctx->exp_response_code = OCCP_INVALID_ADDRESS;
     int retval = occp_send_write_command(ctx, ctx->slave_addr, test_addr, shared_write_buffer, len);
-    increment_cmd_count(ctx); // Increment for the write command, regardless of success
+    increment_cmd_count(ctx);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (retval != OCCP_SUCCESS) {
@@ -160,12 +146,11 @@ static void send_invalid_occp_read(test_context_t *ctx) {
     uint64_t test_addr = is_secure_mode() ? generate_random_invalid_address()
                                           : generate_random_invalid_address_unsecure_mode();
 
-    // Initialize buffer with non-zero pattern to ensure zeros come from security check
     memset(shared_read_buffer, 0xAA, sizeof(shared_read_buffer));
 
     ctx->exp_response_code = OCCP_INVALID_ADDRESS;
     int retval = occp_send_read_command(ctx, ctx->slave_addr, test_addr, shared_read_buffer, len);
-    increment_cmd_count(ctx); // Increment for the read command, regardless of success
+    increment_cmd_count(ctx);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (retval == OCCP_SUCCESS) {
@@ -179,7 +164,6 @@ static void send_invalid_occp_read(test_context_t *ctx) {
 
 static void execute_random_invalid_operations(test_context_t *ctx, int num_operations) {
     for (int i = 0; i < num_operations; i++) {
-        // Randomly choose between read and write (similar to occp_random_test weighting)
         uint8_t is_read = get_random_int() % 2;
 
         if (is_read) {
@@ -194,25 +178,21 @@ static bool test_boundary_cases(test_context_t *ctx) {
 
     simputs("\n=== Testing Boundary Cases ===\n");
 
-    // Single iteration with random offsets for comprehensive boundary testing
     uint16_t len = get_random_occp_write_size();
 
-    // Fill write data with random pattern
     for (int j = 0; j < len; j++) {
         shared_write_buffer[j] = get_random_int() & 0xFF;
     }
 
-    // Test address just below allowed range with random offset
-    uint64_t random_offset_below = get_random_int() % 0x20; // 0-31 offset
+    uint64_t random_offset_below = get_random_int() % 0x20;
     uint64_t addr_below = (OCCP_TEST_BASE_ADDR - 1 - random_offset_below) & 0xfffffffc;
     simputshex32("Boundary test: Address just below range (0x", addr_below);
     simputshex32(" offset: ", random_offset_below);
 
-    // Test write
     ctx->exp_response_code = OCCP_INVALID_ADDRESS;
     int write_result =
         occp_send_write_command(ctx, ctx->slave_addr, addr_below, shared_write_buffer, len);
-    increment_cmd_count(ctx); // Increment for the write command, regardless of success
+    increment_cmd_count(ctx);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (write_result != OCCP_SUCCESS) {
@@ -223,11 +203,10 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
     expected_write_access_denied++;
 
-    // Test read with zero check
     ctx->exp_response_code = OCCP_INVALID_ADDRESS;
     int read_result =
         occp_send_read_command(ctx, ctx->slave_addr, addr_below, shared_read_buffer, len);
-    increment_cmd_count(ctx); // Increment for the read command, regardless of success
+    increment_cmd_count(ctx);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (read_result == OCCP_SUCCESS) {
@@ -238,19 +217,17 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
     expected_read_access_denied++;
 
-    // above the range is only invalid in secure mode
+    // Addresses above the window are valid in unsecure mode.
     if (is_secure_mode()) {
-        // Test address at/above upper boundary with random offset
-        uint64_t random_offset_above = get_random_int() % 0x20; // 0-31 offset
+        uint64_t random_offset_above = get_random_int() % 0x20;
         uint64_t addr_above = (OCCP_TEST_UPPER_ADDR + random_offset_above) & 0xfffffffc;
         simputshex32("Boundary test: Address at/above upper boundary (0x", addr_above);
         simputshex32(" offset: ", random_offset_above);
 
-        // Test write
         ctx->exp_response_code = OCCP_INVALID_ADDRESS;
         write_result =
             occp_send_write_command(ctx, ctx->slave_addr, addr_above, shared_write_buffer, len);
-        increment_cmd_count(ctx); // Increment for the write command, regardless of success
+        increment_cmd_count(ctx);
         ctx->exp_response_code = OCCP_ERROR_NONE;
 
         if (write_result != OCCP_SUCCESS) {
@@ -261,11 +238,10 @@ static bool test_boundary_cases(test_context_t *ctx) {
         }
         expected_write_access_denied++;
 
-        // Test read with zero check
         ctx->exp_response_code = OCCP_INVALID_ADDRESS;
         read_result =
             occp_send_read_command(ctx, ctx->slave_addr, addr_above, shared_read_buffer, len);
-        increment_cmd_count(ctx); // Increment for the read command, regardless of success
+        increment_cmd_count(ctx);
         ctx->exp_response_code = OCCP_ERROR_NONE;
 
         if (read_result == OCCP_SUCCESS) {
@@ -277,7 +253,7 @@ static bool test_boundary_cases(test_context_t *ctx) {
         expected_read_access_denied++;
     }
 
-    // re-latch to recover
+    // A valid command clears the ROM's consecutive-error count; five errors unlatch it.
     uint32_t status_data = 0;
     int retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -286,13 +262,12 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // test at SRAM base address (invalid in both secure and unsecure mode)
     uint64_t addr_sram_base = SMC_SRAM_BASE_ADDR;
     simputshex32("Boundary test: Address at SRAM base (0x", addr_sram_base);
     ctx->exp_response_code = OCCP_INVALID_ADDRESS;
     write_result =
         occp_send_write_command(ctx, ctx->slave_addr, addr_sram_base, shared_write_buffer, len);
-    increment_cmd_count(ctx); // Increment for the write command
+    increment_cmd_count(ctx);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (write_result != OCCP_SUCCESS) {
@@ -303,11 +278,10 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
     expected_write_access_denied++;
 
-    // Test read with zero check
     ctx->exp_response_code = OCCP_INVALID_ADDRESS;
     read_result =
         occp_send_read_command(ctx, ctx->slave_addr, addr_sram_base, shared_read_buffer, len);
-    increment_cmd_count(ctx); // Increment for the read command, regardless of success
+    increment_cmd_count(ctx);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (read_result == OCCP_SUCCESS) {
@@ -318,17 +292,14 @@ static bool test_boundary_cases(test_context_t *ctx) {
     }
     expected_read_access_denied++;
 
-    // Test valid boundary addresses inside the allowed range
-    // Test address at start of valid range with random offset
-    uint64_t random_offset_start = (get_random_int() % 0x20) & 0xfffffffc; // 0-31 offset
+    uint64_t random_offset_start = (get_random_int() % 0x20) & 0xfffffffc;
     uint64_t addr_valid_start = OCCP_TEST_BASE_ADDR + random_offset_start;
     simputshex32("Boundary test: Valid address at start of range (0x", addr_valid_start);
     simputshex32(" offset: ", random_offset_start);
 
-    // Test write to valid start boundary
     write_result =
         occp_send_write_command(ctx, ctx->slave_addr, addr_valid_start, shared_write_buffer, len);
-    increment_cmd_count(ctx); // Increment for the write command
+    increment_cmd_count(ctx);
 
     if (write_result != OCCP_SUCCESS) {
         simputs("WRITE command failed\n");
@@ -336,11 +307,10 @@ static bool test_boundary_cases(test_context_t *ctx) {
     } else {
         simputs("  WRITE PASS: Valid boundary address write succeeded\n");
 
-        // Read back and verify data integrity
-        memset(shared_read_buffer, 0x00, sizeof(shared_read_buffer)); // Clear buffer
+        memset(shared_read_buffer, 0x00, sizeof(shared_read_buffer));
         read_result =
             occp_send_read_command(ctx, ctx->slave_addr, addr_valid_start, shared_read_buffer, len);
-        increment_cmd_count(ctx); // Increment for the read command
+        increment_cmd_count(ctx);
 
         if (read_result != OCCP_SUCCESS) {
             simputshex32("  READ FAIL: Expected success for valid address, got error ",
@@ -354,17 +324,14 @@ static bool test_boundary_cases(test_context_t *ctx) {
         }
     }
 
-    // Test address just before end of valid range with random offset
-    uint64_t random_offset_end = get_random_int() % 0x20; // 0-31 offset
-    uint64_t addr_valid_end = (OCCP_TEST_UPPER_ADDR - 8 - len - random_offset_end) &
-                              0xfffffffc; // Ensure we don't exceed boundary
+    uint64_t random_offset_end = get_random_int() % 0x20;
+    uint64_t addr_valid_end = (OCCP_TEST_UPPER_ADDR - 8 - len - random_offset_end) & 0xfffffffc;
     simputshex32("Boundary test: Valid address near end of range (0x", addr_valid_end);
     simputshex32(" offset: ", random_offset_end);
 
-    // Test write to valid end boundary
     write_result =
         occp_send_write_command(ctx, ctx->slave_addr, addr_valid_end, shared_write_buffer, len);
-    increment_cmd_count(ctx); // Increment for the write command
+    increment_cmd_count(ctx);
 
     if (write_result != OCCP_SUCCESS) {
         simputs("WRITE command failed\n");
@@ -372,11 +339,10 @@ static bool test_boundary_cases(test_context_t *ctx) {
     } else {
         simputs("  WRITE PASS: Valid boundary address write succeeded\n");
 
-        // Read back and verify data integrity
-        memset(shared_read_buffer, 0x00, sizeof(shared_read_buffer)); // Clear buffer
+        memset(shared_read_buffer, 0x00, sizeof(shared_read_buffer));
         read_result =
             occp_send_read_command(ctx, ctx->slave_addr, addr_valid_end, shared_read_buffer, len);
-        increment_cmd_count(ctx); // Increment for the read command
+        increment_cmd_count(ctx);
 
         if (read_result != OCCP_SUCCESS) {
             simputs("READ command failed\n");
@@ -401,10 +367,8 @@ static void run_security_access_test_suite(test_context_t *ctx) {
     expected_read_access_denied = 0;
     expected_write_access_denied = 0;
 
-    // Test 1: Boundary cases
     test_boundary_cases(ctx);
 
-    // re-latch to recover
     uint32_t status_data = 0;
     int retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
@@ -413,10 +377,8 @@ static void run_security_access_test_suite(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // Test 2: Random interspersed reads and writes to invalid addresses
     simputs("\n=== Testing Random Invalid Operations (Interspersed R/W) ===\n");
     execute_random_invalid_operations(ctx, NUM_RANDOM_OPERATIONS);
-    // re-latch to recover
     retval = occp_send_get_version_command(ctx, ctx->slave_addr, &status_data);
     if (retval != OCCP_SUCCESS) {
         simputs("FAIL: Failed to get version command\n");
@@ -424,15 +386,12 @@ static void run_security_access_test_suite(test_context_t *ctx) {
     }
     increment_cmd_count(ctx);
 
-    // Test 3: Valid operations for control (using existing valid address range)
     simputs("\n=== Control Test: Valid Operations ===\n");
-    ctx->test_base_addr = OCCP_TEST_BASE_ADDR;                     // Safe offset within valid range
-    ctx->test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // Safe upper bound
+    ctx->test_base_addr = OCCP_TEST_BASE_ADDR;
+    ctx->test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
 
-    // Use existing random command execution for valid operations
     execute_random_commands(ctx, NUM_VALID_CONTROL_OPS);
 
-    // Validate that SMC status buffer logged access violations and counts match expectations
     validate_smc_status_buffer_for_secure_access(ctx, expected_read_access_denied,
                                                  expected_write_access_denied);
 }
@@ -459,23 +418,19 @@ int main(void) {
 
     init_test(0);
 
-    // Initialize interface and discover devices
     if (!initialize_interface(&test_ctx)) {
         simputs("FAIL: Interface initialization failed\n");
         return -1;
     }
 
-    // Set up the rest of the test context
-    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;                     // Start of valid range
-    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR; // End of valid range
+    test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
+    test_ctx.test_upper_addr_bound = OCCP_TEST_BUFFER_SAFE_UPPER_ADDR;
     test_ctx.overall_result = true;
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the security access restriction test suite
     run_security_access_test_suite(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     return test_ctx.overall_result ? 0 : -1;

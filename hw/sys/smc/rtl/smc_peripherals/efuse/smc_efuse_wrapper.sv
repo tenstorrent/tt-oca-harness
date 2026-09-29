@@ -237,7 +237,6 @@ module smc_efuse_wrapper
     .HAS_LC_STATE                (1'b0), // SMC does not have LC state
     .CLASS1_SHADOW_RANGES        (smc_efuse_pkg::Class1ShadowRanges),
     .SECRET_SHADOW_RANGES        ('0),   // SMC has no shadow registers that should be blocked in secure_tm
-    .LC_STATE_WIDTH              (smc_pkg::LC_STATE_WIDTH),
     .LC_STATE_BIT_POSITION       (0),
 
     .efuse_map_t                 (smc_efuse_pkg::efuse_map_t)
@@ -288,7 +287,6 @@ module smc_efuse_wrapper
     .is_rma_sip_token_match_debug_o     (),
     .is_rma_chiplet_token_match_debug_o (),
 
-    .sec_disable_token_o                (),
     .token_match_fault_o                (),
 
     .locked_field_access_interrupt_o    (locked_field_access_interrupt_o)
