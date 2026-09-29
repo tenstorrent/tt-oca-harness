@@ -7,7 +7,7 @@
 from ctypes import Structure, Union, c_uint16, c_uint32, c_uint64, c_uint8
 
 SMC_TOP_REG_MAP_BASE_ADDR = 0xC0000000
-SMC_TOP_REG_MAP_SIZE = 0x08013030
+SMC_TOP_REG_MAP_SIZE = 0x08015000
 SMC_CLUSTER_CORE0_WDT_REG_MAP_BASE_ADDR = 0xC0000000
 SMC_CLUSTER_CORE0_WDT_REG_MAP_SIZE = 0x00000024
 SMC_CLUSTER_CORE0_WDT_CTRL_REG_OFFSET = 0x00000000
@@ -7154,6 +7154,8 @@ SMC_CLUSTER_CORE3_BEU_ACCRUED_ENABLE_REG_OFFSET = 0x00000020
 SMC_CLUSTER_CORE3_BEU_ACCRUED_ENABLE_REG_ADDR = 0xC8013020
 SMC_CLUSTER_CORE3_BEU_LOCAL_ENABLE_REG_OFFSET = 0x00000028
 SMC_CLUSTER_CORE3_BEU_LOCAL_ENABLE_REG_ADDR = 0xC8013028
+SMC_CLUSTER_ERROR_DEVICE_MEM_BASE_ADDR = 0xC8014000
+SMC_CLUSTER_ERROR_DEVICE_MEM_SIZE = 0x00001000
 WDT_CTRL_REG_DEFAULT = 0x00000000
 class WDT_CTRL_reg_t(Structure):
     _fields_ = [
@@ -22919,6 +22921,34 @@ class BUS_ERROR_UNIT_LOCAL_ENABLE_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(BUS_ERROR_UNIT_LOCAL_ENABLE_reg_u, self).__init__(*args, **kwargs)
         self.val = BUS_ERROR_UNIT_LOCAL_ENABLE_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+ERROR_DEVICE_MEM_WORD_REG_DEFAULT = 0x00000000
+class ERROR_DEVICE_MEM_WORD_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+ERROR_DEVICE_MEM_WORD_REG_DEFAULT = 0x00000000
+
+class ERROR_DEVICE_MEM_WORD_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', ERROR_DEVICE_MEM_WORD_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(ERROR_DEVICE_MEM_WORD_reg_u, self).__init__(*args, **kwargs)
+        self.val = ERROR_DEVICE_MEM_WORD_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

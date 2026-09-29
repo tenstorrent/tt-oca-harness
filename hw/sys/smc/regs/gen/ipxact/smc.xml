@@ -15,7 +15,7 @@
         <ipxact:displayName>SMC Top-Level Address Map</ipxact:displayName>
         <ipxact:description>Top-level SMC address map exposing the resources accessible to external agents.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'hc8013030</ipxact:range>
+        <ipxact:range>'hc8015000</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>smc_cluster_core0_wdt</ipxact:name>

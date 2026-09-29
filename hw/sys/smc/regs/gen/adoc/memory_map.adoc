@@ -69,5 +69,6 @@
 |BASE + 0x8011000 – BASE + 0x8011FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 1 bus-error unit.
 |BASE + 0x8012000 – BASE + 0x8012FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 2 bus-error unit.
 |BASE + 0x8013000 – BASE + 0x8013FFF |4 KiB |48 B |Bus Error Unit Address Map |1 instance |- |Core 3 bus-error unit.
+|BASE + 0x8014000 – BASE + 0x8014FFF |4 KiB |4 KiB |smc_cluster_error_device |1 instance |- |Error responder for unmapped cluster-bus accesses.
 |===
 // end::smc-components[]

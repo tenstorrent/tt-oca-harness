@@ -6,7 +6,7 @@
 package smc_top_addrmap_pkg;
 
 localparam longint unsigned SMC_TOP_BASE_ADDR = 64'h0;
-localparam longint unsigned SMC_TOP_SIZE = 64'hC8013030;
+localparam longint unsigned SMC_TOP_SIZE = 64'hC8015000;
 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_BASE_ADDR = 64'hC0000000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_SIZE = 64'h24;
@@ -520,6 +520,9 @@ localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE2_BEU_SIZE = 64'h30;
 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_BASE_ADDR = 64'hC8013000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE3_BEU_SIZE = 64'h30;
+
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_ERROR_DEVICE_BASE_ADDR = 64'hC8014000;
+localparam longint unsigned SMC_TOP_SMC_CLUSTER_ERROR_DEVICE_SIZE = 64'h1000;
 
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_CTRL_BASE_ADDR = 64'hC0000000;
 localparam longint unsigned SMC_TOP_SMC_CLUSTER_CORE0_WDT_COUNT_BASE_ADDR = 64'hC0000008;

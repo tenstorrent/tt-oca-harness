@@ -26,7 +26,7 @@
 
 
 localparam int unsigned SMC_TOP_REG_MAP_BASE_ADDR                                                                 = 32'hC0000000;
-localparam int unsigned SMC_TOP_REG_MAP_SIZE                                                                      = 32'h08013030;
+localparam int unsigned SMC_TOP_REG_MAP_SIZE                                                                      = 32'h08015000;
 
 
 
@@ -10074,6 +10074,15 @@ localparam int unsigned SMC_CLUSTER_CORE3_BEU_LOCAL_ENABLE_REG_ADDR             
 
 
 //==============================================================================
+// Memory: smc_cluster_error_device
+//==============================================================================
+
+localparam int unsigned SMC_CLUSTER_ERROR_DEVICE_MEM_BASE_ADDR                                                    = 32'hC8014000;
+localparam int unsigned SMC_CLUSTER_ERROR_DEVICE_MEM_SIZE                                                         = 32'h00001000;
+
+
+
+//==============================================================================
 // Default values for registers
 //==============================================================================
 
@@ -10594,6 +10603,7 @@ localparam longint unsigned BUS_ERROR_UNIT_ENABLE_REG_DEFAULT                   
 localparam longint unsigned BUS_ERROR_UNIT_PLIC_ENABLE_REG_DEFAULT                                                = 64'h0000000000000000;
 localparam longint unsigned BUS_ERROR_UNIT_ACCRUED_ENABLE_REG_DEFAULT                                             = 64'h0000000000000000;
 localparam longint unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_REG_DEFAULT                                               = 64'h0000000000000000;
+localparam longint unsigned ERROR_DEVICE_MEM_WORD_REG_DEFAULT                                                     = 32'h00000000;
 
 
 
@@ -15583,6 +15593,9 @@ localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_CORRECTABLE_SHIFT
 
 localparam longint unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_MASK                                 = 64'h80;
 localparam     int unsigned BUS_ERROR_UNIT_LOCAL_ENABLE_DCACHE_UNCORRECTABLE_SHIFT                                = 7;
+
+localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_MASK                                                           = 32'hFFFFFFFF;
+localparam int unsigned ERROR_DEVICE_MEM_WORD_DATA_SHIFT                                                          = 0;
 
 
 
@@ -20764,6 +20777,12 @@ typedef struct packed {
     logic [0:0]   icache_tlbus ;
     logic [0:0]   rsvd0 ;
 } bus_error_unit_local_enable_reg_t;
+
+
+
+typedef struct packed {
+    logic [31:0]   data ;
+} error_device_mem_word_reg_t;
 
 
 
