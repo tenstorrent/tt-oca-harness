@@ -290,11 +290,16 @@ runs:
         # failure leaves no evidence. Stop while there is still room to record
         # what grew.
         report() {
+          # head closes the pipe once it has its lines, so sort dies on EPIPE.
+          # Under the runner's `-eo pipefail` that status becomes the step's,
+          # which would fail a job whose suites all passed.
+          set +o pipefail
           df -h /
           echo "--- workspace ---"
           du -xh --max-depth=3 "$GITHUB_WORKSPACE" 2>/dev/null | sort -rh | head -25
           echo "--- nix, temp ---"
           du -xh --max-depth=1 /nix "$RUNNER_TEMP" 2>/dev/null | sort -rh | head -10
+          set -o pipefail
         }
         df -h / | tail -1
         make -C virtual_platform vp-test VP_CONTAINER=${{ inputs.vp_container }} \
