@@ -225,31 +225,34 @@
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>The OCAH address map has three levels, and the assignment contract splits across
-the integrator, SEP firmware, and SMC firmware. Assign and program them from this
-section; the deeper subsystem and crossbar sections referenced below give the
-per-block detail.</p>
+<p>The OCAH address map is configured in three layers, which are described in
+detail in the TRM at
+<a href="../../ocah-docs/latest/memory_map.html#ocah-memory-map" class="xref page">OCAH Memory Map</a>.</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Chiplet envelope (integrator).</strong> The SoC/chiplet address map assigns each
-subsystem a global base and reserved size, and the adopter&#8217;s fabric decoder
-routes those ranges to the SMU. The SMU crossbar preserves offsets and does not
-constrain envelope size, so the integrator owns non-overlap and containment at
-the SoC level.</p>
+<p><strong>Chiplet envelope (integrator).</strong>
+The SoC/chiplet address map assigns each subsystem a global base address and
+reserved size. The decoder in the adopter&#8217;s fabric routes accesses to these
+ranges to the SMU. The SMU crossbar preserves offsets and does not constrain
+envelope size, so the integrator is responsible for non-overlap and
+containment at the SoC level.</p>
 </li>
 <li>
-<p><strong>SEP and SMC chiplet apertures (firmware).</strong> Each subsystem exposes a
-chiplet-visible aperture whose base and size are programmable at runtime.
-Inbound transactions to an aperture are remapped global-to-local before they
-reach the subsystem.</p>
+<p><strong>SEP and SMC chiplet apertures (firmware).</strong>
+Each subsystem exposes a chiplet-visible aperture whose base and size are
+programmable at runtime. Inbound transactions to an aperture are remapped
+global-to-local before they reach the subsystem.</p>
 </li>
 <li>
-<p><strong>Local-alias views (fixed in RTL).</strong> Internally each subsystem addresses its
-own resources through a fixed local map: the SMC at <code>0xC000_0000</code> (see
-<a href="#smc-address-map-integration">[smc-address-map-integration]</a>), the SEP through its own local map. These are
-RTL-fixed and not integrator-assigned.</p>
+<p><strong>Local-alias views (fixed in RTL).</strong>
+Internally each subsystem addresses its own resources through a fixed local
+map. The SMC is at <code>0xC000_0000</code>: see
+<a href="smu-smc.html#smc-address-map-integration" class="xref page">Address Map and Aperture</a>.
+in the SMC&#8217;s section of this integrator guide. The SEP accesses its registers
+through its own local map. The SMC and SEP internal base addresses are
+RTL-fixed, not integrator-assigned.</p>
 </li>
 </ul>
 </div>
@@ -297,8 +300,10 @@ Control CSRs at <code>0xC001_0000</code>)</p></td>
 <p>Programming order and constraints: firmware programs the SEP and SMC aperture
 CSRs during early boot, <strong>before any cross-subsystem AXI traffic is issued</strong>, and
 must keep the two apertures non-overlapping and inside the chiplet envelope the
-integrator assigned. The full runtime crossbar behaviour and the exact CSR
-plumbing are in <a href="#smu-firmware-programming-order">[smu-firmware-programming-order]</a> under <a href="#smu-composition">[smu-composition]</a>.</p>
+integrator assigned. The full runtime crossbar behavior and the exact CSR
+plumbing are in the
+  <a href="smu-composition.html#smu-firmware-programming-order" class="xref page">Firmware programming order</a>
+section of the integrator&#8217;s guide.</p>
 </div>
 </div>
 </div>
@@ -314,24 +319,25 @@ The <code>integration/</code> directory centralizes symlinks to that distributed
 collateral so an integrator does not have to discover every owner-local path.</p>
 </div>
 <div class="paragraph">
-<p><code>integration/rdl/&lt;subsystem&gt;/</code> is a flat, self-contained list of the SystemRDL
-files required by that subsystem. Filenames remain unchanged, and shared
+<p>Each subsystem lists the SystemRDL files that it requires in a flat self-contained list at
+<code>integration/rdl/&lt;subsystem&gt;/</code>. Filenames remain unchanged, and shared
 dependencies appear in every subsystem that needs them. Non-RDL support files
-needed by relative includes remain at the <code>integration/rdl/</code> root&#8201;&#8212;&#8201;for
+needed by relative includes remain at the <code>integration/rdl/</code> root. For
 example, <code>integration/rdl/i3c_defines.svh</code> sits there because both
 <code>integration/rdl/smc/registers.rdl</code> and <code>integration/rdl/smu/registers.rdl</code>
 reach it through the I3C core&#8217;s own parent-relative include
-(<code>../i3c_defines.svh</code>), and that relative path only resolves if the header is
+(<code>../i3c_defines.svh</code>). That relative path only resolves if the header is
 one directory above every subsystem folder that needs it. The matching
 generated IEEE 1685-2014 component descriptions use the same flat subsystem
 organization under <code>integration/ipxact/&lt;subsystem&gt;/</code>.</p>
 </div>
 <div class="paragraph">
-<p>These directories are generated symlink indexes; run
-<code>python3 scripts/update_integration_symlinks.py</code> after adding or moving collateral.
-Their canonical targets remain under <code>hw/sys/&lt;sys&gt;/regs/</code>,
-<code>hw/ip/&lt;ip&gt;/regs/</code>, and <code>vendor/&#8230;&#8203;</code>&#8201;&#8212;&#8201;the <code>regs/</code> element
-of every component&#8217;s directory layout, described in
+<p>These directories are generated symlink indexes; run <code>python3
+scripts/update_integration_symlinks.py</code> after adding or moving collateral. The
+targets of these symlinks are RDL files, one per subsystem, which remain at
+their canonical locations in <code>hw/sys/&lt;sys&gt;/regs/</code>, <code>hw/ip/&lt;ip&gt;/regs/</code>, and
+<code>vendor/&#8230;&#8203;</code>. These directories are the <code>regs/</code> element of every component&#8217;s
+directory layout, described in
 <a href="../../ocah-starting/latest/guidelines.html#component-directory-organization" class="xref page">the
 Getting Started Guide</a>.
 Other generated outputs remain under each owner&#8217;s
@@ -340,7 +346,7 @@ Other generated outputs remain under each owner&#8217;s
 <div class="paragraph">
 <p>For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
-<a href="../../ocah-docs/latest/sep/memory_map.html" class="xref page">OCAH Memory Map</a>.</p>
+<a href="../../ocah-docs/latest/memory_map.html" class="xref page">OCAH Memory Map</a>.</p>
 </div>
 </div>
 </div>

@@ -1222,7 +1222,7 @@ is enabled, the iJTAG network is selected for scan.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="jtag2axi-support"><a class="anchor" href="#jtag2axi-support"></a><a class="link" href="#jtag2axi-support">3.15. JTAG2AXI Support</a></h3>
+<h3 id="ptap-jtag2axi-support"><a class="anchor" href="#ptap-jtag2axi-support"></a><a class="link" href="#ptap-jtag2axi-support">3.15. JTAG2AXI Support</a></h3>
 <div class="sect3">
 <h4 id="_jtag2axi_caps"><a class="anchor" href="#_jtag2axi_caps"></a><a class="link" href="#_jtag2axi_caps">3.15.1. *_JTAG2AXI_CAPS</a></h4>
 <div class="paragraph">
@@ -1351,7 +1351,7 @@ and operation fields.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">wstrb</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The byte strobes for a write transaction. This value is driven on WSTRB[7:0] when the transaction is a write. On a Capture-DR, this field holds the previous value.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The byte strobes for a write transaction. This value is driven on WSTRB when the transaction is a write. On a Capture-DR, this field holds the previous value.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 +: S</p></td>
@@ -1448,7 +1448,7 @@ manage a series of AXI accesses.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">pl_depth</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and (wr/rd)_pl_depth field read from the JTAG_CAPS register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2&#8217;b00: There are no pending transactions 2&#8217;b01: There is at least one pending transaction</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and the (wr/rd)_pl_depth field read from the bridge&#8217;s <code>*_JTAG2AXI_CAPS</code> register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2&#8217;b00: There are no pending transactions 2&#8217;b01: There is at least one pending transaction</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2 +: S</p></td>
@@ -1908,7 +1908,7 @@ register lengths.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x19</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">JTAG_CAPS</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">40</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">60</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Capabilities readback</p></td>
 </tr>
 <tr>
@@ -1916,6 +1916,114 @@ register lengths.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SELECT_IJTAG</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">iJTAG network selection</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_JTAG2AXI_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP bridge capabilities readback</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SINGLE_OP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP bridge single transaction</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1D</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP bridge series control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1E</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_DATA_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP bridge series data, incrementing address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1F</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_DATA_NO_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP bridge series data, fixed address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x20</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP bridge series data with error status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x21</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_JTAG2AXI_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP bridge capabilities readback</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x22</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SINGLE_OP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP bridge single transaction</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x23</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP bridge series control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x24</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_DATA_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP bridge series data, incrementing address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x25</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_DATA_NO_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP bridge series data, fixed address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x26</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP_OTP_AXI_SERIES_DATA_WITH_ERROR_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP bridge series data with error status</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x27</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_JTAG2AXI_CAPS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric bridge capabilities readback</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x28</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SINGLE_OP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric bridge single transaction</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x29</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_CTRL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric bridge series control</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2A</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_DATA_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric bridge series data, incrementing address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2B</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_DATA_NO_INCR</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric bridge series data, fixed address</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x2C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC_AXI_SERIES_DATA_WITH_ERROR_STATUS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Variable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric bridge series data with error status</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x3D</p></td>
@@ -1937,6 +2045,12 @@ register lengths.</p>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The length of each variable-length JTAG2AXI register follows from the bridge&#8217;s
+address width, data width and pipeline depth, and for the series data registers
+from the size last written to <code>*_AXI_SERIES_CTRL</code>. <a href="#ptap-jtag2axi-support">JTAG2AXI Support</a>
+defines each layout.</p>
+</div>
 <div class="paragraph">
 <p><strong>NOTE:</strong> All instruction encodings <em>not</em> explicitly defined in this table map
 to the BYPASS instruction.</p>

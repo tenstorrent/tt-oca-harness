@@ -197,10 +197,10 @@ entry point for the chiplet. The JIU connects to:</p>
 instruction and for the <code>cla_clock_stop</code> readback status.</p>
 </li>
 <li>
-<p>The SMC AXI fabric via JTAG2AXI (instruction <code>J2A_SMC_FABRIC</code>).</p>
+<p>The SMC AXI fabric via a JTAG2AXI bridge.</p>
 </li>
 <li>
-<p>The SMC and SEP OTP controllers via JTAG2AXIL.</p>
+<p>The SMC and SEP OTP controllers via AXI4-Lite JTAG2AXI bridges.</p>
 </li>
 <li>
 <p>The SMC and SEP CPU debug TAPs via STAPs.</p>
@@ -254,13 +254,73 @@ scan chain and drives its internal host outputs low.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">3. Clock Domains</a></h2>
+<h2 id="dtp-jtag2axi-bridges"><a class="anchor" href="#dtp-jtag2axi-bridges"></a><a class="link" href="#dtp-jtag2axi-bridges">3. JTAG2AXI Bridges</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The PTAP contains three JTAG2AXI bridges, each selected by its own group of six
+instructions (<a href="#dtp-jtag2axi-bridges-table">DTP JTAG2AXI bridges</a>). The request and response type
+parameters of a bridge set its bus type, address width and data width. Its read
+and write pipeline-depth parameters set how many transactions it queues, where
+0 allows a single outstanding transaction. The table lists the DTP defaults.
+Each bridge reports its configuration in its <code>*_JTAG2AXI_CAPS</code> register.</p>
+</div>
+<table id="dtp-jtag2axi-bridges-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. DTP JTAG2AXI bridges</caption>
+<colgroup>
+<col style="width: 11%;">
+<col style="width: 15%;">
+<col style="width: 11%;">
+<col style="width: 12%;">
+<col style="width: 24%;">
+<col style="width: 27%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Bridge</th>
+<th class="tableblock halign-left valign-top">Instructions</th>
+<th class="tableblock halign-left valign-top">Bus</th>
+<th class="tableblock halign-left valign-top">Address / data width (bits)</th>
+<th class="tableblock halign-left valign-top">Type parameters</th>
+<th class="tableblock halign-left valign-top">Pipeline-depth parameters (default 3)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x27–0x2C (<code>SMC_*</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">56 / 64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag_axi_req_t</code>, <code>smc_jtag_axi_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_RD_PL_DEPTH</code>, <code>SMC_WR_PL_DEPTH</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x1B–0x20 (<code>SMC_OTP_*</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 / 32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_axil_req_t</code>, <code>smc_otp_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SMC_OTP_RD_PL_DEPTH</code>, <code>SMC_OTP_WR_PL_DEPTH</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x21–0x26 (<code>SEP_OTP_*</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 / 32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_axil_req_t</code>, <code>sep_otp_axil_resp_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SEP_OTP_RD_PL_DEPTH</code>, <code>SEP_OTP_WR_PL_DEPTH</code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="sect1">
+<h2 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">4. Clock Domains</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The DTP operates in two clock domains (<a href="#dtp-clock-domains-table">DTP clock domains</a>).</p>
 </div>
 <table id="dtp-clock-domains-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 1. DTP clock domains</caption>
+<caption class="title">Table 2. DTP clock domains</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -295,13 +355,13 @@ within the CTPs using two-flip-flop synchroniser chains.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">4. Reset Architecture</a></h2>
+<h2 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">5. Reset Architecture</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><a href="#dtp-reset-signals-table">DTP reset signals</a> identifies the reset inputs and the logic they reset.</p>
 </div>
 <table id="dtp-reset-signals-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 2. DTP reset signals</caption>
+<caption class="title">Table 3. DTP reset signals</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -337,7 +397,7 @@ on either TRST_n or power-on reset.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">5. IC_RESET Overrides</a></h2>
+<h2 id="dtp-ic-reset-overrides"><a class="anchor" href="#dtp-ic-reset-overrides"></a><a class="link" href="#dtp-ic-reset-overrides">6. IC_RESET Overrides</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR. Per reset
@@ -373,7 +433,7 @@ SMU-composed port map.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">6. Debug Disable</a></h2>
+<h2 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">7. Debug Disable</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is a per-path
@@ -385,7 +445,7 @@ each field to the named path.</p>
 <p><a href="#dtp-debug-disable-paths-table">DTP debug-disable paths</a> maps each debug path to its active-high disable field.</p>
 </div>
 <table id="dtp-debug-disable-paths-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 3. DTP debug-disable paths</caption>
+<caption class="title">Table 4. DTP debug-disable paths</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
