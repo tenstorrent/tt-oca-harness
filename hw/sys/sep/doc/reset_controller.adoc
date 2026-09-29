@@ -4,6 +4,13 @@
 = SEP Reset Controller
 :description: SEP software reset requests, AXI isolation, and TRNG reset sequencing.
 
+ifdef::backend-html5[]
+:dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:dtp-ic-reset-overrides-ref: <<dtp-ic-reset-overrides>>
+endif::backend-html5[]
+
 [[sep-reset-controller,SEP Reset Controller]]
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
@@ -53,7 +60,10 @@ eFuse key paths. This prevents either endpoint of a key path from entering
 reset with a transaction in flight.
 
 The sequenced resets are ANDed with `sep_reset_n`, which holds every IP in reset
-until eFuse sensing completes during boot. The per-IP JTAG override muxes are
+until eFuse sensing completes during boot. JTAG can drive `sep_reset_n` in
+place of the eFuse reset through the SEP slice of the IC_RESET TDR (see
+{dtp-ic-reset-overrides-ref} in the DTP chapter), which releases it on a part
+whose fuse sensing does not complete. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.
 
 [[sep-trng-reset]]

@@ -17,12 +17,11 @@
 static void run_zero_len_body_cases(test_context_t *ctx) {
     uint64_t range = ctx->test_upper_addr_bound - ctx->test_base_addr;
     uint64_t addr = ctx->test_base_addr + (get_random_int() % (range ? range : 4));
-    addr &= 0xfffffffffffffffcULL; /* 4B aligned */
+    addr &= 0xfffffffffffffffcULL;
     uint8_t data[8] = {0};
 
     simputs("=== OCCP Invalid Message Length (force zero) ===\n");
 
-    /* Force invalid message length error via context */
     ctx->invalid_message_length_zero_inject_enable = true;
     ctx->exp_response_code = OCCP_INVALID_HEADER;
 
@@ -45,7 +44,6 @@ static void run_zero_len_body_cases(test_context_t *ctx) {
     }
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
-    /* Clean up to avoid affecting later commands */
     ctx->invalid_message_length_zero_inject_enable = false;
 }
 
@@ -81,13 +79,10 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    /* Warm-up with valid commands for stability */
     execute_random_commands(&test_ctx, 5);
 
-    /* Run zero-length message body cases */
     run_zero_len_body_cases(&test_ctx);
 
-    /* Cool-down to ensure interface recovers */
     execute_random_commands(&test_ctx, 5);
 
     finalize_test_results(&test_ctx);

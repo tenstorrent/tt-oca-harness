@@ -192,7 +192,6 @@ int main(void) {
     /* CRC-error entries carry no fixed status code, so the SMC status buffer is not
      * validated here. */
 
-    /* Cool-down valid commands to ensure recovery */
     execute_random_commands(&ctx, 5);
 
     if (ctx.overall_result) {

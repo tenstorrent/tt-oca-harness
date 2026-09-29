@@ -24,6 +24,7 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_test(dtp_base_test):
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
         "CHK-J2A-SERIES-ADDR",
+        "CHK-J2A-ERR-RDATA",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 

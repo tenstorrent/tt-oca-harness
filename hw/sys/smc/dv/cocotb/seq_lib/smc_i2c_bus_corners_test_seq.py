@@ -37,7 +37,7 @@ the bench controller (`SmcI2cMasterVip`) on the pads:
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import Timer
+from cocotb.triggers import RisingEdge, Timer
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
@@ -185,6 +185,14 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
             "INTR_STATE.UNEXP_STOP, and the same STOP with the target disabled first did not"
         )
 
+    async def _await_target_stretch(self, label: str) -> None:
+        dut = cocotb.top
+        for _ in range(POLL_LIMIT):
+            await RisingEdge(dut.clk_periph_i)
+            if int(dut.tb_i2c0_scl_dut_low.value):
+                return
+        raise AssertionError(f"{label}: the target never held SCL low with its ACQ FIFO full")
+
     async def _nack_ignored_leg(self) -> None:
         master = self.master
         assert master is not None
@@ -198,7 +206,10 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
             await Timer(POLL_INTERVAL_NS, unit="ns")
         else:
             raise AssertionError(f"NACK_IGNORED: the ACQ FIFO never filled (0x{status:08x})")
-        await Timer(SETTLE_NS, unit="ns")
+        # A full FIFO is reported while the byte after it is still arriving; the
+        # target stretches only once that byte reaches its acknowledge slot, so
+        # the NACK is written once the target holds SCL low.
+        await self._await_target_stretch("NACK_IGNORED")
         await self.csr_write("NACK_IGNORED_NACK", I2C0_TARGET_ACK_CTRL, ACK_CTRL_NACK)
         received = bytearray()
         for _ in range(POLL_LIMIT):

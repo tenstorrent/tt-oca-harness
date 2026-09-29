@@ -12,12 +12,15 @@
       <ipxact:name>telemetry_receiver_wrap_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>telemetry_receiver_wrap</ipxact:name>
+        <ipxact:displayName>Telemetry Receiver Wrapper Address Map</ipxact:displayName>
+        <ipxact:description>Wrapper address map instantiating the telemetry receiver channels.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h300</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>telemetry_receiver</ipxact:name>
-          <ipxact:description>Telemetry Receiver</ipxact:description>
+          <ipxact:displayName>Telemetry Receiver Address Map</ipxact:displayName>
+          <ipxact:description>Configuration, status, and data-buffer registers for a single telemetry receiver channel.</ipxact:description>
           <ipxact:dim>3</ipxact:dim>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:range>'h100</ipxact:range>

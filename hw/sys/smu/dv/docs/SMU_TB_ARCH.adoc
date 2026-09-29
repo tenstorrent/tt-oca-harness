@@ -7,8 +7,10 @@
 === Overview
 
 The SMU open-source environment is a PyUVM-on-cocotb testbench driven by
-`tools/dv/run_dv.py`. `hw/sys/smu/dv/README.md` owns which simulators run
-which groups and why; this chapter describes the bench.
+`tools/dv/run_dv.py`, with a SystemVerilog UVM realization of the scenarios
+that carry one (`--framework uvm`, <<sv-uvm-realization>>).
+`hw/sys/smu/dv/README.md` owns which simulators run which groups and why; this
+chapter describes the bench.
 
 One DUT view lives in this DV root:
 
@@ -17,7 +19,8 @@ One DUT view lives in this DV root:
 |Launch name |HDL top |What it is for
 |`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
 `hw/top/smu_wrapper.sv` with production pins, in one compile profile,
-`compile_smu_chiplet` (SEP=1). The SMU regression (`testlists/all.toml`)
+`compile_smu_chiplet` (SEP=1). The SMU regression (`testlists/all.toml`);
+the same module in its `UVM` shape under `--framework uvm`
 |===
 
 Logs carry `DUT_TAG=WRAPPER`. The SEP=0 composition (`smu #(.SEP(0))`) is
@@ -208,14 +211,17 @@ boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the
 inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
-|Cross-trigger / iJTAG |product-pin stimulus from the sequences; no dedicated VIP
+|Cross-trigger / iJTAG |product-pin stimulus from the sequences; every CT_Req_out pad
+sits on an `ocah_open_drain_bus` shared wire (private or the group the pads in
+`tb_xtrig_ctp_wire_group` share), resting at the board pull of the port's INVERT sense; no
+dedicated VIP otherwise
 |SMC and SEP eFuse / OTP |`efuse_interface_shim` + `efuse_bank_model`, instantiated by
 `hw/top/smc_ip_integration.sv` and `hw/top/sep_ip_integration.sv` inside the DUT
 compile (a model in the product composition, not a testbench component). Shadow
 registers are preloaded under `+skip_fuse_sense`
 |BSR / STAP / DFD host scan chains |testbench loopback of `scan_out` to `scan_in`
 (`tb/tb_wrapper_top.sv`, all five host chains and the I/O and extra STAP TDO-to-TDI returns)
-|CDC synchronisers on Verilator |`prim_sync2` / `prim_sync3` stand-ins from
+|CDC synchronisers on Verilator |`prim_sync3` stand-in from
 `hw/sys/smc/dv/tb/verilator_stubs/`, listed in `[build].stubs`
 |===
 
@@ -234,6 +240,114 @@ own name or by any group it belongs to.
 Names classified deferred or OUT are catalogued in
 `hw/sys/smu/doc/dv/SMU_DEFERRED_DISPOSITION.adoc`; none of them is enrolled and
 none is reportable as a PASS.
+
+[[sv-uvm-realization]]
+=== SystemVerilog UVM Realization (`--framework uvm`)
+
+The SV-UVM realization runs through the same native runner: `smu_sim_cfg.toml`
+declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
+testlist; `build/uvm/` build tree), and `--dut smu --framework uvm` selects it
+on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
+carry both implementations in their testlist `module` binding map
+(`module = { cocotb = "<name>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework conventions
+this realization follows are the shared adopter guide,
+`hw/common/dv/docs/uvm-framework.adoc`; the reference bench is DTP, and the
+SMC and SEP benches carry the same shape.
+
+There is exactly ONE testbench top module: `smu_wrapper_uvm_top` in
+`tb/tb_wrapper_top.sv`, shared between both realizations. Its TB signals are
+declared once in `tb/smu_tb_signal_list.svh`; the bare `+define+UVM` (set by
+the native profile's `[frameworks.uvm]` overlay) switches the shape: without
+it the list expands as the cocotb pin port list; with it the pins become
+internal TB signals and an in-module harness adds the clocks (periods from
+`smu_tb_if`), the shared JTAG VIP interface on the primary TAP pins, the
+SMU-local `smu_tb_if`, the embedded DTP's `dtp_tb_if` (the one-hot TAP state,
+the decoded instruction, the DTP reset counters and the lifecycle
+debug-disable vector, wired the way the DTP bench wires its own top), a
+passive `ocah_axi_if` mirroring the DTP's SMC-fabric JTAG2AXI port, the JTAG
+protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
+idle value `smu_base_test.drive_idle_inputs` uses, the `uvm_config_db`
+publication of every virtual interface, and `run_test()`. The outbound SMN
+responder interface `u_axi_out_if` lives above the harness block, in both
+shapes. Under UVM the simulator reports an assertion failure through the UVM
+report server, where it counts as an error of the run, so the harness holds
+off, by name, the SEP checks the sim config's `[pass_fail]` patterns ignore
+for the cocotb flow: the entropy source and the EDN endpoints, the key
+manager, the secure DMA and its alert receivers, the SPI host for its first
+microsecond, the `ValidDigestModeFlag_A` of the SHA-256-only eFuse token
+hashes, and otbn_rnd's `UrndNoReseedOnReset_A`. Every other SEP assertion
+fails the UVM run, as it fails the cocotb run.
+
+The class library mirrors the cocotb conventions under `uvm/` with identical
+basenames, one class per file, on the shared framework bases of
+`hw/common/dv/vip/ocah_lib/`:
+
+[arabic]
+. `hw/common/dv/vip/ocah_lib/uvm/ocah_lib_pkg.sv` -- the shared framework
+  bases every SMU class extends (test, env, sequence, sequencer, scoreboard,
+  reference model, the two cfg bases, knob and seed accessors, pattern
+  helpers).
+. `hw/common/dv/vip/ocah_jtag_vip/uvm/ocah_jtag_uvm_pkg.sv` and
+  `hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv` -- the shared
+  SV-UVM JTAG and AXI VIPs. The primary TAP is the driven interface (the
+  active `ocah_jtag_master_env`); the outbound SMN boundary is answered by
+  the memory-backed `ocah_axi_slave_agent`; the DTP's SMC-fabric JTAG2AXI port
+  is observed by a monitor-only `ocah_axi_env`.
+. `hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv` -- the DTP bench's reference models,
+  TAP FSM checker and scoreboard, reused unchanged on the embedded DTP:
+  `ir_decode`, `idcode`, `bypass` on the JTAG event and scan streams,
+  `jtag2axi_req` and `jtag2axi_status` on the bridge-port monitor and the scan
+  stream. Their `dtp_env_cfg` is derived from the SMU cfg by `smu_env`.
+. `tb/smu_tb_if.sv` -- the SMU-local TB interface: harness clock periods and
+  two clock mirrors, power-good, cold reset, the boot-sequence gate and the
+  GPIO boot-stall pad, the reset-unit outputs, the fuse-sense observables, the
+  lifecycle state, the DTP debug-control and IC_RESET exports as the SMC
+  receives them, the bridge lifecycle gate, the cold-reset assertion counter,
+  the SVA enable.
+. `uvm/env/smu_env_pkg.sv` -- `smu_types` (the PTAP IDCODE, the IC_RESET
+  TDR geometry, the DEBUG_CONTROL layout and the SMC-fabric JTAG2AXI
+  geometry as DV-owned constants transcribed from the integrator guide and
+  the PTAP document, the TAP opcodes from the DTP bench's transcription, and
+  the SMC addresses from the generated address map), `smu_test_cfg`,
+  `smu_env_cfg`, `smu_virtual_sequencer`, the items, `smu_reset_pin_monitor`,
+  the three SMU-level reference models, `smu_scoreboard`, and `smu_env`.
+. `uvm/seq_lib/smu_seq_lib_pkg.sv` -- the reusable JTAG operations
+  (`smu_jtag_<op>_seq`, `smu_jtag2axi_*_seq`), `smu_base_test_seq` and one
+  scenario sequence per bound test.
+. `uvm/tests/smu_tests.sv` -- `smu_base_test` and one thin test class per
+  scenario, `include`d by the top under `UVM`.
+
+The always-on `smu_scoreboard` is the one verdict point. Embedded-IP features
+are judged by the DTP scoreboard held as a child; the SMU-level features are
+registered on the `ocah_scoreboard` base:
+
+[cols=",,",options="header",]
+|===
+|Feature |Reference model |What is paired
+|`ic_reset_tdr` |`smu_ic_reset_tdr_ref_model` |every full-length IC_RESET DR scan with the capture predicted from the register shadow (the previous Update-DR image; the reset image after TRST or power-on reset; after Test-Logic-Reset only while `reset_hold` is 1)
+|`debug_control_tdr` |`smu_debug_control_tdr_ref_model` |every DEBUG_CONTROL DR scan with the capture predicted on the four software-owned bits (zero after any TAP reset; a cold reset leaves the TCK-domain register alone)
+|`boot_gate` |`smu_boot_gate_ref_model` on `smu_reset_pin_monitor` |every SMC fuse-reset release the monitor observes with the boot gate open and the fuse sense complete in the same SMU clock; a primary-reset release carries no contract
+|===
+
+A required feature (`smu_test_cfg.required_features`) that ends with zero
+comparisons fails the run; every scenario also records a `CHK-SB-MIN-ACTIVITY`
+floor read from the scoreboard's own comparison count, and named `CHK-*`
+evidence through `ocah_checker`, finalized once per pass so a silently skipped
+check cannot report PASS. Each feature has a documented negative plusarg that
+corrupts its prediction (`+SMU_IC_RESET_SCOREBOARD_NEGATIVE`,
+`+SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE`, `+SMU_BOOT_GATE_SCOREBOARD_NEGATIVE`,
+`+SMU_J2A_SCOREBOARD_NEGATIVE`, `+SMU_PTAP_IDCODE_NEGATIVE`), under which the
+run must FAIL with the feature's `CHK-SB-*` record as the failing token.
+
+`smu_base_test.bring_up()` walks the cocotb ladder through `smu_tb_if`
+(power-good and cold reset asserted while the clocks start, a TAP reset so
+the IC_RESET TDR loads its reset image instead of a power-up override, power-
+good, cold-reset release, a second TAP reset, the settle, then the bounded
+polls of the cold-stable and primary reset releases). `ocah_test` then runs
+every scenario at least 16 passes in one simulation, each pass seeded from
+the runner seed plus the pass index, and every scenario hands the DUT back
+as it found it.
 
 === Build and Run
 

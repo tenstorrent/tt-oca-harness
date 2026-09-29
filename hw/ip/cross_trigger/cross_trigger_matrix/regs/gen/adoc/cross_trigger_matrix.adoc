@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-cross_trigger_matrix]
-== Address Map: cross_trigger_matrix
+== Cross Trigger Matrix Address Map
+
+Configuration registers for the cross trigger matrix
 
 [NOTE]
 ======

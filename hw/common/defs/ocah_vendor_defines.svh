@@ -33,8 +33,13 @@
 `endif
 `endif
 
-// EMULATION is the OCAH emulation-view name. No vendor alias maps from it.
+// EMULATION keeps PULP assertion macros compiled when SYNTHESIS is also set.
 // PULP_FPGA_EMUL is an FPGA clock-mux path, not this view.
+`ifdef EMULATION
+`ifndef ASSERTS_OVERRIDE_ON
+`define ASSERTS_OVERRIDE_ON
+`endif
+`endif
 
 /*
   Unmapped vendor defines
@@ -65,7 +70,7 @@
     source group sets it with SEP_ABR_EN. Not a global OCAH default; this
     header must not define it.
   - TECH_SPECIFIC_ICG: Bender `sep` Adams Bridge source group. Skips the latch
-    in abr_icg.sv; overlay abr_clk_gate instantiates prim_clkgater with te as
+    in abr_icg.sv; overlay abr_clk_gate instantiates prim_clock_gating with te as
     DFT test-enable. Not derived from SYNTHESIS (lint/Yosys set that view; the
     foundry cell is `-t synth`).
   - ABR_PRIM_DEFAULT_IMPL: each abr_prim_* already defaults to ImplGeneric.
@@ -93,7 +98,7 @@
   - RV_BUILD_AXI_NATIVE: snapshot already `define RV_BUILD_AXI_NATIVE 1. No
     `ifdef reader. Do not restate.
   - TECH_SPECIFIC_EC_RV_ICG: Bender `sep_el2` source group. Skips the latch in
-    beh_lib.sv; overlay user_clock_gate instantiates prim_clkgater. Not derived
+    beh_lib.sv; overlay user_clock_gate instantiates prim_clock_gating. Not derived
     from SYNTHESIS (lint/Yosys set that view; the foundry cell is `-t synth`).
     This header must not define it.
   - TEC_RV_ICG / USER_EC_RV_ICG: snapshot values naming the behavioural gate
@@ -134,12 +139,11 @@
 
   pulp-platform/common_cells
   - OCAH_PULP_INC_ASSERT: derived in assertions.svh (off on ASSERTS_OFF /
-    SYNTHESIS / XSIM). Does not test VERILATOR. Do not restate.
+    SYNTHESIS / XSIM, on whenever ASSERTS_OVERRIDE_ON is set, which EMULATION
+    maps above). Does not test VERILATOR. Do not restate.
   - ASSERTS_OFF: Verilator DUT flags (smc, smu, dtp) and Verilator lint. Not
     on VCS/Xcelium (PULP macros stay on). Not an alias of VERILATOR. Leave
     unset here.
-  - ASSERTS_OVERRIDE_ON: force-on for OCAH_PULP_INC_ASSERT. Unused. Leave
-    unset.
   - COMMON_CELLS_ASSERTS_OFF: strips inline module-body asserts. Native
     `[target_defaults.default].defines` already sets it on every native tool.
     Do not restate (redefinition). Lint/synth already empty those macros via

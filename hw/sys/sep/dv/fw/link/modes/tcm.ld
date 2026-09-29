@@ -40,6 +40,10 @@ SECTIONS {
         *(.text)
         *(.text.*)
         . = ALIGN(4);
+        /* Build identity, ICCM copy (fw_build_id.c): kept against
+         * --gc-sections so the instruction image carries it too. */
+        KEEP(*(.fw_build_id_itcm))
+        . = ALIGN(4);
 
         /*
          * NMI handler - must be 256-byte aligned for VeeR nmi_vec.
@@ -66,6 +70,11 @@ SECTIONS {
         . = ALIGN(4);
         *(.sdata)
         *(.sdata.*)
+        . = ALIGN(4);
+        /* Build identity, DCCM copy (fw_build_id.c). Nothing references
+         * it at run time, so it is kept explicitly against --gc-sections; the
+         * host reads it out of the image (CHK-FW-IDENTITY). */
+        KEEP(*(.fw_build_id_dtcm))
         . = ALIGN(4);
         *(.rodata)
         *(.rodata.*)

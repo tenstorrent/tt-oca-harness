@@ -41,7 +41,7 @@
 static int wait_idle(void) {
     int t = 2000000;
     while (t-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("  ERROR: KMAC idle timeout\n");
@@ -51,10 +51,9 @@ static int wait_idle(void) {
 static int wait_done(void) {
     int t = 2000000;
     while (t-- > 0) {
-        uint32_t intr = READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
+        uint32_t intr = READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR);
         if (intr & KMAC__INTR_STATE__KMAC_DONE_bm) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
-                      KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm); /* W1C */
             return 0;
         }
     }
@@ -73,14 +72,14 @@ static void configure_cshake(void) {
     cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.sideload = 0;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     for (int i = 0; i < SEP_KMAC_NUM_SEED_WORDS; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
+        WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEFu + (uint32_t)i);
     }
 }
 
@@ -92,9 +91,9 @@ static void write_cshake_prefix(void) {
      * as LE bytes: 0x63 0x73 0x68 (0x18 padded)
      * packed 32-bit LE word0: 0x63181801 (bytestream), word1: 0x00007368
      * Using a simple fixed prefix for determinism */
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x63181801U);
-    WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00007368U); /* not BASE(0)+4 */
-    for (int i = 2; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(0), 0x63181801U);
+    WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(1), 0x00007368U); /* not BASE(0)+4 */
+    for (int i = 2; i < 11; i++) WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 }
 
 /*
@@ -107,23 +106,21 @@ static int run_cshake_op(const uint32_t *msg_words, int msg_count, uint32_t out[
     kmac__CMD_t cmd = {.w = 0};
 
     cmd.f.cmd = SEP_KMAC_CMD_START; /* CmdStart */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    for (int i = 0; i < msg_count; i++)
-        WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg_words[i]);
+    for (int i = 0; i < msg_count; i++) WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, msg_words[i]);
 
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS; /* CmdProcess */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++)
-        out[i] =
-            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
-            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+        out[i] = READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4))) ^
+                 READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
 
     cmd.f.cmd = SEP_KMAC_CMD_DONE; /* CmdDone */
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
 }

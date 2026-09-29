@@ -9,9 +9,9 @@ and SMC-DMA-STREAM-RSVD.S4 (all-16-banks-decode) from memmap.adoc (SMC Address
 Space Layout, SMC Component Address Map), rom.adoc (Boot ROM) and dma.adoc
 (Stream Support). Each window is driven at its last word with a co-resident
 pattern in a neighbouring block, so a window sized short (bus error) or long
-(the neighbour answers) fails. The two window tops the reference RTL sizes
-shorter than the chapter are read with the error response tolerated and left
-open with the measured response.
+(the neighbour answers) fails. Where the generated map gives a unit an
+aperture larger than its decoded extent, the extent's last word must answer
+and the aperture's last word must be refused (memmap.adoc).
 
 Run:
     CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smc \\
@@ -68,6 +68,6 @@ class smc_address_window_top_decode_test(smc_base_test):
             details=(
                 f"window-top decode over SEP_IN AXI: {seq.accesses} accesses, "
                 f"{value_compares} exact-value compares, {len(seq.cells)} cells closed, "
-                f"{len(seq.unreachable)} left open on a short window"
+                f"{len(seq.unreachable)} left open"
             ),
         )

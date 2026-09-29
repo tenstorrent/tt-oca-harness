@@ -12,6 +12,7 @@
       <ipxact:name>system_timer_octs_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>system_timer_octs</ipxact:name>
+        <ipxact:displayName>OCTS System Timer Address Map</ipxact:displayName>
         <ipxact:description>Open Chiplet Time Synchronization (OCTS) System Timer Registers</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h24</ipxact:range>

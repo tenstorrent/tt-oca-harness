@@ -1540,6 +1540,10 @@ class smc_base_test(uvm_test):
         try:
             await self.run_probe_positive_controls()
             await self.run_scenario()
+            # A cover property samples a handshake at one clock and records it at
+            # the next; a scenario whose last access completes in its final cycle
+            # loses that record if the run ends in the same time step.
+            await ClockCycles(cocotb.top.clk_smc_i, 2)
         except Exception:  # noqa: BLE001 -- re-raised once the CPU state is in the log
             self.virt_console.flush()
             self.env.cpu_trace_mon.dump_diagnostics(logging.ERROR)

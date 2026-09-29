@@ -182,8 +182,7 @@ class dtp_jtag_runbist_test_seq extends dtp_jtag_base_test_seq;
     `uvm_info(get_type_name(),
               "Step 4: dft_nonsecure disable gates the DFT SIB, not the RUNBIST instruction",
               UVM_LOW)
-    m_dbg_disable = '0;
-    m_dbg_disable.dft_nonsecure = 1'b1;
+    m_dbg_disable = dtp_dbg_disable_only(DTP_DBG_PATH_DFT_NONSECURE);
     set_dbg_disable(m_dbg_disable);
     load_runbist("RUNBIST under the dft_nonsecure disable");
     runbist_scan_windowed(dft_open_pattern(), DTP_SCAN_CTRL_GATED, "dft disabled");

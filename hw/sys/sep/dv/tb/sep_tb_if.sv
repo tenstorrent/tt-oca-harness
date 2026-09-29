@@ -14,14 +14,13 @@
 interface sep_tb_if;
 
   // Clock periods the harness generators read, set by the env from
-  // sep_env_cfg (the test cfg randomizes the system clock from the runner
-  // seed).
-  int unsigned sys_clk_period_ns     = 5;
+  // sep_env_cfg. clk_i is the 800 MHz silicon target. clk_ref_i is 100 MHz.
+  real sys_clk_period_ns             = 1.25;
   int unsigned wdt_clk_period_ns     = 5000;
   int unsigned entropy_clk_period_ns = 3;
   // Reference clock for REFERENCE_COUNTER. Slower than the system clock so the
   // counter's CDC crossing is a real one in both directions.
-  int unsigned ref_clk_period_ns     = 40;
+  real ref_clk_period_ns             = 10.0;
 
   // Driven by the TB (bring-up owned by the test). rst_n starts released:
   // the bring-up assertion is then a real falling edge, the only event that

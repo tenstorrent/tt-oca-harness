@@ -7,9 +7,13 @@ no_cpu / +skip_fuse_sense.
 An AXI-to-AHB bridge that streams reads can present the later transfers of a
 stream with a truncated HADDR. Every read still answers OKAY, so a lone read
 cannot show the defect; it takes several reads in flight at once, each graded
-against the value of the address it named. Through such a bridge
-MLDSA_VERSION1 at 0x1094_000c (0x0000_3100) reads back 0x0000_0000 from the
-third read of a pipeline onward, because HADDR[2:0] is dropped.
+against the value of the address it named. Through such a bridge an odd word
+such as MLDSA_VERSION1 at 0x1094_000c reads back the wrong word from the third
+read of a pipeline onward, because HADDR[2:0] is dropped.
+
+The RDL and the SEP documents give no identity value, so ``CHK-ABR-ID-REF``
+first reads each identity word alone on s_axi, and that capture is the value
+every read below is graded against.
 
 Legs, all run before the verdict so one run names every leg that fails:
 
@@ -87,6 +91,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
     """Concurrent ABR reads, on each master and both, return their own words."""
 
     required_evidence = (
+        "CHK-ABR-ID-REF",
         "CHK-ABR-PIPE-CTRL",
         "CHK-ABR-PIPE-DEPTH-M-AXI",
         "CHK-ABR-PIPE-DEPTH-S-AXI",
@@ -100,6 +105,7 @@ class sep_abr_pipelined_read_matrix_test(sep_base_test):
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
         self.abr = SepAbrBus(self)
+        await self.abr.capture_identity("s_axi")
         await self.abr.open_m_axi_window(write=False)
 
         self.failures: list[str] = []

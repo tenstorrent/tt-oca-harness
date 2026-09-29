@@ -36,7 +36,7 @@ handle
 == Top Level AXI4
 
 xref:sep-axi-connectivity[xrefstyle=short] shows the crossbar connectivity implemented in
-`hw/sys/sep/rtl/sep_local_axi_xbar.sv`, along with the dedicated
+`hw/sys/sep/rtl/crossbars/sep_local_axi_xbar.sv`, along with the dedicated
 Boot ROM path that lies outside the crossbar. The crossbar has five
 initiators (CPU IFI, CPU LSU, CPU DBG, DMA, and the System Interface)
 and ten targets.

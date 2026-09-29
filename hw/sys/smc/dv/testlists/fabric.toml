@@ -278,6 +278,14 @@ tags = ["ci"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_deadspace_decode_test"
+module = "smc_deadspace_decode_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "fabric", "decode"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_peripheral_instance_decode_test"
 module = "smc_peripheral_instance_decode_test"
 seed = 1

@@ -4,7 +4,11 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-key_manager]
-== Address Map: key_manager
+== Key Manager Top-Level Address Map
+
+Complete memory map for the Key Manager subsystem, including ROM, SRAM,
+control/status registers, mailbox, and external crypto engine ports.
+This address map is from the perspective of the KM CPU (PicoRV32).
 
 [NOTE]
 ======

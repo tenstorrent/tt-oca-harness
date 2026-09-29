@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_smc_wdt_boundary_timeout_test. SEP=0, no Force.
+"""Sequence for smu_smc_wdt_boundary_timeout_test. No force.
 
-smu_smc_wdt_timeout_irq_test proves the CORE0 watchdog's pending bit, and
-says so: it programs WDOGENALWAYS and WDOGZEROCMP but not WDOGRSTEN, and
-``OCAH4CORECluster_WatchdogTimer.sv`` gates the reset-output register with
-``rsten & elapsed``, so its watchdog can never drive the SMU boundary.
+smu_smc_wdt_timeout_irq_test proves the CORE0 watchdog's pending bit; it
+programs WDOGENALWAYS and WDOGZEROCMP but not WDOGRSTEN, the bit that "enables
+a sticky reset signal to outputted to top level" (``wdt.rdl``), so its
+watchdog does not drive the SMU boundary.
 
 This leaf sets WDOGRSTEN as well and follows the timeout out to the two
 wrapper outputs:
@@ -14,16 +14,25 @@ S1  With the watchdog disarmed, both ``smc_wdt_first_timeout_o`` and
     ``smc_wdt_second_timeout_o`` read low and ``WDOGIP0`` is clear -- a
     starting point the checks below can move away from.
 
-S2  ``smc_wdt_first_timeout_o`` is ``|cpu_wdt_timeout_cluster_i``
-    (``smc_base.sv:228``), so arming CORE0 with WDOGRSTEN has to raise it, and
-    ``WDOGIP0`` has to be set at the same time.
+S2  ``smc_wdt_first_timeout_o`` is the CPU cluster watchdog's first timeout
+    (``hw/sys/smc/doc/port_table.adoc``), so arming CORE0 with WDOGRSTEN has
+    to raise it, and ``WDOGIP0`` has to be set at the same time.
 
-S3  The second stage is a down-counter reloaded from ``CPU_CTRL.WDT_TIMEOUT``
-    while the cluster timeout is low (``smc_cpu_ctrl_wrap.sv:147-178``), so
-    with the first timeout held it has to expire and raise
-    ``smc_wdt_second_timeout_o``. ``smc_reset_ctrl.sv:133-136`` makes that the
-    warm-reset term, so the SMC warm reset has to drop with it -- which is
-    what separates the output from a dangling pin.
+S3  The second stage times out at the cycle count in ``CPU_CTRL.WDT_TIMEOUT``
+    (``cpu_ctrl.rdl``: "Cycle count value that 2nd stage watchdog timer
+    timeout should occur at"), so with the first timeout held
+    ``smc_wdt_second_timeout_o`` has to rise. A watchdog timeout is a warm
+    reset source (``hw/sys/smc/doc/clk_rst.adoc``, "Watchdog Timeout":
+    "Internal or external watchdog expiration"; ``hw/sys/smc/doc/cpu.adoc``:
+    "a Warm Reset from a watchdog timeout"), so the SMC warm reset has to
+    drop. Which stage asserts it is not stated, so the cycles of the second
+    timeout and of the warm-reset drop are recorded.
+
+S4  The warm reset covers the per-core watchdog timers (``clk_rst.adoc``,
+    "Warm Reset"), so the first timeout they drive has to fall. The levels
+    the second timeout, the SMC warm reset and the SMC watchdog reset
+    (``rst_wdt_smc_clk_no``) settle at, and whether the watchdog reset
+    asserted, are recorded: no specification states them.
 """
 
 from __future__ import annotations
@@ -74,6 +83,7 @@ FIRST_TIMEOUT_BOUND_NS = 650_000
 # Bound on the second timeout, in time; the wait converts it to clk_smu cycles.
 SECOND_TIMEOUT_BOUND_NS = 330_000
 WARM_RESET_PATH = "u_smc.rst_warm_smc_clk_n"
+WDT_RESET_PATH = "u_smc.rst_wdt_smc_clk_no"
 CPU_PATH = "u_smc.u_smc_cpu_wrapper.u_smc_cpu"
 
 
@@ -241,11 +251,7 @@ class smu_smc_wdt_boundary_timeout_seq:
         )
 
         # S3: the held first timeout runs the second stage down. Both events
-        # are transient by construction -- smc_reset_ctrl.sv makes the second
-        # timeout a warm-reset term, and the warm reset clears the cluster
-        # watchdog that was holding the first timeout, which reloads the
-        # second-stage counter -- so they are recorded cycle by cycle rather
-        # than sampled after the fact.
+        # are transient, so they are recorded cycle by cycle.
         warm = hier(smu_scope(dut), WARM_RESET_PATH)
         self.sb.expect_eq(
             "the SMC warm reset is released while only the first stage has fired",
@@ -253,38 +259,65 @@ class smu_smc_wdt_boundary_timeout_seq:
             1,
             evidence="CHK-SMU-WDT-SECOND",
         )
-        second_seen = 0
-        warm_low_seen = 0
         second_cycle = None
         second_bound = int(SECOND_TIMEOUT_BOUND_NS / self.cfg.smu_clk_period_ns)
+        warm_cycle = None
         for cycle in range(second_bound):
             await RisingEdge(dut.clk_smu_i)
-            if self._bit("tb_smc_wdt_second_timeout"):
-                if second_cycle is None:
-                    second_cycle = cycle
-                second_seen = 1
-            if sample(warm, WARM_RESET_PATH) == 0:
-                warm_low_seen = 1
-            if second_seen and warm_low_seen:
+            if second_cycle is None and self._bit("tb_smc_wdt_second_timeout"):
+                second_cycle = cycle
+            if warm_cycle is None and sample(warm, WARM_RESET_PATH) == 0:
+                warm_cycle = cycle
+            if second_cycle is not None and warm_cycle is not None:
                 break
-        if not second_seen:
+        if second_cycle is None:
             raise AssertionError(
                 f"TIMEOUT second watchdog timeout: tb_smc_wdt_second_timeout never rose "
                 f"in {second_bound} clk_smu cycles; {self._cpu_state()}"
             )
         self.log.info(
-            "smc_wdt_second_timeout_o rose %d clk_smu after the first timeout was confirmed",
+            "OBSERVATION smc_wdt_second_timeout_o rose %s and the SMC warm reset fell %s "
+            "clk_smu after the first timeout was confirmed",
             second_cycle,
+            warm_cycle,
         )
         self.sb.expect_eq(
             "the held first timeout runs the second stage out",
-            second_seen,
-            1,
+            second_cycle is not None,
+            True,
             evidence="CHK-SMU-WDT-SECOND",
         )
         self.sb.expect_eq(
-            "the second timeout drops the SMC warm reset",
-            warm_low_seen,
-            1,
+            "the watchdog timeout drops the SMC warm reset",
+            warm_cycle is not None,
+            True,
             evidence="CHK-SMU-WDT-SECOND",
+        )
+
+        # S4: the warm reset clears the per-core watchdog holding the first timeout.
+        wdt_reset = hier(smu_scope(dut), WDT_RESET_PATH)
+        first_dropped = False
+        wdt_reset_low = False
+        released = None
+        for _ in range(second_bound):
+            await RisingEdge(dut.clk_smu_i)
+            first_dropped |= self._bit("tb_smc_wdt_first_timeout") == 0
+            wdt_reset_low |= sample(wdt_reset, WDT_RESET_PATH) == 0
+            released = (
+                self._bit("tb_smc_wdt_second_timeout"),
+                sample(warm, WARM_RESET_PATH),
+                sample(wdt_reset, WDT_RESET_PATH),
+            )
+            if first_dropped and released == (0, 1, 1):
+                break
+        self.log.info(
+            "OBSERVATION second/warm/wdt-reset settle at %s; the watchdog reset asserted: %s",
+            released,
+            wdt_reset_low,
+        )
+        self.sb.expect_eq(
+            "CHK-SMU-WDT-RELEASE the warm reset clears the first timeout",
+            first_dropped,
+            True,
+            evidence="CHK-SMU-WDT-RELEASE",
         )

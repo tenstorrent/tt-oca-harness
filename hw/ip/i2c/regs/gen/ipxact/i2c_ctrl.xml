@@ -12,6 +12,8 @@
       <ipxact:name>i2c_ctrl_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>i2c_ctrl</ipxact:name>
+        <ipxact:displayName>I2C Control Address Map</ipxact:displayName>
+        <ipxact:description>Top-level enable registers selecting I2C, controller-mode, and SMBus operation.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'hc</ipxact:range>
         <ipxact:width>32</ipxact:width>

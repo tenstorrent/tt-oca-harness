@@ -126,6 +126,17 @@ module smc_uvm_top
     output logic [31:0]     tb_i3c_start_count_1 /*verilator public_flat_rw*/,
     output logic [31:0]     tb_i3c_start_count_2 /*verilator public_flat_rw*/,
 
+    // Strap-capture gate per instance. cocotb holds the strap pads until this
+    // rises, which is when the padring latches them.
+    output logic            dut_rst_cold_stable_ref_clk_no /*verilator public_flat_rw*/,
+    output logic            bfm_rst_cold_stable_ref_clk_no /*verilator public_flat_rw*/,
+
+    // One pair per I2C channel, since each channel is its own point-to-point bus.
+    output logic [31:0]     tb_i2c_scl_fall_count_0 /*verilator public_flat_rw*/,
+    output logic [31:0]     tb_i2c_scl_fall_count_1 /*verilator public_flat_rw*/,
+    output logic [31:0]     tb_i2c_start_count_0 /*verilator public_flat_rw*/,
+    output logic [31:0]     tb_i2c_start_count_1 /*verilator public_flat_rw*/,
+
     // Last AXI-Lite write seen by the controller's I3C CSR wrapper, and the
     // instance its decode selected. Direct evidence for "the firmware wrote
     // instance N's window; which core actually got it?".
@@ -148,6 +159,32 @@ module smc_uvm_top
     input wire logic [smc_pkg::NUM_GPIO_WRAPS-1:0] dut_gpio_ext_drive_value /*verilator public_flat_rw*/,
     input wire logic [smc_pkg::NUM_GPIO_WRAPS-1:0] bfm_gpio_ext_drive_en /*verilator public_flat_rw*/,
     input wire logic [smc_pkg::NUM_GPIO_WRAPS-1:0] bfm_gpio_ext_drive_value /*verilator public_flat_rw*/,
+
+    // Per-instance product lifecycle state, {diff_n, diff_p}. The ROM reads it
+    // through CHIP_CONFIG.LC_STATE to decide whether the part is in a secure
+    // lifecycle, so a test that needs the secure branch -- or an illegal
+    // encoding -- has to change it before cold reset is released.
+    input wire logic [2*smc_pkg::LC_STATE_WIDTH-1:0] dut_lc_state /*verilator public_flat_rw*/,
+    input wire logic [2*smc_pkg::LC_STATE_WIDTH-1:0] bfm_lc_state /*verilator public_flat_rw*/,
+
+    // Per-instance BISR/MBIST result reporting. The boot sequencer waits for
+    // the two `done` lines and then branches on `success`/`pass`, so the DFT
+    // tests drive failure here and a timeout is simply `done` never arriving.
+    // Idle values are set by SmcDualHarness.idle_pins(): done/success/pass high
+    // and abort low, which is the "no external BISR/MBIST agent" posture every
+    // other test needs to boot at all.
+    input wire logic dut_mem_repair_done /*verilator public_flat_rw*/,
+    input wire logic dut_mem_repair_success /*verilator public_flat_rw*/,
+    input wire logic dut_mem_repair_abort /*verilator public_flat_rw*/,
+    input wire logic dut_mbist_done /*verilator public_flat_rw*/,
+    input wire logic dut_mbist_pass /*verilator public_flat_rw*/,
+    input wire logic dut_mbist_abort /*verilator public_flat_rw*/,
+    input wire logic bfm_mem_repair_done /*verilator public_flat_rw*/,
+    input wire logic bfm_mem_repair_success /*verilator public_flat_rw*/,
+    input wire logic bfm_mem_repair_abort /*verilator public_flat_rw*/,
+    input wire logic bfm_mbist_done /*verilator public_flat_rw*/,
+    input wire logic bfm_mbist_pass /*verilator public_flat_rw*/,
+    input wire logic bfm_mbist_abort /*verilator public_flat_rw*/,
 
     // ------------------------------------------------------------------
     // Inbound AXI manager into u_dut (SEP_IN). Same flat shape and prefix as
@@ -426,6 +463,21 @@ module smc_uvm_top
     end
 `endif
 
+    // The force-mode CPU reset withdraws the R beat the CPU is presenting to
+    // the front-port demux without `ready`
+    // (cocotb/seq_lib/README_cpu_isolate_flush.md), and the R arbiter's
+    // request-stability assertions report that withdrawal. Only the leaf that
+    // reaches the state on purpose asks for that arbiter's checks off; the
+    // scope is the one arbiter instance, so every other assertion stays armed.
+`ifndef VERILATOR
+    initial begin
+        if ($test$plusargs("smc_front_port_r_arb_assertoff")) begin
+            $assertoff(0, u_dut.u_smc.u_smc_cpu_wrapper.u_front_port_demux
+                .i_demux_simple.genblk1.i_r_mux);
+        end
+    end
+`endif
+
     localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
     localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
 
@@ -548,6 +600,8 @@ module smc_uvm_top
     // fuse_reset_n stays low after sense (efuse_interface_controller
     // reset_n = sense && rst_ni && ext_boot_seq_done).
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
+    // ext_interrupts_i[16:2], PLIC sources 3-17; bits 1 and 0 keep their own pins.
+    bit [16:2] tb_ext_interrupts_hi_i /*verilator public_flat_rw*/;
     // +smc_uart_cross_3to0: short commercial UART pairs 0↔3 and 1↔2
     // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
@@ -1119,6 +1173,7 @@ module smc_uvm_top
     assign tb_cpu_fw_mailbox          = `CPU_MEM_DV.fw_mailbox_q;
     assign tb_cpu_fw_mailbox_valid    = `CPU_MEM_DV.fw_mailbox_valid_q;
     assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
+    `undef CPU_MEM_DV
 
     // Probe pin on the cocotb init surface; do not OR into the score.
     logic unused_ecc_probe;
@@ -1198,7 +1253,7 @@ module smc_uvm_top
         .axil_dtp_csr_req_o         (axil_dtp_csr_req),
         .axil_dtp_csr_resp_i        (axil_dtp_csr_resp),
         .shadow_regs_o              (shadow_regs),
-        .lsio_interface_select_o    (),
+        .lsio_interface_select_o    (tb_lsio_interface_select),
         .gpio_pad_io                (gpio_pad_io),
         .rst_cool_n_from_pin_i      (rst_cool_n_int),
         // SPI octal-flash pads (U2-1). Cocotb drives tb_spi_*; idle default is
@@ -1236,8 +1291,9 @@ module smc_uvm_top
         .smc_wdt_second_timeout_o   (cpu_wdt_second_timeout),
         .smc_global_base_o          (),
         .smc_region_size_o          (smc_region_size),
-        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-2){1'b0}},
-                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
+        .smc_ext_interrupts_i       ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-17){1'b0}},
+                                       tb_ext_interrupts_hi_i, tb_temp_interrupt_i,
+                                       tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .smc_fuse_sense_done_o,
@@ -1391,6 +1447,8 @@ module smc_uvm_top
     assign tb_efuse_read_done = `SMC_EFUSE_READ.read_done_o;
     assign tb_efuse_read_error = `SMC_EFUSE_READ.read_error_o;
     assign tb_efuse_readback = `SMC_EFUSE_READ.read_back_data_o;
+    assign tb_efuse_read_addr = 16'(`SMC_EFUSE_IFC.reg_interface_read_addr_csr);
+    assign tb_efuse_program_addr = 16'(`SMC_EFUSE_IFC.reg_interface_program_addr_csr);
     always @(posedge clk_smc) begin
         if (tb_efuse_program_state_inject_en === 1'b1) begin
             force `SMC_EFUSE_PROGRAM.program_state_q[1:0] = tb_efuse_program_state_inject;
@@ -1464,6 +1522,10 @@ module smc_uvm_top
     assign tb_axil_external_active   = u_dut.u_smc.smc_external_req_o.aw_valid
                                      | u_dut.u_smc.smc_external_req_o.w_valid
                                      | u_dut.u_smc.smc_external_req_o.ar_valid;
+    assign tb_axil_external_arvalid  = u_dut.u_smc.smc_external_req_o.ar_valid;
+    assign tb_axil_external_araddr   = u_dut.u_smc.smc_external_req_o.ar.addr;
+    assign tb_axil_external_awvalid  = u_dut.u_smc.smc_external_req_o.aw_valid;
+    assign tb_axil_external_awaddr   = u_dut.u_smc.smc_external_req_o.aw.addr;
     assign tb_axil_efuse_bank_active = u_dut.u_smc.efuse_bank_ctrl_req_o.aw_valid | u_dut.u_smc.efuse_bank_ctrl_req_o.w_valid |
                                        u_dut.u_smc.efuse_bank_ctrl_req_o.ar_valid;
     assign tb_axil_any_master_active = tb_axil_dtp_csr_active | tb_axil_external_active | tb_axil_efuse_bank_active;
@@ -1581,12 +1643,14 @@ module smc_uvm_top
     assign tb_plic_claim0       = `SMC_PLIC.claimer_0;
     assign tb_plic_complete0    = `SMC_PLIC.completer_0;
     assign tb_plic_completer_dev = `SMC_PLIC.completerDev;
-    assign tb_plic_pending_low  = {`SMC_PLIC.pending_3, `SMC_PLIC.pending_2,
-                                   `SMC_PLIC.pending_1};
-    assign tb_plic_priority_low = {`SMC_PLIC.priority_3[0], `SMC_PLIC.priority_2[0],
-                                   `SMC_PLIC.priority_1[0]};
-    assign tb_plic_pending_331  = `SMC_PLIC.pending_331;
-    assign tb_plic_pending_324  = `SMC_PLIC.pending_324;
+    // The PLIC's pending_N and priority_N registers hold source N + 1, since
+    // source 0 is reserved.
+    assign tb_plic_pending_low  = {`SMC_PLIC.pending_2, `SMC_PLIC.pending_1,
+                                   `SMC_PLIC.pending_0};
+    assign tb_plic_priority_low = {`SMC_PLIC.priority_2[0], `SMC_PLIC.priority_1[0],
+                                   `SMC_PLIC.priority_0[0]};
+    assign tb_plic_pending_331  = `SMC_PLIC.pending_330;
+    assign tb_plic_pending_324  = `SMC_PLIC.pending_323;
 
     assign tb_clint_mtime      = `SMC_CLINT.time_0;
     assign tb_clint_mtimecmp0  = `SMC_CLINT.pad;
@@ -1862,6 +1926,7 @@ module smc_uvm_top
         .gpio_pad2core_en_any_i      (tb_gpio_pad2core_en_any),
         .core2pad_i                  (tb_core2pad_o),
         .core2pad_en_i               (tb_core2pad_en_o),
+        .lsio_select_i               (tb_lsio_interface_select),
         .gpio_pad57_i                (tb_gpio_pad57),
         .sync_irq_i                  (tb_sync_irq),
         .gpio_irq_any_i              (tb_gpio_irq_any),
@@ -2156,6 +2221,14 @@ module smc_uvm_top
         .sys_rvalid_i   (sys_axi_rvalid),
         .sys_rready_i   (sys_axi_rready),
         .sys_rlast_i    (sys_axi_rlast),
+        .jtag_awvalid_i (jtag_axi_awvalid),
+        .jtag_awready_i (jtag_axi_awready),
+        .jtag_awaddr_i  (jtag_axi_awaddr),
+        .jtag_arvalid_i (jtag_axi_arvalid),
+        .jtag_arready_i (jtag_axi_arready),
+        .jtag_araddr_i  (jtag_axi_araddr),
+        .jtag_bresp_i   (jtag_axi_bresp),
+        .jtag_rresp_i   (jtag_axi_rresp),
         .jtag_bvalid_i  (jtag_axi_bvalid),
         .jtag_bready_i  (jtag_axi_bready),
         .jtag_rvalid_i  (jtag_axi_rvalid),
@@ -2247,7 +2320,8 @@ module smc_uvm_top
         .core2pad_i              (tb_core2pad_o),
         .core2pad_en_i           (tb_core2pad_en_o),
         .pad2core_en_i           (tb_pad2core_en_o),
-        .pad_i                   (gpio_pad_io)
+        .pad_i                   (gpio_pad_io),
+        .lsio_select_i           (tb_lsio_interface_select)
     );
 
     smc_efuse_fcov #(
@@ -2281,7 +2355,10 @@ module smc_uvm_top
         .read_done_i        (tb_efuse_read_done),
         .readback_i         (tb_efuse_readback),
         .program_done_i     (tb_efuse_program_done),
-        .programmed_word0_i (tb_efuse_programmed_word0)
+        .read_error_i       (tb_efuse_read_error),
+        .program_error_i    (tb_efuse_program_error),
+        .read_addr_i        (tb_efuse_read_addr),
+        .program_addr_i     (tb_efuse_program_addr)
     );
 
 `else  // SMC_DUAL
@@ -2491,24 +2568,92 @@ module smc_uvm_top
     assign tb_i3c0_sda         = i3c_sda_bus[0];
 
 
-    // Per-channel bus-activity counters. A firmware "pass" with a static SCL
-    // would mean the two halves never met on the wire, so count SCL falls and
-    // START conditions (SDA falling while SCL high) independently of anything
-    // the firmware reports. The per-channel split also tells the test which
-    // channel the controller's RNG actually picked.
+    // ------------------------------------------------------------------
+    // Cross-wired I2C buses
+    // ------------------------------------------------------------------
+    // One independent wired-AND per channel, like the I3C block above: each
+    // channel is its own point-to-point bus between the two instances' I2C
+    // controllers.
+    //
+    // The channels must stay separate. The target listens on all of them at
+    // once while the controller drives one at a time, so an idle channel must
+    // not be able to hold down an active one.
+    //
+    // The latch tests tell the two channels apart by target address, which is
+    // not automatic: the ROM falls back to 0x55 for both when the eFuse slots
+    // are unprogrammed, so those tests also pass +fuse_i2c_ids. See
+    // randomize_efuse.py.
+    //
+    // "Pulls low" reads i2c_scl_o, which despite the name is the controller's
+    // output ENABLE: smc_peripherals.sv wires it to the padring's i2c_scl_oen_i,
+    // and the padring always drives data 0 because a board would have pullups.
+    localparam int unsigned NumTargetI2c = 2;
+    localparam int unsigned TargetI2cIdx    [NumTargetI2c] = '{0,  1};
+    localparam int unsigned TargetI2cSclPad [NumTargetI2c] = '{37, 41};
+    localparam int unsigned TargetI2cSdaPad [NumTargetI2c] = '{38, 42};
+
+    logic [NumTargetI2c-1:0] i2c_scl_dut_low, i2c_sda_dut_low;
+    logic [NumTargetI2c-1:0] i2c_scl_bfm_low, i2c_sda_bfm_low;
+    logic [NumTargetI2c-1:0] i2c_scl_bus, i2c_sda_bus;
+
+    for (genvar ch = 0; ch < NumTargetI2c; ch++) begin : gen_i2c_target_drivers
+        localparam int unsigned Idx = TargetI2cIdx[ch];
+
+        assign i2c_scl_dut_low[ch] =
+            !u_dut.u_smc_wrapper.u_smc.u_smc_peripherals.i2c_scl_o[Idx];
+        assign i2c_sda_dut_low[ch] =
+            !u_dut.u_smc_wrapper.u_smc.u_smc_peripherals.i2c_sda_o[Idx];
+        assign i2c_scl_bfm_low[ch] =
+            !u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.i2c_scl_o[Idx];
+        assign i2c_sda_bfm_low[ch] =
+            !u_bfm.u_smc_wrapper.u_smc.u_smc_peripherals.i2c_sda_o[Idx];
+
+        // No external vote: the tb_i2c0_*_ext_low signals belong to the
+        // single-instance half and are not in scope here, and this configuration
+        // has no I2C VIP to be a third driver. Add one the way I3C channel 0 does
+        // if that changes.
+        assign i2c_scl_bus[ch] = !(i2c_scl_dut_low[ch] || i2c_scl_bfm_low[ch]);
+        assign i2c_sda_bus[ch] = !(i2c_sda_dut_low[ch] || i2c_sda_bfm_low[ch]);
+    end
+
+    // Per-channel bus-activity counters, one set per I3C and per I2C channel. A
+    // firmware "pass" with a static SCL would mean the two halves never met on
+    // the wire, so count SCL falls and START conditions (SDA falling while SCL
+    // high) independently of anything the firmware reports. The per-channel
+    // split also tells the test which channel the controller's RNG picked.
     logic [NumSharedI3c-1:0] scl_q, sda_q;
     logic [31:0] scl_fall_q [NumSharedI3c];
     logic [31:0] start_q    [NumSharedI3c];
+
+    logic [NumTargetI2c-1:0] i2c_scl_q, i2c_sda_q;
+    logic [31:0] i2c_scl_fall_q [NumTargetI2c];
+    logic [31:0] i2c_start_q    [NumTargetI2c];
 
     always_ff @(posedge clk_periph or negedge rst_cold_ni) begin
         if (!rst_cold_ni) begin
             scl_q <= '1;
             sda_q <= '1;
+            i2c_scl_q <= '1;
+            i2c_sda_q <= '1;
+            for (int unsigned ch = 0; ch < NumTargetI2c; ch++) begin
+                i2c_scl_fall_q[ch] <= '0;
+                i2c_start_q[ch]    <= '0;
+            end
             for (int unsigned ch = 0; ch < NumSharedI3c; ch++) begin
                 scl_fall_q[ch] <= '0;
                 start_q[ch]    <= '0;
             end
         end else begin
+            for (int unsigned ch = 0; ch < NumTargetI2c; ch++) begin
+                if (i2c_scl_q[ch] && !i2c_scl_bus[ch]) begin
+                    i2c_scl_fall_q[ch] <= i2c_scl_fall_q[ch] + 32'd1;
+                end
+                if (i2c_scl_bus[ch] && i2c_scl_q[ch] && i2c_sda_q[ch] && !i2c_sda_bus[ch]) begin
+                    i2c_start_q[ch] <= i2c_start_q[ch] + 32'd1;
+                end
+            end
+            i2c_scl_q <= i2c_scl_bus;
+            i2c_sda_q <= i2c_sda_bus;
             for (int unsigned ch = 0; ch < NumSharedI3c; ch++) begin
                 if (scl_q[ch] && !i3c_scl_bus[ch]) begin
                     scl_fall_q[ch] <= scl_fall_q[ch] + 32'd1;
@@ -2548,6 +2693,10 @@ module smc_uvm_top
     assign tb_i3c_start_count_0    = start_q[0];
     assign tb_i3c_start_count_1    = start_q[1];
     assign tb_i3c_start_count_2    = start_q[2];
+    assign tb_i2c_scl_fall_count_0 = i2c_scl_fall_q[0];
+    assign tb_i2c_scl_fall_count_1 = i2c_scl_fall_q[1];
+    assign tb_i2c_start_count_0    = i2c_start_q[0];
+    assign tb_i2c_start_count_1    = i2c_start_q[1];
 
     // ------------------------------------------------------------------
     // OCCP target-up pad: the target drives, the controller senses.
@@ -2600,6 +2749,19 @@ module smc_uvm_top
             bfm_pad_drive_val[SharedI3cSdaPad[ch]] = i3c_sda_bus[ch];
         end
 
+        // Shared I2C: one resolved value onto every participating pad of both
+        // instances, so each controller's input buffer sees the same bus.
+        for (int unsigned ch = 0; ch < NumTargetI2c; ch++) begin
+            dut_pad_drive_en[TargetI2cSclPad[ch]]  = 1'b1;
+            dut_pad_drive_val[TargetI2cSclPad[ch]] = i2c_scl_bus[ch];
+            dut_pad_drive_en[TargetI2cSdaPad[ch]]  = 1'b1;
+            dut_pad_drive_val[TargetI2cSdaPad[ch]] = i2c_sda_bus[ch];
+            bfm_pad_drive_en[TargetI2cSclPad[ch]]  = 1'b1;
+            bfm_pad_drive_val[TargetI2cSclPad[ch]] = i2c_scl_bus[ch];
+            bfm_pad_drive_en[TargetI2cSdaPad[ch]]  = 1'b1;
+            bfm_pad_drive_val[TargetI2cSdaPad[ch]] = i2c_sda_bus[ch];
+        end
+
         // Target-up: the controller senses what the target drives, unless a
         // test is holding the pad itself. Guarded exactly like BOOT_STALL
         // below: unguarded, this assignment comes after the ext-override loop
@@ -2646,8 +2808,16 @@ module smc_uvm_top
         .output_axi_req_o     (dut_out_axi_req),
         .output_axi_resp_i    (dut_out_axi_resp),
         .chiplet_is_primary_i (dut_chiplet_is_primary),
+        .lc_state_i           (dut_lc_state),
+        .mem_repair_done_i    (dut_mem_repair_done),
+        .mem_repair_success_i (dut_mem_repair_success),
+        .mem_repair_abort_i   (dut_mem_repair_abort),
+        .mbist_done_i         (dut_mbist_done),
+        .mbist_pass_i         (dut_mbist_pass),
+        .mbist_abort_i        (dut_mbist_abort),
         .powergood_stable_o   (dut_powergood_stable_o),
         .rst_primary_smc_clk_no (dut_rst_primary_smc_clk_no),
+        .rst_cold_stable_ref_clk_no (dut_rst_cold_stable_ref_clk_no),
         .smc_fuse_sense_done_o (dut_fuse_sense_done_o),
         .smc_init_mem_done_o   (dut_init_mem_done_o),
         .smc_cluster_ded_seen_o        (dut_cluster_ded_seen_o),
@@ -2668,8 +2838,16 @@ module smc_uvm_top
         .output_axi_req_o     (bfm_out_axi_req),
         .output_axi_resp_i    (bfm_out_axi_resp),
         .chiplet_is_primary_i (bfm_chiplet_is_primary),
+        .lc_state_i           (bfm_lc_state),
+        .mem_repair_done_i    (bfm_mem_repair_done),
+        .mem_repair_success_i (bfm_mem_repair_success),
+        .mem_repair_abort_i   (bfm_mem_repair_abort),
+        .mbist_done_i         (bfm_mbist_done),
+        .mbist_pass_i         (bfm_mbist_pass),
+        .mbist_abort_i        (bfm_mbist_abort),
         .powergood_stable_o   (bfm_powergood_stable_o),
         .rst_primary_smc_clk_no (bfm_rst_primary_smc_clk_no),
+        .rst_cold_stable_ref_clk_no (bfm_rst_cold_stable_ref_clk_no),
         .smc_fuse_sense_done_o (bfm_fuse_sense_done_o),
         .smc_init_mem_done_o   (bfm_init_mem_done_o),
         .smc_cluster_ded_seen_o        (bfm_cluster_ded_seen_o),
@@ -3323,8 +3501,21 @@ module smc_dual_inst
 
     input  logic chiplet_is_primary_i,
 
+    input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
+
+    input  logic mem_repair_done_i,
+    input  logic mem_repair_success_i,
+    input  logic mem_repair_abort_i,
+    input  logic mbist_done_i,
+    input  logic mbist_pass_i,
+    input  logic mbist_abort_i,
+
     output logic        powergood_stable_o,
     output logic        rst_primary_smc_clk_no,
+    // Gates the padring's strap-capture latches, so it is what decides when a
+    // strap driven onto a pad is actually sampled. Deasserts later than
+    // rst_cold_ni: smc_reset_ctrl deglitches cold reset and then extends it.
+    output logic        rst_cold_stable_ref_clk_no,
     output logic        smc_fuse_sense_done_o,
     output logic        smc_init_mem_done_o,
     output logic        smc_cluster_ded_seen_o,
@@ -3359,12 +3550,6 @@ module smc_dual_inst
     assign telemetry_idle_data = '0;
     assign telemetry_idle_id   = '0;
 
-    // Product lc_state_i idle = complementary TEST_DEV ({~0, 0}), same encoding
-    // smc_base_test drives onto tb_lc_state in the single-instance TB.
-    logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_idle;
-    assign lc_state_idle = {{smc_pkg::LC_STATE_WIDTH{1'b1}},
-                            {smc_pkg::LC_STATE_WIDTH{1'b0}}};
-
     // Fault outputs of this instance, latched sticky until cold reset. Read by
     // the dual leaves as dut_/bfm_*_seen_o on smc_uvm_top.
     logic cluster_ded;
@@ -3397,7 +3582,7 @@ module smc_dual_inst
         .powergood_i                (powergood_i),
         .powergood_stable_o         (powergood_stable_o),
         .rst_cold_ni                (rst_cold_ni),
-        .rst_cold_stable_ref_clk_no (),
+        .rst_cold_stable_ref_clk_no (rst_cold_stable_ref_clk_no),
         .rst_primary_ref_clk_no     (),
         .rst_primary_smc_clk_no     (rst_primary_smc_clk_no),
         .rst_wdt_smc_clk_no         (),
@@ -3459,7 +3644,7 @@ module smc_dual_inst
         // Tied low: the eFuse sense bypass is unreachable here;
         // docs/SMC_VPLAN.adoc Known Limitations "Bench tie-offs" carries the row.
         .sep_security_disable_i     (1'b0),
-        .lc_state_i                 (lc_state_idle),
+        .lc_state_i                 (lc_state_i),
         .lc_sigint_err_o            (),
         .smc_ndmreset_request_i     ('0),
         .smc_ndmreset_process_o     (),
@@ -3485,15 +3670,15 @@ module smc_dual_inst
         .ext_debug_bus_i            ('0),
         .test_en_i                  (1'b0),
         .scan_rst_ni                (1'b1),
-        // Without an external BISR/MBIST agent the boot sequencer waits forever
-        // if these stay low (same fix as the single-instance half /
-        // tb_wrapper_top.sv).
-        .mem_repair_done_i          (1'b1),
-        .mem_repair_success_i       (1'b1),
-        .mem_repair_abort_i         (1'b0),
-        .mbist_done_i               (1'b1),
-        .mbist_pass_i               (1'b1),
-        .mbist_abort_i              (1'b0),
+        // Driven per instance from the top. Idle is done/success/pass high and
+        // abort low, because without an external BISR/MBIST agent the boot
+        // sequencer waits forever if `done` stays low.
+        .mem_repair_done_i          (mem_repair_done_i),
+        .mem_repair_success_i       (mem_repair_success_i),
+        .mem_repair_abort_i         (mem_repair_abort_i),
+        .mbist_done_i               (mbist_done_i),
+        .mbist_pass_i               (mbist_pass_i),
+        .mbist_abort_i              (mbist_abort_i),
         .smc_cpu_jtag_TCK_i         (1'b0),
         .smc_cpu_jtag_TMS_i         (1'b1),
         .smc_cpu_jtag_TDI_i         (1'b0),

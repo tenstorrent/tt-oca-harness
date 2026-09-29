@@ -25,8 +25,9 @@ Each CTP connects to four separate I/O pads:
   acknowledges the request. In wire-OR mode, this signal drives the
   output-enable port of the I/O pad for duration defined by a pulse stretching
   module, and the pad output is driven static-low. Also in wire-OR mode the I/O
-  pad input signal must be inverted, as the pad signal itself is an open-drain
-  active-low signal. +
+  pad input connects to the CTP without inversion. The shared wire is an
+  open-drain active-low signal, and the CTP receives a cross trigger on its
+  falling (assertion) edge. +
 * *CT_Ack_in* - The cross trigger acknowledge input signal. Exclusive to
   point-to-point mode. The cross trigger receiver asserts this signal when it
   acknowledges the CTP's cross trigger request. +
@@ -271,6 +272,11 @@ inverted before use: `MODE_WIRE_OR = ~INT_CT_MODE[i]`. This means
 `INT_CT_MODE[i]=0` selects Wire-OR mode, while `INT_CT_MODE[i]=1` selects
 Point-to-Point mode.
 
+The internal wire-OR request from a CLA is active-high, while the CTP core
+receives a wire-OR cross trigger on the falling edge of an idle-high wire. The
+network therefore inverts `ctm_dst_req_i[i]` before `ct_req_out_din`, so an
+internal CTP receives a cross trigger on the rising edge of the CLA request.
+
 *Wire-OR Mode (INT_CT_MODE[i]=0, internal MODE_WIRE_OR=1):*
 
 <<internal-ctp-wire-or-connections-table>> maps the CTP core signals to internal
@@ -292,7 +298,7 @@ endif::backend-html5[]
 |→ `ctm_src_req_o[i]` (stretched pulse to CLA)
 
 |`ct_req_out_din`
-|← `ctm_dst_req_i[i]` (stretched pulse from CLA)
+|← `~ctm_dst_req_i[i]` (stretched pulse from CLA, inverted)
 
 |All other signals
 |Unused (tied to constants)
@@ -361,44 +367,14 @@ cross-trigger network.
 The `ctn_clock_stop_ctrl` module aggregates clock stop requests from multiple
 sources using a two-stage OR-tree architecture. The module separates CLA-only
 status from the combined functional halt signal to support independent JTAG
-visibility and chiplet clock gating control.
-
-<<ctn-clock-stop-signals-table>> identifies the clock-stop requests, enables, and status
-signals.
+visibility and chiplet clock gating control. The CTN sizes its request input
+with its own `NUM_CLK_STOP_REQ` parameter, which defaults to 9.
 
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTN clock stop signals" tabindex="0">
-++++
+The parameters and ports of `ctn_clock_stop_ctrl` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_network/ctn_clock_stop_ctrl.adoc[ctn_clock_stop_ctrl].
 endif::backend-html5[]
-
-[[ctn-clock-stop-signals-table]]
-[cols="<28,<27,<45",options="header",role="port-reference"]
-.CTN clock-stop signals
-|===
-|Signal |Width |Description
-
-|`clk_stop_req_i`
-|NUM_CLK_STOP_REQ (default=9)
-|Clock stop requests from individual CLAs or other on-chip sources
-
-|`jtag_clock_stop_i`
-|1
-|Direct clock stop from JTAG DEBUG_CONTROL register
-
-|`cla_clock_stop_o`
-|1
-|CLA requests only (OR-reduction of `clk_stop_req_i`), fed back to JTAG for DEBUG_CONTROL status readback
-
-|`stop_clks_o`
-|1
-|Registered functional halt (JTAG OR CLA requests), drives chiplet clock gating
-|===
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `ctn_clock_stop_ctrl` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 The aggregation logic operates as follows:

@@ -154,9 +154,10 @@ def tally(record: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
 
 def run_id(path: str) -> str:
     """
-    CI run identifier an archive came from.
+    The run an archive came from, as its name records it.
 
-    Archives are named ``<date>-run<id>.result.json.gz``.
+    Publishers name archives ``<date>-run<id>`` or ``<date>-build<id>``. The
+    identifier tells two runs of one day apart and is not rendered.
 
     Args:
         path: Path to the archive within the data branch
@@ -164,7 +165,7 @@ def run_id(path: str) -> str:
     Returns:
         The identifier, or an empty string when the name does not carry one
     """
-    match = re.search(r"-run(\d+)\.", Path(path).name)
+    match = re.search(r"-(?:run|build)(\d+)\.", Path(path).name)
     return match.group(1) if match else ""
 
 
@@ -200,7 +201,8 @@ def run_stamp(record: dict[str, Any], path: str) -> datetime:
     Returns:
         A timezone-aware timestamp, assuming UTC where none is given
     """
-    meta = record.get("run_metadata") or {}
+    meta = record.get("run_metadata")
+    meta = meta if isinstance(meta, dict) else {}
     candidates = (meta.get("generated_at"), record.get("generated_at"), Path(path).name[:10])
     for raw in candidates:
         if not isinstance(raw, str) or not raw:

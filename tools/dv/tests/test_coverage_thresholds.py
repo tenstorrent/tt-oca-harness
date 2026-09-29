@@ -64,7 +64,6 @@ confidence = "high"
 rationale = "fixture"
 owner = "fixture-dv"
 reviewer = "fixture-dv"
-date = "2026-09-01"
 [[holes.native]]
 tool = "verilator"
 metric_family = "line"
@@ -132,8 +131,6 @@ def hole(
     disposition="waive",
     confidence="high",
     expected=1,
-    expires=None,
-    expired=False,
 ):
     return HoleRule(
         id=ident,
@@ -145,12 +142,9 @@ def hole(
         rationale="fixture",
         owner="fixture-dv",
         reviewer="fixture-dv",
-        date="2026-09-01",
-        expires=expires,
         issues=[],
         expected_matches=expected,
         selectors=[selector],
-        expired=expired,
     )
 
 
@@ -296,17 +290,6 @@ class PolicyApplication(unittest.TestCase):
                 ],
             )
 
-    def test_a_lapsed_waiver_grades_as_open_with_a_warning(self):
-        lapsed = hole("old", {"native_locator": "l-u0"}, expires="2026-01-01", expired=True)
-        result = graded(line_points(), [lapsed], [rule()])
-        [waived] = [obs for obs in result.observations if obs.policy_id == "old"]
-        self.assertEqual(waived.status, "open")
-        self.assertEqual(result.holes_summary()["accepted"], 0)
-        self.assertEqual(
-            result.policy_application["warnings"], ["old expired on 2026-01-01; treated as open"]
-        )
-        self.assertFalse(outcomes(result)["line-effective"]["met"])
-
     def test_without_a_policy_the_raw_figure_is_the_only_grade(self):
         result = apply_coverage_policy(details(line_points()), None)
         self.assertEqual(result.thresholds, [])
@@ -353,7 +336,7 @@ class PolicyFile(unittest.TestCase):
             ("*", "*", "*", "effective"),
         )
         [entry] = loaded.holes
-        self.assertEqual((entry.expected_matches, entry.expired), (1, False))
+        self.assertEqual(entry.expected_matches, 1)
         self.assertEqual(len(loaded.sha256), 64)
 
     def test_malformed_or_contradictory_policies_are_refused(self):
@@ -376,14 +359,34 @@ class PolicyFile(unittest.TestCase):
                 'disposition = "cover"\nstatus = "open"',
                 "requires a GitHub issue URL",
             ),
-            ('date = "2026-09-01"', 'date = "09/01/2026"', "YYYY-MM-DD"),
+            (
+                'rationale = "fixture"',
+                'rationale = "fixture"\ndate = "2026-09-01"',
+                r"unsupported key\(s\): date",
+            ),
+            (
+                'rationale = "fixture"',
+                'rationale = "fixture"\nexpires = "2027-03-31"',
+                r"unsupported key\(s\): expires",
+            ),
+            ('owner = "fixture-dv"', 'ownr = "fixture-dv"', r"unsupported key\(s\): ownr"),
             (
                 'rationale = "fixture"',
                 'rationale = "fixture"\nexpected_matches = 0',
                 "positive integer",
             ),
             ('native_locator = "l-u0"', 'locator = "l-u0"', "unsupported selector key"),
-            ("[[holes.native]]\n", "", "at least one"),
+            (
+                "[[holes.native]]\n",
+                "",
+                r"unsupported key\(s\): metric_family, native_locator, tool",
+            ),
+            (
+                '[[holes.native]]\ntool = "verilator"\nmetric_family = "line"\n'
+                'native_locator = "l-u0"\n',
+                "",
+                "at least one",
+            ),
         ]
         for old, new, message in cases:
             with self.subTest(message=message):

@@ -1,29 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-/**
- * @file entropy_noise_source.sv
- * @brief Ring-oscillator entropy source with metastable sampling.
- *
- * @details Samples an asynchronous ring oscillator with a metastable D
- *          flip-flop to extract entropy from phase jitter, then double-
- *          synchronises the output to the system clock domain. The RO is
- *          parameterized by total length and number of tapped stages.
- *
- * @param TOTAL_LENGTH  Total ring oscillator length in stages (default: 17)
- * @param TAPPED_LENGTH Number of RO stages used for tapping (default: 13)
- */
+// Sample an asynchronous ring oscillator through a metastable flop into the system clock domain.
+//
+// TOTAL_LENGTH and TAPPED_LENGTH size the RO; enable_i starts oscillation; detune_i high
+// selects the full-length feedback path and low the shorter tap.
+// sample_clk_i clocks the metastable sample; the bit is double-synchronized onto clk_i as
+// noise_o.
 
 module entropy_noise_source #(
-  parameter int unsigned TOTAL_LENGTH  = 17,
-  parameter int unsigned TAPPED_LENGTH = 13
+  parameter int unsigned TOTAL_LENGTH  = 17,  // Full ring-oscillator stage count.
+  parameter int unsigned TAPPED_LENGTH = 13  // Stage count of the shorter feedback tap, used while
+                                             // detune_i is low.
 ) (
-  input       logic clk_i,
-  input       logic rst_ni,
-  input       logic sample_clk_i,
-  input       logic enable_i,
-  input       logic detune_i,
-  output      logic noise_o
+  input       logic clk_i,              // System clock.
+  input       logic rst_ni,             // Active-low asynchronous reset of the sample and
+                                        // synchronizer flops.
+  input       logic sample_clk_i,       // Clock of the flop that samples the asynchronous ring
+                                        // output.
+  input       logic enable_i,           // Enables the ring oscillator; while low its output is
+                                        // static.
+  input       logic detune_i,           // High selects the ring's full TOTAL_LENGTH feedback path,
+                                        // low the shorter TAPPED_LENGTH tap.
+  output      logic noise_o             // Ring-oscillator sample, double-synchronized onto clk_i.
 );
 
   /////////////
@@ -48,7 +47,7 @@ module entropy_noise_source #(
   );
 
   // Metastable sample flip-flop — intentional async capture of RO output
-  prim_dffrxq u_smpl (
+  prim_flop u_smpl (
     .clk_i (sample_clk_i),
     .d_i  (noise_async),
     .rst_ni (rst_ni),
@@ -56,14 +55,14 @@ module entropy_noise_source #(
   );
 
   // Two-flop synchroniser
-  prim_dffrxq u_sync0 (
+  prim_flop u_sync0 (
     .clk_i (clk_i),
     .d_i  (noise_sample),
     .rst_ni (rst_ni),
     .q_o  (noise_sync[0])
   );
 
-  prim_dffrxq u_sync1 (
+  prim_flop u_sync1 (
     .clk_i (clk_i),
     .d_i  (noise_sync[0]),
     .rst_ni (rst_ni),

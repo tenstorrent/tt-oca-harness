@@ -139,7 +139,7 @@ domain.
 |Register Clock
 |reg_clk_enable = disable_cg \| register_activity \| ~rst_ni
 
-|Implementation |prim_clkgater for glitch-free operation
+|Implementation |prim_clock_gating for glitch-free operation
 
 |Test Support |Test enable override for manufacturing test
 

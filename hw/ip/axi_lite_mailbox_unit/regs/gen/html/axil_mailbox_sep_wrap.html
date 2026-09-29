@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: axil_mailbox_sep_wrap</h2>
+<h2 id="regmap-axil_mailbox_sep_wrap">SEP AXI-Lite Mailbox Wrapper Address Map</h2>
+<p>SEP-side wrapper instantiating the AXI-Lite mailbox pairs.<br>Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one<br>bidirectional mailbox and shares a single pair of FIFOs: data written through<br>WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.<br>The outbound/inbound naming reflects intended use, not an access restriction.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>

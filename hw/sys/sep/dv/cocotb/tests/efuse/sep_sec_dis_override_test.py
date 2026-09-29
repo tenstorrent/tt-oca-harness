@@ -12,12 +12,13 @@ on). A later mismatch drops
 ``sec_dis`` and restores the fail-closed PROD golden. The test does not
 force ``sec_dis``.
 
-A SEC_DIS match does not by itself boot SEP. ``security_disable.adoc``
-says the SEP can boot even if fuse sense never completes: that sentence
-is the DTP ``sep_reset_n`` TDR bring-up path, which is outside this DUT
-and is not claimed here. This leaf grades the implemented sense-gated
-reset: match does not release ``sep_cpu_reset_n`` / ``sep_reset_n`` while
-sense is still open. The first match is presented after
+A SEC_DIS match does not by itself boot SEP. The reset contract comes from
+hw/sys/sep/doc/reset_controller.adoc: ``sep_reset_n`` "holds every IP in
+reset until eFuse sensing completes during boot". This leaf grades that
+sentence: a match does not release ``sep_cpu_reset_n`` / ``sep_reset_n``
+while sense is still open. hw/sys/sep/doc/security_disable.adoc also says
+that with SEC_DIS active the SEP can boot even if fuse sense never
+completes; that sentence is not graded here. The first match is presented after
 ``release_no_cpu_reset`` and before ``sep_fuse_sense_done_o``, and with
 ``ext_boot_seq_done_i`` already 1 the reset probes must stay 0. The
 token is written over the CPU-LSU AXI MMR. The TDR release itself is
@@ -61,8 +62,8 @@ class sep_sec_dis_override_test(sep_base_test):
         observed = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
         if sec_dis:
-            # Override is all ones in the chapter and in the RTL (`security_disable_i
-            # ? 64'hffff_ffff_ffff_ffff`). That constant is the contract, not a
+            # hw/sys/sep/doc/lifecycle_controller.adoc: SEC_DIS=1 forces
+            # feat_ctrl to all ones. That constant is the contract, not a
             # collapse. The fail-closed word above is the contrast.
             assert feat == M64, f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
         else:
@@ -87,9 +88,8 @@ class sep_sec_dis_override_test(sep_base_test):
     def _check_reset_stays_sense_gated(self) -> None:
         """A SEC_DIS match alone must NOT release the sense-gated reset.
 
-        The implemented sense-gated reset has no SEC_DIS term. The
-        architecture sentence that SEP can boot if sense never completes
-        is the DTP ``sep_reset_n`` TDR path, not a match bypass of sense.
+        hw/sys/sep/doc/reset_controller.adoc: ``sep_reset_n`` holds every
+        IP in reset until eFuse sensing completes during boot.
         ``ext_boot_seq_done_i`` is already 1, so sense is the only term
         still holding the reset -- this checker fails if a match releases
         it.
@@ -97,7 +97,7 @@ class sep_sec_dis_override_test(sep_base_test):
         dut = cocotb.top
         assert not self.rd_known(dut.sep_fuse_sense_done_o), (
             "CHK-SENSE-GATED-RESET WINDOW-CLOSED: sense finished during the token "
-            "write, so the pre-sense window was never observed. This is not the RTL "
+            "write, so the pre-sense window was never observed. This is not the reset "
             "contract failing -- rerun; if it repeats, present the token earlier"
         )
         assert self.rd(dut.ext_boot_seq_done_i), (

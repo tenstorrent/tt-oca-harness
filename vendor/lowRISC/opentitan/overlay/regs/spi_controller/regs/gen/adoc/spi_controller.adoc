@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-spi_controller]
-== Address Map: spi_controller
+== SPI Host
+
+Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices
 
 [cols="1,4,1,6", options="header"]
 |===

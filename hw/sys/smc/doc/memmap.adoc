@@ -45,6 +45,17 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/memory_map.adoc[]
 endif::backend-pdf[]
 
+A unit's `Size` is the aperture reserved for it; its `Decoded Extent` is the
+part of that aperture which decodes. The fabric refuses an address that falls
+between unit apertures, or past a unit's decoded extent; such an access never
+reaches a unit.
+
+Inside the decoded extent, an offset that owns no register is accepted by the
+unit: reads return zero and writes are discarded, both with an OKAY response.
+Software gets no indication that it addressed nothing. Such an offset cannot
+alias a live register, because register decode is an exact address match rather
+than a range — not because the access is refused.
+
 == Detailed Address Map
 
 The component-level assignments are generated in the preceding table. This
@@ -55,16 +66,19 @@ avoids a second list of addresses drifting from the implemented decode.
 The `smc_external` window at `BASE + 0x040_0000` is the adopter extension
 window. OCAH exposes this AXI-Lite bus so an adopter can attach their own
 technology- and vendor-specific implementations of memory-mapped blocks. The
-window is split into two regions (see `smc_external.rdl`); hardware treats
-both identically — the split is purely organizational:
+window is split into two regions (see `smc_external.rdl`). Apart from the
+eFuse SHIM control block described below, hardware treats both identically;
+the split is purely organizational:
 
 * *Mandatory* (`BASE + 0x040_0000`): blocks every integration must implement.
   Their function is dictated by the OCAH specifications, but their
-  implementation is inherently technology- and vendor-specific — the GPIO pad
-  controls, the PLL macro, the PVT sensors, and the eFuse SHIM.
-* *Supplementary* (`BASE + 0x040_4000`): optional region for any additional
-  memory-mapped devices the adopter wants to expose. The reference
-  integration places its vendor I3C controllers (nonfree overlay) here.
+  implementation is inherently technology- and vendor-specific — the eFuse
+  SHIM, PLL and PVT clock observation, the POC/PBIAS and reference-clock pad
+  controls, the per-pad GPIO controls, the PLL macro, and the PVT sensors.
+* *Supplementary* (`BASE + 0x040_4000`): any additional memory-mapped devices
+  the adopter wants to expose, plus the captured strap registers at
+  `BASE + 0x040_5800`. The reference integration places its vendor I3C
+  controllers (nonfree overlay) here.
 
 The generated SMC map reports this as one opaque adopter-owned aperture.
 Concrete placements inside it are integration-specific and are documented by
@@ -74,8 +88,15 @@ include vendor I3C controllers and captured GPIO straps. Captured straps are
 read-only values latched from bonded pads at cold reset and consumed by boot
 firmware.
 
-The unallocated remainder of the window is passed through to the chip-level
-adopter external port.
+The eFuse SHIM control block is the exception. Its placement is fixed at the
+base of the window, `BASE + 0x040_0000`, and its size is the
+`EFUSE_SHIM_SIZE` parameter (`SMC_EFUSE_SHIM_SIZE` at the SMU). The peripheral 
+crossbar routes that range to the eFuse controller,
+which forwards it unchanged on `efuse_bank_ctrl` to the adopter's SHIM. It
+never appears on the external port. The adopter defines the SHIM's control
+registers at offset `0x0` of its own `smc_external` map.
+
+The rest of the window, is passed through to the smu-level adopter external port.
 
 === External Window Reference Maps
 

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-entropy_source]
-== Address Map: entropy_source
+== Entropy Source Address Map
+
+Entropy-source configuration, status, and data registers.
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -362,8 +364,8 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:12 | `SAMPLE_CLK_DETUNE` | RW | 0x0 a| Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.
-| 11:0 | `DETUNE` | RW | 0x0 a| Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.
+| 23:12 | `SAMPLE_CLK_DETUNE` | RW | 0x0 a| Selects the full-length (longer) shared sample-clock oscillator tap, lowering its frequency, when any bit is set. FIPS_LOCK.LOCK prevents software changes.
+| 11:0 | `DETUNE` | RW | 0x0 a| Selects the full-length (longer) tap for each noise ring oscillator, lowering its frequency, while automatic tuning is disabled; the reset value (clear) selects the shorter tap. FIPS_LOCK.LOCK prevents software changes.
 |===
 
 [#reg-{regmap-instance}-entropy_source-RING_OSC_CTRL]

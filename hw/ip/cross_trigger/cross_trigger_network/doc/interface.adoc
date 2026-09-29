@@ -5,82 +5,19 @@
 
 === Cross Trigger Port (CTP)
 
-<<ctn-cross-trigger-signal-interface-table>> lists the CTP signals and their mode-dependent behavior.
 For the module diagram and signalling modes, see
 <<cross-trigger-network-architecture,CTN Architecture>>.
 
+Each CTP is built on `cross_trigger_port_core`. Its operating mode resets to
+wire-OR: the CSR MODE field of an external CTP resets to 0, which selects
+wire-OR, and 1 selects peer-to-peer. `INT_CT_MODE` sets the mode of each
+internal CTP.
+
 ifdef::backend-html5[]
-++++
-<div class="port-reference-scroll" role="region" aria-label="CTN cross-trigger port interface" tabindex="0">
-++++
+The parameters and ports of `cross_trigger_port_core` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_port/cross_trigger_port_core.adoc[cross_trigger_port_core].
 endif::backend-html5[]
-
-[[ctn-cross-trigger-signal-interface-table]]
-[cols="<30,<12,<58",options="header",role="port-reference"]
-.CTN cross-trigger signal interface
-|=======================================================================
-|Name |Direction |Description
-|mode |input |Indicates the operational mode of the CTP. 0 for wire-OR
-and 1 for peer-to-peer. The value at reset should be 0.
-
-|ct_src |input |Core-side cross trigger input pulse.
-
-|ct_dst |output |Core-side cross trigger output pulse.
-
-|busy |output |Optional signal indicating that an outgoing cross trigger
-pulse transfer is in progress.
-
-|reset |input |Resets the outgoing peer-to-peer handshake logic.
-
-|stretch_mult[N-1:0] |input |Configures the pulse duration of the pulse
-stretcher module for wire-OR mode.
-
-|ct_req_out_dout_en |output |Enables the output driver for the
-_CT_Req_out_ pad. In wire-OR mode this signal is enabled by a cross
-trigger pulse from the pulse stretcher. In peer-to-peer mode it is
-always enabled.
-
-|ct_req_out_din_en |output |Enables the input buffer for the
-_CT_Req_out_ pad. In wire-OR mode this signal is enabled and in
-peer-to-peer mode it is disabled.
-
-|ct_req_out_dout |output |The output data to drive on the _CT_Req_out_
-pad. In peer-to-peer mode the pulse capture latch controls this signal.
-In wire-OR mode it is held static-low.
-
-|ct_req_out_din |input |The input data that is driven on the
-_CT_Req_out_ pad. In wire-OR mode this signal triggers a pulse on
-_ct_dst_ after synchronization. In peer-to-peer mode it is unused.
-
-|ct_req_in_din_en |output |Enables the input buffer for the _CT_Req_in_
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.
-
-|ct_req_in_din |input |The input data that is driven on the _CT_Req_in_
-pad. In peer-to-peer mode this signal triggers a pulse on _ct_dst_ after
-synchronization. In wire-OR mode it is unused.
-
-|ct_ack_in_din_en |output |Enables the input buffer for the _CT_Ack_in_
-pad. In peer-to-peer mode this signal is enabled and in wire-OR mode it
-is disabled.
-
-|ct_ack_in_din |input |The input data that is driven on the _CT_Ack_in_
-pad. This signal clears the cross trigger request output in peer-to-peer
-mode. In wire-OR mode it is unused.
-
-|ct_ack_out_dout_en |output |Enables the output driver for the
-_CT_Ack_out_ pad. In peer-to-peer mode this signal is enabled and in
-wire-OR mode it is disabled.
-
-|ct_ack_out_dout |output |The output data to drive on the _CT_Ack_out_
-pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls
-this signal. In wire-OR mode it is unused.
-|=======================================================================
-
-ifdef::backend-html5[]
-++++
-</div>
-++++
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_port_core` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
 === Cross Trigger Matrix (CTM)
@@ -96,43 +33,12 @@ The CTM has the following data ports and logical structure:
 
 === Cross Trigger Network Module Interface
 
-The top-level `cross_trigger_network` module has the following interface:
-
-*Parameters*
-
-* `NUM_CTP`, `NUM_INT_CT`, `NUM_CLK_STOP_REQ` - External CTP, internal CT, and
-  clock-stop request counts (defaults 16, 10, 9)
-* `INT_CT_MODE` - Per-bit mode selection for internal CTPs (0 = Wire-OR, 1 =
-  P2P)
-* `axil_req_t`, `axil_resp_t` - AXI-Lite request/response types
-
-*Ports*
-
-[source,systemverilog]
-----
-// Global
-input  logic clk_i
-input  logic rst_ni
-
-// AXI-Lite CSR Interface
-input  axil_req_t  axil_req_i
-output axil_resp_t axil_resp_o
-
-// Clock Stop Interface
-input  logic [NUM_CLK_STOP_REQ-1:0] clk_stop_req_i
-input  logic jtag_clock_stop_i
-output logic stop_clks_o
-output logic cla_clock_stop_o
-
-// Internal Cross Trigger Interface (to CLAs)
-output logic [NUM_INT_CT-1:0] ctm_src_req_o
-input  logic [NUM_INT_CT-1:0] ctm_src_ack_i
-input  logic [NUM_INT_CT-1:0] ctm_dst_req_i
-output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
-
-// External CTP GPIO Interface (per CTP)
-// CT_Req_out, CT_Req_in, CT_Ack_in, CT_Ack_out signals
-----
+ifdef::backend-html5[]
+The parameters and ports of `cross_trigger_network` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/cross_trigger_network/cross_trigger_network.adoc[cross_trigger_network].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `cross_trigger_network` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
 
 === Dependencies
 

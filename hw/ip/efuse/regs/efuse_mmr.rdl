@@ -5,6 +5,8 @@
 `define EFUSE_MMR_RDL_DEFINED
 
 addrmap efuse_mmr {
+    name = "eFuse Token Registers Address Map";
+    desc = "Security-token input and match-status registers for RMA and secure-disable eFuse tokens.";
 
     reg RMA_TOKEN_I {
         desc = "Software-writeable RMA token word. The assembled token is hashed and compared against the fused value to authorize lifecycle (LC) state transitions.";

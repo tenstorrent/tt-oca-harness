@@ -11,7 +11,7 @@
 // drops and why; the ANNOTATION before each class repeats the reason.
 //==================================================
 
-CHECKSUM: "181700534 2132276936"
+CHECKSUM: "842126896 374546350"
 MODULE: smu_wrapper
 
 ANNOTATION: "SMU-WRAPPER-TGL-AXI-USER: AXI user sideband words on the crossbar's inbound and outbound ports. The SMU neither reads nor writes them; the crossbar carries them beside the channel unchanged, so their bits toggle only when a master or the bench varies a field nothing in the SMU consumes."
@@ -42,10 +42,8 @@ ANNOTATION: "SMU-WRAPPER-TGL-DFT: DFT pins. Functional simulation holds them at 
 Toggle test_en_i "logic test_en_i"
 Toggle scan_rst_ni "logic scan_rst_ni"
 
-ANNOTATION: "SMU-WRAPPER-TGL-RTL-CONSTANT: outputs the SMU drives from a constant in this composition: the lifecycle demote states are tied low and the LSIO interface select follows a fixed SPI enable. No stimulus can move them; -cm_noconst does not drop them because the constant is assigned inside the SMU rather than at the port."
+ANNOTATION: "SMU-WRAPPER-TGL-RTL-CONSTANT: an output the SMU drives from a constant in this composition: the LSIO interface select follows a fixed SPI enable. No stimulus can move it; -cm_noconst does not drop it because the constant is assigned inside the SMU rather than at the port."
 Toggle lsio_interface_select_o "logic lsio_interface_select_o[64:0]"
-Toggle lcc_demote_state_1_o "logic lcc_demote_state_1_o[1:0]"
-Toggle lcc_demote_state_2_o "logic lcc_demote_state_2_o[1:0]"
 
 ANNOTATION: "SMU-WRAPPER-TGL-UNION-ALIAS: the `locks` and `fields` views of the eFuse shadow map. `efuse_map_t` is a packed union, so urg lists the same 8192 flops three times; the `values` view stays graded and carries every bit once."
 Toggle smc_shadow_regs_o.locks.locks "logic smc_shadow_regs_o.locks.locks[63:0]"
@@ -161,9 +159,7 @@ Toggle smc_shadow_regs_o.fields.spare[25].rsvd "logic smc_shadow_regs_o.fields.s
 Toggle smc_shadow_regs_o.fields.spare[26].rsvd "logic smc_shadow_regs_o.fields.spare[26].rsvd[255:0]"
 Toggle smc_shadow_regs_o.fields.spare[27].rsvd "logic smc_shadow_regs_o.fields.spare[27].rsvd[255:0]"
 
-ANNOTATION: "SMU-WRAPPER-TGL-SEP-OWNED: SEP passthroughs with no wrapper-level observable on this bench: the SEP SPI host and CPU trace need SEP firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, the SEP aperture CSRs sit behind the reset aperture, the SEP external interrupts and entropy sample clock terminate inside the SEP, and the lifecycle signal-integrity error needs a fault injected inside it. The SEP bench grades each of them."
-Toggle sep_global_base_o "logic sep_global_base_o[55:0]"
-Toggle sep_region_size_o "logic sep_region_size_o[55:0]"
+ANNOTATION: "SMU-WRAPPER-TGL-SEP-OWNED: SEP passthroughs with no wrapper-level observable on this bench: the SEP SPI host and CPU trace need SEP firmware, the lockstep pair is inert without RV_LOCKSTEP_ENABLE, the SEP external interrupts and entropy sample clock terminate inside the SEP, and the lifecycle signal-integrity error needs a fault injected inside it. The SEP bench grades each of them."
 Toggle lc_sigint_err_o "logic lc_sigint_err_o"
 Toggle sep_io_spi_req_o.lsio_trigger "logic sep_io_spi_req_o.lsio_trigger"
 Toggle sep_io_spi_req_o.irq "logic sep_io_spi_req_o.irq"
@@ -186,5 +182,5 @@ Toggle sep_lockstep_ctrl_i.disable_corruption_detection "logic sep_lockstep_ctrl
 Toggle sep_lockstep_status_o.corruption_detected "logic sep_lockstep_status_o.corruption_detected"
 Toggle sep_ext_interrupts_i "net sep_ext_interrupts_i[211:0]"
 
-ANNOTATION: "SMU-WRAPPER-TGL-PARTIAL: the OCTS system timer counts reference clocks; bit k first rises after 2^k cycles, and no leaf runs the 2^20 cycles bit 20 needs. Bits [19:0] stay graded."
-Toggle timer_count_o [63:20] "logic timer_count_o[63:0]"
+ANNOTATION: "SMU-WRAPPER-TGL-REGISTER-WIDTH: sep_cpu_ctrl SEP_REGION_SIZE carries its size in bits [31:0] and reserves [63:32] (the generated register description), so the 56-bit port is that field zero-extended and bits [55:32] cannot move. Bits [31:0] stay graded. Retired by SEP_REGION_SIZE.size widening past bit 31."
+Toggle sep_region_size_o [55:32] "logic sep_region_size_o[55:0]"

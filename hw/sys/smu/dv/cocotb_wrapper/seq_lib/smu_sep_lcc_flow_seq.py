@@ -95,8 +95,8 @@ def lc_raw_from_efuse_image(path: str) -> int:
     comes from the generated SEP address map.
     """
     lc_idx = (
-        c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
-        - c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+        c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+        - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
     ) // 4
     words: dict[int, int] = {}
     idx = 0

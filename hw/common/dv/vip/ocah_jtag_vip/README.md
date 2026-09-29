@@ -129,7 +129,7 @@ ocah_jtag_vip/
                            python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items smoke
                            python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items all --cov
                            python3 tools/dv/run_dv.py --dut ocah_jtag_vip \
-                               --framework uvm --items smoke --skip-unimplemented
+                               --framework uvm --items smoke
 ```
 
 ## SV-UVM Agent (`uvm/`)
@@ -352,11 +352,11 @@ DTP, SMC, and SMU consumers:
 ```bash
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items smoke --tool verilator
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items all --tool verilator --cov
-python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items smoke --skip-unimplemented --cov
+python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items smoke --cov
 python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test dtp_jtag_idcode_test dtp_jtag_bypass_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator --cov
-python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut smc --items smc_jtag_dmi_smoke_test smc_ijtag_basic_test --tool verilator
 python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test smu_jtag_chain_enhanced_test --tool verilator
 ```
@@ -368,12 +368,12 @@ Must-fail checks; each command exits non-zero:
 # walk (cocotb) or a wrong expected IDCODE is armed (SV-UVM).
 OCAH_JTAG_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items ocah_jtag_tap_reset_test --tool verilator
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items ocah_jtag_idcode_test \
-    --skip-unimplemented --plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE
+    --plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE
 # cocotb: the TAP reference model is desynchronized, so CHK-TAP-STATE fails.
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_tlr_reset_test --tool verilator
 # SV-UVM: a wrong expected IDCODE is armed, so CHK-TAP-TLR-IDCODE fails.
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_tlr_reset_test \
-    --skip-unimplemented --plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE
+    --plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE
 ```
 
 The reactive slave device is judged by the master-side model without a

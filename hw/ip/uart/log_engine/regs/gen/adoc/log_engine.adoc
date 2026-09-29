@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-log_engine]
-== Address Map: log_engine
+== Log Engine Address Map
+
+Configuration and status registers for the UART log engine, including the log region and write pointers.
 
 [NOTE]
 ======

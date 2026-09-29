@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// DTP Package - Cross-trigger and debug-interface configuration
+// Hold Debug and Test Ports configuration and interface typedefs.
+//
+// Define default CTP, internal-CT, and clock-stop counts, the AXI-Lite and JTAG-debug AXI
+// typedefs, and static checks that these defaults match cross_trigger_network_pkg.
+// Failures of those checks are elaboration errors, not lint.
 
 package dtp_pkg;
 

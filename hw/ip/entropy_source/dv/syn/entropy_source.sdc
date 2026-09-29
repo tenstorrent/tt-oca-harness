@@ -61,7 +61,7 @@ create_clock -name clk_sample_shared -period 2.3 \
 # Sampler lanes: 12 dividers x 5 stages. Debug monitor: 7 stages. Stage n
 # divides its source by 2^(n+1). Q is not a clock cell, so each tap is a
 # generated clock. Both sampler sources are stamped.
-set entropy_ref_cells [get_cells -hierarchical -quiet -filter "ref_name == prim_dffrxq"]
+set entropy_ref_cells [get_cells -hierarchical -quiet -filter "ref_name =~ prim_flop*"]
 set entropy_div_flops {}
 if {[sizeof_collection $entropy_ref_cells] > 0} {
     set entropy_div_flops [get_object_name $entropy_ref_cells]
@@ -153,7 +153,7 @@ set_dont_touch [get_cells -hierarchical -filter "ref_name =~ entropy_ring_oscill
 # Prevent optimization of individual ring oscillator cells
 # These must maintain their structure for proper oscillation
 set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_clock_nand2"]
-set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_stdbuf"]
+set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_buf*"]
 set_dont_touch [get_cells -hierarchical -filter "ref_name =~ prim_stdmux2"]
 
 # Break timing paths on ring oscillator feedback loops

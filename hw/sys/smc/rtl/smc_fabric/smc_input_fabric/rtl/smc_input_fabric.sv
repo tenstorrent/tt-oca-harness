@@ -1,80 +1,131 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Input Fabric
+// Route the SMC's inbound AXI initiators toward the local and output fabrics.
+//
+// Widens the JTAG and MMIO IDs and converts the log AXI-Lite port to AXI, applies the alias
+// remap to those and the data accelerator port, muxes the four, and sends requests inside
+// the local or global SMC window to the local output port truncated to 32 bits and all
+// others to the global output port. System inbound AXI passes a clock-gated access filter
+// that blocks by default; system and SEP requests outside the SMC window receive DECERR,
+// and the rest are truncated to 32 bits for the local fabric.
 
 module smc_input_fabric #(
-  parameter bit          FilterReqPipelineEnable = 1'b0,
-  parameter bit          FilterRspPipelineEnable = 1'b0,
-  parameter int unsigned NumFilters              = 16
+  parameter bit          FilterReqPipelineEnable = 1'b0,  // Adds spill registers on the request
+                                                          // channels at the system inbound filter
+                                                          // boundary.
+  parameter bit          FilterRspPipelineEnable = 1'b0,  // Adds spill registers on the response
+                                                          // channels at the system inbound filter
+                                                          // boundary.
+  parameter int unsigned NumFilters              = 16  // Number of system inbound filter entries;
+                                                       // sizes the filter CSR arrays and the
+                                                       // hit-index outputs.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock.
+  input  logic test_en_i,               // Scan test mode enable, active-high; forwarded to the AXI
+                                        // primitives and forces the filter clock gate on.
+  input  logic scan_rst_ni,             // Scan reset, active-low; not used in this module.
 
-  input  logic                filter_axi_cg_en_i,
-  input  smc_pkg::cg_hyster_t cg_hysteresis_i,
+  input  logic                filter_axi_cg_en_i,  // Enables clock gating of the system inbound
+                                                   // filter, active-high; low keeps the filter
+                                                   // clock running.
+  input  smc_pkg::cg_hyster_t cg_hysteresis_i,  // Idle SMC core clock cycles the system inbound
+                                                // filter clock gate waits after the bus goes quiet
+                                                // before stopping the filter clock.
 
-  // Configuration Bits
-  input  smc_pkg::smc_axi_addr_t global_base_addr_i,
-  input  smc_pkg::smc_axi_addr_t local_base_addr_i,
-  input  logic [31:0]            region_size_i,
+  input  smc_pkg::smc_axi_addr_t global_base_addr_i,  // Global base address of the SMC window;
+                                                      // requests in [base, base + region_size_i)
+                                                      // count as SMC
+                                                      // accesses.
+  input  smc_pkg::smc_axi_addr_t local_base_addr_i,  // Local base address of the SMC window; requests
+                                                     // in [base, base + region_size_i) count as SMC
+                                                     // accesses.
+  input  logic [31:0]            region_size_i,  // Size in bytes of the SMC window at either base; the
+                                                 // window end is computed one bit wider than the
+                                                 // address so it cannot wrap.
 
-  // JTAG AXI Input
-  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t  axi_in_jtag_req_i,
-  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t axi_in_jtag_resp_o,
+  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t  axi_in_jtag_req_i,  // JTAG AXI Input
+                                                                     // request.
+  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t axi_in_jtag_resp_o,  // JTAG AXI Input
+                                                                      // response.
 
-  // MMIO AXI Input
-  input  smc_pkg::smc_cpu_mmio_axi_req_t  axi_in_mmio_req_i,
-  output smc_pkg::smc_cpu_mmio_axi_resp_t axi_in_mmio_resp_o,
+  input  smc_pkg::smc_cpu_mmio_axi_req_t  axi_in_mmio_req_i,  // MMIO AXI Input request.
+  output smc_pkg::smc_cpu_mmio_axi_resp_t axi_in_mmio_resp_o,  // MMIO AXI Input response.
 
-  // Data Accelerator AXI Input
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,  // Data Accelerator AXI
+                                                                                   // Input request.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,  // Data Accelerator AXI
+                                                                                    // Input response.
 
-  // Log AXI-Lite Input
-  input  smc_pkg::smc_axil_56_64_req_t  axi_lite_log_req_i,
-  output smc_pkg::smc_axil_56_64_resp_t axi_lite_log_resp_o,
+  input  smc_pkg::smc_axil_56_64_req_t  axi_lite_log_req_i,  // Log AXI-Lite Input
+                                                             // request.
+  output smc_pkg::smc_axil_56_64_resp_t axi_lite_log_resp_o,  // Log AXI-Lite Input
+                                                              // response.
 
-  // Local AXI Output
-  output smc_pkg::smc_local_32_64_6_12_axi_req_t  axi_local_out_req_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t axi_local_out_resp_i,
+  output smc_pkg::smc_local_32_64_6_12_axi_req_t  axi_local_out_req_o,  // Request from the alias-remapped JTAG,
+                                                                        // MMIO, log and data accelerator paths
+                                                                        // that hits the local or global SMC window,
+                                                                        // truncated to the 32-bit local address.
+  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t axi_local_out_resp_i,  // Response to requests on the local output
+                                                                         // port.
 
-  // Global AXI Output
-  output smc_pkg::smc_56_64_6_12_axi_req_t  axi_out_req_o,
-  input  smc_pkg::smc_56_64_6_12_axi_resp_t axi_out_resp_i,
+  output smc_pkg::smc_56_64_6_12_axi_req_t  axi_out_req_o,  // Request from the alias-remapped JTAG, MMIO,
+                                                            // log and data accelerator paths that misses
+                                                            // the SMC window, with its full 56-bit address.
+  input  smc_pkg::smc_56_64_6_12_axi_resp_t axi_out_resp_i,  // Response to requests on the global output
+                                                             // port.
 
-  // System AXI Input
-  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,
-  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,
-  output smc_pkg::smc_local_32_64_6_12_axi_req_t   filtered_sys_axi_out_req_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  filtered_sys_axi_out_resp_i,
+  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,  // System AXI Input
+                                                                      // request.
+  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,  // System AXI Input
+                                                                       // response.
+  output smc_pkg::smc_local_32_64_6_12_axi_req_t   filtered_sys_axi_out_req_o,  // System request that passed the
+                                                                                // inbound filter and hits the SMC
+                                                                                // window, truncated to the 32-bit
+                                                                                // local address.
+  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  filtered_sys_axi_out_resp_i,  // Response to the filtered system
+                                                                                 // request.
 
-  // SEP AXI Input
-  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,
-  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,
-  output smc_pkg::smc_local_32_64_6_12_axi_req_t   sep_axi_id_remap_req_o,
-  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  sep_axi_id_remap_resp_i,
+  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,  // SEP AXI Input
+                                                                      // request.
+  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,  // SEP AXI Input
+                                                                       // response.
+  output smc_pkg::smc_local_32_64_6_12_axi_req_t   sep_axi_id_remap_req_o,  // SEP request that hits the SMC
+                                                                            // window, truncated to the 32-bit
+                                                                            // local address; the ID passes
+                                                                            // through unchanged.
+  input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  sep_axi_id_remap_resp_i,  // Response to the SEP request.
 
-  // Config struct from register block -- filter
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],  // Per-entry system inbound
+                                                                                  // filter configuration from
+                                                                                  // the register block; the
+                                                                                  // filter matches source ID
+                                                                                  // and the non-secure flag.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],  // Per-entry system inbound
+                                                                                    // filter status returned to
+                                                                                    // the register block.
 
-  // Config struct from register block -- alias remap
-  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap region
+                                                                                                    // configuration from
+                                                                                                    // the register block.
 
-  // debug structs
-  output smc_pkg::remap_debug_t         remap_debug_mmio_o,
-  output smc_pkg::remap_debug_t         remap_debug_jtag_o,
-  output smc_pkg::remap_debug_t         remap_debug_log_o,
-  output smc_pkg::remap_debug_t         remap_debug_dma_o,
-  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,
-  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,
+  output smc_pkg::remap_debug_t         remap_debug_mmio_o,  // Alias region index hit by the MMIO path.
+  output smc_pkg::remap_debug_t         remap_debug_jtag_o,  // Alias region index hit by the JTAG path.
+  output smc_pkg::remap_debug_t         remap_debug_log_o,  // Alias region index hit by the log path.
+  output smc_pkg::remap_debug_t         remap_debug_dma_o,  // Alias region index hit by the data accelerator
+                                                            // path.
+  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,  // System inbound filter entry hit by writes;
+                                                                   // tied to zero because the filter instance
+                                                                   // disables its debug output.
+  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,  // System inbound filter entry hit by reads;
+                                                                  // tied to zero because the filter instance
+                                                                  // disables its debug output.
 
-  // Clock gater activity indicators
-  output logic sys_in_filter_clk_active_o,
-  output logic sys_in_filter_bus_active_o
+  output logic sys_in_filter_clk_active_o,  // High while the system inbound filter clock runs.
+  output logic sys_in_filter_bus_active_o  // High while the system AXI input has a request valid or
+                                           // a transaction outstanding.
 );
 
   `include "axi/assign.svh"

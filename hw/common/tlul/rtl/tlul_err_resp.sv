@@ -1,20 +1,23 @@
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Respond to unmapped or rejected TL-UL requests with an error.
 //
-// TL-UL error responder module, used by tlul_socket_1n to help response
-// to requests to no correct address space. Responses are always one cycle
-// after request with no stalling unless response is stuck on the way out.
+// Accept one A-channel request at a time and present its D-channel response from the
+// next cycle until d_ready. a_ready is low while a response is pending, so requests are
+// accepted at most every other cycle. By default return d_error set with
+// DataWhenInstrError for instruction fetches and DataWhenError otherwise. When
+// ReturnBlankResp is set, return all-zero data without setting d_error. Response and data
+// integrity are generated in either mode.
 
 module tlul_err_resp #(
-  // By default, we return a proper bus error. In some cases, we need to return a blank all-zero
-  // response without setting the error bit, and for those cases ReturnBlankResp can be set to 1.
-  parameter bit ReturnBlankResp = 0
+  parameter bit ReturnBlankResp = 0  // When set, return zeros without asserting d_error.
 ) (
-  input                     clk_i,
-  input                     rst_ni,
-  input  tlul_pkg::tl_h2d_t tl_h_i,
-  output tlul_pkg::tl_d2h_t tl_h_o
+  input                     clk_i,   // System clock.
+  input                     rst_ni,  // Active-low reset.
+  input  tlul_pkg::tl_h2d_t tl_h_i,  // Host-facing TL-UL request.
+  output tlul_pkg::tl_d2h_t tl_h_o   // Host-facing TL-UL error response.
 );
   import tlul_pkg::*;
   import prim_mubi_pkg::*;

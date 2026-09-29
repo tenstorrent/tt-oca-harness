@@ -91,6 +91,32 @@ def first_addrmap_name(root) -> str:
     )
 
 
+def addrmap_heading(root) -> str:
+    """The per-block page heading.
+
+    Renders the addrmap's authored ``name`` (e.g. "UART 16550 Main Write-Only
+    Address Map") so the reader sees the friendly title rather than the instance
+    identifier. Falls back to ``Address Map: <ident>`` when no ``name`` is
+    authored -- systemrdl defaults ``name`` to the instance name. The identifier
+    is still carried in the section anchor and the HTML ``<h2>`` id, which the
+    block catalog and coverage tooling key off.
+    """
+    node = next(iter(root.children()), None)
+    if node is not None:
+        name = node.get_property("name")
+        if name and name != node.inst_name:
+            return name
+    return f"Address Map: {first_addrmap_name(root)}"
+
+
+def addrmap_desc(root) -> str | None:
+    """The map's ``desc``, rendered as an intro paragraph below the heading."""
+    node = next(iter(root.children()), None)
+    if node is None:
+        return None
+    return node.get_property("desc")
+
+
 def sw_access(node) -> str:
     r = (
         "R"
@@ -259,7 +285,7 @@ def collect(root, overrides: dict[str, str] | None = None) -> Collector:
 
 def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     data = collect(root, overrides)
-    title = first_addrmap_name(root)
+    ident = first_addrmap_name(root)
     anchors = {
         r.path: "reg-{regmap-instance}-" + re.sub(r"[^A-Za-z0-9_-]+", "-", r.path)
         for r in data.regs
@@ -270,10 +296,13 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
         "",
         ":regmap-instance: {counter:regmap-number}",
         "",
-        f"[#regmap-{{regmap-instance}}-{title}]",
-        f"== Address Map: {title}",
+        f"[#regmap-{{regmap-instance}}-{ident}]",
+        f"== {addrmap_heading(root)}",
         "",
     ]
+    desc = addrmap_desc(root)
+    if desc:
+        lines += [desc_adoc(desc), ""]
     if data.arrays:
         lines += [
             "[NOTE]",
@@ -312,9 +341,9 @@ def write_adoc(root, out: str, overrides: dict[str, str] | None = None):
     Path(out).write_text("\n".join(lines))
 
 
-def write_html(root, out: str, title: str | None = None, overrides: dict[str, str] | None = None):
+def write_html(root, out: str, ident: str | None = None, overrides: dict[str, str] | None = None):
     data = collect(root, overrides)
-    title = title or first_addrmap_name(root)
+    ident = ident or first_addrmap_name(root)
     lines = [
         "<!-- SPDX-License-Identifier: Apache-2.0 -->",
         "<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->",
@@ -324,8 +353,11 @@ def write_html(root, out: str, title: str | None = None, overrides: dict[str, st
         ".ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}",
         ".ocah-reg-html th{background:#81BCE5;text-align:left}",
         "</style>",
-        f"<h2>Address Map: {escape(title)}</h2>",
+        f'<h2 id="regmap-{escape(ident)}">{escape(addrmap_heading(root))}</h2>',
     ]
+    desc = addrmap_desc(root)
+    if desc:
+        lines.append(f"<p>{desc_html_text(desc)}</p>")
     if data.arrays:
         lines += ["<p><strong>Register Arrays:</strong></p>", "<ul>"]
         for name, (count, base, stride) in data.arrays.items():

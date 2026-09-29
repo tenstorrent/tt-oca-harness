@@ -61,7 +61,7 @@ static inline uint32_t mmio_read32(uint32_t addr) {
 // ---------------------------------------------------------------------------
 // Scratch register virtual console (same protocol as rom_virt_console.h)
 // ---------------------------------------------------------------------------
-#define SCRATCH2_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
+#define SCRATCH2_ADDR SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(2)
 
 #define VCONSOLE_OP_ASCII (0u << 1)
 
@@ -122,8 +122,8 @@ static void bl1_puthex32(uint32_t val) {
 // just proved is not a bl0_state — a wild pointer, which is the exact failure
 // this check exists to stop.
 // ---------------------------------------------------------------------------
-#define SEP_SRAM_LO ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
-#define SEP_SRAM_HI ((uint32_t)(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE))
+#define SEP_SRAM_LO ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR)
+#define SEP_SRAM_HI ((uint32_t)(SEP_TOP_SEP_SRAM_BASE_ADDR + SEP_TOP_SEP_SRAM_SIZE))
 
 // Returns 0 if the handoff contract is intact, nonzero on failure.
 static int bl1_verify_bl0_state(void) {
@@ -178,7 +178,7 @@ static int bl1_verify_bl0_state(void) {
 // Locked-field reads return 0xBADCAB1E (no SLVERR), so the check does not
 // take an NMI.
 // ---------------------------------------------------------------------------
-#define EFUSE_LOCKS_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
+#define EFUSE_LOCKS_ADDR SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR
 
 // Read-lock bits in LOCKS (same mask as ROM fuse_lock.c):
 //   CLASS_KEY_READ_LOCK                     = bit 15
@@ -186,9 +186,9 @@ static int bl1_verify_bl0_state(void) {
 //   RMA_SIP_TOKEN_DIGEST_READ_LOCK          = bit 11
 #define FUSE_SECRET_READ_LOCK_MASK 0x0000A800u
 
-#define CLASS_KEY_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
-#define RMA_SIP_TOKEN_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
-#define RMA_CHIPLET_TOKEN_ADDR OCH_SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
+#define CLASS_KEY_ADDR SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
+#define RMA_SIP_TOKEN_ADDR SEP_TOP_SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_BASE_ADDR
+#define RMA_CHIPLET_TOKEN_ADDR SEP_TOP_SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_BASE_ADDR
 #define LOCKED_FIELD_READ_VALUE 0xBADCAB1Eu
 
 // Returns 0 if all secret fuse read-lock bits are set, nonzero on failure.
@@ -244,9 +244,9 @@ static int bl1_test_locked_field_reads(void) {
     return 0; // Success - all reads returned expected value
 }
 
-#define OBF_CONFIG OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
-#define OBF_START_ADDR OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
-#define OBF_END_ADDR OCH_SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
+#define OBF_CONFIG SEP_TOP_OUTBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0)
+#define OBF_START_ADDR SEP_TOP_OUTBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0)
+#define OBF_END_ADDR SEP_TOP_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0)
 
 static inline void bl1_outbound_filter_init(void) {
     // START_ADDR = 0x0000000080000000
@@ -280,7 +280,7 @@ static inline void bl1_outbound_filter_init(void) {
 // bl1_outbound_filter_init(); cold_scratch is a SEP register and works from
 // the first instruction, so the verdict goes there.
 // ---------------------------------------------------------------------------
-#define VERDICT_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
+#define VERDICT_ADDR SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define TEST_PASS_CODE 0xACAFACA1u
 #define TEST_FAIL_CODE 0xDEADBEEFu
 
@@ -311,10 +311,9 @@ __attribute__((section(".text.init"))) void _start(void) {
         }
         // Both terms are 4-byte aligned: the TOC image offset is 0x1000 and the
         // linker aligns .data's load address.
-        const uint32_t *s =
-            (const uint32_t *)(uintptr_t)(s0->bl1_image_src_addr +
-                                          ((uint32_t)(uintptr_t)&__data_load_start -
-                                           (uint32_t)OCH_SEP_TOP_SEP_ICCM_BASE_ADDR));
+        const uint32_t *s = (const uint32_t *)(uintptr_t)(s0->bl1_image_src_addr +
+                                                          ((uint32_t)(uintptr_t)&__data_load_start -
+                                                           (uint32_t)SEP_TOP_SEP_ICCM_BASE_ADDR));
         for (uint32_t *d = &__data_start; d < &__data_end; ++d, ++s) *d = *s;
     }
 

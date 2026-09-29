@@ -10,8 +10,9 @@
 ////////////////////////////////////////////////////////////////////////////
 
 addrmap ndm_reset {
+    name = "NDM Reset Control Address Map";
     desc = "Per-cluster NDM reset handshake with an external CPU cluster debug module";
-
+    
     reg NDMRESET_REQUEST {
         field {
             sw = r;

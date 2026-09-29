@@ -31,7 +31,7 @@ def pll_sys_clk_period_ns() -> float:
     sequences' wait-math, the clock the bench drives and a free-running model
     all agree.
     """
-    raw = cocotb.plusargs.get("pll_sys_period_ns")
+    raw = getattr(cocotb, "plusargs", {}).get("pll_sys_period_ns")
     if raw is None or raw is True:
         return PLL_SYS_CLK_PERIOD_NS_DEFAULT
     period = float(raw)

@@ -162,17 +162,17 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"]
 
 # AVS clock when sourced from PERIPHERALCLK (modes 00/01)
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"]
 
 # Same divided-clock intent on `u_clk_div/clk_o` (`pre_testmux_avs_clk`) so downstream
-# STA does not flag an undeclared setup clock when propagation from u_div_clk_stdbuf/y_o
+# STA does not flag an undeclared setup clock when propagation from u_div_clk_buf/clk_o
 # alone does not reach the module output pin (prim_prog_clk_div_posedge).
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_REFCLK \
     -master_clock REFCLK \
@@ -186,22 +186,22 @@ create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
-# Internal `div_clk` net (flop -> prim_stdbuf a_i): stamped so downstream STA can
+# Internal `div_clk` net (flop -> prim_clock_buf clk_i): stamped so downstream STA can
 # resolve the setup clock looking for a PotentialRoot at `div_clk`, matching the
 # energy already modeled at y_o.
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 4 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/a_i"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_i"]
 
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/a_i"]
+    [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_i"]
 
-# Toggle flop output (feeds u_div_clk_stdbuf and u_postdiv_mux clk1_i). See the
+# Toggle flop output (feeds u_div_clk_buf and u_postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
@@ -227,7 +227,7 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
     -master_clock AVS_CLK_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
@@ -239,13 +239,13 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLK_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_stdbuf/y_o"] \
+    -source [get_pins "${avs_hier}/u_clk_div/u_div_clk_buf/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 # CDC-only modeling: collapse the AVS-clock domain attribution downstream of
 # the programmable divider. Inside `prim_prog_clk_div_posedge`, the bypass
 # path (`u_postdiv_mux/clk0_i`) lets `AVS_CLKMUX_OUTPUT_*` propagate through to
-# `clk_o`, while the divided path stamps `AVS_CLK_FROM_*` at `u_div_clk_stdbuf/y_o`. The
+# `clk_o`, while the divided path stamps `AVS_CLK_FROM_*` at `u_div_clk_buf/clk_o`. The
 # net result is every downstream AVS-domain flop is attributed FOUR clocks
 # (mux-out + divided, each from REFCLK and PERIPHERALCLK roots), which a CDC
 # tool would otherwise report as multi-domain convergence at `interrupt_o`,

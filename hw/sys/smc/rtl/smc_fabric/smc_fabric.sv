@@ -1,112 +1,240 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Fabric
+// Compose the SMC interconnect fabric from its input, local and output stages.
+//
+// The input fabric alias-remaps the JTAG, CPU MMIO, log and data accelerator initiators and
+// filters system inbound AXI; SMC-window traffic, including SEP, goes to the local fabric
+// toward the CPU front port and SMC CSRs, and other traffic goes to the output fabric, which
+// applies the M-mode and Xvisor output remap and the outbound filter before the system AXI
+// output. Window decode uses the base-config global base, local base and region size.
 
 `include "axi/assign.svh"
+
 module smc_fabric #(
-  parameter bit          NO_ADDR_REMAP   = 1'b1,
-  parameter int unsigned SYS_IN_ID_WIDTH = 9,
+  parameter bit          NO_ADDR_REMAP   = 1'b1,  // Removes the output fabric's M-mode and
+                                                  // Xvisor output remap when the integration
+                                                  // map is fixed, replacing it with an
+                                                  // ID-width converter, which reduces area.
+                                                  // The input fabric's alias remap remains.
+  parameter int unsigned SYS_IN_ID_WIDTH = 9,  // Unused; the input fabric takes the system input ID
+                                               // width from smc_pkg::SYS_IN_ID_WIDTH.
 
-  parameter int unsigned NumInboundFilters       = 16,
-  parameter int unsigned NumOutboundFilters      = 16,
-  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,
-  parameter bit          FilterReqPipelineEnable = 1'b0,
-  parameter bit          FilterRspPipelineEnable = 1'b0
+  parameter int unsigned NumInboundFilters       = 16,  // Number of filter entries on the system
+                                                        // AXI input; sizes the inbound filter CSR
+                                                        // arrays and the input fabric hit-index
+                                                        // outputs.
+  parameter int unsigned NumOutboundFilters      = 16,  // Number of filter entries on the system
+                                                        // AXI output; sizes the outbound filter CSR
+                                                        // arrays and the output fabric hit-index
+                                                        // outputs.
+  parameter int unsigned MaxTrans                = smc_pkg::FABRIC_MAX_TRANS,  // Outstanding transactions per ID bucket
+                                                                               // tracked by the output fabric remap demux
+                                                                               // and mux; unused when NO_ADDR_REMAP is set.
+  parameter bit          FilterReqPipelineEnable = 1'b0,  // Adds spill registers on the request
+                                                          // channels at the inbound and outbound
+                                                          // filter boundaries, trading a cycle of
+                                                          // latency for easier timing closure.
+  parameter bit          FilterRspPipelineEnable = 1'b0  // Adds spill registers on the response
+                                                         // channels at the inbound and outbound
+                                                         // filter boundaries, trading a cycle of
+                                                         // latency for easier timing closure.
 ) (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic test_en_i,
-  input  logic scan_rst_ni,
+  input  logic clk_i,                   // SMC core clock.
+  input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
+                                        // clock.
+  input  logic test_en_i,               // Scan test mode enable, active-high; forwarded to the
+                                        // fabric stages and forces their clock gates on.
+  input  logic scan_rst_ni,             // Scan reset, active-low; forwarded to the input fabric,
+                                        // which does not use it.
 
-  // Configuration
-  input  smc_pkg::smc_axi_addr_t global_base_addr_i,
-  input  smc_pkg::smc_axi_addr_t local_base_addr_i,
-  input  logic [31:0]            region_size_i,
+  input  smc_pkg::smc_axi_addr_t global_base_addr_i,  // Global base address of the SMC address
+                                                      // window, from the base-config registers; the
+                                                      // input and output fabrics decode SMC
+                                                      // accesses against it.
+  input  smc_pkg::smc_axi_addr_t local_base_addr_i,  // Local base address of the SMC address
+                                                     // window, from the base-config registers; the
+                                                     // input and output fabrics also decode SMC
+                                                     // accesses against it, and the local fabric
+                                                     // rebases every request onto it.
+  input  logic [31:0]            region_size_i,  // Size in bytes of the SMC address window at
+                                                 // either base, a power of two by software
+                                                 // contract.
 
-  // Clock Gating
-  input  logic                ob_filter_axi_cg_en_i,
-  input  logic                ib_filter_axi_cg_en_i,
-  input  logic                fabric_cg_en_i,
-  input  smc_pkg::cg_hyster_t cg_hysteresis_i,
+  input  logic                ob_filter_axi_cg_en_i,  // Enables clock gating of the system outbound
+                                                      // filter, active-high; low keeps its clock
+                                                      // running.
+  input  logic                ib_filter_axi_cg_en_i,  // Enables clock gating of the system inbound
+                                                      // filter, active-high; low keeps its clock
+                                                      // running.
+  input  logic                fabric_cg_en_i,  // Enables clock gating of the output fabric remap
+                                               // demux and mux, active-high; low keeps their clock
+                                               // running. Unused when NO_ADDR_REMAP is set.
+  input  smc_pkg::cg_hyster_t cg_hysteresis_i,  // Idle SMC core clock cycles the fabric and filter
+                                                // clock gates wait after their bus goes quiet
+                                                // before stopping the gated clock.
 
-  // Input Fabric interfaces
-  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t          axi_in_jtag_req_i,
-  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t         axi_in_jtag_resp_o,
-  input  smc_pkg::smc_cpu_mmio_axi_req_t                 axi_in_mmio_req_i,
-  output smc_pkg::smc_cpu_mmio_axi_resp_t                axi_in_mmio_resp_o,
-  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,
-  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,
-  input  smc_pkg::smc_axil_56_64_req_t                   axi_lite_log_req_i,
-  output smc_pkg::smc_axil_56_64_resp_t                  axi_lite_log_resp_o,
+  input  smc_pkg::smc_jtag_56_64_2_12_axi_req_t          axi_in_jtag_req_i,  // JTAG AXI request into the
+                                                                             // input fabric, which widens
+                                                                             // its ID and alias-remaps it.
+  output smc_pkg::smc_jtag_56_64_2_12_axi_resp_t         axi_in_jtag_resp_o,  // JTAG AXI response from the
+                                                                              // input fabric.
+  input  smc_pkg::smc_cpu_mmio_axi_req_t                 axi_in_mmio_req_i,  // CPU MMIO AXI request into the
+                                                                             // input fabric, which widens
+                                                                             // its ID and alias-remaps it.
+  output smc_pkg::smc_cpu_mmio_axi_resp_t                axi_in_mmio_resp_o,  // CPU MMIO AXI response from the
+                                                                              // input fabric.
+  input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_data_accel_req_i,  // Data accelerator AXI request
+                                                                                   // into the input fabric, which
+                                                                                   // alias-remaps it.
+  output smc_pkg::smc_input_fabric_56_64_4_12_axi_resp_t axi_in_data_accel_resp_o,  // Data accelerator AXI response
+                                                                                    // from the input fabric.
+  input  smc_pkg::smc_axil_56_64_req_t                   axi_lite_log_req_i,  // Log engine AXI-Lite request
+                                                                              // into the input fabric, which
+                                                                              // converts it to AXI and
+                                                                              // alias-remaps it.
+  output smc_pkg::smc_axil_56_64_resp_t                  axi_lite_log_resp_o,  // Log engine AXI-Lite response
+                                                                               // from the input fabric.
 
-  // System AXI Input
-  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,
-  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,
+  input  smc_pkg::smc_sys_in_56_64_6_12_axi_req_t  sys_axi_in_req_i,  // System AXI input request;
+                                                                      // passes the inbound filter,
+                                                                      // and outside the SMC window
+                                                                      // receives DECERR.
+  output smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t sys_axi_in_resp_o,  // System AXI input response.
 
-  // SEP AXI Input
-  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,
-  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,
+  input  smc_pkg::smc_sep_in_56_64_6_12_axi_req_t  sep_axi_in_req_i,  // SEP AXI input request;
+                                                                      // unfiltered, and outside the
+                                                                      // SMC window receives DECERR.
+  output smc_pkg::smc_sep_in_56_64_6_12_axi_resp_t sep_axi_in_resp_o,  // SEP AXI input response.
 
-  // Local Fabric interfaces to peripherals
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t  axi_front_port_req_o,
-  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t axi_front_port_rsp_i,
-  output smc_pkg::smc_dfd_apb_req_t               apb_smc_dfd_reg_req_o,
-  input  smc_pkg::smc_dfd_apb_resp_t              apb_smc_dfd_reg_resp_i,
-  output smc_pkg::smc_local_32_64_8_12_axi_req_t  axi_data_accel_ctrl_req_o,
-  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t axi_data_accel_ctrl_rsp_i,
-  output smc_pkg::smc_axil_32_32_req_t            axil_peripherals_req_o,
-  input  smc_pkg::smc_axil_32_32_resp_t           axil_peripherals_resp_i,
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t  axi_front_port_req_o,  // AXI request from the local
+                                                                         // fabric to the CPU cluster's
+                                                                         // front port.
+  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t axi_front_port_rsp_i,  // AXI response from the CPU
+                                                                         // cluster's front port.
+  output smc_pkg::smc_dfd_apb_req_t               apb_smc_dfd_reg_req_o,  // APB request from the local
+                                                                          // fabric for the SMC CLA (DFD)
+                                                                          // register window.
+  input  smc_pkg::smc_dfd_apb_resp_t              apb_smc_dfd_reg_resp_i,  // APB response from the SMC
+                                                                           // CLA (DFD) registers.
+  output smc_pkg::smc_local_32_64_8_12_axi_req_t  axi_data_accel_ctrl_req_o,  // AXI request from the local
+                                                                              // fabric to the data
+                                                                              // accelerator's control port.
+  input  smc_pkg::smc_local_32_64_8_12_axi_resp_t axi_data_accel_ctrl_rsp_i,  // AXI response from the data
+                                                                              // accelerator's control port.
+  output smc_pkg::smc_axil_32_32_req_t            axil_peripherals_req_o,  // 32-bit AXI-Lite request from
+                                                                           // the local fabric to the
+                                                                           // peripheral CSR crossbar.
+  input  smc_pkg::smc_axil_32_32_resp_t           axil_peripherals_resp_i,  // 32-bit AXI-Lite response from
+                                                                            // the peripheral CSR crossbar.
 
-  output smc_pkg::smc_axil_32_64_req_t  axil_aR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_aR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_mR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_mR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_xR_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_xR_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_inbound_filter_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_inbound_filter_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_outbound_filter_ctrl_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp_i,
-  output smc_pkg::smc_axil_32_64_req_t  axil_dfx_csr_req_o,
-  input  smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_i,
+  output smc_pkg::smc_axil_32_64_req_t  axil_aR_ctrl_req_o,  // AXI-Lite request for the alias remap
+                                                             // control registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_aR_ctrl_resp_i,  // AXI-Lite response from the alias
+                                                              // remap control registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_mR_ctrl_req_o,  // AXI-Lite request for the M-mode
+                                                             // output remap control registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_mR_ctrl_resp_i,  // AXI-Lite response from the M-mode
+                                                              // output remap control registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_xR_ctrl_req_o,  // AXI-Lite request for the Xvisor
+                                                             // output remap control registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_xR_ctrl_resp_i,  // AXI-Lite response from the Xvisor
+                                                              // output remap control registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_inbound_filter_ctrl_req_o,  // AXI-Lite request for the
+                                                                         // inbound filter control
+                                                                         // registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_inbound_filter_ctrl_resp_i,  // AXI-Lite response from the
+                                                                          // inbound filter control
+                                                                          // registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_outbound_filter_ctrl_req_o,  // AXI-Lite request for the
+                                                                          // outbound filter control
+                                                                          // registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_outbound_filter_ctrl_resp_i,  // AXI-Lite response from the
+                                                                           // outbound filter control
+                                                                           // registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_mailbox_req_o,  // AXI-Lite request for the SMC mailbox
+                                                             // window.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_mailbox_resp_i,  // AXI-Lite response from the SMC
+                                                              // mailbox.
+  output smc_pkg::smc_axil_32_64_req_t  axil_smc_base_config_req_o,  // AXI-Lite request for the SMC base
+                                                                     // configuration registers.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_smc_base_config_resp_i,  // AXI-Lite response from the SMC
+                                                                      // base configuration registers.
+  output smc_pkg::smc_axil_32_64_req_t  axil_dfx_csr_req_o,  // AXI-Lite request for the DFX control
+                                                             // register window.
+  input  smc_pkg::smc_axil_32_64_resp_t axil_dfx_csr_resp_i,  // AXI-Lite response from the DFX
+                                                              // control registers.
 
-  // Output Fabric interfaces
-  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,
-  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,
+  output smc_pkg::smc_sys_out_56_64_8_12_axi_req_t  axi_filtered_remapped_req_o,  // System AXI output
+                                                                                  // request from the
+                                                                                  // output fabric, after
+                                                                                  // output remap and the
+                                                                                  // outbound filter.
+  input  smc_pkg::smc_sys_out_56_64_8_12_axi_resp_t axi_filtered_remapped_resp_i,  // System AXI output
+                                                                                   // response.
 
-  // CSR structs for filter configurations
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_i [NumOutboundFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_o [NumOutboundFilters-1:0],
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_i [NumInboundFilters-1:0],
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_o [NumInboundFilters-1:0],
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t outbound_filter_ctrl_i [NumOutboundFilters-1:0],  // Per-entry
+                                                                                                   // configuration
+                                                                                                   // of the system
+                                                                                                   // outbound filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  outbound_filter_status_o [NumOutboundFilters-1:0],  // Per-entry
+                                                                                                     // status of the
+                                                                                                     // system outbound
+                                                                                                     // filter.
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t inbound_filter_ctrl_i [NumInboundFilters-1:0],  // Per-entry
+                                                                                                 // configuration
+                                                                                                 // of the system
+                                                                                                 // inbound filter.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  inbound_filter_status_o [NumInboundFilters-1:0],  // Per-entry
+                                                                                                   // status of the
+                                                                                                   // system inbound
+                                                                                                   // filter.
 
-  // CSR structs for remap configurations
-  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],
-  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],
-  input  alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],
+  input  output_remap_reg_pkg::output_remap__out_t mR_ctrl_i [smc_pkg::NUM_MMODE_OUTPUT_REMAP_REGIONS-1:0],  // M-mode output
+                                                                                                             // remap region
+                                                                                                             // configuration.
+  input  output_remap_reg_pkg::output_remap__out_t xR_ctrl_i [smc_pkg::NUM_XVISOR_OUTPUT_REMAP_REGIONS-1:0],  // Xvisor output
+                                                                                                              // remap region
+                                                                                                              // configuration.
+  input  alias_remap_reg_pkg::alias_remap__out_t   aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap
+                                                                                                      // region
+                                                                                                      // configuration.
 
-  // Debug outputs
-  output smc_pkg::remap_debug_t                 remap_debug_mmio_o,
-  output smc_pkg::remap_debug_t                 remap_debug_jtag_o,
-  output smc_pkg::remap_debug_t                 remap_debug_log_o,
-  output smc_pkg::remap_debug_t                 remap_debug_dma_o,
-  output logic [$clog2(NumInboundFilters)-1:0]  outbound_write_filter_hit_debug_o,
-  output logic [$clog2(NumInboundFilters)-1:0]  outbound_read_filter_hit_debug_o,
-  output logic [$clog2(NumOutboundFilters)-1:0] inbound_write_filter_hit_debug_o,
-  output logic [$clog2(NumOutboundFilters)-1:0] inbound_read_filter_hit_debug_o,
+  output smc_pkg::remap_debug_t                 remap_debug_mmio_o,  // Alias region index hit by the MMIO
+                                                                     // path.
+  output smc_pkg::remap_debug_t                 remap_debug_jtag_o,  // Alias region index hit by the JTAG
+                                                                     // path.
+  output smc_pkg::remap_debug_t                 remap_debug_log_o,  // Alias region index hit by the log
+                                                                    // path.
+  output smc_pkg::remap_debug_t                 remap_debug_dma_o,  // Alias region index hit by the data
+                                                                    // accelerator path.
+  output logic [$clog2(NumInboundFilters)-1:0]  outbound_write_filter_hit_debug_o,  // Write hit index of the
+                                                                                    // system inbound filter
+                                                                                    // in the input fabric;
+                                                                                    // tied to zero.
+  output logic [$clog2(NumInboundFilters)-1:0]  outbound_read_filter_hit_debug_o,  // Read hit index of the
+                                                                                   // system inbound filter
+                                                                                   // in the input fabric;
+                                                                                   // tied to zero.
+  output logic [$clog2(NumOutboundFilters)-1:0] inbound_write_filter_hit_debug_o,  // Write hit index of the
+                                                                                   // system outbound filter
+                                                                                   // in the output fabric;
+                                                                                   // tied to zero.
+  output logic [$clog2(NumOutboundFilters)-1:0] inbound_read_filter_hit_debug_o,  // Read hit index of the
+                                                                                  // system outbound filter
+                                                                                  // in the output fabric;
+                                                                                  // tied to zero.
 
-  // Clock gater activity indicators
-  output logic fabric_clk_active_o,
-  output logic fabric_bus_active_o,
-  output logic sys_out_filter_clk_active_o,
-  output logic sys_out_filter_bus_active_o,
-  output logic sys_in_filter_clk_active_o,
-  output logic sys_in_filter_bus_active_o
+  output logic fabric_clk_active_o,     // High while the output fabric remap clock runs; low when
+                                        // NO_ADDR_REMAP is set.
+  output logic fabric_bus_active_o,     // High while the output fabric input has a request valid or
+                                        // a transaction outstanding; low when NO_ADDR_REMAP is set.
+  output logic sys_out_filter_clk_active_o,  // High while the system outbound filter clock runs.
+  output logic sys_out_filter_bus_active_o,  // High while the system outbound filter input has a
+                                             // request valid or a transaction outstanding.
+  output logic sys_in_filter_clk_active_o,  // High while the system inbound filter clock runs.
+  output logic sys_in_filter_bus_active_o  // High while the system AXI input has a request valid
+                                           // or a transaction outstanding.
 );
 
   // Internal signals for fabric interconnections

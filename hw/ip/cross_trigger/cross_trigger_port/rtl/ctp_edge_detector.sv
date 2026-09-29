@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//------------------------------------------------------------------------------
-// Cross Trigger Port Edge Detector Module
+// Detect rising edges on an already-synchronized CTP request.
 //
-// Description:
-// Detects positive edges on the synchronized cross trigger request input signal
-// for point-to-point mode. Outputs a registered pulse on positive edge detection.
-//------------------------------------------------------------------------------
-
+// Uses prim_edge_detector with EnSync disabled because signal_i is pre-synchronized; the
+// primitive registers the previous level and derives the edge pulse combinationally from
+// signal_i.
 
 module ctp_edge_detector (
-  input  logic clk_i,
-  input  logic rst_ni,
+  input  logic clk_i,                   // System clock.
+  input  logic rst_ni,                  // Active-low asynchronous reset; clears the stored previous
+                                        // level.
 
-  // Synchronized input signal
-  input  logic signal_i,
+  input  logic signal_i,                // Level to edge-detect, already synchronized to clk_i and
+                                        // polarity-corrected (the CT_Req_in pad input in the port
+                                        // core).
 
-  // Positive edge pulse output (registered)
-  output logic posedge_pulse_o
+  output logic posedge_pulse_o          // One-cycle pulse on each rising edge of signal_i,
+                                        // combinational from signal_i; not consumed in
+                                        // cross_trigger_port_core.
 );
 
   // Use prim_edge_detector with synchronization disabled since input is already synchronized

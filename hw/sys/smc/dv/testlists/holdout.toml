@@ -19,7 +19,9 @@ schema_version = 1
 #     regress.yml), green while the defects stand and red the week one is
 #     fixed; the leaf then moves back to its feature testlist without the
 #     `expect_fail` pair. No `ci` tag: a graded expected failure must never
-#     count in the hosted set. One test per defect.
+#     count in the hosted set. One test per defect. The group currently holds
+#     `smc_filter_lock_window_test` and `smc_isolate_req_smc_lane_test`.
+#     `smc_deadspace_decode_test` left it and runs from `fabric.toml`.
 #   * `occp_boot` / `occp_dual` -- held out on runtime. The production ROM's
 #     whole reset-to-OCCP path (`run_modes = ["prod_rom"]`, 3600 s) and the
 #     dual-SMC unsecure boot (hours of wall clock while a full sram image
@@ -35,22 +37,6 @@ schema_version = 1
 #
 # `ci` marks the leaves a hosted runner can run to PASS; no entry here carries
 # it.
-
-[[tests]]
-# Dead offsets inside seven register windows wrap onto live registers and the
-# bus answers OKAY (wrap_to_live=7 read_alias=6 of 8 checkable probes): the
-# wrapper truncates to the PeakRDL address width before any range check, so
-# 0xC001_6208 lands on outbound filter 0 START_ADDR, 0xC000_A04C on
-# TIMER_PRESET_LO, and so on. OKAY-into-void with the live register untouched
-# is tallied, not asserted -- see the sequence docstring for the scope.
-name = "smc_deadspace_decode_test"
-module = "smc_deadspace_decode_test"
-seed = 1
-timeout_sec = 1800
-tags = ["rtl_issue"]
-run_modes = ["smoke"]
-expect_fail = "#585: dead offsets in seven register windows wrap onto live registers with an OKAY response"
-expect_fail_match = "aliased live registers \\(wrap_to_live=[1-9][0-9]* read_alias="
 
 [[tests]]
 # A write queued right behind the write that locks a filter reaches filter_ctrl
@@ -137,9 +123,8 @@ run_modes = ["smoke"]
 [[groups]]
 # Filed-defect reproducers; the weekly tier's own row.
 name = "rtl_issue"
-expected_count = 3
+expected_count = 2
 tests = [
-    "smc_deadspace_decode_test",
     "smc_filter_lock_window_test",
     "smc_isolate_req_smc_lane_test",
 ]

@@ -9,6 +9,8 @@
 `include "uart_log_engine_ctrl.rdl"
 
 addrmap uart_log_engine_wrap {
+    name = "UART Log Engine Wrapper Address Map";
+    desc = "Composes the UART 16550 core, log engine, and their control registers for one UART instance.";
 
     /////////////////
     // Address Map //
