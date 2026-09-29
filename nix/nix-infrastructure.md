@@ -38,15 +38,21 @@ Currently the flake defines the following outputs:
   - `with_uv_deps` — All dependencies including `uv` packages. Useful for
     air-gapped systems where the image is the only package source.
 - `formatter.${system}` — Code formatter run with `nix fmt`.
-    
 
 ### `.envrc`
 
-This provides integration with [direnv](https://github.com/direnv/direnv), to automatically load the default development shell upon entering the project directory. To enable this, install direnv, enter the directory and run `direnv allow`.
+This provides integration with [direnv](https://github.com/direnv/direnv), to
+automatically load the default development shell upon entering the project
+directory. To enable this, install direnv, enter the directory and run
+`direnv allow`.
 
 ### Updating Inputs
 
-The `flake.lock` file in the repository root locks the flake inputs to provide a reproducible build. However, this means that the inputs must be updated manually to move to newer versions of packages. This can be achieved by running the following command - note that this will update the hashes of the containers - see [Containers](#containers).
+The `flake.lock` file in the repository root locks the flake inputs to provide
+a reproducible build. However, this means that the inputs must be updated
+manually to move to newer versions of packages. This can be achieved by
+running the following command - note that this will update the hashes of the
+containers - see [Containers](#containers).
 
 ```bash
 # leave input to update blank for all inputs
@@ -55,7 +61,8 @@ nix flake update [optional input to update]
 
 ## Dependencies
 
-The package dependencies of OCAH are defined in [`ocah_deps.nix`](../ocah_deps.nix). This file uses the following structure:
+The package dependencies of OCAH are defined in
+[`ocah_deps.nix`](../ocah_deps.nix). This file uses the following structure:
 
 ```nix
 ...
@@ -83,7 +90,8 @@ The package dependencies of OCAH are defined in [`ocah_deps.nix`](../ocah_deps.n
 }
 ```
 
-This should be straightforward to modify when needed to allow additional packages/environment variables to be set.
+This should be straightforward to modify when needed to allow additional
+packages/environment variables to be set.
 
 ### Custom packages
 
@@ -100,7 +108,12 @@ version.
 
 ## Containers
 
-The repository is able to build two different containers (`ocah-container` and `ocah-uv-container`). The container builds are defined in [nix/container.nix](./container.nix). This Loads the OCAH Dependencies described [above](#dependencies), and outputs a container configuration and hash. The container hashes are pinned to the x86_64-linux build hash for all build platforms, for consistency.
+The repository is able to build two different containers (`ocah-container` and
+`ocah-uv-container`). The container builds are defined in
+[nix/container.nix](./container.nix). This Loads the OCAH Dependencies described
+[above](#dependencies), and outputs a container configuration and hash. The
+container hashes are pinned to the x86_64-linux build hash for all build
+platforms, for consistency.
 
 The containers also include standard utilities for interactive development.
 Use `OCAH_IMAGE_WITH_UV=true` to select the `with_uv_deps` variant (default:
@@ -138,4 +151,5 @@ temporarily):
 tar -xOf <nix-container-image.tar.gz> manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'
 ```
 
-Note that container tags and names may be trivially faked - so this is not a security check. A trusted image may only be obtained by building it yourself.
+Note that container tags and names may be trivially faked - so this is not a
+security check. A trusted image may only be obtained by building it yourself.
