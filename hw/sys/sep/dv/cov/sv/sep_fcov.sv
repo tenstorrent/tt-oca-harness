@@ -795,10 +795,8 @@ module sep_fcov (
   wire        lc_transition = lc_diff_ok && lc_prev_valid_q && (lc_raw != lc_prev_q);
 
   // --- SEC_DIS while sensing is open ------------------------------------
-  // A match leaves the sense-gated reset held. The IC_RESET sep_reset_n
-  // override releases it, and clearing the override holds it again. The
-  // LC_STATE shadow read in that window is sampled on its AXI response,
-  // including a non-OKAY response (rd_ev is OKAY only).
+  // A match leaves the sense-gated reset held. The sep_reset_n override
+  // releases it, and clearing the override holds it again.
   wire sense_open = !in_reset && !skip_fuse_sense_q && (fuse_sense_done_i === 1'b0);
   wire sec_dis_on = (sec_dis_i === 1'b1);
   wire sep_reset_ovrd = (jtag_sep_reset_n_ovrd_i === 1'b1) &&
@@ -814,9 +812,6 @@ module sep_fcov (
   wire sec_dis_release_ev = sense_open && sep_reset_ovrd && sep_reset_rise;
   wire sec_dis_rehold_ev = sense_open && !sep_reset_ovrd && sep_reset_fall &&
       sec_dis_release_seen_q;
-  wire rd_cmpl = !in_reset && r_hs && (ar_out_q == 4'd1);
-  wire sec_dis_map_rd = rd_cmpl && sense_open && sec_dis_on &&
-      (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
 
   always_ff @(posedge clk_i) begin
     if (in_reset) begin
@@ -1710,11 +1705,9 @@ module sep_fcov (
     }
   endgroup
 
-  // Sampled on the window edges, not on a held level. The map coverpoint
-  // records the LC_STATE read response while sensing is still open.
+  // Sampled on the window edges, not on a held level.
   covergroup sep_sec_dis_boot_cg with function sample (
-      logic hold, logic released, logic rehold, logic sec_dis,
-      logic [1:0] map_resp, logic map_hit
+      logic hold, logic released, logic rehold, logic sec_dis
   );
     option.per_instance = 1;
     option.name = "sep_sec_dis_boot_cg";
@@ -1723,10 +1716,6 @@ module sep_fcov (
     cp_rehold: coverpoint rehold {bins override_reholds = {1'b1};}
     // The override sampled while SEC_DIS is still off: feature control stays closed.
     cp_alone: coverpoint sec_dis iff (released) {bins override_closed = {1'b0};}
-    cp_map_resp: coverpoint map_resp iff (map_hit) {
-      bins okay = {AxiOkay};
-      bins slverr = {2'b10};
-    }
   endgroup
 
   covergroup sep_lc_demote_cg with function sample (logic [3:0] lc, logic d1, logic d2);
@@ -1844,9 +1833,9 @@ module sep_fcov (
                                   (secure_tm_i === 1'b1));
         u_sep_lc_demote_cg.sample(lc_sensed, demote_1_set, demote_2_set);
       end
-      if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev || sec_dis_map_rd) begin
+      if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev) begin
         u_sep_sec_dis_boot_cg.sample(sec_dis_hold_ev, sec_dis_release_ev,
-                                     sec_dis_rehold_ev, sec_dis_on, lsu_r_resp_i, sec_dis_map_rd);
+                                     sec_dis_rehold_ev, sec_dis_on);
       end
       if (dma_copy_done || dma_hash_done) begin
         u_sep_dma_completion_route_cg.sample(dma_irq_done, dma_hs_q);

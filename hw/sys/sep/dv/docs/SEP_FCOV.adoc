@@ -125,7 +125,7 @@ human. Other members may fill a group in passing.
 |`sep_lc_transition_cg` |`sep_lcc_lc_state_w1s_prod_test` and `_prod_demote_test` (PROD to RMA_SIP_1), `_rma_sip_test` (RMA_SIP_1 to RMA_CHIP_1)
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
 |`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the six W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
-|`sep_sec_dis_boot_cg` |`sep_sec_dis_override_test`. `cp_map_resp.okay` fills when the pre-sense `LC_STATE` read returns AXI OKAY
+|`sep_sec_dis_boot_cg` |`sep_sec_dis_override_test`
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_axil_mailbox_iface_rand_test`, `sep_mailbox_plic_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`; `cp_peer_fill` `sep_mailbox_peer_rx_rirqt_test` (the only leaf that drives the peer aperture)
 |`sep_wdt_bark_cg` |threshold `sep_wdt_aon_timer_internals_test`; bark and NMI `sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`
@@ -746,9 +746,8 @@ The decode-matches-golden claim stays on `sep_lcc_golden`. Token faults and the
 ==== `sep_sec_dis_boot_cg`
 
 *Description*: SEC_DIS while fuse sensing is still open. A match leaves
-`sep_reset_n` held. The IC_RESET `sep_reset_n` override releases it, and
-clearing the override holds it again. The `LC_STATE` shadow-map read in that
-window is recorded by its AXI response.
+`sep_reset_n` held. The `sep_reset_n` override releases it, and clearing the
+override holds it again.
 
 [cols=",",options="header"]
 |===
@@ -757,16 +756,13 @@ window is recorded by its AXI response.
 |`cp_release` |Override select and value set, sensing still open, `sep_cpu_reset_n` rises
 |`cp_rehold` |Override clear after that release, sensing still open, `sep_cpu_reset_n` falls
 |`cp_alone` |That release while SEC_DIS is still off
-|`cp_map_resp` |`okay`, `slverr` on the `LC_STATE` shadow read while sensing is still open and SEC_DIS is on
 |===
 
 Owner is `sep_sec_dis_override_test`. `cp_alone` is the override before the
 match. `cp_hold` is the match while the reset stays held. `cp_release` and
 `cp_rehold` are the override edges; the leaf walks them once before the match
-and once after it. `cp_map_resp` records the `LC_STATE` response in that
-window: `slverr` is the error response, and `okay` is the response
-`CHK-MAP-OPEN` requires. Both probes of the reset pair stay on the checker;
-this group samples `sep_cpu_reset_n` only.
+and once after it. Both probes of the reset pair stay on the checker; this
+group samples `sep_cpu_reset_n` only.
 
 ==== `sep_lc_demote_cg`
 

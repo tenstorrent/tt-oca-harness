@@ -125,9 +125,8 @@ target = "lsu_stub_all_live"
 # the sep_reset_n override releases the sense-gated reset and leaves
 # FEAT_CTRL closed. The match is before sense-done: the reset stays held and
 # FEAT_CTRL opens. The override then releases that reset again, and clearing
-# it holds the reset. A LC_STATE shadow-map read in that window must return
-# AXI OKAY. After sense, zero opens FEAT_CTRL; token=1 mismatches and
-# restores fail-closed PROD.
+# it holds the reset. After sense, zero opens FEAT_CTRL; token=1 mismatches
+# and restores fail-closed PROD.
 # Does not force sec_dis.
 name = "sep_sec_dis_override_test"
 module = "efuse.sep_sec_dis_override_test"

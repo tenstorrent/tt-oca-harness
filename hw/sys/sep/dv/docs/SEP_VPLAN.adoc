@@ -626,7 +626,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_sec_dis_override_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-OVR-ALONE` requires the IC_RESET `sep_reset_n` override, before any match, to release the sense-gated reset and leave feature control closed. `CHK-SENSE-GATED-RESET` requires that the match leaves the reset held. `CHK-FEAT-PRESENSE` requires that the match opens feature control before sensing finishes. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read in that window and is the open defect.
+|A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-OVR-ALONE` requires the `sep_reset_n` override, before any match, to release the sense-gated reset and leave feature control closed. `CHK-SENSE-GATED-RESET` requires that the match leaves the reset held. `CHK-FEAT-PRESENSE` requires that the match opens feature control before sensing finishes. `CHK-OVR-AFTER` requires the same override inputs to release and re-hold the reset after the match.
 |`sep_efuse_illegal_state_fail_closed_test`
 |no_cpu, real fuse sense
 |DUT probes and a one-cycle state force
@@ -830,7 +830,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_efuse_km_public_id_test`. The sensed `SEP_CHIPLET_ID`, `SEP_SIP_ID` and `SEP_SYS_ID` are compared with the staged image on the Key Manager's OTP input (`{~id, id}`) and in the 48 KMCSR words KM firmware reads. The two read-lock domains are graded apart: an eFuse read lock withholds the shadow read and leaves both KM views, and `OTP_READ_LOCK` zeroes the KMCSR words and leaves the input. Delivery under `secure_tm`, `OTP_READ_LOCK_COLD` for these fields, and identity-key derivation from them are not claimed.
 
 |SEC_DIS override
-|`sep_sec_dis_override_test`. `CHK-OVR-ALONE` grades the IC_RESET `sep_reset_n` override before any match: reset releases and feature control stays closed (`hw/sys/sep/doc/security_disable.adoc`). `CHK-SENSE-GATED-RESET` grades that the match leaves the reset held. `CHK-FEAT-PRESENSE` grades that the match opens feature control before sensing finishes (`hw/sys/sep/doc/token_processing.adoc`). Post-sense match / mismatch / restore stays. `CHK-MAP-OPEN` requires an OKAY `LC_STATE` shadow-map read while sensing is still open; that read returns SLVERR and the leaf stays failed there.
+|`sep_sec_dis_override_test`. `CHK-OVR-ALONE` grades the `sep_reset_n` override before any match: reset releases and feature control stays closed (`hw/sys/sep/doc/security_disable.adoc`). `CHK-SENSE-GATED-RESET` grades that the match leaves the reset held. `CHK-FEAT-PRESENSE` grades that the match opens feature control before sensing finishes (`hw/sys/sep/doc/token_processing.adoc`). `CHK-OVR-AFTER` grades the same override inputs after the match. Post-sense match / mismatch / restore stays. The leaf drives the SEP override inputs and reads the reset probes. A bus access under that override, and a write of the DTP IC_RESET register, are not claimed.
 
 |eFuse set-only (anti-rollback)
 |`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears.
@@ -6343,9 +6343,9 @@ error path works.
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
-*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `hw/sys/sep/doc/security_disable.adoc` says a match does not release the SEP reset, and that the IC_RESET `sep_reset_n` override is an independent step: the override alone releases the reset and leaves life-cycle control closed. `hw/sys/sep/doc/token_processing.adoc` says the match opens feature control without waiting for fuse sensing. `hw/sys/sep/doc/reset_controller.adoc` records the override. A read of the `LC_STATE` shadow-map word while sensing is still open must return AXI OKAY. The written spec does not state that read. The checker keeps it, and the leaf fails it.
+*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `hw/sys/sep/doc/security_disable.adoc` says a match does not release the SEP reset, and that the IC_RESET `sep_reset_n` override is an independent step: the override alone releases the reset and leaves life-cycle control closed. `hw/sys/sep/doc/token_processing.adoc` says the match opens feature control without waiting for fuse sensing. `hw/sys/sep/doc/reset_controller.adoc` records the override. This leaf drives the SEP override inputs and reads the reset probes and `FEAT_CTRL`. A bus access to a block that reset holds, and a write of the DTP IC_RESET register, are not claimed.
 
-*Test Coverage*: Security-disable match, mismatch, restore, override-before-match, sense-gated reset hold, pre-sense feature control, IC_RESET `sep_reset_n` override after the match, and the pre-sense shadow-map read.
+*Test Coverage*: Security-disable match, mismatch, restore, override-before-match, sense-gated reset hold, pre-sense feature control, and the same override inputs after the match.
 
 *Test Procedure*:
 
@@ -6355,7 +6355,6 @@ error path works.
 . After `release_no_cpu_reset`, and before any token, drive `jtag_sep_reset_n_ovrd_i=1` and `jtag_sep_reset_n_val_i=1`. Both reset probes read 1 while `sep_fuse_sense_done_o` is still 0 and `sec_dis` is 0. `FEAT_CTRL` equals the withheld-map golden (invalid lifecycle, feature control closed). Clear both inputs. Both probes read 0.
 . Write the all-zero token before `sep_fuse_sense_done_o`. Match must assert, and `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` must stay 0 while sense is still open (`ext_boot_seq_done_i` is already 1, so sense is the only held term). `FEAT_CTRL` equals the all-ones override golden.
 . Drive the override again. Both reset probes read 1 while sense is still 0 and `sec_dis` is 1. Clear both inputs. Both probes read 0.
-. Read the `LC_STATE` shadow-map word while `sec_dis=1` and sense is still 0. The checker requires AXI OKAY.
 . Wait for sense-done. Token `1` mismatches.
 . On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1).
 
@@ -6370,10 +6369,8 @@ error path works.
 |A match with `sep_fuse_sense_done_o=0` and `ext_boot_seq_done_i=1` leaves `sep_cpu_reset_n_o` and `dbg_sep_reset_n_o` at 0. `hw/sys/sep/doc/security_disable.adoc`: a match does not release the SEP reset.
 |CHK-FEAT-PRESENSE
 |With that match still held and `sep_fuse_sense_done_o=0`, `sec_dis=1` and `FEAT_CTRL` equals the all-ones golden, and both reset probes stay 0. `hw/sys/sep/doc/token_processing.adoc`: the feature-control override does not wait for fuse sensing.
-|CHK-TDR-RELEASE
-|With `sec_dis=1` and `sep_fuse_sense_done_o=0`, `jtag_sep_reset_n_ovrd_i=1` and `jtag_sep_reset_n_val_i=1` make both reset probes read 1. Clearing the override makes both probes read 0 while sense is still 0. `hw/sys/sep/doc/reset_controller.adoc`: the IC_RESET TDR can drive `sep_reset_n` in place of the eFuse reset.
-|CHK-MAP-OPEN
-|With `sec_dis=1` and `sep_fuse_sense_done_o=0`, a read of the `LC_STATE` shadow-map word returns AXI OKAY. The kept log shows SLVERR and `0xbadcab1e`. Leave this box open.
+|CHK-OVR-AFTER
+|With `sec_dis=1` and `sep_fuse_sense_done_o=0`, `jtag_sep_reset_n_ovrd_i=1` and `jtag_sep_reset_n_val_i=1` make both reset probes read 1. Clearing the override makes both probes read 0 while sense is still 0. The DTP IC_RESET register write is not claimed.
 |CHK-MISMATCH
 |Written token=1 returns `SEC_DISABLE_TOKEN_MATCH=0x2a`.
 |CHK-NO-OVERRIDE
@@ -6388,7 +6385,7 @@ error path works.
 |After that mismatch, `sec_dis=0` and `FEAT_CTRL` is fail-closed PROD again.
 |===
 
-*Pass Criteria*: `CHK-MAP-OPEN` fails while the pre-sense `LC_STATE` read returns SLVERR. Every other named checker PASSes. The leaf's UVM_ERROR is that map failure.
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 '''''
 

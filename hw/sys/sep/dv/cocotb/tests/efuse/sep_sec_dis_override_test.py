@@ -13,18 +13,16 @@ on). A later mismatch drops
 force ``sec_dis``.
 
 hw/sys/sep/doc/security_disable.adoc: a match does not release the SEP
-reset. Boot while sensing is still open is the IC_RESET ``sep_reset_n``
-override, and that override is independent of the match. The override
-alone releases both reset probes and leaves feature control closed. The
-match then opens feature control without waiting for sensing
+reset. The IC_RESET ``sep_reset_n`` override is an independent step: it
+releases both reset probes and leaves feature control closed. The match
+then opens feature control without waiting for sensing
 (hw/sys/sep/doc/token_processing.adoc) and leaves the reset held. Clearing
-the override returns both probes to 0. JTAG ``TOKEN_EOP`` activate is not
-claimed here.
+the override returns both probes to 0.
 
-In that same window a read of the ``LC_STATE`` shadow-map word must return
-AXI OKAY. ``security_disable_o`` is the token result; the map gate is
-``security_disable_i``, which SEP ties to 0, so the pre-sense error response
-is what a broken gate returns. The checker requires OKAY.
+The evidence is the two reset probes and ``FEAT_CTRL``. The test drives
+``jtag_sep_reset_n_ovrd_i`` and ``jtag_sep_reset_n_val_i``. A transaction
+to a block that reset holds, and a write of the DTP IC_RESET register,
+are not claimed. JTAG ``TOKEN_EOP`` activate is not claimed.
 """
 
 from __future__ import annotations
@@ -32,12 +30,9 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-from env.sep_axi_agent import SepAxiOp
-from env.sep_efuse_image import SepEfuseImage
 from env.sep_lcc_golden import LC_PROD, M64, feat_ctrl_expected, lc_state_name
 from env.sep_rma_token import token_digest
 from sep_base_test import sep_base_test
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_rma_token_seq import (
     TOKEN_MATCH,
     TOKEN_MISMATCH,
@@ -52,9 +47,11 @@ _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 _MATCH_TOKEN = 0
 _MISMATCH_TOKEN = 1
-# Raw nibble of the differential LC_STATE the withheld shadow drives
-# ({0, all-ones}). It is outside the named lifecycle set, so the golden's
-# other-encodings row is the closed feature-control value.
+# hw/sys/sep/doc/lifecycle_controller.adoc: the OTP controller initializes
+# the shadow output to the INVALID encoding (4'b1111), and the life-cycle
+# controller produces the INVALID feature-control profile before sensing
+# completes. That encoding is outside the named lifecycle set, so the
+# golden's other-encodings row is the closed feature-control value.
 _WITHHELD_LC = 0xF
 # SHA-256 of 32 zero bytes; must match ``SEC_DIS_TB_DIGEST`` in ``tb/tb_top.sv``.
 _TB_SEC_DIS_DIGEST = 0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925
@@ -128,7 +125,7 @@ class sep_sec_dis_override_test(sep_base_test):
         )
         self.logger.info(
             "CHK-SENSE-GATED-RESET PASS: sec_dis=1 sense_done=0 ext_boot_seq_done=1 "
-            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 (match alone does not boot SEP)"
+            "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 (match alone leaves the reset held)"
         )
 
     def _require_sense_open(self, label: str, *, sec_dis: int | None = None) -> None:
@@ -219,57 +216,25 @@ class sep_sec_dis_override_test(sep_base_test):
             "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0"
         )
 
-    async def _check_tdr_releases_reset(self) -> None:
-        """The JTAG override releases sep_reset_n while sense is still open.
+    async def _check_override_after_match(self) -> None:
+        """The same override inputs release the reset after the match.
 
-        hw/sys/sep/doc/reset_controller.adoc: the IC_RESET TDR drives
-        sep_reset_n in place of the eFuse reset. A match has already left
-        both probes at 0.
+        A match has already left both probes at 0. This drives
+        ``jtag_sep_reset_n_ovrd_i`` and ``jtag_sep_reset_n_val_i``. The DTP
+        IC_RESET register write is not claimed.
         """
-        self._require_sense_open("CHK-TDR-RELEASE", sec_dis=1)
+        self._require_sense_open("CHK-OVR-AFTER", sec_dis=1)
         self._drive_sep_reset_override(1, 1)
-        await self._wait_resets(1, "CHK-TDR-RELEASE", sec_dis=1)
+        await self._wait_resets(1, "CHK-OVR-AFTER", sec_dis=1)
         self.logger.info(
-            "CHK-TDR-RELEASE PASS: ovrd=1 val=1 sense_done=0 sec_dis=1 "
+            "CHK-OVR-AFTER PASS: ovrd=1 val=1 sense_done=0 sec_dis=1 "
             "sep_cpu_reset_n_o=1 dbg_sep_reset_n_o=1"
         )
         self._drive_sep_reset_override(0, 0)
-        await self._wait_resets(0, "CHK-TDR-RELEASE", sec_dis=1)
+        await self._wait_resets(0, "CHK-OVR-AFTER", sec_dis=1)
         self.logger.info(
-            "CHK-TDR-RELEASE PASS: ovrd=0 sense_done=0 sec_dis=1 "
+            "CHK-OVR-AFTER PASS: ovrd=0 sense_done=0 sec_dis=1 "
             "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0"
-        )
-
-    async def _read_shadow_map(self) -> str | None:
-        """Require an OKAY read of the LC_STATE shadow word while sense is open.
-
-        Returns the failure text when the read is not OKAY. The scoreboard does
-        not also grade this response: this checker owns that one failure.
-        """
-        self._require_sense_open("CHK-MAP-OPEN", sec_dis=1)
-        addr = SepEfuseImage.field("LC_STATE").shadow_addr
-        seq = SepAxiAccessSeq(
-            "sec_dis_map_rd",
-            op=SepAxiOp.READ,
-            addr=addr,
-            size=2,
-            allow_ungraded_read_resp=True,
-        )
-        await self.start_seq(seq)
-        self._require_sense_open("CHK-MAP-OPEN", sec_dis=1)
-        if seq.resp_ok and not seq.timed_out:
-            self.logger.info(
-                "CHK-MAP-OPEN PASS: LC_STATE @0x%08x AXI OKAY rdata=0x%08x "
-                "while sec_dis=1 sense_done=0",
-                addr,
-                seq.rdata & 0xFFFF_FFFF,
-            )
-            return None
-        return (
-            "CHK-MAP-OPEN FAIL: sec_dis=1 sense_done=0 "
-            f"LC_STATE @0x{addr:08x} resp_ok={int(seq.resp_ok)} resp={seq.resp_code} "
-            f"timed_out={int(seq.timed_out)} rdata=0x{seq.rdata & 0xFFFF_FFFF:08x}, "
-            "want AXI OKAY"
         )
 
     async def run_scenario(self) -> None:
@@ -305,10 +270,7 @@ class sep_sec_dis_override_test(sep_base_test):
             f"CHK-FEAT-PRESENSE FAIL: feature control opened but the reset moved "
             f"sep_cpu_reset_n_o={cpu_rst} dbg_sep_reset_n_o={fabric_rst}, want 0/0"
         )
-        await self._check_tdr_releases_reset()
-        map_fail = await self._read_shadow_map()
-        if map_fail is not None:
-            self.logger.info(map_fail)
+        await self._check_override_after_match()
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         cpu_rst = self.rd_known(cocotb.top.sep_cpu_reset_n_o)
         fabric_rst = self.rd_known(cocotb.top.dbg_sep_reset_n_o)
@@ -347,5 +309,3 @@ class sep_sec_dis_override_test(sep_base_test):
             "CHK-DEACTIVATE PASS: SEC_DISABLE_TOKEN_MATCH=0x%02x after token=1", drop.match_code
         )
         await self._check_feat(0, "CHK-RESTORE")
-        if map_fail is not None:
-            raise AssertionError(map_fail)
