@@ -1718,8 +1718,13 @@ module sep_fcov (
   // records the LC_STATE read response while sensing is still open.
   // reach records an OKAY SW_RESET_N read in that window.
   covergroup sep_sec_dis_boot_cg with function sample (
-      logic hold, logic released, logic rehold, logic sec_dis,
-      logic [1:0] map_resp, logic map_hit, logic reach
+      logic hold,
+      logic released,
+      logic rehold,
+      logic sec_dis,
+      logic [1:0] map_resp,
+      logic map_hit,
+      logic reach
   );
     option.per_instance = 1;
     option.name = "sep_sec_dis_boot_cg";
@@ -1727,11 +1732,10 @@ module sep_fcov (
     cp_release: coverpoint released {bins override_releases = {1'b1};}
     cp_rehold: coverpoint rehold {bins override_reholds = {1'b1};}
     // The override sampled while SEC_DIS is still off: feature control stays closed.
-    cp_alone: coverpoint sec_dis iff (released) {bins override_closed = {1'b0};}
-    cp_map_resp: coverpoint map_resp iff (map_hit) {
-      bins okay = {AxiOkay};
-      bins slverr = {2'b10};
+    cp_alone: coverpoint sec_dis iff (released) {
+      bins override_closed = {1'b0};
     }
+    cp_map_resp: coverpoint map_resp iff (map_hit) {bins okay = {AxiOkay}; bins slverr = {2'b10};}
     cp_reach: coverpoint reach {bins sw_reset_n_while_open = {1'b1};}
   endgroup
 
@@ -1852,9 +1856,8 @@ module sep_fcov (
       end
       if (sec_dis_hold_ev || sec_dis_release_ev || sec_dis_rehold_ev || sec_dis_map_rd ||
           sec_dis_reach_rd) begin
-        u_sep_sec_dis_boot_cg.sample(sec_dis_hold_ev, sec_dis_release_ev,
-                                     sec_dis_rehold_ev, sec_dis_on, lsu_r_resp_i, sec_dis_map_rd,
-                                     sec_dis_reach_rd);
+        u_sep_sec_dis_boot_cg.sample(sec_dis_hold_ev, sec_dis_release_ev, sec_dis_rehold_ev,
+                                     sec_dis_on, lsu_r_resp_i, sec_dis_map_rd, sec_dis_reach_rd);
       end
       if (dma_copy_done || dma_hash_done) begin
         u_sep_dma_completion_route_cg.sample(dma_irq_done, dma_hs_q);
