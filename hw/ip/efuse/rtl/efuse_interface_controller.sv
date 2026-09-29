@@ -118,6 +118,7 @@ module efuse_interface_controller #(
   input  logic                                  scan_rst_ni,  // DFT scan reset, active-low.
   input  logic                                  security_disable_i,  // Security disable override, active-high; skips fuse
                                                                      // sensing and opens APB access to the shadow registers.
+                                                                     // With HAS_LC_STATE set, connect to security_disable_o.
   input  efuse_pkg::rule_t [EFUSE_FIELDS-1:0]   efuse_field_map_i,  // Per-field access-control rules.
 
   output logic                                  reset_n_o,  // Active-low reset, released through a
@@ -453,9 +454,6 @@ module efuse_interface_controller #(
   // Efuse MMR / Security Tokens - SEP Only
   ///////////////////////////////////////////////
 
-  // If it is SMC efuse interface, use the security disable from input port. 
-  // If it is sep's fuse interface, use internally generated sec_disable
-  logic internal_security_disable;
   logic [5:0] rma_sip_token_match, rma_chiplet_token_match;
 
   generate
@@ -488,8 +486,6 @@ module efuse_interface_controller #(
         .shadow_regs_o              (shadow_regs_o)
       );
 
-      assign internal_security_disable = security_disable_o;
-
     end else begin : gen_stub_mmr_apb_target
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].pready = 1'b1;
       assign apb_endpoint_resps[efuse_pkg::EFUSE_MMR_REG_MAP].prdata = data_t'('hbadcab1e);
@@ -501,9 +497,7 @@ module efuse_interface_controller #(
       assign security_disable_o = '0;
       assign token_match_fault_o = '0;
 
-      assign internal_security_disable = security_disable_i;
-
-      assign shadow_regs_o = (fuse_sense_done || internal_security_disable ) ? shadow_regs : efuse_map_t'(0);
+      assign shadow_regs_o = (fuse_sense_done || security_disable_i ) ? shadow_regs : efuse_map_t'(0);
     end
   endgenerate
 
@@ -762,7 +756,7 @@ module efuse_interface_controller #(
     .rst_ni     (rst_ni),
 
     .test_en_i            (test_en_i),
-    .security_disable_i   (internal_security_disable),
+    .security_disable_i   (security_disable_i),
 
     .secure_tm_i          (secure_tm_i),
 
@@ -813,7 +807,7 @@ module efuse_interface_controller #(
     fuse_command_resp_interface_ctrl_r = FUSE_COMMAND_RESP_DEFAULT;
 
     // Fuse sensing into the shadow registers must be done first - will start automatic upon cold reset de-assertion
-    priority if ((!fuse_sense_done) && (!internal_security_disable)) begin : auto_sense_mode
+    priority if ((!fuse_sense_done) && (!security_disable_i)) begin : auto_sense_mode
       fuse_command_req_pre_filter = fuse_command_req_shadow_regs;
       fuse_command_resp_shadow_regs = fuse_command_resp_post_filter;
     end else if (reg_interface_program_enable) begin : program_mode
