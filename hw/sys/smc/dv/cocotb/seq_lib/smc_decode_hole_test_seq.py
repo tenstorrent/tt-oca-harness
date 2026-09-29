@@ -163,6 +163,11 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
             f"{label}: a write of 0x{payload:08x} to unmapped 0x{hole.dead_addr:08x} changed live "
             f"0x{hole.live_addr:08x} from 0x{seeded:08x} to 0x{after:08x}"
         )
+        assert dead_data & hole.mask != seeded, (
+            f"{label}: the DECERR read of unmapped 0x{hole.dead_addr:08x} returned "
+            f"0x{dead_data:08x}, live 0x{hole.live_addr:08x}'s seed; the error slave's word "
+            f"must not be the live register's value"
+        )
         await self._okay(f"{label}_RESTORE", SmcSysAxiOp.WRITE, hole.live_addr, original)
         self.results.append(
             f"{label} dead=0x{hole.dead_addr:08x} "
@@ -173,13 +178,15 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
         cocotb.log.info(
             "CHK-DECODE-HOLE-%s: an unmapped write and read at 0x%08x, past the decoded "
             "extent ending 0x%08x and inside the aperture ending 0x%08x, were refused "
-            "(write %s, read %s) and left live 0x%08x holding its seed 0x%08x",
+            "(write %s, read %s returning 0x%08x, not the seed) and left live 0x%08x holding "
+            "its seed 0x%08x",
             label,
             hole.dead_addr,
             hole.mapped_end,
             hole.aperture_end,
             _RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code),
             _RESP_NAME.get(dead_rd.resp_code, dead_rd.resp_code),
+            dead_data,
             hole.live_addr,
             after,
         )
