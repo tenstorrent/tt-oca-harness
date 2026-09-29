@@ -63,18 +63,17 @@ endif::backend-pdf[]
 
 The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 
-Each row below is the address aperture reserved for a unit, not the
-extent that decodes.
-
-The fabric refuses an address that falls between unit windows, or past
-the extent a unit allocates; such an access never reaches a unit.
-
-Inside a unit's allocated extent, an offset that owns no register is
-accepted by the unit: reads return zero and writes are discarded, both
-with an OKAY response. Software gets no indication that it addressed
-nothing. Such an offset cannot alias a live register, because register
-decode is an exact address match rather than a range -- not because the
-access is refused.
+Each row below is the aperture reserved for a unit, and the Decoded Extent
+column gives the part of it that registers or memory back. The last two
+columns state how SEP answers a 32-bit access that no register or memory
+backs, as seen at its inbound AXI port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes.
 
 The TRNG aperture is forwarded in full to an adopter-defined external IP. SEP
 does not decode offsets inside that window, so every access reaches the TRNG
@@ -94,7 +93,7 @@ serves the mailbox and system CSR windows, and forwards all other addresses
 below 0x4000_0000 (outside the mailbox and system CSR windows) to the SEP local
 crossbar. Addresses above 0x4000_0000 and the units listed above are not
 reachable through this external path and receive error responses from the
-`smn_inbound` port.
+`smn_inbound` port. Their rows in the table below state what the SEP CPU sees.
 
 ifdef::backend-html5[]
 include::partial$sep/regs/gen/adoc/memory_map.adoc[tag=sep-components]
