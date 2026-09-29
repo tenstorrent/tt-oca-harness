@@ -149,7 +149,17 @@ class sep_km_mem_smoke_test(sep_base_test):
             f"test bug: no scrambled cell ({[hex(c) for c in cells]}) is inside the "
             f"{count}-word km_sram_probe_o window"
         )
-        # A word that is not fully known is not a plaintext, so X reads as 0 here.
+        # The scrambled cells were stored, so each must read fully known: an X
+        # there is not a ciphertext and would read as a non-plaintext. Other
+        # words may be unwritten, and only a known word can hold a plaintext.
+        for c in in_window:
+            try:
+                self.rd_known(probe, mask=0xFFFF_FFFF << (32 * c))
+            except AssertionError as exc:
+                raise AssertionError(
+                    f"CHK-KM-SRAM-SCR-STORED FAIL: scrambled cell word {c} is not fully "
+                    f"known: {exc}"
+                ) from exc
         words = [
             self.rd(probe, mask=0xFFFF_FFFF << (32 * i), allow_unknown=True) >> (32 * i)
             for i in range(count)

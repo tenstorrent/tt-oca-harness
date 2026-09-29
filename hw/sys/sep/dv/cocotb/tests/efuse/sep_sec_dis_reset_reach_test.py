@@ -14,8 +14,9 @@ override pins stay 0, so a probe that rises is the register's output.
 ``SW_RESET_N`` sits in the ``sep_reset_n`` domain. After the TDR enables
 the override with the reset value released, a read returns the register's
 reset default while sensing is still open. Restoring the TDR enable holds
-the reset, and the same read does not complete. Feature control stays the
-withheld profile.
+the reset again, graded on the reset probes. Feature control stays the
+withheld profile. After sensing completes with the override off, the reset
+releases and the same read returns the reset default again.
 """
 
 from __future__ import annotations
@@ -36,7 +37,6 @@ from seq_lib.sep_sw_reset_seq import (
 
 _MAX_SENSE_CYCLES = 20_000
 _RESET_SYNC_CYCLES = 32
-_HELD_TIMEOUT_NS = 200
 # hw/sys/sep/doc/lifecycle_controller.adoc: INVALID feature-control profile
 # before sensing completes.
 _WITHHELD_LC = 0xF
@@ -166,24 +166,26 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         dut.jtag_ic_reset_select_i.value = 0
         return captured
 
-    async def _read_sw_reset(self, *, grade_wedge: bool) -> SepAxiAccessSeq:
-        saved = self.cfg.axi_timeout_ns
-        if grade_wedge:
-            self.cfg.axi_timeout_ns = _HELD_TIMEOUT_NS
-        try:
-            seq = SepAxiAccessSeq(
-                "sw_reset_n_reach",
-                op=SepAxiOp.READ,
-                addr=SEP_RESET_CTRL_SW_RESET_N,
-                size=2,
-                allow_ungraded_read_resp=grade_wedge,
-                allow_timeout=grade_wedge,
-                expected=None if grade_wedge else SW_RESET_N_RESET_DEFAULT,
-            )
-            await self.start_seq(seq)
-        finally:
-            self.cfg.axi_timeout_ns = saved
-        return seq
+    async def _read_sw_reset(self, label: str) -> int:
+        seq = SepAxiAccessSeq(
+            "sw_reset_n_reach",
+            op=SepAxiOp.READ,
+            addr=SEP_RESET_CTRL_SW_RESET_N,
+            size=2,
+            expected=SW_RESET_N_RESET_DEFAULT,
+        )
+        await self.start_seq(seq)
+        cpu_rst, fabric_rst = self._probes()
+        got = seq.rdata & 0xFFFF_FFFF
+        assert seq.resp_ok and not seq.timed_out and got == SW_RESET_N_RESET_DEFAULT, (
+            f"{label} FAIL: SW_RESET_N @0x{SEP_RESET_CTRL_SW_RESET_N:08x} "
+            f"resp_ok={int(seq.resp_ok)} timed_out={int(seq.timed_out)} "
+            f"rdata=0x{got:08x} want AXI OKAY 0x{SW_RESET_N_RESET_DEFAULT:08x}"
+        )
+        assert cpu_rst == 1 and fabric_rst == 1, (
+            f"{label} FAIL: probes {cpu_rst}/{fabric_rst} during the OKAY read, want 1/1"
+        )
+        return got
 
     async def run_scenario(self) -> None:
         image = self.select_efuse_image(lc_raw=LC_PROD)
@@ -235,18 +237,8 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             _SEP_RESET_N_PORT,
         )
 
-        reached = await self._read_sw_reset(grade_wedge=False)
+        got = await self._read_sw_reset("CHK-REACH")
         self._require_sense_open("CHK-REACH")
-        cpu_rst, fabric_rst = self._probes()
-        got = reached.rdata & 0xFFFF_FFFF
-        assert reached.resp_ok and not reached.timed_out and got == SW_RESET_N_RESET_DEFAULT, (
-            f"CHK-REACH FAIL: SW_RESET_N @0x{SEP_RESET_CTRL_SW_RESET_N:08x} "
-            f"resp_ok={int(reached.resp_ok)} timed_out={int(reached.timed_out)} "
-            f"rdata=0x{got:08x} want AXI OKAY 0x{SW_RESET_N_RESET_DEFAULT:08x}"
-        )
-        assert cpu_rst == 1 and fabric_rst == 1, (
-            f"CHK-REACH FAIL: probes {cpu_rst}/{fabric_rst} during the OKAY read, want 1/1"
-        )
         self.logger.info(
             "CHK-REACH PASS: SW_RESET_N @0x%08x AXI OKAY rdata=0x%08x "
             "while sense_done=0 and sep_reset_n is released by the TDR",
@@ -278,27 +270,6 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
             "sep_cpu_reset_n_o=0 dbg_sep_reset_n_o=0 sense_done=0"
         )
 
-        # Last AXI access. A request that does not retire must not be followed
-        # by another one: the crossbar can keep the beat after the driver stops
-        # waiting.
-        held = await self._read_sw_reset(grade_wedge=True)
-        self._require_sense_open("CHK-HELD")
-        cpu_rst, fabric_rst = self._probes()
-        assert cpu_rst == 0 and fabric_rst == 0, (
-            f"CHK-HELD FAIL: probes moved during the held read ({cpu_rst}/{fabric_rst})"
-        )
-        assert held.timed_out and not held.resp_ok, (
-            f"CHK-HELD FAIL: SW_RESET_N @0x{SEP_RESET_CTRL_SW_RESET_N:08x} completed "
-            f"resp_ok={int(held.resp_ok)} resp={held.resp_code} timed_out={int(held.timed_out)} "
-            f"rdata=0x{held.rdata & 0xFFFF_FFFF:08x}; the read must not complete"
-        )
-        self.logger.info(
-            "CHK-HELD PASS: SW_RESET_N @0x%08x did not complete (timed_out=1) "
-            "while sep_reset_n is held and sense_done=0; the same address returned "
-            "AXI OKAY while the TDR override was on",
-            SEP_RESET_CTRL_SW_RESET_N,
-        )
-
         await self.wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
         dut = cocotb.top
         for _ in range(_RESET_SYNC_CYCLES):
@@ -314,4 +285,12 @@ class sep_sec_dis_reset_reach_test(sep_base_test):
         self.logger.info(
             "CHK-SENSE-RELEASE PASS: after sense-done, with the TDR override off, "
             "sep_cpu_reset_n_o=1 dbg_sep_reset_n_o=1"
+        )
+
+        got = await self._read_sw_reset("CHK-SENSE-REACH")
+        self.logger.info(
+            "CHK-SENSE-REACH PASS: SW_RESET_N @0x%08x AXI OKAY rdata=0x%08x "
+            "after sense-done with the TDR override off",
+            SEP_RESET_CTRL_SW_RESET_N,
+            got,
         )

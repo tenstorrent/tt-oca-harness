@@ -7823,7 +7823,7 @@ the wipe security contract.
 
 *Randomization*: RANDCFG — the value the host programs into `EFUSE_BANK_INIT_TIME`, from the run seed, distinct from its reset and from the value the KM image stores.
 
-*Objective*: `hw/ip/key_manager/regs/key_manager.rdl` (OTP / eFuse Pass-Through) says only the MAP, CTRL and MMR sub-regions of the 4 KB OTP window are decoded, and that `efuse_shim_ctrl` is intentionally excluded from the KM AXI-Lite path. Its memory-map summary says an unmapped offset inside a window answers SLVERR and an address outside every window answers DECERR. A KM CPU load from, and a store to, the first word after the 0x100-byte `OTP_EFUSE_MMR` aperture must therefore be refused and must not reach the shim register. Both accesses reach it: the load returns the shim register with no error, and the store changes it. `CHK-KM-OTP-SHIM-EXCLUDED` fails.
+*Objective*: `hw/ip/key_manager/regs/key_manager.rdl` (OTP / eFuse Pass-Through) says only the MAP, CTRL and MMR sub-regions of the 4 KB OTP window are decoded, and that `efuse_shim_ctrl` is intentionally excluded from the KM AXI-Lite path. Its memory-map summary says an unmapped offset inside a window answers SLVERR and an address outside every window answers DECERR. A KM CPU load from, and a store to, the first word after the 0x100-byte `OTP_EFUSE_MMR` aperture is inside that window, so it must answer SLVERR and must not reach the shim register. Both accesses reach it: the load returns the shim register with no error, and the store changes it. `CHK-KM-OTP-SHIM-EXCLUDED` fails.
 
 *Test Coverage*: KM OTP window decode past the MMR aperture, and the separation of the KM path from the eFuse shim CSR port.
 
@@ -7848,12 +7848,12 @@ the wipe security contract.
 |CHK-KM-DECERR-LIVE
 |Control. A KM load from the Reserved ROM-growth row sets `IRQ_STATUS.AXI_DECERR`, so the bit and the image's poll work.
 |CHK-KM-OTP-SHIM-EXCLUDED
-|The KM load and the KM store each set `AXI_SLVERR` or `AXI_DECERR`; the load does not return the host value; the shim register still holds the host value after the KM store. All four observations are logged before the verdict. The accesses reach the shim, so this checker fails.
+|The KM load and the KM store each set `AXI_SLVERR` and not `AXI_DECERR`; the load does not return the host value; the shim register still holds the host value after the KM store. All four observations are logged before the verdict. The accesses reach the shim, so this checker fails.
 |===
 
 *Pass Criteria*: `CHK-KM-OTP-SHIM-EXCLUDED` fails. Every other named checker PASSes. The leaf's failure is that checker.
 
-*Not claimed*: which of SLVERR and DECERR the refusal returns. `key_manager.rdl` describes the address both as inside the OTP window and as outside the decoded sub-regions, so either refusal meets the contract.
+*Refusal code*: SLVERR. The address is inside the 4 KB OTP/eFuse window (`0x0001_1000`–`0x0001_1FFF`) of the `key_manager.rdl` memory-map summary, which says an unmapped offset inside a window answers SLVERR.
 
 '''''
 

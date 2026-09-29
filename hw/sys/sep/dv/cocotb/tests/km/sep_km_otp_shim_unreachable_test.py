@@ -9,12 +9,12 @@ the KM CPU can present a KM-side OTP address.
 Contract. ``hw/ip/key_manager/regs/key_manager.rdl`` (OTP / eFuse Pass-Through)
 says only the MAP, CTRL and MMR sub-regions are decoded and "efuse_shim_ctrl
 is intentionally excluded (not in the AXIL path)". Its memory-map summary
-says an unmapped offset inside a window answers SLVERR and an address outside
-every window answers DECERR. The KM CPU observes either response only as the
-sticky ``IRQ_STATUS.AXI_SLVERR`` / ``AXI_DECERR`` bits (``km_csr.rdl``).
+places the 4 KB OTP/eFuse window at 0x0001_1000-0x0001_1FFF and says an
+unmapped offset inside a window answers SLVERR. The KM CPU observes that
+response only as the sticky ``IRQ_STATUS.AXI_SLVERR`` bit (``km_csr.rdl``).
 
 The KM image loads from, then stores OTP_WR_VALUE to, the first word after the
-0x100-byte OTP_EFUSE_MMR aperture. The host reads and writes the shim register
+0x100-byte OTP_EFUSE_MMR aperture, which is inside the OTP window. The host reads and writes the shim register
 ``EFUSE_BANK_INIT_TIME`` on its real path, the SEP-side
 ``SEP_EXTERNAL_EFUSE_SHIM_CTRL`` window, before and after.
 
@@ -24,8 +24,8 @@ The KM image loads from, then stores OTP_WR_VALUE to, the first word after the
   CHK-KM-DECERR-LIVE      control: a KM load from the Reserved ROM-growth row
                           sets AXI_DECERR, so the bit and the image's poll work.
   CHK-KM-OTP-SHIM-EXCLUDED
-                          the KM load and the KM store each set AXI_SLVERR or
-                          AXI_DECERR; the load does not return the shim
+                          the KM load and the KM store each set AXI_SLVERR
+                          and not AXI_DECERR; the load does not return the shim
                           register value; the shim register still holds the
                           host value after the KM store.
 """
@@ -41,6 +41,7 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_km_bus_err_seq import (
     IRQ_AXI_DECERR,
     IRQ_AXI_ERR,
+    IRQ_AXI_SLVERR,
     OTP_WR_VALUE,
     W_DEC_CLEAN,
     W_DEC_IRQ,
@@ -141,18 +142,18 @@ class sep_km_otp_shim_unreachable_test(sep_base_test):
 
         rd_irq, rd_data, wr_irq = words[W_OTP_RD_IRQ], words[W_OTP_RD_DATA], words[W_OTP_WR_IRQ]
         faults = []
-        if not rd_irq & IRQ_AXI_ERR:
+        if rd_irq & IRQ_AXI_ERR != IRQ_AXI_SLVERR:
             faults.append(
-                f"the KM load completed with no error (IRQ_STATUS=0x{rd_irq:08x}, "
+                f"the KM load did not answer SLVERR alone (IRQ_STATUS=0x{rd_irq:08x}, "
                 f"{irq_names(rd_irq)})"
             )
         if rd_data & _SHIM_MASK == host_value:
             faults.append(
                 f"the KM load returned 0x{rd_data:08x}, the value the host wrote to {_SHIM_REG}"
             )
-        if not wr_irq & IRQ_AXI_ERR:
+        if wr_irq & IRQ_AXI_ERR != IRQ_AXI_SLVERR:
             faults.append(
-                f"the KM store completed with no error (IRQ_STATUS=0x{wr_irq:08x}, "
+                f"the KM store did not answer SLVERR alone (IRQ_STATUS=0x{wr_irq:08x}, "
                 f"{irq_names(wr_irq)})"
             )
         if after != host_value:
@@ -171,13 +172,13 @@ class sep_km_otp_shim_unreachable_test(sep_base_test):
         )
         assert not faults, (
             "CHK-KM-OTP-SHIM-EXCLUDED FAIL: key_manager.rdl excludes efuse_shim_ctrl "
-            "from the KM AXI-Lite path and makes an unmapped KM address answer "
-            "SLVERR or DECERR, but a KM access past the OTP MMR aperture reached the "
-            "shim: " + "; ".join(faults)
+            "from the KM AXI-Lite path and makes an unmapped offset inside the OTP "
+            "window answer SLVERR, but a KM access past the OTP MMR aperture was not "
+            "refused that way: " + "; ".join(faults)
         )
         self.logger.info(
             "CHK-KM-OTP-SHIM-EXCLUDED PASS: the KM load and store past the MMR aperture "
-            "were refused (%s, %s), the load did not return %s, and the register kept "
+            "answered SLVERR (%s, %s), the load did not return %s, and the register kept "
             "the host value 0x%08x",
             irq_names(rd_irq),
             irq_names(wr_irq),
