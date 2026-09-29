@@ -49,12 +49,8 @@ module dtp_ctn_csr_props
   localparam logic [31:0] CTP_BASE = 32'h200;
   localparam logic [31:0] MAP_END = CTP_BASE + 32'(NUM_CTP) * 32'h10;
 
-  // The network lists each window's end address as its last byte while the crossbar decoder
-  // treats the end address as exclusive, so the last byte address of every window (0x1FF,
-  // 0x20F and so on up to 0x2FF) decodes as unmapped; word-aligned accesses never reach it.
   function automatic logic mapped(input logic [31:0] addr);
-    if (addr < CTP_BASE) return addr != CTP_BASE - 32'h1;
-    return addr < MAP_END && addr[3:0] != 4'hF;
+    return addr < MAP_END;
   endfunction
 
   // Crossbar master port of a mapped address: the matrix at 0, port n at n + 1.
