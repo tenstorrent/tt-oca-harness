@@ -15,7 +15,7 @@ sep_address_map_seq writes the same value.
 Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
       REGION_START +0x00 (64b), REGION_END +0x08 (64b, 4KB-aligned),
-      REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)
+      REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[59:56], valid[63]=R/W)
   AP   output-remap        : base 0x10A1_0200, stride 0x08; REGION_ATTRS +0x00 (64b)
   STEE output-remap        : base 0x10A1_0300, stride 0x08; REGION_ATTRS +0x00 (64b)
   Inbound  filter          : base 0x10A2_1000, stride 0x20, 16 entries

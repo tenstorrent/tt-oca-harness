@@ -179,7 +179,7 @@ cluster interfaces.
 |Debug |APB, JTAG |Non-intrusive, per-core
 |==============================================
 
-== Cluster Boundary Isolation
+== CPU AXI Isolation
 
 The cluster is reset independently of the surrounding SMC fabric.
 If the cluster were reset while a transaction on one of its AXI ports
@@ -201,20 +201,28 @@ outstanding transactions:
 
 The non-AXI status crossings (`wb_pc_valid`, `wb_reg_pc`, and the per-core
 `wdt_reset`) are clamped to constants over the same window so they cannot leak
-glitches either. The boundary also self-isolates on cold boot, releasing only
-once SRAM initialization completes and the cores and uncore are out of reset.
+glitches either. The boundary also self-isolates on cold boot, releasing four
+cycles after SRAM initialization completes and the cores and uncore are out of
+reset.
+
+The boundary is shared by all cores and stays isolated while any core or the
+uncore is in reset. Holding one core in reset therefore also terminates the
+other cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until
+every core is released.
 
 === Drain Handshake
 
-Isolation is coordinated with the control logic
-(`smc_cpu_ctrl_wrap`) through two signals:
+A software reset through `CPU_CTRL.RESET_CTRL`, whether a core or uncore reset
+bit or a core reset pulse, proceeds as follows:
 
-* `isolate_req_i` — asserted by the control logic whenever a software reset of
-  the cluster is pending. The control logic withholds the reset itself until
-  the cluster reports that it is safe to apply.
-* `drained_o` — asserted once both `axi_isolate` instances have drained and
-  isolated their ports, telling the control logic the withheld reset may now be
-  released.
+. Firmware writes `RESET_CTRL`.
+. The control logic (`smc_cpu_ctrl_wrap`) raises `isolate_req_i` and withholds
+the reset.
+. Both `axi_isolate` instances drain their outstanding transactions and
+isolate.
+. The cluster raises `drained_o`, and the control logic applies the reset.
+. `isolate_req_i` stays high until every reset bit is released and every pulse
+completes. The boundary then reconnects.
 
 === Timeout Recovery
 
