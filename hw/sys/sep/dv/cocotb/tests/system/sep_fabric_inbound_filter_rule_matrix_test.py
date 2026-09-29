@@ -7,8 +7,8 @@ CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the EXTERNAL SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
 enforcement: an allowed address -> OKAY + exact CSR value; any other address ->
 DECERR, never the value staged there (block-by-default); read_allowed/write_allowed gate the matched
-read/write. With smc_global_base=0 the inbound global->local remap is identity, so
-the external master drives the SEP-local address directly.
+read/write. No inbound global-to-local remap sits inside this DUT, so the
+external master drives the SEP-local address directly.
 
 Walks entries 0 and 7 x two address windows x {rw, read-only,
 write-only} at src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at

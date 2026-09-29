@@ -10,8 +10,40 @@ object after ``start_seq``.
 
 from __future__ import annotations
 
+import cocotb
+from cocotb.triggers import RisingEdge
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
 from pyuvm import uvm_sequence
+
+
+async def capture_addr_handshake(channel: str, prefix: str = "s_axi") -> dict[str, int]:
+    """AxADDR / AxLEN / AxSIZE / AxBURST of the next address handshake on a TB port.
+
+    ``channel`` is ``"aw"`` or ``"ar"``. Start it with ``cocotb.start_soon``
+    before the access, then read ``task.result()`` after it. The values are
+    sampled from the testbench master port, so they show what the master
+    presented, not what the DUT did with it.
+    """
+    dut = cocotb.top
+    sig = {
+        f: getattr(dut, f"{prefix}_{channel}{f}")
+        for f in ("valid", "ready", "addr", "len", "size", "burst")
+    }
+    while True:
+        await RisingEdge(dut.clk_i)
+        if sig["valid"].value == 1 and sig["ready"].value == 1:
+            return {f: int(sig[f].value) for f in ("addr", "len", "size", "burst")}
+
+
+def take_handshake(task) -> dict[str, int] | None:
+    """Result of a ``capture_addr_handshake`` task, or None when none was seen."""
+    if task.done():
+        return task.result()
+    if hasattr(task, "cancel"):
+        task.cancel()
+    else:
+        task.kill()
+    return None
 
 
 class SepAxiAccessSeq(uvm_sequence):

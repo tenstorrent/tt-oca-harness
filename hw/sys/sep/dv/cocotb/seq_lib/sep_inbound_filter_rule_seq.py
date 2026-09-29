@@ -6,8 +6,9 @@ With the SEP inbound filter ACTIVE (feat_ctrl.sep_debug=0, real PROD fuse), the
 CPU-LSU master programs inbound FILTER_CONFIG allow-entries, then the EXTERNAL
 SMN master (m_axi, the only path through u_inbound_filter) probes them:
   * allowed address (covered by the entry, read_allowed/write_allowed set, src_id
-    match) -> the access traverses the filter + identity global->local remap
-    (smc_global_base=0) and reaches the SEP-local CSR -> OKAY + exact value;
+    match) -> the access traverses the filter and reaches the SEP-local CSR
+    -> OKAY + exact value (no inbound global-to-local remap sits inside this
+    DUT, so the external master presents the SEP-local address);
   * any other address (block-by-default) -> the filter's err-slave ->
     DECERR, and the read data is not the value staged at that address;
   * clearing read_allowed/write_allowed flips the matched read/write to DECERR.
