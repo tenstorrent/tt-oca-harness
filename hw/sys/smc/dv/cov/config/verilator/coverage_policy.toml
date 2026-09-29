@@ -40,14 +40,13 @@
 # Floors: line 78.0 / branch 75.9 / expression 69.0 were set from the
 # hosted measurement (Verilator 5.050, 168 leaves: line 78.0977,
 # branch 75.9964, expression 69.0966) and stay as regression guards; the
-# `hosted fw` measurement (192 leaves) read line 97.50, branch
-# 89.07, expression 86.46 and user 407 of 467. Every collected `user`
-# point is expected to be hit by an enrolled leaf; a point this bench cannot
-# legally reach is not collected (see the Phase 2 list in SMC_FCOV.adoc)
-# rather than waived here. The `[[holes]]` below are the two points that
-# Verilator alone cannot observe; the VCS run records them.
+# `hosted fw` measurement (294 leaves) reads line 97.83, branch
+# 92.58, expression 92.54 and user 453 of 453. Every collected `user`
+# point is hit by an enrolled leaf; a point this bench cannot legally reach
+# is not collected (see the Phase 2 list in SMC_FCOV.adoc) rather than
+# waived here, so this file carries no `[[holes]]`.
 #
-# Hole categories in this file:
+# Hole categories a row may carry:
 #   missing_stimulus  no enrolled test drives the condition; the rationale
 #                     names the cell and, where one is proposed, the test.
 #   needs_review      the cell is blocked by an open spec finding (SF-nnn in
@@ -90,38 +89,3 @@ tool = "verilator"
 metric_family = "expression"
 population = "effective"
 minimum_percent = 69.0
-
-[[holes]]
-id = "fcov-smc-c_i2c0_scl_contention"
-title = "c i2c0 scl contention"
-category = "missing_stimulus"
-disposition = "cover"
-status = "open"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_i2c0_scl_contention"
-
-[[holes]]
-id = "fcov-smc-c_irq_avsbus"
-title = "c irq avsbus"
-category = "missing_stimulus"
-disposition = "cover"
-status = "open"
-confidence = "medium"
-rationale = "pre-existing point outside the spec-derived cell map; no enrolled test drives it in this phase"
-owner = "smc-dv"
-reviewer = "smc-dv"
-issues = ["https://github.com/tenstorrent/tt-oca-harness/issues/2420"]
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_periph_fcov.c_irq_avsbus"
-
