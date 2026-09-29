@@ -501,7 +501,7 @@ cluster interfaces.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="cluster-boundary-isolation"><a class="anchor" href="#cluster-boundary-isolation"></a><a class="link" href="#cluster-boundary-isolation">6. Cluster Boundary Isolation</a></h2>
+<h2 id="cpu-axi-isolation"><a class="anchor" href="#cpu-axi-isolation"></a><a class="link" href="#cpu-axi-isolation">6. CPU AXI Isolation</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The cluster is reset independently of the surrounding SMC fabric.
@@ -533,28 +533,43 @@ into the fabric.</p>
 <div class="paragraph">
 <p>The non-AXI status crossings (<code>wb_pc_valid</code>, <code>wb_reg_pc</code>, and the per-core
 <code>wdt_reset</code>) are clamped to constants over the same window so they cannot leak
-glitches either. The boundary also self-isolates on cold boot, releasing only
-once SRAM initialization completes and the cores and uncore are out of reset.</p>
+glitches either. The boundary also self-isolates on cold boot, releasing four
+cycles after SRAM initialization completes and the cores and uncore are out of
+reset.</p>
+</div>
+<div class="paragraph">
+<p>The boundary is shared by all cores and stays isolated while any core or the
+uncore is in reset. Holding one core in reset therefore also terminates the
+other cores' MMIO accesses with SLVERR and stalls L2 frontend traffic until
+every core is released.</p>
 </div>
 <div class="sect2">
 <h3 id="drain-handshake"><a class="anchor" href="#drain-handshake"></a><a class="link" href="#drain-handshake">6.1. Drain Handshake</a></h3>
 <div class="paragraph">
-<p>Isolation is coordinated with the control logic
-(<code>smc_cpu_ctrl_wrap</code>) through two signals:</p>
+<p>A software reset through <code>CPU_CTRL.RESET_CTRL</code>, whether a core or uncore reset
+bit or a core reset pulse, proceeds as follows:</p>
 </div>
-<div class="ulist">
-<ul>
+<div class="olist arabic">
+<ol class="arabic">
 <li>
-<p><code>isolate_req_i</code> — asserted by the control logic whenever a software reset of
-the cluster is pending. The control logic withholds the reset itself until
-the cluster reports that it is safe to apply.</p>
+<p>Firmware writes <code>RESET_CTRL</code>.</p>
 </li>
 <li>
-<p><code>drained_o</code> — asserted once both <code>axi_isolate</code> instances have drained and
-isolated their ports, telling the control logic the withheld reset may now be
-released.</p>
+<p>The control logic (<code>smc_cpu_ctrl_wrap</code>) raises <code>isolate_req_i</code> and withholds
+the reset.</p>
 </li>
-</ul>
+<li>
+<p>Both <code>axi_isolate</code> instances drain their outstanding transactions and
+isolate.</p>
+</li>
+<li>
+<p>The cluster raises <code>drained_o</code>, and the control logic applies the reset.</p>
+</li>
+<li>
+<p><code>isolate_req_i</code> stays high until every reset bit is released and every pulse
+completes. The boundary then reconnects.</p>
+</li>
+</ol>
 </div>
 </div>
 <div class="sect2">

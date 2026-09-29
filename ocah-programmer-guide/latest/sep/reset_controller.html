@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>SEP Reset Controller :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
-    <meta name="description" content="SEP software reset requests, AXI isolation, and TRNG reset sequencing.">
+    <meta name="description" content="SEP software reset requests, AXI isolation, and Key Manager and TRNG reset sequencing.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../../_/css/site.css">
     <link rel="stylesheet" href="../../../_/css/extra.css">
@@ -306,17 +306,78 @@ reset.</p>
 <h2 id="isolation-and-reset-sequencing"><a class="anchor" href="#isolation-and-reset-sequencing"></a><a class="link" href="#isolation-and-reset-sequencing">2. Isolation and Reset Sequencing</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Each <code>SW_RESET_N</code> bit is a request to a per-domain sequencer. The sequencer
-isolates the domain&#8217;s AXI paths, waits for outstanding transactions to drain,
-and then asserts reset. New transactions presented while isolated terminate
-with SLVERR. Isolation remains asserted for the duration of reset and is
-released with reset when software removes the request.</p>
+<p>Each <code>SW_RESET_N</code> bit drives a per-domain sequencer that isolates the domain&#8217;s
+AXI paths before asserting its reset, so no transaction is in flight when reset
+asserts. <a href="#sep-axi-isolation-diagram">SEP crypto AXI isolation</a> shows the isolated paths.</p>
+</div>
+<div id="sep-axi-isolation-diagram" class="imageblock">
+<div class="content">
+<img src="_images/SEP_AXIIsolation_FIG030.png" alt="SEP crypto AXI isolation" width="100%">
+</div>
+<div class="title">Figure 2. SEP crypto AXI isolation</div>
 </div>
 <div class="paragraph">
-<p>An accelerator reset waits for both its host CSR path and Key Manager key path
-to isolate. A Key Manager reset waits for all of its outgoing accelerator and
-eFuse key paths. This prevents either endpoint of a key path from entering
-reset with a transaction in flight.</p>
+<p>A software reset proceeds as follows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Firmware writes <code>0</code> to the domain&#8217;s <code>SW_RESET_N</code> bit.</p>
+</li>
+<li>
+<p>The sequencer requests isolation on the domain&#8217;s paths. New transactions on
+them complete with SLVERR and read data <code>0x1501A7ED</code>.</p>
+</li>
+<li>
+<p>Each isolate unit drains its accepted transactions, then reports isolated.</p>
+</li>
+<li>
+<p>Once all of the domain&#8217;s paths report isolated, the domain&#8217;s reset asserts.</p>
+</li>
+<li>
+<p>Firmware writes <code>1</code>. Reset and isolation are released together.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><a href="#sep-isolation-paths-table">Paths isolated before each software reset</a> lists the paths each domain isolates.</p>
+</div>
+<table id="sep-isolation-paths-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. Paths isolated before each software reset</caption>
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Domain</th>
+<th class="tableblock halign-left valign-top">Paths isolated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OTBN, AES, HMAC, KMAC, Adams Bridge</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Host path and Key Manager key path</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">All five key paths and the eFuse path</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">TRNG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ESRC, CSRNG, and EDN host paths</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>A key path isolates when either endpoint is reset, so neither end can enter
+reset mid-transfer.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager mailbox, eFuse wrapper, lifecycle controller, and external TRNG
+ports are not isolated. None of these targets has its own software reset
+domain; the mailbox&#8217;s SEP-facing side is in the Key Manager&#8217;s cold domain. No
+<code>SW_RESET_N</code> request can therefore reset one mid-transaction.</p>
 </div>
 <div class="paragraph">
 <p>The sequenced resets are ANDed with <code>sep_reset_n</code>, which holds every IP in reset
@@ -329,14 +390,32 @@ applied last, allowing debug to force reset without waiting for isolation.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">3. Resetting the TRNG</a></h2>
+<h2 id="sep-km-reset"><a class="anchor" href="#sep-km-reset"></a><a class="link" href="#sep-km-reset">3. Resetting the Key Manager</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The sequenced Key Manager reset drives the Key Manager&#8217;s warm reset, which
+restarts its CPU and volatile state but leaves its cold domain intact. That
+domain includes the SEP-facing side of the mailbox, so the SEP host can still
+reach the mailbox during the reset.</p>
+</div>
+<div class="paragraph">
+<p>A soft reset requested through the Key Manager&#8217;s <code>SOFT_RST_CODE</code> register
+takes the same warm path without isolation. None is needed: the Key Manager
+CPU is the only master on its key and eFuse paths and completes each access
+before issuing the next, so no transaction is in flight when it writes
+<code>SOFT_RST_CODE</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="sep-trng-reset"><a class="anchor" href="#sep-trng-reset"></a><a class="link" href="#sep-trng-reset">4. Resetting the TRNG</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The TRNG reset bit controls one reset domain containing the entropy source,
-CSRNG, EDN, and DRBG endpoint state. Because ESRC, CSRNG, and EDN occupy three
-independent demux ports, a shared coordinator requests isolation on all three
-converted AXI4-Lite paths and does not assert the TRNG reset until all three
-report isolated. Reset and isolation are released together.</p>
+CSRNG, EDN, and DRBG endpoint state. ESRC, CSRNG, and EDN occupy three
+independent demux ports, so the TRNG sequencer isolates all three host paths
+and does not assert the TRNG reset until all three report isolated. Reset and
+isolation are released together.</p>
 </div>
 <div class="paragraph">
 <p>The fabric entropy-pool AXI responder is not reset, so accesses remain

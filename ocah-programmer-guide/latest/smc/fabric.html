@@ -671,8 +671,8 @@ consistently across different SoC mappings.</p>
 </div>
 <div class="paragraph">
 <p>The alias remap logic organizes eight independently configurable regions, each
-specifying an input address range, a remap offset for translation, and a
-cacheable flag. This enables:</p>
+specifying an input address range, a remap offset for translation, and an
+AxCACHE value that replaces the transaction&#8217;s own on a hit. This enables:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1072,7 +1072,7 @@ latency.</p>
 </div>
 <div class="paragraph">
 <p>Each outbound transaction carries a Source ID identifying its privilege
-level and routing path, plus a cacheable flag from the alias remap
+level and routing path, plus the AxCACHE value from the alias remap
 configuration (<a href="#smc-source-id-by-traffic-path-table">SMC Source ID by Traffic Path</a>).</p>
 </div>
 <table id="smc-source-id-by-traffic-path-table" class="tableblock frame-all grid-all stretch">
@@ -1151,8 +1151,8 @@ local resources are accessed and which address translation is applied.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63</td><td>valid</td><td>RW</td><td>0x0</td><td>If set, this remap will be active</td></tr>
-<tr><td>62</td><td>cacheable</td><td>RW</td><td>0x0</td><td>If set, top two bits of a*cache will be tied high</td></tr>
-<tr><td>61:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>62:60</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>59:56</td><td>cacheable</td><td>RW</td><td>0x0</td><td>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</td></tr>
 <tr><td>55:12</td><td>offset</td><td>RW</td><td>0x0</td><td>The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.</td></tr>
 <tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>

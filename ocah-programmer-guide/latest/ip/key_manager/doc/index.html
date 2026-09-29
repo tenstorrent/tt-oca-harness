@@ -569,6 +569,10 @@ SEP connections.</p>
 </tbody>
 </table>
 <div class="paragraph">
+<p>SEP isolates the Key Manager&#8217;s AXI paths before asserting the warm reset; see
+<a href="../../../sep/reset_controller.html#sep-km-reset" class="xref page">Resetting the Key Manager</a>.</p>
+</div>
+<div class="paragraph">
 <p>The <code>km_reset_conditioner</code> submodule conditions these inputs and the
 KMCSR-sourced soft reset into two clean, glitch-free, active-low output
 resets:</p>
