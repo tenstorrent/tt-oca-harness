@@ -6,7 +6,7 @@
  *
  * Exercises benign OTBN CSR writes only; no IMEM/DMEM load or EXECUTE.
  *
- * OTBN lives at OCH_SEP_TOP_OTBN_BASE_ADDR in the SEP's own peripheral region,
+ * OTBN lives at SEP_TOP_OTBN_BASE_ADDR in the SEP's own peripheral region,
  * so these accesses stay on the SEP-internal fabric and never reach the
  * outbound filter. INTR_ENABLE.done is sw=rw storage, so it is read back after
  * the write burst: a write dropped or absorbed by a default slave then returns
@@ -25,13 +25,13 @@
 static volatile int g_otbn_status;
 
 static int run_otbn_programming_sequence(void) {
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, OTBN_INTR_ENABLE_PROBE);
-    WRITE_REG(OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_OTBN_ERR_BITS_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_OTBN_INSN_CNT_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0x0u);
+    WRITE_REG(SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, OTBN_INTR_ENABLE_PROBE);
+    WRITE_REG(SEP_TOP_OTBN_INTR_STATE_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_OTBN_ERR_BITS_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_OTBN_INSN_CNT_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_OTBN_LOAD_CHECKSUM_BASE_ADDR, 0x0u);
 
-    if (READ_REG(OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR) != OTBN_INTR_ENABLE_PROBE) {
+    if (READ_REG(SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR) != OTBN_INTR_ENABLE_PROBE) {
         g_otbn_status = 1;
     }
 

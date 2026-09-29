@@ -12,7 +12,7 @@
 module prim_cg_req #(
   parameter int unsigned DenyDelay = 1,  // Cycles to hold after a deny before reasserting.
 
-  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay)  // Deny-hold counter width; derived. Too narrow to hold DenyDelay when DenyDelay is a power of two above 1.
+  localparam int unsigned HysteresisW = (DenyDelay <= 1) ? 1 : $clog2(DenyDelay+1)  // Deny-hold counter width.
 ) (
   input  logic clk_i,  // Q-Channel clock.
   input  logic rst_ni,  // Async reset, active-low.

@@ -2,9 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * Zero Length Transfer Test Module
- *
- * Tests for zero length transfer edge cases
+ * Sends a zero-length OCCP WRITE and reports whether it is accepted; never fails.
  */
 
 #include "occp_test_common.h"
@@ -23,6 +21,5 @@ bool run_zero_length_tests(test_context_t *ctx) {
         simputs("Zero length write: Rejected (expected behavior)\n");
     }
 
-    // Zero length test doesn't affect overall result
     return true;
 }

@@ -20,7 +20,7 @@
 static int wait_for_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        kmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_KMAC_STATUS_BASE_ADDR)};
+        kmac__STATUS_t s = {.w = READ_REG(SEP_TOP_KMAC_STATUS_BASE_ADDR)};
         if (s.f.sha3_idle) return 0;
     }
     printf("Timeout waiting for idle\n");
@@ -30,8 +30,8 @@ static int wait_for_idle(void) {
 static int wait_for_done(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        if (READ_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
-            WRITE_REG(OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
+        if (READ_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR) & KMAC__INTR_STATE__KMAC_DONE_bm) {
+            WRITE_REG(SEP_TOP_KMAC_INTR_STATE_BASE_ADDR, KMAC__INTR_STATE__KMAC_DONE_bm);
             return 0;
         }
     }
@@ -40,7 +40,7 @@ static int wait_for_done(void) {
 }
 
 static void setup_entropy(void) {
-    for (int i = 0; i < 6; i++) WRITE_REG(OCH_SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
+    for (int i = 0; i < 6; i++) WRITE_REG(SEP_TOP_KMAC_ENTROPY_SEED_BASE_ADDR, 0xDEADBEEF + i);
 }
 
 static const uint32_t test_key[4] = {0xAABBCCDD, 0x11223344, 0x55667788, 0x99AABBCC};
@@ -54,47 +54,47 @@ static int run_kmac_with_prefix(const uint32_t *prefix, uint32_t *digest_out) {
     cfg.f.kstrength = SEP_KMAC_KSTRENGTH_L128;
     cfg.f.entropy_mode = SEP_KMAC_ENTROPY_MODE_SW;
     cfg.f.entropy_ready = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
 
     cfg.f.entropy_ready = 1;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_KMAC_CFG_SHADOWED_BASE_ADDR, cfg.w);
     setup_entropy();
 
     kmac__KEY_LEN_t kl = {.w = 0};
     kl.f.len = 0;
-    WRITE_REG(OCH_SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
+    WRITE_REG(SEP_TOP_KMAC_KEY_LEN_BASE_ADDR, kl.w);
 
     for (int i = 0; i < 4; i++) {
-        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
-        WRITE_REG(OCH_SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
+        WRITE_REG(SEP_TOP_KMAC_KEY_SHARE0_BASE_ADDR(i), test_key[i]);
+        WRITE_REG(SEP_TOP_KMAC_KEY_SHARE1_BASE_ADDR(i), 0);
     }
 
-    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), prefix[i]);
+    for (int i = 0; i < 11; i++) WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), prefix[i]);
 
     kmac__CMD_t cmd = {.w = 0};
     cmd.f.cmd = SEP_KMAC_CMD_START;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
+    WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x74736574);
 
-    WRITE_REG(OCH_SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001);
+    WRITE_REG(SEP_TOP_KMAC_MSG_FIFO_BASE_ADDR, 0x00020001);
 
     cmd.f.cmd = SEP_KMAC_CMD_PROCESS;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     if (wait_for_done() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t s0 = READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
+        uint32_t s0 = READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + (i * 4)));
         uint32_t s1 =
-            READ_REG((OCH_SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
+            READ_REG((SEP_TOP_KMAC_STATE_BASE_ADDR + SEP_KMAC_STATE_SHARE1_OFFSET + (i * 4)));
         digest_out[i] = s0 ^ s1;
     }
 
     cmd.f.cmd = SEP_KMAC_CMD_DONE;
-    WRITE_REG(OCH_SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_KMAC_CMD_BASE_ADDR, cmd.w);
 
     return 0;
 }
@@ -108,10 +108,10 @@ static int test_prefix(void) {
                                            0xDEADBEEF, 0xCAFEBABE, 0x01020304, 0x05060708,
                                            0x090A0B0C, 0x0D0E0F10, 0x11121314};
 
-    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), test_vals[i]);
+    for (int i = 0; i < 11; i++) WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), test_vals[i]);
 
     for (int i = 0; i < 11; i++) {
-        val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i));
+        val = READ_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i));
         if (val != test_vals[i]) {
             printf("FAIL: PREFIX_%d readback 0x%08x, expected 0x%08x\n", i, val, test_vals[i]);
             errors++;
@@ -120,11 +120,11 @@ static int test_prefix(void) {
     printf("PREFIX write/readback: %s\n", errors == 0 ? "PASS" : "FAIL");
 
     printf("=== Step 2: Clear PREFIX to zeros ===\n");
-    for (int i = 0; i < 11; i++) WRITE_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
+    for (int i = 0; i < 11; i++) WRITE_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i), 0);
 
     int clear_ok = 1;
     for (int i = 0; i < 11; i++) {
-        val = READ_REG(OCH_SEP_TOP_KMAC_PREFIX_BASE_ADDR(i));
+        val = READ_REG(SEP_TOP_KMAC_PREFIX_BASE_ADDR(i));
         if (val != 0) {
             clear_ok = 0;
             errors++;

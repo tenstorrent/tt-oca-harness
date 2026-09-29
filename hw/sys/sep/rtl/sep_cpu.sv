@@ -187,7 +187,7 @@ module sep_cpu (
   );
 
   el2_veer_wrapper #(
-    .RESET_VEC(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
+    .RESET_VEC(sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR)
   ) u_el2_veer_wrapper (
     .clk       (clk_i),
     .rst_l     (rst_ni),
@@ -569,17 +569,17 @@ module sep_cpu (
   sep_pkg::sep_ifu_demux_port_t ifu_aw_select, ifu_ar_select;
 
   always_comb begin
-    if ((ifu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((ifu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_ROM;
-    end else if ((ifu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE)) begin
+    end else if ((ifu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE)) begin
       ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_SRAM;
     end else begin
       ifu_aw_select = sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV;
     end
 
-    if ((ifu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((ifu_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (ifu_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_ROM;
-    end else if ((ifu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_SRAM_SIZE)) begin
+    end else if ((ifu_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR) && (ifu_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_SRAM_SIZE)) begin
       ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_SRAM;
     end else begin
       ifu_ar_select = sep_pkg::SEP_IFU_DEMUX_PORT_ERR_SLV;
@@ -651,13 +651,13 @@ module sep_cpu (
   sep_pkg::sep_lsu_demux_port_t lsu_aw_select, lsu_ar_select;
 
   always_comb begin
-    if ((lsu_axi_req.aw.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((lsu_axi_req.aw.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.aw.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       lsu_aw_select = sep_pkg::SEP_LSU_DEMUX_PORT_ROM;
     end else begin
       lsu_aw_select = sep_pkg::SEP_LSU_DEMUX_PORT_XBAR;
     end
 
-    if ((lsu_axi_req.ar.addr >= och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.ar.addr < och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
+    if ((lsu_axi_req.ar.addr >= sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR) && (lsu_axi_req.ar.addr < sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_BASE_ADDR + sep_top_addrmap_pkg::SEP_TOP_SEP_BOOT_ROM_SIZE)) begin
       lsu_ar_select = sep_pkg::SEP_LSU_DEMUX_PORT_ROM;
     end else begin
       lsu_ar_select = sep_pkg::SEP_LSU_DEMUX_PORT_XBAR;

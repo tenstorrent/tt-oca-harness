@@ -196,7 +196,7 @@ scenario records on the JTAG harness, so finalization must report
 ```bash
 OCAH_CHECKER_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items ocah_jtag_idcode_test --tool verilator
 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items ocah_jtag_idcode_test \
-    --skip-unimplemented --plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE
+    --plusarg=+OCAH_CHECKER_SELFTEST_NEGATIVE
 ```
 
 The per-family must-fail entry points are listed in the contract chapter.

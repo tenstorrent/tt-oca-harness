@@ -134,12 +134,10 @@ static uint32_t bl1_locate(oca_image_info_t *bl1, bool *in_iccm, bool report) {
     // BL1_SRAM_EXEC_ENABLE is set, so an adopter can lock the ROM down to
     // ICCM-only execution. contains_range() rejects a length that overflows,
     // and its bounds come from the generated register map.
-    const bool sram_span =
-        contains_range(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_SIZE,
-                       (size_t)bl1->load_addr, (size_t)bl1->length);
-    const bool iccm_span =
-        contains_range(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE,
-                       (size_t)bl1->load_addr, (size_t)bl1->length);
+    const bool sram_span = contains_range(SEP_TOP_SEP_SRAM_BASE_ADDR, SEP_TOP_SEP_SRAM_SIZE,
+                                          (size_t)bl1->load_addr, (size_t)bl1->length);
+    const bool iccm_span = contains_range(SEP_TOP_SEP_ICCM_BASE_ADDR, SEP_TOP_SEP_ICCM_SIZE,
+                                          (size_t)bl1->load_addr, (size_t)bl1->length);
 
     if (!iccm_span && !(BL1_SRAM_EXEC_ENABLE != 0 && sram_span)) {
         // Separate "in no permitted region" from "in SRAM, which this build
@@ -206,7 +204,7 @@ uint32_t rom_handoff_bl1(void) {
     // bytes in it. Clamped to ICCM so a BL1 sized near the top of the region
     // cannot push the pad out of bounds.
     if (bl1_in_iccm) {
-        const uint32_t iccm_end = OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE;
+        const uint32_t iccm_end = SEP_TOP_SEP_ICCM_BASE_ADDR + SEP_TOP_SEP_ICCM_SIZE;
         const uint32_t pad_start = (load_addr + img_length) & ~7u;
         if (pad_start < iccm_end) {
             uint32_t pad_len = iccm_end - pad_start;

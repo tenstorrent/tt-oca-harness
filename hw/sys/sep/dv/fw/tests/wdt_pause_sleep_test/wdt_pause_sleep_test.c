@@ -31,8 +31,8 @@
     (AON_TIMER__WDOG_CTRL__ENABLE_bm | AON_TIMER__WDOG_CTRL__PAUSE_IN_SLEEP_bm)
 
 static void wdt_disable(void) {
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
 }
 
 int main(void) {
@@ -47,12 +47,12 @@ int main(void) {
     printf("// STEP 1: Verify WDOG_CTRL.pause_in_sleep R/W\n");
 
     wdt_disable();
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, 0xFFFFFFFF);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, 0xFFFFFFFF);
 
     /* Set enable=1, pause_in_sleep=1 */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_PAUSE_SLEEP);
-    uint32_t ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_PAUSE_SLEEP);
+    uint32_t ctrl = READ_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
     printf("  WDOG_CTRL written pause+enable, readback = 0x%08x\n", ctrl);
     if ((ctrl & WDOG_CTRL_FIELD_MASK) != WDOG_CTRL_PAUSE_SLEEP) {
         printf("  FAIL: pause_in_sleep bit not retained (got 0x%08x)\n", ctrl);
@@ -62,8 +62,8 @@ int main(void) {
     }
 
     /* Clear pause_in_sleep */
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_ENABLE);
-    ctrl = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_ENABLE);
+    ctrl = READ_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR);
     if ((ctrl & WDOG_CTRL_FIELD_MASK) != WDOG_CTRL_ENABLE) {
         printf("  FAIL: pause_in_sleep clear failed (got 0x%08x)\n", ctrl);
         errors++;
@@ -76,15 +76,15 @@ int main(void) {
     /* STEP 2: Counter runs with pause_in_sleep=1 (sleep not asserted by TB) */
     printf("\n// STEP 2: Counter counts with pause_in_sleep=1, sleep_mode_i=0\n");
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_PAUSE_SLEEP);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_PAUSE_SLEEP);
 
     /* Spin for a while to let the AON counter advance */
     for (volatile int i = 0; i < 50000; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t count1 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t count1 = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT after spin (pause_in_sleep=1, sleep=0) = 0x%08x\n", count1);
     if (count1 == 0) {
         printf("  FAIL: Counter did not increment (sleep not asserted, should count)\n");
@@ -98,14 +98,14 @@ int main(void) {
     /* STEP 3: Counter runs with pause_in_sleep=0 */
     printf("\n// STEP 3: Counter counts with pause_in_sleep=0\n");
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_ENABLE);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_CTRL_BASE_ADDR, WDOG_CTRL_ENABLE);
 
     for (volatile int i = 0; i < 50000; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t count2 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t count2 = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT after spin (pause_in_sleep=0) = 0x%08x\n", count2);
     if (count2 == 0) {
         printf("  FAIL: Counter did not increment with pause_in_sleep=0\n");
@@ -119,14 +119,14 @@ int main(void) {
     /* STEP 4: Disabled counter stays at 0 */
     printf("\n// STEP 4: Disabled counter does not increment\n");
 
-    WRITE_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
+    WRITE_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0x0);
     /* WDT is disabled from wdt_disable() above */
 
     for (volatile int i = 0; i < 50000; i++) {
         __asm__ volatile("nop");
     }
 
-    uint32_t count3 = READ_REG(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
+    uint32_t count3 = READ_REG(SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR);
     printf("  WDOG_COUNT after spin (disabled) = 0x%08x\n", count3);
     if (count3 != 0) {
         printf("  FAIL: Counter incremented while disabled (got 0x%08x)\n", count3);

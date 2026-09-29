@@ -48,6 +48,7 @@ ENGINE_DIRS = {
 TARGETS = (
     "preloads",
     "smu_smc_smoke",
+    "smu_smc_fabric",
     "smu_sep_arm",
     "smu_sep_smoke",
     "smu_sep_bidirect",
@@ -157,7 +158,9 @@ def _compile(
     )
 
 
-def build_smc_rom(toolchain: Toolchain, test_name: str) -> Path:
+def build_smc_rom(
+    toolchain: Toolchain, test_name: str, start: Path = COMMON / "smc_start.S"
+) -> Path:
     test_dir = TESTS / test_name
     output_dir = BUILD_ROOT / test_name
     elf = output_dir / f"{test_name}.elf"
@@ -168,7 +171,7 @@ def build_smc_rom(toolchain: Toolchain, test_name: str) -> Path:
         arch="rv64imac_zicsr_zifencei",
         abi="lp64",
         linker=COMMON / "smc_rom.ld",
-        sources=[COMMON / "smc_start.S", test_dir / "main.c"],
+        sources=[start, test_dir / "main.c"],
         output=elf,
     )
     _run([toolchain.tool("objcopy"), "-O", "binary", str(elf), str(binary)])
@@ -379,6 +382,9 @@ def main() -> int:
 
     if args.target in ("smu_smc_smoke", "all"):
         build_smc_rom(toolchain, "smu_smc_smoke")
+    if args.target in ("smu_smc_fabric", "all"):
+        # Runs on every hart, so it takes the entry that gives each its own stack.
+        build_smc_rom(toolchain, "smu_smc_fabric", COMMON / "smc_mp_start.S")
     if args.target in ("smu_sep_arm", "smu_sep_smoke", "all"):
         build_smc_rom(toolchain, "smu_sep_arm")
     if args.target in ("smu_sep_smoke", "all"):

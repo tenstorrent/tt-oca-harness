@@ -135,15 +135,22 @@ module smu_alias_fcov #(
     // ------------------------------------------------------------------
     // Commercial-simulator covergroup: which of the two SEP egress paths
     // carried the transfer, against the window membership of its address.
+    // The SEP routes SMC-aperture traffic to the dedicated port and every
+    // other non-local transfer to the SMN fabric (sep fabric.adoc), so the
+    // dedicated port never carries an out-of-window address and the crossbar
+    // port never carries an in-window one.
     // ------------------------------------------------------------------
     covergroup cg_alias_path with function sample (
         logic on_remap_port, logic in_window, logic is_read
     );
       option.per_instance = 1;
-      cp_port: coverpoint on_remap_port;
-      cp_window: coverpoint in_window;
+      cp_port: coverpoint on_remap_port {bins xbar = {1'b0}; bins dedicated = {1'b1};}
+      cp_window: coverpoint in_window {bins other = {1'b0}; bins smc_window = {1'b1};}
       cp_is_read: coverpoint is_read;
-      x_path: cross cp_port, cp_window, cp_is_read;
+      x_path: cross cp_port, cp_window, cp_is_read{
+        ignore_bins dedicated_other = binsof (cp_port.dedicated) && binsof (cp_window.other);
+        ignore_bins xbar_smc_window = binsof (cp_port.xbar) && binsof (cp_window.smc_window);
+      }
     endgroup
 
     cg_alias_path u_cg_alias_path = new();

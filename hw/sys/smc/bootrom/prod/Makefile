@@ -77,10 +77,20 @@ BUILD_DIR  := $(PROD_DIR)/build
 # DV-only ROM padding self-test builds (never a production image).
 # ROM_PADDING_SELFTEST=1 jumps into EBREAK padding; =2 executes a generic EBREAK.
 ROM_PADDING_SELFTEST ?=
-ifneq ($(ROM_PADDING_SELFTEST),)
-    OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)_padding_selftest$(ROM_PADDING_SELFTEST)
+# I3C_CORE selects which I3C block the ROM programs, so the two selections need
+# separate output trees: the adopter flow builds the Cadence selection and the
+# open DV flow builds the HCI one, from the same checkout. Sharing one directory
+# lets whichever ran last decide what the other links. The default selection
+# keeps the unsuffixed path.
+ifeq ($(I3C_CORE),chipsalliance)
+    OUT_VARIANT := _hci
 else
-    OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)
+    OUT_VARIANT :=
+endif
+ifneq ($(ROM_PADDING_SELFTEST),)
+    OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)_padding_selftest$(ROM_PADDING_SELFTEST)$(OUT_VARIANT)
+else
+    OUT_DIR := $(BUILD_DIR)/$(BUILD_TYPE)$(OUT_VARIANT)
 endif
 OBJ_DIR    := $(OUT_DIR)/obj
 BIN_DIR    := $(OUT_DIR)/bin
@@ -199,8 +209,8 @@ endif
 # files are always compiled; the define picks exactly one implementation (the
 # HCI driver body is #ifdef'd in, the Cadence override and the weak-stub
 # receive paths stay untouched otherwise). Inherited from the environment, so
-# `I3C_CORE=swap make ...` (or the DV build) propagates it here.
-ifeq ($(I3C_CORE),swap)
+# `I3C_CORE=chipsalliance make ...` (or the DV build) propagates it here.
+ifeq ($(I3C_CORE),chipsalliance)
     DEFINES += -DI3C_USE_HCI_CORE
 endif
 
@@ -236,6 +246,17 @@ ALL_OBJS += $(SMC_FW_OVERLAY_OBJS)
 
 BUILD_FLAGS := SOURCE_OVERLAY=$(OCAH_FW_OVERLAY_SOURCES_smc)
 FLAGS_STAMP := $(OUT_DIR)/.build_flags
+
+# An object carries no record of the flags that produced it, and Make compares
+# only timestamps, so changing ENABLE_RELEASE_PRINTS, EXTRA_DEFINES or the
+# injected overlay sources over a populated build directory relinks objects from
+# the previous configuration and reports success. Every object depends on this
+# stamp, whose content is that configuration.
+BUILD_CONFIG_SIG := $(strip $(DEFINES)) | $(strip $(notdir $(SMC_FW_OVERLAY_SOURCES)))
+CONFIG_STAMP     := $(OUT_DIR)/.config.stamp
+$(shell mkdir -p $(OUT_DIR) && \
+    { [ "$$(cat $(CONFIG_STAMP) 2>/dev/null)" = '$(BUILD_CONFIG_SIG)' ] || \
+        printf '%s' '$(BUILD_CONFIG_SIG)' > $(CONFIG_STAMP); })
 
 ELF_FILE         := $(BIN_DIR)/$(TARGET).elf
 BIN_FILE         := $(BIN_DIR)/$(TARGET).bin
@@ -332,36 +353,40 @@ $(ALL_OBJS): $(FLAGS_STAMP)
 # headers. -MP emits phony targets so a deleted header does not wedge the build.
 DEPFLAGS := -MMD -MP
 
-$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)/src
+$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.c $(CONFIG_STAMP) | $(OBJ_DIR)/src
 	@echo "CC  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)/src
+$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.cpp $(CONFIG_STAMP) | $(OBJ_DIR)/src
 	@echo "CXX $<"
 	@$(CXX) $(CXXFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.S | $(OBJ_DIR)/src
+$(OBJ_DIR)/src/%.o: $(SRC_DIR)/%.S $(CONFIG_STAMP) | $(OBJ_DIR)/src
 	@echo "AS  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-$(OBJ_DIR)/lib/%.o: $(LIB_DIR)/src/%.c | $(OBJ_DIR)/lib
+$(OBJ_DIR)/lib/%.o: $(LIB_DIR)/src/%.c $(CONFIG_STAMP) | $(OBJ_DIR)/lib
 	@echo "CC  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-$(OBJ_DIR)/boot/%.o: $(BOOT_DIR)/%.S | $(OBJ_DIR)/boot
+$(OBJ_DIR)/boot/%.o: $(BOOT_DIR)/%.S $(CONFIG_STAMP) | $(OBJ_DIR)/boot
 	@echo "AS  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-$(OBJ_DIR)/drivers/%.o: $(DRIVERS_DIR)/src/%.c | $(OBJ_DIR)/drivers
+$(OBJ_DIR)/drivers/%.o: $(DRIVERS_DIR)/src/%.c $(CONFIG_STAMP) | $(OBJ_DIR)/drivers
 	@echo "CC  $<"
 	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) -c $< -o $@
 
-# Compile overlay sources with a static pattern rule so Make knows each
-# prerequisite source path without a VPATH.
-$(SMC_FW_OVERLAY_OBJS): $(OBJ_DIR)/drivers/%.o: | $(OBJ_DIR)/drivers
-	@echo "CC (extra) $(filter %/$*.c,$(SMC_FW_OVERLAY_SOURCES))"
-	@$(GCC) $(CFLAGS) $(DEPFLAGS) $(INCLUDES) $(DEFINES) \
-	    -c $(filter %/$*.c,$(SMC_FW_OVERLAY_SOURCES)) -o $@
+# Compile rules for SMC_FW_OVERLAY_SOURCES, one per source so each object names
+# its own path as a prerequisite. A single pattern rule cannot, and an object
+# with no source prerequisite is compiled once and then never again, however the
+# source changes.
+define SMC_FW_OVERLAY_RULE
+$(OBJ_DIR)/drivers/$(notdir $(basename $(1))).o: $(1) $(CONFIG_STAMP) | $(OBJ_DIR)/drivers
+	@echo "CC (extra) $(1)"
+	@$$(GCC) $$(CFLAGS) $$(DEPFLAGS) $$(INCLUDES) $$(DEFINES) -c $(1) -o $$@
+endef
+$(foreach src,$(SMC_FW_OVERLAY_SOURCES),$(eval $(call SMC_FW_OVERLAY_RULE,$(src))))
 
 -include $(ALL_OBJS:.o=.d)
 

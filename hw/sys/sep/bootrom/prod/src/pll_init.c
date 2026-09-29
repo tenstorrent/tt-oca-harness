@@ -32,7 +32,7 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
 
     // Read sysclk frequency: 11-bit fuse field indicates configured sysclk PLL frequency in MHz.
     // If 0 (fuses blank), fall back to REF_CLK.
-    uint32_t sysclk_fuse = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
+    uint32_t sysclk_fuse = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
     uint16_t pll_freq_mhz =
         (uint16_t)((sysclk_fuse & SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm) >>
                    SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp);

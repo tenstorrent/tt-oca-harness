@@ -30,8 +30,8 @@ static inline uint32_t bswap32(uint32_t x) {
 static int wait_for_done_or_idle(void) {
     int timeout = 1000000;
     while (timeout-- > 0) {
-        hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
-        hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+        hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         if (intr.f.hmac_done || sts.f.hmac_idle) {
             break;
         }
@@ -41,16 +41,16 @@ static int wait_for_done_or_idle(void) {
         return -1;
     }
     // Clear hmac_done if set
-    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (intr.f.hmac_done) {
         hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-        WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+        WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     }
     return 0;
 }
 
 static void print_status(const char *tag) {
-    hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    hmac__STATUS_t s = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     printf("%s STATUS=0x%08x idle=%u empty=%u full=%u depth=%u\n", tag, s.w, s.f.hmac_idle,
            s.f.fifo_empty, s.f.fifo_full, s.f.fifo_depth);
 }
@@ -58,22 +58,22 @@ static void print_status(const char *tag) {
 static int stage_connectivity(void) {
     printf("[Stage 1] Connectivity checks\n");
     // Read ERR_CODE and STATUS to ensure MMIO works
-    uint32_t err = READ_REG(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
-    hmac__STATUS_t sts = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+    uint32_t err = READ_REG(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR);
+    hmac__STATUS_t sts = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
     printf("  ERR_CODE=0x%08x STATUS=0x%08x\n", err, sts.w);
 
     // Exercise INTR_TEST for hmac_done bit
     hmac__INTR_TEST_t intr_test = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, intr_test.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_TEST_BASE_ADDR, intr_test.w);
 
-    hmac__INTR_STATE_t intr = {.w = READ_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
+    hmac__INTR_STATE_t intr = {.w = READ_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR)};
     if (!intr.f.hmac_done) {
         printf("  INTR_TEST did not reflect in INTR_STATE\n");
         return -1;
     }
     // Clear it
     hmac__INTR_STATE_t clear = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, clear.w);
     return 0;
 }
 
@@ -81,7 +81,7 @@ static int stage_config(void) {
     printf("[Stage 2] Configure HMAC for SHA-256\n");
     // Enable only hmac_done interrupt
     hmac__INTR_ENABLE_t intr_en = {.f.hmac_done = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, intr_en.w);
 
     // SHA-256, no swaps, SHA enabled, HMAC disabled
     hmac__CFG_t cfg = {.w = 0};
@@ -90,11 +90,11 @@ static int stage_config(void) {
     cfg.f.endian_swap = 0;                             // No endian swap
     cfg.f.digest_swap = 0;                             // No digest swap
     cfg.f.digest_size = SEP_HMAC_DIGEST_SIZE_SHA2_256; // SHA2_256 (value=1)
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
 
     // Start a new hash
     hmac__CMD_t cmd = {.f.hash_start = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     print_status("  After hash_start");
     return 0;
 }
@@ -102,25 +102,25 @@ static int stage_config(void) {
 static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
     printf("[Stage 3] Feed %u bytes into MSG FIFO\n", len);
 
-    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo8 = (volatile uint8_t *)(uintptr_t)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
 
     for (uint32_t i = 0; i < len; i++) {
-        hmac__STATUS_t s = {.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR)};
+        hmac__STATUS_t s = {.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR)};
         int spins = 0;
         while (s.f.fifo_full) {
             if (spins++ > 10000) {
                 printf("  FIFO full timeout\n");
                 return -1;
             }
-            s.w = READ_REG(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+            s.w = READ_REG(SEP_TOP_HMAC_STATUS_BASE_ADDR);
         }
         *fifo8 = data[i]; // byte write to ensure exact length accounting
     }
 
     // Verify message length (in bits) matches exactly on both halves
     uint64_t expected_bits = (uint64_t)len * 8ull;
-    uint32_t ml = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
-    uint32_t mu = READ_REG(OCH_SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
+    uint32_t ml = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_LOWER_BASE_ADDR);
+    uint32_t mu = READ_REG(SEP_TOP_HMAC_MSG_LENGTH_UPPER_BASE_ADDR);
     uint32_t exp_lo = (uint32_t)(expected_bits & 0xffffffffu);
     uint32_t exp_hi = (uint32_t)(expected_bits >> 32);
     printf("  MSG_LENGTH lower=%u upper=%u (bits) expected=%u:%u\n", ml, mu, exp_lo, exp_hi);
@@ -134,21 +134,21 @@ static int stage_fifo_feed(const uint8_t *data, uint32_t len) {
 static int stage_process_and_read(uint8_t digest[32]) {
     printf("[Stage 4] Process and read digest\n");
     hmac__CMD_t cmd = {.f.hash_process = 1};
-    WRITE_REG(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
+    WRITE_REG(SEP_TOP_HMAC_CMD_BASE_ADDR, cmd.w);
     if (wait_for_done_or_idle() != 0) return -1;
 
     for (int i = 0; i < 8; i++) {
-        uint32_t raw = READ_REG(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
+        uint32_t raw = READ_REG(SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
         uint32_t swapped = bswap32(raw);
         ((uint32_t *)digest)[i] = swapped;
     }
 
     // Cleanup: disable SHA and wipe
-    hmac__CFG_t cfg = {.w = READ_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR)};
+    hmac__CFG_t cfg = {.w = READ_REG(SEP_TOP_HMAC_CFG_BASE_ADDR)};
     cfg.f.sha_en = 0;
-    WRITE_REG(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
-    WRITE_REG(OCH_SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
-    WRITE_REG(OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_HMAC_WIPE_SECRET_BASE_ADDR, 0xFFFFFFFFu);
+    WRITE_REG(SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, 0);
     return 0;
 }
 
@@ -182,7 +182,7 @@ int main(void) {
     // Initialize outbound filter to allow testpass mailbox access
     sep_outbound_filter_init();
 
-    printf("HMAC base=0x%08x\n", OCH_SEP_TOP_HMAC_BASE_ADDR);
+    printf("HMAC base=0x%08x\n", SEP_TOP_HMAC_BASE_ADDR);
 
     // Simple vectors
     const uint8_t empty[] = "";
