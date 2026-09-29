@@ -76,7 +76,6 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
@@ -147,36 +146,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.start_ext_seq(seq)
         return seq.resp_code
 
-    async def _watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
-        """Count system-CSR AXI-Lite handshakes until the caller kills the task.
-
-        Returns ``(task, addrs)``. ``addrs`` is appended in place while the
-        task runs. Lite has no AxLEN; each handshake is one converted single.
-        """
-        dut = cocotb.top
-        addrs: list[int] = []
-
-        async def _mon() -> None:
-            while True:
-                await RisingEdge(dut.clk_i)
-                await ReadOnly()
-                if write:
-                    valid = dut.sys_csr_axil_awvalid_o
-                    ready = dut.sys_csr_axil_awready_o
-                    addr = dut.sys_csr_axil_awaddr_o
-                else:
-                    valid = dut.sys_csr_axil_arvalid_o
-                    ready = dut.sys_csr_axil_arready_o
-                    addr = dut.sys_csr_axil_araddr_o
-                if self.rd_known(valid) and self.rd_known(ready):
-                    addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
-
-        return cocotb.start_soon(_mon()), addrs
-
     async def _ext_burst_read_watch(
         self, addr: int, *, expect_error: bool = False
     ) -> tuple[int, int, list[int]]:
-        task, addrs = await self._watch_sys_csr_lite(write=False)
+        task, addrs = self.watch_sys_csr_lite(write=False)
         try:
             resp, data = await self._ext_burst_read(addr, expect_error=expect_error)
         finally:
@@ -186,7 +159,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _ext_burst_write_watch(
         self, addr: int, data: int, *, expect_error: bool = False
     ) -> tuple[int, list[int]]:
-        task, addrs = await self._watch_sys_csr_lite(write=True)
+        task, addrs = self.watch_sys_csr_lite(write=True)
         try:
             resp = await self._ext_burst_write(addr, data, expect_error=expect_error)
         finally:

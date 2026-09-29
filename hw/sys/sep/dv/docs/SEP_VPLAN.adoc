@@ -480,6 +480,10 @@ never when it was written.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |Inter-block reserved space: reserved rows in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation comes from that table. Named reserved spans whose refuse flavour is unnamed are excluded from the probe set. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
+|`sep_unmapped_access_policy_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|Unmapped points next to live registers that no other leaf probes: the system-CSR holes, the reserved row above SEP CPU control, the upper half of the mailbox page, the space past each eFuse sibling block, and the tail of every remap and filter array slot. `memory_map.adoc` gives the rule: refused between or past unit extents, zero and OKAY inside an extent, never an alias. Every probe is checked against distinct values programmed into the neighbouring live words. The refusal code at each point is logged and not graded.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -868,6 +872,9 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Reserved inter-block address space
 |`sep_axi_map_refuse_test`.
+
+|Unmapped points next to live registers
+|`sep_unmapped_access_policy_test` — system-CSR holes, the system-bus reserved row, the mailbox page's upper half, past each eFuse sibling, and every remap / filter slot tail: refused, or zero inside an extent, and never an alias.
 
 |Dead-space decode
 |`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
@@ -6130,6 +6137,78 @@ reported as such rather than counted as a pass.
 
 '''''
 
+[[sep_unmapped_access_policy_test]]
+===== `sep_unmapped_access_policy_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*Source Module*: `sep_unmapped_access_policy_test`
+
+*BFM / Model*: ocah_axi_vip
+
+*Randomization*: RAND-NONE — every address is derived from the generated register export and walked on every run.
+
+*Tracking*: #2503 (last array slot tail refused inside the array extent); #2504, #2505 (refusal code, open policy question); #2489, #2490, #2495 (behaviour evidence)
+
+*Objective*: `hw/sys/sep/doc/memory_map.adoc` states two rules. The fabric refuses an address that falls between unit windows, or past the extent a unit allocates, and such an access never reaches a unit. Inside a unit's allocated extent, an offset that owns no register reads zero and discards a write, both with OKAY. This leaf holds the DUT to both rules at the points that sit next to live registers and that `sep_fabric_deadspace_decode_test` and `sep_axi_map_refuse_test` do not probe. Neither rule names a refusal code, so the code is logged at each point and not graded.
+
+*Test Coverage*: System-CSR holes, the reserved row above SEP CPU control, the mailbox page's upper half, the space past each eFuse sibling block, the end of the eFuse token MMR extent, and every remap and filter array slot tail are refused or read zero as the rule requires, and none of them aliases a live register.
+
+*Scope*:
+
+* System-CSR holes: the gaps between the AP and STEE output-remap arrays, after the STEE array, between the outbound and inbound filter arrays, before SEP CPU control, past the SEP CPU control extent, and one SEP CPU control image up.
+* Reserved row: the generated map row from the end of the SEP CPU control aperture to the external IO bridge, first and last word of each 64 KiB page. The row has two refusal paths, and the log records which one each probe takes. The system-peripherals crossbar sends the `0x10A4_0000` page to the system-CSR AXI-Lite port, and that port's error slave refuses it. The local crossbar still sends `0x10A5_0000` and above into its system-peripherals window. The system-peripherals crossbar sends those addresses back to the local crossbar on its SMN-inbound output. The local crossbar does not connect that initiator to the system-peripherals target, so its error slave answers, and the access never reaches the system-CSR AXI-Lite port.
+* Mailbox upper half: from the end of the 32 KiB mailbox aperture (`AXIL_MAILBOX` size rounded up to a power of two) to the next RDL block. The probes include the images of outbound mailbox 0 `WRITE_DATA`, `WIRQT`, `RIRQT` and `STATUS` and of the last inbound mailbox `WIRQT`.
+* eFuse: past `efuse_interface_ctrl` (28 B extent) and past `efuse_mmr` (116 B extent), each to the end of its 256 B window, including the image of a live register one extent up and half a window up.
+* Array tails: every word between the end of a slot's registers and the next slot, for the 16 alias-remap, 32 outbound-filter and 16 inbound-filter slots. The array extent is the array base plus `SEP_TOP_<ARRAY>_TOTAL_SIZE` from the generated `hw/sys/sep/regs/gen/c/sep_addr.h`, which is the size the RDL allocates to the whole array (`0x200`, `0x400` and `0x200`). Every tail, the last slot's tail included, is inside that extent, so by `hw/sys/sep/doc/memory_map.adoc` ("Inside a unit's allocated extent") it reads zero and discards a write with OKAY. The first word past the outbound and inbound filter arrays (`0x10A2_0400`, `0x10A2_1200`) is past the extent and must be refused. The first word past the alias-remap array is `AP_OUTPUT_REMAP_CTRL[0]`, a live word, so it is not a refusal point.
+* The Key Manager's own view of the token MMR (`0x0001_1570`) needs KM firmware and is not probed here.
+
+*Test Procedure*:
+
+[arabic]
+. Program a distinct non-zero value into one live word of every array slot, the first and last AP / STEE output-remap entries, `SEP_NMI_VEC`, three mailbox thresholds, both eFuse timeouts and two eFuse token inputs, and read each back. Snapshot every other word of those slots, every mailbox `STATUS` and `TOKEN_MATCH_FAULT`.
+. Read `TOKEN_MATCH_FAULT` through its generated symbol.
+. Read and write each probe with 32-bit singles. After each write, re-read every programmed word and the non-array snapshot words. For system-CSR and reserved-row probes, record whether the access reached the system-CSR AXI-Lite port.
+. Read and write each array slot tail and the first word past each filter array, and after each write re-read the words of that slot and of the next slot.
+. Re-read every live word, then restore the programmed words.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-UNMAPPED-LIVE
+|Every programmed word reads back its value with OKAY, and every snapshot word reads OKAY. This is the positive control: it shows the bus reaches every block that owns a probed hole, and the distinct values are what make an alias visible.
+|CHK-SYSCSR-HOLE-REFUSE
+|Every read and write in the system-CSR holes is refused: not OKAY, and not a timeout.
+|CHK-SYS-RESERVED-REFUSE
+|Every read and write in the reserved row above SEP CPU control is refused, the `0x10A5_0000` page included.
+|CHK-MBOX-UPPER-REFUSE
+|Every read and write in the upper half of the mailbox page is refused.
+|CHK-EFUSE-CTRL-PAST-REFUSE
+|Every read and write past the `efuse_interface_ctrl` extent is refused.
+|CHK-EFUSE-MMR-PAST-REFUSE
+|Every read and write past the `efuse_mmr` extent is refused.
+|CHK-TOKEN-FAULT-EXTENT
+|`TOKEN_MATCH_FAULT`, the last register `hw/ip/efuse/regs/efuse_mmr.rdl` places in the token MMR (`@0x70`), reads OKAY with its RDL reset value, and the first word after it (`EFUSE_MMR` base + `REG_MAP_SIZE`) is refused. The extent therefore ends at `0x1093_0573`, where the RDL ends it. That the register holds live fault state is graded by `sep_efuse_rma_token_rand_test`, which reads a raised fault bit through the same address.
+|CHK-ARRAY-TAIL
+|The array extent is base + `TOTAL_SIZE` from `sep_addr.h`, per `hw/sys/sep/doc/memory_map.adoc`. Every tail inside it, the last slot's tail included, answers OKAY, and a read of it returns zero. The first word past the extent is refused. A tail write never changes a word of its own slot or of the next slot. The walk must grade at least one word of each kind. A failure names the tail address, the response and the extent.
+|CHK-UNMAPPED-NO-ALIAS
+|No refused read returns the value of a programmed word. No probe write changes a watched live word. A closing re-read of every live word matches the snapshot.
+|CHK-UNMAPPED-PINS
+|The DECERR beats the bus monitor saw equal the DECERR responses the master reported, and the run reported at least one.
+|===
+
+The `UNMAPPED-CODE` lines report the refusal code per point and channel. They are a report for the design owner, not a checker; see <<known-limitations>>, "Unmapped-access refusal code".
+
+*Pass Criteria*: CHK-ARRAY-TAIL fails while the last slot tail is refused; every other checker passes.
+
+'''''
+
 [[sep_efuse_set_only_monotonicity_test]]
 ===== `sep_efuse_set_only_monotonicity_test`
 
@@ -7424,7 +7503,10 @@ constraint is not an open defect.
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Routed-but-reserved spans (specification)
-|`sep_axi_map_refuse_test` drives reserved addresses whose refuse flavour the map names. Named reserved spans whose refuse flavour is unnamed are excluded and are not asserted.
+|`sep_axi_map_refuse_test` drives reserved addresses whose refuse flavour the map names. Named reserved spans whose refuse flavour is unnamed are excluded from that walk. The system-bus reserved span (`0x10A4_0000`–`0x10A5_FFFF`) is asserted by `sep_unmapped_access_policy_test`, which grades refusal and no alias there and logs the code.
+
+|Unmapped-access refusal code (open policy question)
+|`memory_map.adoc` requires a refusal between and past unit extents and names no code, and no specification or ruling sets a chip-wide one. The code depends on the point that refuses. In the system-CSR window a read of a hole returns the system-CSR error slave's DECERR, but a write returns SLVERR, because the AXI-to-AXI-Lite bridge in front of the system CSRs rewrites any error `BRESP` to SLVERR. The reserved row above it has two codes. Its `0x10A4_0000` page reaches the system-CSR port and gets the same DECERR / SLVERR split. From `0x10A5_0000` up, the local crossbar's error slave answers DECERR on both channels. The upper half of the mailbox page answers SLVERR on both channels. Past `efuse_interface_ctrl` the APB bridge answers SLVERR; past `efuse_mmr` the crypto default slave answers DECERR. `sep_unmapped_access_policy_test` asserts refusal and no alias at each of these points and logs the code as `UNMAPPED-CODE`; it does not grade the code. Which codes are permitted is the open question, tracked on the card.
 
 |KM application ROM wipe paths
 |Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.

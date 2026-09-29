@@ -398,6 +398,21 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Unmapped points next to live registers: system-CSR holes, the reserved row
+# above SEP CPU control, the mailbox page's upper half, past each eFuse sibling
+# block, and every remap / filter array slot tail. Refused, or zero inside an
+# extent, and never aliased onto a live word. The refusal code is logged, not
+# graded. Addresses come from the generated register export.
+name = "sep_unmapped_access_policy_test"
+module = "system.sep_unmapped_access_policy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "axi", "decode", "negative", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # AXI transaction IDs on the response path. Eight scratch words are primed
 # with eight distinct values, then read with eight reads outstanding at once,
 # one per ID; each must return its own word. Directed, not randomized: the
