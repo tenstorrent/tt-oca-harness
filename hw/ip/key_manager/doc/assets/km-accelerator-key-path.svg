@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="536" viewBox="0 0 1040 536" role="img" aria-labelledby="title desc">
+<title id="title">Accelerator key path</title>
+<desc id="desc">Key and host paths into one crypto engine wrapper, shown for a generic engine &lt;eng&gt; (OTBN, AES, KMAC or HMAC). Top row: the key_manager 32-bit AXI4-Lite key port passes through u_&lt;eng&gt;_key_isolate in sep_crypto_axi_interconnect and ends on u_&lt;eng&gt;_wrapper_key_reg, whose write-only KEY_SHARE0 and KEY_SHARE1 words and KEY_CTRL.KEY_VALID bit drive the keymgr_key_i sideload port of the OpenTitan engine core. Bottom row: the SEP host 64-bit AXI4 path passes through u_axi_demux, width and protocol conversion and u_&lt;eng&gt;_host_isolate, then axi_lite_to_tlul into the engine's TL-UL registers. The engine core drives its interrupts and alerts.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="536" fill="#ffffff"/>
+<rect class="external" x="20" y="58" width="160" height="64" rx="6"/>
+<text class="bs" x="100" y="84" text-anchor="middle">key_manager</text>
+<text class="s" x="100" y="103" text-anchor="middle">&lt;eng&gt;_req_o</text>
+<rect class="external" x="20" y="288" width="160" height="64" rx="6"/>
+<text class="bs" x="100" y="314" text-anchor="middle">SEP host</text>
+<text class="s" x="100" y="333" text-anchor="middle">64-bit AXI4</text>
+<rect class="fabric" x="220" y="30" width="290" height="380" rx="6"/>
+<text class="bs" x="232" y="398" text-anchor="start">sep_crypto_axi_interconnect</text>
+<rect class="core" x="252" y="60" width="226" height="60" rx="6"/>
+<text class="bs" x="365" y="85" text-anchor="middle">u_&lt;eng&gt;_key_isolate</text>
+<text class="s" x="365" y="104" text-anchor="middle">axi_lite_isolate</text>
+<rect class="core" x="252" y="250" width="226" height="132" rx="6"/>
+<text class="bs" x="365" y="274" text-anchor="middle">u_axi_demux</text>
+<text class="s" x="365" y="298" text-anchor="middle">64-to-32-bit width converter</text>
+<text class="s" x="365" y="318" text-anchor="middle">AXI4 to AXI4-Lite</text>
+<text class="s" x="365" y="338" text-anchor="middle">u_&lt;eng&gt;_host_isolate</text>
+<rect class="smu" x="540" y="30" width="490" height="380" rx="6"/>
+<text class="b" x="552" y="398" text-anchor="start">&lt;eng&gt;_wrapper</text>
+<rect class="core" x="565" y="46" width="230" height="88" rx="6"/>
+<text class="bs" x="680" y="70" text-anchor="middle">u_&lt;eng&gt;_wrapper_key_reg</text>
+<text class="s" x="680" y="91" text-anchor="middle">KEY_SHARE0, KEY_SHARE1</text>
+<text class="s" x="680" y="108" text-anchor="middle">(write-only)</text>
+<text class="s" x="680" y="125" text-anchor="middle">KEY_CTRL.KEY_VALID</text>
+<rect class="fabric" x="565" y="288" width="230" height="64" rx="6"/>
+<text class="bs" x="680" y="314" text-anchor="middle">axi_lite_to_tlul</text>
+<text class="s" x="680" y="333" text-anchor="middle">CSR bridge</text>
+<rect class="core" x="885" y="46" width="130" height="306" rx="6"/>
+<text class="bs" x="950" y="191" text-anchor="middle">OpenTitan</text>
+<text class="bs" x="950" y="209" text-anchor="middle">&lt;eng&gt; core</text>
+<path class="axi" d="M192,90 L240,90"/>
+<path class="axi" d="M490,90 L553,90"/>
+<path class="sigo" d="M795,90 L879,90"/>
+<text class="s" x="840" y="82" text-anchor="middle">keymgr_key_i</text>
+<text class="s" x="840" y="108" text-anchor="middle">sideload</text>
+<path class="axi" d="M192,320 L240,320"/>
+<path class="axi" d="M490,320 L553,320"/>
+<path class="axi" d="M807,320 L873,320"/>
+<text class="s" x="840" y="306" text-anchor="middle">TL-UL</text>
+<path class="sigo" d="M950,352 L950,440"/>
+<text class="s" x="960" y="436" text-anchor="start">interrupts,</text>
+<text class="s" x="960" y="453" text-anchor="start">alerts</text>
+<rect class="core" x="14" y="479" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="493" text-anchor="start">RTL instance</text>
+<rect class="fabric" x="168" y="479" width="40" height="18" rx="4"/>
+<text class="s" x="216" y="493" text-anchor="start">Interconnect or bridge</text>
+<rect class="external" x="392" y="479" width="40" height="18" rx="4"/>
+<text class="s" x="440" y="493" text-anchor="start">Initiator</text>
+<text class="s" x="553" y="493" text-anchor="start">Manager port</text>
+<text class="s" x="691" y="493" text-anchor="start">Subordinate port</text>
+<path class="axi" d="M821.0,488 L865.0,488"/>
+<text class="s" x="875" y="493" text-anchor="start">AXI4, AXI4-Lite or TL-UL</text>
+<path class="sigo" d="M14,516 L58,516"/>
+<text class="s" x="68" y="521" text-anchor="start">Signals</text>
+<rect class="pm" x="169.0" y="81.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="180" y="94.5" text-anchor="middle">M</text>
+<rect class="ps" x="241.0" y="81.0" width="22" height="18" rx="4"/>
+<text class="pst" x="252" y="94.5" text-anchor="middle">S</text>
+<rect class="pm" x="467.0" y="81.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="478" y="94.5" text-anchor="middle">M</text>
+<rect class="ps" x="554.0" y="81.0" width="22" height="18" rx="4"/>
+<text class="pst" x="565" y="94.5" text-anchor="middle">S</text>
+<rect class="pm" x="169.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="180" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="241.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="252" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="467.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="478" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="554.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="565" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="784.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="795" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="874.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="885" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="525.0" y="479.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="536" y="492.5" text-anchor="middle">M</text>
+<rect class="ps" x="663.0" y="479.0" width="22" height="18" rx="4"/>
+<text class="pst" x="674" y="492.5" text-anchor="middle">S</text>
+</svg>
