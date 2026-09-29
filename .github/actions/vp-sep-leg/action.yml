@@ -331,7 +331,9 @@ runs:
         python3 - <<'PY'
         import sys, xml.etree.ElementTree as ET
         root = ET.parse("virtual_platform/pytest-results.xml").getroot()
-        suites = root.iter("testsuite") if root.tag == "testsuites" else [root]
+        # A list, not iter(): the totals pass below would exhaust a generator
+        # and leave the skip-reason scan with nothing to read.
+        suites = list(root.iter("testsuite")) if root.tag == "testsuites" else [root]
         total = skipped = 0
         for s in suites:
             total += int(s.get("tests", 0))
