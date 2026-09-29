@@ -97,7 +97,7 @@ A B/R response that the CPU presents toward live fabric cannot be preserved.
 The force-mode reset reaches the CPU about a cycle after the flush starts, so
 the beat is withdrawn without `ready` with or without the flush. The flush
 masks it immediately instead of letting the reset drop it a cycle later.
-Before this change, the same withdrawal also left the affected L2 read or
+Without the flush, the same withdrawal leaves the affected L2 read or
 write channel in `Drain` permanently. That blocked later fabric reads or
 writes into the CPU, and every later drain handshake, until a primary reset.
 Holding the presented beat would not make the outcome AXI-clean: the rest of
