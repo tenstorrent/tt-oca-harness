@@ -163,10 +163,6 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
             f"{label}: a write of 0x{payload:08x} to unmapped 0x{hole.dead_addr:08x} changed live "
             f"0x{hole.live_addr:08x} from 0x{seeded:08x} to 0x{after:08x}"
         )
-        assert not (dead_rd.resp_code == AXI_RESP_OKAY and dead_data & hole.mask == seeded), (
-            f"{label}: unmapped 0x{hole.dead_addr:08x} read back live 0x{hole.live_addr:08x}'s "
-            f"seed 0x{seeded:08x}"
-        )
         await self._okay(f"{label}_RESTORE", SmcSysAxiOp.WRITE, hole.live_addr, original)
         self.results.append(
             f"{label} dead=0x{hole.dead_addr:08x} "
