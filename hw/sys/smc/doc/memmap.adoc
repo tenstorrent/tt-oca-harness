@@ -77,16 +77,15 @@ the split is purely organizational:
   controls, the per-pad GPIO controls, the PLL macro, and the PVT sensors.
 * *Supplementary* (`BASE + 0x040_4000`): any additional memory-mapped devices
   the adopter wants to expose, plus the captured strap registers at
-  `BASE + 0x040_5800`. The reference integration places its vendor I3C
-  controllers (nonfree overlay) here.
+  `BASE + 0x040_5800`.
 
 The generated SMC map reports this as one opaque adopter-owned aperture.
 Concrete placements inside it are integration-specific and are documented by
 the adopter. The mandatory functions are the PLL and PVT wrappers, clock
-observation and pad controls, and the eFuse SHIM. Supplementary functions may
-include vendor I3C controllers and captured GPIO straps. Captured straps are
-read-only values latched from bonded pads at cold reset and consumed by boot
-firmware.
+observation and pad controls, and the eFuse SHIM. Supplementary functions are
+adopter-defined memory-mapped devices, plus the captured GPIO straps. Captured
+straps are read-only values latched from bonded pads at cold reset and consumed
+by boot firmware.
 
 The eFuse SHIM control block is the exception. Its placement is fixed at the
 base of the window, `BASE + 0x040_0000`, and its size is the
@@ -98,9 +97,9 @@ registers at offset `0x0` of its own `smc_external` map.
 
 The supplementary (optional) region of the window is passed through to the SMU's
 `smc_external_req_o` / `smc_external_resp_i` ports for adopter integration. The
-adopter may implement any memory-mapped functions (including the vendor I3C
-controllers mentioned above), or may instead terminate the region with an error
-response. The reference integration (`hw/top/smc_ip_integration.sv`) terminates
+adopter may implement any memory-mapped functions there, or may instead
+terminate the region with an error response. The reference integration
+(`hw/top/smc_ip_integration.sv`) terminates
 unclaimed accesses in this region with a DECERR response via the
 `prim_axi_lite_err_slv` helper; this is one integration choice, not a
 requirement.
