@@ -511,7 +511,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         assert (hi >> FILTER_LOCKED_HI_BIT) & 1, (
             f"CHK-CONFIG-LOCK FAIL: locked did not set (hi 0x{hi:08x})"
         )
-        resp = await self.filt.write_tolerant(cell.cfg_addr, cfg_lo & ~F_ALLOW_BURST & 0xFFFF_FFFF)
+        resp_lo = await self.filt.write_tolerant(
+            cell.cfg_addr, cfg_lo & ~F_ALLOW_BURST & 0xFFFF_FFFF
+        )
         after = await self.filt.read_cpu(cell.cfg_addr)
         assert after == cfg_lo, (
             f"CHK-CONFIG-LOCK FAIL: FILTER_CONFIG moved under the lock "
@@ -525,10 +527,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         # The frozen bit still drives the hardware, not just the CSR readback.
         probe_addr, probe_val = wcfg.staged[1]
-        resp, data = await self._ext_read(probe_addr)
-        assert resp == RESP_OKAY and data == probe_val, (
+        probe_resp, data = await self._ext_read(probe_addr)
+        assert probe_resp == RESP_OKAY and data == probe_val, (
             f"CHK-CONFIG-LOCK FAIL: frozen allow_burst stopped granting the page "
-            f"(0x{probe_addr:08x} resp={resp} rdata=0x{data:08x}, staged "
+            f"(0x{probe_addr:08x} resp={probe_resp} rdata=0x{data:08x}, staged "
             f"0x{probe_val:08x})"
         )
         self.logger.info(
@@ -536,7 +538,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
             "(resp=%d) leaves the bit set, and the frozen granule still grants 0x%08x",
             wcfg.entry,
-            resp,
+            resp_lo,
             after,
             bool(after & F_ALLOW_BURST),
             resp_hi,

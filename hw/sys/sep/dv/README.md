@@ -96,7 +96,9 @@ builds the images with it (see [Prerequisites](#prerequisites)). `rom_fw` stays
 out of `all`; run it with `--items rom_fw`.
 
 `all` enrolls 121 leaves. `cpu_stub` (101) and `cpu` (20) are disjoint and
-together hold all of them. The class commands below are the pre-merge gate.
+together hold all of them. `sep_km_ic_reset_release_test` runs on VCS only, so
+a Verilator selection of `all` is 120 leaves and of `cpu_stub` is 100. The
+class commands below are the pre-merge gate.
 
 ### Scheduled tiers
 
@@ -221,6 +223,16 @@ means naming `rom_fw`. `expected_count` is 121.
 `--target default` compiles the full CPU once. no_cpu leaves force-splice the
 LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
 one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
+
+`--target default` also moves `sep_abr_absent_decerr_test` off its own target
+(`lsu_stub_abr_absent`, `SEP_ABR_EN` not defined) onto the ABR-present build,
+where it cannot test the ABR-absent model. The runner merges one
+build target per coverage run, so that leaf's coverage is a separate run on
+its own target:
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items sep_abr_absent_decerr_test --cov --tool vcs
+```
 
 What the resulting number is not:
 

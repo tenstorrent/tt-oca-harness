@@ -1,16 +1,22 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A KM CPU load from the testbench virtual ROM window completes with DECERR.
+"""A KM CPU load from the virtual ROM (VROM) range completes with DECERR.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_bus_err.parhex. Not
 ``rom_main``: only code on the KM CPU can present a KM-side address.
 
-Contract. The memory-map summary in ``hw/ip/key_manager/regs/key_manager.rdl``
-lists every KM CPU window and ends with "Every other address | Reserved/Unmapped
-| DECERR". The virtual ROM base 0x1000_0000
-(``hw/ip/key_manager/doc/architecture.adoc``) is in no listed window, so a
-load from it must complete and answer DECERR. The KM CPU observes DECERR only
-as the sticky ``IRQ_STATUS.AXI_DECERR`` bit (``km_csr.rdl``).
+Contract. The KM CPU wrapper (``hw/ip/key_manager/rtl/picorv32_wrapper.sv``)
+decodes 0x1000_0000-0x1000_FFFF as VROM and routes it to a dedicated port, not
+to the AXI crossbar; ``hw/ip/key_manager/rtl/km_intf_pkg.sv`` lists that 64 KB
+window. ``hw/ip/key_manager/doc/architecture.adoc`` names VROM a testbench-only
+window that does not exist in production silicon. The wrapper ties the port's
+ready to 0, and nothing in this integration forces a response, so a load from
+the window never completes. The memory-map summary in
+``hw/ip/key_manager/regs/key_manager.rdl`` does not list VROM and ends with
+"Every other address | Reserved/Unmapped | DECERR". This leaf grades that
+summary: a load from 0x1000_0000 must complete and answer DECERR. The KM CPU
+observes DECERR only as the sticky ``IRQ_STATUS.AXI_DECERR`` bit
+(``km_csr.rdl``).
 
 The image stores PRE_MARKER to KM SRAM word 0 just before the load and
 POST_MARKER just after the load, the data store and a bounded IRQ_STATUS poll.

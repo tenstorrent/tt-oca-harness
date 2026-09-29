@@ -721,7 +721,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_vrom_decerr_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
-|A KM CPU load from the testbench virtual ROM base must complete with DECERR: `key_manager.rdl` maps every address outside its listed windows to DECERR. The load does not complete, so `CHK-KM-VROM-DECERR` fails against an image shown alive up to the load.
+|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper routes the range to a testbench-only port whose ready the RTL ties to 0, so the load does not complete and `CHK-KM-VROM-DECERR` fails against an image shown alive up to the load.
 |===
 
 [[iconic-scorecard]]
@@ -4639,7 +4639,9 @@ claimed.
 |The read burst answers non-OKAY on every beat, or every OKAY beat returns the word the named burst type addresses. A mix of OKAY and error beats fails. The FIXED and the WRAP read burst each answer OKAY and return the words at INCR beat addresses, so this checker fails.
 |===
 
-*Pass Criteria*: `CHK-BT-WRITE` and `CHK-BT-READ` fail. Every other named checker PASSes. The leaf's failure is those two checkers. See <<known-limitations>>.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-BT-WRITE` and `CHK-BT-READ` fail, and every other named checker PASSes. See <<known-limitations>>.
 
 *Not claimed*: that a non-INCR burst must be refused. No SEP document says so; the checker accepts refusal or AXI4 semantics.
 
@@ -6345,7 +6347,9 @@ reported as such rather than counted as a pass.
 |After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst and the specification names no refusal flavour. In all three blocks the burst changes the target register, so this checker fails.
 |===
 
-*Pass Criteria*: `CHK-WRAP-NO-ALIAS` fails. Every other named checker PASSes. The leaf's failure is that checker. See <<known-limitations>>.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-WRAP-NO-ALIAS` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -6417,7 +6421,9 @@ reported as such rather than counted as a pass.
 
 The `UNMAPPED-CODE` lines report the refusal code per point and channel. They are a report for the design owner, not a checker; see <<known-limitations>>, "Unmapped-access refusal code".
 
-*Pass Criteria*: CHK-ARRAY-TAIL fails while the last slot tail is refused; every other checker passes.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-ARRAY-TAIL` fails: the last slot tail is refused, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -6710,7 +6716,9 @@ error path works.
 |After that mismatch, `sec_dis=0` and `FEAT_CTRL` is fail-closed PROD again.
 |===
 
-*Pass Criteria*: `CHK-MAP-OPEN` fails. Every other named checker PASSes. The leaf's UVM_ERROR is that map failure.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-MAP-OPEN` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -7802,7 +7810,9 @@ the wipe security contract.
 |The store sets `IRQ_STATUS.AXI_SLVERR`: `key_manager.rdl` says a ROM write attempt returns SLVERR. The ROM answers the store with no error, so this checker fails.
 |===
 
-*Pass Criteria*: `CHK-KM-ROM-WRITE-SLVERR` fails. Every other named checker PASSes. The leaf's failure is that checker.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-KM-ROM-WRITE-SLVERR` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -7851,7 +7861,9 @@ the wipe security contract.
 |The KM load and the KM store each set `AXI_SLVERR` and not `AXI_DECERR`; the load does not return the host value; the shim register still holds the host value after the KM store. All four observations are logged before the verdict. The accesses reach the shim, so this checker fails.
 |===
 
-*Pass Criteria*: `CHK-KM-OTP-SHIM-EXCLUDED` fails. Every other named checker PASSes. The leaf's failure is that checker.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-KM-OTP-SHIM-EXCLUDED` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 *Refusal code*: SLVERR. The address is inside the 4 KB OTP/eFuse window (`0x0001_1000`–`0x0001_1FFF`) of the `key_manager.rdl` memory-map summary, which says an unmapped offset inside a window answers SLVERR.
 
@@ -7874,9 +7886,9 @@ the wipe security contract.
 
 *Randomization*: RAND-NONE — one directed load.
 
-*Objective*: The memory-map summary in `hw/ip/key_manager/regs/key_manager.rdl` lists every KM CPU window and ends with "Every other address | Reserved/Unmapped | DECERR". The testbench virtual ROM base `0x1000_0000` (`hw/ip/key_manager/doc/architecture.adoc`) is in no listed window, so a KM CPU load from it must complete and answer DECERR. Nothing answers that window in this integration, so the load never completes and `CHK-KM-VROM-DECERR` fails.
+*Objective*: The KM CPU wrapper (`hw/ip/key_manager/rtl/picorv32_wrapper.sv`) decodes `0x1000_0000`–`0x1000_FFFF` as the virtual ROM (VROM) and routes it to a dedicated port, not to the AXI crossbar. `hw/ip/key_manager/rtl/km_intf_pkg.sv` lists that 64 KB window. `hw/ip/key_manager/doc/architecture.adoc` names VROM a testbench-only window that does not exist in production silicon. The wrapper ties the port's ready to 0, so a load from the window never completes unless a testbench forces a response. Nothing in this integration forces one. The memory-map summary in `hw/ip/key_manager/regs/key_manager.rdl` does not list VROM and ends with "Every other address | Reserved/Unmapped | DECERR". This leaf grades that summary: a KM CPU load from `0x1000_0000` must complete and answer DECERR. The load does not complete, so `CHK-KM-VROM-DECERR` fails. The RTL, `km_intf_pkg.sv` and `architecture.adoc` on one side, and the RDL summary on the other, disagree about this window. The leaf turns green when the SEP build refuses the range, and it is retired if the RDL lists VROM as a window with no response.
 
-*Test Coverage*: KM CPU decode of an address outside every `key_manager.rdl` window, on the virtual ROM range.
+*Test Coverage*: KM CPU access to the VROM range, which the wrapper decodes and the `key_manager.rdl` memory-map summary does not list.
 
 *Test Procedure*:
 
@@ -7901,7 +7913,9 @@ the wipe security contract.
 |The post-load marker appears within the bound, and the load set `IRQ_STATUS.AXI_DECERR`. The claim is completion, so expiry of the bound is a failure, graded against an image shown alive up to the load. The load does not complete, so this checker fails.
 |===
 
-*Pass Criteria*: `CHK-KM-VROM-DECERR` fails. Every other named checker PASSes. The leaf's failure is that checker.
+*Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
+
+*Current status*: red on the current RTL. `CHK-KM-VROM-DECERR` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -7940,7 +7954,7 @@ constraint is not an open defect.
 |Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.
 
 |KM CPU bus responses outside the RDL (hardware)
-|Three KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A store to KM ROM completes with no error response and sets only `IRQ_STATUS.ROM_WRITE_ERR`, where the RDL says it returns SLVERR (`sep_km_rom_write_slverr_test`). A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the testbench virtual ROM base never completes, where the RDL maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
+|Three KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A store to KM ROM completes with no error response and sets only `IRQ_STATUS.ROM_WRITE_ERR`, where the RDL says it returns SLVERR (`sep_km_rom_write_slverr_test`). A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the VROM base never completes: the KM CPU wrapper routes that range to a testbench-only port whose ready the RTL ties to 0, and the RDL memory-map summary does not list the window and maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
 
 |KM mailbox outbound flush
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.
@@ -7953,6 +7967,9 @@ constraint is not an open defect.
 
 |Entropy pool pointer fault, PIC source 39 (hardware not built)
 |`sep_internal_interrupts[38]` is reserved for the entropy pool FIFO's pointer-integrity error. The check is not built in this configuration, so the source is tied to zero, can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. A built check is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it.
+
+|Shadow map before sense with SEC_DIS active (hardware)
+|`sep_sec_dis_override_test` is red. With `sec_dis=1` and `sep_fuse_sense_done_o=0`, a read of the `LC_STATE` shadow-map word returns an error response instead of AXI OKAY, because the map gate input is tied off. `CHK-MAP-OPEN` fails, and every other checker of the leaf PASSes. The leaf stays red while that input is tied off.
 
 |Write burst past a block extent (hardware)
 |`sep_fabric_burst_wrap_test` is red. A write burst that starts on the last live word of `sep_reset_ctrl`, `wdt_timer` or `secure_dma` is routed on its first address, and a later beat past the extent lands on a live register: `SW_RESET_N` answers OKAY and changes; `WKUP_THOLD_HI` and `SRC_ADDR_LO` answer SLVERR and still change. `hw/sys/sep/doc/memory_map.adoc` says an access past the extent never reaches a unit. Do not XFAIL.
