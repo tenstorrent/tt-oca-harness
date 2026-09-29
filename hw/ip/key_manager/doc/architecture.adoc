@@ -53,7 +53,28 @@ accelerator interfaces.
 
 [[key-manager-architecture-figure]]
 .Key Manager architecture
-image::SEP_Key_Manager.png[SEP_Key_Manager,scaledwidth=90.0%]
+image::km-architecture.svg[alt="Key Manager architecture: the CPU, its ROM and SRAM interfaces, the AXI4-Lite crossbar, the internal peripherals, and the crypto-engine key and eFuse ports",width=100%,pdfwidth=100%]
+
+White boxes are `key_manager` instances, cream boxes are interconnect or glue
+logic, and grey boxes lie outside `key_manager`. M and S mark the manager and
+subordinate side of each AXI4-Lite or AXI-Stream connection.
+
+The CPU reaches the ROM and SRAM through direct memory ports rather than the
+crossbar. The ROM and SRAM hard macros are instantiated at integration level,
+so `key_manager` exposes `rom_mem_*` and `sram_mem_*` ports to them. Every
+other CPU access leaves the PicoRV32 AXI4-Lite master and is decoded by
+`u_xbar`.
+
+The five engine ports reach only the key CSRs of each engine wrapper. In SEP
+each passes through its own isolation stage and carries no host traffic; the
+SEP host reaches the engines' data registers through the crypto interconnect,
+a path the KM does not see. The OTP/eFuse port replaces address bits `[31:12]`
+with `OTP_EFUSE_REMAP_BASE[31:12]` before driving `efuse_req_o`.
+
+A rising edge on `wipe_state_i`, or a CPU trap, zeroes the KPV and sets
+`IRQ_STATUS.WIPE_STATE` in KMCSR. The CPU trap also drives
+`unrecoverable_err_o`. `test_en_i` selects the scan reset in
+`u_reset_conditioner` and drives the test inputs of `u_xbar` and `u_mailbox`.
 
 == Parameters
 
@@ -102,7 +123,15 @@ the Key Manager.
 
 [[key-manager-reset-diagram]]
 .Key Manager cold and warm reset conditioning
-image::SEP_KMResetDomains_FIG003.2.png[alt="Key Manager cold and warm reset conditioning",width=100%,pdfwidth=100%]
+image::km-reset-conditioning.svg[alt="Key Manager cold and warm reset conditioning",width=100%,pdfwidth=100%]
+
+Each reset net keeps its own colour. The cold and warm outputs of
+`u_reset_conditioner` run in two spines beside the instances, with the port
+name at each instance edge. A solid warm line drives a reset pin; a dashed warm
+line is a synchronous clear, which the instance samples on `clk_i` rather than
+using as a reset. Junction dots mark fan-out, and a gap in a line
+marks a crossing without connection. In test mode, `test_en_i` selects
+`scan_rst_ni` in both scan multiplexers.
 
 The KM exposes two independent external reset inputs that map to two
 distinct reset domains. This split allows the SEP host to recover the KM
@@ -426,7 +455,21 @@ key-delivery sequence.
 
 [[key-manager-coordination-diagram]]
 .SEP host and Key Manager key-load and key-transfer sequence
-image::SEP_KM_Key_Load_Transfer_FIG017.png[alt="SEP host and Key Manager key-load and key-transfer sequence",width=100%,pdfwidth=100%]
+image::km-key-load-transfer.svg[alt="SEP host and Key Manager key-load and key-transfer sequence",width=100%,pdfwidth=100%]
+
+Time runs downwards. Each arrow is a mailbox word push or pop, a register write
+or read, or an interrupt, and each white box is a check or action the KM
+firmware performs without leaving the CPU. The figure shows the success path.
+A failed check ends the command with a `RESP_CMD` error code and leaves the KPV
+and the key registry unchanged.
+
+On a key load, the firmware registers the handle before it writes the KPV, and
+destroys the handle again if a KPV write fails. On a key transfer, the firmware
+reads the key slots twice: once to check their CRC-32C against the key
+registry, and again to write the key. Each requested engine receives the key as
+two key shares whose XOR is the key, the first a DRBG mask, before its key-valid
+bit is set. The engines are written in the order of their `DEST_ENGINE` bits,
+and the first failed write ends the transfer.
 
 [[key-and-policy-vault-kpv]]
 == Key and Policy Vault (KPV)

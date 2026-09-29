@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="588" viewBox="0 0 1040 588" role="img" aria-labelledby="title desc">
+<title id="title">Key Manager reset conditioning</title>
+<desc id="desc">Reset conditioning inside key_manager. cold_rst_ni is the asynchronous reset of the two-flop synchroniser u_sync in u_cold_rst_sync, whose scan multiplexer selects scan_rst_ni while test_en_i is set and drives rst_cold_aasd_no. warm_rst_ni and soft_rst_n from u_kmcsr trigger the warm hold counter, which rst_cold_aasd_no resets asynchronously and which holds the warm reset for at least 10 clk_i cycles; its scan multiplexer drives rst_warm_sync_no. The cold reset fans out to u_cpu (rst_ni), u_kpv, u_drbg_sampler, u_mailbox and u_kmcsr (cold_rst_ni). The warm reset drives u_cpu (rst_sync_ni) and u_xbar (rst_ni) as reset pins, and u_kpv, u_drbg_sampler, u_mailbox and u_kmcsr (warm_rst_ni) as a synchronous clear.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.dash { stroke-dasharray: 6 4; }
+</style>
+</defs>
+<rect width="1040" height="588" fill="#ffffff"/>
+<rect class="smu" x="170" y="20" width="865" height="490" rx="6"/>
+<text class="b" x="182" y="496" text-anchor="start">key_manager</text>
+<rect class="core" x="190" y="50" width="425" height="370" rx="6"/>
+<text class="bs" x="202" y="70" text-anchor="start">u_reset_conditioner</text>
+<rect class="core" x="210" y="82" width="212" height="118" rx="6"/>
+<text class="bs" x="222" y="101" text-anchor="start">u_cold_rst_sync</text>
+<rect class="core" x="225" y="111" width="80" height="42" rx="6"/>
+<text class="s" x="265" y="128" text-anchor="middle">u_sync</text>
+<text class="s" x="265" y="145" text-anchor="middle">2FF</text>
+<path class="core" d="M360,112 L390,122 L390,176 L360,186 Z"/>
+<text class="s" x="366" y="137" text-anchor="start">0</text>
+<text class="s" x="366" y="171" text-anchor="start">1</text>
+<path class="core" d="M555,280 L585,290 L585,350 L555,360 Z"/>
+<text class="s" x="561" y="303" text-anchor="start">1</text>
+<text class="s" x="561" y="347" text-anchor="start">0</text>
+<rect class="core" x="385" y="285" width="125" height="80" rx="6"/>
+<text class="bs" x="447" y="318" text-anchor="middle">hold counter</text>
+<text class="s" x="447" y="337" text-anchor="middle">&gt;= 10 cycles</text>
+<path class="a-smu" d="M10,132 L221,132"/>
+<text class="s" x="14" y="126" text-anchor="start">cold_rst_ni</text>
+<path class="a-smu" d="M305,132 L356,132"/>
+<path class="a-tel" d="M10,305 L381,305"/>
+<text class="s" x="14" y="299" text-anchor="start">warm_rst_ni</text>
+<text class="s" x="14" y="219" text-anchor="start">test_en_i</text>
+<path class="n-wdt" d="M10,225 L570,225"/>
+<circle cx="375" cy="225" r="3.5" fill="#77736b"/>
+<path class="a-wdt" d="M375,225 L375,188"/>
+<path class="a-wdt" d="M570,225 L570,280"/>
+<text class="s" x="14" y="258" text-anchor="start">scan_rst_ni</text>
+<path class="n-per" d="M10,264 L530,264"/>
+<circle cx="335" cy="264" r="3.5" fill="#937027"/>
+<path class="a-per" d="M335,264 L335,233 M335,217 L335,166 L356,166"/>
+<path class="a-per" d="M530,264 L530,298 L551,298"/>
+<path class="n-smu" d="M390,149 L745,149"/>
+<text class="s" x="622" y="143" text-anchor="start">rst_cold_aasd_no</text>
+<circle cx="605" cy="149" r="3.5" fill="#103525"/>
+<path class="a-smu" d="M605,149 L605,312 M605,328 L605,392 L448,392 L448,369"/>
+<path class="a-tel" d="M510,342 L551,342"/>
+<path class="n-tel" d="M585,320 L775,320"/>
+<text class="s" x="622" y="314" text-anchor="start">rst_warm_sync_no</text>
+<rect class="core" x="805" y="100" width="225" height="46" rx="6"/>
+<text class="bs" x="1020" y="128" text-anchor="end">u_cpu</text>
+<path class="a-smu" d="M745,114 L801,114"/>
+<text class="s" x="813" y="118" text-anchor="start">rst_ni</text>
+<circle cx="745" cy="114" r="3.5" fill="#103525"/>
+<path class="a-tel" d="M775,132 L801,132"/>
+<text class="s" x="813" y="136" text-anchor="start">rst_sync_ni</text>
+<circle cx="775" cy="132" r="3.5" fill="#664488"/>
+<rect class="core" x="805" y="160" width="225" height="46" rx="6"/>
+<text class="bs" x="1020" y="188" text-anchor="end">u_xbar</text>
+<path class="a-tel" d="M775,183 L801,183"/>
+<text class="s" x="813" y="187" text-anchor="start">rst_ni</text>
+<circle cx="775" cy="183" r="3.5" fill="#664488"/>
+<rect class="core" x="805" y="220" width="225" height="46" rx="6"/>
+<text class="bs" x="1020" y="248" text-anchor="end">u_kpv</text>
+<path class="a-smu" d="M745,234 L801,234"/>
+<text class="s" x="813" y="238" text-anchor="start">cold_rst_ni</text>
+<circle cx="745" cy="234" r="3.5" fill="#103525"/>
+<path class="a-tel dash" d="M775,252 L801,252"/>
+<text class="s" x="813" y="256" text-anchor="start">warm_rst_ni</text>
+<circle cx="775" cy="252" r="3.5" fill="#664488"/>
+<rect class="core" x="805" y="280" width="225" height="46" rx="6"/>
+<text class="bs" x="1020" y="308" text-anchor="end">u_drbg_sampler</text>
+<path class="a-smu" d="M745,294 L801,294"/>
+<text class="s" x="813" y="298" text-anchor="start">cold_rst_ni</text>
+<circle cx="745" cy="294" r="3.5" fill="#103525"/>
+<path class="a-tel dash" d="M775,312 L801,312"/>
+<text class="s" x="813" y="316" text-anchor="start">warm_rst_ni</text>
+<circle cx="775" cy="312" r="3.5" fill="#664488"/>
+<rect class="core" x="805" y="340" width="225" height="46" rx="6"/>
+<text class="bs" x="1020" y="368" text-anchor="end">u_mailbox</text>
+<path class="a-smu" d="M745,354 L801,354"/>
+<text class="s" x="813" y="358" text-anchor="start">cold_rst_ni</text>
+<circle cx="745" cy="354" r="3.5" fill="#103525"/>
+<path class="a-tel dash" d="M775,372 L801,372"/>
+<text class="s" x="813" y="376" text-anchor="start">warm_rst_ni</text>
+<circle cx="775" cy="372" r="3.5" fill="#664488"/>
+<rect class="core" x="805" y="400" width="225" height="46" rx="6"/>
+<text class="bs" x="1020" y="428" text-anchor="end">u_kmcsr</text>
+<path class="a-smu" d="M745,414 L801,414"/>
+<text class="s" x="813" y="418" text-anchor="start">cold_rst_ni</text>
+<circle cx="745" cy="414" r="3.5" fill="#103525"/>
+<path class="a-tel dash" d="M775,432 L801,432"/>
+<text class="s" x="813" y="436" text-anchor="start">warm_rst_ni</text>
+<circle cx="775" cy="432" r="3.5" fill="#664488"/>
+<path class="n-smu" d="M745,114 L745,312 M745,328 L745,414"/>
+<circle cx="745" cy="149" r="3.5" fill="#103525"/>
+<path class="n-tel" d="M775,132 L775,227 M775,241 L775,287 M775,301 L775,347 M775,361 L775,407 M775,421 L775,432"/>
+<circle cx="775" cy="320" r="3.5" fill="#664488"/>
+<path class="a-ref" d="M925,446 L925,466 L300,466 L300,345 L381,345"/>
+<text class="s" x="620" y="460" text-anchor="start">soft_rst_n</text>
+<path class="a-smu" d="M14,540 L58,540"/>
+<text class="s" x="68" y="545" text-anchor="start">Cold reset</text>
+<path class="a-tel" d="M150,540 L194,540"/>
+<text class="s" x="204" y="545" text-anchor="start">Warm reset, reset pin</text>
+<path class="a-tel dash" d="M360,540 L404,540"/>
+<text class="s" x="414" y="545" text-anchor="start">Warm reset, synchronous clear</text>
+<path class="a-ref" d="M624,540 L668,540"/>
+<text class="s" x="678" y="545" text-anchor="start">Software reset request</text>
+<path class="a-per" d="M14,568 L58,568"/>
+<text class="s" x="68" y="573" text-anchor="start">Scan reset</text>
+<path class="a-wdt" d="M150,568 L194,568"/>
+<text class="s" x="204" y="573" text-anchor="start">Scan-mode select</text>
+<rect class="core" x="360" y="559" width="40" height="18" rx="4"/>
+<text class="s" x="408" y="573" text-anchor="start">RTL instance</text>
+<circle cx="530" cy="568" r="3.2" fill="#5b6670"/>
+<path class="sigplain" d="M500,568 L560,568 M530,568 L530,581"/>
+<text class="s" x="572" y="573" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M670,556 L670,563 M670,573 L670,580"/>
+<path class="sigplain" d="M640,568 L700,568"/>
+<text class="s" x="712" y="573" text-anchor="start">Crossing, not connected</text>
+</svg>

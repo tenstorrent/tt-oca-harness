@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="934" viewBox="0 0 1040 934" role="img" aria-labelledby="title desc">
+<title id="title">Key Manager architecture</title>
+<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core with its PCPI CRC unit, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_mailbox, u_drbg_sampler and u_kpv, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller through an address remap. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The SEP host reaches u_mailbox through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream, u_kpv receives wipe_state_i, and u_cpu drives unrecoverable_err_o. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i and scan_rst_ni into the cold and warm resets of every instance.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="934" fill="#ffffff"/>
+<rect class="smu" x="180" y="110" width="630" height="742" rx="6"/>
+<text class="b" x="192" y="840" text-anchor="start">key_manager</text>
+<rect class="external" x="222" y="25" width="116" height="50" rx="6"/>
+<text class="bs" x="280" y="46" text-anchor="middle">KM ROM</text>
+<text class="s" x="280" y="64" text-anchor="middle">16 KiB</text>
+<rect class="external" x="352" y="25" width="116" height="50" rx="6"/>
+<text class="bs" x="410" y="46" text-anchor="middle">KM SRAM</text>
+<text class="s" x="410" y="64" text-anchor="middle">32 KiB</text>
+<rect class="core" x="210" y="130" width="270" height="170" rx="6"/>
+<rect class="fabric" x="225" y="142" width="110" height="44" rx="6"/>
+<text class="bs" x="280" y="161" text-anchor="middle">u_rom_if</text>
+<text class="s" x="280" y="178" text-anchor="middle">parity</text>
+<rect class="fabric" x="355" y="142" width="110" height="44" rx="6"/>
+<text class="bs" x="410" y="161" text-anchor="middle">u_sram_if</text>
+<text class="s" x="410" y="178" text-anchor="middle">scramble, parity</text>
+<rect class="core" x="225" y="198" width="240" height="56" rx="6"/>
+<text class="bs" x="345" y="221" text-anchor="middle">u_picorv32</text>
+<text class="s" x="345" y="240" text-anchor="middle">RV32EMC, PCPI CRC unit</text>
+<text class="bs" x="222" y="287" text-anchor="start">u_cpu</text>
+<text class="s" x="272" y="287" text-anchor="start">picorv32_wrapper</text>
+<path class="sig" d="M280,79 L280,138"/>
+<path class="sig" d="M410,79 L410,138"/>
+<rect class="fabric" x="530" y="200" width="100" height="500" rx="6"/>
+<text class="bs" x="580" y="430" text-anchor="middle">u_xbar</text>
+<text class="s" x="580" y="458.5" text-anchor="middle">AXI4-Lite</text>
+<text class="s" x="580" y="475.5" text-anchor="middle">crossbar</text>
+<path class="axi" d="M492,226 L518,226"/>
+<rect class="core" x="210" y="350" width="210" height="80" rx="6"/>
+<text class="bs" x="222" y="370" text-anchor="start">u_kmcsr</text>
+<text class="s" x="222" y="388" text-anchor="start">control and status,</text>
+<text class="s" x="222" y="404" text-anchor="start">IRQ aggregation</text>
+<path class="axi" d="M432,390 L518,390"/>
+<rect class="core" x="210" y="450" width="270" height="75" rx="6"/>
+<text class="bs" x="230" y="470" text-anchor="start">u_mailbox</text>
+<text class="s" x="230" y="488" text-anchor="start">two 16-word FIFOs,</text>
+<text class="s" x="230" y="504" text-anchor="start">SEP-to-KM and KM-to-SEP</text>
+<path class="axi" d="M492,500 L518,500"/>
+<rect class="core" x="210" y="550" width="270" height="60" rx="6"/>
+<text class="bs" x="230" y="570" text-anchor="start">u_drbg_sampler</text>
+<text class="s" x="230" y="588" text-anchor="start">DRBG random words</text>
+<path class="axi" d="M492,580 L518,580"/>
+<rect class="core" x="210" y="630" width="270" height="75" rx="6"/>
+<text class="bs" x="222" y="650" text-anchor="start">u_kpv</text>
+<text class="s" x="222" y="668" text-anchor="start">Key and Policy Vault,</text>
+<text class="s" x="222" y="684" text-anchor="start">64 slots of 16 words</text>
+<path class="axi" d="M492,668 L518,668"/>
+<path class="sigo" d="M235,350 L235,306"/>
+<text class="s" x="241" y="330" text-anchor="start">km_irq</text>
+<path class="sig" d="M300,344 L300,306"/>
+<text class="s" x="306" y="330" text-anchor="start">control, errors</text>
+<path class="sigo" d="M455,450 L455,398 M455,382 L455,306"/>
+<text class="s" x="449" y="344" text-anchor="end">mbox irq</text>
+<path class="sigo" d="M210,250 L14,250"/>
+<text class="s" x="14" y="244" text-anchor="start">unrecoverable_err_o</text>
+<path class="sigo" d="M10,378 L206,378"/>
+<text class="s" x="14" y="372" text-anchor="start">otp_data_i</text>
+<path class="sigo" d="M210,410 L14,410"/>
+<text class="s" x="14" y="404" text-anchor="start">recoverable_err_o</text>
+<path class="axi" d="M22,480 L198,480"/>
+<text class="s" x="14" y="472" text-anchor="start">mbox_sep_req_i</text>
+<path class="sigo" d="M210,510 L14,510"/>
+<text class="s" x="14" y="504" text-anchor="start">mbox_irq_to_sep_o</text>
+<path class="axi" d="M22,590 L198,590"/>
+<text class="s" x="14" y="582" text-anchor="start">drbg_axis_req_i</text>
+<path class="sigo" d="M10,668 L206,668"/>
+<text class="s" x="14" y="662" text-anchor="start">wipe_state_i</text>
+<rect class="core" x="210" y="726" width="220" height="86" rx="6"/>
+<text class="bs" x="222" y="746" text-anchor="start">u_reset_conditioner</text>
+<text class="s" x="222" y="766" text-anchor="start">cold: AASD synchroniser</text>
+<text class="s" x="222" y="784" text-anchor="start">warm: &gt;= 10-cycle hold</text>
+<path class="sigo" d="M10,740 L206,740"/>
+<text class="s" x="14" y="734" text-anchor="start">cold_rst_ni</text>
+<path class="sigo" d="M10,762 L206,762"/>
+<text class="s" x="14" y="756" text-anchor="start">warm_rst_ni</text>
+<path class="sigo" d="M10,784 L206,784"/>
+<text class="s" x="14" y="778" text-anchor="start">test_en_i</text>
+<path class="sigo" d="M10,806 L206,806"/>
+<text class="s" x="14" y="800" text-anchor="start">scan_rst_ni</text>
+<path class="sigo" d="M430,769 L470,769"/>
+<text class="s" x="478" y="764" text-anchor="start">rst_cold_aasd_n and rst_warm_sync_n</text>
+<text class="s" x="478" y="782" text-anchor="start">to every instance</text>
+<rect class="external" x="870" y="218" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="237" text-anchor="middle">Adams Bridge</text>
+<text class="s" x="950" y="254" text-anchor="middle">key CSRs</text>
+<path class="axi" d="M642,240 L858,240"/>
+<text class="s" x="750" y="233" text-anchor="middle">abr_req_o</text>
+<rect class="external" x="870" y="278" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="297" text-anchor="middle">OTBN</text>
+<text class="s" x="950" y="314" text-anchor="middle">key CSRs</text>
+<path class="axi" d="M642,300 L858,300"/>
+<text class="s" x="750" y="293" text-anchor="middle">otbn_req_o</text>
+<rect class="external" x="870" y="338" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="357" text-anchor="middle">AES</text>
+<text class="s" x="950" y="374" text-anchor="middle">key CSRs</text>
+<path class="axi" d="M642,360 L858,360"/>
+<text class="s" x="750" y="353" text-anchor="middle">aes_req_o</text>
+<rect class="external" x="870" y="398" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="417" text-anchor="middle">KMAC</text>
+<text class="s" x="950" y="434" text-anchor="middle">key CSRs</text>
+<path class="axi" d="M642,420 L858,420"/>
+<text class="s" x="750" y="413" text-anchor="middle">kmac_req_o</text>
+<rect class="external" x="870" y="458" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="477" text-anchor="middle">HMAC</text>
+<text class="s" x="950" y="494" text-anchor="middle">key CSRs</text>
+<path class="axi" d="M642,480 L858,480"/>
+<text class="s" x="750" y="473" text-anchor="middle">hmac_req_o</text>
+<rect class="fabric" x="680" y="545" width="96" height="50" rx="6"/>
+<text class="s" x="728" y="567" text-anchor="middle">addr[31:12]</text>
+<text class="s" x="728" y="584" text-anchor="middle">remap</text>
+<path class="axi" d="M642,570 L668,570"/>
+<path class="axi" d="M788,570 L858,570"/>
+<text class="s" x="823" y="591" text-anchor="middle">efuse_req_o</text>
+<rect class="external" x="870" y="548" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="567" text-anchor="middle">SEP eFuse</text>
+<text class="s" x="950" y="584" text-anchor="middle">controller</text>
+<path class="sigo" d="M890,218.0 L890,160 L486,160"/>
+<text class="s" x="640" y="153" text-anchor="start">abr_mlkem_sharedkey_irq_i</text>
+<rect class="core" x="14" y="877" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="891" text-anchor="start">RTL instance</text>
+<rect class="fabric" x="172" y="877" width="40" height="18" rx="4"/>
+<text class="s" x="220" y="891" text-anchor="start">Interconnect or glue logic</text>
+<rect class="external" x="428" y="877" width="40" height="18" rx="4"/>
+<text class="s" x="476" y="891" text-anchor="start">Outside key_manager</text>
+<text class="s" x="663" y="891" text-anchor="start">Manager port</text>
+<text class="s" x="803" y="891" text-anchor="start">Subordinate port</text>
+<path class="axi" d="M18,914 L68,914"/>
+<text class="s" x="78" y="919" text-anchor="start">AXI4-Lite or AXI-Stream</text>
+<path class="sigo" d="M250,914 L300,914"/>
+<text class="s" x="310" y="919" text-anchor="start">Signals</text>
+<path class="sigplain" d="M402,902 L402,909 M402,919 L402,926"/>
+<path class="sigplain" d="M372,914 L432,914"/>
+<text class="s" x="444" y="919" text-anchor="start">Crossing, not connected</text>
+<rect class="pm" x="469.0" y="217.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="480" y="230.5" text-anchor="middle">M</text>
+<rect class="ps" x="519.0" y="217.0" width="22" height="18" rx="4"/>
+<text class="pst" x="530" y="230.5" text-anchor="middle">S</text>
+<rect class="ps" x="409.0" y="381.0" width="22" height="18" rx="4"/>
+<text class="pst" x="420" y="394.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="381.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="394.5" text-anchor="middle">M</text>
+<rect class="ps" x="469.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pst" x="480" y="504.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="504.5" text-anchor="middle">M</text>
+<rect class="ps" x="469.0" y="571.0" width="22" height="18" rx="4"/>
+<text class="pst" x="480" y="584.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="571.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="584.5" text-anchor="middle">M</text>
+<rect class="ps" x="469.0" y="659.0" width="22" height="18" rx="4"/>
+<text class="pst" x="480" y="672.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="659.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="672.5" text-anchor="middle">M</text>
+<rect class="ps" x="199.0" y="471.0" width="22" height="18" rx="4"/>
+<text class="pst" x="210" y="484.5" text-anchor="middle">S</text>
+<rect class="ps" x="199.0" y="581.0" width="22" height="18" rx="4"/>
+<text class="pst" x="210" y="594.5" text-anchor="middle">S</text>
+<rect class="pm" x="619.0" y="231.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="630" y="244.5" text-anchor="middle">M</text>
+<rect class="ps" x="859.0" y="231.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="244.5" text-anchor="middle">S</text>
+<rect class="pm" x="619.0" y="291.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="630" y="304.5" text-anchor="middle">M</text>
+<rect class="ps" x="859.0" y="291.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="304.5" text-anchor="middle">S</text>
+<rect class="pm" x="619.0" y="351.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="630" y="364.5" text-anchor="middle">M</text>
+<rect class="ps" x="859.0" y="351.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="364.5" text-anchor="middle">S</text>
+<rect class="pm" x="619.0" y="411.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="630" y="424.5" text-anchor="middle">M</text>
+<rect class="ps" x="859.0" y="411.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="424.5" text-anchor="middle">S</text>
+<rect class="pm" x="619.0" y="471.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="630" y="484.5" text-anchor="middle">M</text>
+<rect class="ps" x="859.0" y="471.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="484.5" text-anchor="middle">S</text>
+<rect class="pm" x="619.0" y="561.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="630" y="574.5" text-anchor="middle">M</text>
+<rect class="ps" x="859.0" y="561.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="574.5" text-anchor="middle">S</text>
+<rect class="pm" x="635.0" y="877.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="646" y="890.5" text-anchor="middle">M</text>
+<rect class="ps" x="775.0" y="877.0" width="22" height="18" rx="4"/>
+<text class="pst" x="786" y="890.5" text-anchor="middle">S</text>
+</svg>
