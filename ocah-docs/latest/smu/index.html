@@ -746,8 +746,10 @@ their purposes.</p>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Routing decisions use a runtime address map with two programmable rules (SEP
-and SMC apertures) and one static catch-all (<code>ext_out</code>). See
+<p>Routing decisions use a runtime address map with two programmable rules, the
+SEP and SMC apertures. <code>ext_out</code> has no address rule; it is the default
+subordinate for <code>sep_out</code> and <code>smc_out</code> requests that match neither aperture.
+See
 <a href="../architecture.html#ocah-memory-map" class="xref page">OCAH Memory Map</a>
 for the fixed-vs-programmable split and the reference envelope convention, and
 see the SMU AXI Crossbar Address Map section in the Integrator Guide for
@@ -763,14 +765,72 @@ firmware programming order.</p>
 <p><a href="#smu-crossbar-decode-diagram">Figure 3</a> shows the independent SEP and SMC address
 comparisons for each read or write request. Each aperture includes its base
 address and excludes <code>base + size</code>; the addition uses 57 bits to preserve
-carry from the 56-bit address. A match selects the corresponding subordinate,
-subject to the connectivity in <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>.
-An unmatched SEP or SMC request uses <code>ext_out</code>. An unmatched external request
-returns <code>DECERR</code>, because <code>ext_in</code> cannot loop back to <code>ext_out</code>. A SEP request
-to the SEP aperture, or an SMC request to the SMC aperture, also returns
-<code>DECERR</code>, because the connectivity gives neither subsystem a path to itself.</p>
+carry from the 56-bit address.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>; <a href="#smu-axi-crossbar-ports-table">Table 1</a>; <a href="#smu-crossbar-decode-diagram">Figure 3</a>.</p>
+<div class="paragraph">
+<p>The decoded aperture and the connectivity in
+<a href="#smu-crossbar-connectivity-diagram">Figure 2</a> together determine where each request
+goes, as <a href="#smu-axi-crossbar-routing-table">Table 2</a> shows.</p>
+</div>
+<table id="smu-axi-crossbar-routing-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMU AXI crossbar routing by initiator and decoded aperture</caption>
+<colgroup>
+<col style="width: 22%;">
+<col style="width: 26%;">
+<col style="width: 26%;">
+<col style="width: 26%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Initiator</th>
+<th class="tableblock halign-left valign-top">SEP aperture</th>
+<th class="tableblock halign-left valign-top">SMC aperture</th>
+<th class="tableblock halign-left valign-top">Neither aperture</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DECERR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_out</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_out</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DECERR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_out</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_in</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DECERR</code></p></td>
+</tr>
+</tbody>
+</table>
+<div class="ulist">
+<ul>
+<li>
+<p>A <code>sep_out</code> or <code>smc_out</code> request that matches neither aperture is forwarded
+to <code>ext_out</code>.</p>
+</li>
+<li>
+<p>A <code>sep_out</code> request that matches the SEP aperture, or an <code>smc_out</code> request
+that matches the SMC aperture, returns <code>DECERR</code>, because no initiator is
+connected to its own subsystem&#8217;s inbound port.</p>
+</li>
+<li>
+<p>An <code>ext_in</code> request that matches neither aperture returns <code>DECERR</code>, because
+<code>ext_in</code> is not connected to <code>ext_out</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The crossbar generates each <code>DECERR</code> response itself; the request reaches no
+subordinate.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#smu-crossbar-connectivity-diagram">Figure 2</a>; <a href="#smu-axi-crossbar-ports-table">Table 1</a>; <a href="#smu-crossbar-decode-diagram">Figure 3</a>; <a href="#smu-axi-crossbar-routing-table">Table 2</a>.</p>
 </div>
 </div>
 <div class="sect1">

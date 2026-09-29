@@ -342,8 +342,9 @@ is documented in
 <a href="../../ocah-docs/latest/architecture.html#ocah-memory-map" class="xref page">OCAH Memory Map</a>.</p>
 </div>
 <div class="paragraph">
-<p>The crossbar uses a <strong>runtime</strong> address map. Only the SEP and SMC
-apertures are programmable at runtime; the <code>ext_out</code> rule is static:</p>
+<p>The crossbar uses a <strong>runtime</strong> address map with two rules, the SEP and
+SMC apertures, both programmable at runtime. <code>ext_out</code> has no address
+rule. The apertures are driven as follows:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -372,10 +373,9 @@ control CSRs <code>GLOBAL_BASE</code> / <code>REGION_SIZE</code>, exposed at bot
 <div class="paragraph">
 <p>SEP, SMC, and <code>smu_axi_xbar</code> all run on <code>clk_smu_i</code>, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar&#8217;s
-address arithmetic is done on 57-bit widened sums. <code>ext_out</code> is a
-catch-all port that carries any outbound SEP/SMC manager request not matched by
-the programmed apertures; it has no fixed lower-bound address. Unmatched
-inbound (<code>ext_in</code>) requests return a decode error and do not reach <code>ext_out</code>.</p>
+address arithmetic is done on 57-bit widened sums. For where unmatched
+requests go, and which requests return <code>DECERR</code>, see
+<a href="../../ocah-docs/latest/smu/index.html#smu-axi-crossbar-routing-table" class="xref page">SMU AXI crossbar routing</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="smu-firmware-programming-order"><a class="anchor" href="#smu-firmware-programming-order"></a><a class="link" href="#smu-firmware-programming-order">3.1. Firmware programming order</a></h3>
