@@ -64,6 +64,124 @@ SMC_CLUSTER_CORE3_WDT_KEY_REG_OFFSET = 0x0000001C
 SMC_CLUSTER_CORE3_WDT_KEY_REG_ADDR = 0xC0000C1C
 SMC_CLUSTER_CORE3_WDT_CMP_REG_OFFSET = 0x00000020
 SMC_CLUSTER_CORE3_WDT_CMP_REG_ADDR = 0xC0000C20
+DEBUG_MODULE_REG_MAP_BASE_ADDR = 0xC0001000
+DEBUG_MODULE_REG_MAP_SIZE = 0x00000868
+DEBUG_MODULE_HALTED_REG_OFFSET = 0x00000100
+DEBUG_MODULE_HALTED_REG_ADDR = 0xC0001100
+DEBUG_MODULE_GOING_REG_OFFSET = 0x00000104
+DEBUG_MODULE_GOING_REG_ADDR = 0xC0001104
+DEBUG_MODULE_RESUMING_REG_OFFSET = 0x00000108
+DEBUG_MODULE_RESUMING_REG_ADDR = 0xC0001108
+DEBUG_MODULE_EXCEPTION_REG_OFFSET = 0x0000010C
+DEBUG_MODULE_EXCEPTION_REG_ADDR = 0xC000110C
+DEBUG_MODULE_WHERETO_REG_OFFSET = 0x00000300
+DEBUG_MODULE_WHERETO_REG_ADDR = 0xC0001300
+DEBUG_MODULE_ABSTRACT_0__REG_OFFSET = 0x00000328
+DEBUG_MODULE_ABSTRACT_0__REG_ADDR = 0xC0001328
+DEBUG_MODULE_ABSTRACT_1__REG_OFFSET = 0x0000032C
+DEBUG_MODULE_ABSTRACT_1__REG_ADDR = 0xC000132C
+DEBUG_MODULE_ABSTRACT_2__REG_OFFSET = 0x00000330
+DEBUG_MODULE_ABSTRACT_2__REG_ADDR = 0xC0001330
+DEBUG_MODULE_ABSTRACT_3__REG_OFFSET = 0x00000334
+DEBUG_MODULE_ABSTRACT_3__REG_ADDR = 0xC0001334
+DEBUG_MODULE_ABSTRACT_4__REG_OFFSET = 0x00000338
+DEBUG_MODULE_ABSTRACT_4__REG_ADDR = 0xC0001338
+DEBUG_MODULE_PROGBUF_0__REG_OFFSET = 0x0000033C
+DEBUG_MODULE_PROGBUF_0__REG_ADDR = 0xC000133C
+DEBUG_MODULE_PROGBUF_1__REG_OFFSET = 0x00000340
+DEBUG_MODULE_PROGBUF_1__REG_ADDR = 0xC0001340
+DEBUG_MODULE_PROGBUF_2__REG_OFFSET = 0x00000344
+DEBUG_MODULE_PROGBUF_2__REG_ADDR = 0xC0001344
+DEBUG_MODULE_PROGBUF_3__REG_OFFSET = 0x00000348
+DEBUG_MODULE_PROGBUF_3__REG_ADDR = 0xC0001348
+DEBUG_MODULE_PROGBUF_4__REG_OFFSET = 0x0000034C
+DEBUG_MODULE_PROGBUF_4__REG_ADDR = 0xC000134C
+DEBUG_MODULE_PROGBUF_5__REG_OFFSET = 0x00000350
+DEBUG_MODULE_PROGBUF_5__REG_ADDR = 0xC0001350
+DEBUG_MODULE_PROGBUF_6__REG_OFFSET = 0x00000354
+DEBUG_MODULE_PROGBUF_6__REG_ADDR = 0xC0001354
+DEBUG_MODULE_PROGBUF_7__REG_OFFSET = 0x00000358
+DEBUG_MODULE_PROGBUF_7__REG_ADDR = 0xC0001358
+DEBUG_MODULE_PROGBUF_8__REG_OFFSET = 0x0000035C
+DEBUG_MODULE_PROGBUF_8__REG_ADDR = 0xC000135C
+DEBUG_MODULE_PROGBUF_9__REG_OFFSET = 0x00000360
+DEBUG_MODULE_PROGBUF_9__REG_ADDR = 0xC0001360
+DEBUG_MODULE_PROGBUF_10__REG_OFFSET = 0x00000364
+DEBUG_MODULE_PROGBUF_10__REG_ADDR = 0xC0001364
+DEBUG_MODULE_PROGBUF_11__REG_OFFSET = 0x00000368
+DEBUG_MODULE_PROGBUF_11__REG_ADDR = 0xC0001368
+DEBUG_MODULE_PROGBUF_12__REG_OFFSET = 0x0000036C
+DEBUG_MODULE_PROGBUF_12__REG_ADDR = 0xC000136C
+DEBUG_MODULE_PROGBUF_13__REG_OFFSET = 0x00000370
+DEBUG_MODULE_PROGBUF_13__REG_ADDR = 0xC0001370
+DEBUG_MODULE_PROGBUF_14__REG_OFFSET = 0x00000374
+DEBUG_MODULE_PROGBUF_14__REG_ADDR = 0xC0001374
+DEBUG_MODULE_PROGBUF_15__REG_OFFSET = 0x00000378
+DEBUG_MODULE_PROGBUF_15__REG_ADDR = 0xC0001378
+DEBUG_MODULE_IMPEBREAK_REG_OFFSET = 0x0000037C
+DEBUG_MODULE_IMPEBREAK_REG_ADDR = 0xC000137C
+DEBUG_MODULE_DATA_0__REG_OFFSET = 0x00000380
+DEBUG_MODULE_DATA_0__REG_ADDR = 0xC0001380
+DEBUG_MODULE_DATA_1__REG_OFFSET = 0x00000384
+DEBUG_MODULE_DATA_1__REG_ADDR = 0xC0001384
+DEBUG_MODULE_DATA_2__REG_OFFSET = 0x00000388
+DEBUG_MODULE_DATA_2__REG_ADDR = 0xC0001388
+DEBUG_MODULE_DATA_3__REG_OFFSET = 0x0000038C
+DEBUG_MODULE_DATA_3__REG_ADDR = 0xC000138C
+DEBUG_MODULE_FLAGS_REG_OFFSET = 0x00000400
+DEBUG_MODULE_FLAGS_REG_ADDR = 0xC0001400
+DEBUG_MODULE_ROM_0__REG_OFFSET = 0x00000800
+DEBUG_MODULE_ROM_0__REG_ADDR = 0xC0001800
+DEBUG_MODULE_ROM_1__REG_OFFSET = 0x00000804
+DEBUG_MODULE_ROM_1__REG_ADDR = 0xC0001804
+DEBUG_MODULE_ROM_2__REG_OFFSET = 0x00000808
+DEBUG_MODULE_ROM_2__REG_ADDR = 0xC0001808
+DEBUG_MODULE_ROM_3__REG_OFFSET = 0x0000080C
+DEBUG_MODULE_ROM_3__REG_ADDR = 0xC000180C
+DEBUG_MODULE_ROM_4__REG_OFFSET = 0x00000810
+DEBUG_MODULE_ROM_4__REG_ADDR = 0xC0001810
+DEBUG_MODULE_ROM_5__REG_OFFSET = 0x00000814
+DEBUG_MODULE_ROM_5__REG_ADDR = 0xC0001814
+DEBUG_MODULE_ROM_6__REG_OFFSET = 0x00000818
+DEBUG_MODULE_ROM_6__REG_ADDR = 0xC0001818
+DEBUG_MODULE_ROM_7__REG_OFFSET = 0x0000081C
+DEBUG_MODULE_ROM_7__REG_ADDR = 0xC000181C
+DEBUG_MODULE_ROM_8__REG_OFFSET = 0x00000820
+DEBUG_MODULE_ROM_8__REG_ADDR = 0xC0001820
+DEBUG_MODULE_ROM_9__REG_OFFSET = 0x00000824
+DEBUG_MODULE_ROM_9__REG_ADDR = 0xC0001824
+DEBUG_MODULE_ROM_10__REG_OFFSET = 0x00000828
+DEBUG_MODULE_ROM_10__REG_ADDR = 0xC0001828
+DEBUG_MODULE_ROM_11__REG_OFFSET = 0x0000082C
+DEBUG_MODULE_ROM_11__REG_ADDR = 0xC000182C
+DEBUG_MODULE_ROM_12__REG_OFFSET = 0x00000830
+DEBUG_MODULE_ROM_12__REG_ADDR = 0xC0001830
+DEBUG_MODULE_ROM_13__REG_OFFSET = 0x00000834
+DEBUG_MODULE_ROM_13__REG_ADDR = 0xC0001834
+DEBUG_MODULE_ROM_14__REG_OFFSET = 0x00000838
+DEBUG_MODULE_ROM_14__REG_ADDR = 0xC0001838
+DEBUG_MODULE_ROM_15__REG_OFFSET = 0x0000083C
+DEBUG_MODULE_ROM_15__REG_ADDR = 0xC000183C
+DEBUG_MODULE_ROM_16__REG_OFFSET = 0x00000840
+DEBUG_MODULE_ROM_16__REG_ADDR = 0xC0001840
+DEBUG_MODULE_ROM_17__REG_OFFSET = 0x00000844
+DEBUG_MODULE_ROM_17__REG_ADDR = 0xC0001844
+DEBUG_MODULE_ROM_18__REG_OFFSET = 0x00000848
+DEBUG_MODULE_ROM_18__REG_ADDR = 0xC0001848
+DEBUG_MODULE_ROM_19__REG_OFFSET = 0x0000084C
+DEBUG_MODULE_ROM_19__REG_ADDR = 0xC000184C
+DEBUG_MODULE_ROM_20__REG_OFFSET = 0x00000850
+DEBUG_MODULE_ROM_20__REG_ADDR = 0xC0001850
+DEBUG_MODULE_ROM_21__REG_OFFSET = 0x00000854
+DEBUG_MODULE_ROM_21__REG_ADDR = 0xC0001854
+DEBUG_MODULE_ROM_22__REG_OFFSET = 0x00000858
+DEBUG_MODULE_ROM_22__REG_ADDR = 0xC0001858
+DEBUG_MODULE_ROM_23__REG_OFFSET = 0x0000085C
+DEBUG_MODULE_ROM_23__REG_ADDR = 0xC000185C
+DEBUG_MODULE_ROM_24__REG_OFFSET = 0x00000860
+DEBUG_MODULE_ROM_24__REG_ADDR = 0xC0001860
+DEBUG_MODULE_ROM_25__REG_OFFSET = 0x00000864
+DEBUG_MODULE_ROM_25__REG_ADDR = 0xC0001864
 SMC_RESET_UNIT_REG_MAP_BASE_ADDR = 0xC0002000
 SMC_RESET_UNIT_REG_MAP_SIZE = 0x000000CC
 SMC_RESET_UNIT_SS_CONFIG_REG_OFFSET = 0x00000020
@@ -7202,6 +7320,317 @@ class WDT_CMP_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(WDT_CMP_reg_u, self).__init__(*args, **kwargs)
         self.val = WDT_CMP_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_HALTED_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_HALTED_reg_t(Structure):
+    _fields_ = [
+        ('hartid', c_uint16, 10),
+    ]
+
+DEBUG_MODULE_HALTED_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_HALTED_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_HALTED_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_HALTED_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_HALTED_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_GOING_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_GOING_reg_t(Structure):
+    _fields_ = [
+        ('hartid', c_uint16, 10),
+    ]
+
+DEBUG_MODULE_GOING_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_GOING_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_GOING_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_GOING_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_GOING_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_RESUMING_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_RESUMING_reg_t(Structure):
+    _fields_ = [
+        ('hartid', c_uint16, 10),
+    ]
+
+DEBUG_MODULE_RESUMING_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_RESUMING_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_RESUMING_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_RESUMING_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_RESUMING_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_EXCEPTION_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_EXCEPTION_reg_t(Structure):
+    _fields_ = [
+        ('hartid', c_uint16, 10),
+    ]
+
+DEBUG_MODULE_EXCEPTION_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_EXCEPTION_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_EXCEPTION_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_EXCEPTION_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_EXCEPTION_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_WHERETO_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_WHERETO_reg_t(Structure):
+    _fields_ = [
+        ('instr', c_uint32, 32),
+    ]
+
+DEBUG_MODULE_WHERETO_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_WHERETO_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_WHERETO_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_WHERETO_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_WHERETO_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_ABSTRACT_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_ABSTRACT_reg_t(Structure):
+    _fields_ = [
+        ('instr', c_uint32, 32),
+    ]
+
+DEBUG_MODULE_ABSTRACT_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_ABSTRACT_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_ABSTRACT_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_ABSTRACT_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_ABSTRACT_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_PROGBUF_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_PROGBUF_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+DEBUG_MODULE_PROGBUF_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_PROGBUF_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_PROGBUF_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_PROGBUF_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_PROGBUF_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_IMPEBREAK_REG_DEFAULT = 0x00100073
+class DEBUG_MODULE_IMPEBREAK_reg_t(Structure):
+    _fields_ = [
+        ('instr', c_uint32, 32),
+    ]
+
+DEBUG_MODULE_IMPEBREAK_REG_DEFAULT = 0x00100073
+
+class DEBUG_MODULE_IMPEBREAK_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_IMPEBREAK_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_IMPEBREAK_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_IMPEBREAK_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_DATA_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_DATA_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+DEBUG_MODULE_DATA_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_DATA_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_DATA_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_DATA_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_DATA_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_FLAGS_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_FLAGS_reg_t(Structure):
+    _fields_ = [
+        ('flags_0', c_uint32, 8),
+        ('flags_1', c_uint32, 8),
+        ('flags_2', c_uint32, 8),
+        ('flags_3', c_uint32, 8),
+    ]
+
+DEBUG_MODULE_FLAGS_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_FLAGS_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_FLAGS_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_FLAGS_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_FLAGS_REG_DEFAULT
+
+    def as_bytes(self):
+        size = 4 if isinstance(self.val, c_uint32) else 8
+        return self.val.to_bytes(size, 'little')
+
+    @classmethod
+    def from_bytes(cls, byte_seq):
+        instance = cls()
+        instance.val = int.from_bytes(byte_seq, 'little')
+        return instance
+
+DEBUG_MODULE_ROM_REG_DEFAULT = 0x00000000
+class DEBUG_MODULE_ROM_reg_t(Structure):
+    _fields_ = [
+        ('data', c_uint32, 32),
+    ]
+
+DEBUG_MODULE_ROM_REG_DEFAULT = 0x00000000
+
+class DEBUG_MODULE_ROM_reg_u(Union):
+    _fields_ = [
+        ('val', c_uint32),
+        ('f', DEBUG_MODULE_ROM_reg_t),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        super(DEBUG_MODULE_ROM_reg_u, self).__init__(*args, **kwargs)
+        self.val = DEBUG_MODULE_ROM_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

@@ -24,6 +24,7 @@
 `include "misc_wrap.rdl"
 `include "bus_error_unit.rdl"
 `include "clint.rdl"
+`include "debug_module.rdl"
 `include "efuse_interface_ctrl.rdl"
 `include "ext_memory.rdl"
 `include "oca_i3c_wrap.rdl"
@@ -47,6 +48,8 @@ addrmap smc_top #(
     wdt                            smc_cluster_core1_wdt      @BASE_ADDR + 0x000_0400;
     wdt                            smc_cluster_core2_wdt      @BASE_ADDR + 0x000_0800;
     wdt                            smc_cluster_core3_wdt      @BASE_ADDR + 0x000_0c00;
+
+    debug_module                   debug_module               @BASE_ADDR + 0x000_1000;
 
     reset_unit                     smc_reset_unit             @BASE_ADDR + 0x000_2000;
     misc_wrap                      smc_misc_wrap              @BASE_ADDR + 0x000_2800;
