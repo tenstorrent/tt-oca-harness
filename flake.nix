@@ -1,5 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
-  description = "Environment and Docker Container for OCAH";
+  description = "Environment, devShell and Docker Container for OCAH";
 
   inputs = {
     # Ensure git submodules are checked out when the flake is fetched.

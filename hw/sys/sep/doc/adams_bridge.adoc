@@ -86,21 +86,25 @@ them unused -- most on a 4 kB boundary, the interrupt block at `0x8100`,
 `MLKEM_MSG` at `0x9080` and `MLKEM_CIPHERTEXT` at `0xB800` -- and the map ends
 at `0xC018`, leaving the last 16,360 bytes undefined.
 
-A word access to any unpopulated offset completes with `OKAY`: a write is
-discarded and a read returns `0x0000_0000`. A partial-word write is answered
-with SLVERR wherever it lands (<<abr-access-size>>). ABR never drives `hresp`
-to error, so the AHB error response its slave interface implements is
-unreachable. This is narrower than
-every other answer in the subsystem: an address outside the aperture, or any
 ifdef::backend-html5[]
-burst, is answered with DECERR by the demux (xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]), and
+The xref:sep:memory_map.adoc#sep-memory-map[SEP memory map] states how a word
+access to an unpopulated offset answers.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-burst, is answered with DECERR by the demux (<<crypto-single-beat-only>>), and
+The <<sep-memory-map,SEP memory map>> states how a word access to an
+unpopulated offset answers.
 endif::backend-pdf[]
-the wrapper's own `abr_wrapper_key_reg` CSRs answer an unmapped access with
-SLVERR. Software shall not rely on a bus error to detect a malformed ABR
-register address.
+A partial-word write is answered with SLVERR wherever it lands
+(<<abr-access-size>>). ABR never drives `hresp` to error, so the AHB error
+response its slave interface implements is unreachable. A burst is answered
+ifdef::backend-html5[]
+with DECERR by the demux (xref:sep:crypto.adoc#crypto-single-beat-only[Single-Beat Access Only]).
+endif::backend-html5[]
+ifdef::backend-pdf[]
+with DECERR by the demux (<<crypto-single-beat-only>>).
+endif::backend-pdf[]
+Software shall not rely on a bus error to detect a malformed ABR register
+address.
 
 NOTE: This follows from the vendored collateral rather than a SEP decision.
 `abr_reg.sv` is generated in the Adams Bridge repository, not by the OCAH

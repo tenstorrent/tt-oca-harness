@@ -32,8 +32,15 @@ decoded from a port that is `ADDR_WIDTH` bits wide
 
 The 64-bit data width handles addresses, data payloads and status
 information without multi-word transfers. The 2KB allocation per aperture
-leaves the ten registers sparsely mapped; offsets above the register map are
-unmapped rather than aliased.
+leaves the ten registers sparsely mapped; the
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[SMC] and
+xref:sep:memory_map.adoc#sep-memory-map[SEP] memory maps
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map,SMC>> and <<sep-memory-map,SEP>> memory maps
+endif::backend-pdf[]
+state how the offsets above them answer.
 
 === Internal Structure
 
