@@ -131,7 +131,7 @@ runs:
           access-tokens = github.com=${{ inputs.oca_pat }}
 
     - name: Install VP build dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash
       run: |
         # Acquire options: the hosted-runner mirror list falls back from
@@ -192,13 +192,13 @@ runs:
     # populates. Doing it in its own step rather than letting vp-test's import
     # guard trigger it keeps a dependency failure off the test step.
     - name: Install uv
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       uses: astral-sh/setup-uv@v6
       with:
         python-version: "3.11"
 
     - name: Sync harness Python deps
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash
       run: make -C virtual_platform vp-py-deps
 
@@ -335,6 +335,16 @@ runs:
         print(f"collected={total} skipped={skipped} ran={ran}")
         if ran == 0:
             sys.exit("no tests actually ran: every test was skipped or none collected")
+        # A skip whose reason is a failed build is breakage wearing a skip's
+        # clothing: the suite reports green while most of it never executed.
+        broken = [
+            m
+            for s in suites
+            for el in s.iter("skipped")
+            if "build failed" in (m := el.get("message") or "")
+        ]
+        if broken:
+            sys.exit(f"{len(broken)} tests skipped by a failed build, not by choice: {broken[0][:160]}")
         PY
 
     - name: Upload run artifacts

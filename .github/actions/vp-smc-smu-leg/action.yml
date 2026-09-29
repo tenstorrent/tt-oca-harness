@@ -120,7 +120,7 @@ runs:
           access-tokens = github.com=${{ inputs.oca_pat }}
 
     - name: Install VP build dependencies
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
+      if: env.HAVE_SUBMODULE_TOKEN == 'true'
       shell: bash
       run: |
         # Acquire options: turn a stalled mirror into an error so apt's
@@ -263,7 +263,7 @@ runs:
         done
         rev="${{ steps.whisper.outputs.rev }}"
         if [ "${{ inputs.vp_container }}" = "1" ]; then
-          want_re="WHISPER_HOME = /nix/store/[^[:space:]]*-whisper-${rev}([[:space:]]|$)"
+          want_re="WHISPER_HOME = /nix/store/[^[:space:]]*-whisper-${rev}/whisper([[:space:]]|$)"
         else
           # The trailing space keeps local-ctr from matching the native leg's
           # expected local/ prefix (and vice versa).
