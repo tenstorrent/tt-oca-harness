@@ -2402,6 +2402,8 @@ args = [
 # firmware beyond the elaboration preloads, so they also sit in `hosted`. +xtrig_int_ct_mode states the XTRIG_INT_CT_MODE override the
 # wrapper testbench elaborates the DUT with; the Cfg decode compares the
 # elaborated value against it.
+# smu_boundary_port_composition_test senses the all-ones SMC image, so its
+# smc_shadow_regs_o value compare sees every bit at 1.
 [[tests]]
 name = "smu_boundary_port_composition_test"
 module = "smu_boundary_port_composition_test"
@@ -2413,7 +2415,7 @@ tags = ["composition", "sep", "real_rtl", "p0"]
 run_modes = ["sep_rtl"]
 args = [
   "+rom_hex=smc_rom_default.hex",
-  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+smc_efuse_hex={repo_root}/hw/sys/smu/dv/assets/smc_efuse_all_ones.hex",
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=sep_boot_rom_default.hex",
   "+sep_itcm_hex=sep_itcm_default.hex",
@@ -2553,9 +2555,9 @@ args = [
   "+sep_dtcm_hex=sep_dtcm_default.hex",
 ]
 
-# The SMC eFuse shadow map at the wrapper boundary. The image is this leaf's
-# own: it programs every fuse bit, so the sensed sample and the cold-reset
-# sample are taken on the full width of smc_shadow_regs_o.
+# The SMC eFuse shadow map at the wrapper boundary. The image programs every
+# fuse bit, so the sensed sample and the cold-reset sample are taken on the
+# full width of smc_shadow_regs_o.
 [[tests]]
 name = "smu_smc_efuse_shadow_sense_reset_test"
 module = "smu_smc_efuse_shadow_sense_reset_test"

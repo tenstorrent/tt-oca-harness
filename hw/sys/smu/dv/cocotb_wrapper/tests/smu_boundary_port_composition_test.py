@@ -21,8 +21,9 @@ every named port is read on the elaborated `smu` instance for its specified
 width, the SMC-side ID-width converter presents the 6-bit subsystem ID, the
 CTP channels whose data inputs the wrapper ties to zero stay static at zero at
 the DTP consumer and at the SMU boundary, `ss_config_o` presents the SS_CONFIG
-reset value and `skip_mem_repair_o` is clear with no isolation request
-pending.
+reset value, `skip_mem_repair_o` is clear with no isolation request
+pending, and after the fuse sense `smc_shadow_regs_o` carries the sensed
+image at the `smu` port, the `smu_wrapper` port and the bench net.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
     --items smu_boundary_port_composition_test --tool verilator

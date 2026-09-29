@@ -22,9 +22,16 @@ with the value the specification gives for that state: `ss_config_o` presents
 the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear after a cold
 reset with no isolation request pending. Write-through and the FLR path are
 proven by smu_smc_boundary_io_test, not here.
+
+``smc_shadow_regs_o`` is read at the `smu` port, the `smu_wrapper` port and the
+bench net after the cold boot's fuse sense completes, and each is compared
+with the image ``+smc_efuse_hex`` names, which the testlist sets to one that
+programs every bit.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
@@ -48,7 +55,8 @@ from seq_lib.smu_compose_helpers import (
     hier,
     sample,
 )
-from seq_lib.smu_tb_pins import smu_scope
+from seq_lib.smu_fuse_gate_helpers import wait_fuse_sense_done
+from seq_lib.smu_tb_pins import smu_scope, tb_pin
 
 CTP_GROUPS = ("req_out", "req_in", "ack_in", "ack_out")
 CTP_LEGS = ("dout_o", "dout_en_o", "din_i", "din_en_o")
@@ -67,6 +75,28 @@ SS_CONFIG_RESET = reset_unit_u32("RESET_UNIT__SS_CONFIG__SS_CONFIG_reset")
 # isolation request path, and a cold reset with no isolation request pending
 # executes repair.
 SKIP_MEM_REPAIR_IDLE = 0
+
+
+def smc_efuse_image(bits: int) -> int:
+    """The SMC eFuse image ``+smc_efuse_hex`` names, as the shadow map it senses to.
+
+    Fuse word ``i`` of the ``$readmemh`` image is shadow bits ``32i+31..32i``,
+    and a word the image does not reach is zero (``hw/sys/smc/regs/gen/c/smc_addr.h``
+    tiles the 1024-byte map with 4-byte words).
+    """
+    named = cocotb.plusargs.get("smc_efuse_hex")
+    if named is None:
+        raise AssertionError("+smc_efuse_hex is required: it is the image the sense reads")
+    value = 0
+    idx = 0
+    for raw in Path(str(named)).read_text(encoding="ascii").splitlines():
+        for tok in raw.split("//", 1)[0].split():
+            if tok.startswith("@"):
+                idx = int(tok[1:], 16)
+                continue
+            value |= (int(tok, 16) & 0xFFFF_FFFF) << (32 * idx)
+            idx += 1
+    return value & ((1 << bits) - 1)
 
 
 class smu_boundary_port_composition_seq:
@@ -236,20 +266,44 @@ class smu_boundary_port_composition_seq:
             evidence="CHK-SMU-FUSE-SENSE-S4",
         )
         # port_table.adoc types smc_shadow_regs_o as smc_efuse_pkg::efuse_map_t
-        # and states no width, so what is checked is the connection the wrapper
-        # can get wrong: the boundary net is as wide as the `smu` port and
-        # carries the same value.
+        # and states no width. The wrapper port is compared with the `smu` port
+        # and the bench net at width, and after this cold boot's sense with the
+        # image the leaf names, all three carry that image.
         shadow = hier(smu, "smc_shadow_regs_o")
+        wrapper_shadow = hier(tb_pin(dut, "u_dut"), "smc_shadow_regs_o")
         shadow_bits = bit_width(shadow, "smc_shadow_regs_o")
         sb.expect_eq(
-            "smc_shadow_regs boundary net is as wide as the smu smc_shadow_regs_o port",
-            bit_width(dut.smc_shadow_regs, "smc_shadow_regs"),
-            shadow_bits,
+            "smu_wrapper smc_shadow_regs_o and the boundary net are as wide as the smu port",
+            (
+                bit_width(wrapper_shadow, "u_dut.smc_shadow_regs_o"),
+                bit_width(dut.smc_shadow_regs, "smc_shadow_regs"),
+            ),
+            (shadow_bits, shadow_bits),
             evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
         )
+        image = smc_efuse_image(shadow_bits)
         sb.expect_true(
-            "smc_shadow_regs_o reaches the wrapper boundary unchanged",
-            sample(dut.smc_shadow_regs, "smc_shadow_regs") == sample(shadow, "smc_shadow_regs_o"),
+            "the leaf's SMC eFuse image programs at least one shadow bit",
+            image != 0,
+            evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
+        )
+        await wait_fuse_sense_done(dut, self.log, phase="cold boot")
+        sensed = {
+            "smu.smc_shadow_regs_o": sample(shadow, "smc_shadow_regs_o"),
+            "u_dut.smc_shadow_regs_o": sample(wrapper_shadow, "u_dut.smc_shadow_regs_o"),
+            "smc_shadow_regs": sample(dut.smc_shadow_regs, "smc_shadow_regs"),
+        }
+        self.log.info(
+            "smc_shadow_regs after the sense: %s bit(s) set of %d; image %d bit(s) set",
+            {name: bin(value).count("1") for name, value in sensed.items()},
+            shadow_bits,
+            bin(image).count("1"),
+        )
+        sb.expect_eq(
+            "bits that differ from the sensed image at the smu port, the smu_wrapper port and "
+            "the boundary net",
+            {name: bin(value ^ image).count("1") for name, value in sensed.items()},
+            dict.fromkeys(sensed, 0),
             evidence="CHK-SMU-EFUSE-SHIM-SMC-S3",
         )
         self.log.info("skip_mem_repair_o=%d smc_shadow_regs_o width=%d", skip, shadow_bits)

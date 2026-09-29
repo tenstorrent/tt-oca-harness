@@ -1351,7 +1351,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-EFUSE-SHIM-SMC-S3",
             "CHK-SMU-EFUSE-SHIM-SMC-S3",
-            "smc_shadow_regs reaches the boundary at full width and value",
+            "smc_shadow_regs reaches the smu_wrapper port and the boundary at full width and, "
+            "after the sense, carries the non-zero image",
         ),
         (
             "CHK-SMU-FUSE-SENSE-S4",

@@ -1726,7 +1726,7 @@ row's EXPECT sentence is worth, read the check.
 
 *Source Module*: `smu_boundary_port_composition_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode; SMC eFuse image `hw/sys/smu/dv/assets/smc_efuse_all_ones.hex`, sensed by the SMC eFuse controller (no `+skip_fuse_sense`)
 
 *Objective*: The SEP=1 SMU boundary ports are present at the widths the specifications state, the SMC-side ID-width converter presents the 6-bit subsystem ID the SMC system AXI input specifies, `ss_config_o` and `skip_mem_repair_o` present their specified idle values, and the CTP channels stay inert while their data inputs rest.
 
@@ -1736,6 +1736,7 @@ row's EXPECT sentence is worth, read the check.
 * Each tokened width compare takes its expected value from a specification: the port table's literal widths (`lcc_demote_state_*_o` `[1:0]`, `ss_reset_ctrl_o` `[31:0]`, `skip_mem_repair_o` 1); `lc_state_o` as 8 bits (port table tie value `8'hf0`; `hw/sys/smc/doc/port_table.adoc` `lc_state_i` "(8 bits)"; `hw/sys/sep/doc/otp_fuse_controller.adoc` life-cycle state width 4); `XTRIG_NUM_CTP` = 16 from `doc/integrator/src/smu.adoc` "SMU Default Parameters"; 256 external interrupts from `hw/sys/smc/doc/port_table.adoc` `smc_ext_interrupts_i`; the 6-bit ID from that table's `sys_axi_in_req_i` row and `smu.adoc` "AXI Interface Configuration"; the `SS_CONFIG` width and reset value from the generated `hw/sys/smc/regs/gen/c/blocks/reset_unit.h`. `cocotb/seq_lib/smu_compose_helpers.py` names the source of each constant.
 * The SMN request/response struct widths, the crossbar-side ID width of both ID-width converters and the SEP-side ID width have no specification in this tree. Those compares are untokened drift checks against a recorded elaboration; no checker row rests on them.
 * The idle-value compares read an output after bring-up against the value the specification gives for that state: `ss_config_o` equals the `SS_CONFIG` reset value, and `skip_mem_repair_o` is clear while no isolation request is pending (`smu.adoc`, memory repair: a cold reset without isolation executes repair), with the wrapper FLR pin sampled low as the precondition. Each can fail on a wrong idle value; neither distinguishes an undriven output from one driven to that value. Write-through of `SS_CONFIG` to `ss_config_o` and the FLR path onto `skip_mem_repair_o` are proven by `smu_smc_boundary_io_test`.
+* `smc_shadow_regs_o`: `port_table.adoc` types it `smc_efuse_pkg::efuse_map_t` and states no width, so the `smu_wrapper` port and the bench net are compared at width with the `smu` port. After `smc_fuse_sense_done_o` rises for the cold boot, the `smu` port, the `smu_wrapper` port and the bench net each carry the image `+smc_efuse_hex` names, fuse word `i` at shadow bits `32i+31..32i`; the image programs every bit, and the leaf requires it to program at least one, so a disconnected or narrowed wrapper port reads a zero where the image has a one.
 * The CTP data inputs are read at their resting level at the SMU boundary and at the DTP consumer: the wrapper ties `req_in`, `ack_in` and `ack_out` to zero, and `req_out` sits on the bench's wire-OR board and rests at all ones, the pull-up of the active-low wire the generated header's `CONFIG.INVERT` reset of 0 selects, with no chiplet pulling. Every CTP output and the CTM boundary must then stay static at zero over the inert window; that leg is device-observed.
 
 *Test Procedure*:
@@ -1745,6 +1746,7 @@ row's EXPECT sentence is worth, read the check.
 . Read the subsystem-side ID width of the SMC ID-width converter and compare it with the specified 6-bit SMC system AXI input ID; read the SMN struct widths and the crossbar-side ID widths as untokened drift.
 . Sample the CTP data inputs at the SMU boundary and the DTP consumer and require their resting levels, then require every CTP output and the CTM boundary static at zero over the inert window.
 . Sample `ss_config_o` and `skip_mem_repair_o` after bring-up and compare them with their specified idle values.
+. Compare the widths of the `smu_wrapper` `smc_shadow_regs_o` port and the bench net with the `smu` port, wait for `smc_fuse_sense_done_o` to rise, and compare all three with the image.
 
 *Checkers*:
 
@@ -1757,7 +1759,7 @@ row's EXPECT sentence is worth, read the check.
 |`CHK-SMU-XTRIG-CTP-S6` |resting CTP data inputs leave the CTP outputs static
 |`CHK-SMU-LC-STATE-S1` |lc_state_o is 8 bits, 2*LC_STATE_WIDTH
 |`CHK-SMU-LC-DEMOTE-S1` |both lcc_demote_state outputs are 2 bits
-|`CHK-SMU-EFUSE-SHIM-SMC-S3` |smc_shadow_regs reaches the boundary at full width and value
+|`CHK-SMU-EFUSE-SHIM-SMC-S3` |the smu_wrapper smc_shadow_regs_o port and the bench net are as wide as the smu port, and after the sense completes all three carry the non-zero image +smc_efuse_hex names
 |`CHK-SMU-FUSE-SENSE-S4` |skip_mem_repair_o is one bit and clear with no isolation request pending
 |`CHK-SMU-SSRESET-S2` |ss_reset_ctrl_o has 32 elements
 |`CHK-SMU-SSRESET-S4` |ss_config_o is 32 bits and presents the SS_CONFIG reset value
