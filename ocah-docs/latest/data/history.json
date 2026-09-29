@@ -2105,6 +2105,31 @@
         }
       ],
       "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 4,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-29T12:48:56+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 96.53,
+            "branch": 86.51,
+            "condition": 82.45,
+            "fsm_state": 89.66,
+            "functional": 100.0,
+            "line": 95.47,
+            "toggle": 36.97,
+            "user": 100.0
+          },
+          "flow": "smc",
+          "framework": "cocotb",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.66
     }
   ]
 }
