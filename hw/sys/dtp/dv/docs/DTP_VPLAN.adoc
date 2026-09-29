@@ -244,7 +244,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |F3.1 iJTAG SIB network: DFT secure, DFT non-secure, and DFD chains; every SIB pattern |`dtp_ijtag_sib_all_off_test`, `dtp_ijtag_sib_all_on_test`, `dtp_ijtag_sib_random_test` |scan |`ijtag_sib_cg` pattern and instrument bins |`CHK-SCAN-WIN` temporal windows, `CHK-SCAN-LEN` marker latency, `CHK-SCAN-CHAIN` captured SIB states and instrument registers against the SIB model |YES, against the 4/5/6-bit instrument stubs behind the SIBs in `tb_top`
 |F3.2 iJTAG instrument access follows `dft_secure`, `dft_nonsecure`, and `dfd` |`dtp_ijtag_dft_test`, `dtp_ijtag_dfd_test` |scan, dbg_disable |`ijtag_sib_cg` gating bins; `dbg_disable_cg` mirror points |`CHK-SCAN-WIN` quiet windows |YES
 |F3.3 STAP selection through composed TAP_3DCR scans for the I/O, SMC, SEP, and extra ports; the selected port forwards, a gated port parks in Test-Logic-Reset |`dtp_3dcr_stap_sel_ds_test`, `dtp_3dcr_stap_sel_smc_test`, `dtp_3dcr_stap_sel_sep_test`, `dtp_3dcr_stap_sel_extra_test` |scan, dbg_disable |`stap_3dcr_cg` |`CHK-DS-IDCODE`, `CHK-DS-TDR-READBACK`, `CHK-DS-TDR-HOLD`, `CHK-DS-PARKED-TLR`, `CHK-DS-TDR-RESUME`, `CHK-SLAVE-DR-UPDATE`, `CHK-SCAN-CHAIN`, `CHK-SCAN-WIN` |YES, against behavioral downstream TAPs
-|F3.4 The external STAP return path follows `stap_host`: the host scan controls and the PTAP chain return (`jtag_stap_host_scan_in_i` while enabled, `jtag_stap_host_scan_out_o` while disabled) |`dtp_ext_stap_scan_test` |scan, dbg_disable |`dbg_disable_cg` mirror points for `stap_host` |`CHK-SCAN-CHAIN` segment readback and marker position, `CHK-SCAN-OBS` PTAP 3DCR with SELECT=0, `CHK-SCAN-WIN` |YES, against the 7-bit host segment in `tb_top`
+|F3.4 The external STAP return path follows `stap_host`: the host scan controls and the PTAP chain return (`jtag_stap_host_scan_in_i` while enabled, `jtag_stap_host_scan_out_o` while disabled); the STAP chain and the host scan controls move only while the PTAP 3DCR SELECT is set |`dtp_ext_stap_scan_test`, `dtp_stap_chain_hold_test` |scan, dbg_disable |`dbg_disable_cg` mirror points for `stap_host`; `stap_3dcr_cg` chain bins |`CHK-SCAN-CHAIN` segment readback and marker position, `CHK-SCAN-OBS` PTAP 3DCR with SELECT=0, `CHK-SCAN-WIN` |YES, against the 7-bit host segment in `tb_top`
 |F3.5 3DCR `config_hold` and `tms_hold` |`dtp_3dcr_config_hold_test`, `dtp_3dcr_tms_hold_test` |scan |`stap_3dcr_cg` 3DCR field bins |`CHK-SCAN-CHAIN` chain readbacks after TLR/TRST, `CHK-SCAN-OBS` PTAP 3DCR over the TDR return path, `CHK-SCAN-WIN` parked TMS polarity |YES
 |F3.6 Every scan-side disable field gates exactly its path, with no replay after release and full recovery |`dtp_scan_dbg_disable_matrix_test` |scan, dbg_disable |`dbg_disable_cg`: the sixteen scan-side cells |`CHK-SCAN-WIN`, `CHK-SCAN-LEN`, `CHK-SCAN-CHAIN` in both realizations; ledger `require_cells` (cocotb) |YES
 |F4.1 Single-operation write and read on the SMC fabric, SMC OTP, and SEP OTP bridges, with data verification |`+dtp_jtag2axi_<target>_single_write_test+`, `+dtp_jtag2axi_<target>_single_write_data_verify_test+`, `+dtp_jtag2axi_<target>_single_write_read_test+` |jtag2axi; functional also carries `dtp_jtag2axi_smc_axi_single_write_test` and `dtp_jtag2axi_smc_axi_single_write_read_test` |`jtag2axi_single_op_cg`, `jtag2axi_response_cg` SUCCESS, `otp_jtag2axi_cg` |`CHK-AXI-RESP`, `CHK-AXI-STRB`, `CHK-AXI-COMPLETION`, `CHK-J2A-BUS-REQ`, `CHK-AXI-RDATA` (read-back scenarios), `CHK-AXI-WMEM` (write-read and data-verify scenarios, against the stimulus); `CHK-AXI-STREAM-MIN` and `CHK-AXI-CREDITS` (cocotb); `CHK-AXI-WADDR`, `CHK-AXI-WDATA`, `CHK-AXI-RADDR` on the reads, `CHK-AXI-NONVAC`, and the `jtag2axi_req` and `jtag2axi_status` scoreboard features (SV-UVM) |YES
@@ -423,6 +423,7 @@ expand over `smc_axi`, `smc_otp_axi`, and `sep_otp_axi`.
 |`dtp_3dcr_stap_sel_extra_test` |`ocah_jtag_vip` (master + downstream slave TAPs), OCAH-local STAP model |Extra STAP selection with downstream TDR readback
 |`dtp_3dcr_stap_sel_sep_test` |`ocah_jtag_vip` (master + downstream slave TAPs), OCAH-local STAP model |SEP STAP selection with downstream TDR readback
 |`dtp_ext_stap_scan_test` |`ocah_jtag_vip`, OCAH-local STAP model with the `tb_top` host segment |Extended STAP scan with the host scan return path
+|`dtp_stap_chain_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |STAP chain holds while the PTAP 3DCR SELECT is clear
 |`dtp_3dcr_config_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |3DCR config hold
 |`dtp_3dcr_tms_hold_test` |`ocah_jtag_vip`, OCAH-local STAP model |3DCR TMS hold
 |`dtp_scan_dbg_disable_matrix_test` |`ocah_jtag_vip`, OCAH-local scan models |Debug-disable matrix over the eight scan-side gate fields
@@ -577,7 +578,7 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 
 * All undefined/reserved IR encodings (0x0F, 0x10-0x17, 0x2D-0x3C) decode as themselves and default to BYPASS
 * Each reserved opcode produces 1-bit bypass behavior (TDI -++>++ 1-bit delay -++>++ TDO)
-* No instruction-qualified host chain select (boundary scan, secure DFT, non-secure DFT, DFD) rises across a reserved-opcode DR scan, and the debug-TDR pin outputs keep their reset image; the extended STAP host interface follows every scan path regardless of the instruction and is judged by the STAP scenarios
+* No instruction-qualified host chain select (boundary scan, secure DFT, non-secure DFT, DFD) rises across a reserved-opcode DR scan, and the debug-TDR pin outputs keep their reset image; the extended STAP host interface stays quiet while the PTAP 3DCR SELECT is clear and is judged by the STAP scenarios
 * `jtag_instruction_cg` reserved-opcode bins and the undefined-to-BYPASS behavior bin
 
 *Test Procedure*:
@@ -5170,7 +5171,7 @@ a. Verify the SIB stays closed and none of the DFD scan controls pulse across th
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the I/O STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Flush the TAP_3DCR configuration chain (TRST clears it, and it holds through the over-length all-zero scan that follows), then configure the I/O STAP with composed scans: set the PTAP 3DCR `select=1, config_hold=1` in a scan of its own, open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`.
 . Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
 . Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
 . Assert `dbg_disable_i.stap_io = 1` and attempt a randomized deselecting 3DCR write:
@@ -5216,7 +5217,7 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the SMC debug STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Flush the TAP_3DCR configuration chain (TRST clears it, and it holds through the over-length all-zero scan that follows), then configure the SMC debug STAP with composed scans: set the PTAP 3DCR `select=1, config_hold=1` in a scan of its own, open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`.
 . Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
 . Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
 . Assert `dbg_disable_i.stap_smc = 1` and attempt a randomized deselecting 3DCR write:
@@ -5262,7 +5263,7 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the extra STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Flush the TAP_3DCR configuration chain (TRST clears it, and it holds through the over-length all-zero scan that follows), then configure the extra STAP with composed scans: set the PTAP 3DCR `select=1, config_hold=1` in a scan of its own, open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`.
 . Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
 . Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
 . Assert `dbg_disable_i.stap_extra = 1` and attempt a randomized deselecting 3DCR write:
@@ -5308,7 +5309,7 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain with one over-length all-zero scan, then configure the SEP debug STAP with composed scans: open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1` (PTAP 3DCR held at `select=1, config_hold=1`).
+. Flush the TAP_3DCR configuration chain (TRST clears it, and it holds through the over-length all-zero scan that follows), then configure the SEP debug STAP with composed scans: set the PTAP 3DCR `select=1, config_hold=1` in a scan of its own, open its SIB, then write its 3DCR `stap_sel=1, tms_hold=1, config_hold=1`.
 . Run a state-maintaining chain scan inside a temporal window; verify the host `tdo_oen` pulses, host `tms` follows the live TMS, and the captured chain matches the reference model.
 . Read the downstream IDCODE through the chain (`CHK-DS-IDCODE`); select `DS_TDR` with a composed IR scan; write a per-pass random value; verify the device recorded exactly one Update-DR with that value (`CHK-SLAVE-DR-UPDATE`, `CHK-SLAVE-DR-UPDATE-COUNT`); read it back through the chain (`CHK-DS-TDR-READBACK`).
 . Assert `dbg_disable_i.stap_sep = 1` and attempt a randomized deselecting 3DCR write:
@@ -5348,16 +5349,16 @@ c. Verify the downstream device recorded no Update-DR, still holds the written v
 * Extended STAP scan interface (`+jtag_stap_host_scan_*+`) enabled via PTAP_3DCR.SELECT=1
 * For this scenario `tb_top` places a 7-bit host segment, a scan register that captures its own update register, between `jtag_stap_host_scan_out_o` and `jtag_stap_host_scan_in_i`; the STAP chain model predicts it at the TDO end of the TAP_3DCR chain, so the captured bits and the position of a marker shifted ahead of the chain image show which return path the PTAP used
 * `jtag_stap_host_scan_ctrl_o` pulses all four scan controls during DR operations, and a seeded value written into the segment through a composed TAP_3DCR scan reads back through `jtag_stap_host_scan_in_i`
-* Clearing PTAP_3DCR.SELECT=0 changes the data routing only: a scan with SELECT=0 pulses all four host scan controls, and TDO carries the PTAP 3DCR
+* Clearing PTAP_3DCR.SELECT=0 removes the STAP chain from the scan path: all four host scan controls stay quiet across a DR scan, and TDO carries the PTAP 3DCR
 * `dbg_disable_i.stap_host = 1` forces all four `jtag_stap_host_scan_ctrl_o` signals quiet across the whole gated window (temporal-window evidence) and bypasses scan-in: the PTAP chain return is `jtag_stap_host_scan_out_o`, so the marker arrives right behind the internal chain and the segment keeps its value
 * Normal scan operation resumes, without any reset, after the disable clears: the segment is back in the return path with its pre-gate value
 
 *Test Procedure*:
 
 [arabic]
-. Flush the TAP_3DCR configuration chain, then write PTAP_3DCR.SELECT=1 and a seeded non-zero segment value in one composed scan via `OcahJtagMasterDriver`.
+. Flush the TAP_3DCR configuration chain, write PTAP_3DCR.SELECT=1 in a scan of its own, then a seeded non-zero segment value in a composed scan via `OcahJtagMasterDriver`.
 . Inside a temporal window, run a maintain scan with a seeded marker ahead of the chain image; verify all four host scan controls pulse, the captured chain (segment included) matches the reference model, and the marker arrives right behind the chain.
-. Clear PTAP_3DCR.SELECT=0 with a composed scan and run a maintain scan under a temporal window: all four host scan controls keep pulsing (the strobes follow every PTAP scan), TDO carries the PTAP 3DCR, and the marker arrives two bits later.
+. Clear PTAP_3DCR.SELECT=0 with a composed scan and run a maintain scan under a temporal window: none of the four host scan controls pulses, TDO carries the PTAP 3DCR, and the marker arrives two bits later.
 . Security gating:
 a. Re-enable scan (PTAP_3DCR.SELECT=1 with a seeded CONFIG_HOLD) with a composed scan, then assert `dbg_disable_i.stap_host = 1`.
 b. Inside a temporal window covering the whole gated maintain scan, verify none of the four host scan-control signals pulses and scan-in is bypassed: the captured chain and the marker position match the internal chain alone.
@@ -5369,12 +5370,12 @@ c. Clear the disable without reset and verify the four host scan controls pulse 
 |===
 |Checker |Description
 |`ext_stap_enable_chk` |The four host scan controls pulse during DR operations when PTAP_3DCR.SELECT=1 (`CHK-SCAN-WIN`), and the segment value and the marker return through `jtag_stap_host_scan_in_i` (`CHK-SCAN-CHAIN`)
-|`ext_stap_deselect_chk` |With PTAP_3DCR.SELECT=0 the four host scan controls keep pulsing across a DR scan (`CHK-SCAN-WIN`) and TDO carries the PTAP 3DCR with the marker two bits behind it (`CHK-SCAN-OBS`); SELECT changes the data routing, not the strobes
+|`ext_stap_deselect_chk` |With PTAP_3DCR.SELECT=0 all four host scan controls stay quiet across a DR scan (`CHK-SCAN-WIN`) and TDO carries the PTAP 3DCR with the marker two bits behind it (`CHK-SCAN-OBS`)
 |`ext_stap_gate_chk` |With `dbg_disable_i.stap_host` asserted, all four host scan controls stay quiet across the gated window (`CHK-SCAN-WIN`) and scan-in is bypassed: the chain readback and the marker position match the internal chain alone (`CHK-SCAN-CHAIN`)
 |`ext_stap_restore_chk` |Normal STAP host scan resumes, without reset, after the disable clears: the four host scan controls pulse and the segment reads back its pre-gate value (`CHK-SCAN-WIN`, `CHK-SCAN-CHAIN`)
 |===
 
-*Pass Criteria*: The extended STAP scan controls pulse when selected, keep pulsing when deselected, are suppressed while `dbg_disable_i.stap_host` is asserted with the PTAP chain return taken from `jtag_stap_host_scan_out_o`, and recover without reset with the segment value intact when it clears, with zero scoreboard/reference-model errors.
+*Pass Criteria*: The extended STAP scan controls pulse when selected, stay quiet when deselected, are suppressed while `dbg_disable_i.stap_host` is asserted with the PTAP chain return taken from `jtag_stap_host_scan_out_o`, and recover without reset with the segment value intact when it clears, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5395,10 +5396,10 @@ c. Clear the disable without reset and verify the four host scan controls pulse 
 *Test Procedure*:
 
 [arabic]
-. Flush the chain; write PTAP_3DCR with CONFIG_HOLD=h, SELECT=1 and open the STAP's SIB; Update-DR.
+. Flush the chain; write PTAP_3DCR with CONFIG_HOLD=h, SELECT=1 in a scan of its own, then open the STAP's SIB; Update-DR.
 . Write the STAP 3DCR with CONFIG_HOLD=h, a seeded SELECT, TMS_HOLD=1; Update-DR.
 . Force TLR (5x TMS=1), or TRST for the TRST sub-case; the IR returns to IDCODE.
-. Reload TAP_3DCR with a composed IR scan (every IR scan shifts through the STAP chain).
+. Reload TAP_3DCR with a composed IR scan (while the PTAP SELECT is set, every IR scan shifts through the STAP chain).
 a. With the PTAP SELECT retained (h=1 across TLR), a maintain scan returns the chain: verify the captured PTAP SELECT=1 and CONFIG_HOLD=1.
 b. With the PTAP SELECT cleared (h=0, or TRST), TDO carries the PTAP 3DCR itself: verify both bits read 0 and that a marker shifted behind them arrives two bits later (the chain return would delay it by the chain length).
 . Re-select the PTAP and reopen the STAP's SIB; a maintain scan then carries the STAP 3DCR.
@@ -5437,7 +5438,7 @@ b. h=0 across TLR, or TRST: verify every STAP 3DCR field reads 0.
 *Test Procedure*:
 
 [arabic]
-. Flush the chain, set the PTAP SELECT, and open the STAP's SIB; Update-DR.
+. Flush the chain, set the PTAP SELECT in a scan of its own, then open the STAP's SIB; Update-DR.
 . Select the STAP via its 3DCR (SELECT=1, TMS_HOLD=h); Update-DR.
 . Under a temporal window over a maintain scan while the STAP is selected, count `jtag_stap_<x>_tms` and `jtag_stap_<x>_tdo_oen` high samples per TCK cycle: `tdo_oen` pulses, and the host TMS toggles and equals the primary TMS at every rising TCK edge. This is the positive control for the parked checks that follow, on the same port and the same window shape.
 . Deselect the STAP (SELECT=0, TMS_HOLD=h); Update-DR.
@@ -5482,7 +5483,7 @@ c. `tdo_oen` never pulses.
 [arabic]
 . For each row mask (all-clear, one-hot per field, seeded multi-hot, all-disabled last): drive the full disable vector and settle four toggling TCK cycles.
 . iJTAG evidence: request all three SIBs open inside a temporal window and check each SIB's allowed/blocked outcome against the reference model.
-. STAP evidence: with every disable clear, flush the TAP_3DCR chain, open all four SIBs and write all four 3DCR payloads in composed scans, then assert the row mask and run a windowed maintain scan; check per-port forwarding vs quiet with `tms` parked at the stored `tms_hold=1`, the host scan-control window, and the chain readback; then attempt a clearing 3DCR write under the mask and verify by chain readback that the gated ports ignore it and the ungated ports accept it.
+. STAP evidence: with every disable clear, flush the TAP_3DCR chain, set the PTAP SELECT in a scan of its own, open all four SIBs and write all four 3DCR payloads in composed scans, then assert the row mask and run a windowed maintain scan; check per-port forwarding vs quiet with `tms` parked at the stored `tms_hold=1`, the host scan-control window, and the chain readback; then attempt a clearing 3DCR write under the mask and verify by chain readback that the gated ports ignore it and the ungated ports accept it.
 . After the final all-disabled row: clear all disables, observe without reprogramming, and verify no SIB select pulses (no delayed open); then rerun the all-clear row as recovery.
 . Emit the `dbg_disable_cg` JSON artifact and require all sixteen scan-side cells.
 
@@ -5500,6 +5501,39 @@ c. `tdo_oen` never pulses.
 |===
 
 *Pass Criteria*: Every row mask produces the per-field allowed/blocked outcomes with temporal-window evidence, no delayed effects, and full recovery, closing all sixteen scan-side `dbg_disable_cg` cells, with zero scoreboard/reference-model errors.
+
+'''''
+
+[[sec-514-dtp_stap_chain_hold_test]]
+===== 5.14 `dtp_stap_chain_hold_test`
+
+*BFM / Model*: `ocah_jtag_vip`, OCAH-local STAP model
+
+*Objective*: STAP chain holds while the PTAP 3DCR SELECT is clear
+
+*Test Coverage*:
+
+* With PTAP_3DCR.SELECT=0 the STAP chain's select, capture, shift and update strobes stay low through IR and DR scans under any instruction, so no STAP SIB or 3DCR changes
+* All-ones data, which would open every SIB and select every STAP were the chain clocked, is shifted under IDCODE and BYPASS in DR scans of 3, 4, 8 and a seeded 9 to 32 bits
+* Once SELECT is set in a TAP_3DCR scan of its own, a composed chain readback shows every SIB closed
+
+*Test Procedure*:
+
+[arabic]
+. Flush the TAP_3DCR configuration chain (TRST clears it).
+. Under one temporal window over the host scan controls and every STAP's `tdo_oen` and `tms`: load IDCODE and shift all-ones DR scans of each width; load BYPASS with an all-ones IR scan and shift the same DR scans.
+. Load TAP_3DCR, set PTAP_3DCR SELECT=1 in a scan of its own, then run a maintain scan and compare the captured chain against the STAP reference model.
+
+*Checkers*:
+
+[cols=",",options="header",]
+|===
+|Checker |Description
+|`stap_chain_hold_quiet_chk` |`CHK-SCAN-WIN`: no host scan control pulses, no STAP `tdo_oen` pulses, and every STAP `tms` stays at its reset TMS_HOLD of 0 across the unselected scans
+|`stap_chain_hold_readback_chk` |`CHK-SCAN-CHAIN`: the maintain scan captures every SIB closed, matching the reference model
+|===
+
+*Pass Criteria*: Scans with the PTAP 3DCR SELECT clear leave the STAP chain untouched, and the chain reads back closed once SELECT is set, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -6806,7 +6840,7 @@ their arrays:
 |Target |Module |Property intents |Prio
 |T2 |`dtp_ir_props.sv` on `jtag_inst_reg` and the PTAP select terms |`ast_ir_decoded_one_hot`: the decoded instruction is one-hot. `ast_ir_capture_loads_01`: Capture-IR loads `6'b000001`. `ast_ir_update_decodes_shift_reg`: after Update-IR the decoded instruction is `1 << shift_reg`. `ast_ir_reset_is_idcode`: Test-Logic-Reset, TRST and power-on reset leave IDCODE decoded. `ast_tdr_select_one_hot`: at most one register select is high in a DR scan, each select equals the DR select under its own instruction, the bypass register is also clocked by IDCODE, INV_BYPASS and SELECT_IJTAG scans, and the TDO multiplexer reads the register of the instruction. `ast_undefined_selects_bypass`: every opcode outside the defined set, and every defined opcode whose feature parameter is 0, selects the bypass register. `ast_zlb_bypasses_retimer`: under ZERO_LENGTH_BYPASS in Shift-DR, TDO follows TDI in the same step. `ast_idcode_caps_read_only`: the IDCODE and CAPS captures load the parameter constants and no Update-DR changes them. Covers: each of the 64 opcodes decoded, the bypass selection for one undefined opcode, a zero-length shift, a read of each capability TDR. |P1; the decode one-hot and the undefined-to-bypass rule P0
 |T3 |`dtp_reset_props.sv` on the PTAP reset terms, `jtag_tmp`, `jtag_tmp_status_reg`, `jtag_ic_reset_reg`, `jtag_3dcr_reg` |`ast_trst_or_por_resets_tap`: either source low forces Test-Logic-Reset and the IDCODE instruction. `ast_tlr_asserts_rst_n`: `rst_n` is low exactly while the negedge-sampled state is Test-Logic-Reset. `ast_chrst_follows_rst_unless_persistent`: `chrst_n` equals `rst_n` while persistence is off and stays high in Test-Logic-Reset while it is on. `ast_tmp_on_only_by_clamp_hold`, `ast_tmp_off_by_release_or_escape`: the two TMP transitions and no other; the bypass escape needs Update-IR, an explicit BYPASS opcode and the escape bit. `ast_tmp_survives_tlr`: Test-Logic-Reset leaves the TMP state unchanged. `ast_ic_reset_hold_blocks_tlr`: with `reset_hold` 0, Test-Logic-Reset leaves `reset_enable` and `reset_control` unchanged; with `reset_hold` 1 it restores them to all-ones. `ast_ic_reset_trst_clears_all`: TRST restores every IC_RESET bit including `reset_hold`. `ast_ic_reset_ovrd_is_not_enable`: `.ovrd` is the inversion of `reset_enable` and `.val` equals `reset_control`. `ast_3dcr_config_hold_blocks_tlr`: the PTAP 3DCR survives Test-Logic-Reset while `config_hold` is set and clears on TRST. Covers: persistence on then off by each exit, an IC_RESET override held across a Test-Logic-Reset, a 3DCR held across a Test-Logic-Reset. |P0
-|T4 |`dtp_stap_props.sv` on the PTAP 3DCR, each `jtag_stap`, and the `stap_host` terms of `jtag_intf_unit` |`ast_stap_disable_forces_sel_low`, `ast_stap_disable_tdo_low`, `ast_stap_disable_blocks_3dcr_update`: with the STAP's disable field high, `stap_sel` is 0, `host_tdo_o` is 0, and the 3DCR update register holds its value. `ast_stap_unselected_parks_tms`: with `stap_sel` 0, `host_tap_ctrl_o.tms` equals `tms_hold`; with 1 it follows the client TMS. `ast_stap_tdo_oen_only_when_selected_shifting`: `host_tdo_oen_o` is `stap_sel AND shift_en`. `ast_stap_host_disable_loops_back`: with `stap_host` disabled the PTAP scan input is the chain's own output and every host scan-control enable is 0. `ast_ptap_stap_select_routes_tdo`: with the PTAP 3DCR select set, TDO comes from the STAP chain, else from the TDR multiplexer. `ast_dbg_disable_sync_fail_closed`: each synchronizer resets to 1 and follows its input after two `tck` edges. Covers: the I/O, SMC, SEP and extra STAP each selected; a STAP disabled while selected; the return path disabled during a shift, and enabled during a shift with the PTAP select set. |P0
+|T4 |`dtp_stap_props.sv` on the PTAP 3DCR, each `jtag_stap`, and the `stap_host` terms of `jtag_intf_unit` |`ast_stap_disable_forces_sel_low`, `ast_stap_disable_tdo_low`, `ast_stap_disable_blocks_3dcr_update`: with the STAP's disable field high, `stap_sel` is 0, `host_tdo_o` is 0, and the 3DCR update register holds its value. `ast_stap_unselected_parks_tms`: with `stap_sel` 0, `host_tap_ctrl_o.tms` equals `tms_hold`; with 1 it follows the client TMS. `ast_stap_tdo_oen_only_when_selected_shifting`: `host_tdo_oen_o` is `stap_sel AND shift_en`. `ast_stap_host_disable_loops_back`: with `stap_host` disabled the PTAP scan input is the chain's own output and every host scan-control enable is 0. `ast_ptap_stap_select_routes_tdo`: with the PTAP 3DCR select set, TDO comes from the STAP chain, else from the TDR multiplexer. `ast_stap_chain_quiet_unselected`: with the PTAP 3DCR select clear, the select, capture, shift and update enables of the STAP chain's scan control are 0. `ast_dbg_disable_sync_fail_closed`: each synchronizer resets to 1 and follows its input after two `tck` edges. Covers: the I/O, SMC, SEP and extra STAP each selected; a STAP disabled while selected; the return path disabled during a shift, and enabled during a shift with the PTAP select set. |P0
 |T5 |`dtp_sib_props.sv` on the three SIBs |`ast_sib_disable_forces_en_low`, `ast_sib_disable_blocks_update`, `ast_sib_disable_host_quiet`: with the SIB's field high, the segment enable is 0, the SIB bit does not update, and the host `capture_en`, `shift_en`, `update_en`, `select` and `host_scan_out_o` are 0. `ast_sib_open_routes_host`: with the enable set, the client scan output is the host scan input, else the SIB's own bit. `ast_sib_host_ctrl_follows_client`: the host enables equal the client enables AND `select` while enabled. `ast_sib_chain_order`: the DFD SIB's input is the non-secure SIB's output, whose input is the secure SIB's output. Covers: every SIB pattern (eight), each SIB disabled while open. |P0
 |T6 |`dtp_dbgctl_props.sv` on `jtag_debug_ctrl_reg`; `dtp_ctn_clkstop_props.sv` on `ctn_clock_stop_ctrl` |`ast_dbgctl_rw_bits_hold`: bits 3:0 change only on an Update-DR of the DEBUG_CONTROL TDR. `ast_dbgctl_ro_bit_captures_status`: bit 4 captures the synchronized `cla_clock_stop` and ignores the shifted value. `ast_dbgctl_outputs_follow_update_reg`: the four outputs equal the update register bits. `ast_clkstop_or_after_three`: `stop_clks_o` equals the OR of `jtag_clock_stop_i` and every `clk_stop_req_i` bit sampled three `clk_i` cycles earlier. `ast_cla_status_excludes_jtag`: `cla_clock_stop_o` is the OR of the request bits alone, with no register. `ast_clkstop_low_in_reset`: `stop_clks_o` is 0 while `rst_ni` is low. Covers: a JTAG stop with no CLA request, a CLA request with no JTAG stop, the boot-stall override with each stall value. |P1
 |T7 |`dtp_jtag2axi_ctrl_props.sv` on `jtag2axi`, one bind serving the three instances |`ast_j2a_state_valid`: the request machine holds one of its seven states. `ast_j2a_valid_only_in_send_states`: the TCK-side `aw_valid`, `w_valid` and `ar_valid` requests are high only in the address and data states. `ast_j2a_idle_after_status`: UPDATE_STATUS returns to IDLE in one cycle. `ast_j2a_resp_only_while_waiting`: a response beat from a responder that follows the shared checker's rules arrives no earlier than the request's last handshake and no later than the state that consumes it, so it depends on the assumed responder rules and fails without them. `ast_j2a_status_encodes_resp`: OKAY, SLVERR and DECERR responses map to SUCCESS, SLVERR and DECERR, any other code to SLVERR. `ast_j2a_series_status_sticky`: without a completion or a series-control reset write the status holds, the full flag holds until a reset write, and a reset write with no completion beside it returns the status to SUCCESS and clears the full flag. `ast_j2a_series_error_holds`: an error code holds until the series-control reset bit, and a later error completion leaves either the held code or its own. `ast_j2a_one_read_in_flight`: at most one series read is in flight, and only while the machine waits for its data. `ast_j2a_admit_bounded_by_depth`: the in-flight and pushed counters never exceed the pipeline depth, itself clamped to `FIFO_DEPTH`. `ast_j2a_outstanding_saturates`: at their saturation value the ACLK outstanding counters hold the CDC ready low, so they never wrap. `ast_j2a_disable_holds_idle`: after a cycle with the disable high and the machine idle, the machine is idle, the single-request buffer, both series FIFOs and the read counters are empty, and no Update-DR latches while the disable is high. `ast_j2a_disable_inflight_completes`: a disable that arrives outside IDLE does not abort the transaction in flight: the send states keep their valids, a response completes into UPDATE_STATUS, and IDLE is entered from UPDATE_STATUS alone. `ast_j2a_release_replays_nothing`: an idle machine with an empty single buffer and request FIFO stays idle, so a released disable issues nothing until a new Update-DR. Covers: a single write and a single read to completion, a series of `FIFO_DEPTH` reads admitted, a SLVERR and a DECERR status, a clean completion while an error code is held, a disable landing in each non-idle state. |P0 for the disable and admit properties, P1 otherwise
@@ -6845,17 +6879,8 @@ excludes.
   `asm_j2a_size_within_bus`, which holds the host to the bus width in the
   `jtag2axi` environment.
 
-The proofs and cover traces add seven points the chapters do not state.
+The proofs and cover traces add six points the chapters do not state.
 
-* The STAP chain takes its scan control from the OR of the PTAP's IR and DR
-  controls, without the PTAP 3DCR select or the instruction in the term, so
-  every scan clocks the STAP SIB bits with the bits that leave the PTAP's
-  register and an open SIB's 3DCR with the next scan. The cover trace that
-  selects the SEP STAP loads no instruction at all: under IDCODE, a three-bit
-  DR scan opens the SEP SIB and a four-bit scan sets its `stap_sel`, so a
-  downstream TAP's TMS follows the host without TAP_3DCR ever being loaded.
-  The T4 covers are reached at step 41 through this route
-  (<<dtp-formal-depths>>).
 * The bypass register's select term shares its default arm with the
   undefined opcodes, so IDCODE, INV_BYPASS and SELECT_IJTAG scans clock the
   bypass register too while TDO reads their own register
@@ -7010,7 +7035,7 @@ Update-DR).
 |T1 |`cov_tap_tlr_from_five_tms_high`: Run-Test/Idle, Select-DR, Capture-DR, then five TMS-high edges into Test-Logic-Reset |19 |30
 |T2 |`cov_undefined_opcode_bypass`: the undefined opcode `0x0F` loaded, then a DR scan reaches Shift-DR through the bypass register; the thirty-one opcode covers each load one instruction |33 |40
 |T3 |`cov_tmp_off_by_escape`: TMP_STATUS loaded and its escape bit written, CLAMP_HOLD loaded, BYPASS_ALT loaded with one shift, persistence off at the edge after Update-IR |67 |75
-|T4 |`cov_stap_disabled_while_selected` on the extra STAP: two IDCODE scans of three and four bits open the SIB and set `stap_sel` through the chain's IR-and-DR scan control, then the synchronized disable rises (<<dtp-formal-observations>>) |41 |55
+|T4 |`cov_stap_disabled_while_selected` on the extra STAP: TAP_3DCR loaded and the PTAP 3DCR select set in a scan of its own, one chain scan opens every SIB and a second sets every `stap_sel`, then the synchronized disable rises |67 |75
 |T5 |`cov_sib_disabled_while_open` on the DFD SIB and the eight SIB patterns: SELECT_IJTAG loaded, a 3-bit DR scan writes the SIBs, the disable rises two edges later |41 |55
 |T6 |`cov_dbgctl_boot_stall_ovrd_stall_high`: DEBUG_CONTROL loaded, a 5-bit DR scan sets both bits |37 |55 on `dtp`; the `ctn_clkstop_fpv` covers are reached at step 6 and its triple uses depth 10
 |T7 |`cov_j2a_series_reads_admitted`: a CTRL update programs a read series and `FIFO_DEPTH + 1` data updates are admitted; a single write or read completes through the free response side at step 13 |23 |40; the `prove` task runs `abc pdr` on the model with the CDC in the loop, since k-induction cannot close `$past` relations under explicit clocks, where an induction window may hold a single `tck` edge
@@ -7021,8 +7046,8 @@ Update-DR).
 A cover added at a greater distance raises its block's depth. The
 derivations behind the table: an instruction load from Test-Logic-Reset is
 13 `tck` edges and a DR scan of `b` bits is `b + 4`, so the T2 and T3 routes
-above cost 17 and about 33 edges; the T4 route through the chain's scan control costs 19 edges
-(<<dtp-formal-observations>>); T5 and T6
+above cost 17 and about 33 edges; the T4 route costs 32 edges,
+since the PTAP 3DCR select must be set before a chain scan reaches a SIB; T5 and T6
 cost about 24 edges; the T7 machine completes a request in about five `tck`
 cycles once its response side is free, while with the CDC in the loop the
 clear handshake after reset lets nothing cross within sixty steps

@@ -154,6 +154,7 @@ import dtp_seq_lib_pkg::*;
 `include "dtp_3dcr_stap_sel_sep_test.svh"
 `include "dtp_3dcr_stap_sel_extra_test.svh"
 `include "dtp_ext_stap_scan_test.svh"
+`include "dtp_stap_chain_hold_test.svh"
 `include "dtp_3dcr_config_hold_test.svh"
 `include "dtp_3dcr_tms_hold_test.svh"
 `include "dtp_scan_dbg_disable_matrix_test.svh"
