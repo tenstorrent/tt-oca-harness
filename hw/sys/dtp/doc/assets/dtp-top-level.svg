@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1112" viewBox="0 0 1040 1112" role="img" aria-labelledby="title desc">
+<title id="title">DTP top-level architecture</title>
+<desc id="desc">Block diagram of the DTP top module, dtp, which holds the JTAG interface unit u_jtag_intf_unit and the cross-trigger network u_cross_trigger_network. In the JTAG interface unit the primary TAP u_jtag_ptap takes the chiplet JTAG pins on its TAP controller and 6-bit instruction register, and reports the TAP state and decoded instruction. Its scan mux forwards TDI to every data register and selects the return for TDO. Its internal data registers include DEBUG_CONTROL, which drives the JTAG clock stop into the cross-trigger network, reads back the CLA clock-stop status and drives the CLA clock-stop enable and the boot-stall override to the SMC, and IC_RESET, which drives the SMC, SEP and external reset overrides. Three optional JTAG2AXI bridges are AXI managers: u_smc_jtag2axi to the SMC fabric jtag_axi_in port over AXI4, u_smc_otp_jtag2axi to the SMC eFuse wrapper and u_sep_otp_jtag2axi to the SEP OTP, both over AXI-Lite. The scan mux also reaches the external boundary-scan chain; the secondary TAP chain of four optional STAPs, u_stap_io to the next chiplet, u_stap_smc_dbg to the SMC CPU debug TAP, u_stap_sep_dbg to the SEP CPU debug TAP and u_stap_extra to local TAPs, followed by an external STAP chain; and the iJTAG chain of three SIBs, u_dft_secure_sib, u_dft_nonsecure_sib and u_dfd_sib, each opening an external scan segment. The debug-disable synchroniser takes dbg_disable_i from the SEP lifecycle controller into the TCK domain and gates each STAP, each SIB and each bridge. In the cross-trigger network the AXI-Lite CSR crossbar u_axil_xbar takes the DTP CSR window from the SMC peripheral crossbar and reaches the cross-trigger matrix u_ctm and the sixteen external cross-trigger ports u_ctp. The 26 by 26 matrix connects the sixteen external ports, which drive the CTP pads, and the ten internal port cores u_int_ctp_core, which carry the internal cross-triggers: two lanes to and from the SMC DFD CLA and eight to SMU ports. The clock-stop control u_clock_stop_ctrl ORs the nine clock-stop requests with the JTAG clock stop and drives stop_clks_o.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+.sgo { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="1112" fill="#ffffff"/>
+<rect class="smu" x="158" y="14" width="710" height="1042" rx="8"/>
+<text class="b" x="170" y="1046" text-anchor="start">dtp</text>
+<rect class="smu" x="172" y="28" width="682" height="680" rx="6"/>
+<text class="bs" x="184" y="698" text-anchor="start">u_jtag_intf_unit</text>
+<rect class="smu" x="188" y="42" width="318" height="622" rx="6"/>
+<text class="bs" x="200" y="654" text-anchor="start">u_jtag_ptap</text>
+<rect class="core" x="204" y="58" width="286" height="52" rx="6"/>
+<text class="bs" x="355" y="80" text-anchor="middle">TAP controller</text>
+<text class="s" x="355" y="99" text-anchor="middle">u_jtag_tap_ctrlr, u_jtag_inst_reg (6-bit IR)</text>
+<path class="jtagb" d="M10,76 L184,76"/>
+<text class="s" x="8" y="69" text-anchor="start">JTAG pins</text>
+<path class="sigo" d="M204,100 L10,100"/>
+<text class="s" x="8" y="118" text-anchor="start">PTAP state, instruction</text>
+<rect class="core opt" x="204" y="128" width="150" height="52" rx="6"/>
+<text class="s" x="287" y="150" text-anchor="middle">u_smc_jtag2axi</text>
+<text class="s" x="287" y="168" text-anchor="middle">SMC fabric</text>
+<path class="axi" d="M191,154.0 L10,154.0"/>
+<text class="s" x="8" y="147" text-anchor="start">SMC jtag_axi_in, AXI4</text>
+<rect class="core opt" x="204" y="192" width="150" height="52" rx="6"/>
+<text class="s" x="287" y="214" text-anchor="middle">u_smc_otp_jtag2axi</text>
+<text class="s" x="287" y="232" text-anchor="middle">SMC OTP</text>
+<path class="axil" d="M191,218.0 L10,218.0"/>
+<text class="s" x="8" y="211" text-anchor="start">SMC eFuse, AXI-Lite</text>
+<rect class="core opt" x="204" y="256" width="150" height="52" rx="6"/>
+<text class="s" x="287" y="278" text-anchor="middle">u_sep_otp_jtag2axi</text>
+<text class="s" x="287" y="296" text-anchor="middle">SEP OTP</text>
+<path class="axil" d="M191,282.0 L10,282.0"/>
+<text class="s" x="8" y="275" text-anchor="start">SEP OTP, AXI-Lite</text>
+<rect class="core" x="204" y="338" width="150" height="266" rx="6"/>
+<text class="bs" x="279" y="360" text-anchor="middle">Internal TDRs</text>
+<text class="s" x="279" y="384" text-anchor="middle">BYPASS</text>
+<text class="s" x="279" y="402" text-anchor="middle">INV_BYPASS</text>
+<text class="s" x="279" y="420" text-anchor="middle">IDCODE</text>
+<text class="s" x="279" y="438" text-anchor="middle">JTAG_CAPS</text>
+<text class="s" x="279" y="456" text-anchor="middle">JTAG2AXI caps</text>
+<text class="s" x="279" y="474" text-anchor="middle">TAP_3DCR</text>
+<text class="s" x="279" y="492" text-anchor="middle">TMP_STATUS</text>
+<text class="s" x="279" y="510" text-anchor="middle">IC_RESET</text>
+<text class="s" x="279" y="528" text-anchor="middle">DEBUG_CONTROL</text>
+<path class="sigo" d="M204,500 L10,500"/>
+<text class="s" x="8" y="493" text-anchor="start">cla_clock_stop_en: SMC</text>
+<path class="sigo" d="M204,534 L10,534"/>
+<text class="s" x="8" y="527" text-anchor="start">boot stall override: SMC</text>
+<path class="sigo" d="M204,568 L10,568"/>
+<text class="s" x="8" y="561" text-anchor="start">IC_RESET overrides</text>
+<rect class="fabric" x="390" y="128" width="100" height="512" rx="6"/>
+<text class="bs" x="440" y="364" text-anchor="middle">Scan mux</text>
+<text class="s" x="440" y="388" text-anchor="middle">TDI to TDRs</text>
+<text class="s" x="440" y="406" text-anchor="middle">and bridges,</text>
+<text class="s" x="440" y="424" text-anchor="middle">TDR select,</text>
+<text class="s" x="440" y="442" text-anchor="middle">STAP select,</text>
+<text class="s" x="440" y="460" text-anchor="middle">TDO retime</text>
+<path class="jtagb" d="M493,146 L1030,146"/>
+<text class="s" x="880" y="139" text-anchor="start">boundary-scan chain</text>
+<path class="jtag" d="M493,170 L735,170 L735,183"/>
+<rect class="core opt" x="640" y="186" width="190" height="40" rx="6"/>
+<text class="t" x="735" y="211" text-anchor="middle">u_stap_io</text>
+<path class="jtagb" d="M833,206.0 L1030,206.0"/>
+<text class="s" x="880" y="199" text-anchor="start">next chiplet (I/O)</text>
+<path class="jtag" d="M735,226 L735,241"/>
+<rect class="core opt" x="640" y="244" width="190" height="40" rx="6"/>
+<text class="t" x="735" y="269" text-anchor="middle">u_stap_smc_dbg</text>
+<path class="jtagb" d="M833,264.0 L1030,264.0"/>
+<text class="s" x="880" y="257" text-anchor="start">SMC CPU debug TAP</text>
+<path class="jtag" d="M735,284 L735,299"/>
+<rect class="core opt" x="640" y="302" width="190" height="40" rx="6"/>
+<text class="t" x="735" y="327" text-anchor="middle">u_stap_sep_dbg</text>
+<path class="jtagb" d="M833,322.0 L1030,322.0"/>
+<text class="s" x="880" y="315" text-anchor="start">SEP CPU debug TAP</text>
+<path class="jtag" d="M735,342 L735,357"/>
+<rect class="core opt" x="640" y="360" width="190" height="40" rx="6"/>
+<text class="t" x="735" y="385" text-anchor="middle">u_stap_extra[N]</text>
+<path class="jtagb" d="M833,380.0 L1030,380.0"/>
+<text class="s" x="880" y="373" text-anchor="start">local TAPs</text>
+<path class="jtag" d="M735,400 L735,424 L1030,424"/>
+<text class="s" x="880" y="417" text-anchor="start">external STAP chain</text>
+<path class="jtag" d="M1030,446 L617,446 M607,446 L493,446"/>
+<path class="jtag" d="M493,470 L607,470 M617,470 L735,470 L735,485"/>
+<rect class="core" x="640" y="488" width="190" height="38" rx="6"/>
+<text class="t" x="735" y="512" text-anchor="middle">u_dft_secure_sib</text>
+<path class="jtagb" d="M833,507.0 L1030,507.0"/>
+<text class="s" x="880" y="500" text-anchor="start">secure DFT segment</text>
+<path class="jtag" d="M735,526 L735,541"/>
+<rect class="core" x="640" y="544" width="190" height="38" rx="6"/>
+<text class="t" x="735" y="568" text-anchor="middle">u_dft_nonsecure_sib</text>
+<path class="jtagb" d="M833,563.0 L1030,563.0"/>
+<text class="s" x="880" y="556" text-anchor="start">DFT segment</text>
+<path class="jtag" d="M735,582 L735,597"/>
+<rect class="core" x="640" y="600" width="190" height="38" rx="6"/>
+<text class="t" x="735" y="624" text-anchor="middle">u_dfd_sib</text>
+<path class="jtagb" d="M833,619.0 L1030,619.0"/>
+<text class="s" x="880" y="612" text-anchor="start">DFD segment</text>
+<path class="jtag" d="M640,610 L617,610 M607,610 L493,610"/>
+<rect class="core" x="640" y="648" width="190" height="46" rx="6"/>
+<text class="t" x="735" y="667" text-anchor="middle">dbg_disable sync</text>
+<text class="s" x="735" y="685" text-anchor="middle">2 flops per bit on TCK</text>
+<path class="sigo" d="M1030,671 L833,671"/>
+<text class="s" x="880" y="664" text-anchor="start">dbg_disable_i: SEP LC</text>
+<path class="sgo" d="M640,671 L612,671 L612,216"/>
+<path class="sgo" d="M612,671 L612,682 L372,682 L372,154.0"/>
+<circle cx="612" cy="671" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,216 L637,216"/>
+<circle cx="612" cy="274" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,274 L637,274"/>
+<circle cx="612" cy="332" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,332 L637,332"/>
+<circle cx="612" cy="390" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,390 L637,390"/>
+<circle cx="612" cy="516" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,516 L637,516"/>
+<circle cx="612" cy="572" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,572 L637,572"/>
+<circle cx="612" cy="628" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M612,628 L637,628"/>
+<path class="sigo" d="M372,154.0 L357,154.0"/>
+<circle cx="372" cy="218" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M372,218.0 L357,218.0"/>
+<circle cx="372" cy="282" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M372,282.0 L357,282.0"/>
+<rect class="smu" x="172" y="752" width="682" height="274" rx="6"/>
+<text class="bs" x="184" y="1016" text-anchor="start">u_cross_trigger_network</text>
+<rect class="core" x="204" y="772" width="176" height="60" rx="6"/>
+<text class="t" x="292" y="796" text-anchor="middle">u_clock_stop_ctrl</text>
+<text class="s" x="292" y="816" text-anchor="middle">OR, 2-flop sync, register</text>
+<path class="sigo" d="M306,604 L306,769"/>
+<text class="s" x="300" y="726" text-anchor="end">JTAG clock stop</text>
+<path class="sigo" d="M340,772 L340,607"/>
+<text class="s" x="346" y="726" text-anchor="start">CLA clock-stop status</text>
+<path class="sigo" d="M10,790 L201,790"/>
+<text class="s" x="8" y="783" text-anchor="start">clk_stop_req[8:0]</text>
+<path class="sigo" d="M204,816 L10,816"/>
+<text class="s" x="8" y="834" text-anchor="start">stop_clks_o</text>
+<rect class="fabric" x="204" y="892" width="176" height="60" rx="6"/>
+<text class="t" x="300" y="916" text-anchor="middle">u_axil_xbar</text>
+<text class="s" x="300" y="935" text-anchor="middle">1 × 17, AXI-Lite 32-bit</text>
+<path class="axil" d="M10,922 L191,922"/>
+<text class="s" x="8" y="915" text-anchor="start">SMC periph crossbar</text>
+<text class="s" x="8" y="942" text-anchor="start">DTP CSR window</text>
+<rect class="core" x="440" y="876" width="120" height="130" rx="6"/>
+<text class="t" x="500" y="928" text-anchor="middle">u_ctm</text>
+<text class="s" x="500" y="948" text-anchor="middle">26 × 26</text>
+<text class="s" x="500" y="966" text-anchor="middle">AND-OR matrix</text>
+<path class="axil" d="M393,922 L427,922"/>
+<rect class="core" x="640" y="772" width="190" height="60" rx="6"/>
+<text class="t" x="735" y="796" text-anchor="middle">u_ctp × 16</text>
+<text class="s" x="735" y="816" text-anchor="middle">wire-OR or P2P, CSRs</text>
+<path class="sig" d="M833,802 L1030,802"/>
+<text class="s" x="880" y="795" text-anchor="start">CTP pads, 4 per port</text>
+<path class="axil" d="M340,879 L340,856 L602,856 M614,856 L700,856 L700,845"/>
+<path class="sig" d="M563,896 L608,896 L608,802 L637,802"/>
+<rect class="core" x="640" y="916" width="190" height="80" rx="6"/>
+<text class="t" x="735" y="946" text-anchor="middle">u_int_ctp_core × 10</text>
+<text class="s" x="735" y="966" text-anchor="middle">static mode, no CSRs</text>
+<path class="sig" d="M563,956 L637,956"/>
+<path class="sig" d="M833,956 L1030,956"/>
+<text class="s" x="880" y="949" text-anchor="start">internal cross-triggers:</text>
+<text class="s" x="880" y="974" text-anchor="start">2 SMC DFD, 8 SMU ports</text>
+<text class="s" x="44" y="1070.5" text-anchor="start">Manager port</text>
+<text class="s" x="182.8" y="1070.5" text-anchor="start">Subordinate port</text>
+<path class="axi" d="M322.20000000000005,1066 L364.20000000000005,1066"/>
+<text class="s" x="375.2" y="1070.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M431.80000000000007,1066 L473.80000000000007,1066"/>
+<text class="s" x="484.8" y="1070.5" text-anchor="start">AXI-Lite</text>
+<path class="jtag" d="M569.0,1066 L611.0,1066"/>
+<text class="s" x="622" y="1070.5" text-anchor="start">Scan path</text>
+<path class="jtagb" d="M713.1,1066 L755.1,1066"/>
+<text class="s" x="766.1" y="1070.5" text-anchor="start">JTAG, scan port</text>
+<path class="sigo" d="M898.6,1066 L940.6,1066"/>
+<text class="s" x="951.6" y="1070.5" text-anchor="start">Signal</text>
+<text class="s" x="42" y="1098.5" text-anchor="start">JTAG TAP</text>
+<rect class="core" x="120" y="1085" width="36" height="18" rx="4"/>
+<text class="s" x="164" y="1098.5" text-anchor="start">RTL block</text>
+<rect class="fabric" x="252.1" y="1085" width="36" height="18" rx="4"/>
+<text class="s" x="296.1" y="1098.5" text-anchor="start">Interconnect, scan mux</text>
+<rect class="smu" x="473.9" y="1085" width="36" height="18" rx="4"/>
+<text class="s" x="517.9" y="1098.5" text-anchor="start">Hierarchy boundary</text>
+<rect class="core opt" x="668.1" y="1085" width="36" height="18" rx="4"/>
+<text class="s" x="712.1" y="1098.5" text-anchor="start">Optional (parameter)</text>
+<rect class="pj" x="188.6" y="67.0" width="30.8" height="18" rx="4"/>
+<text class="pjt" x="204" y="80.5" text-anchor="middle">TAP</text>
+<rect class="pm" x="193.0" y="145.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="204" y="158.5" text-anchor="middle">M</text>
+<rect class="pm" x="193.0" y="209.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="204" y="222.5" text-anchor="middle">M</text>
+<rect class="pm" x="193.0" y="273.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="204" y="286.5" text-anchor="middle">M</text>
+<rect class="ps" x="193.0" y="913.0" width="22" height="18" rx="4"/>
+<text class="pst" x="204" y="926.5" text-anchor="middle">S</text>
+<rect class="pm" x="369.0" y="913.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="380" y="926.5" text-anchor="middle">M</text>
+<rect class="ps" x="429.0" y="913.0" width="22" height="18" rx="4"/>
+<text class="pst" x="440" y="926.5" text-anchor="middle">S</text>
+<rect class="pm" x="329.0" y="883.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="340" y="896.5" text-anchor="middle">M</text>
+<rect class="ps" x="689.0" y="823.0" width="22" height="18" rx="4"/>
+<text class="pst" x="700" y="836.5" text-anchor="middle">S</text>
+<rect class="pm" x="14.0" y="1057.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="1070.5" text-anchor="middle">M</text>
+<rect class="ps" x="152.8" y="1057.0" width="22" height="18" rx="4"/>
+<text class="pst" x="163.8" y="1070.5" text-anchor="middle">S</text>
+<rect class="pj" x="4.6" y="1085.0" width="30.8" height="18" rx="4"/>
+<text class="pjt" x="20" y="1098.5" text-anchor="middle">TAP</text>
+</svg>

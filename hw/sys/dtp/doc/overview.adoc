@@ -8,18 +8,33 @@
 
 The DTP contains two major functional blocks — the JTAG Interface Unit (JIU) and
 the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
-them to each other, to the SMU AXI crossbar, and to the external JTAG and
+them to each other, to the SMC and SEP, and to the external JTAG and
 cross-trigger pads.
 
 [[dtp-internal-structure-figure]]
 .DTP internal structure
-image::dtp_arch_overview.svg[alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",scaledwidth=90%]
+image::dtp-top-level.svg[alt="DTP top-level block diagram: the JTAG interface unit with the primary TAP, JTAG2AXI bridges, STAP chain, iJTAG SIBs and debug-disable synchroniser, and the cross-trigger network with its CSR crossbar, matrix, external and internal cross-trigger ports and clock-stop control",width=100%,pdfwidth=100%]
 
-<<dtp-internal-structure-figure>> uses blue borders and connectors for JTAG/JIU paths (including
-instruction decode and selection signals), red for CTN paths, grey for pad I/O,
-and gold-dashed for the `jtag_clock_stop` control signal from PTAP to the
-clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary
-paths and dashed arrows show return, selection, or control paths.
+<<dtp-internal-structure-figure>> draws each RTL instance under its instance name
+inside the `u_jtag_intf_unit` and `u_cross_trigger_network` hierarchy boundaries.
+Labels at the figure edges name what each DTP port connects to in the SMU. Blue
+lines carry JTAG and scan data, dark lines AXI4 and AXI-Lite, and grey lines other
+signals. Dashed blocks exist only when their enable parameter is set: the three
+JTAG2AXI bridges follow `JTAG_SMC_DBG_ENABLE` and `JTAG_SEP_DBG_ENABLE`, and the
+STAPs follow `JTAG_STAP_IO_ENABLE`, `JTAG_SMC_DBG_ENABLE`, `JTAG_SEP_DBG_ENABLE`
+and `JTAG_NUM_EXTRA_STAPS`. The grey fan-out from the debug-disable synchroniser
+reaches every STAP, SIB and bridge. The
+xref:jtag.adoc#dtp-jtag-scan-chain-figure[DTP JTAG scan chain] figure gives the
+serial order of the scan paths.
+
+The cross-trigger counts are the `dtp_pkg` defaults: 16 external CTPs and 10
+internal lanes, which size the 26 × 26 CTM, and 9 clock-stop requests.
+In the cross-trigger network, `u_axil_xbar` decodes the DTP CSR window, which the
+SMC peripheral crossbar rebases to 0, onto the CTM at offset 0x000 and one 16-byte
+window for each external CTP from 0x200. The internal cross-trigger lanes are
+`u_int_ctp_core` instances without CSRs, whose protocol `XTRIG_INT_CT_MODE` fixes.
+In the SMU the first two lanes connect to the SMC DFD CLA, one clock-stop request
+comes from the CLA, and the remaining lanes and requests leave the SMU.
 
 == JTAG Interface Unit
 

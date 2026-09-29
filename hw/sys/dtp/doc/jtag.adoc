@@ -28,7 +28,21 @@ network.
 
 [[dtp-jtag-scan-chain-figure]]
 .DTP JTAG scan chain
-image::dtp_jtag_scan_chain.svg[DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network,scaledwidth=90.0%]
+image::dtp-jtag-scan-chain.svg[alt="DTP JTAG scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux",width=100%,pdfwidth=100%]
+
+Read <<dtp-jtag-scan-chain-figure>> along the arrows from TDI to TDO. TDI reaches
+every register and external chain at once; the IR and TDR mux returns the
+instruction register in Shift-IR and, in Shift-DR, the register the current
+instruction selects. Italic labels beside a mux name the instructions or the
+select bit that choose its input. The PTAP output then enters the STAP chain, whose
+return reaches TDO only while the `TAP_3DCR` STAP-select bit is set; otherwise TDO
+takes the PTAP output directly. Each STAP and SIB carries, in italics, the
+`dbg_disable_i` field that closes it. Dashed blocks exist only when their enable
+parameter is set, as the list below gives for the STAPs; the JTAG2AXI bridges
+follow `JTAG_SMC_DBG_ENABLE` and `JTAG_SEP_DBG_ENABLE`. Each STAP adds one SIB bit
+to the chain; opening the SIB inserts the STAP's 3-bit 3DCR, and setting the 3DCR
+STAP-select bit splices in its secondary TAP. Each iJTAG SIB inserts its external
+segment after its SIB bit while that bit is set.
 
 == STAP Secondary Scan Path
 
@@ -42,7 +56,8 @@ The PTAP secondary scan path connects the STAPs in this fixed order:
 . Return to PTAP
 
 When a STAP is disabled by parameter, the DTP bypasses it in the secondary
-scan chain and drives its internal host outputs low.
+scan chain and drives its host outputs low, apart from TCK, which still follows
+the PTAP.
 
 [[dtp-jtag2axi-bridges]]
 == JTAG2AXI Bridges

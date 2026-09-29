@@ -6,14 +6,15 @@
 The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
 a unified debug access point.
 
-Shown below is an abstract diagram of the JTAG scan chain.
-
 <<jtag-interface-unit-scan-chain-figure>> shows the PTAP, STAP chain, and iJTAG network
-at the debug access point.
+at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
+a mux name the instructions or select bit that choose its input, and italic labels
+in the STAPs and SIBs name the `dbg_disable_i` field that closes each one. Dashed
+blocks exist only when their enable parameter is set.
 
 [[jtag-interface-unit-scan-chain-figure]]
 .JTAG Interface Unit scan chain
-image::jtag_scan_chain.svg["JTAG Interface Unit scan chain diagram showing PTAP, STAP chain and iJTAG SIB network",scaledwidth=90.0%]
+image::dtp-jtag-scan-chain.svg[alt="JTAG Interface Unit scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux",width=100%,pdfwidth=100%]
 
 === Scan Chain Topology
 
