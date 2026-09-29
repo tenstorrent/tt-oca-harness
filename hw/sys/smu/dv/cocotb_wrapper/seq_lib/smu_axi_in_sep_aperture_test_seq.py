@@ -48,15 +48,19 @@ S9 (before S8): with the aperture grown to cover SEP-local 0x2000_0000, inbound
     "External TRNG"), and the crypto demux answers a burst there with DECERR
     on every beat (``hw/sys/sep/doc/crypto.adoc``, "Single-Beat Access
     Only"), so every beat of every TRNG-window read is DECERR.
+    A passive tap on the ext_in pins records every AR and every R beat
+    (RID, RRESP, RLAST) and pairs each beat with its AR, so reads are graded
+    beat by beat: each AR draws AxLEN + 1 beats closed by RLAST, and the
+    tapped reads at each target are exactly the reads offered there.
     Every AxID, AxCACHE/AxQOS/AxREGION/AxLOCK corner, AxPROT encoding, AxSIZE
     and burst type ext_in offers at the external aperture, and each read of an
     eight-read train under distinct IDs held in flight, completes with an
-    error response, as do sixty-four reads (alternately single and eight-beat
-    bursts) and sixty-four writes over four IDs launched together and held in
-    flight there, and four writes launched together whose W trails the first
-    AW by 64 cycles. At the TRNG window every AxPROT and AxSIZE read, and
-    each of sixty-four held reads launched with sixty-four held writes, is
-    DECERR on every beat. The TRNG-window writes (each AxPROT and AxSIZE,
+    error response, on every R beat of a read, as do sixty-four reads
+    (alternately single and eight-beat bursts) and sixty-four writes over four
+    IDs launched together and held in flight there, and four writes launched
+    together whose W trails the first AW by 64 cycles. At the TRNG window
+    every AxPROT and AxSIZE read, and each of sixty-four held reads launched
+    with sixty-four held writes, is DECERR on every beat. The TRNG-window writes (each AxPROT and AxSIZE,
     the sixty-four held with those reads, sixty-four held alone and four
     W-lagged) are recorded by response code and not graded (``SMU_FCOV.adoc``,
     Phase 2, states why). The eFuse shim word at the base of the external
@@ -83,6 +87,7 @@ S11: the SEP debug module's system bus opens SMC inbound filter entry 0, and
 
 from __future__ import annotations
 
+from collections import Counter
 from pathlib import Path
 
 import cocotb
@@ -237,13 +242,43 @@ W_LAG_WRITES = 4
 COLLIDE_SPAN = 24
 
 
-def _beat_codes(resp) -> tuple[int, ...]:
-    """The response code of every beat, in order; empty if none is readable."""
-    if resp is None:
-        return ()
-    if isinstance(resp, (list, tuple)):
-        return tuple(int(code) for code in resp)
-    return (int(resp),)
+def _read_beats(addr: int, nbytes: int, size: int) -> int:
+    """Beats of a read of ``nbytes`` from ``addr`` at AxSIZE ``size`` (AMBA AXI, A3.4)."""
+    lane = 1 << size
+    return (nbytes + addr % lane + lane - 1) // lane
+
+
+def _split_bursts(
+    ars: list[tuple[int, int, int]], beats: list[tuple[int, int, int]]
+) -> tuple[list[tuple[int, tuple[int, ...]]], list[str]]:
+    """Pair R beats with the AR each belongs to.
+
+    ``ars`` holds (arid, araddr, arlen) and ``beats`` (rid, rresp, rlast), each
+    in handshake order. Beats under one ID return in the order of that ID's
+    ARs (AMBA AXI, A5.3). Returns (araddr, per-beat RRESP) for every AR, and
+    every departure from AxLEN + 1 beats closed by RLAST on the last one.
+    """
+    queues: dict[int, list[tuple[int, int]]] = {}
+    for arid, araddr, arlen in ars:
+        queues.setdefault(arid, []).append((araddr, arlen + 1))
+    by_id: dict[int, list[tuple[int, int]]] = {}
+    for rid, rresp, rlast in beats:
+        by_id.setdefault(rid, []).append((rresp, rlast))
+    bursts: list[tuple[int, tuple[int, ...]]] = []
+    errors: list[str] = []
+    for rid in sorted(set(queues) | set(by_id)):
+        stream = by_id.get(rid, [])
+        pos = 0
+        for araddr, want in queues.get(rid, []):
+            got = stream[pos : pos + want]
+            pos += len(got)
+            lasts = [last for _, last in got]
+            if len(got) != want or lasts != [0] * (want - 1) + [1]:
+                errors.append(f"id 0x{rid:x} addr 0x{araddr:x}: {want} beats wanted, rlast {lasts}")
+            bursts.append((araddr, tuple(code for code, _ in got)))
+        if pos != len(stream):
+            errors.append(f"id 0x{rid:x}: {len(stream) - pos} R beats with no AR")
+    return bursts, errors
 
 
 class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
@@ -440,6 +475,34 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                 if field(q, valid, 1, f"{chan}_valid") and field(r, ready, 1, f"{chan}_ready"):
                     seen[chan].add(field(q, addr, SEP_IN_ADDR_BITS, f"{chan}.addr"))
 
+    async def _ext_in_read_tap(
+        self, ars: list[tuple[int, int, int]], beats: list[tuple[int, int, int]]
+    ) -> None:
+        """Record every AR and every R beat handshaken on the ext_in pins."""
+        dut = self.dut
+        while True:
+            await RisingEdge(dut.clk_smu_i)
+            if sample(dut.ext_in_arvalid, "ext_in_arvalid") and sample(
+                dut.ext_in_arready, "ext_in_arready"
+            ):
+                ars.append(
+                    (
+                        sample(dut.ext_in_arid, "ext_in_arid"),
+                        sample(dut.ext_in_araddr, "ext_in_araddr"),
+                        sample(dut.ext_in_arlen, "ext_in_arlen"),
+                    )
+                )
+            if sample(dut.ext_in_rvalid, "ext_in_rvalid") and sample(
+                dut.ext_in_rready, "ext_in_rready"
+            ):
+                beats.append(
+                    (
+                        sample(dut.ext_in_rid, "ext_in_rid"),
+                        sample(dut.ext_in_rresp, "ext_in_rresp"),
+                        sample(dut.ext_in_rlast, "ext_in_rlast"),
+                    )
+                )
+
     async def _address_bits(self, master, jtag, sb) -> None:
         touched = {}
         issued: dict[object, int] = {}
@@ -523,6 +586,10 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         await self._window(jtag, WIN_BASE, WIN_EXT_SIZE)
         ext = self._global(SEP_EXTERNAL_LOCAL + 0x100)
         trng = self._global(TRNG_LOCAL)
+        shim = self._global(EFUSE_SHIM_LOCAL)
+        ars: list[tuple[int, int, int]] = []
+        r_beats: list[tuple[int, int, int]] = []
+        tap = cocotb.start_soon(self._ext_in_read_tap(ars, r_beats))
         cells = [(ext, {"id": i}) for i in (0x04, 0xFF, 0x00)]
         cells += [(ext, dict(q)) for q in QUALIFIERS]
         cells += [(ext, {"prot": p}) for p in range(8)]
@@ -534,11 +601,13 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         cells += [(ext, {})]
         cells += [(trng, {"prot": p, "size": 2}) for p in range(8)]
         cells += [(trng + off, {"size": size}) for size, off in ((0, 1), (1, 2), (0, 3), (2, 4))]
-        observed = []
-        # Every beat code of each TRNG-window read, and the response of each
+        # Write responses at the external aperture, and the response of each
         # TRNG-window write.
-        trng_reads: list[tuple[int, ...]] = []
+        observed: list[bool] = []
         trng_writes: list[int] = []
+        # (address, beats) of every read offered at each target; the ext_in tap
+        # supplies the RRESP of each of its beats.
+        issued: dict[str, list[tuple[int, int]]] = {"external": [], "trng": []}
         for n, (addr, attrs) in enumerate(cells):
             attrs = dict(attrs)
             beats = attrs.pop("beats", 1)
@@ -552,12 +621,13 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                     label=f"ext{n}{'w' if write else 'r'}",
                     **attrs,
                 )
-                if not trng <= addr < trng + TRNG_WINDOW:
+                region = "trng" if trng <= addr < trng + TRNG_WINDOW else "external"
+                if not write:
+                    issued[region].append((addr, _read_beats(addr, nbytes, attrs.get("size", 3))))
+                elif region == "external":
                     observed.append(resp != RESP_OKAY)
-                elif write:
-                    trng_writes.append(resp)
                 else:
-                    trng_reads.append((resp,))
+                    trng_writes.append(resp)
         # A read train under eight IDs, all in flight at once, so the SEP's
         # inbound ID remap hands out every index it has.
         master.driver.set_timing(AxiTimingProfile(r_ready_delay=TRAIN_HOLD_CYCLES))
@@ -567,8 +637,7 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                 await with_timeout(event.wait(), AXI_TIMEOUT_NS, "ns")
         finally:
             master.driver.set_timing(AxiTimingProfile())
-        observed += [worst_resp(e.data.resp) != RESP_OKAY for e in train]
-        shim = self._global(EFUSE_SHIM_LOCAL)
+        issued["external"] += [(ext, 1)] * len(train)
         shim_ok = []
         for prot in range(8):
             resp_r, data, _ = await self._ax(
@@ -608,15 +677,20 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
                 ]
                 for event in held + held_w:
                     await with_timeout(event.wait(), HELD_WAIT_NS, "ns")
-                if addr == trng:
-                    trng_reads += [_beat_codes(e.data.resp) for e in held]
-                    trng_writes += [worst_resp(e.data.resp) for e in held_w]
+                if name == "shim":
+                    held_resp[name] = (
+                        max((worst_resp(e.data.resp) for e in held), default=RESP_SLVERR),
+                        max(worst_resp(e.data.resp) for e in held_w),
+                    )
                     continue
-                pick = max if name == "shim" else min
-                held_resp[name] = (
-                    pick((worst_resp(e.data.resp) for e in held), default=RESP_SLVERR),
-                    pick(worst_resp(e.data.resp) for e in held_w),
-                )
+                region = "trng" if addr == trng else "external"
+                issued[region] += [
+                    (addr, _read_beats(addr, 4 * (1 + (i % 2) * 7), 2)) for i in range(reads)
+                ]
+                if region == "trng":
+                    trng_writes += [worst_resp(e.data.resp) for e in held_w]
+                else:
+                    observed += [worst_resp(e.data.resp) != RESP_OKAY for e in held_w]
         finally:
             master.driver.set_timing(AxiTimingProfile())
         # Writes launched together whose W trails the first AW, so their address
@@ -661,7 +735,19 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
             )
         )
         shim_ok.append(held_resp.pop("shim"))
-        observed += [RESP_OKAY not in resp for resp in held_resp.values()]
+        tap.cancel()
+        bursts, tap_errors = _split_bursts(ars, r_beats)
+        tapped: dict[str, list[tuple[int, tuple[int, ...]]]] = {"external": [], "trng": []}
+        for araddr, codes in bursts:
+            if trng <= araddr < trng + TRNG_WINDOW:
+                tapped["trng"].append((araddr, codes))
+            elif ext <= araddr < ext + 256 * 8:
+                tapped["external"].append((araddr, codes))
+            elif araddr != shim:
+                tap_errors.append(f"read at 0x{araddr:x} outside the S9 targets")
+        reads = {region: Counter((a, len(c)) for a, c in tapped[region]) for region in tapped}
+        ext_bad = [(hex(a), c) for a, c in tapped["external"] if RESP_OKAY in c]
+        trng_bad = [(hex(a), c) for a, c in tapped["trng"] if set(c) != {RESP_DECERR}]
         await self._window(jtag, WIN_BASE, WIN_SIZE)
         # The debug module's system bus after the external initiator.
         sb_err = await self._sba_read_status(jtag, SEP_EXTERNAL_LOCAL + 0x100)
@@ -675,7 +761,8 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
         )
         # An unconnected ext_trng_axil is terminated with a DECERR slave
         # (doc/integrator/src/smu.adoc, "External TRNG") and a crypto-region
-        # burst is DECERR on every beat (hw/sys/sep/doc/crypto.adoc). The
+        # burst is DECERR on every beat (hw/sys/sep/doc/crypto.adoc), so every
+        # R beat the ext_in tap pairs with a TRNG-window AR is DECERR. The
         # write responses are recorded and not graded; SMU_FCOV.adoc, Phase 2,
         # states why.
         write_codes = {resp_name(c): trng_writes.count(c) for c in sorted(set(trng_writes))}
@@ -683,16 +770,27 @@ class smu_axi_in_sep_aperture_test_seq(smu_dtp_sep_dm_sba_test_seq):
             f"OBSERVE-AXIIN-SEP-TRNG-WRITE {len(trng_writes)} TRNG-window writes "
             f"responses={write_codes} (recorded, not graded)"
         )
-        trng_decerr = [set(codes) == {RESP_DECERR} for codes in trng_reads]
+        ext_beats = sum(n * k for (_, n), k in reads["external"].items())
+        trng_beats = sum(n * k for (_, n), k in reads["trng"].items())
         self._log(
-            f"CHK-AXIIN-SEP-EXTERNAL {len(observed)} external-aperture accesses "
-            f"errors={sum(observed)}; {len(trng_reads)} TRNG-window reads "
-            f"DECERR={sum(trng_decerr)}"
+            f"CHK-AXIIN-SEP-EXTERNAL {len(observed)} external-aperture writes "
+            f"errors={sum(observed)}; {len(tapped['external'])} external-aperture reads "
+            f"({ext_beats} R beats) with an OKAY beat={ext_bad}; "
+            f"{len(tapped['trng'])} TRNG-window reads ({trng_beats} R beats) "
+            f"with a beat not DECERR={trng_bad}; ext_in tap ARs={len(ars)} "
+            f"R beats={len(r_beats)} errors={tap_errors}"
         )
         sb.expect_eq(
             "CHK-AXIIN-SEP-EXTERNAL",
-            (observed, trng_decerr),
-            ([True] * len(observed), [True] * len(trng_reads)),
+            (observed, reads["external"], ext_bad, reads["trng"], trng_bad, tap_errors),
+            (
+                [True] * len(observed),
+                Counter(issued["external"]),
+                [],
+                Counter(issued["trng"]),
+                [],
+                [],
+            ),
             evidence="CHK-AXIIN-SEP-EXTERNAL",
         )
         self.steps["S9"] = True
