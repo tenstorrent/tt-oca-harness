@@ -6,10 +6,12 @@
 ifdef::backend-html5[]
 :sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
 :sep-rom-reference: xref:sep:rom.adoc#sep-rom[SEP Boot ROM]
+:sep-fabric-figures: xref:sep:fabric.adoc#sep-fabric-topology[fabric figures]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
 :sep-rom-reference: <<sep-rom,SEP Boot ROM>>
+:sep-fabric-figures: <<sep-fabric-topology,fabric figures>>
 endif::backend-pdf[]
 
 [[cpu-subsystem]]
@@ -24,24 +26,32 @@ programming the CPU.
 <<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
 memory interfaces.
 
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
-
 [[sep-cpu-diagram]]
 .SEP VeeR EL2 CPU subsystem and memory interfaces
-image::SEP_CPU_FIG004.svg[alt="SEP VeeR EL2 CPU subsystem and memory interfaces",width=100%,pdfwidth=100%]
+image::sep-cpu.svg[alt="sep_cpu with the VeeR EL2 core complex, its ICCM, DCCM, PIC, debug module and DMA slave, and the alias remaps and demuxes on its AXI4 masters",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=portrait]
-<<<
-endif::backend-pdf[]
+`sep_cpu` holds the VeeR EL2 core complex, `u_el2_veer_wrapper`, and the fabric
+elements on its bus masters; the figure uses the notation of the
+{sep-fabric-figures}. The ICCM and DCCM controllers are part of
+the core complex, but their RAM macros sit outside `sep_cpu` in
+`sep_tcm_wrapper`, each bank 32 data bits plus 7 ECC bits wide. The instruction
+cache is not configured. The DMA slave port is the local crossbar's `cpu_tcm`
+target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
+The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
+IDs, and each carries `SEP_SOURCE_ID` in AxUSER. The debug master's 1-bit ID is
+zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
+768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU demux then
+sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local
+crossbar and everything else to a DECERR responder, and the LSU demux sends boot
+ROM addresses to the boot ROM mux and everything else to the local crossbar. The
+core and its buses run on the SEP clock. `mpc_reset_run_req_i` passes a two-flop
+synchronizer in `sep_cpu`; the core synchronizes the NMI, timer, software
+interrupt and the other halt and run requests itself.
 
 [[cpu-feature-summary]]
 == CPU Feature Summary
 
-* RV32IMC including bit manipulation extensions Zb(abcsefbr)
+* RV32IMC including the bit manipulation extensions Zba, Zbb, Zbc and Zbe
 * 4-stage pipeline
 * DCLS (Dual Core Lock Step) option required for automotive applications
 for FUSA compliance
