@@ -461,7 +461,7 @@ A stand-in is anything that answers in place of the mechanism a claim is
 about: a testbench force, a simulation-only path selected by a plusarg, a
 configuration waiver, a loopback where a chain would be, a compiled-in
 substitute for a product cell, or a model inside the product composition.
-Eight sit on proof paths of enrolled SMU tests. Each has one entry of six
+Nine sit on proof paths of enrolled SMU tests. Each has one entry of six
 fields. The first three -- the claim that is accepted with the stand-in in
 place, why the real path cannot be used, and the exact scope -- are filled
 from the tree. The last three -- approver, approval date against a revision,
@@ -485,6 +485,7 @@ ran.
 |SEP assertion-ignore patterns |`smu_sim_cfg.toml` `[pass_fail] extra_ignore_patterns`, the seven entries under `u_dut.u_smu.gen_sep.u_sep` |every `--dut smu` leaf on a four-state simulator
 |`+define+ASSERTS_OFF` / `COMMON_CELLS_ASSERTS_OFF` |every Verilator target of `smu_sim_cfg.toml` and `hw/common/dv/configs/profiles/native.toml` |every leaf on Verilator
 |Scan-chain loopbacks |`tb/tb_wrapper_top.sv` (five host scan chains and the I/O and extra STAP TDO-to-TDI returns) |`smu_dtp_bsr_extest_loopback_test`, `smu_dtp_scan_chain_boundary_test`
+|CTP data-input tie-offs |`tb/tb_wrapper_top.sv` (the `xtrig_ctp_*_din_i` bindings of `u_dut`), `cocotb_wrapper/tests/smu_base_test.py` (`IDLE_INPUTS`) |`smu_boundary_port_composition_test`
 |`prim_sync2` / `prim_sync3` stand-ins |`[build].stubs` of `smu_sim_cfg.toml`, from `hw/sys/smc/dv/tb/verilator_stubs/` |every leaf on Verilator; reset and boot-gate observes downstream
 |eFuse models in the product composition |`hw/top/smc_ip_integration.sv`, `hw/top/sep_ip_integration.sv` |the OTP JTAG2AXI leaves, `smu_sep_efuse_test`, the lifecycle and chain leaves, and the eight leaves whose real sense they answer: the five boot-stall leaves, `smu_sep_lcc_flow_test`, `smu_sep_fuse_sense_done_test`, `smu_smc_fuse_sense_sequence_test`
 |===
@@ -494,7 +495,7 @@ ran.
 
 Each row names one command and the string it prints when the entry above is
 still true of the tree in front of you. None of them needs a stored run: the
-first six are static reads of the tree, and the last two pair a static read
+first seven are static reads of the tree, and the last two pair a static read
 with a line any run of the named group prints. A row that prints nothing is an entry that has gone
 stale, and the entry -- not the run -- is what needs the edit.
 
@@ -525,6 +526,10 @@ stale, and the entry -- not the run -- is what needs the edit.
 |Scan-chain loopbacks
 |`grep -n 'host_scan_in_i\|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv`
 |Seven bindings and no `1'b0` tie: the five `*_host_scan_in_i` on `bsr_scan_loop`, `stap_scan_loop`, `dfd_scan_loop`, `dft_sec_scan_loop` and `dft_scan_loop`, plus `jtag_stap_io_host_tdi_i` on `stap_io_tdo_w` and `jtag_stap_extra_host_tdi_i` on `stap_extra_tdi_w`.
+
+|CTP data-input tie-offs
+|`grep -n 'xtrig_ctp_\(req_in\|ack_in\|ack_out\)_din_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv` and `grep -n 'tb_xtrig_ctp_\(req\|ack\)_in_din' hw/sys/smu/dv/cocotb_wrapper/tests/smu_base_test.py`
+|Three bindings: `req_in` on `tb_xtrig_ctp_req_in_din`, `ack_in` on `tb_xtrig_ctp_ack_in_din` and `ack_out` on `'0`; both bench nets listed in `IDLE_INPUTS`, which `drive_idle_inputs` sets to 0.
 
 |`prim_sync2` / `prim_sync3` stand-ins
 |`grep -n 'verilator_stubs' hw/sys/smu/dv/smu_sim_cfg.toml`, then any run's `hdl_compile.log`
@@ -641,6 +646,24 @@ stale, and the entry -- not the run -- is what needs the edit.
 |2026-09-21, on the tree that carries this record (`main` at `bc4a6834a` with the sign-off changes applied). Re-confirmed: `grep -n 'host_scan_in_i\|host_tdi_i' hw/sys/smu/dv/tb/tb_wrapper_top.sv` printed seven bindings, every one a loop from the matching `*_loop`/`*_w` net and none a `1'b0` tie, matching the *Scope* field.
 |Review or expiry
 |2026-12-21, or earlier the day the scoped file, plusarg or define named above changes; the re-confirm command is re-run at that review and the entry re-signed or withdrawn.
+|===
+
+==== CTP data-input tie-offs
+
+[cols="1,4"]
+|===
+|Claim accepted
+|The resting level of the `req_in`, `ack_in` and `ack_out` CTP data inputs that `smu_boundary_port_composition_test` reads at the SMU boundary and at the DTP consumer is zero because the bench holds it there, acting as the integrator the port table's "Tie to '0 if unused" note (`hw/sys/smu/doc/port_table.adoc`) addresses. `smu_wrapper` passes these inputs through to `smu`; nothing in the product ties them. The bench zero is stimulus for `CHK-SMU-XTRIG-CTP-S6`: the inertness verdict reads DUT outputs, and the `din_i` compares prove only that the bench's rest level reaches the DTP. What is not proven is any tie-off inside the product.
+|Why the real path cannot be used
+|The tie belongs to the integrator's pad ring, which the open-source tree does not model; the bench stands where the integrator would.
+|Scope
+|`tb/tb_wrapper_top.sv` binds `xtrig_ctp_ack_out_din_i` to `'0` and `xtrig_ctp_req_in_din_i` / `xtrig_ctp_ack_in_din_i` to `tb_xtrig_ctp_req_in_din` / `tb_xtrig_ctp_ack_in_din`, which `smu_base_test.drive_idle_inputs` sets to 0 (`IDLE_INPUTS`). Load-bearing for `smu_boundary_port_composition_test` only; `smu_xtrig_ctp_pad_test` drives the two bench nets itself and does not rest on the tie.
+|Approver
+|pending
+|Date, revision
+|pending
+|Review or expiry
+|pending
 |===
 
 ==== `prim_sync2` / `prim_sync3` stand-ins

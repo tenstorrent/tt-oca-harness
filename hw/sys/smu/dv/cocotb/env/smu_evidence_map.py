@@ -1349,7 +1349,8 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMU-XTRIG-CTP-S6",
             "CHK-SMU-XTRIG-CTP-S6",
-            "resting CTP data inputs leave the CTP outputs static",
+            "bench-held resting CTP data inputs leave the CTP outputs static (live control: "
+            "smu_xtrig_ctp_pad_test)",
         ),
         ("CHK-SMU-LC-STATE-S1", "CHK-SMU-LC-STATE-S1", "lc_state_o is 8 bits, 2*LC_STATE_WIDTH"),
         (

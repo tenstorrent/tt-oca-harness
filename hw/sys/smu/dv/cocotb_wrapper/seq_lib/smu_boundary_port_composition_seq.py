@@ -4,10 +4,15 @@
 
 Reads the elaborated SEP=1 `smu` boundary passively: port presence, the widths
 the specifications state, the idle values the specifications state, and the
-inertness of the cross-trigger CTP channels while their data inputs rest: the
-wrapper ties the req_in, ack_in and ack_out data inputs to zero, and the
+inertness of the cross-trigger CTP channels while their data inputs rest.
+`smu_wrapper` passes the CTP data inputs through, and the bench, as the
+integrator the port table's "Tie to '0 if unused" note addresses, holds the
+req_in, ack_in and ack_out data inputs at zero (tb/tb_wrapper_top.sv ties
+ack_out; req_in and ack_in follow bench nets smu_base_test drives to zero). The
 req_out data input sits on the bench's wire-OR board, resting at the pull-up
 the reset-default CONFIG.INVERT=0 implies with no chiplet pulling.
+smu_xtrig_ctp_pad_test is the live control: there a request on req_in moves
+ack_out at the pads.
 
 Every width that carries an evidence token is a specification value:
 `hw/sys/smu/doc/port_table.adoc` for the port rows, `doc/integrator/src/smu.adoc`

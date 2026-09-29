@@ -19,7 +19,7 @@ rationales use; no document in this tree defines them.
 On the `--dut smu` production wrapper built with compile_smu_chiplet:
 every named port is read on the elaborated `smu` instance for its specified
 width, the SMC-side ID-width converter presents the 6-bit subsystem ID, the
-CTP channels whose data inputs the wrapper ties to zero stay static at zero at
+CTP channels whose data inputs the bench holds at zero stay static at zero at
 the DTP consumer and at the SMU boundary, `ss_config_o` presents the SS_CONFIG
 reset value, `skip_mem_repair_o` is clear with no isolation request
 pending, and after the fuse sense `smc_shadow_regs_o` carries the sensed
