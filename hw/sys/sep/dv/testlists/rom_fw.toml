@@ -98,6 +98,34 @@ args = [
 ]
 
 [[tests]]
+# The manifest BL0 vouched for must still parse at hand-off.
+#
+# Same stimulus as sep_rom_ot_dma_boot_test -- an ordinary successful
+# non-secure boot -- with one added check: SEP SRAM word 0 must still hold the
+# OCA magic once the run completes. bl0_state.sep_sram_manifest_addr points BL1
+# there, and nothing in the ROM re-reads it, so the [S29] ICCM ECC pad filling
+# from the staged body went unnoticed until BL1 tried to parse what it was given.
+#
+# ICCM_PAD= is a required marker, not decoration: it is printed only when that
+# pad runs, so without it the testcase would pass on a build where the
+# destructive path was compiled out.
+#
+# Non-secure on purpose. The defect is in the hand-off fill, so the signed image
+# would add an RSA-3072 modexp to a run that does not exercise one.
+name = "sep_manifest_magic_survives_handoff_test"
+module = "rom_fw.sep_manifest_magic_survives_handoff_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 7200
+tags = ["boot", "rom", "spi", "handoff", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_from_spi",
+]
+
+[[tests]]
 # The drain-method sibling of sep_rom_ot_dma_boot_test: same OpenTitan spi_host,
 # same flash image, same PASS criteria -- but the ROM is built with
 # BOOT_OT_SPI_USE_PIO=1 (build_ot_pio/) so boot_flash.h calls ot_spi_flash_read()

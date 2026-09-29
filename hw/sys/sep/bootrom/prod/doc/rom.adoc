@@ -253,7 +253,12 @@ boot flow. Addresses are as seen by the SEP CPU.
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
 execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([S15]).
+before use ([S15]). The top 8 bytes are reserved: `sep_dma_zero()` fills from a source word
+the engine re-reads for every beat, and the CPU rewrites that word immediately before each
+fill, so the manifest body, the payload and BL1's permitted load span all stop short of it
+(`SEP_SRAM_USABLE_SIZE`). SEP has no zeroing engine and the secure DMA has no fill opcode, so
+a fill needs a real source address; ROM `.rodata` cannot serve as one, because the engine
+cannot read the ROM aperture.
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
