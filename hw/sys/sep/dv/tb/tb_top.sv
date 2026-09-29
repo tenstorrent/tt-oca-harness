@@ -1940,6 +1940,49 @@ module sep_uvm_top
     assign km_sram_rd_b2b_diff_count_o = km_sram_rd_b2b_diff_cnt_q;
     assign km_sram_scr_rd_count_o      = km_sram_scr_rd_cnt_q;
 
+    // KM SRAM writes accepted while the KM scrambler is enabled, at the same
+    // wrapper port. The scrambler moves the address as well as the data, so a
+    // scrambled store lands on a physical row the firmware cannot name. This
+    // keeps the physical word address and the wrapper write data of the first
+    // KmSramScrWrSlots such writes, and reads the macro array word at each kept
+    // address. Observation-only: continuous reads of the wrapper nets, the KM
+    // scrambler enable and the macro array; drives nothing; outside the tb
+    // s_axi / m_axi ready/valid cones. Reset to 0 by rst_n_int.
+    localparam int unsigned KmSramScrWrSlots = 4;
+    localparam int unsigned KmSramAw = km_intf_pkg::KM_SRAM_MEM_ADDR_WIDTH;
+    logic km_sram_scr_wr;
+    logic [31:0] km_sram_scr_wr_cnt_q;
+    logic [KmSramAw-1:0] km_sram_scr_wr_addr_q [KmSramScrWrSlots];
+    logic [31:0] km_sram_scr_wr_data_q [KmSramScrWrSlots];
+    assign km_sram_scr_wr = (u_dut.km_sram_mem_req.req === 1'b1) &&
+                            (u_dut.km_sram_mem_req.we === 1'b1) &&
+                            (u_dut.km_sram_mem_rsp.gnt === 1'b1) &&
+                            (`SEP_CORE.u_sep_crypto.u_key_manager_s3c_scan.scrambler_enable === 1'b1);
+    always_ff @(posedge clk_i or negedge rst_n_int) begin
+        if (!rst_n_int) begin
+            km_sram_scr_wr_cnt_q <= '0;
+            for (int i = 0; i < KmSramScrWrSlots; i++) begin
+                km_sram_scr_wr_addr_q[i] <= '0;
+                km_sram_scr_wr_data_q[i] <= '0;
+            end
+        end else if (km_sram_scr_wr) begin
+            km_sram_scr_wr_cnt_q <= km_sram_scr_wr_cnt_q + 32'd1;
+            for (int i = 0; i < KmSramScrWrSlots; i++) begin
+                if (km_sram_scr_wr_cnt_q == 32'(i)) begin
+                    km_sram_scr_wr_addr_q[i] <= u_dut.km_sram_mem_req.addr;
+                    km_sram_scr_wr_data_q[i] <= u_dut.km_sram_mem_req.wdata;
+                end
+            end
+        end
+    end
+    assign km_sram_scr_wr_count_o = km_sram_scr_wr_cnt_q;
+    for (genvar i = 0; i < KmSramScrWrSlots; i++) begin : g_km_sram_scr_wr
+        assign km_sram_scr_wr_addr_o[KmSramAw*i +: KmSramAw] = km_sram_scr_wr_addr_q[i];
+        assign km_sram_scr_wr_data_o[32*i +: 32] = km_sram_scr_wr_data_q[i];
+        assign km_sram_scr_wr_cell_o[32*i +: 32] =
+            u_dut.u_sep_ip_integration.u_km_sram.gen_ram_inst[0].u_mem.mem[km_sram_scr_wr_addr_q[i]][31:0];
+    end
+
     // SEP-side KM mailbox register block (km_mailbox_sep_reg, PeakRDL
     // --err-if-bad-addr): count the write requests its own address decode
     // refuses, and keep the 5-bit block offset of the last one. The single

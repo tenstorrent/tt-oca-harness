@@ -21,11 +21,17 @@ Checkers:
                      the previous read returns a different word
   CHK-KM-SRAM-SCR-STORED
                      with the scrambler enabled, a store does not leave its
-                     plaintext in the SRAM array: no word of km_sram_probe_o
-                     (SRAM words 0..97, the two adjacent cells included) other
-                     than the result words 1..4 holds one of the four
-                     plaintexts. A scrambler that passes the address and the
-                     data through leaves the plaintexts at their cells and fails
+                     plaintext in the SRAM array. The scrambler moves the
+                     address as well as the data, so the tb_top monitor at the
+                     wrapper port keeps the physical address and data of each
+                     write accepted while the enable is set. Exactly the four
+                     plaintext stores are kept, at four different physical
+                     rows that are not all their logical words; no kept write
+                     carries a plaintext; and the macro
+                     array word at each kept row equals the kept data. No word
+                     of km_sram_probe_o (SRAM words 0..97) other than the
+                     result words 1..4 holds a plaintext. A scrambler that
+                     passes the data through writes a plaintext and fails
 
 KM-SRAM-RD-LAT is a measurement, not a checker. km_sram_interface descrambles a
 read response with the address it captures on the accepting edge, so it relies
@@ -141,46 +147,69 @@ class sep_km_mem_smoke_test(sep_base_test):
 
     def _chk_scrambled_store(self) -> None:
         dut = cocotb.top
+        n = len(KM_SMOKE_SCR_PLAINTEXT)
+        aw = len(dut.km_sram_scr_wr_addr_o) // n
+        tag = "CHK-KM-SRAM-SCR-STORED"
+        try:
+            wr_count = self.rd_known(dut.km_sram_scr_wr_count_o)
+            addrs = self.rd_known(dut.km_sram_scr_wr_addr_o)
+            datas = self.rd_known(dut.km_sram_scr_wr_data_o)
+            cells = self.rd_known(dut.km_sram_scr_wr_cell_o)
+        except AssertionError as exc:
+            raise AssertionError(f"{tag} FAIL: scrambled-write monitor not known: {exc}") from exc
+        assert wr_count == n, (
+            f"{tag} FAIL: {wr_count} SRAM writes accepted with the scrambler enabled, "
+            f"want the image's {n} plaintext stores"
+        )
+        rows = [(addrs >> (aw * i)) & ((1 << aw) - 1) for i in range(n)]
+        data = [(datas >> (32 * i)) & 0xFFFF_FFFF for i in range(n)]
+        held = [(cells >> (32 * i)) & 0xFFFF_FFFF for i in range(n)]
+        logical = [off // 4 for off in KM_SMOKE_SCR_CELL_OFFSETS]
+        faults = []
+        if rows == logical:
+            faults.append(
+                f"every store reached its own logical word {[hex(r) for r in rows]}, so the "
+                "address was not scrambled"
+            )
+        if len(set(rows)) != n:
+            faults.append(f"the {n} stores reached physical rows {[hex(r) for r in rows]}")
+        for i, pt in enumerate(KM_SMOKE_SCR_PLAINTEXT):
+            if data[i] in KM_SMOKE_SCR_PLAINTEXT:
+                faults.append(
+                    f"store {i} (plaintext 0x{pt:08x}) wrote 0x{data[i]:08x} to row "
+                    f"0x{rows[i]:x}, a plaintext"
+                )
+            if held[i] != data[i]:
+                faults.append(
+                    f"row 0x{rows[i]:x} holds 0x{held[i]:08x}, not the written 0x{data[i]:08x}"
+                )
         probe = dut.km_sram_probe_o
         count = len(probe) // 32
-        cells = [off // 4 for off in KM_SMOKE_SCR_CELL_OFFSETS]
-        in_window = [c for c in cells if c < count]
-        assert in_window, (
-            f"test bug: no scrambled cell ({[hex(c) for c in cells]}) is inside the "
-            f"{count}-word km_sram_probe_o window"
-        )
-        # The scrambled cells were stored, so each must read fully known: an X
-        # there is not a ciphertext and would read as a non-plaintext. Other
-        # words may be unwritten, and only a known word can hold a plaintext.
-        for c in in_window:
-            try:
-                self.rd_known(probe, mask=0xFFFF_FFFF << (32 * c))
-            except AssertionError as exc:
-                raise AssertionError(
-                    f"CHK-KM-SRAM-SCR-STORED FAIL: scrambled cell word {c} is not fully "
-                    f"known: {exc}"
-                ) from exc
         words = [
             self.rd(probe, mask=0xFFFF_FFFF << (32 * i), allow_unknown=True) >> (32 * i)
             for i in range(count)
         ]
-        hits = [
+        faults += [
             f"word {i} holds plaintext 0x{w:08x}"
             for i, w in enumerate(words)
             if i not in KM_SMOKE_SCR_RESULT_WORDS and w in KM_SMOKE_SCR_PLAINTEXT
         ]
-        assert not hits, (
-            "CHK-KM-SRAM-SCR-STORED FAIL: a store with the scrambler enabled left its "
-            "plaintext in the SRAM array: " + "; ".join(hits)
+        assert not faults, (
+            f"{tag} FAIL: a store with the scrambler enabled left its plaintext in the "
+            "SRAM array, or the array does not hold what was written: " + "; ".join(faults)
         )
         self.logger.info(
-            "CHK-KM-SRAM-SCR-STORED PASS: no word of SRAM words 0..%d outside the result "
-            "words holds a plaintext (the same probe reads the plaintexts at result "
-            "words 1..4); the cells at words %s hold %s, not their plaintexts %s",
+            "%s PASS: %d writes with the scrambler enabled; plaintexts %s at logical "
+            "words %s were written as %s to physical rows %s, and the array holds %s. "
+            "No word of SRAM words 0..%d outside the result words 1..4 holds a plaintext",
+            tag,
+            wr_count,
+            [hex(v) for v in KM_SMOKE_SCR_PLAINTEXT],
+            [hex(w) for w in logical],
+            [hex(v) for v in data],
+            [hex(r) for r in rows],
+            [hex(v) for v in held],
             count - 1,
-            in_window,
-            [hex(words[c]) for c in in_window],
-            [hex(KM_SMOKE_SCR_PLAINTEXT[cells.index(c)]) for c in in_window],
         )
 
     def _log_read_latency(self) -> None:

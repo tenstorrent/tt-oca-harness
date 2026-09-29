@@ -334,6 +334,13 @@
 `SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
+// KM SRAM writes accepted while the KM scrambler is enabled, at the wrapper
+// port: count, and the physical word address and data of the first four, with
+// the macro array word at each of those addresses. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_sram_scr_wr_count_o)
+`SEP_TB_OUT(logic [4*13-1:0], km_sram_scr_wr_addr_o)
+`SEP_TB_OUT(logic [4*32-1:0], km_sram_scr_wr_data_o)
+`SEP_TB_OUT(logic [4*32-1:0], km_sram_scr_wr_cell_o)
 // SEP-side KM mailbox regblock address-decode write refusals: count and the
 // block offset of the last one. Observation-only.
 `SEP_TB_OUT(logic [31:0], km_mbox_sep_wr_err_count_o)
