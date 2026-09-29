@@ -11,7 +11,11 @@
     <ipxact:memoryMap>
       <ipxact:name>axil_mailbox_sep_wrap</ipxact:name>
       <ipxact:displayName>SEP AXI-Lite Mailbox Wrapper Address Map</ipxact:displayName>
-      <ipxact:description>SEP-side wrapper instantiating the inbound and outbound AXI-Lite mailbox pairs.</ipxact:description>
+      <ipxact:description>SEP-side wrapper instantiating the AXI-Lite mailbox pairs.
+Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+bidirectional mailbox and shares a single pair of FIFOs: data written through
+WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+The outbound/inbound naming reflects intended use, not an access restriction.</ipxact:description>
       <ipxact:addressBlock>
         <ipxact:name>outbound_mailbox_0</ipxact:name>
         <ipxact:displayName>AXI-Lite Mailbox Address Map</ipxact:displayName>

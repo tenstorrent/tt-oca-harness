@@ -33,9 +33,13 @@ endif::backend-html5[]
 `LOG_ENGINE_FIFO_DEPTH` must be a power of 2 greater than or equal to 16.
 
 [#sec-registers]
-== Registers
+== Registers — LCR.DLAB=0, Read Direction
 
-The tables below describe the register map and each register in detail.
+The UART 16550 follows the 8250 layout: single offsets map to different registers by
+access direction and by `LCR.DLAB`. This table is the `LCR.DLAB=0` read view at wrapper
+offset `+0x100`; write-only and divisor-latch aliases at the same offsets are in the
+next section. When this wrapper is arrayed by `uart_wrap`, instance _N_ adds a further
+`N * 0x400`.
 
 ifdef::backend-html5[]
 ++++
@@ -47,6 +51,24 @@ ifdef::backend-pdf[]
 include::../regs/gen/adoc/uart_log_engine_wrap.adoc[leveloffset=+1]
 endif::backend-pdf[]
 
+[#sec-register-aliases]
+== Registers — Write-Only and LCR.DLAB=1 Views
+
+`THR` (write) shares `+0x100` with `RBR` (read); `FCR` (write) shares `+0x108` with
+`IIR` (read); `DLL`/`DLM` occupy `+0x100`/`+0x104` when `LCR.DLAB=1`.
+
+ifdef::backend-html5[]
+++++
+include::partial$uart_16550/regs/gen/html/uart_16550_main_wo.html[]
+include::partial$uart_16550/regs/gen/html/uart_16550_dl.html[]
+++++
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../uart_16550/regs/gen/adoc/uart_16550_main_wo.adoc[leveloffset=+1]
+include::../../uart_16550/regs/gen/adoc/uart_16550_dl.adoc[leveloffset=+1]
+endif::backend-pdf[]
+
 [#sec-interrupts]
 == Interrupts
 
@@ -55,4 +77,13 @@ TODO
 [#sec-programmers-guide]
 == Programmer's Guide
 
-TODO
+When the Log Engine is enabled (`GEN_LOG_ENGINE=1`, the default), the UART transmit
+holding register (`THR`, at wrapper offset `0x100`) is written by two initiators: the
+CPU through the register interface, and the Log Engine through an internal 2:1 AXI4-Lite
+arbiter. The Log Engine's write target is not fixed in hardware — it is taken from
+`LOG_WRITE_ADDR` (offset `0x210`), which firmware must program to the `THR` address for
+log output to reach the UART.
+
+The arbiter serialises the two initiators, but no hardware lock protects the shared
+register. Firmware must not write `THR` directly while the Log Engine is active, or CPU
+writes and log output will interleave on the transmit path.

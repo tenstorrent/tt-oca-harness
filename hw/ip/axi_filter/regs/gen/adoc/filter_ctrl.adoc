@@ -22,7 +22,11 @@ Per-filter access-control registers defining permitted address ranges and transa
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `locked` | RW | 0x0 a| Lock filter configurations. Write once register
+| 63 | `locked` | RW | 0x0 a| Lock filter configurations. Write once register.
+Once set, this bit cannot be cleared, and every subsequent write to this
+filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
+to the AXI error subordinate and terminates with a DECERR response; reads
+still return the locked configuration.
 | 62:25 | `Reserved` | - | - a| Reserved
 | 24 | `allow_burst` | RW | 0x0 a| Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
 This field also selects the granule of the address range: 4KB when it is 1,
