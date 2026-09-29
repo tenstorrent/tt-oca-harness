@@ -41,16 +41,17 @@ fabric interconnect, peripheral controllers, and DTP cross-trigger / AXI
 bridges.
 
 |`clk_smn_i`
-|SMN
-|System Management Network clock. Independent of `clk_smu_i`; clock-domain
-crossings (CDCs) are used at the SMU-SMN boundary to isolate the management
-fabric timing from the SMU subsystem clock.
+|SMN (integration context)
+|System Management Network clock. An integration-level input independent of
+`clk_smu_i`; clock-domain crossings (CDCs) are used at the SMU-SMN boundary to
+isolate the management fabric timing from the SMU subsystem clock. Not an SMU port.
 
 |`clk_ref_i`
-|SMC
+|SMC, SEP
 |Always-on reference clock, available before PLL lock. Used by the SMC for
 early bring-up, PLL control, reset synchronisation, and peripherals requiring
-a stable, lower-frequency source.
+a stable, lower-frequency source. The SEP also clocks its reference counter
+from this clock.
 
 |`clk_periph_i`
 |SMC
@@ -78,12 +79,6 @@ logic inside the DTP/SMC/SEP.
 |Ring-oscillator sample clock for the entropy source (TRNG). Must be
 asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 |===
-
-NOTE: The figure below will be provided as an annotated version of the
-top-level block diagram highlighting the clock domains.
-
-//.OCAH Clock Domains
-//image::ocah_clock_domains.png[OCAH Clock Domains,scaledwidth=100.0%]
 
 [[ocah-reference-counter]]
 == Reference Counter
