@@ -105,6 +105,3 @@ answers.
 |The region does not exist: the unit is memory, its registers fill its
 extent, or its aperture ends at its extent.
 |===
-
-A note below a table qualifies the cells it marks, for example read data that
-depends on address bit 2.
