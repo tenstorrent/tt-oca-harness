@@ -636,3 +636,110 @@ flags = [
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
 ]
+
+# --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
+# profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE top module
+# for both frameworks: +define+UVM (from the profile's [frameworks.uvm] overlay) switches
+# tb/tb_wrapper_top.sv from the ported cocotb shape to the self-contained SV-UVM shape, which
+# `include`s uvm/tests/smu_tests.sv.
+[frameworks.uvm]
+description = "SMU SV-UVM flow on the smu_wrapper (VCS)"
+# The top-level `tools`/`default_tool` above serve the cocotb view; the UVM view runs on the
+# commercial simulators only (Verilator has no SV-UVM support), so the overlay restates them.
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+# The shared framework library and the VIP SV-UVM layers come from their owned ordered
+# manifests, expanded in listed order AHEAD of this table's own incdirs/sources (dedup-merge)
+# -- never hand-copy library or VIP paths here. Compile order stays load-bearing and explicit:
+# the generated filelist emits the expanded `sources` AFTER the bender filelist (DUT packages
+# visible), then `top_file` last:
+#   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
+#   (each: evidence base -> interface -> collateral -> UVM pkg)
+#   -> TB collateral -> the embedded DTP's bench layer (dtp_dv_cfg_pkg, its TB interfaces, the
+#      generated cross-trigger port address map, dtp_env_pkg) -> smu_tb_if -> smu_env_pkg
+#   -> smu_seq_lib_pkg -> tb_wrapper_top.sv
+# SMU integrates DTP, so the SMU bench checks the embedded DTP with the DTP bench's own
+# reference models, TAP checker, and scoreboard (dtp_env_pkg); the AXI VIP manifest is there
+# because dtp_env_pkg imports its package and the outbound SMN responder and the bridge-port
+# monitor are its agents. smu_env_pkg compiles before smu_seq_lib_pkg: the scenario virtual
+# sequences run on the smu_virtual_sequencer the env package declares.
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/smu/dv/build/uvm/smu_uvm_compile.f"
+bender_filelist = "hw/sys/smu/dv/build/uvm/smu_uvm_bender.f"
+work_dir = "hw/sys/smu/dv/build/uvm"
+incdirs = [
+  "hw/sys/smu/dv/tb",
+  "hw/common/assert",
+  # Generated SystemRDL headers of the cross-trigger IP: dtp_env_pkg includes them for the
+  # XTRIG CSR field masks of dtp_types.
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/svh",
+  "hw/ip/cross_trigger/cross_trigger_matrix/regs/gen/svh",
+  "hw/sys/dtp/dv/uvm/env",
+  "hw/sys/smu/dv/uvm/env",
+  "hw/sys/smu/dv/uvm/seq_lib",
+  "hw/sys/smu/dv/uvm/tests",
+]
+# This list REPLACES the cocotb [build].sources list; the AXI VIP interface and struct bridge
+# arrive through the ocah_axi_vip manifest, so the rest of that list is repeated here.
+sources = [
+  # ocah_open_drain_bus.sv must precede tb/tb_wrapper_top.sv, which instantiates it.
+  "hw/common/dv/shims/analog/ocah_open_drain_bus.sv",
+  # The cocotb [build].sources list also carries axi_cut with its spill registers and
+  # the picorv32 files: the Bender `smu_wrapper` layer already names each of them
+  # (smu_uvm_bender.f), and VCS rejects a module declared by two files it is handed
+  # (Error-[MPD]) where Verilator tolerates the repeat. Anything added here has to be
+  # checked against the bender filelist first:
+  #   comm -12 <(grep '\.sv$' smu_uvm_compile.f | sort -u) \
+  #            <(grep '\.sv$' smu_uvm_bender.f  | sort -u)
+  # must stay empty.
+  # SMC CPU-memory DV hooks (the ROM and scratch image backdoors, the access counters and
+  # the firmware mailbox), bound into smc_ip_integration.
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
+  "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # The same functional-coverage modules the [build] sources list carries.
+  "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clk_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lc_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dtp_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_alias_fcov.sv",
+  # The embedded DTP's bench layer: its bench configuration package (dtp_types reads the
+  # bridge geometries and the IDCODE it publishes), its three TB interface partitions (the
+  # reference models and the TAP checker read the DTP observables through them; dtp_env
+  # binds all three), the generated cross-trigger port address map dtp_types reads (the
+  # Bender DUT layer carries only the regblock), and the DTP environment package.
+  "hw/sys/dtp/dv/tb/dtp_dv_cfg_pkg.sv",
+  "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
+  "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+  # The SMU bench.
+  "hw/sys/smu/dv/tb/smu_tb_if.sv",
+  "hw/sys/smu/dv/uvm/env/smu_env_pkg.sv",
+  "hw/sys/smu/dv/uvm/seq_lib/smu_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+# The bare `UVM` define (selects the SV-UVM shape of the shared tb_wrapper_top.sv) comes from
+# the native profile's [frameworks.uvm] overlay -- no per-DUT copy. Both targets share one
+# SV-UVM build tree: every enrolled leaf names compile_smu_chiplet.
+[frameworks.uvm.targets.default]
+description = "SMU SV-UVM default target"
+build_dir = "hw/sys/smu/dv/build/uvm"
+
+[frameworks.uvm.targets.compile_smu_chiplet]
+description = "SMU SV-UVM view of the OSS smu_wrapper (DefaultCfg, SEP=1, real EL2 CPU)"
+build_dir = "hw/sys/smu/dv/build/uvm"
