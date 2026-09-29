@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-28T22:02:48+00:00",
+  "generated_at": "2026-09-29T11:44:44+00:00",
   "points": [
     {
       "failed_tests": 1,
@@ -1202,6 +1202,67 @@
             "functional": 100.0,
             "line": 92.15,
             "toggle": 58.44,
+            "user": 96.4211
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": false,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 98.03
+    },
+    {
+      "failed_tests": 3,
+      "flaky_tests": 0,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-29T11:44:44+00:00",
+      "id": "abc7933431970b12",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-a24b4af02b2754b0",
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.43,
+            "branch": 86.5,
+            "condition": 82.89,
+            "fsm_state": 71.78,
+            "functional": 100.0,
+            "line": 94.19,
+            "toggle": 83.12,
+            "user": 96.4211
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {
+              "user": 17
+            },
+            "by_disposition": {
+              "cover": 17
+            },
+            "by_metric": {
+              "user": 17
+            },
+            "by_status": {
+              "open": 17
+            },
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 17,
+            "observations_complete": false,
+            "open": 17,
+            "unclassified": 17
+          },
+          "raw_metrics": {
+            "assertion": 95.43,
+            "branch": 82.65,
+            "condition": 80.86,
+            "fsm_state": 52.92,
+            "functional": 100.0,
+            "line": 92.15,
+            "toggle": 58.48,
             "user": 96.4211
           },
           "status": "FAIL",
