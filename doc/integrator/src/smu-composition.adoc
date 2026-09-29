@@ -20,6 +20,14 @@ PVT sensors, eFuse shims, memory macros, GPIO padrings, SPI controllers, and
 external TRNG -- are instantiated outside the core modules by the adopter. This
 separation keeps the OCAH deliverable technology-neutral.
 
+The figure below shows that boundary. `smu` exposes a technology integration
+interface for each of these components, and a reference integration module
+holds the shims, models and macros behind them. An adopter keeps the interfaces
+and replaces what lies below the boundary with its own technology IP.
+
+.SMU Technology Integration
+image::smu-technology-integration.svg[SMU Technology Integration,scaledwidth=100.0%]
+
 The repository provides reference wrappers that demonstrate how to bridge the
 gap between OCAH core interfaces and adopter-specific IP:
 
