@@ -409,6 +409,12 @@ class smu_telemetry_atb_capture_seq:
             TX_FLUSH_BM,
             evidence="CHK-SMU-TEL-FLUSH",
         )
+        self.sb.expect_eq(
+            "telemetry_afvalid_o is still high when telemetry_afready_i rises",
+            self._bit("tb_telemetry_afvalid", receiver),
+            1,
+            evidence="CHK-SMU-TEL-FLUSH",
+        )
         self._set_lane("tb_telemetry_afready", receiver, 1, 1)
         await ClockCycles(dut.clk_ref_i, AF_SETTLE_CYCLES)
         self.sb.expect_eq(
