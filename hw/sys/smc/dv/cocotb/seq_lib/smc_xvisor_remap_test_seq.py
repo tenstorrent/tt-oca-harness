@@ -36,8 +36,8 @@ from smc_reg import (  # noqa: E402
     SMC_XVISOR_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
 )
 
-# Per-entry REGION_ATTRS addresses from the generated map. Reset is 0 per
-# output_remap.rdl (offset[55:0]=0x0, remap disabled) -- RDL-traceable.
+# Per-entry REGION_ATTRS addresses from the generated map. The reset value comes
+# from the same generated map (output_remap.rdl).
 XVISOR_REMAP_ATTRS_ADDRS = (
     SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
     SMC_XVISOR_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
@@ -49,7 +49,7 @@ XVISOR_REMAP_ATTRS_ADDRS = (
     SMC_XVISOR_REMAP_7__REGION_REGION_ATTRS_REG_ADDR,
 )
 # One distinct pattern per entry inside the 56-bit `offset` field
-# (output_remap.rdl); bits [63:56] stay 0. No outbound traffic runs while the
+# (output_remap.rdl), with `valid` clear. No outbound traffic runs while the
 # table holds them, and every entry is restored to its reset afterwards.
 XVISOR_REMAP_PATTERNS = tuple((0x5A5 << 40) | ((i + 1) << 12) for i in range(8))
 assert len(set(XVISOR_REMAP_PATTERNS)) == len(XVISOR_REMAP_ATTRS_ADDRS)

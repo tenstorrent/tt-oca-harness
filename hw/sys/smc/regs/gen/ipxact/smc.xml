@@ -8942,6 +8942,18 @@ e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs fr
                 <ipxact:bitWidth>56</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>valid</ipxact:name>
+                <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+                <ipxact:bitOffset>63</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h1</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
             </ipxact:register>
           </ipxact:registerFile>
         </ipxact:registerFile>
@@ -8972,6 +8984,18 @@ e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs fr
                   </ipxact:reset>
                 </ipxact:resets>
                 <ipxact:bitWidth>56</ipxact:bitWidth>
+                <ipxact:access>read-write</ipxact:access>
+              </ipxact:field>
+              <ipxact:field>
+                <ipxact:name>valid</ipxact:name>
+                <ipxact:description>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</ipxact:description>
+                <ipxact:bitOffset>63</ipxact:bitOffset>
+                <ipxact:resets>
+                  <ipxact:reset>
+                    <ipxact:value>'h1</ipxact:value>
+                  </ipxact:reset>
+                </ipxact:resets>
+                <ipxact:bitWidth>1</ipxact:bitWidth>
                 <ipxact:access>read-write</ipxact:access>
               </ipxact:field>
             </ipxact:register>

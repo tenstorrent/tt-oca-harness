@@ -11897,13 +11897,15 @@ class REMAP_REGION_REGION_ATTRS_reg_u(Union):
         instance.val = int.from_bytes(byte_seq, 'little')
         return instance
 
-OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT = 0x0000000000000000
+OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT = 0x8000000000000000
 class OUTPUT_REMAP_REGION_REGION_ATTRS_reg_t(Structure):
     _fields_ = [
         ('offset', c_uint64, 56),
+        ('rsvd_0', c_uint64, 7),
+        ('valid', c_uint64, 1),
     ]
 
-OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT = 0x0000000000000000
+OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT = 0x8000000000000000
 
 class OUTPUT_REMAP_REGION_REGION_ATTRS_reg_u(Union):
     _fields_ = [

@@ -66,6 +66,7 @@ OUTFILT_N_ENTRIES = indexed_block_count("OUTBOUND_FILTER_CTRL")
 REMAP_TARGET_BASE = 0x8000_0000
 REMAP_ATTRS = AP_OUTPUT_REMAP_CTRL_0.offset("REGION_REGION_ATTRS")
 REMAP_OFFSET_MASK = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "offset")
+REMAP_VALID = AP_OUTPUT_REMAP_CTRL_0.field_mask("REGION_REGION_ATTRS", "valid")
 
 RESP_OKAY = 0
 RESP_DECERR = 3
@@ -136,7 +137,7 @@ class SepOutboundRemap(SepAxiRegDriver):
 
     async def program(self, cfg: SepOutboundRemapCfg) -> None:
         attrs = cfg.csr_base + cfg.region * REMAP_STRIDE + REMAP_ATTRS
-        masked = cfg.offset & REMAP_OFFSET_MASK
+        masked = (cfg.offset & REMAP_OFFSET_MASK) | REMAP_VALID
         await self._wr(attrs, masked & 0xFFFF_FFFF)
         await self._wr(attrs + 4, masked >> 32)
         rb_lo = await self._rd(attrs)

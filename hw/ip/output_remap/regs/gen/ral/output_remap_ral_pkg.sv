@@ -10,6 +10,7 @@
     class output_remap__REGION__region_attrs extends uvm_reg;
         `uvm_object_utils(output_remap__REGION__region_attrs)
         rand uvm_reg_field offset;
+        rand uvm_reg_field valid;
 
         function new(string name = "output_remap__REGION__region_attrs");
             super.new(name, 64, UVM_NO_COVERAGE);
@@ -18,6 +19,8 @@
         virtual function void build();
             this.offset = uvm_reg_field::type_id::create("offset");
             this.offset.configure(this, 56, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.valid = uvm_reg_field::type_id::create("valid");
+            this.valid.configure(this, 1, 63, "RW", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : output_remap__REGION__region_attrs
 

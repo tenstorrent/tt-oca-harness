@@ -117,6 +117,10 @@ MMODE_WINDOW = smc_addr("SMC_TOP_MMODE_REGION_BASE_ADDR")
 XVISOR_WINDOW = smc_addr("SMC_TOP_XVISOR_REGION_BASE_ADDR")
 MMODE_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_MMODE_REMAP_REGION_BASE_ADDR", 0)
 XVISOR_REMAP_0 = smc_indexed_addr("SMC_TOP_SMC_XVISOR_REMAP_REGION_BASE_ADDR", 0)
+_OUTPUT_REMAP_H = _REPO_ROOT / "hw/ip/output_remap/regs/gen/c/output_remap.h"
+OUTPUT_REMAP_VALID = c_header_u32(
+    _OUTPUT_REMAP_H, "OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm"
+)
 # Output remap targets: 1 MiB aligned (the SMC region granularity in the
 # output_remap description), outside both apertures.
 MMODE_TARGET = 0x0700_0000
@@ -453,13 +457,13 @@ class smu_axi_out_addr_len_size_test_seq:
             ("MMODE", MMODE_REMAP_0, MMODE_WINDOW, MMODE_TARGET),
             ("XVISOR", XVISOR_REMAP_0, XVISOR_WINDOW, XVISOR_TARGET),
         ):
-            await self._j2a_wr(jtag, csr, target, f"{name}_REMAP_0")
+            await self._j2a_wr(jtag, csr, OUTPUT_REMAP_VALID | target, f"{name}_REMAP_0")
             value = (PATTERN ^ target) & ((1 << 64) - 1)
             mark = tap.mark()
             await self._j2a_wr(jtag, window + 8, value, f"{name}_WR")
             rdata = await self._j2a_rd(jtag, window + 8, f"{name}_RD")
             aw, ar = tap.since(mark)
-            await self._j2a_wr(jtag, csr, 0, f"{name}_REMAP_0_CLEAR")
+            await self._j2a_wr(jtag, csr, OUTPUT_REMAP_VALID, f"{name}_REMAP_0_RESTORE")
             observed[name] = (
                 [p[0] for p in aw],
                 [p[0] for p in ar],

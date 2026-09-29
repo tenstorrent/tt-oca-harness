@@ -125,6 +125,10 @@ AP_REGION_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_AP_REGION_BASE_ADDR")
 STEE_REGION_BASE = c_header_u32(_SEP_ADDR_H, "SEP_TOP_STEE_REGION_BASE_ADDR")
 AP_REMAP_0 = _indexed_addr("SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_BASE_ADDR", 0)
 STEE_REMAP_0 = _indexed_addr("SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_BASE_ADDR", 0)
+_OUTPUT_REMAP_H = _REPO_ROOT / "hw/ip/output_remap/regs/gen/c/output_remap.h"
+OUTPUT_REMAP_VALID = c_header_u32(
+    _OUTPUT_REMAP_H, "OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm"
+)
 # Output remap region targets: 512 KiB aligned (the SEP region granularity in
 # the output_remap description), above 4 GiB and apart from both apertures.
 AP_TARGET = 0xA0_0000_0000
@@ -366,11 +370,11 @@ class smu_sep_sba_fabric_sweep_test_seq(smu_dtp_sep_dm_sba_test_seq):
             ("AP", AP_REMAP_0, AP_REGION_BASE, AP_TARGET),
             ("STEE", STEE_REMAP_0, STEE_REGION_BASE, STEE_TARGET),
         ):
-            await self._sb_ok(jtag, csr, 3, target)
+            await self._sb_ok(jtag, csr, 3, OUTPUT_REMAP_VALID | target)
             got, exp = await self._round_trips(
                 jtag, [(region + 8, 3, 320 + len(observed), target + 8)], backdoor=True
             )
-            await self._sb_ok(jtag, csr, 3, 0)
+            await self._sb_ok(jtag, csr, 3, OUTPUT_REMAP_VALID)
             observed[name], want[name] = next(iter(got.values())), next(iter(exp.values()))
         self._log(f"CHK-SEP-SBA-OUTPUT-REMAP {observed}")
         sb.expect_eq(

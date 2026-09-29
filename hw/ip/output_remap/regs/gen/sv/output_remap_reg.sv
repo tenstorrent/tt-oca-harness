@@ -265,6 +265,10 @@ module output_remap_reg (
                     logic [55:0] next;
                     logic load_next;
                 } offset;
+                struct {
+                    logic next;
+                    logic load_next;
+                } valid;
             } region_attrs;
         } REGION;
     } field_combo_t;
@@ -276,6 +280,9 @@ module output_remap_reg (
                 struct {
                     logic [55:0] value;
                 } offset;
+                struct {
+                    logic value;
+                } valid;
             } region_attrs;
         } REGION;
     } field_storage_t;
@@ -304,6 +311,29 @@ module output_remap_reg (
         end
     end
     assign hwif_out.REGION.region_attrs.offset.value = field_storage.REGION.region_attrs.offset.value;
+    // Field: output_remap.REGION.region_attrs.valid
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.REGION.region_attrs.valid.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.REGION.region_attrs && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.REGION.region_attrs.valid.value & ~decoded_wr_biten[63:63]) | (decoded_wr_data[63:63] & decoded_wr_biten[63:63]);
+            load_next_c = '1;
+        end
+        field_combo.REGION.region_attrs.valid.next = next_c;
+        field_combo.REGION.region_attrs.valid.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.REGION.region_attrs.valid.value <= 1'h1;
+        end else begin
+            if(field_combo.REGION.region_attrs.valid.load_next) begin
+                field_storage.REGION.region_attrs.valid.value <= field_combo.REGION.region_attrs.valid.next;
+            end
+        end
+    end
+    assign hwif_out.REGION.region_attrs.valid.value = field_storage.REGION.region_attrs.valid.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -327,6 +357,7 @@ module output_remap_reg (
         readback_data_var = '0;
         if(rd_mux_addr == 4'h0) begin
             readback_data_var[55:0] = field_storage.REGION.region_attrs.offset.value;
+            readback_data_var[63] = field_storage.REGION.region_attrs.valid.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

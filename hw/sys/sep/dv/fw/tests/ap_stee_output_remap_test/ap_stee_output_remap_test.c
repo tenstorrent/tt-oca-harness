@@ -100,7 +100,8 @@ static int test_config_ap_output_remap(void) {
     printf("\n--- Test: Configure AP Output Remap ---\n");
 
     output_remap__output_remap_region__REGION_ATTRS_t ap_remap_ctrl;
-    ap_remap_ctrl.f.offset = 0x0;
+    ap_remap_ctrl.w = 0;
+    ap_remap_ctrl.f.valid = 1;
 
     for (int i = 0; i < NUM_AP_REMAPS; i++) {
         ap_remap_ctrl.f.offset = generate_random_64bit();
@@ -127,7 +128,8 @@ static int test_config_stee_output_remap(void) {
     printf("\n--- Test: Configure STEE Output Remap ---\n");
 
     output_remap__output_remap_region__REGION_ATTRS_t stee_remap_ctrl;
-    stee_remap_ctrl.f.offset = 0x0;
+    stee_remap_ctrl.w = 0;
+    stee_remap_ctrl.f.valid = 1;
 
     for (int i = 0; i < NUM_STEE_REMAPS; i++) {
         stee_remap_ctrl.f.offset = generate_random_64bit();
