@@ -58,11 +58,12 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
                     ChkTimeoutPaths, ChkNonvac, ChkSbMinAct});
     start_step_anchor();
     check_min_activity(SmuFeatureIcResetTdr, IcResetScansPerPass);
-    `uvm_info(get_type_name(), $sformatf(
-              {"SMU SV-UVM IC_RESET override (smu_jtag_reset_override_test): TDR %0d bits, ",
-               "%0d SMC + %0d SEP + %0d EXT ports; scenario_seed=%0d"},
-              SmuIcResetLen, SmuIcResetNumSmcPorts, SmuIcResetNumSepPorts, SmuIcResetNumExtPorts,
-              scenario_seed), UVM_LOW)
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  {"SMU SV-UVM IC_RESET override (smu_jtag_reset_override_test): TDR %0d bits, ",
+                   "%0d SMC + %0d SEP + %0d EXT ports; scenario_seed=%0d"}, SmuIcResetLen,
+                    SmuIcResetNumSmcPorts, SmuIcResetNumSepPorts, SmuIcResetNumExtPorts,
+                    scenario_seed), UVM_LOW)
 
     run_setup();
     run_default();
@@ -107,8 +108,8 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     mark_step("S3", "EXT: reset_enable=0/reset_control=0 on port 0 asserts the external override");
     ic_reset_write(image);
     wait_pin_level("jtag_ic_reset_ext_ovrd", 1'b1, ExportBound, "s3_ext_ovrd", cycles);
-    check_pin(ChkIcExt, "ext ovrd asserted", "jtag_ic_reset_ext_ovrd", 1'b1,
-              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkIcExt, "ext ovrd asserted", "jtag_ic_reset_ext_ovrd", 1'b1, $sformatf(
+              "after %0d smu clocks", cycles));
     check_pin(ChkIcExt, "ext ctrl_n driven low", "jtag_ic_reset_ext_ctrl_n", 1'b0);
     check_pin(ChkIcDomain, "smc cold ovrd idle while ext asserted", "jtag_ic_reset_smc_ovrd", 1'b0);
     ic_reset_scan(image, readback);
@@ -125,8 +126,8 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     mark_step("S4", "SMC: reset_enable=0/reset_control=0 on the SMC cold port; EXT released");
     ic_reset_write(image);
     wait_pin_level("jtag_ic_reset_smc_ovrd", 1'b1, ExportBound, "s4_smc_ovrd", cycles);
-    check_pin(ChkIcSmcCold, "smc cold ovrd asserted", "jtag_ic_reset_smc_ovrd", 1'b1,
-              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkIcSmcCold, "smc cold ovrd asserted", "jtag_ic_reset_smc_ovrd", 1'b1, $sformatf(
+              "after %0d smu clocks", cycles));
     check_pin(ChkIcSmcCold, "smc cold ctrl_n driven low", "jtag_ic_reset_smc_ctrl_n", 1'b0);
     check_pin(ChkIcDomain, "ext ovrd released while smc asserted", "jtag_ic_reset_ext_ovrd", 1'b0);
     check_evidence_wide(ChkIcSmcCold, "SMC slice ovrd vector", 256'(tb_vif.smc_reset_ctrl_ovrd),

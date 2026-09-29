@@ -25,7 +25,10 @@ class smu_test_cfg extends ocah_test_cfg;
   constraint smu_c {smu_clk_period_ns inside {8, 10, 12};}
   // clk_ref_i carries telemetry; a period equal to clk_smu_i leaves the two
   // domains indistinguishable at the boundary.
-  constraint ref_c {ref_clk_period_ns inside {10, 12, 16}; ref_clk_period_ns != smu_clk_period_ns;}
+  constraint ref_c {
+    ref_clk_period_ns inside {10, 12, 16};
+    ref_clk_period_ns != smu_clk_period_ns;
+  }
   constraint periph_c {periph_clk_period_ns inside {16, 20, 24};}
   constraint wdt_c {sep_wdt_clk_period_ns inside {80, 100, 120};}
   constraint tck_c {tck_period_ns inside {32, 40, 48};}

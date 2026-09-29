@@ -53,10 +53,9 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     check_min_activity(dtp_env_pkg::DtpFeatureBypass, 1 + random_count);
     expected_idcode = smu_ptap_expected_idcode(test_cfg.ptap_idcode_negative);
     `uvm_info(get_type_name(),
-              $sformatf(
-                  {"SMU SV-UVM DTP JTAG smoke (SMU_ALL_005): PTAP IDCODE/BYPASS/TRST+POR on ",
-                   "the smu_wrapper; scenario_seed=%0d random_count=%0d idcode_expect=0x%08h"
-                    }, scenario_seed, random_count, expected_idcode), UVM_LOW)
+              $sformatf({"SMU SV-UVM DTP JTAG smoke (SMU_ALL_005): PTAP IDCODE/BYPASS/TRST+POR on ",
+                         "the smu_wrapper; scenario_seed=%0d random_count=%0d idcode_expect=0x%08h"
+                          }, scenario_seed, random_count, expected_idcode), UVM_LOW)
     if (test_cfg.ptap_idcode_negative)
       `uvm_info(get_type_name(), $sformatf(
                 "NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",
@@ -104,8 +103,10 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     dr_scan(64'h0, IdcodeWidth, observed);
     confirm_state_tck(OCAH_JTAG_RUN_TEST_IDLE, "s2_idcode_rti", 1'b0, last);
     check_evidence(ChkPtapS1, "IDCODE fields", observed[31:0], expected_idcode, $sformatf(
-                   {"marker=%0b mfr=0x%03h part=0x%04h ver=0x%01h inst_decoded=0x%0h ",
-                    "cell=inst=IDCODE"},
+                   {
+                     "marker=%0b mfr=0x%03h part=0x%04h ver=0x%01h inst_decoded=0x%0h ",
+                     "cell=inst=IDCODE"
+                   },
                    observed[0],
                    observed[11:1],
                    observed[27:12],

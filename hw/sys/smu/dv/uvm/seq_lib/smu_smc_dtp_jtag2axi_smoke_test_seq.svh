@@ -63,8 +63,8 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq extends smu_base_test_seq;
     bit [63:0] spm_pat, series_pat;
 
     seed_scenario_rng();
-    attach_evidence('{ChkJtagReady, ChkGateOpen, ChkScratch, ChkSpm, ChkSeriesIncr,
-                    ChkTimeoutPaths, ChkNonvac, ChkSbMinAct});
+    attach_evidence('{ChkJtagReady, ChkGateOpen, ChkScratch, ChkSpm, ChkSeriesIncr, ChkTimeoutPaths,
+                    ChkNonvac, ChkSbMinAct});
     start_step_anchor();
     // Every launched transaction reaches the jtag2axi_req predictor, and
     // every op is polled at least once, so the status predictor compares at
@@ -74,11 +74,11 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq extends smu_base_test_seq;
     scratch_pat = (loop_index == 0) ? ScratchPattern : 32'(random_pattern(32));
     spm_pat     = (loop_index == 0) ? SpmPattern : random_pattern(64);
     series_pat  = (loop_index == 0) ? SeriesPattern : random_pattern(64);
-    `uvm_info(get_type_name(), $sformatf(
-              {"SMU SV-UVM SMC-fabric JTAG2AXI smoke (smu_smc_dtp_jtag2axi_smoke_test): ",
-               "scratch15=0x%0h spm=0x%0h series=0x%0h; scenario_seed=%0d patterns=%s"},
-              SmuSmcScratch15Addr, SmuSmcSpmBaseAddr, SeriesAddr, scenario_seed,
-              (loop_index == 0) ? "directed" : "seeded"), UVM_LOW)
+    `uvm_info(get_type_name(),
+              $sformatf({"SMU SV-UVM SMC-fabric JTAG2AXI smoke (smu_smc_dtp_jtag2axi_smoke_test): ",
+                         "scratch15=0x%0h spm=0x%0h series=0x%0h; scenario_seed=%0d patterns=%s"},
+                          SmuSmcScratch15Addr, SmuSmcSpmBaseAddr, SeriesAddr, scenario_seed,
+                          (loop_index == 0) ? "directed" : "seeded"), UVM_LOW)
 
     run_setup(target);
     run_scratch(target, scratch_pat);
@@ -109,8 +109,8 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq extends smu_base_test_seq;
     idle_tck(IdleAfterReset);
     load_ir(dtp_env_pkg::IDCODE_INSTR);
     dr_scan(64'h0, IdcodeWidth, observed);
-    check_evidence(ChkJtagReady, "IDCODE", observed[31:0],
-                   smu_ptap_expected_idcode(test_cfg.ptap_idcode_negative));
+    check_evidence(ChkJtagReady, "IDCODE", observed[31:0], smu_ptap_expected_idcode(
+                   test_cfg.ptap_idcode_negative));
     check_pin(ChkGateOpen, "smc_jtag2axi_security_disable", "smc_jtag2axi_security_disable", 1'b0);
     read_j2a_caps(t, caps);
     check_evidence(ChkGateOpen, "SMC_JTAG2AXI_CAPS", 64'(caps), 64'(SmuExpectedSmcJ2aCaps),
@@ -142,8 +142,8 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq extends smu_base_test_seq;
                    $sformatf("addr=0x%0h", SmuSmcSpmBaseAddr));
     single_read_j2a(t, SmuSmcSpmBaseAddr, Size8B, "s3_rd_poll", rd_st, rdata);
     check_evidence(ChkSpm, "SPM read status", 64'(rd_st), 64'(dtp_env_pkg::DTP_J2A_SUCCESS));
-    check_evidence(ChkSpm, "SPM readback", rdata, pattern, $sformatf("addr=0x%0h",
-                                                                     SmuSmcSpmBaseAddr));
+    check_evidence(ChkSpm, "SPM readback", rdata, pattern, $sformatf("addr=0x%0h", SmuSmcSpmBaseAddr
+                   ));
   endtask
 
   // S4: the series path, one INCR write and one INCR read of a word.

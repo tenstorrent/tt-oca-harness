@@ -60,10 +60,11 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     seed_scenario_rng();
     attach_evidence('{ChkPrimaryNotGated, ChkBootSeqGate, ChkTimeoutPaths, ChkNonvac, ChkSbMinAct});
     check_min_activity(SmuFeatureBootGate, FuseReleasesPerPass);
-    `uvm_info(get_type_name(), $sformatf(
-              {"SMU SV-UVM external boot-sequence gate (smu_ext_boot_seq_gate_test, SMU_006): ",
-               "gated_samples=%0d release_bound=%0d; scenario_seed=%0d"},
-              GatedSamples, ReleaseBound, scenario_seed), UVM_LOW)
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  {"SMU SV-UVM external boot-sequence gate (smu_ext_boot_seq_gate_test, SMU_006): ",
+                   "gated_samples=%0d release_bound=%0d; scenario_seed=%0d"}, GatedSamples,
+                    ReleaseBound, scenario_seed), UVM_LOW)
 
     m_t_primary_rise = -1;
     m_t_fuse_rise    = -1;
@@ -82,9 +83,8 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
                    64'((m_t_primary_rise >= 0) && (m_t_primary_rise < m_t_ungate)), 64'd1,
                    $sformatf("primary_release=%0t ungate=%0t", m_t_primary_rise, m_t_ungate));
     check_evidence(ChkNonvac, "S2<S4 gated_window_end<fuse_release",
-                   64'((m_t_fuse_rise >= 0) && (m_t_gated_end < m_t_fuse_rise)), 64'd1,
-                   $sformatf("gated_window_end=%0t fuse_release=%0t", m_t_gated_end,
-                             m_t_fuse_rise));
+                   64'((m_t_fuse_rise >= 0) && (m_t_gated_end < m_t_fuse_rise)), 64'd1, $sformatf(
+                   "gated_window_end=%0t fuse_release=%0t", m_t_gated_end, m_t_fuse_rise));
     check_evidence(ChkNonvac, "S4 ungate<fuse_release",
                    64'((m_t_fuse_rise >= 0) && (m_t_ungate < m_t_fuse_rise)), 64'd1, $sformatf(
                    "ungate=%0t fuse_release=%0t", m_t_ungate, m_t_fuse_rise));
@@ -138,8 +138,8 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     mark_step("S2", "GATED: ext_boot_seq_done_i=0 holds smc_fuse_reset_n_delayed_o low");
     wait_pin_level("fuse_sense_done", 1'b1, test_cfg.fuse_sense_bound_cycles,
                    "sense_done_before_gated_window", cycles);
-    check_pin(ChkBootSeqGate, "sense done before the window", "fuse_sense_done", 1'b1,
-              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkBootSeqGate, "sense done before the window", "fuse_sense_done", 1'b1, $sformatf(
+              "after %0d smu clocks", cycles));
     for (int unsigned s = 0; s < GatedSamples; s++) begin
       @(posedge tb_vif.clk_smu);
       if (!pin_is("fuse_reset_n_delayed", 1'b0)) fuse_breaks++;
@@ -166,12 +166,15 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
       m_gate_at_primary_rise = pin("ext_boot_seq_done");
     end
     check_evidence(ChkPrimaryNotGated, "primary 0->1 observed after the cold release",
-                   64'(m_t_primary_rise >= 0), 64'd1, $sformatf("primary_release=%0t cycles=%0d",
-                                                                m_t_primary_rise, cycles));
-    void'(m_check.expect_true(ChkPrimaryNotGated, m_gate_at_primary_rise === 1'b0, $sformatf(
-                              "gate shut in the clock of the primary release observed=%b expected=0"
-                              ,
-                              m_gate_at_primary_rise)));
+                   64'(m_t_primary_rise >= 0), 64'd1, $sformatf(
+                   "primary_release=%0t cycles=%0d", m_t_primary_rise, cycles));
+    void'(m_check.expect_true(
+        ChkPrimaryNotGated,
+        m_gate_at_primary_rise === 1'b0,
+        $sformatf(
+            "gate shut in the clock of the primary release observed=%b expected=0",
+            m_gate_at_primary_rise)
+    ));
     check_pin(ChkPrimaryNotGated, "primary released while gated", "rst_primary_smc_clk_n", 1'b1);
     check_pin(ChkPrimaryNotGated, "gate still shut", "ext_boot_seq_done", 1'b0);
   endtask

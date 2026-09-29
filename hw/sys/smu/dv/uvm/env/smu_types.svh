@@ -107,8 +107,7 @@ endfunction
 
 // One port overridden (reset_enable = 0) driving `control` on its
 // reset_control bit, every other port at its reset value, reset_hold kept.
-function automatic smu_ic_reset_image_t smu_ic_reset_override_image(int unsigned port,
-                                                                    bit control);
+function automatic smu_ic_reset_image_t smu_ic_reset_override_image(int unsigned port, bit control);
   smu_ic_reset_image_t image = SmuIcResetDefault;
   image[smu_ic_reset_enable_bit(port)]  = 1'b0;
   image[smu_ic_reset_control_bit(port)] = control;
@@ -132,7 +131,7 @@ function automatic bit [SmuIcResetNumSmcPorts-1:0] smu_ic_reset_smc_ovrd_of(
     smu_ic_reset_image_t image);
   bit [SmuIcResetNumSmcPorts-1:0] v = '0;
   for (int unsigned k = 0; k < SmuIcResetNumSmcPorts; k++)
-    v[k] = smu_ic_reset_ovrd_of(image, smu_ic_reset_smc_port(k));
+  v[k] = smu_ic_reset_ovrd_of(image, smu_ic_reset_smc_port(k));
   return v;
 endfunction
 
@@ -140,7 +139,7 @@ function automatic bit [SmuIcResetNumSmcPorts-1:0] smu_ic_reset_smc_val_of(
     smu_ic_reset_image_t image);
   bit [SmuIcResetNumSmcPorts-1:0] v = '0;
   for (int unsigned k = 0; k < SmuIcResetNumSmcPorts; k++)
-    v[k] = smu_ic_reset_val_of(image, smu_ic_reset_smc_port(k));
+  v[k] = smu_ic_reset_val_of(image, smu_ic_reset_smc_port(k));
   return v;
 endfunction
 
@@ -194,6 +193,8 @@ localparam int unsigned SmuJ2aCapsLen = 14;
 // (generated smc_top_addrmap_pkg): CPU_CTRL SCRATCH_15 (SCRATCH_0 is the live
 // boot-ROM mailbox) and the SPM window.
 localparam bit [63:0] SmuSmcScratch15Addr =
-    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(15));
+    64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SCRATCH_BASE_ADDR(
+    15
+));
 localparam bit [63:0] SmuSmcSpmBaseAddr = 64'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR);
 localparam bit [63:0] SmuSmcSpmSize = 64'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE);

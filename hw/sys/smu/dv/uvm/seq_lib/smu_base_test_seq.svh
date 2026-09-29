@@ -130,9 +130,17 @@ class smu_base_test_seq extends ocah_sequence;
   // values in hex.
   function void check_evidence_wide(string check_id, string name, logic [255:0] observed,
                                     bit [255:0] expected, string context_s = "");
-    void'(m_check.expect_true(check_id, observed === expected, $sformatf(
-                              "%s observed=0x%0h expected=0x%0h%s%s", name, observed, expected,
-                              context_s.len() ? " " : "", context_s)));
+    void'(m_check.expect_true(
+        check_id,
+        observed === expected,
+        $sformatf(
+            "%s observed=0x%0h expected=0x%0h%s%s",
+            name,
+            observed,
+            expected,
+            context_s.len() ? " " : "",
+            context_s)
+    ));
   endfunction
 
   // One named TB-interface pin against a level, four-state: X or Z is
@@ -140,9 +148,17 @@ class smu_base_test_seq extends ocah_sequence;
   function void check_pin(string check_id, string name, string which, bit level,
                           string context_s = "");
     logic observed = pin(which);
-    void'(m_check.expect_true(check_id, observed === level, $sformatf(
-                              "%s observed=%b expected=%b%s%s", name, observed, level,
-                              context_s.len() ? " " : "", context_s)));
+    void'(m_check.expect_true(
+        check_id,
+        observed === level,
+        $sformatf(
+            "%s observed=%b expected=%b%s%s",
+            name,
+            observed,
+            level,
+            context_s.len() ? " " : "",
+            context_s)
+    ));
   endfunction
 
   // ------------------------------------------------------------------
@@ -161,9 +177,18 @@ class smu_base_test_seq extends ocah_sequence;
   protected function void check_scoreboard_activity();
     foreach (m_min_activity[f]) begin
       int unsigned gained = scoreboard.feature_compare_count(f) - m_activity_baseline[f];
-      void'(m_check.expect_true(ChkSbMinAct, gained >= m_min_activity[f], $sformatf(
-                                "feature=%s compares_this_pass=%0d floor=%0d mismatches=%0d", f,
-                                gained, m_min_activity[f], scoreboard.feature_mismatch_count(f))));
+      void'(m_check.expect_true(
+          ChkSbMinAct,
+          gained >= m_min_activity[f],
+          $sformatf(
+              "feature=%s compares_this_pass=%0d floor=%0d mismatches=%0d",
+              f,
+              gained,
+              m_min_activity[f],
+              scoreboard.feature_mismatch_count(
+                  f
+              ))
+      ));
     end
   endfunction
 
@@ -217,8 +242,12 @@ class smu_base_test_seq extends ocah_sequence;
       int unsigned seen;
       if (id == "TIMEOUT" || id == "PASS") continue;
       seen = m_step_dut_changes[m_step_order[i+1]] - m_step_dut_changes[id];
-      void'(m_check.expect_true(check_id, seen > 0, $sformatf(
-                                "step %s dut_changes=%0d before %s", id, seen, m_step_order[i+1])));
+      void'(m_check.expect_true(
+          check_id,
+          seen > 0,
+          $sformatf(
+              "step %s dut_changes=%0d before %s", id, seen, m_step_order[i+1])
+      ));
     end
   endfunction
 
@@ -270,8 +299,8 @@ class smu_base_test_seq extends ocah_sequence;
     mark_step("TIMEOUT",
               "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last state");
     log_timeout_paths();
-    check_evidence(check_id, "bounded wait sites", 64'(timeout_path_count()),
-                   64'(expected_paths), $sformatf(
+    check_evidence(check_id, "bounded wait sites", 64'(timeout_path_count()), 64'(expected_paths),
+                   $sformatf(
                    "expired=%0d bound_tck=%0d bound_ref=%0d",
                    timeouts_expired(),
                    test_cfg.bound_tck,
@@ -507,7 +536,7 @@ class smu_base_test_seq extends ocah_sequence;
     captured = '0;
     foreach (observed[i]) if (i < SmuIcResetLen) captured[i] = observed[i];
     `uvm_info(get_type_name(), $sformatf("IC_RESET scan: wrote 0x%0h captured 0x%0h", image,
-                                          captured), UVM_MEDIUM)
+                                         captured), UVM_MEDIUM)
   endtask
 
   task debug_control_scan(input bit [SmuDebugControlLen-1:0] image,
@@ -516,8 +545,8 @@ class smu_base_test_seq extends ocah_sequence;
     load_ir(dtp_env_pkg::DEBUG_CONTROL_INSTR);
     dr_scan(64'(image), SmuDebugControlLen, observed);
     captured = SmuDebugControlLen'(observed);
-    `uvm_info(get_type_name(), $sformatf("DEBUG_CONTROL scan: wrote 0x%02h captured 0x%02h",
-                                          image, captured), UVM_MEDIUM)
+    `uvm_info(get_type_name(), $sformatf("DEBUG_CONTROL scan: wrote 0x%02h captured 0x%02h", image,
+                                         captured), UVM_MEDIUM)
   endtask
 
   // Write one TDR image and let the SMC take the update across the
@@ -570,8 +599,9 @@ class smu_base_test_seq extends ocah_sequence;
     status = dtp_env_pkg::DTP_J2A_BUSY_OR_FULL;
     rdata  = '0;
     for (int unsigned poll = 0; poll < test_cfg.j2a_max_status_polls; poll++) begin
-      smu_jtag2axi_single_status_seq st =
-              smu_jtag2axi_single_status_seq::type_id::create("j2a_single_status");
+      smu_jtag2axi_single_status_seq st = smu_jtag2axi_single_status_seq::type_id::create(
+          "j2a_single_status"
+      );
       st.target = t;
       ensure_run_test_idle();
       run_jtag_op(st);
@@ -629,8 +659,8 @@ class smu_base_test_seq extends ocah_sequence;
     status = dtp_env_pkg::DTP_J2A_BUSY_OR_FULL;
     load_ir(t.series_ctrl_instr);
     for (int unsigned poll = 0; poll < test_cfg.j2a_max_status_polls; poll++) begin
-      bit [63:0]   observed, addr_u;
-      bit          rst_u;
+      bit [63:0] observed, addr_u;
+      bit rst_u;
       int unsigned pl_u, size_u;
       dr_scan(nop, dtp_env_pkg::dtp_j2a_series_ctrl_len(t), observed);
       dtp_env_pkg::dtp_j2a_unpack_series_ctrl(t, observed, rst_u, addr_u, pl_u, size_u, status);
@@ -791,8 +821,7 @@ class smu_base_test_seq extends ocah_sequence;
 
   // Cycles until `which` reads `level`, 0 when it already does; the last
   // level seen goes into the site record. `cycles` is -1 on expiry.
-  task wait_pin_level(string which, bit level, int unsigned bound, string label,
-                      output int cycles);
+  task wait_pin_level(string which, bit level, int unsigned bound, string label, output int cycles);
     logic last = pin(which);
     cycles = 0;
     if (last === level) begin

@@ -101,7 +101,7 @@ class smu_scoreboard extends ocah_scoreboard;
     add_feature(SmuFeatureDebugControlTdr);
     add_feature(SmuFeatureBootGate);
     foreach (cfg.required_features[i])
-      if (has_feature(cfg.required_features[i])) require_feature(cfg.required_features[i]);
+    if (has_feature(cfg.required_features[i])) require_feature(cfg.required_features[i]);
     m_dtp_scoreboard = dtp_scoreboard::type_id::create("m_dtp_scoreboard", this);
     m_dtp_scoreboard.tb_vif   = dtp_tb_vif;
     m_dtp_scoreboard.name_tag = "smu_dtp_scoreboard";
@@ -189,9 +189,9 @@ class smu_scoreboard extends ocah_scoreboard;
       `uvm_fatal(get_type_name(), {feature, ": observed item is not an ocah_jtag_scan_item"})
     if (!exp.compare) return;
     foreach (obs.tdo_bits[i]) if (i < 256) tdo[i] = obs.tdo_bits[i];
-    record_compare(feature, ((tdo & exp.mask) === (exp.expected & exp.mask)),
-                   $sformatf("0x%0h", exp.expected & exp.mask), $sformatf("0x%0h", tdo & exp.mask),
-                   $sformatf("%s bits=%0d mask=0x%0h", exp.context_s, obs.bit_count, exp.mask));
+    record_compare(feature, ((tdo & exp.mask) === (exp.expected & exp.mask)), $sformatf(
+                   "0x%0h", exp.expected & exp.mask), $sformatf("0x%0h", tdo & exp.mask), $sformatf(
+                   "%s bits=%0d mask=0x%0h", exp.context_s, obs.bit_count, exp.mask));
   endfunction
 
   // One fuse-reset release: the gate open and the sense complete in the
@@ -203,13 +203,13 @@ class smu_scoreboard extends ocah_scoreboard;
     if (!$cast(obs, observed))
       `uvm_fatal(get_type_name(), "boot_gate: observed item is not an smu_pin_event_item")
     if (!exp.compare) return;
-    record_compare(SmuFeatureBootGate, (obs.kind == exp.kind) &&
+    record_compare(SmuFeatureBootGate,
+                   (obs.kind == exp.kind) &&
                    (obs.ext_boot_seq_done == exp.ext_boot_seq_done) &&
-                   (obs.fuse_sense_done == exp.fuse_sense_done), $sformatf(
-                   "gate=%0b sense_done=%0b", exp.ext_boot_seq_done, exp.fuse_sense_done),
-                   $sformatf("gate=%0b sense_done=%0b", obs.ext_boot_seq_done,
-                             obs.fuse_sense_done), $sformatf("%s @%0t", exp.context_s,
-                                                             obs.timestamp));
+                   (obs.fuse_sense_done == exp.fuse_sense_done),
+                   $sformatf("gate=%0b sense_done=%0b", exp.ext_boot_seq_done, exp.fuse_sense_done),
+                   $sformatf("gate=%0b sense_done=%0b", obs.ext_boot_seq_done, obs.fuse_sense_done),
+                   $sformatf("%s @%0t", exp.context_s, obs.timestamp));
   endfunction
 
 endclass : smu_scoreboard

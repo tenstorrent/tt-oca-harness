@@ -52,8 +52,10 @@ class smu_env_cfg extends ocah_env_cfg;
 
   virtual function string convert2string();
     return $sformatf(
-        {"%s ref_clk_period_ns=%0d periph_clk_period_ns=%0d sep_wdt_clk_period_ns=%0d ",
-         "tck_half_period_ns=%0d"},
+        {
+          "%s ref_clk_period_ns=%0d periph_clk_period_ns=%0d sep_wdt_clk_period_ns=%0d ",
+          "tck_half_period_ns=%0d"
+        },
         super.convert2string(),
         ref_clk_period_ns,
         periph_clk_period_ns,

@@ -79,11 +79,12 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     start_step_anchor();
     check_min_activity(SmuFeatureDebugControlTdr, DebugControlScansPerPass);
     check_min_activity(SmuFeatureBootGate, FuseReleasesPerPass);
-    `uvm_info(get_type_name(), $sformatf(
-              {"SMU SV-UVM boot-stall matrix (smu_boot_stall_jtag_cold_reset_matrix_test): ",
-               "sense_bound=%0d release_bound=%0d hold=%0d clk_smu; scenario_seed=%0d"},
-              test_cfg.fuse_sense_bound_cycles, test_cfg.fuse_gate_release_bound_cycles,
-              test_cfg.fuse_gate_hold_cycles, scenario_seed), UVM_LOW)
+    `uvm_info(get_type_name(),
+              $sformatf(
+                  {"SMU SV-UVM boot-stall matrix (smu_boot_stall_jtag_cold_reset_matrix_test): ",
+                   "sense_bound=%0d release_bound=%0d hold=%0d clk_smu; scenario_seed=%0d"},
+                    test_cfg.fuse_sense_bound_cycles, test_cfg.fuse_gate_release_bound_cycles,
+                    test_cfg.fuse_gate_hold_cycles, scenario_seed), UVM_LOW)
 
     run_baseline();
     run_stall_write();
@@ -114,8 +115,8 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     wait_pin_level("fuse_reset_n_delayed", 1'b1,
                    test_cfg.fuse_sense_bound_cycles + test_cfg.fuse_gate_release_bound_cycles,
                    "s1_fuse_baseline", cycles);
-    check_pin(ChkBaseline, "fuse reset released", "fuse_reset_n_delayed", 1'b1,
-              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkBaseline, "fuse reset released", "fuse_reset_n_delayed", 1'b1, $sformatf(
+              "after %0d smu clocks", cycles));
     check_pin(ChkBaseline, "fuse sense done", "fuse_sense_done", 1'b1);
     check_pin(ChkBaseline, "stall ovrd idle", "jtag_boot_stall_ovrd", 1'b0);
   endtask
@@ -140,8 +141,12 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     cold_reset_and_sense("s3_sense_done", "s3_primary");
     hold_pin_level("fuse_reset_n_delayed", 1'b0, test_cfg.fuse_gate_hold_cycles, breaks);
     check_evidence(ChkSticky, "fuse reset gated after the sense", 64'(breaks), 64'd0, $sformatf(
-                   "hold=%0d clk_smu sense_done=%0b", test_cfg.fuse_gate_hold_cycles,
-                   pin_is("fuse_sense_done", 1'b1)));
+                   "hold=%0d clk_smu sense_done=%0b",
+                   test_cfg.fuse_gate_hold_cycles,
+                   pin_is(
+                       "fuse_sense_done", 1'b1
+                   )
+                   ));
     check_stall_exports(ChkSticky, "survives cold (TRST high)", 1'b1, 1'b1);
   endtask
 
@@ -232,9 +237,9 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     if (!pin_is("fuse_sense_done", 1'b0))
       `uvm_error(get_type_name(), "fuse_sense_done not 0 after the cold-reset release")
     wait_pin_rise("fuse_sense_done", test_cfg.fuse_sense_bound_cycles, sense_label, sense_cycles);
-    `uvm_info(get_type_name(), $sformatf(
-              "FUSE-SENSE %s: smc_fuse_sense_done_o rose after %0d clk_smu (bound %0d)",
-              sense_label, sense_cycles, test_cfg.fuse_sense_bound_cycles), UVM_LOW)
+    `uvm_info(get_type_name(),
+              $sformatf("FUSE-SENSE %s: smc_fuse_sense_done_o rose after %0d clk_smu (bound %0d)",
+                        sense_label, sense_cycles, test_cfg.fuse_sense_bound_cycles), UVM_LOW)
     wait_pin_level("rst_primary_smc_clk_n", 1'b1, test_cfg.reset_release_timeout_cycles,
                    primary_label, primary_cycles);
   endtask
@@ -258,15 +263,16 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     release_cycles = (wait_cycles < 0) ? -1 : int'(($realtime - t_clear) /
                                                    (env_cfg.clk_period_ns * 1ns));
     check_pin(check_id, {"fuse reset released ", when}, "fuse_reset_n_delayed", 1'b1, $sformatf(
-              "release=%0d clk_smu from the clear (poll bound %0d)", release_cycles,
-              test_cfg.fuse_gate_release_bound_cycles));
+              "release=%0d clk_smu from the clear (poll bound %0d)",
+              release_cycles,
+              test_cfg.fuse_gate_release_bound_cycles
+              ));
     hold_pin_level("fuse_reset_n_delayed", 1'b1, test_cfg.fuse_gate_hold_cycles, breaks);
     check_evidence(check_id, {"fuse reset held released ", when}, 64'(breaks), 64'd0);
-    check_evidence(check_id, {"release inside the hold window ", when},
-                   64'((release_cycles >= 0) &&
-                       (release_cycles < int'(test_cfg.fuse_gate_hold_cycles))), 64'd1,
-                   $sformatf("release=%0d hold=%0d", release_cycles,
-                             test_cfg.fuse_gate_hold_cycles));
+    check_evidence(
+        check_id, {"release inside the hold window ", when},
+        64'((release_cycles >= 0) && (release_cycles < int'(test_cfg.fuse_gate_hold_cycles))),
+        64'd1, $sformatf("release=%0d hold=%0d", release_cycles, test_cfg.fuse_gate_hold_cycles));
   endtask
 
 endclass : smu_boot_stall_jtag_cold_reset_matrix_test_seq

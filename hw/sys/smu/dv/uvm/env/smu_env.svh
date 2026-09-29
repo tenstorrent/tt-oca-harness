@@ -180,8 +180,8 @@ class smu_env extends ocah_env;
     m_dtp_cfg.tck_half_period_ns         = cfg.tck_half_period_ns;
     m_dtp_cfg.jtag2axi_ref_model_negative = cfg.j2a_ref_model_negative;
     foreach (cfg.required_features[i])
-      if (!smu_scoreboard::owns_feature(cfg.required_features[i]))
-        m_dtp_cfg.required_features.push_back(cfg.required_features[i]);
+    if (!smu_scoreboard::owns_feature(cfg.required_features[i]))
+      m_dtp_cfg.required_features.push_back(cfg.required_features[i]);
     uvm_config_db#(dtp_env_cfg)::set(this, "*", "env_cfg", m_dtp_cfg);
   endfunction
 
