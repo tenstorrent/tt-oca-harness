@@ -91,8 +91,8 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     ic_reset_scan(SmuIcResetDefault, captured);
     check_evidence_wide(ChkIcDefault, "IC_RESET default readback", 256'(captured),
                         256'(SmuIcResetDefault), $sformatf("len=%0d", SmuIcResetLen));
-    check_evidence(ChkIcDefault, "ext ovrd idle", 64'(tb_vif.jtag_ic_reset_ext_ovrd), 64'd0);
-    check_evidence(ChkIcDefault, "smc cold ovrd idle", 64'(tb_vif.jtag_ic_reset_smc_ovrd), 64'd0);
+    check_pin(ChkIcDefault, "ext ovrd idle", "jtag_ic_reset_ext_ovrd", 1'b0);
+    check_pin(ChkIcDefault, "smc cold ovrd idle", "jtag_ic_reset_smc_ovrd", 1'b0);
   endtask
 
   // S3: override the external port, control 0.
@@ -103,11 +103,10 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     mark_step("S3", "EXT: reset_enable=0/reset_control=0 on port 0 asserts the external override");
     ic_reset_write(image);
     wait_pin_level("jtag_ic_reset_ext_ovrd", 1'b1, ExportBound, "s3_ext_ovrd", cycles);
-    check_evidence(ChkIcExt, "ext ovrd asserted", 64'(tb_vif.jtag_ic_reset_ext_ovrd), 64'd1,
-                   $sformatf("after %0d smu clocks", cycles));
-    check_evidence(ChkIcExt, "ext ctrl_n driven low", 64'(tb_vif.jtag_ic_reset_ext_ctrl_n), 64'd0);
-    check_evidence(ChkIcDomain, "smc cold ovrd idle while ext asserted",
-                   64'(tb_vif.jtag_ic_reset_smc_ovrd), 64'd0);
+    check_pin(ChkIcExt, "ext ovrd asserted", "jtag_ic_reset_ext_ovrd", 1'b1,
+              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkIcExt, "ext ctrl_n driven low", "jtag_ic_reset_ext_ctrl_n", 1'b0);
+    check_pin(ChkIcDomain, "smc cold ovrd idle while ext asserted", "jtag_ic_reset_smc_ovrd", 1'b0);
     ic_reset_scan(image, readback);
     check_evidence_wide(ChkIcReadback, "IC_RESET EXT pattern readback", 256'(readback),
                         256'(image));
@@ -122,12 +121,10 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     mark_step("S4", "SMC: reset_enable=0/reset_control=0 on the SMC cold port; EXT released");
     ic_reset_write(image);
     wait_pin_level("jtag_ic_reset_smc_ovrd", 1'b1, ExportBound, "s4_smc_ovrd", cycles);
-    check_evidence(ChkIcSmcCold, "smc cold ovrd asserted", 64'(tb_vif.jtag_ic_reset_smc_ovrd),
-                   64'd1, $sformatf("after %0d smu clocks", cycles));
-    check_evidence(ChkIcSmcCold, "smc cold ctrl_n driven low",
-                   64'(tb_vif.jtag_ic_reset_smc_ctrl_n), 64'd0);
-    check_evidence(ChkIcDomain, "ext ovrd released while smc asserted",
-                   64'(tb_vif.jtag_ic_reset_ext_ovrd), 64'd0);
+    check_pin(ChkIcSmcCold, "smc cold ovrd asserted", "jtag_ic_reset_smc_ovrd", 1'b1,
+              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkIcSmcCold, "smc cold ctrl_n driven low", "jtag_ic_reset_smc_ctrl_n", 1'b0);
+    check_pin(ChkIcDomain, "ext ovrd released while smc asserted", "jtag_ic_reset_ext_ovrd", 1'b0);
     check_evidence_wide(ChkIcSmcCold, "SMC slice ovrd vector", 256'(tb_vif.smc_reset_ctrl_ovrd),
                         256'(smu_ic_reset_smc_ovrd_of(image)));
     check_evidence_wide(ChkIcSmcCold, "SMC slice val vector", 256'(tb_vif.smc_reset_ctrl_val),
@@ -142,13 +139,12 @@ class smu_jtag_reset_override_test_seq extends smu_base_test_seq;
     ic_reset_write(SmuIcResetDefault);
     wait_pin_level("jtag_ic_reset_ext_ovrd", 1'b0, ExportBound, "s5_ext_clear", ext_cycles);
     wait_pin_level("jtag_ic_reset_smc_ovrd", 1'b0, ExportBound, "s5_smc_clear", smc_cycles);
-    check_evidence(ChkIcClear, "ext ovrd cleared", 64'(tb_vif.jtag_ic_reset_ext_ovrd), 64'd0);
-    check_evidence(ChkIcClear, "smc cold ovrd cleared", 64'(tb_vif.jtag_ic_reset_smc_ovrd), 64'd0);
+    check_pin(ChkIcClear, "ext ovrd cleared", "jtag_ic_reset_ext_ovrd", 1'b0);
+    check_pin(ChkIcClear, "smc cold ovrd cleared", "jtag_ic_reset_smc_ovrd", 1'b0);
     wait_pin_level("rst_primary_smc_clk_n", 1'b1, test_cfg.reset_release_timeout_cycles,
                    "s5_primary_released", primary_cycles);
-    check_evidence(ChkIcClear, "SMC primary reset released after the override", 64'(
-                   tb_vif.rst_primary_smc_clk_n), 64'd1, $sformatf("after %0d smu clocks",
-                                                                  primary_cycles));
+    check_pin(ChkIcClear, "SMC primary reset released after the override", "rst_primary_smc_clk_n",
+              1'b1, $sformatf("after %0d smu clocks", primary_cycles));
   endtask
 
 endclass : smu_jtag_reset_override_test_seq

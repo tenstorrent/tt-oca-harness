@@ -97,7 +97,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
               "ACTION/RESPONSE/EFFECT DTP-JTAG-PTAP.S1: load IDCODE IR; shift 32b DR; ",
               "observe configured IDCODE fields on TDO"
               });
-    load_ir(jtag_inst_reg_pkg::IDCODE_INSTR);
+    load_ir(dtp_env_pkg::IDCODE_INSTR);
     dr_scan(64'h0, IdcodeWidth, observed);
     confirm_state_tck(OCAH_JTAG_RUN_TEST_IDLE, "s2_idcode_rti", 1'b0, last);
     check_evidence(ChkPtapS1, "IDCODE fields", observed[31:0], expected_idcode, $sformatf(
@@ -118,7 +118,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
               "ACTION/RESPONSE/EFFECT DTP-JTAG-PTAP.S2: load BYPASS IR; shift known TDI; ",
               "capture TDO (single-bit register latency)"
               });
-    load_ir(jtag_inst_reg_pkg::BYPASS_INSTR);
+    load_ir(dtp_env_pkg::BYPASS_INSTR);
     shift_bypass_stepwise(BypassPattern);
     for (int unsigned r = 0; r < random_count; r++) begin
       bit [63:0] observed;
@@ -200,7 +200,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
   // Leave Test-Logic-Reset, load BYPASS, and park in Shift-DR.
   protected task enter_shift_dr_under_bypass();
     goto_state(OCAH_JTAG_RUN_TEST_IDLE);
-    load_ir(jtag_inst_reg_pkg::BYPASS_INSTR);
+    load_ir(dtp_env_pkg::BYPASS_INSTR);
     goto_state(OCAH_JTAG_SHIFT_DR);
   endtask
 

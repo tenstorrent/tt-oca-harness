@@ -111,11 +111,10 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     wait_pin_level("fuse_reset_n_delayed", 1'b1,
                    test_cfg.fuse_sense_bound_cycles + test_cfg.fuse_gate_release_bound_cycles,
                    "s1_fuse_baseline", cycles);
-    check_evidence(ChkBaseline, "fuse reset released", 64'(pin_is("fuse_reset_n_delayed", 1'b1)),
-                   64'd1, $sformatf("after %0d smu clocks", cycles));
-    check_evidence(ChkBaseline, "fuse sense done", 64'(pin_is("fuse_sense_done", 1'b1)), 64'd1);
-    check_evidence(ChkBaseline, "stall ovrd idle", 64'(pin_is("jtag_boot_stall_ovrd", 1'b0)),
-                   64'd1);
+    check_pin(ChkBaseline, "fuse reset released", "fuse_reset_n_delayed", 1'b1,
+              $sformatf("after %0d smu clocks", cycles));
+    check_pin(ChkBaseline, "fuse sense done", "fuse_sense_done", 1'b1);
+    check_pin(ChkBaseline, "stall ovrd idle", "jtag_boot_stall_ovrd", 1'b0);
   endtask
 
   // S2: the stall through the TDR, read back on the TDR and on the exports.
@@ -145,14 +144,15 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
 
   // S4: TRST clears DEBUG_CONTROL; the gate opens within the gate path.
   protected task run_trst_clear();
-    int release_cycles;
+    int      release_cycles;
+    realtime t_clear;
     mark_step("S4",
               "TRST: TAP reset clears DEBUG_CONTROL; fuse reset releases within the gate path");
     arm_gate_release(ChkTrst, "before TRST");
+    t_clear = $realtime;
     tap_reset();
-    wait_smu_cycles(TdrExportSettleCycles);
+    expect_gate_release(ChkTrst, "after TRST", "s4_release", t_clear, release_cycles);
     check_stall_exports(ChkTrst, "cleared by TRST", 1'b0, 1'b0);
-    expect_gate_release(ChkTrst, "after TRST", "s4_release", release_cycles);
   endtask
 
   // S5: a re-asserted stall does not re-gate a released fuse reset.
@@ -179,7 +179,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
     hold_pin_level("fuse_reset_n_delayed", 1'b0, test_cfg.fuse_gate_hold_cycles, breaks);
     check_evidence(ChkPadOnly, "fuse reset gated by the pad after the sense", 64'(breaks), 64'd0,
                    $sformatf("hold=%0d clk_smu", test_cfg.fuse_gate_hold_cycles));
-    check_evidence(ChkPadOnly, "jtag ovrd idle", 64'(pin_is("jtag_boot_stall_ovrd", 1'b0)), 64'd1);
+    check_pin(ChkPadOnly, "jtag ovrd idle", "jtag_boot_stall_ovrd", 1'b0);
   endtask
 
   // S7: both sources asserted agree; the gate stays shut.
@@ -195,12 +195,19 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
 
   // S8: the override forced low wins over the pad; the gate opens.
   protected task run_override_masks_pad();
-    int release_cycles;
+    int        release_cycles;
+    realtime   t_clear;
+    bit [63:0] unused;
     mark_step("S8", "OVRD-LOW: boot_stall_ovrd=1 boot_stall=0 over the driving pad opens the gate");
     arm_gate_release(ChkOvrdMasksPad, "before override low");
-    debug_control_write(smu_debug_control_image(1'b0, 1'b1));
+    // The TDR takes the new image at Update-DR, one TCK before the scan
+    // returns, so the release count starts at the end of the DR scan.
+    load_ir(dtp_env_pkg::DEBUG_CONTROL_INSTR);
+    dr_scan(64'(smu_debug_control_image(1'b0, 1'b1)), SmuDebugControlLen, unused);
+    t_clear = $realtime;
+    expect_gate_release(ChkOvrdMasksPad, "after override low", "s8_release", t_clear,
+                        release_cycles);
     check_stall_exports(ChkOvrdMasksPad, "override low", 1'b1, 1'b0);
-    expect_gate_release(ChkOvrdMasksPad, "after override low", "s8_release", release_cycles);
     tb_vif.gpio_boot_stall_drive <= 1'b0;
     debug_control_write('0);
   endtask
@@ -210,9 +217,8 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
   // ------------------------------------------------------------------
 
   protected function void check_stall_exports(string check_id, string when, bit ovrd, bit stall);
-    check_evidence(check_id, {"jtag_boot_stall_ovrd ", when}, 64'(tb_vif.jtag_boot_stall_ovrd),
-                   64'(ovrd));
-    check_evidence(check_id, {"jtag_boot_stall ", when}, 64'(tb_vif.jtag_boot_stall), 64'(stall));
+    check_pin(check_id, {"jtag_boot_stall_ovrd ", when}, "jtag_boot_stall_ovrd", ovrd);
+    check_pin(check_id, {"jtag_boot_stall ", when}, "jtag_boot_stall", stall);
   endfunction
 
   // A cold-reset pulse, then the sense of this primary reset observed
@@ -232,29 +238,32 @@ class smu_boot_stall_jtag_cold_reset_matrix_test_seq extends smu_base_test_seq;
 
   // Immediately before a clear stimulus: the sense is done and the gate shut.
   protected function void arm_gate_release(string check_id, string when);
-    check_evidence(check_id, {"sense done ", when}, 64'(pin_is("fuse_sense_done", 1'b1)), 64'd1);
-    check_evidence(check_id, {"gate shut ", when}, 64'(pin_is("fuse_reset_n_delayed", 1'b0)),
-                   64'd1);
+    check_pin(check_id, {"sense done ", when}, "fuse_sense_done", 1'b1);
+    check_pin(check_id, {"gate shut ", when}, "fuse_reset_n_delayed", 1'b0);
   endfunction
 
   // After the clear stimulus: the release within the gate-path bound, held
-  // for the hold window, and the measured release inside that window so the
-  // hold checks of this scenario can fail.
-  protected task expect_gate_release(string check_id, string when, string label,
+  // for the hold window, and the release latency -- counted in SMU clocks
+  // from `t_clear`, the instant the clear stimulus began -- inside that
+  // window, so the hold checks of this scenario can fail.
+  protected task expect_gate_release(string check_id, string when, string label, realtime t_clear,
                                      output int release_cycles);
+    int          wait_cycles;
     int unsigned breaks;
     wait_pin_level("fuse_reset_n_delayed", 1'b1, test_cfg.fuse_gate_release_bound_cycles, label,
-                   release_cycles);
-    check_evidence(check_id, {"fuse reset released ", when}, 64'(pin_is("fuse_reset_n_delayed",
-                                                                        1'b1)), 64'd1, $sformatf(
-                   "release=%0d clk_smu bound=%0d", release_cycles,
-                   test_cfg.fuse_gate_release_bound_cycles));
+                   wait_cycles);
+    release_cycles = (wait_cycles < 0) ? -1 : int'(($realtime - t_clear) /
+                                                   (env_cfg.clk_period_ns * 1ns));
+    check_pin(check_id, {"fuse reset released ", when}, "fuse_reset_n_delayed", 1'b1, $sformatf(
+              "release=%0d clk_smu from the clear (poll bound %0d)", release_cycles,
+              test_cfg.fuse_gate_release_bound_cycles));
     hold_pin_level("fuse_reset_n_delayed", 1'b1, test_cfg.fuse_gate_hold_cycles, breaks);
     check_evidence(check_id, {"fuse reset held released ", when}, 64'(breaks), 64'd0);
     check_evidence(check_id, {"release inside the hold window ", when},
                    64'((release_cycles >= 0) &&
-                       (release_cycles < int'(test_cfg.fuse_gate_hold_cycles))), 64'd1, $sformatf(
-                   "release=%0d hold=%0d", release_cycles, test_cfg.fuse_gate_hold_cycles));
+                       (release_cycles < int'(test_cfg.fuse_gate_hold_cycles))), 64'd1,
+                   $sformatf("release=%0d hold=%0d", release_cycles,
+                             test_cfg.fuse_gate_hold_cycles));
   endtask
 
 endclass : smu_boot_stall_jtag_cold_reset_matrix_test_seq

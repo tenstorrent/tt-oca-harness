@@ -1016,11 +1016,11 @@ complete at every fuse-reset release `smu_reset_pin_monitor` observes.
 |`CHK-STALL-BASELINE` |SV-UVM shape only (`--framework uvm`): after the TAP reset the fuse reset is released, the sense is done and the stall override idle
 |`CHK-DEBUG-CONTROL-READBACK` |SV-UVM shape only (`--framework uvm`): the written DEBUG_CONTROL image reads back on its four software-owned bits and on the SMC exports
 |`CHK-STALL-STICKY` |SV-UVM shape only (`--framework uvm`): `STALL_COLD_STICKY` in the SV-UVM shape: the stall exports survive the cold reset and the fuse reset reads 0 on every hold-window clock after the sense completes
-|`CHK-STALL-TRST` |SV-UVM shape only (`--framework uvm`): `STALL_TRST_CLEAR` in the SV-UVM shape: with the sense done and the gate shut, the TRST pulse clears both exports, the release follows within the gate-path bound, holds, and the measured release sits inside the hold window the sticky claim rests on
+|`CHK-STALL-TRST` |SV-UVM shape only (`--framework uvm`): `STALL_TRST_CLEAR` in the SV-UVM shape: with the sense done and the gate shut, the TRST pulse clears both exports, the release follows within the gate-path bound and holds, and the release latency counted from the instant the clear stimulus began fits inside the hold window the sticky claim rests on
 |`CHK-STALL-REASSERT` |SV-UVM shape only (`--framework uvm`): `STALL_REASSERT_STICKY` in the SV-UVM shape: the re-asserted stall does not re-gate the released fuse reset
 |`CHK-STALL-PAD-ONLY` |SV-UVM shape only (`--framework uvm`): the GPIO pad alone gates the fuse reset across a cold reset while the JTAG override is idle
 |`CHK-STALL-BOTH-SOURCES` |SV-UVM shape only (`--framework uvm`): pad and JTAG stall asserted together keep the gate shut
-|`CHK-STALL-OVRD-MASKS-PAD` |SV-UVM shape only (`--framework uvm`): the override forced low over the driving pad opens the gate within the gate-path bound
+|`CHK-STALL-OVRD-MASKS-PAD` |SV-UVM shape only (`--framework uvm`): the override forced low over the driving pad opens the gate within the gate-path bound and holds, and the release latency counted from the end of the clearing DR scan fits inside the hold window
 |`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): eight bounded waits (the TAP-state confirmation, the baseline release, two sense completions, two primary releases, two gate releases) each name a finite bound and their last state; none expired
 |`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): the ordered step fence S1<...<S8<TIMEOUT<PASS from simulation-time marks
 |`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `debug_control_tdr` feature compares at least the seven scans the pass issues and `boot_gate` at least the two releases it causes, both counts from the always-on scoreboard
@@ -1197,8 +1197,10 @@ The scenario has two implementations that share this claim: the cocotb
 (`--framework uvm`). The SV-UVM shape re-runs the cold reset with the gate shut at
 the start of every pass (the base test's bring-up releases with the gate open), so
 the gated window, the negative control and the ungate are proved once per pass, and
-stamps the first primary and fuse rises with a tracker armed at the release so the
-fence is taken from DUT edges. Independently of the sequence,
+stamps the first primary and fuse rises, and the gate level in the clock of the primary
+rise, with a tracker armed while the cold reset holds both low, so the negative control
+and the fence are taken from DUT edges rather than from levels found after the settle.
+Independently of the sequence,
 `smu_boot_gate_ref_model` requires the boot gate open and the sense complete at
 every fuse-reset release `smu_reset_pin_monitor` observes, so a release inside the
 gated window fails the scoreboard as well as the sequence.
@@ -1213,7 +1215,7 @@ gated window fails the scoreboard as well as the sequence.
 |`CHK-TIMEOUT-PATHS` |Both bounded waits (primary release while gated; fuse release after ungate) completed within RELEASE_BOUND clk_smu_i cycles and none expired: the compare is the list of (label, expired, bound) records against the expected list, so a missing, expired or differently bounded wait fails
 |`CHK-NONVAC` |Ordered fence from DUT edges, simulation-time stamped: the first rise of `rst_primary_smc_clk_no` precedes the `ext_boot_seq_done_i` drive, and the first rise of `smc_fuse_reset_n_delayed_o` follows both the end of the gated sample window and the ungate drive; a fuse release inside the gated or pre-ungate window fails
 |`CHK-BOOT-SEQ-GATE` |SV-UVM shape only (`--framework uvm`): the gate reads 0 and the fuse reset reads 0 on every one of the 64 gated samples, and the fuse reset releases within the bound after the ungate
-|`CHK-PRIMARY-NOT-GATED` |SV-UVM shape only (`--framework uvm`): the SMC primary reset releases within the bound while the gate still reads 0
+|`CHK-PRIMARY-NOT-GATED` |SV-UVM shape only (`--framework uvm`): the primary reset is low under the cold reset, its 0 -> 1 is observed by the tracker with the gate reading 0 in that clock, and it reads 1 within the bound while the gate still reads 0
 |`CHK-TIMEOUT-PATHS` |SV-UVM shape only (`--framework uvm`): the two bounded waits name a finite bound and their last level; none expired
 |`CHK-NONVAC` |SV-UVM shape only (`--framework uvm`): the ordered step fence S1<S2<S3<S4<TIMEOUT<PASS and the DUT-edge fence: first primary rise before the ungate, first fuse rise after the gated window's end and after the ungate
 |`CHK-SB-MIN-ACTIVITY` |SV-UVM shape only (`--framework uvm`): the `boot_gate` feature compares at least the one release the pass causes, from the always-on scoreboard
@@ -1355,9 +1357,9 @@ gated window fails the scoreboard as well as the sequence.
 
 The scenario has two implementations that share this claim: the cocotb test body
 `smu_jtag_reset_override_test.py` and the SV-UVM `smu_jtag_reset_override_test_seq.svh`
-(`--framework uvm`). The SV-UVM shape derives the TDR geometry from the RTL struct
-types `smu.sv` hands the DTP (`$bits` of the SMC and SEP `.ovrd` halves and of the
-PTAP default external type), scans the 155-bit register through the wide DR path,
+(`--framework uvm`). The SV-UVM shape holds the TDR geometry as a DV-owned table
+transcribed from the integrator guide (68 SMC ports, 8 SEP ports, one external port,
+two bits each plus `reset_hold`), scans the 155-bit register through the wide DR path,
 and reads the override exports and the whole SMC slice (`jtag_smc_reset_ctrl.ovrd`
 / `.val`) through `smu_tb_if`; it also confirms the SMC primary reset releases again
 once the cold override is cleared, so the next pass starts from the same baseline.
@@ -2313,8 +2315,9 @@ JTAG VIP on the primary TAP, samples the DUT's one-hot TAP state through
 `dtp_tb_if`, and runs the scenario at least 16 passes in one simulation, the
 power-on reset leg restoring the released-reset baseline before the next pass.
 Independently of the sequence, the embedded DTP's reference models predict the
-decoded instruction of every IR load, the IDCODE capture from `smu_pkg::DefaultCfg`
-and the BYPASS capture from the shifted pattern, and the always-on scoreboard pairs
+decoded instruction of every IR load, the IDCODE capture from the documented default
+identification fields (all zero over the marker bit) and the BYPASS capture from the
+shifted pattern, and the always-on scoreboard pairs
 them with the reconstructed scans.
 
 *Checkers*:
@@ -2585,8 +2588,9 @@ The scenario has two implementations that share this claim: the cocotb
 `smu_smc_dtp_jtag2axi_smoke_test_seq.py` and the SV-UVM
 `smu_smc_dtp_jtag2axi_smoke_test_seq.svh` (`--framework uvm`). The SV-UVM shape packs
 and decodes every bridge register through the `dtp_env_pkg` codec the DTP bench
-uses for this bridge, takes the expected CAPS word from `smu_pkg::DefaultCfg` and
-the addresses from the generated `smc_top_addrmap_pkg`, runs the directed patterns
+uses for this bridge, takes the expected CAPS word from the integrator guide's
+default parameters and the addresses from the generated `smc_top_addrmap_pkg`, runs
+the directed patterns
 on pass 0 and seeded patterns on the later passes, and raises the TCK period to at
 least four SMU clocks (the cocotb `min_jtag_smu_ratio` clamp). Independently of the
 sequence, the embedded DTP's `dtp_jtag2axi_req_ref_model` pairs every transaction a
@@ -2606,7 +2610,7 @@ with the completion the bus returned.
 |`CHK-JTAG2AXI-SMOKE-SERIES-INCR` |Evidence token, emitted only after the compares it names have held
 |assertion |jtag2axi_smoke incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |`CHK-JTAG2AXI-SMOKE-JTAG-READY` |SV-UVM shape only (`--framework uvm`): IDCODE equals the SMU-configured value after the TAP reset
-|`CHK-JTAG2AXI-SMOKE-GATE-OPEN` |SV-UVM shape only (`--framework uvm`): the bridge's lifecycle gate reads 0 and SMC_JTAG2AXI_CAPS equals the geometry `smu_pkg::DefaultCfg` configures (rd/wr pipeline depth 3, 8-byte data, 56-bit address, AXI4)
+|`CHK-JTAG2AXI-SMOKE-GATE-OPEN` |SV-UVM shape only (`--framework uvm`): the bridge's lifecycle gate reads 0 and SMC_JTAG2AXI_CAPS equals the geometry the integrator guide's default parameters state (rd/wr pipeline depth 3, 8-byte data, 56-bit address, AXI4)
 |`CHK-JTAG2AXI-SMOKE-SCRATCH` |SV-UVM shape only (`--framework uvm`): SINGLE_OP 32-bit write and readback of CPU_CTRL SCRATCH_15, both SUCCESS, data equal
 |`CHK-JTAG2AXI-SMOKE-SPM` |SV-UVM shape only (`--framework uvm`): SINGLE_OP 64-bit write and readback of the SPM base word, both SUCCESS, data equal
 |`CHK-JTAG2AXI-SMOKE-SERIES-INCR` |SV-UVM shape only (`--framework uvm`): SERIES_CTRL + SERIES_DATA_INCR write then readback at SPM+0x40, both SUCCESS, data equal

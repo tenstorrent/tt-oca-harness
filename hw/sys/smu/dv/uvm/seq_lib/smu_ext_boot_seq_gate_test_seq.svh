@@ -47,6 +47,8 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
   protected realtime m_t_fuse_rise;
   protected realtime m_t_gated_end;
   protected realtime m_t_ungate;
+  // The boot-gate level sampled in the clock of the first primary rise.
+  protected logic    m_gate_at_primary_rise;
   // The first-rise tracker forked for the pass.
   protected process  m_tracker;
 
@@ -65,13 +67,8 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
 
     m_t_primary_rise = -1;
     m_t_fuse_rise    = -1;
+    m_gate_at_primary_rise = 1'bx;
     run_preload();
-    fork
-      begin
-        m_tracker = process::self();
-        track_first_rises();
-      end
-    join_none
     run_gated_window();
     run_primary_not_gated();
     run_ungate();
@@ -94,23 +91,40 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
     finalize_evidence();
   endtask
 
-  // S1: gate shut, cold reset released with TRST high, the settle.
+  // S1: gate shut, cold reset asserted (both tracked resets confirmed low),
+  // the first-rise tracker armed, then the release with TRST high and the
+  // settle.
   protected task run_preload();
     mark_step("S1", {
               "PRELOAD: ext_boot_seq_done_i=0; cold reset released with TRST high; ",
               "powergood=1 (fuse reset gated)"
               });
     tb_vif.ext_boot_seq_done <= 1'b0;
-    pulse_cold_reset();
+    tb_vif.rst_cold_n <= 1'b0;
+    wait_ref_cycles(test_cfg.cold_pulse_ref_cycles);
+    check_pin(ChkPrimaryNotGated, "primary reset asserted by the cold reset",
+              "rst_primary_smc_clk_n", 1'b0);
+    check_pin(ChkBootSeqGate, "fuse reset asserted by the cold reset", "fuse_reset_n_delayed",
+              1'b0);
+    fork
+      begin
+        m_tracker = process::self();
+        track_first_rises();
+      end
+    join_none
+    tb_vif.rst_cold_n <= 1'b1;
     wait_ref_cycles(test_cfg.post_reset_settle_cycles);
   endtask
 
-  // Stamp the first SMU clock at which each tracked output samples 1.
+  // Stamp the first SMU clock at which each tracked output samples 1, and
+  // the boot-gate level in that clock for the primary reset.
   protected task track_first_rises();
     forever begin
       @(posedge tb_vif.clk_smu);
-      if ((m_t_primary_rise < 0) && pin_is("rst_primary_smc_clk_n", 1'b1))
-        m_t_primary_rise = $realtime;
+      if ((m_t_primary_rise < 0) && pin_is("rst_primary_smc_clk_n", 1'b1)) begin
+        m_t_primary_rise      = $realtime;
+        m_gate_at_primary_rise = pin("ext_boot_seq_done");
+      end
       if ((m_t_fuse_rise < 0) && pin_is("fuse_reset_n_delayed", 1'b1)) m_t_fuse_rise = $realtime;
     end
   endtask
@@ -132,22 +146,28 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
                    $sformatf("samples=%0d", GatedSamples));
   endtask
 
-  // S3: the primary reset is not what the pin gates.
+  // S3: the primary reset is not what the pin gates: its release was seen
+  // by the tracker armed while the cold reset held it low, with the gate
+  // still shut in that clock. The bounded poll records the site; the level
+  // it finds is not the proof, the tracked edge is.
   protected task run_primary_not_gated();
     int cycles;
     mark_step("S3", "NEGATIVE CONTROL: rst_primary_smc_clk_no still releases while boot-gated");
     wait_pin_level("rst_primary_smc_clk_n", 1'b1, ReleaseBound, "primary_released_while_boot_gated",
                    cycles);
-    // The poll and the tracker sample the same clock edge, and the compare
-    // below can run before the tracker resumes, so the poll stamps the edge
-    // when it is the first to see the 1.
-    if ((cycles >= 0) && (m_t_primary_rise < 0) && pin_is("rst_primary_smc_clk_n", 1'b1))
-      m_t_primary_rise = $realtime;
-    check_evidence(ChkPrimaryNotGated, "primary released while gated",
-                   64'(pin_is("rst_primary_smc_clk_n", 1'b1)), 64'd1, $sformatf(
-                   "cycles=%0d gate=%0b", cycles, pin_is("ext_boot_seq_done", 1'b1)));
-    check_evidence(ChkPrimaryNotGated, "gate still shut", 64'(pin_is("ext_boot_seq_done", 1'b0)),
-                   64'd1);
+    if ((cycles >= 0) && (m_t_primary_rise < 0) && pin_is("rst_primary_smc_clk_n", 1'b1)) begin
+      m_t_primary_rise       = $realtime;
+      m_gate_at_primary_rise = pin("ext_boot_seq_done");
+    end
+    check_evidence(ChkPrimaryNotGated, "primary 0->1 observed after the cold release",
+                   64'(m_t_primary_rise >= 0), 64'd1, $sformatf("primary_release=%0t cycles=%0d",
+                                                                m_t_primary_rise, cycles));
+    void'(m_check.expect_true(ChkPrimaryNotGated, m_gate_at_primary_rise === 1'b0, $sformatf(
+                              "gate shut in the clock of the primary release observed=%b expected=0"
+                              ,
+                              m_gate_at_primary_rise)));
+    check_pin(ChkPrimaryNotGated, "primary released while gated", "rst_primary_smc_clk_n", 1'b1);
+    check_pin(ChkPrimaryNotGated, "gate still shut", "ext_boot_seq_done", 1'b0);
   endtask
 
   // S4: the ungate, then the release.
@@ -160,9 +180,8 @@ class smu_ext_boot_seq_gate_test_seq extends smu_base_test_seq;
                    cycles);
     if ((cycles >= 0) && (m_t_fuse_rise < 0) && pin_is("fuse_reset_n_delayed", 1'b1))
       m_t_fuse_rise = $realtime;
-    check_evidence(ChkBootSeqGate, "fuse reset released after ungate",
-                   64'(pin_is("fuse_reset_n_delayed", 1'b1)), 64'd1, $sformatf(
-                   "cycles=%0d gated_samples=%0d", cycles, GatedSamples));
+    check_pin(ChkBootSeqGate, "fuse reset released after ungate", "fuse_reset_n_delayed", 1'b1,
+              $sformatf("cycles=%0d gated_samples=%0d", cycles, GatedSamples));
   endtask
 
 endclass : smu_ext_boot_seq_gate_test_seq

@@ -118,12 +118,23 @@ class smu_base_test_seq extends ocah_sequence;
                                {name, context_s.len() ? " " : "", context_s}));
   endfunction
 
-  // Comparison of a value wider than 64 bits: the verdict is the equality,
-  // the record carries both values in hex.
-  function void check_evidence_wide(string check_id, string name, bit [255:0] observed,
+  // Comparison of a value wider than 64 bits, four-state on the observed
+  // side: an X lane can satisfy no expectation. The record carries both
+  // values in hex.
+  function void check_evidence_wide(string check_id, string name, logic [255:0] observed,
                                     bit [255:0] expected, string context_s = "");
     void'(m_check.expect_true(check_id, observed === expected, $sformatf(
                               "%s observed=0x%0h expected=0x%0h%s%s", name, observed, expected,
+                              context_s.len() ? " " : "", context_s)));
+  endfunction
+
+  // One named TB-interface pin against a level, four-state: X or Z is
+  // neither level, so a floating export cannot pass a zero expectation.
+  function void check_pin(string check_id, string name, string which, bit level,
+                          string context_s = "");
+    logic observed = pin(which);
+    void'(m_check.expect_true(check_id, observed === level, $sformatf(
+                              "%s observed=%b expected=%b%s%s", name, observed, level,
                               context_s.len() ? " " : "", context_s)));
   endfunction
 
@@ -440,7 +451,7 @@ class smu_base_test_seq extends ocah_sequence;
     bit pattern[] = new[SmuIcResetLen];
     bit observed[];
     foreach (pattern[i]) pattern[i] = image[i];
-    load_ir(jtag_inst_reg_pkg::IC_RESET_INSTR);
+    load_ir(dtp_env_pkg::IC_RESET_INSTR);
     dr_scan_wide(pattern, observed);
     captured = '0;
     foreach (observed[i]) if (i < SmuIcResetLen) captured[i] = observed[i];
@@ -451,7 +462,7 @@ class smu_base_test_seq extends ocah_sequence;
   task debug_control_scan(input bit [SmuDebugControlLen-1:0] image,
                           output bit [SmuDebugControlLen-1:0] captured);
     bit [63:0] observed;
-    load_ir(jtag_inst_reg_pkg::DEBUG_CONTROL_INSTR);
+    load_ir(dtp_env_pkg::DEBUG_CONTROL_INSTR);
     dr_scan(64'(image), SmuDebugControlLen, observed);
     captured = SmuDebugControlLen'(observed);
     `uvm_info(get_type_name(), $sformatf("DEBUG_CONTROL scan: wrote 0x%02h captured 0x%02h",
@@ -711,7 +722,10 @@ class smu_base_test_seq extends ocah_sequence;
       "jtag_boot_stall":         return tb_vif.jtag_boot_stall;
       "jtag_boot_stall_ovrd":    return tb_vif.jtag_boot_stall_ovrd;
       "jtag_ic_reset_ext_ovrd":  return tb_vif.jtag_ic_reset_ext_ovrd;
+      "jtag_ic_reset_ext_ctrl_n": return tb_vif.jtag_ic_reset_ext_ctrl_n;
       "jtag_ic_reset_smc_ovrd":  return tb_vif.jtag_ic_reset_smc_ovrd;
+      "jtag_ic_reset_smc_ctrl_n": return tb_vif.jtag_ic_reset_smc_ctrl_n;
+      "smc_jtag2axi_security_disable": return tb_vif.smc_jtag2axi_security_disable;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown pin %s", which))
         return 1'bx;

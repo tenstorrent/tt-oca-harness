@@ -103,12 +103,11 @@ class smu_smc_dtp_jtag2axi_smoke_test_seq extends smu_base_test_seq;
     goto_state(OCAH_JTAG_RUN_TEST_IDLE);
     confirm_state_tck(OCAH_JTAG_RUN_TEST_IDLE, "s1_rti", 1'b0, last);
     idle_tck(IdleAfterReset);
-    load_ir(jtag_inst_reg_pkg::IDCODE_INSTR);
+    load_ir(dtp_env_pkg::IDCODE_INSTR);
     dr_scan(64'h0, IdcodeWidth, observed);
     check_evidence(ChkJtagReady, "IDCODE", observed[31:0],
                    smu_ptap_expected_idcode(test_cfg.ptap_idcode_negative));
-    check_evidence(ChkGateOpen, "smc_jtag2axi_security_disable",
-                   64'(tb_vif.smc_jtag2axi_security_disable), 64'd0);
+    check_pin(ChkGateOpen, "smc_jtag2axi_security_disable", "smc_jtag2axi_security_disable", 1'b0);
     read_j2a_caps(t, caps);
     check_evidence(ChkGateOpen, "SMC_JTAG2AXI_CAPS", 64'(caps), 64'(SmuExpectedSmcJ2aCaps),
                    "fields=rd_pl|wr_pl|data_size|addr_size|bus_type");

@@ -262,7 +262,12 @@ protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
 idle value `smu_base_test.drive_idle_inputs` uses, the `uvm_config_db`
 publication of every virtual interface, and `run_test()`. The outbound SMN
 responder interface `u_axi_out_if` lives above the harness block, in both
-shapes.
+shapes. The harness also scopes the embedded SEP's assertions off
+(`$assertoff` on `u_dut.u_smu.gen_sep.u_sep`): the SEP's checks are the SEP
+bench's contract, the cocotb flow ignores the same class through the sim
+config's `[pass_fail]` patterns, and under UVM the simulator reports an
+assertion failure through the UVM report server, where it would count as an
+error of the run.
 
 The class library mirrors the cocotb conventions under `uvm/` with identical
 basenames, one class per file, on the shared framework bases of
@@ -290,10 +295,11 @@ basenames, one class per file, on the shared framework bases of
   lifecycle state, the DTP debug-control and IC_RESET exports as the SMC
   receives them, the bridge lifecycle gate, the cold-reset assertion counter,
   the SVA enable.
-. `uvm/env/smu_env_pkg.sv` -- `smu_types` (the PTAP IDCODE from
-  `smu_pkg::DefaultCfg`, the IC_RESET TDR geometry from the RTL struct types
-  `smu.sv` hands the DTP, the DEBUG_CONTROL layout, the SMC-fabric JTAG2AXI
-  geometry and the SMC addresses the scenarios reach), `smu_test_cfg`,
+. `uvm/env/smu_env_pkg.sv` -- `smu_types` (the PTAP IDCODE, the IC_RESET
+  TDR geometry, the DEBUG_CONTROL layout and the SMC-fabric JTAG2AXI
+  geometry as DV-owned constants transcribed from the integrator guide and
+  the PTAP document, the TAP opcodes from the DTP bench's transcription, and
+  the SMC addresses from the generated address map), `smu_test_cfg`,
   `smu_env_cfg`, `smu_virtual_sequencer`, the items, `smu_reset_pin_monitor`,
   the three SMU-level reference models, `smu_scoreboard`, and `smu_env`.
 . `uvm/seq_lib/smu_seq_lib_pkg.sv` -- the reusable JTAG operations
