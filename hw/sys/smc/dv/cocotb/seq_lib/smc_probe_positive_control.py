@@ -387,8 +387,8 @@ async def prove_axil_external_active_probe(seq: SmcCsrSeq) -> None:
     external-window demux gives the adopter PLL/PVT/GPIO-ctrl window a real
     responder, so a frontdoor CSR read into that window makes the master valid
     and completes. ``smc_periph_axi_lite_xbar.sv:145-149`` routes
-    ``SMC_EXTERNAL_BASE_ADDR + EFUSE_SHIM_SIZE .. SMC_EXTERNAL_BASE_ADDR +
-    SMC_EXTERNAL_SIZE`` to the external port, and
+    ``SMC_TOP_SMC_EXTERNAL_BASE_ADDR + EFUSE_SHIM_SIZE .. SMC_TOP_SMC_EXTERNAL_BASE_ADDR +
+    SMC_TOP_SMC_EXTERNAL_SIZE`` to the external port, and
     ``smc_ip_integration.sv`` maps window offset 0x2000 to ``pll_wrap``, which
     answers OKAY with data 0.
 

@@ -172,18 +172,16 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
         )
         cocotb.log.info(
             "CHK-DECODE-HOLE-%s: an unmapped write and read at 0x%08x, past the decoded "
-            "extent ending 0x%08x and inside the aperture ending 0x%08x, were refused and left "
-            "live 0x%08x holding its seed 0x%08x without reading it back (write %s, read %s "
-            "0x%08x)",
+            "extent ending 0x%08x and inside the aperture ending 0x%08x, were refused "
+            "(write %s, read %s) and left live 0x%08x holding its seed 0x%08x",
             label,
             hole.dead_addr,
             hole.mapped_end,
             hole.aperture_end,
-            hole.live_addr,
-            after,
             _RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code),
             _RESP_NAME.get(dead_rd.resp_code, dead_rd.resp_code),
-            dead_data,
+            hole.live_addr,
+            after,
         )
 
     async def body(self) -> None:
