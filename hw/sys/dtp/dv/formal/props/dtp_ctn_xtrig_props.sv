@@ -126,9 +126,7 @@ module dtp_ctn_xtrig_props #(
                                    !hs_ack_out_i),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_hs_dst_is_one_pulse,
-                  `OCAH_FV_IMPLIES($past(rst_ni) && hs_dst_i && $past(hs_dst_i),
-                                   $past(receiver_state_i) == R_ACK_ASSERTED &&
-                                   !$past(req_in_sync_i)) &&
+                  !($past(rst_ni) && hs_dst_i && $past(hs_dst_i)) &&
                   `OCAH_FV_IMPLIES($past(rst_ni) && `OCAH_FV_ROSE(hs_dst_i),
                                    $past(receiver_state_i) == R_IDLE && $past(req_in_sync_i)),
                   clk_i, rst_ni)
