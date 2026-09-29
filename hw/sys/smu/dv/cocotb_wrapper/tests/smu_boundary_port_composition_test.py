@@ -9,7 +9,7 @@ an evidence token takes its expected value from a specification: the port
 table's literal widths, the parameter defaults in
 `doc/integrator/src/smu.adoc` "SMU Default Parameters", the SMC port table's
 external interrupt count and system AXI input ID width, and the generated
-`reset_unit` register header for `SS_CONFIG`. seq_lib/smu_compose_helpers.py
+`reset_unit` register header for `SS_CONFIG`. cocotb/seq_lib/smu_compose_helpers.py
 names the source of each constant. The SMN struct widths and the
 crossbar-side and SEP-side ID widths have no specification in this tree and
 are checked as untokened drift. The `SMU-<feature>.S<n>` ids the CHK-SMU-*

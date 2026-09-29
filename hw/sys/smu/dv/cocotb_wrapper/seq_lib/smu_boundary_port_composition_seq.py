@@ -68,8 +68,8 @@ CTP_LEGS = ("dout_o", "dout_en_o", "din_i", "din_en_o")
 INERT_WINDOW_CYCLES = 64
 # CT_Req_out is a wire-OR wire; the generated cross-trigger header's
 # CONFIG.INVERT reset selects its sense, and INVERT=0 makes it active-low, so
-# with no chiplet pulling every req_out lane rests high. The other three
-# groups are tied to zero by the wrapper.
+# with no chiplet pulling every req_out lane rests high. The wrapper passes
+# the other three groups through, and the bench holds them at zero.
 CONFIG_INVERT_RESET = cross_trigger_u32("CROSS_TRIGGER_PORT__CONFIG__INVERT_reset")
 
 # hw/sys/smc/regs/gen/c/blocks/reset_unit.h: the SS_CONFIG field the port
