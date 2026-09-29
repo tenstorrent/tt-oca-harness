@@ -2654,6 +2654,13 @@ def validate_selected_tool_available(
 ) -> None:
     if args.dry_run:
         return
+    # The flist stage generates bender filelists; it does not invoke the simulator binary.
+    # Skip the binary check when only flist/filelist stages are requested so the update-
+    # integration-filelists workflow (and any other filelist-only caller) can run without
+    # a simulator installation.
+    requested = getattr(args, "stage", None) or []
+    if requested and all(s in {"flist", "filelist"} for s in requested):
+        return
     launch = tool_launch(simulators, tool)
     if locate_tool(launch, launch_env(launch)):
         return
