@@ -26,6 +26,7 @@ from seq_lib.sep_entropy_pool_seq import (
     CAUSE_FILL_STALL,
     CAUSE_POOL_LOW,
     FIFO_DEPTH,
+    HALF_UPPER,
     IRQ_FILL_STALL,
     IRQ_POOL_LOW,
     POOL_IRQ_CAUSE,
@@ -97,6 +98,101 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 return nxt
         raise AssertionError("EDN acks did not stop with pool not full after EDN_ENABLE=0")
 
+    async def _capture_pool_beats(self) -> None:
+        """Record every 32-bit EDN beat the pool accepts, in order.
+
+        The pool packs two native EDN beats into each 64-bit word. This record
+        is the reference CHK-HALF-READ grades a popped word against. It reads
+        the signed-off ``pool_edn_*`` observation ports and drives nothing.
+        """
+        top = cocotb.top
+        while True:
+            await RisingEdge(top.clk_i)
+            await ReadOnly()
+            req, ack = top.pool_edn_req_o.value, top.pool_edn_ack_o.value
+            if not (req.is_resolvable and ack.is_resolvable):
+                continue
+            if int(req) and int(ack):
+                bus = top.pool_edn_bus_o.value
+                if not bus.is_resolvable:
+                    raise AssertionError("pool_edn_bus_o X/Z on an accepted pool EDN beat")
+                self._pool_beats.append(int(bus) & 0xFFFF_FFFF)
+
+    def _pair_index(self, word: int) -> list[tuple[int, bool]]:
+        """Each (i, hi_first) where ``word`` packs captured beats i and i+1."""
+        beats = self._pool_beats
+        hits = []
+        for i in range(len(beats) - 1):
+            lo_first = (beats[i + 1] << 32) | beats[i]
+            hi_first = (beats[i] << 32) | beats[i + 1]
+            if word == lo_first:
+                hits.append((i, False))
+            if word == hi_first:
+                hits.append((i, True))
+        return hits
+
+    async def _check_half_reads(self, pool: SepEntropyPool) -> None:
+        """CHK-HALF-READ: a 32-bit beat at a register's upper word is refused.
+
+        ``sep_entropy_pool.rdl`` gives every register ``accesswidth = 64``. The
+        refused read must return RDATA=0, must not pop, and must not disturb the
+        FIFO: the 64-bit pop after it returns the word that follows the pop
+        before it in the captured EDN beat stream.
+        """
+        level0 = pool_level(await pool.status())
+        assert level0 >= 3, f"CHK-HALF-READ FAIL: precondition needs >=3 pool words, level={level0}"
+        before = await pool.access(POOL_POP)
+        assert before.resp_code == RESP_OKAY, f"pre-half pop resp={before.resp_code}"
+        level1 = pool_level(await pool.status())
+        assert level1 == level0 - 1, f"pre-half pop level {level0} -> {level1}"
+        hits = self._pair_index(before.rdata)
+        assert len(hits) == 1, (
+            f"CHK-HALF-READ FAIL: popped word 0x{before.rdata:016x} matches {len(hits)} "
+            f"adjacent pairs of the {len(self._pool_beats)} captured pool EDN beats, "
+            f"expected exactly one"
+        )
+        idx, hi_first = hits[0]
+        mon = self.env.axi_monitor
+        mon.open_error_rdata_window()
+        try:
+            for label, addr in HALF_UPPER:
+                half = await pool.access(addr, expect_error=True, nbytes=4)
+                assert half.resp_code == RESP_SLVERR and half.rdata == 0 and not half.timed_out, (
+                    f"CHK-HALF-READ FAIL: 32-bit read of the {label} upper word "
+                    f"0x{addr:08x} resp={half.resp_code} rdata=0x{half.rdata:x} "
+                    f"timed_out={half.timed_out}, expected SLVERR + RDATA=0"
+                )
+                level = pool_level(await pool.status())
+                assert level == level1, (
+                    f"CHK-HALF-READ FAIL: 32-bit read of the {label} upper word "
+                    f"changed fifo_level {level1} -> {level}; a refused read popped"
+                )
+        finally:
+            mon.close_error_rdata_window()
+        after = await pool.access(POOL_POP)
+        assert after.resp_code == RESP_OKAY, f"post-half pop resp={after.resp_code}"
+        nxt = self._pool_beats[idx + 2 : idx + 4]
+        assert len(nxt) == 2, "CHK-HALF-READ FAIL: no captured beats after the pre-half word"
+        want = (nxt[0] << 32) | nxt[1] if hi_first else (nxt[1] << 32) | nxt[0]
+        assert after.rdata == want, (
+            f"CHK-HALF-READ FAIL: 64-bit pop after the refused half reads returned "
+            f"0x{after.rdata:016x}, expected the next packed word 0x{want:016x}"
+        )
+        level2 = pool_level(await pool.status())
+        assert level2 == level1 - 1, f"post-half pop level {level1} -> {level2}"
+        self.logger.info(
+            "CHK-HALF-READ PASS: %d 32-bit upper-word reads (%s) -> SLVERR RDATA=0, "
+            "fifo_level held at %d; the next 64-bit pop returned 0x%016x, the word "
+            "after 0x%016x in the captured EDN stream (beat %d, %s)",
+            len(HALF_UPPER),
+            ",".join(f"0x{a:08x}" for _l, a in HALF_UPPER),
+            level1,
+            after.rdata,
+            before.rdata,
+            idx,
+            "first beat high" if hi_first else "first beat low",
+        )
+
     async def _wait_pool_low(self, pool: SepEntropyPool, expect: int, *, iters: int = 40000) -> int:
         """Wait on the live pool_low flag, not on an occupancy threshold."""
         for _ in range(iters):
@@ -128,6 +224,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         self._edge_levels: list[int] = []
+        self._pool_beats: list[int] = []
         cfg = SepEntropyPoolCfg(self.random_seed())
         self.logger.info("entropy-pool aperture: %s", cfg.summary())
 
@@ -155,6 +252,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # bit-exact EDN routing (that is sep_esrc_e2e_smoke_test). report()
         # still gates the >=1-beat floor; a started scoreboard that is never
         # asked cannot fail.
+        capture = cocotb.start_soon(self._capture_pool_beats())
         await self.bring_up_entropy(strict=False, score_km=False, score_sinks={"pool": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
@@ -366,6 +464,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         await pool.disable_edn()
         await pool.disable_esrc()
         await self._arm_not_full_no_ack(pool)
+        await self._check_half_reads(pool)
         st_pre = await pool.status()
         level = pool_level(st_pre)
         assert level >= 1, "pool empty before accepted-pop leg"
@@ -424,6 +523,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         )
         self.logger.info("CHK-EMPTY-SLVERR PASS: pop @0x10 -> SLVERR on empty pool")
 
+        capture.cancel()
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report(), (

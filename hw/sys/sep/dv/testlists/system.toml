@@ -162,8 +162,10 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # only; writes SLVERR; unmapped in-window SLVERR+RDATA=0; aggregator [36]
 # high-low-high and [37] first stall after ESRC disable for StallThresh.
 # RANDCFG: extra pops and one unique-dead offset from the run seed; every
-# seed walks the high-bit mirrors of the live registers. Drain-under-fill
-# and stall-duration are not claimed. no_cpu; +skip_fuse_sense +esrc_noise_force.
+# seed walks the high-bit mirrors of the live registers. A 32-bit read of each
+# register's upper word is SLVERR+RDATA=0 and neither pops nor disturbs the FIFO.
+# Drain-under-fill and stall-duration are not claimed. no_cpu; +skip_fuse_sense
+# +esrc_noise_force.
 name = "sep_entropy_pool_aperture_test"
 module = "system.sep_entropy_pool_aperture_test"
 seed = 1
@@ -273,6 +275,8 @@ args = ["+skip_fuse_sense"]
 # depends on the sensed lc_state); the host then writes DEMOTE_1 to flip
 # PROD -> PROD_DBG_1 and proves the SMN-inbound external master (m_axi, which
 # traverses u_inbound_filter) is blocked at sep_debug=0 and allowed at sep_debug=1.
+# With the filter bypassed the port reaches Scratch SRAM and gets DECERR at the
+# Boot ROM, Reset Ctrl, ICCM, DCCM, PIC and AP/STEE remap regions.
 # no_cpu (host drives both the CPU-LSU control bus and the external probe master).
 name = "sep_lcc_uvm_inbound_filter_gating_test"
 module = "lcc.sep_lcc_uvm_inbound_filter_gating_test"
@@ -363,7 +367,8 @@ args = ["+skip_fuse_sense"]
 
 [[tests]]
 # Intra-block dead-space decode on CSR windows larger than REG_MAP_SIZE
-# (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI).
+# (DMA, WDT, AES, OTBN, CSRNG, EDN, ESRC, KM mailbox, lifecycle, SPI), and the
+# adopter TRNG window, whose refusal flavour is logged, not graded.
 # An access past allocated size must be refused and must not change a
 # live register; do not XFAIL. CHK-DEADSPACE-BURST asserts the same refusal
 # on a later beat of a burst that ends past the window's extent.

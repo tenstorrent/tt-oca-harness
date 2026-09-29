@@ -313,8 +313,10 @@ args = ["+skip_fuse_sense"]
 # 64-bit writes land both words, WSTRB 0x0F / 0xF0 land one word and leave the
 # other, every partial-word strobe answers SLVERR with the register unchanged,
 # and a 64-bit beat with one whole and one partial word writes the whole word
-# and answers SLVERR. RANDCFG: data values from the run seed; every size,
-# offset and strobe is walked. no_cpu; +skip_fuse_sense.
+# and answers SLVERR. Past the register map (0xC018) a word access is OKAY,
+# reads 0 and moves no register; a partial-word write is SLVERR. RANDCFG: data
+# values and two dead words from the run seed; every size, offset and strobe is
+# walked. no_cpu; +skip_fuse_sense.
 name = "sep_abr_access_size_test"
 module = "crypto.sep_abr_access_size_test"
 seed = 1

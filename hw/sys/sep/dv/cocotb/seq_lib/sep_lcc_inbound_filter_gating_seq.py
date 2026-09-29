@@ -36,9 +36,10 @@ the test). Offsets mirror ``hw/sys/sep/regs/blocks/sep_lifecycle_ctrl/sep_lifecy
 from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_axi_decode_map import spec_regions
 from env.sep_lcc_golden import LCC_DEMOTE_1, LCC_DEMOTE_2, LCC_FEAT_CTRL
 from pyuvm import uvm_sequence
-from sep_reg_meta import SEP_LIFECYCLE_CTRL
+from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
 # SEP-local lifecycle-controller block. The LCC register map lives in
 # env.sep_lcc_golden (single source of truth).
@@ -173,3 +174,37 @@ class SepExtAxiProbeSeq(uvm_sequence):
         self.resp_code = item.resp_code
         self.timed_out = item.timed_out
         self.rdata = item.rdata & 0xFFFF_FFFF
+
+
+def _spec_row(unit: str):
+    rows = [r for r in spec_regions() if r.unit == unit]
+    if len(rows) != 1:
+        raise RuntimeError(f"memory-map table has {len(rows)} rows for {unit!r}, want 1")
+    return rows[0]
+
+
+def _unreachable() -> tuple[tuple[str, int], ...]:
+    """First and last word of each unit the inbound port has no path to.
+
+    ``hw/sys/sep/doc/fabric.adoc`` [[sep-axi-connectivity]]
+    (``hw/sys/sep/doc/assets/sep_axi_connectivity.svg``): the System Interface
+    initiator has no connection to CPU TCM, Reset Ctrl or System Periph (which
+    holds the AP/STEE remap regions), and the Boot ROM path serves only CPU IFI
+    and LSU. ICCM, DCCM and the PIC are SEP CPU resources that no crossbar
+    target reaches.
+    Unit extents come from the DV-owned memory-map table in
+    ``env/sep_axi_decode_map.py`` and, for the ROM, the generated export.
+    """
+    rom = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
+    out = [("Boot ROM", rom), ("Boot ROM", rom + sym("SEP_BOOT_ROM_MEM_SIZE") - 4)]
+    for unit in ("RST_CTRL", "ICCM", "DCCM", "PIC", "AP Remap Region", "STEE Remap Region"):
+        row = _spec_row(unit)
+        out += [(unit, row.base), (unit, (row.end_addr - 3) & ~0x3)]
+    return tuple(out)
+
+
+# (unit, word address) the SMN inbound port must not reach, walked in order.
+INBOUND_UNREACHABLE = _unreachable()
+# Reachable positive control on the same port: Scratch SRAM is connected to the
+# System Interface initiator in the same connectivity matrix.
+INBOUND_REACHABLE_SRAM = sym("SEP_SRAM_MEM_BASE_ADDR") + 0x100

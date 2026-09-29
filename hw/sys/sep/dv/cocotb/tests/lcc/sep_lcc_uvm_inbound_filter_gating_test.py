@@ -41,6 +41,17 @@ Checkers (each logs positive evidence):
     frontdoor (FEAT_CTRL[0]) identity with the filter skip.
   * CHK-NONVAC     both block and allow outcomes observed (the A->B transition is
     real, not a single stuck state).
+  * CHK-DBG-REACH  with the filter bypassed, an external write and read-back of a
+    Scratch SRAM word return OKAY and the written value, and the control bus
+    reads the same value: the port reaches a unit the connectivity matrix
+    connects to it.
+  * CHK-DBG-UNREACHABLE with the filter still bypassed, an external read and
+    write of the first and last word of the Boot ROM, Reset Ctrl, ICCM, DCCM,
+    PIC, AP remap and STEE remap regions each return DECERR, and the refused
+    write to SW_RESET_N leaves it unchanged on the control bus. The filter is
+    not in the path, so the refusal is the fabric's: ``fabric.adoc``
+    [[sep-axi-connectivity]] gives the System Interface initiator no path to
+    these units.
 
 FEAT_CTRL is read frontdoor against the 64-bit lifecycle golden. A blocked
 external read must return DECERR; an allowed external read must return the
@@ -52,6 +63,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from env.sep_axi_agent import SepAxiOp
 from env.sep_lcc_golden import (
     DBG1_MASK,
     DBG2_MASK,
@@ -60,13 +72,18 @@ from env.sep_lcc_golden import (
     lc_state_name,
 )
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_inbound_filter_rule_seq import ext_read_seq, ext_write_seq
 from seq_lib.sep_lcc_inbound_filter_gating_seq import (
+    INBOUND_REACHABLE_SRAM,
+    INBOUND_UNREACHABLE,
     LCC_FEAT_CTRL,
     RESP_DECERR,
     SepExtAxiProbeSeq,
     SepLccDemoteSeq,
     SepLccFeatCtrlCheckSeq,
 )
+from seq_lib.sep_sw_reset_seq import SEP_RESET_CTRL_SW_RESET_N, SW_RESET_N_BIT
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -81,10 +98,91 @@ _MAX_SENSE_CYCLES = 20_000
 _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0C
 _SYS_DIS = 0x00FF_00FF_00FF_00FC
 
+# Distinctive Scratch SRAM pattern for the reachable control: neither zero (the
+# power-up fill) nor all-ones.
+_SRAM_PATTERN = 0xA5C3_3C5A
+
 
 @pyuvm.test()
 class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
     """sep_debug gates the SEP inbound filter: external AXI blocked/allowed."""
+
+    async def _ctl_read(self, addr: int) -> int:
+        seq = SepAxiAccessSeq("ctl_rd", op=SepAxiOp.READ, addr=addr, length=4, size=2)
+        await self.start_seq(seq)
+        assert seq.resp_code == 0 and not seq.timed_out, (
+            f"control-bus read 0x{addr:08x} resp={seq.resp_code} timed_out={seq.timed_out}"
+        )
+        return seq.rdata & 0xFFFF_FFFF
+
+    async def _check_dbg_reach(self) -> None:
+        """CHK-DBG-REACH / CHK-DBG-UNREACHABLE at sep_debug=1 (filter bypassed)."""
+        # ---- CHK-DBG-REACH: a connected unit answers on the same port ----
+        wr = ext_write_seq(INBOUND_REACHABLE_SRAM, _SRAM_PATTERN)
+        await self.start_ext_seq(wr)
+        rd = ext_read_seq(INBOUND_REACHABLE_SRAM)
+        await self.start_ext_seq(rd)
+        ctl = await self._ctl_read(INBOUND_REACHABLE_SRAM)
+        assert (
+            wr.resp_code == 0
+            and rd.resp_code == 0
+            and (rd.rdata & 0xFFFF_FFFF) == _SRAM_PATTERN
+            and ctl == _SRAM_PATTERN
+        ), (
+            f"CHK-DBG-REACH FAIL: external write/read of Scratch SRAM 0x"
+            f"{INBOUND_REACHABLE_SRAM:08x} answered wr={wr.resp_code} rd={rd.resp_code} "
+            f"rdata=0x{rd.rdata & 0xFFFF_FFFF:08x}, control bus reads 0x{ctl:08x}; "
+            f"expected OKAY and 0x{_SRAM_PATTERN:08x}"
+        )
+        self.logger.info(
+            "CHK-DBG-REACH PASS: external write+read of Scratch SRAM 0x%08x OKAY, "
+            "0x%08x read back on both the external port and the control bus",
+            INBOUND_REACHABLE_SRAM,
+            _SRAM_PATTERN,
+        )
+
+        # ---- CHK-DBG-UNREACHABLE: units with no inbound path ----
+        rst_before = await self._ctl_read(SEP_RESET_CTRL_SW_RESET_N)
+        # Toggle the OTBN reset bit: a write that lands moves the readback.
+        rst_poke = rst_before ^ (1 << SW_RESET_N_BIT["otbn"])
+        fails: list[str] = []
+        for unit, addr in INBOUND_UNREACHABLE:
+            rd = ext_read_seq(addr)
+            await self.start_ext_seq(rd)
+            wdata = rst_poke if addr == SEP_RESET_CTRL_SW_RESET_N else _SRAM_PATTERN
+            wr = ext_write_seq(addr, wdata)
+            await self.start_ext_seq(wr)
+            self.logger.info(
+                "INBOUND-UNREACHABLE %s 0x%08x: read resp=%d rdata=0x%08x, write resp=%d",
+                unit,
+                addr,
+                rd.resp_code,
+                rd.rdata & 0xFFFF_FFFF,
+                wr.resp_code,
+            )
+            if rd.resp_code != RESP_DECERR or rd.timed_out:
+                fails.append(f"{unit} read 0x{addr:08x} resp={rd.resp_code}")
+            if wr.resp_code != RESP_DECERR or wr.timed_out:
+                fails.append(f"{unit} write 0x{addr:08x} resp={wr.resp_code}")
+        rst_after = await self._ctl_read(SEP_RESET_CTRL_SW_RESET_N)
+        if rst_after != rst_before:
+            fails.append(
+                f"refused external write moved SW_RESET_N 0x{rst_before:08x}->0x{rst_after:08x}"
+            )
+        assert not fails, (
+            "CHK-DBG-UNREACHABLE FAIL: with the inbound filter bypassed, the SMN inbound "
+            "port must get DECERR at every unit fabric.adoc [[sep-axi-connectivity]] "
+            "does not connect to it: " + "; ".join(fails)
+        )
+        self.logger.info(
+            "CHK-DBG-UNREACHABLE PASS: %d external reads and %d writes over %d units "
+            "(%s) returned DECERR with the filter bypassed; SW_RESET_N held 0x%08x",
+            len(INBOUND_UNREACHABLE),
+            len(INBOUND_UNREACHABLE),
+            len({u for u, _a in INBOUND_UNREACHABLE}),
+            ", ".join(dict.fromkeys(u for u, _a in INBOUND_UNREACHABLE)),
+            rst_before,
+        )
 
     async def run_scenario(self) -> None:
         # Real-sense a PROD OTP image (random elsewhere, pinned disable vectors).
@@ -258,6 +356,8 @@ class sep_lcc_uvm_inbound_filter_gating_test(sep_base_test):
             probe_lo.rdata,
             exp_lo,
         )
+
+        await self._check_dbg_reach()
 
         # ---- SEP_DBG identity + non-vacuity ----
         assert (not probe_prod.resp_ok) and probe_lo.resp_ok, (

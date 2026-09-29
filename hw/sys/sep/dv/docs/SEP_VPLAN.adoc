@@ -311,7 +311,7 @@ never when it was written.
 |`sep_lcc_uvm_inbound_filter_gating_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Proves that the lifecycle security state actually gates the external inbound port — the security-boundary property, not just the register that describes it.
+|Proves that the lifecycle security state actually gates the external inbound port — the security-boundary property, not just the register that describes it. With the filter bypassed, the port still reaches Scratch SRAM and still gets DECERR at the Boot ROM, Reset Ctrl, ICCM, DCCM, PIC and AP/STEE remap regions, which the connectivity matrix gives it no path to.
 |`sep_esrc_e2e_smoke_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -380,7 +380,7 @@ never when it was written.
 |`sep_abr_access_size_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|The ABR access-size rules of `adams_bridge.adoc`: a 64-bit read returns both registers it covers, a narrow read the addressed bytes with every other byte lane zero, a 64-bit write lands exactly the words its strobe covers whole, and every partial-word strobe answers SLVERR without moving the register.
+|The ABR access-size rules of `adams_bridge.adoc`: a 64-bit read returns both registers it covers, a narrow read the addressed bytes with every other byte lane zero, a 64-bit write lands exactly the words its strobe covers whole, and every partial-word strobe answers SLVERR without moving the register. Past the register map (`0xC018`) a word access completes OKAY (read 0, write discarded, no live register moved) and a partial-word write answers SLVERR (`[[abr-aperture-decode]]`).
 |`sep_abr_concurrent_rw_test`
 |no_cpu + external SMN master, +skip_fuse_sense
 |ocah_axi_vip
@@ -388,7 +388,7 @@ never when it was written.
 |`sep_entropy_pool_aperture_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|Every seed walks the high-bit mirrors of the three live registers, refuses writes to each live offset and one unmapped offset, and exercises all three AW/W arrival orders on the shared write path.
+|Every seed walks the high-bit mirrors of the three live registers, refuses writes to each live offset and one unmapped offset, exercises all three AW/W arrival orders on the shared write path, and refuses a 32-bit read of each register's upper word without popping or disturbing the FIFO.
 |`sep_otbn_compute_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -431,7 +431,7 @@ never when it was written.
 |`sep_fabric_deadspace_decode_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
+|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
 |`sep_fabric_local_alias_datapath_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -2647,6 +2647,7 @@ entry requires exactly two.
 . Write and read back the demote register over the control bus.
 . Re-read feature-control; compare against golden; confirm the debug bit is now set.
 . Repeat the external read; require success and the expected value.
+. Still with the filter bypassed, write and read back a Scratch SRAM word from the external port, then read and write the first and last word of each unit the connectivity matrix does not connect to the System Interface initiator; require a decode error each time.
 
 *Checkers*:
 
@@ -2669,6 +2670,10 @@ entry requires exactly two.
 |An external inbound access tracks the debug bit — refused when clear, served when set. This is a behavioural differential on the external port; the filter's internal bypass signal is not sampled.
 |CHK-NONVAC
 |Both the blocked and allowed cases were actually observed in this run.
+|CHK-DBG-REACH
+|With the filter bypassed, an external write and read-back of a Scratch SRAM word answer OKAY with the written value, and the control bus reads the same value. This is the live control for CHK-DBG-UNREACHABLE on the same port and in the same state.
+|CHK-DBG-UNREACHABLE
+|With the filter bypassed, an external read and an external write of the first and last word of the Boot ROM, Reset Ctrl, ICCM, DCCM, PIC, AP remap and STEE remap regions each answer DECERR (no timeout), and the refused write to `SW_RESET_N` leaves it unchanged on the control bus. The filter is not in the path, so the refusal is the fabric's. `hw/sys/sep/doc/fabric.adoc` `[[sep-axi-connectivity]]` gives the System Interface initiator no connection to CPU TCM, Reset Ctrl or System Periph, and the Boot ROM path serves CPU IFI and LSU only; ICCM, DCCM and the PIC are CPU resources. Unit extents come from the DV-owned table in `env/sep_axi_decode_map.py`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -3624,9 +3629,9 @@ rather than a coincidence.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG -- the data values come from the run seed
-(`SepAbrAccessSizeCfg`). Every size, offset and strobe pattern is walked on every
-seed.
+*Randomization*: RANDCFG -- the data values and two dead word offsets past the
+register map come from the run seed (`SepAbrAccessSizeCfg`). Every size, offset
+and strobe pattern, and every directed dead word, is walked on every seed.
 
 *Objective*: Proves the ABR access-size rules in
 `hw/sys/sep/doc/adams_bridge.adoc`. Every ABR register is 32 bits wide: an
@@ -3642,7 +3647,9 @@ rest of the register.
 
 *Test Coverage*: 32-bit, 64-bit, AxSIZE=3 at `addr[2]=1`, byte and halfword
 reads; 32-bit, 64-bit full-strobe, `WSTRB=0x0F`, `WSTRB=0xF0` and partial-word
-writes, including 64-bit beats that cover one word whole and the other in part.
+writes, including 64-bit beats that cover one word whole and the other in part;
+32-bit reads, word writes and partial-word writes at unpopulated offsets past
+the register map.
 
 *Test Procedure*:
 
@@ -3662,6 +3669,13 @@ readback.
 . The AR, R, AW and B handshakes on the `s_axi` pins are recorded, so narrow reads and
 AxSIZE=3 reads at `addr[2]=1` are graded on the whole 64-bit R beat as well as
 through the VIP result.
+. Past the register map, the five read-write registers are primed with values
+that have a set bit in every byte, then each dead word is read, word-written and
+partial-written. The map end is 4 bytes past the highest register
+`abr_reg.rdl` places, cross-checked against the `0xC018` that
+`[[abr-aperture-decode]]` names. The dead words are the first two past the end,
+the last word of the window, the `+0x4000` mirror of every graded register that
+lands past the end, and two seeded words.
 . Every register written is restored to its entry value.
 
 *Checkers*:
@@ -3695,6 +3709,12 @@ through the VIP result.
 |A 64-bit beat with `WSTRB=0x7F` writes the low word, leaves the upper one, and answers SLVERR; `WSTRB=0xFC` does the reverse.
 |CHK-ABR-SIZE-RD-NARROW-RW
 |Byte and halfword reads of the counter return the addressed bytes of its seeded value, and every other byte lane of the R beat reads zero.
+|CHK-ABR-UNPOP-RD
+|A 32-bit read at every dead word past the register map answers OKAY with `0x0000_0000` and every byte lane of its R beat zero, while every read-write register holds a nonzero value, so an aliased read returns data. `adams_bridge.adoc` `[[abr-aperture-decode]]`: a word access to an unpopulated offset completes OKAY and a read returns zero.
+|CHK-ABR-UNPOP-WR
+|An all-ones word write at every dead word answers OKAY, the word reads back zero, and all five read-write registers and eight identity words read their primed or captured values afterwards. `[[abr-aperture-decode]]`: the write is discarded.
+|CHK-ABR-UNPOP-PARTIAL
+|A byte, a halfword and a three-byte write at the first dead word past the map and at the last word of the window each answer SLVERR and leave every graded register unchanged. `[[abr-aperture-decode]]`: a partial-word write is answered with SLVERR wherever it lands.
 |CHK-ABR-SIZE-RESTORE
 |Every register written reads back its entry value.
 |===
@@ -3706,7 +3726,9 @@ dropped write, a write on the wrong lane or a zero-extended partial write each
 change a readback.
 
 *Not claimed*: concurrency, which <<sep_abr_pipelined_read_matrix_test>> and
-<<sep_abr_concurrent_rw_test>> own, and `m_axi`.
+<<sep_abr_concurrent_rw_test>> own, and `m_axi`. Unpopulated offsets between
+populated objects below `0xC018` are not walked; the no-alias compare covers
+the graded registers only, not every populated ABR register.
 
 '''''
 
@@ -3799,9 +3821,9 @@ a waiting write, and two masters writing the same register.
 
 *Randomization*: RANDCFG — extra accepted pops come from the run seed (`SepEntropyPoolCfg`). The alias set and all three unique-dead offsets are walked every seed, so the decode coverage is seed-independent.
 
-*Objective*: The fabric entropy pool answers only its three live registers. Occupancy, the live `pool_low` flag and fill-stall status reach software and the interrupt aggregator, a pop drains one word, and an empty pop is refused. Writes to each live offset and a representative unmapped offset return SLVERR without changing occupancy. Every mapped high-bit mirror and unique-dead offset walked by the test is refused with zero read data.
+*Objective*: The fabric entropy pool answers only its three live registers. Occupancy, the live `pool_low` flag and fill-stall status reach software and the interrupt aggregator, a pop drains one word, and an empty pop is refused. Writes to each live offset and a representative unmapped offset return SLVERR without changing occupancy. Every mapped high-bit mirror and unique-dead offset walked by the test is refused with zero read data. A 32-bit read of a register's upper word is refused with zero read data and does not pop or disturb the FIFO.
 
-*Test Coverage*: Three live pool registers; pop, empty-refuse, unmapped refuse, writes to STATUS, IRQ_CAUSE, DATA and one unmapped offset, plus the shared write refusal under all three AW/W arrival orders.
+*Test Coverage*: Three live pool registers; pop, empty-refuse, unmapped refuse, writes to STATUS, IRQ_CAUSE, DATA and one unmapped offset, plus the shared write refusal under all three AW/W arrival orders; 32-bit reads of the upper word of each register.
 
 *Test Procedure*:
 
@@ -3843,6 +3865,8 @@ a waiting write, and two masters writing the same register.
 |`0x08=0x2` at stall (`fill_stall`, `pool_low` still clear after the fill). Must not copy the raw status word.
 |CHK-STALL-CLEAR
 |`[37]` low after EDN and ESRC re-enable.
+|CHK-HALF-READ
+|`sep_entropy_pool.rdl` declares every register `accesswidth = 64`. A 32-bit read (AxSIZE=2) at `+0x4`, `+0xC` and `+0x14` answers SLVERR with RDATA=0 (X/Z-checked in the error-RDATA window) and leaves `fifo_level` unchanged. The 64-bit pop before the three reads and the pop after them return two consecutive words of the pool's EDN beat stream, which the test records from the `pool_edn_*` observation ports; the popped word must match exactly one adjacent beat pair, and the next pop must be the pair after it in the same packing order. A half read that popped, or that disturbed the head of the FIFO, fails the level or the word compare.
 |CHK-POP-DATA
 |Accepted pops OKAY, level minus one, nonzero distinct words.
 |CHK-POOL-LOW-REHIGH
@@ -6067,9 +6091,9 @@ reported as such rather than counted as a pass.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG — the twelve directed wrap offsets on every seed, plus two seed-selected dead offsets per block window.
+*Randomization*: RANDCFG — the twelve directed wrap offsets and six directed TRNG-window probes on every seed, plus two seed-selected dead offsets per block window.
 
-*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
+*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat. The TRNG window, forwarded whole to an adopter endpoint and terminated in the reference integration, must refuse every access and alias no neighbouring ESRC register; its response code is logged for the document owner, not graded.
 
 *Test Coverage*: Dead-space accesses are refused and do not alias live register data or state.
 
@@ -6081,6 +6105,7 @@ reported as such rather than counted as a pass.
 . Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit.
 . A refusal that still writes the register is a failure, so every probe reads back the window's live registers as well as the response.
 . A later beat of a burst that ends past the extent is held to the same rule as a single beat.
+. The TRNG window (`TRNG_REG_MAP_BASE_ADDR` up to the lifecycle base) allocates no SEP register. Its first, middle and last word are read and written every seed, plus two seeded offsets. The no-alias snapshot for this window is the neighbouring ESRC register set, which an access that drops address bit 12 reaches.
 
 *Checkers*:
 
@@ -6088,7 +6113,7 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-WINDOW-LIVE
-|Each of the ten watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller) has a non-empty allocated-register snapshot, so the no-alias compare can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count.
+|Each of the eleven watched windows (secure_dma, wdt_timer, aes, otbn, csrng, edn, entropy_src, km_mailbox, lifecycle, spi_controller, and trng against the neighbouring entropy_src registers) has a non-empty register snapshot, so the no-alias compare can fail. The line reports readable and armed separately: the per-probe change compare drops hardware-updating addresses, so armed is the falsifiable count.
 |CHK-DEADSPACE-REFUSE
 |Every probed address past the allocated size is refused (not OKAY), including the directed wrap anchors (KM `0x10920ff8`, DMA `0x108008a8`). A single accepted probe fails the checker; there is no tolerated count.
 |CHK-DEADSPACE-NO-ALIAS
@@ -6097,6 +6122,8 @@ reported as such rather than counted as a pass.
 |A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
 |CHK-DEADSPACE-BEAT
 |Each beat of the burst carries its own `RRESP`, kept in order by the bus monitor, so the refusal can be attributed to a beat rather than to the burst. No beat past a block extent may answer OKAY. The rule is asserted in that direction only: refusing the whole burst is legal AXI and stricter than the specification, so a window that refuses every beat is recorded, not failed. A second assertion requires at least one window that serves its in-extent beats and refuses only the tail — without one, the checker shows that nothing past an extent is served but not that the fabric can tell the beats apart. A captured vector whose length does not match the beats issued is treated as no evidence, since unrelated traffic on the bus would lengthen it. Read bursts only; see <<known-limitations>> for why writes cannot be.
+|CHK-TRNG-UNOWNED
+|Every TRNG-window probe is refused (never OKAY, no timeout), a refused read returns no neighbouring ESRC register value, and no ESRC register moves; at least one read and one write are refused. The reference integration connects no external TRNG, so no offset owns a register: `hw/sys/sep/doc/memory_map.adoc` requires SLVERR for an offset that owns no register, and `doc/integrator/src/smu.adoc` requires a DECERR slave when no external TRNG is connected. Both require a refusal, which is what is asserted. They name different flavours, so the read and write response codes are logged as `TRNG-UNOWNED-RESP` lines and in the PASS line for the document owner and are not graded. The window has no burst leg: its dead span starts on a 4 KB boundary.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -7416,6 +7443,12 @@ constraint is not an open defect.
 
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` says the fabric refuses an address past the extent a unit allocates, and names no response flavour for it. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
+
+|TRNG unowned-offset response flavour (specification)
+|`hw/sys/sep/doc/memory_map.adoc` requires SLVERR for a TRNG-window offset that owns no register. `doc/integrator/src/smu.adoc` requires a DECERR slave when no external TRNG is connected. The reference integration terminates `ext_trng_axil` with an error slave. `sep_fabric_deadspace_decode_test` `CHK-TRNG-UNOWNED` asserts the refusal both documents require and logs the read and write response codes; which flavour is correct is for the document owner to reconcile. Do not XFAIL.
+
+|ABR unpopulated offsets complete OKAY (vendored collateral)
+|`hw/sys/sep/doc/adams_bridge.adoc` `[[abr-aperture-decode]]` documents that the vendored ABR register block has no address check: a word access past the register map (`0xC018`) completes OKAY, a read returns zero and a write is discarded, while a partial-word write answers SLVERR. `sep_abr_access_size_test` `CHK-ABR-UNPOP-RD` / `-WR` / `-PARTIAL` grade that documented behaviour, so an RTL change that refuses these accesses turns them red until the document changes with it.
 
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.
