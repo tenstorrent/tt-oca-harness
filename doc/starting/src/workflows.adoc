@@ -8,8 +8,7 @@
 ====
 This section is currently under development.
 
-- More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
-- DV FW sections reference source files frequently, how necessary is this?
+- More details on Yosys/Synthesis once finalised
 - Linters are still WIP on findings; the shared `flow.mk` path is the one to run
 ====
 
@@ -191,7 +190,9 @@ Build products land under `build/release/` (or `build/debug/` with `BUILD_TYPE=d
 === SEP boot ROM
 
 `hw/sys/sep/bootrom/prod/` is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
-It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via `NONFREE_BOOTCODE_SOURCES` (same pattern as the SMC prod ROM).
+It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly.
+A build that carries its own drivers overrides the stubs at link time: it passes the driver sources as `OCAH_FW_OVERLAY_SOURCES_sep`, and the include flags (`-I<dir>`) for their register headers as `OCAH_FW_REG_OVERLAY_INCLUDE_DIRS_sep`, on the `make` command line.
+The Makefile ignores both variables when they are set only in the environment, so a value exported in a shell cannot change an open-tree ROM.
 See https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/README.md[`hw/sys/sep/bootrom/prod/README.md`] and
 https://github.com/tenstorrent/tt-oca-harness/blob/main/hw/sys/sep/bootrom/prod/doc/index.adoc[`hw/sys/sep/bootrom/prod/doc/`] for
 the full target list, build variables, key provisioning, and boot flow.
@@ -793,6 +794,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `format-c`
 | `format-c`
 | `make format-c-check`
+
+| `format-nix`
+| `format-nix`
+| `make format-nix-check`
 
 | `lint-tcl`
 | `lint-tcl`

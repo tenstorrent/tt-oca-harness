@@ -31,8 +31,8 @@
  */
 
 /* SEP inbound filter range (SMC->SEP writes to the cold scratch at SEP-local 0x10802000). */
-#define SEP_INBOUND_SHARED_START ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
-#define SEP_INBOUND_SHARED_END ((uint64_t)OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
+#define SEP_INBOUND_SHARED_START ((uint64_t)SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
+#define SEP_INBOUND_SHARED_END ((uint64_t)SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(7) + 7ULL)
 /* allow_burst (bit24) CLEARED -> 8-byte granularity so the 64-byte window keeps its EXACT END
  * 0x1080203F (with allow_burst=1 axi_filter_wrap.sv:105-108 rounds a same-4KB-page window's END up
  * to 0x10802FFF). Single-beat SMC->SEP cmd/done still pass (allow_burst only gates bursts). */
@@ -40,25 +40,23 @@
 #define SMC_TO_SEP_NS_FILTER_CONFIG 0x0000000100030113ULL
 /* Local filter-register offsets (prefixed to avoid clashing with sep_outbound_filter.h). */
 #define XBAR_FILT_CFG_OFF \
-    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
-     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+    (SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 #define XBAR_FILT_START_OFF \
-    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - \
-     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+    (SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 #define XBAR_FILT_END_OFF \
-    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
-     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
-#define XBAR_FILT_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+    (SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define XBAR_FILT_STRIDE SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
 
 static volatile int g_xbar_status;
 
 static inline void program_sep_smu_aperture(void) {
-    WRITE_REG(OCH_SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)XBAR_SEP_APERTURE_SIZE);
+    WRITE_REG(SEP_TOP_SEP_CPU_CTRL_SEP_REGION_SIZE_BASE_ADDR, (uint32_t)XBAR_SEP_APERTURE_SIZE);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
 }
 
 static inline void open_sep_inbound_sram_window(void) {
-    uintptr_t base = (uintptr_t)OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
+    uintptr_t base = (uintptr_t)SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0);
 
     WRITE_REG64(base + XBAR_FILT_START_OFF, SEP_INBOUND_SHARED_START);
     WRITE_REG64(base + XBAR_FILT_END_OFF, SEP_INBOUND_SHARED_END);

@@ -56,13 +56,13 @@ static inline void sep_hmac_wr(uint32_t addr, uint32_t value) {
 static inline int sep_hmac_sha256(const uint8_t *msg, uint32_t len, uint32_t digest_out[8]) {
     uint32_t cfg = HMAC__CFG__SHA_EN_bm | HMAC__CFG__DIGEST_SWAP_bm |
                    (SEP_HMAC_DIGEST_SIZE_SHA2_256 << HMAC__CFG__DIGEST_SIZE_bp);
-    sep_hmac_wr(OCH_SEP_TOP_HMAC_CFG_BASE_ADDR, cfg);
-    sep_hmac_wr(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, HMAC__CMD__HASH_START_bm);
+    sep_hmac_wr(SEP_TOP_HMAC_CFG_BASE_ADDR, cfg);
+    sep_hmac_wr(SEP_TOP_HMAC_CMD_BASE_ADDR, HMAC__CMD__HASH_START_bm);
 
-    volatile uint8_t *fifo = (volatile uint8_t *)OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
+    volatile uint8_t *fifo = (volatile uint8_t *)SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR;
     for (uint32_t i = 0; i < len; i++) {
         int t = SEP_HMAC_TIMEOUT;
-        while ((sep_hmac_rd(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR) & HMAC__STATUS__FIFO_FULL_bm) &&
+        while ((sep_hmac_rd(SEP_TOP_HMAC_STATUS_BASE_ADDR) & HMAC__STATUS__FIFO_FULL_bm) &&
                (t-- > 0)) {
         }
         if (t <= 0) {
@@ -72,26 +72,26 @@ static inline int sep_hmac_sha256(const uint8_t *msg, uint32_t len, uint32_t dig
         __asm__ volatile("fence" ::: "memory");
     }
 
-    sep_hmac_wr(OCH_SEP_TOP_HMAC_CMD_BASE_ADDR, HMAC__CMD__HASH_PROCESS_bm);
+    sep_hmac_wr(SEP_TOP_HMAC_CMD_BASE_ADDR, HMAC__CMD__HASH_PROCESS_bm);
 
     int t = SEP_HMAC_TIMEOUT;
     while (t-- > 0) {
-        if (sep_hmac_rd(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {
+        if (sep_hmac_rd(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {
             break;
         }
     }
     if (t <= 0) {
         return 1;
     }
-    sep_hmac_wr(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, HMAC__INTR_STATE__HMAC_DONE_bm);
-    if (sep_hmac_rd(OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {
+    sep_hmac_wr(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR, HMAC__INTR_STATE__HMAC_DONE_bm);
+    if (sep_hmac_rd(SEP_TOP_HMAC_INTR_STATE_BASE_ADDR) & HMAC__INTR_STATE__HMAC_DONE_bm) {
         return 3;
     }
 
     for (int i = 0; i < 8; i++) {
-        digest_out[i] = sep_hmac_rd(OCH_SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
+        digest_out[i] = sep_hmac_rd(SEP_TOP_HMAC_DIGEST_BASE_ADDR(i));
     }
-    if (sep_hmac_rd(OCH_SEP_TOP_HMAC_ERR_CODE_BASE_ADDR) != 0) {
+    if (sep_hmac_rd(SEP_TOP_HMAC_ERR_CODE_BASE_ADDR) != 0) {
         return 2;
     }
     return 0;

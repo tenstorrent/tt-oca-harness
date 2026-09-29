@@ -7,8 +7,8 @@ CPU-LSU master programs inbound FILTER_CONFIG allow-entries and the EXTERNAL SMN
 master (m_axi, the only path through u_inbound_filter) proves per-entry rule
 enforcement: an allowed address -> OKAY + exact CSR value; any other address ->
 DECERR, never the value staged there (block-by-default); read_allowed/write_allowed gate the matched
-read/write. With smc_global_base=0 the inbound global->local remap is identity, so
-the external master drives the SEP-local address directly.
+read/write. No inbound global-to-local remap sits inside this DUT, so the
+external master drives the SEP-local address directly.
 
 Walks entries 0 and 7 x two address windows x {rw, read-only,
 write-only} at src_id=0 (match-all), plus entry 0 / window 0 x {rw, r, w} at
@@ -76,7 +76,6 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import ReadOnly, RisingEdge
 from env.sep_lcc_golden import LC_PROD, feat_ctrl_expected, lc_state_name
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_csr_bank_seq import F_ALLOW_BURST, FILTER_RW_MASK
@@ -147,36 +146,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         await self.start_ext_seq(seq)
         return seq.resp_code
 
-    async def _watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
-        """Count system-CSR AXI-Lite handshakes until the caller kills the task.
-
-        Returns ``(task, addrs)``. ``addrs`` is appended in place while the
-        task runs. Lite has no AxLEN; each handshake is one converted single.
-        """
-        dut = cocotb.top
-        addrs: list[int] = []
-
-        async def _mon() -> None:
-            while True:
-                await RisingEdge(dut.clk_i)
-                await ReadOnly()
-                if write:
-                    valid = dut.sys_csr_axil_awvalid_o
-                    ready = dut.sys_csr_axil_awready_o
-                    addr = dut.sys_csr_axil_awaddr_o
-                else:
-                    valid = dut.sys_csr_axil_arvalid_o
-                    ready = dut.sys_csr_axil_arready_o
-                    addr = dut.sys_csr_axil_araddr_o
-                if self.rd_known(valid) and self.rd_known(ready):
-                    addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
-
-        return cocotb.start_soon(_mon()), addrs
-
     async def _ext_burst_read_watch(
         self, addr: int, *, expect_error: bool = False
     ) -> tuple[int, int, list[int]]:
-        task, addrs = await self._watch_sys_csr_lite(write=False)
+        task, addrs = self.watch_sys_csr_lite(write=False)
         try:
             resp, data = await self._ext_burst_read(addr, expect_error=expect_error)
         finally:
@@ -186,7 +159,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
     async def _ext_burst_write_watch(
         self, addr: int, data: int, *, expect_error: bool = False
     ) -> tuple[int, list[int]]:
-        task, addrs = await self._watch_sys_csr_lite(write=True)
+        task, addrs = self.watch_sys_csr_lite(write=True)
         try:
             resp = await self._ext_burst_write(addr, data, expect_error=expect_error)
         finally:
@@ -538,7 +511,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         assert (hi >> FILTER_LOCKED_HI_BIT) & 1, (
             f"CHK-CONFIG-LOCK FAIL: locked did not set (hi 0x{hi:08x})"
         )
-        resp = await self.filt.write_tolerant(cell.cfg_addr, cfg_lo & ~F_ALLOW_BURST & 0xFFFF_FFFF)
+        resp_lo = await self.filt.write_tolerant(
+            cell.cfg_addr, cfg_lo & ~F_ALLOW_BURST & 0xFFFF_FFFF
+        )
         after = await self.filt.read_cpu(cell.cfg_addr)
         assert after == cfg_lo, (
             f"CHK-CONFIG-LOCK FAIL: FILTER_CONFIG moved under the lock "
@@ -552,10 +527,10 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         # The frozen bit still drives the hardware, not just the CSR readback.
         probe_addr, probe_val = wcfg.staged[1]
-        resp, data = await self._ext_read(probe_addr)
-        assert resp == RESP_OKAY and data == probe_val, (
+        probe_resp, data = await self._ext_read(probe_addr)
+        assert probe_resp == RESP_OKAY and data == probe_val, (
             f"CHK-CONFIG-LOCK FAIL: frozen allow_burst stopped granting the page "
-            f"(0x{probe_addr:08x} resp={resp} rdata=0x{data:08x}, staged "
+            f"(0x{probe_addr:08x} resp={probe_resp} rdata=0x{data:08x}, staged "
             f"0x{probe_val:08x})"
         )
         self.logger.info(
@@ -563,7 +538,7 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
             "(resp=%d) leaves the bit set, and the frozen granule still grants 0x%08x",
             wcfg.entry,
-            resp,
+            resp_lo,
             after,
             bool(after & F_ALLOW_BURST),
             resp_hi,

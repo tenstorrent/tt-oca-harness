@@ -28,7 +28,7 @@ module efuse_token_processing #(
                                                        // security disable; must equal the
                                                        // comparator's fixed 6'b010101 match code.
 
-  parameter int unsigned LC_STATE_WIDTH = 4,  // Lifecycle-state field width.
+  localparam int unsigned LC_STATE_WIDTH = efuse_pkg::LC_STATE_RAW_WIDTH,  // Lifecycle-state field width.
   localparam logic [2*LC_STATE_WIDTH-1:0] LC_STATE_INVALID = (2*LC_STATE_WIDTH)'({{LC_STATE_WIDTH{1'b0}}, {LC_STATE_WIDTH{1'b1}}}),  // Differentially encoded lifecycle state driven on shadow_regs_o while the map is withheld.
 
   parameter type efuse_apb_req_t = logic,  // eFuse APB request type.

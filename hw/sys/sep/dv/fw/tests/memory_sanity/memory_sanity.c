@@ -26,7 +26,7 @@
 #define TEST_WORDS 64
 #define TEST_SPACING 64 // 64 bytes apart
 
-static volatile uint32_t *sram = (volatile uint32_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+static volatile uint32_t *sram = (volatile uint32_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
 
 static int test_count = 0;
 static int pass_count = 0;
@@ -181,7 +181,7 @@ static int test_walking_zeros(void) {
 static int test_64bit_access(void) {
     printf("\n--- Test: 64-bit Aligned Access ---\n");
 
-    volatile uint64_t *sram64 = (volatile uint64_t *)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
+    volatile uint64_t *sram64 = (volatile uint64_t *)SEP_TOP_SEP_SRAM_BASE_ADDR;
     uint64_t test_value = 0xDEADBEEFCAFEBABEULL;
     uint64_t read_value;
 
@@ -213,8 +213,8 @@ int main(void) {
     printf("========================================\n");
     printf("     SEP Memory Sanity Test\n");
     printf("========================================\n");
-    printf("SRAM Base: 0x%08X\n", OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-    printf("SRAM Size: %d bytes\n", OCH_SEP_TOP_SEP_SRAM_SIZE);
+    printf("SRAM Base: 0x%08X\n", SEP_TOP_SEP_SRAM_BASE_ADDR);
+    printf("SRAM Size: %d bytes\n", SEP_TOP_SEP_SRAM_SIZE);
     printf("Testing:   %d words (%d bytes)\n", TEST_WORDS, TEST_WORDS * 4);
 
     // Run tests

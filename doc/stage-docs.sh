@@ -191,9 +191,6 @@ programmer)
   ;;
 esac
 
-# DTP: exclude defines.adoc (DV content, not for publication).
-rm -f "$MOD/dtp/pages/defines.adoc"
-
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,
 #     e.g. zeroer referenced by SMC). AXI network/monitor elements live under

@@ -53,6 +53,25 @@
 `SEP_TB_IN(logic, jtag_kmac_rst_hold_i)
 `SEP_TB_IN(logic, jtag_trng_rst_hold_i)
 `SEP_TB_IN(logic, jtag_abr_rst_hold_i)
+// JTAG sep_reset_n override (frontdoor jtag_sep_reset_ctrl_i). ovrd=0 selects
+// sep_intermediate_reset_n, which stays low until fuse sense completes. ovrd=1
+// selects val. Default 0 on both, so every other leaf keeps the sense-gated reset.
+`SEP_TB_IN(logic, jtag_sep_reset_n_ovrd_i)
+`SEP_TB_IN(logic, jtag_sep_reset_n_val_i)
+// IC_RESET TDR for the SEP slice. tdr_en=0 keeps the per-port pins above.
+// tdr_en=1 selects jtag_ic_reset_reg, sized to jtag_sep_reset_ctrl_t and
+// packed the way jtag_ptap packs the SEP slice. Scan controls idle, and
+// rst_n/trst_n stay released, so the register holds override-off.
+`SEP_TB_IN(logic, jtag_ic_reset_tdr_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_tck_i)
+`SEP_TB_IN(logic, jtag_ic_reset_select_i)
+`SEP_TB_IN(logic, jtag_ic_reset_capture_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_shift_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_update_en_i)
+`SEP_TB_IN(logic, jtag_ic_reset_rst_n_i)
+`SEP_TB_IN(logic, jtag_ic_reset_trst_n_i)
+`SEP_TB_IN(logic, jtag_ic_reset_tdi_i)
+`SEP_TB_OUT(logic, jtag_ic_reset_tdo_o)
 // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
 // pair onto the LCC decoder input (no legal OTP image can present one). See
 // the force block below.
@@ -308,6 +327,24 @@
 // KM SRAM words 0..97 from the real macro array, word i at [32*i +: 32]. Sized
 // for km_rom_otp_id.S, which writes its results to those words.
 `SEP_TB_OUT(logic [98*32-1:0], km_sram_probe_o)
+// KM SRAM read-response timing counters at the wrapper port; see the monitor
+// in tb_top. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_sram_rd_accept_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_lat1_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_lat_err_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_rd_b2b_diff_count_o)
+`SEP_TB_OUT(logic [31:0], km_sram_scr_rd_count_o)
+// KM SRAM writes accepted while the KM scrambler is enabled, at the wrapper
+// port: count, and the physical word address and data of the first four, with
+// the macro array word at each of those addresses. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_sram_scr_wr_count_o)
+`SEP_TB_OUT(logic [4*13-1:0], km_sram_scr_wr_addr_o)
+`SEP_TB_OUT(logic [4*32-1:0], km_sram_scr_wr_data_o)
+`SEP_TB_OUT(logic [4*32-1:0], km_sram_scr_wr_cell_o)
+// SEP-side KM mailbox regblock address-decode write refusals: count and the
+// block offset of the last one. Observation-only.
+`SEP_TB_OUT(logic [31:0], km_mbox_sep_wr_err_count_o)
+`SEP_TB_OUT(logic [4:0], km_mbox_sep_wr_err_addr_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_req_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_imem_write_count_o)
 `SEP_TB_OUT(logic [31:0], otbn_dmem_req_count_o)

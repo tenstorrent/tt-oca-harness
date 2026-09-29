@@ -41,10 +41,10 @@ static int check_reg(const char *name, uint32_t actual, uint32_t expected) {
 static int wait_for_tx_empty(int timeout) {
     spi_controller__STATUS_t status;
     while (timeout-- > 0) {
-        status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+        status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
         if (status.f.TXEMPTY && status.f.TXQD == 0 && !status.f.ACTIVE) return 0;
     }
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  FAIL: TIMEOUT waiting for TXEMPTY after SW_RST (STATUS=0x%08x)\n", status.w);
     return -1;
 }
@@ -67,17 +67,17 @@ int main(void) {
     ctrl.f.TX_WATERMARK = 4;
     ctrl.f.SPIEN = 1;
     ctrl.f.OUTPUT_EN = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Configure clock */
     spi_controller__CONFIGOPTS_t cfg;
     cfg.w = 0;
     cfg.f.CLKDIV = 9;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONFIGOPTS_BASE_ADDR, cfg.w);
 
     /* Step 1: Verify TXWM when TX FIFO empty (TXQD=0 < SPI_TX_WATERMARK=4) */
     printf("\nStep 1: TXWM with empty FIFO (expect TXWM=1)\n");
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS=0x%08x, TXWM=%u, TXQD=%u, TXEMPTY=%u\n", status.w, status.f.TXWM,
            status.f.TXQD, status.f.TXEMPTY);
     if (status.f.TXWM != 1) {
@@ -91,9 +91,9 @@ int main(void) {
     printf("\nStep 2: Fill TX FIFO above watermark (write 8 words)\n");
     uint32_t i;
     for (i = 0; i < 8; i++) {
-        WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xA0000000 | i);
+        WRITE_REG(SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR(0), 0xA0000000 | i);
     }
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  STATUS=0x%08x, TXWM=%u, TXQD=%u\n", status.w, status.f.TXWM, status.f.TXQD);
     if (status.f.TXWM != 0) {
         printf("  FAIL: TXWM still 1 after 8 writes (TXQD=%u, expected TXWM=0)\n", status.f.TXQD);
@@ -104,18 +104,18 @@ int main(void) {
 
     /* Step 3: SW_RST to drain, verify TXWM re-asserts */
     printf("\nStep 3: SW_RST drain, verify TXWM re-asserts\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     ctrl.f.SW_RST = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     /* Sample the drained state while SW_RST is held, then release it: the field
      * is a level and the core stays in reset until it is cleared. */
     if (wait_for_tx_empty(TIMEOUT_LIMIT)) {
         pass = 0;
     }
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     ctrl.f.SW_RST = 0;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR, ctrl.w);
 
     printf("  After SW_RST: TXWM=%u, TXQD=%u, TXEMPTY=%u\n", status.f.TXWM, status.f.TXQD,
            status.f.TXEMPTY);
@@ -131,11 +131,11 @@ int main(void) {
 
     /* Step 4: Verify RX watermark field */
     printf("\nStep 4: SPI_RX_WATERMARK configuration\n");
-    ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
+    ctrl.w = READ_REG(SEP_TOP_SPI_CONTROLLER_CONTROL_BASE_ADDR);
     if (!check_reg("SPI_RX_WATERMARK readback", ctrl.f.RX_WATERMARK, 1)) pass = 0;
 
     /* Re-read STATUS for RXWM (empty RX FIFO, RXQD=0 < SPI_RX_WATERMARK=1) */
-    status.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
+    status.w = READ_REG(SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR);
     printf("  RXWM=%u, RXQD=%u, RXEMPTY=%u (RXWM=0 expected: RXQD < threshold)\n", status.f.RXWM,
            status.f.RXQD, status.f.RXEMPTY);
     if (status.f.RXEMPTY != 1 || status.f.RXQD != 0) {
@@ -150,35 +150,35 @@ int main(void) {
 
     /* Step 5: DMA HANDSHAKE_INTR_ENABLE register */
     printf("\nStep 5: DMA HANDSHAKE_INTR_ENABLE register access\n");
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR);
+    read_val = READ_REG(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR);
     printf("  Default: 0x%08x\n", read_val);
 
     /* Enable bit 0 for SPI trigger */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x1);
+    read_val = READ_REG(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR);
     if (!check_reg("HANDSHAKE_INTR_ENABLE[0]=1", read_val & 0x1, 0x1)) pass = 0;
 
     /* Disable all */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x0);
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR, 0x0);
+    read_val = READ_REG(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR);
     if (!check_reg("HANDSHAKE_INTR_ENABLE=0", read_val, 0x0)) pass = 0;
 
     /* Restore default */
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR,
+    WRITE_REG(SEP_TOP_SECURE_DMA_HANDSHAKE_INTR_ENABLE_BASE_ADDR,
               SECURE_DMA__HANDSHAKE_INTR_ENABLE__MASK_reset);
 
     /* Step 6: DMA CLEAR_INTR_SRC register */
     printf("\nStep 6: DMA CLEAR_INTR_SRC register access\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_CLEAR_INTR_SRC_BASE_ADDR, 0x1);
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_CLEAR_INTR_SRC_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SECURE_DMA_CLEAR_INTR_SRC_BASE_ADDR, 0x1);
+    read_val = READ_REG(SEP_TOP_SECURE_DMA_CLEAR_INTR_SRC_BASE_ADDR);
     if (!check_reg("CLEAR_INTR_SRC readback", read_val, 0x1)) pass = 0;
 
     /* Step 7: DMA INTR_SRC_ADDR_0 register (configure source address for handshake) */
     printf("\nStep 7: DMA INTR_SRC_ADDR_0 register\n");
-    WRITE_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0),
-              OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
-    read_val = READ_REG(OCH_SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0));
-    if (!check_reg("INTR_SRC_ADDR_0", read_val, OCH_SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR))
+    WRITE_REG(SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0),
+              SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR);
+    read_val = READ_REG(SEP_TOP_SECURE_DMA_INTR_SRC_ADDR_0_BASE_ADDR(0));
+    if (!check_reg("INTR_SRC_ADDR_0", read_val, SEP_TOP_SPI_CONTROLLER_INTR_STATE_BASE_ADDR))
         pass = 0;
 
     /* Step 8: EVENT_ENABLE for DMA trigger path */
@@ -187,13 +187,13 @@ int main(void) {
     event_en.w = 0;
     event_en.f.TXWM = 1;
     event_en.f.RXWM = 1;
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_en.w);
-    event_en.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, event_en.w);
+    event_en.w = READ_REG(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR);
     if (!check_reg("TXWM event enabled", event_en.f.TXWM, 1)) pass = 0;
     if (!check_reg("RXWM event enabled", event_en.f.RXWM, 1)) pass = 0;
 
     /* Cleanup */
-    WRITE_REG(OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0);
+    WRITE_REG(SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR, 0);
 
     printf("\n========================================\n");
     if (pass) {

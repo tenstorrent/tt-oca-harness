@@ -21,8 +21,8 @@ class smu_system_timer_octs_test(smu_base_test):
         )
         seq = smu_system_timer_octs_test_seq(self)
         await seq.run()
-        assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (
-            f"octs incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok}"
+        assert seq.s1_ok and seq.s2_ok and seq.s3_ok and seq.s4_ok, (
+            f"octs incomplete s1={seq.s1_ok} s2={seq.s2_ok} s3={seq.s3_ok} s4={seq.s4_ok}"
         )
         # Pin observe is required on OSS tb_top (tb_timer_count wired).
         assert seq.pin_ok, "tb_timer_count pin observe missing or not advancing"

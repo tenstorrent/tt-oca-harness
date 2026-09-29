@@ -24,7 +24,9 @@
 `include "misc_wrap.rdl"
 `include "bus_error_unit.rdl"
 `include "clint.rdl"
+`include "debug_module.rdl"
 `include "efuse_interface_ctrl.rdl"
+`include "error_device.rdl"
 `include "ext_memory.rdl"
 `include "oca_i3c_wrap.rdl"
 `include "plic.rdl"
@@ -47,6 +49,8 @@ addrmap smc_top #(
     wdt                            smc_cluster_core1_wdt      @BASE_ADDR + 0x000_0400;
     wdt                            smc_cluster_core2_wdt      @BASE_ADDR + 0x000_0800;
     wdt                            smc_cluster_core3_wdt      @BASE_ADDR + 0x000_0c00;
+
+    debug_module                   debug_module               @BASE_ADDR + 0x000_1000;
 
     reset_unit                     smc_reset_unit             @BASE_ADDR + 0x000_2000;
     misc_wrap                      smc_misc_wrap              @BASE_ADDR + 0x000_2800;
@@ -155,6 +159,8 @@ addrmap smc_top #(
     bus_error_unit                 smc_cluster_core2_beu       @BASE_ADDR + 0x801_2000;
     bus_error_unit                 smc_cluster_core3_beu       @BASE_ADDR + 0x801_3000;
 
+    external error_device          smc_cluster_error_device    @BASE_ADDR + 0x801_4000;
+
 `ifdef OCAH_DOC_MEMORY_MAP
     smc_cluster_plic->ocah_aperture_size = 0x4000000;
     smc_cluster_plic->desc = "Platform-Level Interrupt Controller.";
@@ -168,6 +174,7 @@ addrmap smc_top #(
     smc_cluster_core2_beu->desc = "Core 2 bus-error unit.";
     smc_cluster_core3_beu->ocah_aperture_size = 0x1000;
     smc_cluster_core3_beu->desc = "Core 3 bus-error unit.";
+    smc_cluster_error_device->desc = "Error responder for unmapped cluster-bus accesses.";
 `endif
 `endif
 

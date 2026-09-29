@@ -9,6 +9,8 @@
 // internal CSR blocks. CPU MMIO, JTAG, log and data accelerator traffic arrives on the local
 // port.
 
+`include "ocah_assert.svh"
+
 module smc_local_fabric (
   input logic                                         clk_i,  // SMC core clock.
   input logic                                         rst_ni,  // Primary reset, active-low,
@@ -196,7 +198,7 @@ module smc_local_fabric (
   // Verify smc_pkg types match crossbar package types
   // ===========================================================================
 
-`ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
+`ifdef OCAH_DEBUG_LIVE  // elaboration-time width checks; excluded from synthesis
   // AXI64 input types (6-bit ID, 32-bit addr, 64-bit data, 12-bit user)
   initial begin : gen_axi64_input_type_assertions
     // input_axi (system)
@@ -283,6 +285,6 @@ module smc_local_fabric (
     assert ($bits(apb_smc_dfd_reg_resp_i.prdata) == $bits(smc_local_xbar_pkg::apb32_data_t))
     else $fatal(1, "APB_SMC_DFD_REG PRDATA width mismatch");
   end
-`endif  // SYNTHESIS
+`endif  // OCAH_DEBUG_LIVE
 
 endmodule

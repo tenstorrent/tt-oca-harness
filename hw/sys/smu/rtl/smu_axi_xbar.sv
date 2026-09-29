@@ -11,6 +11,8 @@
 // to ext_out; unmatched ext_in traffic gets a decode error. Output ports carry wider IDs than the
 // inputs so responses route back to their initiator.
 
+`include "ocah_assert.svh"
+
 module smu_axi_xbar
   import axi_pkg::*;
   import smu_axi_xbar_pkg::*;
@@ -143,7 +145,7 @@ module smu_axi_xbar
   assign ext_out_req_o     = xbar_mst_req[2];
   assign xbar_mst_resp[2]  = ext_out_resp_i;
 
-`ifndef SYNTHESIS
+`ifdef OCAH_DEBUG_LIVE
   // SVA: SEP and SMC apertures must not overlap once programmed.
   // Ignore the trivial case where either aperture size is zero.
   logic [56:0] sep_end;
