@@ -524,49 +524,28 @@ module smc_map_fcov (
   // AXI-Lite external window: mandatory blocks, per-pad control stride and
   // the supplementary region with the captured straps.
   // ------------------------------------------------------------------
-  localparam logic [31:0] PllObsIntfLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_INTF_BASE_ADDR - LocalBase);
-  localparam logic [31:0] PllObsIntfHi =
-      PllObsIntfLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_INTF_SIZE) - 32'd1;
-  localparam logic [31:0] PllObsCtrlLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_CTRL_BASE_ADDR - LocalBase);
-  localparam logic [31:0] PllObsCtrlHi =
-      PllObsCtrlLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_CTRL_SIZE) - 32'd1;
-  localparam logic [31:0] PvtObsIntfLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_INTF_BASE_ADDR - LocalBase);
-  localparam logic [31:0] PvtObsIntfHi =
-      PvtObsIntfLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_INTF_SIZE) - 32'd1;
-  localparam logic [31:0] PvtObsCtrlLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_CTRL_BASE_ADDR - LocalBase);
-  localparam logic [31:0] PvtObsCtrlHi =
-      PvtObsCtrlLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_CTRL_SIZE) - 32'd1;
-  localparam logic [31:0] PocPbiasLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_POC_PBIAS_CTRL_BASE_ADDR - LocalBase);
-  localparam logic [31:0] PocPbiasHi =
-      PocPbiasLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_POC_PBIAS_CTRL_SIZE) - 32'd1;
-  localparam logic [31:0] RefclkCtrlLo =
-      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_REFCLK_CTRL_BASE_ADDR - LocalBase);
-  localparam logic [31:0] RefclkCtrlHi =
-      RefclkCtrlLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_REFCLK_CTRL_SIZE) - 32'd1;
+  localparam logic [31:0] ControllerWrapLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_BASE_ADDR - LocalBase);
+  localparam logic [31:0] ControllerWrapHi =
+      ControllerWrapLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_SIZE) - 32'd1;
+  localparam logic [31:0] GpioExtraIntfLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_BASE_ADDR - LocalBase);
+  localparam logic [31:0] GpioExtraIntfHi =
+      GpioExtraIntfLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_SIZE) - 32'd1;
+  localparam logic [31:0] GpioExtraCtrlLo =
+      32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_BASE_ADDR - LocalBase);
+  localparam logic [31:0] GpioExtraCtrlHi =
+      GpioExtraCtrlLo + 32'(SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_SIZE) - 32'd1;
 
-  wire pll_obs_intf_e = (rd_okay && in_win(rd_addr_q, PllObsIntfLo, PllObsIntfHi))
-      || (wr_okay && in_win(wr_addr_q, PllObsIntfLo, PllObsIntfHi));
-  wire pll_obs_ctrl_e = (rd_okay && in_win(rd_addr_q, PllObsCtrlLo, PllObsCtrlHi))
-      || (wr_okay && in_win(wr_addr_q, PllObsCtrlLo, PllObsCtrlHi));
-  wire pvt_obs_intf_e = (rd_okay && in_win(rd_addr_q, PvtObsIntfLo, PvtObsIntfHi))
-      || (wr_okay && in_win(wr_addr_q, PvtObsIntfLo, PvtObsIntfHi));
-  wire pvt_obs_ctrl_e = (rd_okay && in_win(rd_addr_q, PvtObsCtrlLo, PvtObsCtrlHi))
-      || (wr_okay && in_win(wr_addr_q, PvtObsCtrlLo, PvtObsCtrlHi));
-  wire gpio_poc_pbias_e = (rd_okay && in_win(rd_addr_q, PocPbiasLo, PocPbiasHi))
-      || (wr_okay && in_win(wr_addr_q, PocPbiasLo, PocPbiasHi));
-  wire gpio_refclk_ctrl_e = (rd_okay && in_win(rd_addr_q, RefclkCtrlLo, RefclkCtrlHi))
-      || (wr_okay && in_win(wr_addr_q, RefclkCtrlLo, RefclkCtrlHi));
-  `OCAH_FCOV_COVER(c_pll_obs_intf_decode, pll_obs_intf_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_pll_obs_ctrl_decode, pll_obs_ctrl_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_pvt_obs_intf_decode, pvt_obs_intf_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_pvt_obs_ctrl_decode, pvt_obs_ctrl_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_poc_pbias_decode, gpio_poc_pbias_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_refclk_ctrl_decode, gpio_refclk_ctrl_e, clk_smc_i, in_reset)
+  wire controller_wrap_e = (rd_okay && in_win(rd_addr_q, ControllerWrapLo, ControllerWrapHi))
+      || (wr_okay && in_win(wr_addr_q, ControllerWrapLo, ControllerWrapHi));
+  wire gpio_extra_intf_e = (rd_okay && in_win(rd_addr_q, GpioExtraIntfLo, GpioExtraIntfHi))
+      || (wr_okay && in_win(wr_addr_q, GpioExtraIntfLo, GpioExtraIntfHi));
+  wire gpio_extra_ctrl_e = (rd_okay && in_win(rd_addr_q, GpioExtraCtrlLo, GpioExtraCtrlHi))
+      || (wr_okay && in_win(wr_addr_q, GpioExtraCtrlLo, GpioExtraCtrlHi));
+  `OCAH_FCOV_COVER(c_controller_wrap_decode, controller_wrap_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_gpio_extra_intf_decode, gpio_extra_intf_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_gpio_extra_ctrl_decode, gpio_extra_ctrl_e, clk_smc_i, in_reset)
 
   localparam logic [31:0] PadStride = 32'(SMC_TOP_SMC_EXTERNAL_MANDATORY_GPIO_CTRL_STRIDE);
   localparam logic [31:0] Pad0Lo =

@@ -48194,7 +48194,7 @@ reaches termination value.</ipxact:description>
           <ipxact:registerFile>
             <ipxact:name>supplementary</ipxact:name>
             <ipxact:displayName>SMC External Supplementary Region Address Map</ipxact:displayName>
-            <ipxact:description>Supplementary adopter blocks in the external window: I3C controllers, captured GPIO straps, clock-observation and dedicated-pad control, and PVT.</ipxact:description>
+            <ipxact:description>Supplementary adopter blocks in the external window: extra controllers, captured GPIO straps, and extra GPIO registers.</ipxact:description>
             <ipxact:addressOffset>'h3000</ipxact:addressOffset>
             <ipxact:range>'h2948</ipxact:range>
             <ipxact:registerFile>

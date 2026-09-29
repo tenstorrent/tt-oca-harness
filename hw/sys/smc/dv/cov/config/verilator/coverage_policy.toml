@@ -478,36 +478,52 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_map_fcov.c_dtp_ctrl_decode"
 
 [[holes]]
-id = "fcov-smc-c_gpio_poc_pbias_decode"
-title = "c gpio poc pbias decode"
+id = "fcov-smc-c_controller_wrap_decode"
+title = "c controller wrap decode"
 category = "needs_review"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+rationale = "decode-only: the open integration answers this reserved block with DECERR, so the point proves the window decode, not a block behind it"
 owner = "smc-dv"
 reviewer = "smc-dv"
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_gpio_poc_pbias_decode"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_controller_wrap_decode"
 
 [[holes]]
-id = "fcov-smc-c_gpio_refclk_ctrl_decode"
-title = "c gpio refclk ctrl decode"
+id = "fcov-smc-c_gpio_extra_intf_decode"
+title = "c gpio extra intf decode"
 category = "needs_review"
 disposition = "waive"
 status = "accepted"
 confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
+rationale = "decode-only: the open integration answers this reserved block with DECERR, so the point proves the window decode, not a block behind it"
 owner = "smc-dv"
 reviewer = "smc-dv"
 expected_matches = 1
 [[holes.native]]
 tool = "verilator"
 metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_gpio_refclk_ctrl_decode"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_gpio_extra_intf_decode"
+
+[[holes]]
+id = "fcov-smc-c_gpio_extra_ctrl_decode"
+title = "c gpio extra ctrl decode"
+category = "needs_review"
+disposition = "waive"
+status = "accepted"
+confidence = "medium"
+rationale = "decode-only: the open integration answers this reserved block with DECERR, so the point proves the window decode, not a block behind it"
+owner = "smc-dv"
+reviewer = "smc-dv"
+expected_matches = 1
+[[holes.native]]
+tool = "verilator"
+metric_family = "user"
+hierarchy = "smc_uvm_top.u_smc_map_fcov.c_gpio_extra_ctrl_decode"
 
 [[holes]]
 id = "fcov-smc-c_i3c_count_6"
@@ -671,22 +687,6 @@ metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_map_fcov.c_per_pad_stride_0x20"
 
 [[holes]]
-id = "fcov-smc-c_pll_obs_ctrl_decode"
-title = "c pll obs ctrl decode"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pll_obs_ctrl_decode"
-
-[[holes]]
 id = "fcov-smc-c_pll_wrapper_decodes"
 title = "c pll wrapper decodes"
 category = "needs_review"
@@ -701,38 +701,6 @@ expected_matches = 1
 tool = "verilator"
 metric_family = "user"
 hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pll_wrapper_decodes"
-
-[[holes]]
-id = "fcov-smc-c_pvt_obs_ctrl_decode"
-title = "c pvt obs ctrl decode"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pvt_obs_ctrl_decode"
-
-[[holes]]
-id = "fcov-smc-c_pvt_obs_intf_decode"
-title = "c pvt obs intf decode"
-category = "needs_review"
-disposition = "waive"
-status = "accepted"
-confidence = "medium"
-rationale = "credit withdrawn: blocked:SF-054; the point fires on the implemented block, not the spec-addressed one"
-owner = "smc-dv"
-reviewer = "smc-dv"
-expected_matches = 1
-[[holes.native]]
-tool = "verilator"
-metric_family = "user"
-hierarchy = "smc_uvm_top.u_smc_map_fcov.c_pvt_obs_intf_decode"
 
 [[holes]]
 id = "fcov-smc-c_remap_region"

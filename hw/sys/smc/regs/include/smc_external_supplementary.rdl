@@ -14,29 +14,20 @@
 // 
 addrmap smc_external_supplementary {
     name = "SMC External Supplementary Region Address Map";
-    desc = "Supplementary adopter blocks in the external window: I3C controllers, captured GPIO straps, clock-observation and dedicated-pad control, and PVT.";
+    desc = "Supplementary adopter blocks in the external window: extra controllers, captured GPIO straps, and extra GPIO registers.";
 
     /////////////////
     // Address Map //
     /////////////////
 
-    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) cdns_i3c_wrap_0        @0x0000;
-    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) cdns_i3c_wrap_1        @0x0400;
-    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) cdns_i3c_wrap_2        @0x0800;
-    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) cdns_i3c_wrap_3        @0x0c00;
-    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) cdns_i3c_wrap_4        @0x1000;
-    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) cdns_i3c_wrap_5        @0x1400;
+    external ext_memory #(.NUM_ENTRIES(228), .WIDTH(32)) controller_wrap        @0x0000; // Dummy RDL
+
+    external ext_memory #(.NUM_ENTRIES(3), .WIDTH(32))   gpio_extra_intf        @0x1000; // Dummy RDL
+    external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_extra_ctrl        @0x100c; // Dummy RDL
 
     straps                                               straps                 @0x1800;
 
-    external ext_memory #(.NUM_ENTRIES(3), .WIDTH(32))   gpio_pll_clk_obs_intf  @0x1c00;
-    external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_pll_clk_obs_ctrl  @0x1c0c;
-    external ext_memory #(.NUM_ENTRIES(3), .WIDTH(32))   gpio_pvt_clk_obs_intf  @0x1c10;
-    external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_pvt_clk_obs_ctrl  @0x1c1c;
-    external ext_memory #(.NUM_ENTRIES(3), .WIDTH(32))   gpio_poc_pbias_ctrl    @0x1c20;
-    external ext_memory #(.NUM_ENTRIES(1), .WIDTH(32))   gpio_refclk_ctrl       @0x1c2c;
-
-    external ext_memory #(.NUM_ENTRIES(594), .WIDTH(32)) smc_pvt_wrap           @0x2000;
+    external ext_memory #(.NUM_ENTRIES(594), .WIDTH(32)) smc_pvt_wrap           @0x2000; // Dummy RDL
 
 };
 

@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """External-window control apertures route to the adopter AXI-Lite port.
 
-``memmap.adoc`` (AXI-Lite External Window) lists the clock
-observation GPIO interface/control pairs for the PLL and PVT clocks, the
-power-on/pad-bias control block, the reference-clock GPIO control block and
-65 per-pad control blocks at a fixed stride. Their addresses come from the
-generated SMC map (``smc_addr.h``).
+The SMC map places control blocks in the supplementary region of the adopter
+external window and 65 per-pad control blocks at a fixed stride in the
+mandatory region. Their addresses come from the generated SMC map
+(``smc_addr.h``).
 
 The adopter implementation of these blocks is out of this repository, so
 nothing behind the window is specified here and nothing behind it is credited.
@@ -38,19 +37,15 @@ SPEC_PER_PAD_INSTANCES = 65
 TERMINATOR_RDATA = 0
 
 _CONTROL_BLOCKS = (
-    ("pll-obs-intf-decode", "GPIO_PLL_CLK_OBS_INTF"),
-    ("pll-obs-ctrl-decode", "GPIO_PLL_CLK_OBS_CTRL"),
-    ("pvt-obs-intf-decode", "GPIO_PVT_CLK_OBS_INTF"),
-    ("pvt-obs-ctrl-decode", "GPIO_PVT_CLK_OBS_CTRL"),
-    ("gpio-poc-pbias-decode", "GPIO_POC_PBIAS_CTRL"),
-    ("gpio-refclk-ctrl-decode", "GPIO_REFCLK_CTRL"),
+    ("controller-wrap-decode", "CONTROLLER_WRAP"),
+    ("gpio-extra-intf-decode", "GPIO_EXTRA_INTF"),
+    ("gpio-extra-ctrl-decode", "GPIO_EXTRA_CTRL"),
 )
 
 EXPECTED_ACCESSES = len(_CONTROL_BLOCKS) + 3
 
 
 def _ext(block: str) -> int:
-    # The probed register (DATA_CTRL or CONTROL) sits at offset 0 of each block.
     return smc_addr(f"SMC_TOP_SMC_EXTERNAL_SUPPLEMENTARY_{block}_BASE_ADDR")
 
 

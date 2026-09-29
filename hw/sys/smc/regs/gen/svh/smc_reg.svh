@@ -9504,56 +9504,29 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_REG_MAP_SIZE                 
 
 
 //==============================================================================
-// Memory: cdns_i3c_wrap_0
+// Memory: controller_wrap
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_0_MEM_BASE_ADDR                                  = 32'hC0403000;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_0_MEM_SIZE                                       = 32'h00000390;
-
-
-
-//==============================================================================
-// Memory: cdns_i3c_wrap_1
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_1_MEM_BASE_ADDR                                  = 32'hC0403400;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_1_MEM_SIZE                                       = 32'h00000390;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_BASE_ADDR                                  = 32'hC0403000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CONTROLLER_WRAP_MEM_SIZE                                       = 32'h00000390;
 
 
 
 //==============================================================================
-// Memory: cdns_i3c_wrap_2
+// Memory: gpio_extra_intf
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_2_MEM_BASE_ADDR                                  = 32'hC0403800;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_2_MEM_SIZE                                       = 32'h00000390;
-
-
-
-//==============================================================================
-// Memory: cdns_i3c_wrap_3
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_3_MEM_BASE_ADDR                                  = 32'hC0403C00;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_3_MEM_SIZE                                       = 32'h00000390;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_BASE_ADDR                                  = 32'hC0404000;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_INTF_MEM_SIZE                                       = 32'h0000000C;
 
 
 
 //==============================================================================
-// Memory: cdns_i3c_wrap_4
+// Memory: gpio_extra_ctrl
 //==============================================================================
 
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_4_MEM_BASE_ADDR                                  = 32'hC0404000;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_4_MEM_SIZE                                       = 32'h00000390;
-
-
-
-//==============================================================================
-// Memory: cdns_i3c_wrap_5
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_5_MEM_BASE_ADDR                                  = 32'hC0404400;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_CDNS_I3C_WRAP_5_MEM_SIZE                                       = 32'h00000390;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_BASE_ADDR                                  = 32'hC040400C;
+localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_EXTRA_CTRL_MEM_SIZE                                       = 32'h00000004;
 
 
 
@@ -9570,60 +9543,6 @@ localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_OFFSET  
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR                                      = 32'hC0404800;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_OFFSET                                    = 32'h00000004;
 localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR                                      = 32'hC0404804;
-
-
-//==============================================================================
-// Memory: gpio_pll_clk_obs_intf
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_INTF_MEM_BASE_ADDR                            = 32'hC0404C00;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_INTF_MEM_SIZE                                 = 32'h0000000C;
-
-
-
-//==============================================================================
-// Memory: gpio_pll_clk_obs_ctrl
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_CTRL_MEM_BASE_ADDR                            = 32'hC0404C0C;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PLL_CLK_OBS_CTRL_MEM_SIZE                                 = 32'h00000004;
-
-
-
-//==============================================================================
-// Memory: gpio_pvt_clk_obs_intf
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_INTF_MEM_BASE_ADDR                            = 32'hC0404C10;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_INTF_MEM_SIZE                                 = 32'h0000000C;
-
-
-
-//==============================================================================
-// Memory: gpio_pvt_clk_obs_ctrl
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_CTRL_MEM_BASE_ADDR                            = 32'hC0404C1C;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_PVT_CLK_OBS_CTRL_MEM_SIZE                                 = 32'h00000004;
-
-
-
-//==============================================================================
-// Memory: gpio_poc_pbias_ctrl
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_POC_PBIAS_CTRL_MEM_BASE_ADDR                              = 32'hC0404C20;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_POC_PBIAS_CTRL_MEM_SIZE                                   = 32'h0000000C;
-
-
-
-//==============================================================================
-// Memory: gpio_refclk_ctrl
-//==============================================================================
-
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_REFCLK_CTRL_MEM_BASE_ADDR                                 = 32'hC0404C2C;
-localparam int unsigned SMC_EXTERNAL_SUPPLEMENTARY_GPIO_REFCLK_CTRL_MEM_SIZE                                      = 32'h00000004;
-
 
 
 //==============================================================================
@@ -11205,9 +11124,9 @@ localparam longint unsigned EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_REG_DEFAULT    
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_1_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_REG_DEFAULT                                        = 32'h00000000;
+localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned STRAPS_STRAPS_LO_REG_DEFAULT                                                          = 32'h00000000;
 localparam longint unsigned STRAPS_STRAPS_HI_REG_DEFAULT                                                          = 32'h00000000;
-localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_REG_DEFAULT                                         = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_REG_DEFAULT                                       = 32'h00000000;
 localparam longint unsigned EXT_MEMORY_NUM_ENTRIES_FE800_MEM_WORD_REG_DEFAULT                                     = 32'h00000000;
 localparam longint unsigned REMAPPED_REGION_MEM_WORD_REG_DEFAULT                                                  = 64'h0000000000000000;
@@ -16050,14 +15969,14 @@ localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3BA_MEM_WORD_DATA_SHIFT          
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_MASK                                              = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_E4_MEM_WORD_DATA_SHIFT                                             = 0;
 
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
+localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT                                              = 0;
+
 localparam int unsigned STRAPS_STRAPS_LO_STRAPS_MASK                                                              = 32'hFFFFFFFF;
 localparam int unsigned STRAPS_STRAPS_LO_STRAPS_SHIFT                                                             = 0;
 
 localparam int unsigned STRAPS_STRAPS_HI_STRAPS_MASK                                                              = 32'h1FFFFFFF;
 localparam int unsigned STRAPS_STRAPS_HI_STRAPS_SHIFT                                                             = 0;
-
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_MASK                                               = 32'hFFFFFFFF;
-localparam int unsigned EXT_MEMORY_NUM_ENTRIES_3_MEM_WORD_DATA_SHIFT                                              = 0;
 
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_MASK                                             = 32'hFFFFFFFF;
 localparam int unsigned EXT_MEMORY_NUM_ENTRIES_252_MEM_WORD_DATA_SHIFT                                            = 0;
@@ -21220,6 +21139,12 @@ typedef struct packed {
 
 
 typedef struct packed {
+    logic [31:0]   data ;
+} ext_memory_num_entries_3_mem_word_reg_t;
+
+
+
+typedef struct packed {
     logic [31:0]   straps ;
 } straps_straps_lo_reg_t;
 
@@ -21228,12 +21153,6 @@ typedef struct packed {
 typedef struct packed {
     logic [28:0]   straps ;
 } straps_straps_hi_reg_t;
-
-
-
-typedef struct packed {
-    logic [31:0]   data ;
-} ext_memory_num_entries_3_mem_word_reg_t;
 
 
 

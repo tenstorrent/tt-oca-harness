@@ -37,8 +37,8 @@ static inline uint32_t sep_get_smc_base(void) {
 // ---------------------------------------------------------------------------
 
 // Latched strap values (32-bit LO + 32-bit HI). Live in the smc_external_supplementary window
-#define SMC_STRAPS_LO_OFFSET 0x405800u
-#define SMC_STRAPS_HI_OFFSET 0x405804u
+#define SMC_STRAPS_LO_OFFSET 0x404800u
+#define SMC_STRAPS_HI_OFFSET 0x404804u
 
 // CPU_CTRL scratch registers (64-bit stride: index * 8).
 //
