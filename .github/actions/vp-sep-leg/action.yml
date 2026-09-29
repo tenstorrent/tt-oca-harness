@@ -221,19 +221,6 @@ runs:
       shell: bash
       run: ./scripts/docker-run.sh ensure
 
-    # Diagnostic, never fatal: records what the image's interpreter holds for the
-    # manifest tooling, which the SEP ROM's pack_images step imports.
-    - name: Probe the container's manifest tooling
-      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'container'
-      shell: bash
-      run: |
-        ./scripts/docker-run.sh run-here sh -c '
-          echo "REPO_ROOT=${REPO_ROOT:-unset}"
-          echo "MANIFEST_PYTHON=${MANIFEST_PYTHON:-unset}"
-          python -c "import tt_boot_manifest as m; print(\"tt_boot_manifest at\", m.__file__)" ||
-            python -c "import os, site; d = site.getsitepackages()[0]; print(d); print([f for f in sorted(os.listdir(d)) if \"tt\" in f.lower() or \"editable\" in f.lower()] or \"no matching entries\")"
-        ' || true
-
     - name: Check toolchains
       shell: bash
       run: |
