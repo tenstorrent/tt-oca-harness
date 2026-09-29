@@ -233,7 +233,12 @@ evidence, structural OUT versus waiver holes, waiver fields) are in
 `docs/SMC_FCOV.adoc`.
 
 ```bash
+# Coverage merge accepts one elaboration. `hosted` and `fw` build the default
+# model. `--target` over `all` would run the three `dual` leaves on that model.
 python3 tools/dv/run_dv.py --dut smc --items hosted fw --tool vcs --regress --cov
+
+# SMC_DUAL is a separate pass and collects no coverage.
+python3 tools/dv/run_dv.py --dut smc --items dual --tool vcs --regress --target dual
 ```
 
 ## Run modes, targets, and groups
