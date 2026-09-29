@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common.memorymap import (  # noqa: E402
     build_views,
+    check_regblock_responses,
     compile_root,
     load_config,
     render_adoc,
@@ -35,6 +36,8 @@ def main() -> int:
     parser.add_argument("-t", "--top")
     parser.add_argument("-P", "--parameter", action="append", default=[])
     parser.add_argument("--repo-root", default=".")
+    parser.add_argument("--err-check-blocks", default="")
+    parser.add_argument("--no-rtl-blocks", default="")
     args = parser.parse_args()
 
     repo_root = Path(args.repo_root).resolve()
@@ -69,7 +72,11 @@ def main() -> int:
             )
         }
 
-    content = render_adoc(build_views(config, roots))
+    views = build_views(config, roots)
+    check_regblock_responses(
+        views, roots, args.err_check_blocks.split(), args.no_rtl_blocks.split()
+    )
+    content = render_adoc(views)
     output = _resolve(args.out, repo_root)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(content, encoding="utf-8")

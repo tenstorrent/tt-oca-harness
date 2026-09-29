@@ -254,4 +254,8 @@ addrmap abr_wrapper_key {
     // ML-KEM-1024 shared key output (AB kv_write; reverse direction)
     // Offset 0x400 - 0x4FF
     abr_sharedkey_rf MLKEM_SHARED_KEY @ 0x400;
+
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };

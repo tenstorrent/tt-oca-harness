@@ -5,11 +5,11 @@
 //
 // Connect sep_out, smc_out, and ext_in initiators to sep_in, smc_in, and ext_out targets. sep_out
 // reaches smc_in and ext_out, smc_out reaches sep_in and ext_out, and ext_in reaches sep_in and
-// smc_in. Each aperture covers [base, base + size) bytes; a zero base with zero size matches every
-// address. SEP and SMC apertures are runtime CSR inputs, synchronous to clk_i (SEP, SMC, and this
-// xbar all run on clk_smu_i in the SMU). sep_out and smc_out traffic matching neither aperture goes
-// to ext_out; unmatched ext_in traffic gets a decode error. Output ports carry wider IDs than the
-// inputs so responses route back to their initiator.
+// smc_in. Each aperture covers [base, base + size) bytes; a zero size disables the aperture
+// whatever its base. SEP and SMC apertures are runtime CSR inputs, synchronous to clk_i (SEP, SMC,
+// and this xbar all run on clk_smu_i in the SMU). sep_out and smc_out traffic matching neither
+// aperture goes to ext_out; unmatched ext_in traffic gets a decode error. Output ports carry wider
+// IDs than the inputs so responses route back to their initiator.
 
 `include "ocah_assert.svh"
 
@@ -65,14 +65,22 @@ module smu_axi_xbar
   // not connected to ext_out, so its unmatched accesses still decode-error.
   addr_rule_t [NumAddrRules-1:0] addr_map;
 
-  always_comb begin
-    addr_map[0].idx        = 32'd0;
-    addr_map[0].start_addr = sep_global_base_addr_i;
-    addr_map[0].end_addr   = 57'(sep_global_base_addr_i) + 57'(sep_region_size_i);
+  // reject when sep_region_size_i is 0 by setting to an arbitrary all 1s start and end adress
+  function automatic addr_rule_t aperture_rule(int unsigned idx, logic [55:0] base,
+                                               logic [31:0] size);
+    aperture_rule.idx = idx;
+    if (size == '0) begin
+      aperture_rule.start_addr = '1;
+      aperture_rule.end_addr   = 57'(56'('1));
+    end else begin
+      aperture_rule.start_addr = base;
+      aperture_rule.end_addr   = 57'(base) + 57'(size);
+    end
+  endfunction
 
-    addr_map[1].idx        = 32'd1;
-    addr_map[1].start_addr = smc_global_base_addr_i;
-    addr_map[1].end_addr   = 57'(smc_global_base_addr_i) + 57'(smc_region_size_i);
+  always_comb begin
+    addr_map[0] = aperture_rule(32'd0, sep_global_base_addr_i, sep_region_size_i);
+    addr_map[1] = aperture_rule(32'd1, smc_global_base_addr_i, smc_region_size_i);
   end
 
   // =========================================================================

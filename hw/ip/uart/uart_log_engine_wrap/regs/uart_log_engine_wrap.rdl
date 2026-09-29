@@ -20,6 +20,9 @@ addrmap uart_log_engine_wrap {
     uart_16550_main         uart                    @0x100;
     log_engine              log_engine              @0x200;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::SLVERR};
+`endif
 };
 
 `endif
