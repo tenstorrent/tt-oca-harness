@@ -395,11 +395,13 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
 
         await self.mb.write_status(_STICKY_STATUS)
         await self.mb.write_irq_status(_STICKY_IRQ)
-        await self.mb.write_irq_enable(0)
         await ClockCycles(cocotb.top.clk_i, 2)
+        assert self._irq_agg() == 0, (
+            "CHK-IRQ FAIL: aggregator [14] stayed after W1C with the enable still set"
+        )
         await self._expect_status("CHK-IRQ-W1C", inbound_depth=KM_MBOX_DEPTH)
         await self._expect_irq("CHK-IRQ-W1C", inbound_depth=KM_MBOX_DEPTH)
-        assert self._irq_agg() == 0, "CHK-IRQ FAIL: aggregator [14] stayed after W1C"
+        await self.mb.write_irq_enable(0)
         self.logger.info(
             "CHK-IRQ PASS: enable raises aggregator [14], disable drops the pin "
             "with IRQ_STATUS held, W1C clears both"
