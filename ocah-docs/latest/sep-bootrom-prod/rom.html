@@ -1325,7 +1325,7 @@ recovery and secondary boot.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>CPU_CTRL_RESET_CTRL</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x0020</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0x39020</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Written only on invalid LC state to hold all SMC cores
 in reset (<a href="#sec:fuses">Section 1.9</a>).</p></td>
 </tr>
@@ -2385,10 +2385,10 @@ locked out (<a href="#sec:demotion">Section 1.16</a>).</p></td>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-FUSE-020"></a><strong>[SEP-ROM-FUSE-020]</strong> The ROM shall validate the sensed LC state
 against the closed set above. On an invalid value the ROM shall (a) hold all SMC cores in
-reset (write <code>0xF</code> to the core reset bits of SMC <code>CPU_CTRL_RESET_CTRL</code>), rendering the SMU
-inoperative, and (b) fail fatally (<code>ROM_ERR_LIFECYCLE_INVALID</code>, <code>0xA002</code>). An invalid LC
-state may indicate a fuse attack or hardware fault; the system shall not run in an unknown
-lifecycle state.</p>
+reset (clear the active-low core reset bits <code>[3:0]</code> of SMC <code>CPU_CTRL_RESET_CTRL</code>, preserving
+the rest of the register), rendering the SMU inoperative, and (b) fail fatally
+(<code>ROM_ERR_LIFECYCLE_INVALID</code>, <code>0xA002</code>). An invalid LC state may indicate a fuse attack or
+hardware fault; the system shall not run in an unknown lifecycle state.</p>
 </div>
 <div class="paragraph">
 <p><a id="req-SEP-ROM-FUSE-030"></a><strong>[SEP-ROM-FUSE-030]</strong> The validated LC state shall be recorded in
