@@ -9,10 +9,10 @@
       "tool": "vcs"
     },
     {
-      "coverage_total_percent": 89.52,
+      "coverage_total_percent": 89.5,
       "flow": "dtp",
       "framework": "cocotb",
-      "pass_rate": 94.74,
+      "pass_rate": 97.37,
       "tests_total": 152,
       "tool": "vcs"
     },
@@ -28,8 +28,8 @@
       "coverage_total_percent": 90.0,
       "flow": "dtp",
       "framework": "",
-      "pass_rate": null,
-      "tests_total": 0,
+      "pass_rate": 97.37,
+      "tests_total": 304,
       "tool": "vcs"
     },
     {
@@ -57,7 +57,7 @@
       "tool": "vcs"
     }
   ],
-  "generated_at": "2026-09-30T12:33:46+00:00",
+  "generated_at": "2026-09-30T15:47:04+00:00",
   "results": [
     {
       "coverage": {
@@ -79,11 +79,11 @@
         "effective_metrics": {
           "assertion": 95.52,
           "branch": 86.27,
-          "condition": 83.76,
-          "fsm_state": 73.47,
+          "condition": 83.77,
+          "fsm_state": 73.27,
           "functional": 100.0,
           "line": 94.1,
-          "toggle": 93.52,
+          "toggle": 93.56,
           "user": 96.4211
         }
       },
@@ -95,12 +95,12 @@
       "coverage": {
         "effective_metrics": {
           "assertion": 94.48,
-          "branch": 86.9,
+          "branch": 86.93,
           "condition": 83.95,
           "fsm_state": 73.76,
           "functional": 98.43,
           "line": 94.77,
-          "toggle": 92.61,
+          "toggle": 92.59,
           "user": 94.5263
         }
       },
