@@ -472,6 +472,10 @@
 `SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, abr_host_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_km_isolated_probe_o)
+// AES and OTBN gated resets, for timing the crypto EDN endpoint cancel against
+// the reset it precedes.
+`SEP_TB_OUT(logic, aes_gated_rst_n_probe_o)
+`SEP_TB_OUT(logic, otbn_gated_rst_n_probe_o)
 // IP-interrupt aggregator: observation-only mirror of the 34-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the

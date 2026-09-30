@@ -241,8 +241,9 @@ module sep_uvm_top
     //
     // Scope is by subtree because these are generate-loop instances with no single
     // name to target, which also disables every other assertion under those three
-    // blocks. The contracts re-armed by name are the crypto EDN arbiter
-    // hold-until-grant assume, its lock assert, and FipsWindowFloor_A.
+    // blocks. The contracts re-armed by name are the EDN arbiter hold-until-grant
+    // assume and lock assert, the crypto EDN adapter's clear and per-endpoint
+    // cancel contracts, and FipsWindowFloor_A.
 `ifndef VERILATOR
     initial begin
         // Scope-level $assertoff: these instances have no clock or reset for
@@ -251,8 +252,10 @@ module sep_uvm_top
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan);
-        // req_chk_i gates these two. The adapter scope stays off because
-        // AxisEdnEndpointCount_A is an immediate assert with no reset.
+        // The adapter waives the arbiter's request checks only on the first
+        // cycle of an endpoint flush, so these two stay live for every other
+        // request. The adapter scope stays off because AxisEdnEndpointCount_A
+        // is an immediate assert with no reset.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
@@ -275,7 +278,26 @@ module sep_uvm_top
             .gen_ep[2].AxisEdnNoAckDuringClear_A);
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
             .gen_ep[3].AxisEdnNoAckDuringClear_A);
-        // req_chk_i changed on this instance too, so its arbiter contracts
+        // Per-endpoint cancel contracts. A cancelled endpoint neither requests,
+        // takes a word, nor acknowledges, and an ungranted request only drops
+        // under a flush of that endpoint.
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnCancelledEndpointIdle_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[0].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[1].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[2].AxisEdnReqStableUnlessEndpointCancelled_A);
+        $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_crypto_s3c_scan
+            .gen_ep[3].AxisEdnReqStableUnlessEndpointCancelled_A);
+        // The pool adapter shares the same arbiter, so its arbiter contracts
         // must be live for the same reason.
         $asserton(0, `SEP_CORE.u_sep_crypto.u_axis_edn_pool_s3c_scan
             .u_arbiter.ReqStaysHighUntilGranted0_M);
@@ -1217,6 +1239,14 @@ module sep_uvm_top
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.host_abr;
     assign abr_km_isolated_probe_o =
         `SEP_CORE.u_sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.km_abr;
+
+    // AES and OTBN per-IP gated resets. A software reset of either cancels its
+    // crypto EDN endpoints before this reset asserts; the isolation test times
+    // that cancel against these. Read-only XMR, same class as the KMAC probe.
+    assign aes_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.aes;
+    assign otbn_gated_rst_n_probe_o =
+        `SEP_CORE.u_sep_reset_ctrl.sep_crypto_gated_rst_no.otbn;
 
     // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
     // bits have no DUT output, and firmware owns the AXI frontdoor while they are
