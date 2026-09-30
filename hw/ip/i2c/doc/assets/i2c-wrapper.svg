@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="620" viewBox="0 0 1040 620" role="img" aria-labelledby="title desc">
 <title id="title">OCAH I2C wrapper</title>
-<desc id="desc">i2c_wrap has one AXI-Lite subordinate port, 32-bit address and 32-bit data, on its single clock clk_i. The axi_lite_demux u_axi_lite_demux compares the request address against the base and size of each register map and selects one of NUM_I2CS + 2 ports: one per I2C instance, the shared control map and an error subordinate. Each instance gen_i2cs[i].u_i2c holds u_i2c_reg, the PeakRDL-generated AXI-Lite register block for the i2c map, which drives hwif_out into u_i2c_core and takes hwif_in back from it. u_i2c_core is the OpenTitan I2C core: controller FSM, target FSM, bus monitor and the FMT, RX, TX and ACQ FIFOs. Its SCL, SDA, SMBus SUS and SMBus ALERT inputs pass through two-flop synchronizers. Each instance drives its slice of scl_o, sda_o, smbsus_no, smbalert_no, i2c_irq_o, i2c_debug_o and the four DMA ready outputs. u_i2c_ctrl_reg is the PeakRDL-generated i2c_ctrl block with one I2C_CTRL register per instance; its SMBUS_EN fields drive each instance's smbus_en input, and its I2C_EN and I2C_CONTROLLER_MODE_EN fields leave the wrapper on i2c_en_o and i2c_controller_mode_en_o. Addresses outside every map reach u_prim_axi_lite_err_slv, which answers DECERR with read data 0xBADCAB1E.</desc>
+<desc id="desc">i2c_wrap has one AXI-Lite subordinate port, 32-bit address and 32-bit data, on its single clock clk_i. The PULP axi_lite_demux u_axi_lite_demux compares the request address against the base and size of each register map and selects one of NUM_I2CS + 2 ports: one per I2C instance, the shared control map and an error subordinate. Each instance gen_i2cs[i].u_i2c holds u_i2c_reg, the PeakRDL-generated AXI-Lite register block for the i2c map, which drives hwif_out into u_i2c_core and takes hwif_in back from it. u_i2c_core is the OpenTitan I2C core: controller FSM, target FSM, bus monitor and the FMT, RX, TX and ACQ FIFOs. Its SCL, SDA, SMBus SUS and SMBus ALERT inputs pass through two-flop synchronizers inside u_i2c_core. Each instance drives its slice of scl_o, sda_o, smbsus_no, smbalert_no, i2c_irq_o, i2c_debug_o and the four DMA ready outputs. u_i2c_ctrl_reg is the PeakRDL-generated i2c_ctrl block with one I2C_CTRL register per instance; its SMBUS_EN fields drive each instance's smbus_en input, and its I2C_EN and I2C_CONTROLLER_MODE_EN fields leave the wrapper on i2c_en_o and i2c_controller_mode_en_o. Addresses outside every map reach u_prim_axi_lite_err_slv, which answers DECERR with read data 0xBADCAB1E.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -90,7 +90,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="532" y="59" text-anchor="start">clk_i: gated peripheral clock</text>
 <path class="axil" d="M520,14 L520,116"/>
 <path class="fabric" d="M344,116 L696,116 L960,176 L80,176 Z"/>
-<text class="bs" x="520" y="142" text-anchor="middle">u_axi_lite_demux</text>
+<text class="bs" x="520" y="142" text-anchor="middle">u_axi_lite_demux (PULP)</text>
 <text class="s" x="520" y="160" text-anchor="middle">axi_lite_demux, 1 to NUM_I2CS + 2, base and size compare</text>
 <rect class="core" x="60" y="222" width="460" height="202" rx="6"/>
 <text class="bs" x="154" y="242" text-anchor="start">gen_i2cs[0].u_i2c (i2c)</text>
@@ -128,14 +128,14 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="931" y="293" text-anchor="middle">DECERR</text>
 <text class="s" x="931" y="311" text-anchor="middle">0xBADCAB1E</text>
 <path class="axil" d="M141.0,176 L141.0,250"/>
-<path class="axil" d="M625.0,176 L625.0,222"/>
+<path class="axil" d="M606,176 L606,222"/>
 <path class="axil" d="M784.0,176 L784.0,222"/>
 <path class="axil" d="M931.0,176 L931.0,222"/>
-<path class="sigplain" d="M712,244 L696,244 L696,200 L632.0,200"/>
-<path class="sigplain" d="M618.0,200 L486,200"/>
+<path class="sigplain" d="M712,244 L696,244 L696,200 L616,200"/>
+<path class="sigplain" d="M596,200 L486,200"/>
 <path class="sigo" d="M486,200 L486,249"/>
-<path class="sigo" d="M660,200 L660,221"/>
-<circle cx="660" cy="200" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M656,200 L656,221"/>
+<circle cx="656" cy="200" r="3.5" fill="#5b6670"/>
 <text class="s" x="478" y="215" text-anchor="end">smbus_en[i]</text>
 <path class="sigo" d="M296,500 L296,411"/>
 <text class="s" x="296" y="516" text-anchor="middle">scl_i</text>
@@ -176,10 +176,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="837.3" y="602.5" text-anchor="start">Junction</text>
 <rect class="ps" x="509.0" y="83.0" width="22" height="18" rx="4"/>
 <text class="pst" x="520" y="96.5" text-anchor="middle">S</text>
-<rect class="pc" x="280.6" y="434.0" width="30.8" height="18" rx="4"/>
-<text class="pct" x="296" y="447.5" text-anchor="middle">CDC</text>
-<rect class="pc" x="588.6" y="434.0" width="30.8" height="18" rx="4"/>
-<text class="pct" x="604" y="447.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="280.6" y="401.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="296" y="414.5" text-anchor="middle">CDC</text>
 <rect class="ps" x="228.6" y="589.0" width="22" height="18" rx="4"/>
 <text class="pst" x="239.6" y="602.5" text-anchor="middle">S</text>
 <rect class="pc" x="393.6" y="589.0" width="30.8" height="18" rx="4"/>

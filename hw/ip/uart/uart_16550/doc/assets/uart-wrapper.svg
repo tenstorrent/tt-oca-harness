@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="640" viewBox="0 0 1040 640" role="img" aria-labelledby="title desc">
 <title id="title">SMC UART wrapper</title>
-<desc id="desc">uart_wrap has one AXI-Lite register port, 32-bit address and 32-bit data, and one AXI-Lite log-fetch manager port, 56-bit address and 64-bit data, on its single clock clk_i. The axi_lite_demux u_csr_axi_lite_demux compares the register address against each instance window, 0x400 apart, and selects one of NUM_UARTS + 1 ports: one per uart_log_engine_wrap instance and the error subordinate u_csr_axi_lite_err_slv, which answers DECERR with read data 0xBADCAB1E. Each instance gen_uart_log_engine_wraps[i].u_uart_log_engine_wrap holds a UART 16550 and, when GEN_LOG_ENGINES bit i is set, a log engine. The instances' log-fetch manager ports meet in the axi_lite_mux u_log_fetch_axi_lite_mux, whose output is the wrapper's log-fetch port. Each instance drives its slice of the UART serial and modem ports, the DMA ready outputs, uart_en_o, uart_err_o, uart_irq_o and log_engine_irq_o.</desc>
+<desc id="desc">uart_wrap has one AXI-Lite register port, 32-bit address and 32-bit data, and one AXI-Lite log-fetch manager port, 56-bit address and 64-bit data, on its single clock clk_i. The PULP axi_lite_demux u_csr_axi_lite_demux compares the register address against each instance window, 0x400 apart, and selects one of NUM_UARTS + 1 ports: one per uart_log_engine_wrap instance and the error subordinate u_csr_axi_lite_err_slv, which answers DECERR with read data 0xBADCAB1E. Each instance gen_uart_log_engine_wraps[i].u_uart_log_engine_wrap holds a UART 16550 and, when GEN_LOG_ENGINES bit i is set, a log engine. The instances' log-fetch manager ports meet in the PULP axi_lite_mux u_log_fetch_axi_lite_mux, whose output is the wrapper's log-fetch port. Each instance drives its slice of the UART serial and modem ports, the DMA ready outputs, uart_en_o, uart_err_o, uart_irq_o and log_engine_irq_o.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -90,7 +90,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="532" y="59" text-anchor="start">clk_i: gated peripheral clock</text>
 <path class="axil" d="M520,14 L520,112"/>
 <path class="fabric" d="M344,112 L696,112 L960,168 L80,168 Z"/>
-<text class="bs" x="520" y="136" text-anchor="middle">u_csr_axi_lite_demux</text>
+<text class="bs" x="520" y="136" text-anchor="middle">u_csr_axi_lite_demux (PULP)</text>
 <text class="s" x="520" y="154" text-anchor="middle">axi_lite_demux, 1 to NUM_UARTS + 1, 0x400 windows</text>
 <rect class="core" x="70" y="200" width="340" height="90" rx="6"/>
 <text class="bs" x="240" y="231" text-anchor="middle">gen_uart_log_engine_wraps[0]</text>
@@ -109,8 +109,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="axil" d="M240,168 L240,200"/>
 <path class="axil" d="M750,168 L750,200"/>
 <path class="axil" d="M928.0,168 L928.0,200"/>
-<path class="fabric" d="M376,314 L730,314 L623.8,370 L482.2,370 Z"/>
-<text class="bs" x="553" y="334" text-anchor="middle">u_log_fetch_axi_lite_mux</text>
+<path class="fabric" d="M376,314 L730,314 L652.12,370 L453.88,370 Z"/>
+<text class="bs" x="553" y="334" text-anchor="middle">u_log_fetch_axi_lite_mux (PULP)</text>
 <text class="s" x="553" y="350" text-anchor="middle">axi_lite_mux, NUM_UARTS to 1</text>
 <path class="axil" d="M398,290 L398,314"/>
 <path class="axil" d="M690,290 L690,314"/>

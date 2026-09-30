@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="746" viewBox="0 0 1040 746" role="img" aria-labelledby="title desc">
 <title id="title">OCAH I3C wrapper</title>
-<desc id="desc">i3ccore_wrapper has one AXI-Lite subordinate port, 32-bit address and 32-bit data, on its single clock clk_i. The axi_lite_demux u_axil_demux, with every channel registered and up to eight transactions outstanding, selects instance i when the address minus BASE_ADDR lies in the i-th 0x1000 window, and instance 0 when it lies in none. Each generated instance subtracts i times 0x1000 from the address and passes a 12-bit offset to its i3c_wrapper. Inside i3c_wrapper the AXI-Lite port reaches the CHIPS Alliance i3c-core u_i3c, drawn as a black box, as single-beat AXI4 with length 0, WLAST 1 and ID and user zero. SCL and SDA inputs pass straight to the core. The wrapper ties scl_o low and drives scl_oe_o with the inverse of the core's SCL level. sda_o is the core's SDA level, and sda_oe_o is sel_od_pp_o OR the inverse of sda_o. sel_od_pp_o, irq_o, the recovery signals and the DAT, DCT and RLT memory ports pass through to per-instance vectors on the i3ccore_wrapper boundary. Instances 1 to N-1 are identical to instance 0.</desc>
+<desc id="desc">i3ccore_wrapper has one AXI-Lite subordinate port, 32-bit address and 32-bit data, on its single clock clk_i. The PULP axi_lite_demux u_axil_demux, with every channel registered and up to eight transactions outstanding, selects instance i when the address minus BASE_ADDR lies in the i-th 0x1000 window, and instance 0 when it lies in none. Each generated instance subtracts i times 0x1000 from the address and passes a 12-bit offset to its i3c_wrapper. Inside i3c_wrapper the AXI-Lite port reaches the CHIPS Alliance i3c-core u_i3c, drawn as a black box, as single-beat AXI4 with length 0, WLAST 1 and ID and user zero. SCL and SDA inputs pass straight to the core. The wrapper ties scl_o low and drives scl_oe_o with the inverse of the core's SCL level. sda_o is the core's SDA level, and sda_oe_o is sel_od_pp_o OR the inverse of sda_o. sel_od_pp_o, irq_o, the recovery signals and the DAT, DCT and RLT memory ports pass through to per-instance vectors on the i3ccore_wrapper boundary. Instances 1 to N-1 are identical to instance 0.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -90,7 +90,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="532" y="59" text-anchor="start">clk_i: gated peripheral clock</text>
 <path class="axil" d="M520,14 L520,112"/>
 <path class="fabric" d="M344,112 L696,112 L960,172 L80,172 Z"/>
-<text class="bs" x="520" y="138" text-anchor="middle">u_axil_demux</text>
+<text class="bs" x="520" y="138" text-anchor="middle">u_axil_demux (PULP)</text>
 <text class="s" x="520" y="156" text-anchor="middle">axi_lite_demux, 1 to NUM_I3C, 0x1000 windows, no match to instance 0</text>
 <rect class="network" x="95" y="194" width="190" height="36" rx="4"/>
 <text class="s" x="190" y="217" text-anchor="middle">addr - i × 0x1000, 12 bits</text>
@@ -107,8 +107,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="190" y="323.5" text-anchor="middle">len 0, last 1, ID 0, user 0</text>
 <path class="axi" d="M190,332 L190,352"/>
 <rect class="core" x="80" y="352" width="750" height="72" rx="6"/>
-<text class="bs" x="470" y="374" text-anchor="middle">u_i3c (i3c)</text>
-<text class="si" x="470" y="392" text-anchor="middle">CHIPS Alliance i3c-core, drawn as a black box</text>
+<text class="bs" x="470" y="374" text-anchor="middle">u_i3c (CHIPS Alliance)</text>
+<text class="si" x="470" y="392" text-anchor="middle">i3c-core, drawn as a black box</text>
 <text class="s" x="220" y="414" text-anchor="middle">i3c_scl_i</text>
 <text class="s" x="285" y="414" text-anchor="middle">i3c_sda_i</text>
 <text class="s" x="415" y="414" text-anchor="middle">i3c_scl_o</text>
@@ -117,25 +117,23 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="705" y="414" text-anchor="middle">irq_o</text>
 <path class="sigo" d="M220,592 L220,425"/>
 <path class="sigo" d="M285,630 L285,425"/>
-<rect class="fabric" x="335" y="451" width="30" height="22" rx="3"/>
-<text class="s" x="350" y="467" text-anchor="middle">0</text>
-<path class="sigo" d="M350,473.0 L350,592"/>
-<path class="sigplain" d="M415,424 L415,451.0"/>
-<rect class="fabric" x="393" y="451" width="44" height="22" rx="3"/>
-<text class="s" x="415" y="467" text-anchor="middle">NOT</text>
-<path class="sigo" d="M415,473.0 L415,630"/>
+<text class="s" x="350" y="462" text-anchor="middle">1'b0</text>
+<path class="sigo" d="M350,468 L350,592"/>
+<path class="sigplain" d="M415,424 L415,450"/>
+<path class="fabric" d="M405,450 L425,450 L415,467 Z"/>
+<circle class="fabric" cx="415" cy="471" r="4"/>
+<path class="sigo" d="M415,475 L415,630"/>
 <path class="sigo" d="M480,424 L480,592"/>
-<circle cx="480" cy="440" r="3.5" fill="#5b6670"/>
-<path class="sigplain" d="M480,440 L546,440 L546,451.0"/>
-<rect class="fabric" x="524" y="451" width="44" height="22" rx="3"/>
-<text class="s" x="546" y="467" text-anchor="middle">NOT</text>
-<path class="sigo" d="M546,473.0 L546,490.0"/>
+<circle cx="480" cy="438" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M480,438 L548,438 L548,450"/>
+<path class="fabric" d="M538,450 L558,450 L548,467 Z"/>
+<circle class="fabric" cx="548" cy="471" r="4"/>
+<path class="sigo" d="M548,475 L548,489.91735537190084"/>
 <path class="sigo" d="M640,424 L640,592"/>
-<circle cx="640" cy="440" r="3.5" fill="#5b6670"/>
-<path class="sigo" d="M640,440 L576,440 L576,490.0"/>
-<rect class="fabric" x="532" y="491" width="56" height="22" rx="3"/>
-<text class="s" x="560" y="507" text-anchor="middle">OR</text>
-<path class="sigo" d="M560,513.0 L560,630"/>
+<circle cx="640" cy="438" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M640,438 L572,438 L572,489.91735537190084"/>
+<path class="fabric" d="M538,486 Q560,500 582,486 Q582,505.2 560,518 Q538,505.2 538,486 Z"/>
+<path class="sigo" d="M560,518 L560,630"/>
 <path class="sigo" d="M705,424 L705,630"/>
 <path class="sig" d="M765,425 L765,592"/>
 <path class="sig" d="M825,425 L825,630"/>
@@ -167,13 +165,16 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="142.5" y="700.5" text-anchor="start">Converter</text>
 <rect class="core" x="224.6" y="687" width="36" height="18" rx="4"/>
 <text class="s" x="268.6" y="700.5" text-anchor="start">RTL block</text>
-<rect class="fabric" x="350.7" y="687" width="36" height="18" rx="3"/>
-<text class="s" x="394.7" y="700.5" text-anchor="start">Pad-enable logic</text>
-<text class="s" x="555.1" y="700.5" text-anchor="start">Subordinate port</text>
-<path class="axil" d="M688.5,696 L730.5,696"/>
-<text class="s" x="741.5" y="700.5" text-anchor="start">AXI-Lite</text>
-<path class="axi" d="M819.7,696 L861.7,696"/>
-<text class="s" x="872.7" y="700.5" text-anchor="start">AXI4</text>
+<path class="fabric" d="M350.7,688 L365.7,696 L350.7,704 Z"/>
+<circle class="fabric" cx="369.7" cy="696" r="4"/>
+<text class="s" x="382.7" y="700.5" text-anchor="start">NOT</text>
+<path class="fabric" d="M423.4,687 Q433.4,696 423.4,705 Q440.2,705 451.4,696 Q440.2,687 423.4,687 Z"/>
+<text class="s" x="459.4" y="700.5" text-anchor="start">OR</text>
+<text class="s" x="523.2" y="700.5" text-anchor="start">Subordinate port</text>
+<path class="axil" d="M656.6,696 L698.6,696"/>
+<text class="s" x="709.6" y="700.5" text-anchor="start">AXI-Lite</text>
+<path class="axi" d="M787.8,696 L829.8,696"/>
+<text class="s" x="840.8" y="700.5" text-anchor="start">AXI4</text>
 <path class="sigo" d="M17,724 L59,724"/>
 <text class="s" x="70" y="728.5" text-anchor="start">Signal</text>
 <path class="sig" d="M134.4,724 L176.4,724"/>
@@ -183,6 +184,6 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="445.5" y="728.5" text-anchor="start">Junction</text>
 <rect class="ps" x="509.0" y="83.0" width="22" height="18" rx="4"/>
 <text class="pst" x="520" y="96.5" text-anchor="middle">S</text>
-<rect class="ps" x="525.1" y="687.0" width="22" height="18" rx="4"/>
-<text class="pst" x="536.1" y="700.5" text-anchor="middle">S</text>
+<rect class="ps" x="493.2" y="687.0" width="22" height="18" rx="4"/>
+<text class="pst" x="504.2" y="700.5" text-anchor="middle">S</text>
 </svg>
