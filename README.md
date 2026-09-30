@@ -54,6 +54,8 @@ Full documentation is published at
 | [`hw/common/`](hw/common/) | Shared primitives, TL-UL / AXI infrastructure, and the register flow |
 | [`doc/`](doc/) | Technical Reference Manual, Integrator, Getting Started, datasheets |
 | [`tools/`](tools/), [`scripts/`](scripts/) | Register, documentation, DV and container tooling |
+| [`flows/`](flows/) | Lint, format and synthesis flow makefiles |
+| [`vendor/`](vendor/) | Vendored third-party packages, with local patches and overlays |
 
 ## Contributing
 
