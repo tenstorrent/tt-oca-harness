@@ -5,12 +5,12 @@
 no_cpu / +skip_fuse_sense. RAND-NONE: every address comes from the generated
 register export and is walked on every run.
 
-The SEP components table of the generated memory map
-(``hw/sys/sep/regs/gen/adoc/memory_map.adoc``, rendered from ``sep.rdl``)
+The SEP components view of the SystemRDL memory map
+(``hw/sys/sep/regs/gen/py/sep_memory_map.py``, generated from ``sep.rdl``)
 states the contract. Per unit it gives the Decoded Extent and, for a 32-bit
 access that no register backs, the read response, the read data and the write
 response: inside the extent, past it, and in a reserved row between apertures.
-``env/sep_decode_resp.py`` reads the table; the config refuses to build if a
+``env/sep_decode_resp.py`` imports the view; the config refuses to build if a
 probe the refusal checkers grade is not a refusal there.
 
 CHK-UNMAPPED-LIVE is the positive control. Every programmed live word next to a

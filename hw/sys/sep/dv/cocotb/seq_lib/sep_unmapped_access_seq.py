@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Unmapped-access policy points for sep_unmapped_access_policy_test.
 
-The SEP components table of the generated memory map
-(``hw/sys/sep/regs/gen/adoc/memory_map.adoc``, read through
+The SEP components view of the SystemRDL memory map
+(``hw/sys/sep/regs/gen/py/sep_memory_map.py``, read through
 ``env/sep_decode_resp.py``) states, per unit, its Decoded Extent and how a
-32-bit access that no register backs answers: one cell for a hole inside the
-extent, one for the rest of the aperture, and one for a reserved row between
-apertures. Each cell gives the read response, the read data and the write
-response.
+32-bit access that no register backs answers: one response for a hole inside
+the extent, one for the rest of the aperture, and one for a reserved row
+between apertures. Each response gives the read response, the read data and
+the write response.
 
 This module builds the address sets that sit next to live registers but own
 none, and that no other leaf probes:
@@ -361,7 +361,7 @@ class SepUnmappedCfg:
 
     # --- reserved row above SEP CPU control --------------------------------
     def _build_reserved_row(self) -> None:
-        # The generated memory map (hw/sys/sep/regs/gen/adoc/memory_map.adoc)
+        # The SystemRDL memory map (hw/sys/sep/regs/gen/py/sep_memory_map.py)
         # marks everything from the end of the SEP CPU control aperture up to
         # the external IO bridge as one reserved row. Walk it one 64 KiB page at
         # a time, first and last word of each page.
