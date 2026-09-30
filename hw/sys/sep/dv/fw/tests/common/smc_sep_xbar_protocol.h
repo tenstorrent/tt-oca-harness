@@ -74,7 +74,7 @@
  * margin, without being absurdly long. */
 #define XBAR_FW_POLL_LIMIT 200000
 
-/* CLA node0 EAP CSR values (verbatim, matching the 004 real-CLA release; satisfies the SV
+/* CLA node0 EAP CSR values (verbatim, matching the real-CLA release; satisfies the SV
  * "Real CLA boot" liveness monitor at smc_chiplet_wrap_uvm_top.sv:805). */
 #define XBAR_CLA_CTRLSTATUS_EXPECT 0x60
 #define XBAR_CLA_EAP0_RELEASE 0x341FBFC000ULL
@@ -100,7 +100,18 @@
 #define XBAR_SEP_REGION_SIZE_GOLDEN 0x20000000u       /* SEP_REGION_SIZE (32b) */
 #define XBAR_SEP_OUTBOUND_START 0x0000000040000000ULL /* SEP outbound egress filter */
 #define XBAR_SEP_OUTBOUND_END 0x00000000800000FFULL
-#define XBAR_SEP_OUTBOUND_CFG 0x0000000101000013ULL
+/*
+ * FILTER_CONFIG words (hw/ip/axi_filter/regs/filter_ctrl.rdl): read_allowed[0],
+ * write_allowed[1], entry_enabled[4], allow_ns[8], data_bus_width[14:12] (sw=r,
+ * reset 3), src_id[19:16], allow_burst[24], locked[63]. Bits 32..62 hold no
+ * field. Each word carries data_bus_width at its reset value, so the written
+ * word is also the value a readback returns. sep_outbound_filter.h checks
+ * XBAR_SEP_OUTBOUND_CFG against the generated filter_ctrl.h field masks.
+ *   OUTBOUND_CFG: read | write | entry_enabled | allow_burst
+ *   INBOUND_CFG0 / SMC_OUTBOUND_CFG: read | write | entry_enabled | src_id=3
+ *   INBOUND_CFG1: INBOUND_CFG0 | allow_ns
+ */
+#define XBAR_SEP_OUTBOUND_CFG 0x0000000001003013ULL
 #ifdef SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
 #define XBAR_SEP_INBOUND_START ((unsigned long long)SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0))
 #define XBAR_SEP_INBOUND_END \
@@ -113,9 +124,9 @@
 #define XBAR_SMC_OUTBOUND_START 0x0000000010802000ULL
 #define XBAR_SMC_OUTBOUND_END 0x000000001080203FULL
 #endif
-#define XBAR_SEP_INBOUND_CFG0 0x0000000100030013ULL
-#define XBAR_SEP_INBOUND_CFG1 0x0000000100030113ULL
-#define XBAR_SMC_OUTBOUND_CFG 0x0000000100030013ULL
+#define XBAR_SEP_INBOUND_CFG0 0x0000000000033013ULL
+#define XBAR_SEP_INBOUND_CFG1 0x0000000000033113ULL
+#define XBAR_SMC_OUTBOUND_CFG 0x0000000000033013ULL
 /* SMC CPU_CTRL RESET_CTRL post-pulse readback: default value (pulse_start bits self-clear). */
 #define XBAR_SMC_RESET_CTRL_DEFAULT 0x0000010Fu
 

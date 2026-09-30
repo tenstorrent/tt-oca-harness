@@ -9,8 +9,9 @@ no_cpu / +skip_fuse_sense. RANDCFG: reserved gaps just above each live block
 every seed, plus seed-selected addresses drawn from every reserved row.
 
 The expectation comes from ``env/sep_axi_decode_map.py``. A reserved
-row allocates nothing, so an access there must not answer OKAY. DECERR
-versus SLVERR is unnamed, so the flavour is counted and logged.
+row allocates nothing, so an access there must not answer OKAY. This test
+grades refusal only, so DECERR and SLVERR both satisfy the check and the split
+is counted and logged.
 
 CHK-MAP-REFUSE-DATA: a refused read returns none of the live words sampled on
 the same bus (the live-bus control, SW_RESET_N, boot-ROM word 0). A refused
@@ -164,7 +165,7 @@ class sep_axi_map_refuse_test(sep_base_test):
         assert len(cfg.short_regions) <= SHORT_ROW_LIMIT, (
             f"CHK-RANDCFG FAIL: seed {cfg.seed} left "
             f"{len(cfg.short_regions)} row(s) short of quota, above the "
-            f"{SHORT_ROW_LIMIT} unnamed-refuse rows"
+            f"limit of {SHORT_ROW_LIMIT}"
         )
         self.logger.info(
             "CHK-RANDCFG PASS: walked %d probes (floor %d) with all %d "

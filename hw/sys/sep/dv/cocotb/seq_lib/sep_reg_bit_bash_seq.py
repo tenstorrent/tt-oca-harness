@@ -196,8 +196,9 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
     "ENTROPY_SEED": "key material",
     "LOAD_CHECKSUM": "hw-produced result",
     "INSN_CNT": "engine-updated",
-    "ERR_BITS": "W1C status",
-    "FATAL_ALERT": "W1C status",
+    # Labels follow the IP-XACT export (regs/gen/ipxact/sep.xml).
+    "ERR_BITS": "hw-updated status (read-write, volatile)",
+    "FATAL_ALERT": "read-only hw status",
     "CTRL_SHADOWED": "shadowed control",
     "CFG_SHADOWED": "shadowed control",
     "CTRL_GCM": "multi-field encoding",
@@ -215,7 +216,7 @@ _TOUCH_DENY_SUBSTR: dict[str, str] = {
 _TOUCH_DENY_SUFFIX_HW: dict[str, str] = {
     "_STS": "hw-driven status",
     "_SM_STATE": "hw state observability",
-    "COMPONENT_ID": "read-only identity exported rw",
+    "COMPONENT_ID": "read-only identity",
     "GENBITS_VLD": "hw-driven valid",
     "INT_STATE_VAL": "windowed read port, not storage",
 }
@@ -241,18 +242,18 @@ _TOUCH_DENY_NAME: dict[str, str] = {
     "CFG": "multi-field encoding",
     "INTR_STATE": "W1C status",
     "IRQS": "W1C status",
-    "IRQP": "W1C status",
-    "ERR_CODE": "W1C status",
-    "ERROR_CODE": "W1C status",
+    "IRQP": "read-only hw status",
+    "ERR_CODE": "read-only hw status",
+    "ERROR_CODE": "read-only hw status",
     "ERROR_FLAGS": "read-clear status",
-    "WKUP_CAUSE": "W1C status",
+    "WKUP_CAUSE": "write-zero-to-clear status",
     "RANGE_VALID": "arms the range",
     # Thresholds clamp to FIFO depth; export mask is wider than storage.
     "RIRQT": "clamped to FIFO depth",
     "WIRQT": "clamped to FIFO depth",
     # Entropy CSRs need KMAC CFG / runtime; not plain POR storage.
     "ENTROPY_PERIOD": "needs KMAC cfg",
-    "ENTROPY_REFRESH_HASH_CNT": "needs KMAC cfg",
+    "ENTROPY_REFRESH_HASH_CNT": "read-only hw counter",
     "ENTROPY_REFRESH_THRESHOLD_SHADOWED": "needs KMAC cfg",
 }
 

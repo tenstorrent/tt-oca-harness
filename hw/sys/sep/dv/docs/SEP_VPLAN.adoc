@@ -419,11 +419,11 @@ never when it was written.
 |`sep_fabric_inbound_filter_rule_matrix_test`
 |no_cpu, real PROD fuse sense
 |ocah_axi_vip
-|Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
+|Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 × `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15. Red on the current RTL; see <<known-limitations>>.
 |`sep_fabric_remap_filter_csr_bank_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries.
+|R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, plus per-entry storage independence across all 64 filter and alias entries. Red on the current RTL; see <<known-limitations>>.
 |`sep_fabric_output_remap_datapath_proxy_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -487,11 +487,11 @@ never when it was written.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Inter-block reserved space: reserved rows in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation comes from that table. Named reserved spans whose refuse flavour is unnamed are excluded from the probe set. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
+|Inter-block reserved space: reserved rows in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation comes from that table. Named reserved spans are excluded from the probe set with a counted reason. The walk grades refusal only: it accepts any refusal and logs the code. The code `sep.rdl` states (`ocah_resp`) is graded by `sep_unmapped_access_policy_test` at the points that test probes. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
 |`sep_unmapped_access_policy_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Unmapped points next to live registers that no other leaf probes: the system-CSR holes, the reserved row above SEP CPU control, the upper half of the mailbox page, the space past each eFuse sibling block, and the tail of every remap and filter array slot. `memory_map.adoc` gives the rule: refused between or past unit extents, zero and OKAY inside an extent, never an alias. Every probe is checked against distinct values programmed into the neighbouring live words. The refusal code at each point is logged and not graded.
+|Unmapped points next to live registers that no other leaf probes: the system-CSR holes, the reserved row above SEP CPU control, the upper half of the mailbox page, the space past each eFuse sibling block and past the SPI host, and the tail of every remap and filter array slot. The SEP components table of the generated memory map states, per unit, the response code and read data at each such point; every probe is graded against it and must never alias. Every array slot tail inside base + `SEP_TOP_<ARRAY>_TOTAL_SIZE`, the RDL allocation, the last slot's tail included, must read zero with OKAY. Every probe is checked against distinct values programmed into the neighbouring live words; a live word whose RDL field has no reset is written before it is read.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -677,7 +677,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_key_policy_vault_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
+|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, a store past the KPV register map raises `IRQ_STATUS` AXI_SLVERR only, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 |`sep_km_command_set_rand_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
@@ -873,7 +873,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears.
 
 |eFuse per-spare write-lock slot numbering
-|`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE7`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
+|`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE8`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
 
 |Token comparator fail-closed at the lifecycle gate
 |`sep_lcc_lc_state_w1s_prod_test` (`CHK-GATE-SIP-FAULT`). A redundancy fault forces the reserved error code onto the token status, and the `LC_STATE` bit[1] advance must not land — the gate compares for equality with the match code, so a gate written as "not a mismatch" would let the fault code through. The cell that follows presents the same token with the fault removed and does advance, so the pair is a contrast rather than a lone negative.
@@ -903,7 +903,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_axi_map_refuse_test`.
 
 |Unmapped points next to live registers
-|`sep_unmapped_access_policy_test` — system-CSR holes, the system-bus reserved row, the mailbox page's upper half, past each eFuse sibling, and every remap / filter slot tail: refused, or zero inside an extent, and never an alias.
+|`sep_unmapped_access_policy_test` — system-CSR holes, the system-bus reserved row, the mailbox page's upper half, past each eFuse sibling and the SPI host: the response code and read data the SEP memory map states, and never an alias. Every remap / filter slot tail, the last one included, reads zero with OKAY inside the RDL allocation (base + `TOTAL_SIZE`).
 
 |Dead-space decode
 |`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>. The write side is graded by what the burst leaves behind in `sep_fabric_burst_wrap_test`.
@@ -2264,6 +2264,8 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |The sideload digest differs from the decoy-key digest.
 |CHK-MAC
 |The sideload digest equals the software-key digest for the same known key.
+|CHK-MAC-GOLDEN
+|The software-key digest equals KMAC256(K, X, L=256, S="") from `env/sep_kmac_golden.py` (NIST SP 800-185). The sequence programs `PREFIX` as `encode_string("KMAC") \|\| encode_string("")` and ends the message with the 3-byte `right_encode(256)`, so a wrong encoding fails here and not only in a comparison of the engine with itself.
 |CHK-ENT
 |The engine draws real masking entropy. Alive-mode beat count. Bit-exact per-sink compare is the small KM ROM tests, not `rom_main`. The scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
 |CHK0
@@ -3159,18 +3161,18 @@ order is observed at the assert edge rather than read off a settled host path. A
 design that never isolates the host path never releases the sequencer and fails
 here.
 |CHK-ABR-HOST-DRAIN
-|Host reads issued before the ABR reset request resolve OKAY or SLVERR, never
-DECERR and never a hang. The test records the event identities still unretired
-at the cycle the isolate closes, requires that set to be non-empty, and requires
-at least one event from that exact set to drain OKAY. Thus an earlier completed
-read cannot satisfy the drain verdict. The number still
-unretired at the cycle the isolate closes is asserted non-zero, so the leg
+|Host reads issued in the same cycle as the ABR reset request resolve OKAY or
+SLVERR, never DECERR and never a hang. The test records the event identities
+still unretired at the cycle the isolate request rises, requires that set to be
+non-empty, and requires at least one event from that exact set to drain OKAY.
+Thus an earlier completed read cannot satisfy the drain verdict, and the leg
 grades traffic the isolate had to drain rather than beats that had already
 completed.
 |CHK-ABR-DRAIN-ARRIVAL
-|A read issued WHILE the ABR isolate is draining resolves rather than hanging.
-It may drain or terminate; the graded property is that the path is not left
-wedged.
+|The `CHK-DRAIN-ARRIVAL` contract on the ABR full-AXI isolate: the arrival AR
+is accepted on `s_axi` while the isolate request is up and the gated reset is
+still released, and the read then resolves. It may drain or terminate; it may
+not hang.
 |CHK-ABR-JTAG-OVERRIDE
 |The JTAG `IC_RESET` override holds the ABR domain while `SW_RESET_N`, read back
 inside the window, still reports it released -- so the hold is attributable to
@@ -3193,9 +3195,9 @@ releases. Both mux directions are graded.
 |CHK-DRAIN-ORDER
 |The HMAC gated reset does not assert until both AXI-Lite paths that domain depends on — the SEP host path and the Key Manager path — report isolated. The host isolate bit is 0 when the request is issued. The Key Manager path may already be isolated: that request is the OR of this engine and the Key Manager isolate, and the Key Manager stays at its reset default on this leaf. Read from the two named TB probe bits, sampled every cycle so the assert edge cannot be missed.
 |CHK-HOST-DRAIN
-|Host reads issued before the host isolate closes resolve OKAY or SLVERR — never DECERR and never a hang. The event identities still unretired when isolation closes are captured, and at least one event from that exact set must resolve OKAY, so a read completed before the drain window cannot satisfy the verdict.
+|Host reads issued in the same cycle as the reset request resolve OKAY or SLVERR — never DECERR and never a hang. The event identities still unretired when the isolate request rises are captured, and at least one event from that exact set must resolve OKAY, so a read completed before the drain window cannot satisfy the verdict.
 |CHK-DRAIN-ARRIVAL
-|A read issued *inside an observed drain window* also resolves. The beat is issued on the first cycle a TB probe shows an isolate bit asserted while the gated reset is still released, and the probe values at issue are recorded in the log, so the beat's position in the window is evidence rather than a timing assumption. It may drain (OKAY) or be terminated (SLVERR); it may not hang. A domain that asserts its gated reset with no such cycle at all fails this checker rather than re-scoring `CHK-HOST-DRAIN`'s property.
+|A read *accepted inside an observed drain window* also resolves. The window is the cycles in which the HMAC host isolate request probe is high and the gated reset is still released. The arrival read is issued on the first such cycle, with an empty AR queue and its own AXI ID, and its `s_axi` AR handshake must fall inside the window. The log records the handshake time, the probe values at it, and the reset edge. It may drain (OKAY) or be terminated (SLVERR); it may not hang.
 |CHK-ISOLATE-REOPEN
 |After release the same `DIGEST_0` answers OKAY again. This is also what shows the drain did not leave the path wedged.
 |CHK-ISOLATE-RESET-DEFAULT
@@ -3203,7 +3205,7 @@ releases. Both mux directions are graded.
 |CHK-KMAC-DRAIN-ORDER
 |The KMAC gated reset does not assert until both the host and Key Manager AXI-Lite paths report isolated, sampled in the same cycle as the observed assert edge. The host isolate bit and the gated reset are 0 / released when the request is issued. The Key Manager path may already be isolated (same OR as HMAC; Key Manager held). A domain that asserted with no host-path drain window fails rather than scoring a steady state.
 |CHK-KMAC-DRAIN-ARRIVAL
-|A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
+|The `CHK-DRAIN-ARRIVAL` contract on the KMAC host path: a read issued on the first cycle the KMAC host isolate request is seen has its AR accepted on `s_axi` while the request is up and the gated reset is still released, and it resolves OKAY or SLVERR. Fails explicitly if no window was ever observed or the handshake falls after the reset edge.
 |CHK-TRNG-NEIGHBORS
 |Parking the shared TRNG reset holds the TRNG `SW_RESET_N` bit and leaves the five accelerator bits released (OTBN, AES, HMAC, KMAC, ABR). HMAC DIGEST and AES DATA_OUT stay unchanged in that window. KMAC STATE, OTBN `LOAD_CHECKSUM` and the ABR datapath are not sampled here.
 |CHK-EDN-PEND
@@ -3233,12 +3235,11 @@ releases. Both mux directions are graded.
 `CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`, for the Adams Bridge domain by
 `CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`,
 and for the KMAC domain by `CHK-KMAC-DRAIN-ORDER` and `CHK-KMAC-DRAIN-ARRIVAL`.
-The KMAC leg does not claim accepted-traffic drain: pre-request reads retire
-before the host path isolates on that domain, so none remain in flight at
-isolate close and there is no accepted traffic for the isolate to complete. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
+The KMAC leg does not claim accepted-traffic drain: its drain reads go out with
+the request only to give the isolate traffic, and their outcome is not graded. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
 drain runs against a live golden-checked result on a path this entry isolates.
-ABR drain counts outstanding host reads at isolate close so it grades traffic
-the isolate has to retire. The shared TRNG domain grades drain-before-reset in
+ABR drain counts the host reads still outstanding when the isolate request
+rises, so it grades traffic the isolate has to retire. The shared TRNG domain grades drain-before-reset in
 <<sep_trng_reset_recovery_test>>.
 
 *Not claimed*: drain-before-reset for the AES and OTBN domains — the
@@ -4025,6 +4026,8 @@ recovery attempt.
 
 *BFM / Model*: ocah_axi_vip
 
+*Tracking*: #2603
+
 *Randomization*: RAND-REP — entries 0 and 7 × two windows × `{rw, r, w}` at match-all, plus entry 0 / window 0 source-ID match and mismatch, run every seed. Seed varies the window data, the entry-15 granule window, and the bound-probe registers.
 
 *Objective*: Brings the lifecycle controller up in PROD so the inbound filter is genuinely active (`sep_debug=0`, value-checked against the lifecycle golden), then walks entries 0 and 7, two address windows, and `{rw, read-only, write-only}` at `src_id=0` (match-all), plus entry 0 / window 0 x `{rw, r, w}` at `src_id=0x5` with a matching AXI `user[3:0]` and one src-mismatch cell — 16 cells in one invocation — then the same-page `allow_burst=1` granule, page-bound, and `FILTER_CONFIG.locked` on entry 15.
@@ -4081,9 +4084,11 @@ recovery attempt.
 |CHK-PAGE-BOUND
 |The 4 KB grant stops at both page edges. Under a scratch-page grant an access one page below is refused; with that page granted instead it answers OKAY while the scratch address turns DECERR. Both probes are proven reachable first, so neither refusal can be a decode hole rather than a filter decision. This is the security contract: 4 KB is the block pitch for the DMA CSR, watchdog and scratch-bank blocks, so a page-crossing grant would reach a neighbouring block.
 |CHK-CONFIG-LOCK
-|`FILTER_CONFIG.locked` freezes `allow_burst`. `hw/sys/sep/doc/fabric.adoc` specifies the lock bit as write-once, so the field must not change once set. It does not state how a write to a locked entry completes, so the response code is not graded. With `allow_burst` set, a write of 1 to `locked` (the high word of `FILTER_CONFIG`) reads back set. Then a low-word write that clears `allow_burst` must complete (no timeout), and the low word reads back unchanged. A high-word write of 0 must complete, and `locked` reads back set. Last, an external read inside the widened page but outside the programmed `START..END` answers OKAY with the staged value, so the frozen bit still drives the filter and not only the CSR readback.
+|`FILTER_CONFIG.locked` freezes `allow_burst`. The lock bit is write-once, and every later write to the entry's `FILTER_CONFIG` completes DECERR (`hw/ip/axi_filter/regs/filter_ctrl.rdl` `locked`; `hw/ip/axi_filter/doc/index.adoc` "Locking a Filter Entry"). With `allow_burst` set, a write of 1 to `locked` (the high word of `FILTER_CONFIG`) reads back set. Then a low-word write that clears `allow_burst` must complete DECERR, and the low word reads back unchanged. A high-word write of 0 must complete DECERR, and `locked` reads back set. Last, an external 2-beat INCR read (AxLEN=1) inside the widened page but outside the programmed `START..END` answers OKAY, returns the staged value, and reaches the system-CSR bridge as two AXI-Lite singles. A single beat would not show this: `START`/`END` already hold the widened page, and a single beat inside that range passes with `allow_burst` 0 or 1. Only the burst depends on the bit, so the frozen bit still drives the filter and not only the CSR readback. The two write response codes are logged when they return and graded after the 2-beat read, so the read is checked whatever code the writes answered.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Current status*: red on the current RTL. `CHK-CONFIG-LOCK` fails on the response code of the locked writes, which it grades after its 2-beat `allow_burst` read, and every other named checker PASSes. See <<known-limitations>>.
 
 *Scope*: the walk is inbound-filter entries 0 and 7, two address
 windows (`SEP_SW_DEBUG` and scratch-cold[0]), `{rw, read-only, write-only}` at
@@ -4108,6 +4113,8 @@ filter only ever sees `tx_len==0`.
 *Source Module*: `sep_fabric_remap_filter_csr_bank_test`
 
 *BFM / Model*: ocah_axi_vip
+
+*Tracking*: #2603
 
 *Objective*: R/W, 64-bit, RO, valid, and write-once-set across the alias/AP/STEE remap and inbound/outbound filter CSR banks, and that every entry of each bank holds its own value. Each filter entry and remap region is an independent rule with its own storage, so a decode that aliased two entries, or a bank that implemented fewer entries than the map declares, would be invisible to a sweep that walks one entry per group.
 
@@ -4140,9 +4147,11 @@ filter only ever sees `tx_len==0`.
 |CHK-VALID-RW
 |The region valid bit is read/write in both directions.
 |CHK-WOSET
-|The write-once-set lock *actively rejects* a clear attempt with SLVERR rather than silently ignoring it — the strongest check in this entry.
+|The write-once-set `FILTER_CONFIG.locked` bit holds, and while it is set every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` completes DECERR and leaves the word unchanged, on the inbound and the outbound bank. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry"). Every code is logged before it is graded.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Current status*: red on the current RTL. `CHK-WOSET` fails on the response code of the locked writes, and every other named checker PASSes. See <<known-limitations>>.
 
 *Scope limit*: one region or entry per bank per seed. Cross-region isolation —
 that writing region *k* leaves region *j* untouched — is not checked beyond the
@@ -5035,7 +5044,7 @@ per-IP clock gate.
 *Test Procedure*:
 
 [arabic]
-. Walk `SPARE0` through `SPARE7` in order. For each spare, program one seed-selected bit while unlocked; OTP readback and resense shadow match the independent image golden.
+. Walk `SPARE0` through `SPARE8` in order. For each spare, program one seed-selected bit while unlocked; OTP readback and resense shadow match the independent image golden.
 . Program that spare's own `LOCKS_SPARE` bit, then reject a second bit (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
 . Spare `k+1` is programmed only after spare `k` is locked, so a lock bit wired past its own slot fails the next spare's unlocked-program cell.
 . The seed selects only the bit offsets inside each spare. Slot coverage does not depend on reseed.
@@ -5050,7 +5059,7 @@ per-IP clock gate.
 |CHK-LOCK-REJECT
 |A write-locked spare rejects a later program; OTP and the post-resense shadow match the independent golden (lock bit set, rejected bit 0). Logged once per spare.
 |CHK-SPARE-LOCK-SLOTS
-|All eight spares ran both cells in one invocation. A lock of spare `k` must not block spare `k+1`.
+|All nine spares (`SPARE0..SPARE8`, lock slots 32-40 in `otp_fuse_controller.adoc`) ran both cells in one invocation. A lock of spare `k` must not block spare `k+1`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -5224,7 +5233,7 @@ this entry does not write or grade them with the strap high.
 [arabic]
 . Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
 . W1S `sep_fuse_dbg` / `smc_fuse_dbg` and check PROD with both demotes set, so those bits close while Case 2 and Case 3 stay open.
-. W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
+. W1S a seed-pinned DIS pair and walk the four demote cells at PROD. Besides the fuse-dbg bits and `sep_debug`, the pair sets one seed-selected bit from DBG_1 `[23:1]` and one from DBG_2 `[47:24]` (`lifecycle_controller.adoc`), in both `SIP_DIS` and `SYS_DIS`.
 . Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
 . Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`.
 . Every cell's `sep_fuse_dft_disable` / `smc_fuse_dft_disable` ports match the compose of that same `FEAT_CTRL`.
@@ -5992,6 +6001,7 @@ reported as such rather than counted as a pass.
 [arabic]
 . Measure the CSRNG `INTR_ENABLE` writable width, then a lone write and a lone read, and place the AW-then-AR overlap from the measured crossbar latencies (`CHK-CONCURRENT-CAL`).
 . Present that overlap on `INTR_ENABLE` / `INTR_STATE`. Confirm the CSRNG adapter port (`drbg_csrng_axil_chan_o`) saw the named ordering (`CHK-CONCURRENT-STIM`).
+. Require AR to handshake at the adapter port only after both AW and W have handshaken (`CHK-CONCURRENT-ARB`).
 . Require both accesses to retire and the write to land (`CHK-CONCURRENT-LAND`).
 
 *Checkers*:
@@ -6005,6 +6015,9 @@ reported as such rather than counted as a pass.
 
 |CHK-CONCURRENT-STIM
 |The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
+
+|CHK-CONCURRENT-ARB
+|The arbitration rule, read off the handshakes at `drbg_csrng_axil_chan_o`: AR handshakes only after both AW and W have handshaken, so the adapter accepted no read while a write half was pending.
 
 |CHK-CONCURRENT-LAND
 |Both accesses retire and the write lands. The check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss still fails the leaf.
@@ -6040,6 +6053,7 @@ reported as such rather than counted as a pass.
 [arabic]
 . Measure the EDN `INTR_ENABLE` writable width, then a lone write and a lone read, and place the AW-then-AR overlap from the measured crossbar latencies (`CHK-CONCURRENT-CAL`).
 . Present that overlap on the EDN block's own registers. Confirm the EDN adapter port (`drbg_edn_axil_chan_o`) saw the named ordering (`CHK-CONCURRENT-STIM`).
+. Require AR to handshake at the adapter port only after both AW and W have handshaken (`CHK-CONCURRENT-ARB`).
 . Require both accesses to retire and the write to land (`CHK-CONCURRENT-LAND`).
 
 *Checkers*:
@@ -6053,6 +6067,9 @@ reported as such rather than counted as a pass.
 
 |CHK-CONCURRENT-STIM
 |The ordering the EDN adapter port presented, read off `drbg_edn_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`.
+
+|CHK-CONCURRENT-ARB
+|Same contract as <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, read off the handshakes at `drbg_edn_axil_chan_o`.
 
 |CHK-CONCURRENT-LAND
 |Both accesses retire and the write lands. The stall signature is the same held-valids-with-every-ready-low bound as the CSRNG leaf.
@@ -6219,17 +6236,17 @@ reported as such rather than counted as a pass.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG — every directed anchor that is not on the unnamed-refuse exclude list runs on every seed, plus seed-selected addresses from the reserved rows. Excluded spans are skipped with a counted reason, and a row that could not yield its full quota is reported in the per-row shortfall line.
+*Randomization*: RANDCFG — every directed anchor that is not on the exclude list runs on every seed, plus seed-selected addresses from the reserved rows. Excluded spans are skipped with a counted reason, and a row that could not yield its full quota is reported in the per-row shortfall line.
 
-*Objective*: Rows marked reserved in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation is taken from that table. Named reserved spans whose refuse flavour is unnamed are excluded from the probe set. Scope is the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one, and neither subsumes the other.
+*Objective*: Rows marked reserved in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation is taken from that table. Named reserved spans are excluded from the probe set with a counted reason. The walk grades refusal only, so any refusal passes and the code is logged; the code `sep.rdl` states is graded by `sep_unmapped_access_policy_test` at the points that test probes. Scope is the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one, and neither subsumes the other.
 
 *Test Coverage*: Unmapped / refuse addresses complete with the specified error response.
 
 *Test Procedure*:
 
 [arabic]
-. Classify from the DV-owned table in `env/sep_axi_decode_map.py`; a reserved row, and any address in no row at all, allocates nothing.
-. Drop the named unnamed-refuse spans from the probe set.
+. Classify from the DV-owned table in `env/sep_axi_decode_map.py`; a reserved row, and any address in no row at all, allocates nothing. Inside the dual scratch bank (`0x1080_2000`-`0x1080_2FFF`), OTP (`0x1093_0000`-`0x1093_FFFF`) and system-bus (`0x10A0_0000`-`0x10A3_FFFF`) windows, each allocated row is one register block's decoded extent in `hw/sys/sep/regs/gen/py/sep_reg.py` (an RDL array spans all its elements at the array stride). Every span between those blocks is owned by no RDL block and is a reserved row. The OTP anchor is the first byte above the `EFUSE_MMR` block.
+. Drop the named excluded spans from the probe set.
 . Read and write the surviving anchors and the seed-selected reserved addresses, and report the per-row shortfall where a row yielded fewer probes than its quota.
 
 *Checkers*:
@@ -6238,7 +6255,7 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-MAP-REFUSE
-|Every probed address is refused. The map does not mandate which flavour, so DECERR and SLVERR both satisfy it and the line reports the split. The directed anchors include the exact first byte above the generated boot-ROM extent; remaining probes come from map-reserved addresses this test asserts. Unnamed-refuse spans are excluded before the walk with a counted reason.
+|Every probed address is refused. This checker grades refusal only, so DECERR and SLVERR both satisfy it and the line reports the split; the code `sep.rdl` states is graded by `sep_unmapped_access_policy_test` at the points that test probes. The directed anchors include the exact first byte above the generated boot-ROM extent; remaining probes come from map-reserved addresses this test asserts. Excluded spans are skipped before the walk with a counted reason.
 |CHK-MAP-REFUSE-DATA
 |A refused read returns none of the live words sampled on the same bus over the ordinary path: the live-bus control (`SEP_NMI_VEC`), `SW_RESET_N` (the block below the `0x10803008` anchor) and boot-ROM word 0 (the block below the one-past-ROM anchor). A refused access never reaches a unit (`hw/sys/sep/doc/memory_map.adoc`), so a refusal that hands back one of these values has reached its owner. Zero words are dropped from the set because they cannot discriminate. At least one refused read must be compared. Other live words are not claimed.
 |CHK-NONVAC
@@ -6346,7 +6363,7 @@ reported as such rather than counted as a pass.
 |CHK-WRAP-STIM
 |The AW handshake on the testbench port is one INCR burst with the anchor's start address, AxLEN and AxSIZE, so the burst was not split into bursts that stay inside the extent.
 |CHK-WRAP-NO-ALIAS
-|After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst and the specification names no refusal flavour. In all three blocks the burst changes the target register, so this checker fails.
+|After the burst every watched register of the block reads its snapshot value. A change is a burst beat past the extent that reached the unit, and fails whatever the response. The BRESP is logged, not graded: one BRESP covers the burst, and this checker grades what the burst reached, not the code. In all three blocks the burst changes the target register, so this checker fails.
 |===
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
@@ -6370,29 +6387,30 @@ reported as such rather than counted as a pass.
 
 *Randomization*: RAND-NONE — every address is derived from the generated register export and walked on every run.
 
-*Tracking*: #2503 (last array slot tail refused inside the array extent); #2504, #2505 (refusal code, open policy question); #2489, #2490, #2495 (behaviour evidence)
+*Tracking*: #2503 (last array slot tail; fixed by #2586); #2592 (upper-half read word of a 32-bit `rdata`; stated by #2608); #2504, #2505 (per-unit refusal code); #2489, #2490, #2495 (behaviour evidence)
 
-*Objective*: `hw/sys/sep/doc/memory_map.adoc` states two rules. The fabric refuses an address that falls between unit windows, or past the extent a unit allocates, and such an access never reaches a unit. Inside a unit's allocated extent, an offset that owns no register reads zero and discards a write, both with OKAY. This leaf holds the DUT to both rules at the points that sit next to live registers and that `sep_fabric_deadspace_decode_test` and `sep_axi_map_refuse_test` do not probe. Neither rule names a refusal code, so the code is logged at each point and not graded.
+*Objective*: The SEP components view of the SystemRDL memory map (`hw/sys/sep/regs/gen/py/sep_memory_map.py`, generated from `hw/sys/sep/regs/sep.rdl` by `tools/regs/rdlmap.py`, the same model that renders `hw/sys/sep/regs/gen/adoc/memory_map.adoc`) gives each unit's Decoded Extent and states how a 32-bit access that no register backs answers, as seen at the SEP inbound port: in a hole inside the extent, past the extent, and in a reserved row between apertures. Each response gives the read response, the RDL read data and the write response; a row's RDL note gives the write code in named reserved ranges. `doc/trm/src/memory_map.adoc` (Decode Response Codes) defines the cells. This leaf holds the DUT to that table at the points that sit next to live registers and that `sep_fabric_deadspace_decode_test` and `sep_axi_map_refuse_test` do not probe. `env/sep_decode_resp.py` imports that view, so no expected code is typed into the test. `rdata` is a 64-bit field in `sep.rdl`: its low word answers a read with address bit 2 clear and its upper word a read with address bit 2 set. A 32-bit RDL rdata (no upper word) is the word a 32-bit read returns on either half of the bus (`ocah_resp.rdata` in `hw/common/regs/regblock_udps.rdl`; Decode Response Codes in `doc/trm/src/memory_map.adoc`). The expected codes and read data are the `ocah_resp` values `sep.rdl` states. `sep.rdl` is the specification of record for these codes, so `CHK-UNMAPPED-CODE` holds the DUT to the specification. Where the map and the RDL allocation of an array disagree, `CHK-ARRAY-TAIL` grades against the RDL allocation.
 
-*Test Coverage*: System-CSR holes, the reserved row above SEP CPU control, the mailbox page's upper half, the space past each eFuse sibling block, the end of the eFuse token MMR extent, and every remap and filter array slot tail are refused or read zero as the rule requires, and none of them aliases a live register.
+*Test Coverage*: System-CSR holes, the reserved row above SEP CPU control, the mailbox page's upper half, the space past each eFuse sibling block and past the SPI host, the end of the eFuse token MMR extent, and every remap and filter array slot tail answer the response code and read data the map states, and none of them aliases a live register.
 
 *Scope*:
 
 * System-CSR holes: the gaps between the AP and STEE output-remap arrays, after the STEE array, between the outbound and inbound filter arrays, before SEP CPU control, past the SEP CPU control extent, and one SEP CPU control image up.
 * Reserved row: the generated map row from the end of the SEP CPU control aperture to the external IO bridge, first and last word of each 64 KiB page. The row has two refusal paths, and the log records which one each probe takes. The system-peripherals crossbar sends the `0x10A4_0000` page to the system-CSR AXI-Lite port, and that port's error slave refuses it. The local crossbar still sends `0x10A5_0000` and above into its system-peripherals window. The system-peripherals crossbar sends those addresses back to the local crossbar on its SMN-inbound output. The local crossbar does not connect that initiator to the system-peripherals target, so its error slave answers, and the access never reaches the system-CSR AXI-Lite port.
-* Mailbox upper half: from the end of the 32 KiB mailbox aperture (`AXIL_MAILBOX` size rounded up to a power of two) to the next RDL block. The probes include the images of outbound mailbox 0 `WRITE_DATA`, `WIRQT`, `RIRQT` and `STATUS` and of the last inbound mailbox `WIRQT`.
-* eFuse: past `efuse_interface_ctrl` (28 B extent) and past `efuse_mmr` (116 B extent), each to the end of its 256 B window, including the image of a live register one extent up and half a window up.
-* Array tails: every word between the end of a slot's registers and the next slot, for the 16 alias-remap, 32 outbound-filter and 16 inbound-filter slots. The array extent is the array base plus `SEP_TOP_<ARRAY>_TOTAL_SIZE` from the generated `hw/sys/sep/regs/gen/c/sep_addr.h`, which is the size the RDL allocates to the whole array (`0x200`, `0x400` and `0x200`). Every tail, the last slot's tail included, is inside that extent, so by `hw/sys/sep/doc/memory_map.adoc` ("Inside a unit's allocated extent") it reads zero and discards a write with OKAY. The first word past the outbound and inbound filter arrays (`0x10A2_0400`, `0x10A2_1200`) is past the extent and must be refused. The first word past the alias-remap array is `AP_OUTPUT_REMAP_CTRL[0]`, a live word, so it is not a refusal point.
+* Mailbox upper half: from `AXIL_MAILBOX` base plus its size rounded up to a power of two (`0x10A0_8000`) to the end of the 64 KiB mailbox aperture. All of it is past the mailbox's Decoded Extent. The probes include the images of outbound mailbox 0 `WRITE_DATA`, `WIRQT`, `RIRQT` and `STATUS` and of the last inbound mailbox `WIRQT`.
+* eFuse: past `efuse_interface_ctrl` (28 B extent) and past `efuse_mmr` (116 B extent), each to the end of its 256 B window, including the image of a live register one extent up and half a window up. Past `efuse_interface_ctrl`, reads cover both 32-bit lanes of the 64-bit bus (address bit 2 set and clear).
+* SPI host: past `spi_controller` (56 B extent) to the end of its 1 MiB aperture: the first two words past the extent (both bus lanes), the `CSID` image one extent up, the `CONFIGOPTS` image half an aperture up, and the last word of the aperture.
+* Array tails: every word between the end of a slot's registers and the next slot, for the 16 alias-remap, 32 outbound-filter and 16 inbound-filter slots. The array extent is the array base plus `SEP_TOP_<ARRAY>_TOTAL_SIZE` from the generated `hw/sys/sep/regs/gen/c/sep_addr.h` (`0x200`, `0x400` and `0x200`): the RDL allocates the full slot stride to every slot, the last one included. That size must equal the aperture of the array's map row. Every tail inside the extent, the last slot's tail included, must read zero and discard a write with OKAY. `sep.rdl` sets `ocah_full_stride_extent` on these arrays, so the map row's Decoded Extent is the full allocation and the map states OKAY with zero for every tail, the last one included. The first word past the outbound and inbound filter apertures (`0x10A2_0400`, `0x10A2_1200`) is in a reserved row and must be refused. The first word past the alias-remap array is `AP_OUTPUT_REMAP_CTRL[0]`, a live word, so it is not a refusal point.
 * The Key Manager's own view of the token MMR (`0x0001_1570`) needs KM firmware and is not probed here.
 
 *Test Procedure*:
 
 [arabic]
-. Program a distinct non-zero value into one live word of every array slot, the first and last AP / STEE output-remap entries, `SEP_NMI_VEC`, three mailbox thresholds, both eFuse timeouts and two eFuse token inputs, and read each back. Snapshot every other word of those slots, every mailbox `STATUS` and `TOKEN_MATCH_FAULT`.
+. Program a distinct non-zero value into one live word of every array slot, the first and last AP / STEE output-remap entries, `SEP_NMI_VEC`, three mailbox thresholds, both eFuse timeouts, two eFuse token inputs and the SPI host `CSID`, and read each back. `CSID` takes effect only when a command is issued, and this leaf issues none. Each programmed word is read before its write, for the restore, except a word with a field that has no RDL reset. The two eFuse token inputs are such words: `hw/ip/efuse/regs/efuse_mmr.rdl` gives the `token` field of `RMA_TOKEN_I` and `SEC_DISABLE_TOKEN_I` no reset value, so the register has no value before its first write. The test reads this from the generated IP-XACT (`hw/sys/sep/regs/gen/ipxact/sep.xml`, no `resets` element on the field), not from the generated `_REG_DEFAULT`, which reads 0 for a field without a reset. These words are written before any read of them. Snapshot every other word of those slots, every mailbox `STATUS`, `TOKEN_MATCH_FAULT` and the SPI host `CONFIGOPTS`.
 . Read `TOKEN_MATCH_FAULT` through its generated symbol.
 . Read and write each probe with 32-bit singles. After each write, re-read every programmed word and the non-array snapshot words. For system-CSR and reserved-row probes, record whether the access reached the system-CSR AXI-Lite port.
 . Read and write each array slot tail and the first word past each filter array, and after each write re-read the words of that slot and of the next slot. After each write to a tail inside the array extent, read that tail again.
-. Re-read every live word, then restore the programmed words.
+. Re-read every live word, then restore the programmed words that were read before their write. The eFuse token inputs are not restored.
 
 *Checkers*:
 
@@ -6400,9 +6418,9 @@ reported as such rather than counted as a pass.
 |===
 |Checker |Contract
 |CHK-UNMAPPED-LIVE
-|Every programmed word reads back its value with OKAY, and every snapshot word reads OKAY. This is the positive control: it shows the bus reaches every block that owns a probed hole, and the distinct values are what make an alias visible.
+|Every programmed word reads back its value with OKAY, and every snapshot word reads OKAY. A word with a field that has no RDL reset is written before its first read; the config does not build if a snapshot-only word has such a field. This is the positive control: it shows the bus reaches every block that owns a probed hole, and the distinct values are what make an alias visible.
 |CHK-SYSCSR-HOLE-REFUSE
-|Every read and write in the system-CSR holes is refused: not OKAY, and not a timeout.
+|Every read and write in the system-CSR holes is refused: not OKAY, and not a timeout. For this checker and the five below it, the config does not build unless the map states a refusal at every probe in the group.
 |CHK-SYS-RESERVED-REFUSE
 |Every read and write in the reserved row above SEP CPU control is refused, the `0x10A5_0000` page included.
 |CHK-MBOX-UPPER-REFUSE
@@ -6411,21 +6429,25 @@ reported as such rather than counted as a pass.
 |Every read and write past the `efuse_interface_ctrl` extent is refused.
 |CHK-EFUSE-MMR-PAST-REFUSE
 |Every read and write past the `efuse_mmr` extent is refused.
+|CHK-SPI-PAST-REFUSE
+|Every read and write past the `spi_controller` extent, to the end of its aperture, is refused.
 |CHK-TOKEN-FAULT-EXTENT
 |`TOKEN_MATCH_FAULT`, the last register `hw/ip/efuse/regs/efuse_mmr.rdl` places in the token MMR (`@0x70`), reads OKAY with its RDL reset value, and the first word after it (`EFUSE_MMR` base + `REG_MAP_SIZE`) is refused. The extent therefore ends at `0x1093_0573`, where the RDL ends it. That the register holds live fault state is graded by `sep_efuse_rma_token_rand_test`, which reads a raised fault bit through the same address.
 |CHK-ARRAY-TAIL
-|The array extent is base + `TOTAL_SIZE` from `sep_addr.h`, per `hw/sys/sep/doc/memory_map.adoc`. Every tail inside it, the last slot's tail included, answers OKAY, and a read of it returns zero. A re-read of such a tail after its write answers OKAY with zero, so the write was discarded. The first word past the extent is refused. A tail write never changes a word of its own slot or of the next slot. The walk must grade at least one word of each kind. A failure names the tail address, the response and the extent.
+|The array extent is the array base + `SEP_TOP_<ARRAY>_TOTAL_SIZE`, the RDL allocation. Every tail inside it, the last slot's tail included, answers OKAY, and a read of it returns zero. A re-read of such a tail after its write answers OKAY with zero, so the write was discarded. The first word past the extent is refused where no other RDL block owns it. The config does not build unless the array's map row spans exactly that extent and the map states a refusal for every word past it. A tail inside the extent where the map states anything other than OKAY with zero is a map disagreement: it is graded here only and logged as `UNMAPPED-MAP-DISAGREE`. A tail write never changes a word of its own slot or of the next slot. The walk must grade at least one word of each kind. A failure names the tail address, the response and the extent.
+|CHK-UNMAPPED-CODE
+|Every probe and tail access that completes, except the map-disagree tail words, answers the response code the map states for its address and channel, and every read returns the stated read data: the low word of the RDL rdata, or its upper word when address bit 2 is set. The codes and read data are the `ocah_resp` values `sep.rdl` states. A 32-bit RDL rdata is graded as that word on both bus halves. A write in a range the write-code note names answers that note's code. Past `efuse_interface_ctrl` and `spi_controller`, reads cover both 32-bit bus lanes. Every refusal read is issued inside the monitor's error-read-data window, so an X or Z in an error payload fails the run instead of reading as zero; every error-response read must be lane-checked. A failure names the address, the response and read data seen, and the map row, column and cell. The walk must grade at least one access.
 |CHK-UNMAPPED-NO-ALIAS
 |No refused read returns the value of a programmed word. No probe write changes a watched live word. A closing re-read of every live word matches the snapshot.
 |CHK-UNMAPPED-PINS
 |The DECERR beats the bus monitor saw equal the DECERR responses the master reported, and the run reported at least one.
 |===
 
-The `UNMAPPED-CODE` lines report the refusal code per point and channel. They are a report for the design owner, not a checker; see <<known-limitations>>, "Unmapped-access refusal code".
+The `UNMAPPED-CODE` lines tally the codes `CHK-UNMAPPED-CODE` graded, per group and channel, and record which system-CSR and reserved-row probes reached the system-CSR AXI-Lite port.
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
 
-*Current status*: red on the current RTL. `CHK-ARRAY-TAIL` fails: the last slot tail is refused, and every other named checker PASSes. See <<known-limitations>>.
+*Current status*: green on the current RTL.
 
 '''''
 
@@ -6968,7 +6990,7 @@ two codes as one field.
 
 *Randomization*: RANDCFG — slot, SRAM lock region and the seal/free slot pair from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
 
-*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
+*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, a store past the KPV register map raises `IRQ_STATUS` AXI_SLVERR only, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 
 *Test Coverage*: Vault lock, seal, retire, erase, and SRAM write-lock on the KM CPU bus.
 
@@ -6978,7 +7000,7 @@ two codes as one field.
 . Dedicated `km_rom_vault` on the KM CPU bus, not `rom_main`.
 . The seal walk lives here rather than on the command set because no mailbox command seals a slot: over that surface an erase always frees, so the retire path has no vehicle there.
 . PicoRV32 is RV32E (`x0`–`x15` only).
-. A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR or DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
+. A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR and not DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
 
 *Checkers*:
 
@@ -6992,7 +7014,7 @@ two codes as one field.
 |CHK-LOCKUSE
 |A key-data read of a `lock_use` slot raises SLVERR and returns zero data. Both halves are required: the refusal alone would not show the data path is also forced.
 |CHK-EXTENT
-|Store to `0x13108` sets `IRQ_STATUS` AXI_SLVERR or AXI_DECERR.
+|Store to `0x13108` sets `IRQ_STATUS` AXI_SLVERR and leaves AXI_DECERR clear. `hw/ip/key_manager/regs/key_manager.rdl` (memory-map summary): an unmapped offset inside a window answers SLVERR.
 |CHK-DROP
 |Write to the locked SRAM region is dropped (readback unchanged).
 |CHK-VIOL
@@ -7953,16 +7975,16 @@ constraint is not an open defect.
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Routed-but-reserved spans (specification)
-|`sep_axi_map_refuse_test` drives reserved addresses whose refuse flavour the map names. Named reserved spans whose refuse flavour is unnamed are excluded from that walk. The system-bus reserved span (`0x10A4_0000`–`0x10A5_FFFF`) is asserted by `sep_unmapped_access_policy_test`, which grades refusal and no alias there and logs the code.
-
-|Unmapped-access refusal code (open policy question)
-|`memory_map.adoc` requires a refusal between and past unit extents and names no code, and no specification or ruling sets a chip-wide one. The code depends on the point that refuses. In the system-CSR window a read of a hole returns the system-CSR error slave's DECERR, but a write returns SLVERR, because the AXI-to-AXI-Lite bridge in front of the system CSRs rewrites any error `BRESP` to SLVERR. The reserved row above it has two codes. Its `0x10A4_0000` page reaches the system-CSR port and gets the same DECERR / SLVERR split. From `0x10A5_0000` up, the local crossbar's error slave answers DECERR on both channels. The upper half of the mailbox page answers SLVERR on both channels. Past `efuse_interface_ctrl` the APB bridge answers SLVERR; past `efuse_mmr` the crypto default slave answers DECERR. `sep_unmapped_access_policy_test` asserts refusal and no alias at each of these points and logs the code as `UNMAPPED-CODE`; it does not grade the code. Which codes are permitted is the open question, tracked on the card.
+|`sep_axi_map_refuse_test` drives reserved addresses and accepts any refusal; it does not grade the code `sep.rdl` states for each. Named reserved spans are excluded from that walk with a counted reason. The system-bus reserved span (`0x10A4_0000`–`0x10A5_FFFF`) is asserted by `sep_unmapped_access_policy_test`, which grades refusal, the code the SEP memory map states, and no alias there.
 
 |KM application ROM wipe paths
 |Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.
 
 |KM CPU bus responses outside the RDL (hardware)
 |Three KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A store to KM ROM completes with no error response and sets only `IRQ_STATUS.ROM_WRITE_ERR`, where the RDL says it returns SLVERR (`sep_km_rom_write_slverr_test`). A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the VROM base never completes: the KM CPU wrapper routes that range to a testbench-only port whose ready the RTL ties to 0, and the RDL memory-map summary does not list the window and maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
+
+|Locked filter entry write response (hardware)
+|`hw/ip/axi_filter/regs/filter_ctrl.rdl` (`FILTER_CONFIG.locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry") say that a write to a locked entry's `FILTER_CONFIG`, `START_ADDR` or `END_ADDR` goes to the AXI error subordinate and completes DECERR. On SEP the write completes SLVERR, on the inbound and the outbound bank, and the word keeps its value. `CHK-WOSET` in `sep_fabric_remap_filter_csr_bank_test` and `CHK-CONFIG-LOCK` in `sep_fabric_inbound_filter_rule_matrix_test` grade DECERR and fail until the RTL or the specification changes. `CHK-CONFIG-LOCK` grades the response code after its 2-beat `allow_burst` read, so that read still runs on the current RTL.
 
 |KM mailbox outbound flush
 |`sep_km_mailbox_protocol_rand_test` holds the Key Manager in software reset so fill, overflow and underflow are deterministic. Only the KM CPU pushes into the outbound FIFO, so that FIFO is empty when `CTRL.FLUSH` runs, and CHK-FLUSH proves the inbound flush only. A flush of a non-empty outbound FIFO needs the KM running and is not claimed.

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP Secure-DMA basic-breadth firmware test (OSS rep DMA basic breadth). reference provenance:
+// SEP Secure-DMA basic-breadth firmware test. Reference provenance:
 // uvm_tests/dma sep_dma_uvm_reg_rw / reg_reset / cfg_regwen / range_regwen /
 // addr_fixed / addr_wrap / addr_combo / mem_copy(width sweep) / err_opcode.
 //
