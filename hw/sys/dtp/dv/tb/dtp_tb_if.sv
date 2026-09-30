@@ -29,9 +29,9 @@ interface dtp_tb_if;
   logic por_rst_n;
   logic sys_rst_n;
 
-  // DFT controls of the DUT: test_en_i (scan-enable for the clock gaters)
-  // and scan_rst_ni (reset-synchronizer bypass, active-low), both idle in
-  // functional mode; a DFT-mode scenario drives them here.
+  // DFT controls of the DUT: test_en_i (test-mode enable for the JTAG2AXI
+  // bridges and the CTN CSR crossbar) and scan_rst_ni (unused by the DUT),
+  // both idle in functional mode; a DFT-mode scenario drives them here.
   logic test_en    = 1'b0;
   logic scan_rst_n = 1'b1;
 

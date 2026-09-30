@@ -290,6 +290,22 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         await self.program_ijtag_sibs(0, dbg_disable=dbg_disable, context=context)
         self.check_scan_window(window, quiet=quiet, context=f"{context}.window")
 
+    def check_host_scan_out_reset(self, *, context: str) -> None:
+        """Before any scan captures into them, every iJTAG SIB and the extended
+        STAP chain drive a resolved 0 on their host scan output
+        (``CHK-SCAN-RESET``)."""
+        names = [f"{self.IJTAG_SIGNAL_PREFIX[name]}_host_scan_out" for name in IJTAG_SIB_ORDER]
+        names.append("jtag_stap_host_scan_out")
+        for name in names:
+            sampled = self.cfg.tb_if.handle(name).value
+            try:
+                observed = int(sampled)
+            except ValueError:
+                observed = -1
+            self.family_check(
+                "CHK-SCAN-RESET", name, observed, 0, context=f"{context} sampled={sampled}"
+            )
+
     # --- STAP / 3DCR ---------------------------------------------------------
     # The extended STAP host scan controls on dtp_scan_if.
     HOST_SCAN_CONTROLS = dtp_jtag_base_test_seq.scan_ctrl_signals("jtag_stap_host")

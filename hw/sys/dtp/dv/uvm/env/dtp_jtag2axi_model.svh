@@ -7,7 +7,8 @@
 // the jtag2axi update, capture, and completion rules:
 //
 //   SINGLE_OP    Update-DR with op READ/WRITE launches one transaction with
-//                the host-packed address, size, strobes, and data unless an
+//                the host-packed address, strobes, and data, and the size
+//                limited to one full beat, unless an
 //                operation is still pending (then it is rejected: status
 //                BUSY_OR_FULL, sticky full). Capture-DR presents
 //                BUSY_OR_FULL while pending, else the last completion
@@ -15,12 +16,12 @@
 //                document states no status for an operation a system reset
 //                aborted, so a capture between that reset and the next
 //                launched operation carries no contract.
-//   SERIES_CTRL  Update-DR with op != NOP latches op, size, pipeline depth
-//                and address and restarts the read budget; the reset bit
-//                clears the sticky status. Capture-DR presents the sticky
-//                status: BUSY_OR_FULL while full, else the first series
-//                error since the reset bit, else SUCCESS. SINGLE_OP
-//                completions do not reach it.
+//   SERIES_CTRL  Update-DR with op != NOP latches op, size (limited to one
+//                full beat), pipeline depth and address and restarts the
+//                read budget; the reset bit clears the sticky status.
+//                Capture-DR presents the sticky status: BUSY_OR_FULL while
+//                full, else the first series error since the reset bit,
+//                else SUCCESS. SINGLE_OP completions do not reach it.
 //   SERIES_DATA  Update-DR launches one transaction at the series address
 //                on the byte lanes that address selects; a read is issued
 //                only within the budget of pipeline_depth + 1 per CTRL
@@ -235,9 +236,9 @@ class dtp_jtag2axi_model;
     e.is_read     = (r.op == DTP_J2A_OP_READ);
     e.incr        = 1'b0;
     e.with_status = 1'b0;
-    e.size        = r.size;
+    e.size        = dtp_j2a_axsize(t, r.size);
     m_issued_q[n].push_back(e);
-    exp = make_item(t, e.is_read ? OCAH_AXI_DIR_READ : OCAH_AXI_DIR_WRITE, r.addr, r.size);
+    exp = make_item(t, e.is_read ? OCAH_AXI_DIR_READ : OCAH_AXI_DIR_WRITE, r.addr, e.size);
     if (!e.is_read) begin
       exp.data_words.push_back(r.data & ocah_rng::bit_mask(t.data_width));
       exp.strobes.push_back(r.wstrb & 8'(ocah_rng::bit_mask(t.wstrb_bits)));
@@ -249,7 +250,7 @@ class dtp_jtag2axi_model;
     string n = t.name;
     if (r.op != DTP_J2A_OP_NOP) begin
       m_bridge[n].series_op             = r.op;
-      m_bridge[n].series_size           = r.size;
+      m_bridge[n].series_size           = dtp_j2a_axsize(t, r.size);
       // Series read requests one CTRL programming may enqueue: pl_depth + 1,
       // where pl_depth ranges up to the bridge's rd_pl_depth (PTAP document,
       // "*_AXI_SERIES_CTRL").

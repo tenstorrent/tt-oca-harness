@@ -18,6 +18,9 @@
 //   single_write_read             one write plus readback of the same slot
 //   series_write_read_incr        incrementing series write leg then per-beat
 //                                 SERIES read-back (prime + capture shifts)
+//   series_write_read_incr_oversize  series_write_read_incr with the size
+//                                 field at its maximum, above the bus width:
+//                                 every beat is one full bus-width beat
 //   series_write_read_no_incr     fixed-address series: every read beat
 //                                 returns the last value written
 //   series_write_read_incr_with_error  *_WITH_ERROR_STATUS mode, mixed
@@ -348,6 +351,59 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
     check_status("series_wr_rd_incr.final", status, DTP_J2A_SUCCESS);
   endtask
 
+  // -- series_write_read_incr_oversize: size field above the bus width -----
+  task run_series_write_read_incr_oversize(dtp_j2a_target_t t);
+    int unsigned size = (1 << t.size_bits) - 1;
+    int unsigned eff = dtp_j2a_axsize(t, size);
+    int unsigned stride = t.beat_bytes;
+    int unsigned beats = series_beats();
+    bit [63:0] base_addr;
+    bit [63:0] expected_q[$];
+    bit [63:0] data, obs, addr;
+    `uvm_info(get_type_name(), $sformatf("%s Series Write-Read With An Oversized Size Field",
+                                         t.name), UVM_LOW)
+    if (size <= dtp_j2a_data_size(t))
+      `uvm_fatal(get_type_name(), $sformatf("%s size field cannot exceed the bus width", t.name))
+    base_addr = random_series_base(t, beats * stride, 1'b1);
+
+    series_ctrl_op(t, DTP_J2A_OP_WRITE, base_addr, size);
+    for (int unsigned idx = 0; idx < beats; idx++) begin
+      data = 64'($urandom) & data_mask(eff);
+      expected_q.push_back(data);
+      `uvm_info(get_type_name(), $sformatf(
+                "Iteration %0d/%0d: series oversize write addr=0x%08h data=0x%0h",
+                idx + 1,
+                beats,
+                base_addr + idx * stride,
+                data
+                ), UVM_LOW)
+      series_write_beat(t, data, base_addr + idx * stride, size, 1'b1, $sformatf(
+                        "series_wr_rd_incr_oversize.write#%0d", idx));
+    end
+
+    foreach (expected_q[idx]) begin
+      addr = base_addr + idx * stride;
+      series_read_beat(t, addr, size, 1'b1, $sformatf("series_wr_rd_incr_oversize.read#%0d", idx),
+                       obs);
+      `uvm_info(
+          get_type_name(), $sformatf(
+          "Iteration %0d/%0d: series oversize read addr=0x%08h obs=0x%0h", idx + 1, beats, addr, obs
+          ), UVM_LOW)
+      if (obs !== expected_q[idx])
+        `uvm_error("jtag2axi_data_chk", $sformatf(
+                   "series_wr_rd_incr_oversize.rdata#%0d: read 0x%0h != expected 0x%0h (addr=0x%0h)",
+                   idx,
+                   obs,
+                   expected_q[idx],
+                   addr
+                   ))
+      operation_count++;
+    end
+
+    check_series_addr(t, addr + stride, size, "series_wr_rd_incr_oversize.final", status);
+    check_status("series_wr_rd_incr_oversize.final", status, DTP_J2A_SUCCESS);
+  endtask
+
   // -- series_write_read_no_incr: fixed-address write/read legs ------------
   task run_series_write_read_no_incr(dtp_j2a_target_t t);
     int unsigned size = t.default_size;
@@ -649,6 +705,7 @@ class dtp_jtag2axi_otp_axi_test_seq extends dtp_jtag2axi_base_test_seq;
       "write_security_gating":             run_write_security_gating(t);
       "single_write_read":                 run_single_write_read(t);
       "series_write_read_incr":            run_series_write_read_incr(t);
+      "series_write_read_incr_oversize":   run_series_write_read_incr_oversize(t);
       "series_write_read_no_incr":         run_series_write_read_no_incr(t);
       "series_write_read_incr_with_error": run_series_write_read_incr_with_error(t);
       "read_random_ops":                   run_read_random_ops(t);
