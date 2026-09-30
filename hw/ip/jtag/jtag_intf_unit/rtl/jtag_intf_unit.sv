@@ -134,6 +134,8 @@ module jtag_intf_unit
 ) (
   input  logic clk_i,                   // System clock for the JTAG2AXI bridges.
   input  logic rst_n_i,                 // Active-low system reset for the JTAG2AXI bridges.
+  input  logic test_en_i,               // DFT test-mode enable, active-high, for the JTAG2AXI
+                                        // bridges.
 
   input  logic pwr_on_rst_ni,           // Active-low power-on reset, ANDed with TRST for the PTAP
                                         // and STAPs; sets the dbg_disable_i synchronizers to
@@ -410,6 +412,7 @@ module jtag_intf_unit
     // System clock and reset (for jtag2axi modules)
     .clk_i                          (clk_i),
     .rst_n_i                        (rst_n_i),
+    .test_en_i                      (test_en_i),
 
     // Power-on reset (for JTAG logic)
     .pwr_on_rst_ni                  (pwr_on_rst_ni),

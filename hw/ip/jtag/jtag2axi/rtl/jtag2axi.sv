@@ -65,6 +65,8 @@ module jtag2axi #(
   input  logic        aclk_i,           // AXI Clock.
   input  logic        arst_ni,          // AXI Reset (active low), for the CDC destination side and
                                         // the ACLK output stage.
+  input  logic        test_en_i,        // DFT test-mode enable, active-high, for the ACLK output
+                                        // stage fall-through registers.
 
   output logic [ID_WIDTH-1:0]     awid_o,  // Write-address ID, always zero.
   output logic [ADDR_WIDTH-1:0]   awaddr_o,  // Write address.
@@ -667,7 +669,7 @@ module jtag2axi #(
     .clk_i      (aclk_i),
     .rst_ni     (arst_ni),
     .clr_i       (write_pair_flush),
-    .testmode_i(1'b0),
+    .testmode_i (test_en_i),
     .valid_i    (aw_input_valid),
     .ready_o    (aw_buf_ready),
     .data_i     (dst_req.aw),
@@ -682,7 +684,7 @@ module jtag2axi #(
     .clk_i      (aclk_i),
     .rst_ni     (arst_ni),
     .clr_i       (write_pair_flush),
-    .testmode_i(1'b0),
+    .testmode_i (test_en_i),
     .valid_i    (w_input_valid),
     .ready_o    (w_buf_ready),
     .data_i     (dst_req.w),
@@ -717,7 +719,7 @@ module jtag2axi #(
     .clk_i      (aclk_i),
     .rst_ni     (arst_ni),
     .clr_i       (1'b0),
-    .testmode_i(1'b0),
+    .testmode_i (test_en_i),
     .valid_i    (ar_input_valid),
     .ready_o    (ar_buf_ready),
     .data_i     (dst_req.ar),

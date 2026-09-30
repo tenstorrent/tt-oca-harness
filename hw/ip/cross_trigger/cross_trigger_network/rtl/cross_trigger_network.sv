@@ -38,6 +38,8 @@ module cross_trigger_network
 ) (
     input  logic        clk_i,          // System clock; all CSRs, ports and the matrix run on it.
     input  logic        rst_ni,         // Active-low asynchronous reset.
+    input  logic        test_en_i,      // DFT test-mode enable, active-high, for the AXI-Lite CSR
+                                        // crossbar.
 
     input  axil_req_t   axil_req_i,     // AXI-Lite CSR subordinate request; the crossbar routes
                                         // offset 0 to the CTM and the following windows to the
@@ -237,7 +239,7 @@ module cross_trigger_network
     ) u_axil_xbar (
         .clk_i                  (clk_i),
         .rst_ni                 (rst_ni),
-        .test_i                 (1'b0),
+        .test_i                 (test_en_i),
         .slv_ports_req_i        (xbar_slv_req),
         .slv_ports_resp_o       (xbar_slv_resp),
         .mst_ports_req_o        (xbar_mst_req),
