@@ -270,9 +270,38 @@ accelerator interfaces.</p>
 </div>
 <div id="key-manager-architecture-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_Key_Manager.png" alt="SEP_Key_Manager">
+<img src="../../_images/km-architecture.svg" alt="Key Manager architecture: the CPU, its ROM and SRAM interfaces, the AXI4-Lite crossbar, the internal peripherals, and the crypto-engine key and eFuse ports" width="100%">
 </div>
 <div class="title">Figure 1. Key Manager architecture</div>
+</div>
+<div class="paragraph">
+<p>White boxes are <code>key_manager</code> instances, cream boxes are interconnect or glue
+logic, and grey boxes lie outside <code>key_manager</code>. M and S mark the manager and
+subordinate side of each AXI4-Lite or AXI-Stream connection.</p>
+</div>
+<div class="paragraph">
+<p>The CPU reaches the ROM and SRAM through direct memory ports rather than the
+crossbar. The ROM and SRAM hard macros are instantiated at integration level,
+so <code>key_manager</code> exposes <code>rom_mem_*</code> and <code>sram_mem_*</code> ports to them. Every
+other CPU access leaves the PicoRV32 AXI4-Lite master and is decoded by
+<code>u_xbar</code>.</p>
+</div>
+<div class="paragraph">
+<p>The five engine ports reach only the key CSRs of each engine wrapper. In SEP
+each passes through its own isolation stage and carries no host traffic; the
+SEP host reaches the engines' data registers through the crypto interconnect,
+a path the KM does not see. For offsets in the MAP, CTRL and MMR register maps,
+the OTP/eFuse port replaces address bits <code>[31:12]</code> with
+<code>OTP_EFUSE_REMAP_BASE[31:12]</code> before driving <code>efuse_req_o</code>; it answers every
+other offset in the window with SLVERR.</p>
+</div>
+<div class="paragraph">
+<p>A rising edge on <code>wipe_state_i</code>, or a CPU trap, zeroes the KPV and sets
+<code>IRQ_STATUS.WIPE_STATE</code> in KMCSR. The CPU trap also drives
+<code>unrecoverable_err_o</code>. <code>u_kmcsr</code> drives <code>soft_rst_n</code> into
+<code>u_reset_conditioner</code> (<a href="#key-manager-reset-diagram">Key Manager cold and warm reset conditioning</a>). <code>test_en_i</code> selects the
+scan reset in <code>u_reset_conditioner</code> and drives the test inputs of <code>u_xbar</code> and
+<code>u_mailbox</code>.</p>
 </div>
 <div class="sect2">
 <h3 id="parameters"><a class="anchor" href="#parameters"></a><a class="link" href="#parameters">1.1. Parameters</a></h3>
@@ -582,9 +611,18 @@ the Key Manager.</p>
 </div>
 <div id="key-manager-reset-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_KMResetDomains_FIG003.2.png" alt="Key Manager cold and warm reset conditioning" width="100%">
+<img src="../../_images/km-reset-conditioning.svg" alt="Key Manager cold and warm reset conditioning" width="100%">
 </div>
 <div class="title">Figure 2. Key Manager cold and warm reset conditioning</div>
+</div>
+<div class="paragraph">
+<p>Each reset net keeps its own colour. The cold and warm outputs of
+<code>u_reset_conditioner</code> run in two spines beside the instances, with the port
+name at each instance edge. A solid warm line drives a reset pin; a dashed warm
+line is a synchronous clear, which the instance samples on <code>clk_i</code> rather than
+using as a reset. Junction dots mark fan-out, and a gap in a line
+marks a crossing without connection. In test mode, <code>test_en_i</code> selects
+<code>scan_rst_ni</code> in both scan multiplexers.</p>
 </div>
 <div class="paragraph">
 <p>The KM exposes two independent external reset inputs that map to two
@@ -855,7 +893,7 @@ bit to verify message completeness.</p>
 <div class="paragraph">
 <p>When a new word is written on the inbound channel, the mailbox asserts a
 level-sensitive interrupt to the KM CPU that remains asserted while the
-inbound queue is non-empty. The CPU firmware reads (pops) the message
+inbound queue is non-empty, if <code>KM_IRQ_ENABLE</code> enables it. The CPU firmware reads (pops) the message
 out of the mailbox, checks the header and message CRC in firmware, and
 decides whether or not to execute the corresponding function. When the
 function has completed, the CPU firmware pushes a response into the
@@ -878,9 +916,13 @@ receives a sticky interrupt (if enabled). When KM flushes, SEP receives
 a sticky FLUSHED\_BY\_KM interrupt (if enabled).</p>
 </div>
 <div class="paragraph">
-<p>All mailbox interrupt sources on each side (data available, overflow,
-underflow, flushed-by-other) are aggregated into a single IRQ output per
-side: one to KMCSR, one to the SEP interrupt controller.</p>
+<p>All mailbox interrupt sources on each side are aggregated into a single
+IRQ output per side. The level sources are data available to read and
+space available to write; the sticky sources are overflow, underflow and
+flushed by the other side. Each source is masked by that side&#8217;s
+<code>IRQ_ENABLE</code>. <code>mbox_irq_to_km_o</code> drives PicoRV32 interrupt bit 4 directly,
+without passing through KMCSR, and <code>mbox_irq_to_sep_o</code> goes to the SEP
+host.</p>
 </div>
 <div class="paragraph">
 <p>The mailbox and command processing firmware act as a firewall and the KM
@@ -900,17 +942,27 @@ and Key Manager responses.</p>
 </div>
 <div id="key-manager-mailbox-transport-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_KM_Mailbox.png" alt="SEP_KM_Mailbox">
+<img src="../../_images/km-mailbox.svg" alt="Key Manager mailbox: KM-side and SEP-side AXI4-Lite ports, the inbound and outbound FIFOs, and the two register blocks" width="100%">
 </div>
 <div class="title">Figure 3. Key Manager mailbox transport</div>
+</div>
+<div class="paragraph">
+<p>The KM CPU enters at the top and the SEP host at the bottom. Each side&#8217;s
+decode sends its <code>WRITE_DATA</code> address to a FIFO push and its <code>READ_DATA</code>
+address to a FIFO pop, and every other address to its own register block.
+Words therefore travel upwards through <code>u_inbound_fifo</code> and downwards through
+<code>u_outbound_fifo</code>. Each register block reads the status of both FIFOs, and a
+<code>FLUSH</code> from either block clears both of them. <code>MAILBOX_DEPTH</code> sets the depth
+of each FIFO; SEP instantiates the KM with 16 words.</p>
 </div>
 <div class="paragraph">
 <p>Cryptographic keys are stored in the Key and Policy Vault (KPV) block.
 The life cycle and demotion states are provided to the KM CSR register
 block and are consumed by KM firmware as key-derivation inputs. The
-test-mode signal (<code>secure_tm</code>) is a <strong>hardware</strong> input to the same block but
-is not a firmware-readable value: it gates the secret-bearing scan and
-scan-dump paths and inhibits key derivation in hardware during scan test
+secure test-mode signal (<code>secure_tm</code>) is not a Key Manager input. It acts
+at the eFuse shadow boundary, where it replaces the unique identifiers and
+the class key with zero before they reach <code>otp_data_i</code>, so key derivation
+has no real secret during scan test
 (see <a href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a>). The KPV key-entry contents are secret-bearing:
 they may be placed on a scan chain for test coverage but must never be
 scan-dumpable (see <a href="#km-scan-and-scan-dump-protection">Scan and Scan-Dump Protection</a>).</p>
@@ -929,9 +981,10 @@ the low portion of its 32-bit address space.</p>
 <p>Separating the key and data domains explicitly as described above
 increases security as it makes it more difficult for an adversary to
 compromise the secret key information via a software based attack. In
-<a href="#key-manager-accelerator-key-path-figure">Key Manager accelerator key path</a>, the secrets which must be protected reside in the red
-blocks. The secret data is physically separated from the software
-accessible bus.</p>
+<a href="#key-manager-accelerator-key-path-figure">Key Manager accelerator key path</a>, the key material travels only along the top row,
+from the KM to the engine&#8217;s key registers and on to its sideload port. The
+secret data is physically separated from the software accessible bus on the
+bottom row.</p>
 </div>
 <div class="paragraph">
 <p>Physical key recovery attacks such as side channel analysis and
@@ -948,9 +1001,34 @@ delivery and software-accessible data paths.</p>
 </div>
 <div id="key-manager-accelerator-key-path-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_Crypto_Block.png" alt="SEP_Crypto_Block">
+<img src="../../_images/km-accelerator-key-path.svg" alt="Key path from the Key Manager through key isolation to an engine&#8217;s key registers and sideload port, beside the SEP host path to the engine&#8217;s control registers" width="100%">
 </div>
 <div class="title">Figure 4. Key Manager accelerator key path</div>
+</div>
+<div class="paragraph">
+<p>The figure shows one engine wrapper; <code>&lt;eng&gt;</code> stands for <code>otbn</code>, <code>aes</code>, <code>kmac</code>
+or <code>hmac</code>. The KM port for that engine (<code>otbn_req_o</code>, <code>aes_req_o</code>,
+<code>kmac_req_o</code> or <code>hmac_req_o</code>) is a point-to-point 32-bit AXI4-Lite path. It
+passes only through <code>u_&lt;eng&gt;_key_isolate</code> in <code>sep_crypto_axi_interconnect</code>,
+which drains the path when <code>sep_reset_ctrl</code> requests isolation, and ends on the
+wrapper&#8217;s generated <code>&lt;eng&gt;_wrapper_key_reg</code> block. The <code>KEY_SHARE0</code> and
+<code>KEY_SHARE1</code> words are write-only, and reads return zero. The two shares and
+<code>KEY_CTRL.KEY_VALID</code> drive the engine&#8217;s <code>keymgr_key_i</code> sideload port; the XOR
+of the two shares is the key. The shares are 8 words each, or 12 words for
+OTBN.</p>
+</div>
+<div class="paragraph">
+<p>The SEP host reaches the engine&#8217;s own registers on a separate path: the
+crypto interconnect demultiplexes the 64-bit AXI4 host bus in <code>u_axi_demux</code>,
+converts it to 32 bits in <code>u_&lt;eng&gt;_axi_dw_converter</code> and to AXI4-Lite in
+<code>u_&lt;eng&gt;_axi_to_axi_lite</code>, and passes it through <code>u_&lt;eng&gt;_host_isolate</code>, and the
+wrapper bridges it to the engine&#8217;s TL-UL port. <code>isolate_req_i</code> from
+<code>sep_reset_ctrl</code> drives both isolation stages. The host path does not reach
+the key registers, and the KM path does not reach the engine&#8217;s control
+registers.
+Adams Bridge follows the same pattern through <code>u_abr_key_isolate</code> and
+<code>abr_wrapper_key_reg</code>, where <code>sep_abr_kv_shim</code> turns the registers into
+Adams Bridge key-vault reads (see <a href="#adams-bridge-key-sideload">Adams Bridge Key Sideload Interfaces</a>).</p>
 </div>
 </div>
 <div class="sect2">
@@ -1042,9 +1120,14 @@ documentation).</p>
 <div class="sect2">
 <h3 id="key-manager-cpu-interrupt-processing"><a class="anchor" href="#key-manager-cpu-interrupt-processing"></a><a class="link" href="#key-manager-cpu-interrupt-processing">1.5. Key Manager CPU Interrupt Processing</a></h3>
 <div class="paragraph">
-<p>The KM receives interrupts from the KM Management CSR register block.
-The register block collects error and information status from the
-following sources and aggregates these into a single interrupt:</p>
+<p>The KM CPU has three interrupt inputs. PicoRV32 interrupt bit 3 is the
+aggregated KMCSR interrupt, bit 4 is the mailbox interrupt
+(<code>mbox_irq_to_km_o</code>), and bit 5 is the Adams Bridge ML-KEM shared-key
+interrupt. The mailbox and Adams Bridge interrupts do not pass through KMCSR.</p>
+</div>
+<div class="paragraph">
+<p>KMCSR collects the following twelve sources and aggregates them into a
+single interrupt:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1070,24 +1153,27 @@ following sources and aggregates these into a single interrupt:</p>
 <p>DRBG sampler error (aggregated from timeout or stream error)</p>
 </li>
 <li>
-<p>CPU software writeable via IRQ\SET register (for ISR testing)</p>
+<p>Wipe state (rising edge of <code>wipe_state_i</code> or of a CPU trap)</p>
 </li>
 <li>
-<p>Wipe state (rising edge of wipe\state input)</p>
+<p>OTP change (a monitored OTP readout field changed)</p>
 </li>
 <li>
-<p>Mailbox inbound data available (from mailbox aggregated IRQ)</p>
+<p>OTP signal-integrity error (a dual-rail OTP field is not complementary)</p>
 </li>
 <li>
-<p>Demote - debug in product LC mode</p>
+<p>Execute violation (instruction fetch outside the executable regions)</p>
+</li>
+<li>
+<p>ROM access violation (ROM access after the ROM lockout engaged)</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>These events are captured in sticky interrupt status registers (WOC) and
-aggregated into an interrupt signal which is forwarded to the KM CPU.
-All event signals can also be triggered by a parallel software interrupt
-register to enable testing of interrupt service routines (ISR).</p>
+<p>These events are captured in sticky, write-one-to-clear <code>IRQ_STATUS</code> bits,
+masked by <code>IRQ_ENABLE</code>, and aggregated into the interrupt forwarded to the
+KM CPU. The <code>IRQ_SET</code> register can set any source, so that interrupt
+service routines can be tested.</p>
 </div>
 </div>
 <div class="sect2">
@@ -1103,9 +1189,25 @@ key-delivery sequence.</p>
 </div>
 <div id="key-manager-coordination-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_KM_Key_Load_Transfer_FIG017.png" alt="SEP host and Key Manager key-load and key-transfer sequence" width="100%">
+<img src="../../_images/km-key-load-transfer.svg" alt="SEP host and Key Manager key-load and key-transfer sequence" width="100%">
 </div>
 <div class="title">Figure 5. SEP host and Key Manager key-load and key-transfer sequence</div>
+</div>
+<div class="paragraph">
+<p>Time runs downwards. Each arrow is a mailbox word push or pop, a register write
+or read, or an interrupt, and each white box is a check or action the KM
+firmware performs without leaving the CPU. The figure shows the success path.
+A failed check ends the command with a <code>RESP_CMD</code> error code and leaves the KPV
+and the key registry unchanged.</p>
+</div>
+<div class="paragraph">
+<p>On a key load, the firmware registers the handle before it writes the KPV, and
+destroys the handle again if a KPV write fails. On a key transfer, the firmware
+reads the key slots twice: once to check their CRC-32C against the key
+registry, and again to write the key. Each requested engine receives the key as
+two key shares whose XOR is the key, the first a DRBG mask, before its key-valid
+bit is set. The engines are written in the order of their <code>DEST_ENGINE</code> bits,
+and the first failed write ends the transfer.</p>
 </div>
 </div>
 <div class="sect2">

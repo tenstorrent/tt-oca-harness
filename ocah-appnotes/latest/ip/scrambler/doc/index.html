@@ -735,7 +735,7 @@ depth and address-scramble function.</p>
 <h2 id="integration-in-the-key-manager"><a class="anchor" href="#integration-in-the-key-manager"></a><a class="link" href="#integration-in-the-key-manager">8. Integration in the Key Manager</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The Key Manager SRAM interface (<code>km_sram_interface</code>) instantiates two <code>scrambler_4096x32</code> instances with <code>BYTE_WISE</code> = 1. The first instance (<code>u_req_scrambler</code>) scrambles the write data and address on the request path. The second instance (<code>u_rsp_descrambler</code>) descrambles read data on the response path using the address that was captured when the read was issued.</p>
+<p>The Key Manager SRAM interface (<code>km_sram_interface</code>) instantiates two <code>scrambler_8192x32</code> instances with <code>BYTE_WISE</code> = 1, whose 13-bit address covers the 8192 words of the 32 KiB SRAM. The first instance (<code>u_req_scrambler</code>) scrambles the write data and address on the request path. The second instance (<code>u_rsp_descrambler</code>) descrambles read data on the response path using the address that was captured when the read was issued.</p>
 </div>
 <div class="paragraph">
 <p>The scrambler is controlled through the <code>SCRAMBLER_KEY</code> and <code>SCRAMBLER_CTRL</code> registers in the Key Manager CSR block (<code>km_csr</code>). The <code>SCRAMBLER_CTRL</code> register has two fields: <code>enable</code> at bit 0 and <code>lock</code> at bit 1. When <code>lock</code> is written to 1, the transition is permanent until the next reset. Once locked, the key register reads as zero, writes to it are ignored, and the scrambler is forced into the enabled state. This prevents firmware from disabling scrambling or reading back the key after provisioning.</p>
@@ -749,9 +749,23 @@ SRAM interface.</p>
 </div>
 <div id="sram-scrambler-datapath-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_SRAM_Scrambler.png" alt="SEP_SRAM_Scrambler">
+<img src="../../_images/scrambler-datapath.svg" alt="Scrambler datapath: address tweak, address scramble, write-path S-boxes and permutation, and read-path inverse permutation and S-boxes" width="100%">
 </div>
 <div class="title">Figure 1. SRAM scrambler datapath</div>
+</div>
+<div class="paragraph">
+<p>Inputs enter on the left and the memory side is on the right. The write path
+runs left to right along the middle row and the read path right to left along
+the bottom row. Both paths use the same <code>round_key</code> from <code>u_addr_tweak</code>, so the
+read path must be given the address the read data was fetched from.
+<code>BYTE_WISE</code> selects between the whole-word permutations and the per-byte
+permutations shown in each permutation box. The enable multiplexer and the
+parity logic belong to the caller, not to <code>scrambler</code>.</p>
+</div>
+<div class="paragraph">
+<p>The Key and Policy Vault (<code>km_kpv</code>) also instantiates <code>scrambler_1024x32</code>
+(<code>u_scrambler_km</code>, <code>BYTE_WISE</code> = 0) in front of its key register file, keyed by
+the KPV&#8217;s own scrambler key.</p>
 </div>
 </div>
 </div>

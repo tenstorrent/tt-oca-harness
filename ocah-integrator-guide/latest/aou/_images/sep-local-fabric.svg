@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="888" viewBox="0 0 1040 888" role="img" aria-labelledby="title desc">
+<title id="title">SEP local fabric</title>
+<desc id="desc">The SEP local crossbar u_sep_local_axi_xbar joins five initiators to ten targets with 32-bit addresses and 64-bit data; initiator IDs are 3 bits and target IDs 6 bits. Inside sep_cpu the IFU, LSU and debug masters of the VeeR EL2 core each pass a local alias remap that rewrites the 768 MiB window at SEP_LOCAL_BASE_ADDR to 0x1000_0000. The IFU demux sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the ifu_sram initiator and everything else to a DECERR slave; the LSU demux sends boot ROM addresses to the boot ROM mux and everything else to the lsu initiator; the debug master connects directly. The boot ROM mux feeds the boot ROM memory interface outside the crossbar. The secure DMA master passes TL-UL to AXI-Lite, AXI-Lite to AXI4 and 32 to 64-bit conversion and its own alias remap. The ext initiator is traffic from sep_system_peripherals. Targets: cpu_tcm, the ICCM and DCCM backdoor into the core DMA port; sram, through the SRAM memory interface to the 256 KiB SRAM macro; dma_csr and sep_wdt, each downsized to 32 bits and converted to AXI-Lite and TL-UL for the secure DMA registers and the watchdog aon_timer; sep_reset_ctrl through an AXI to AXI-Lite converter; sep_crypto with its own interconnect; sep_system_peripherals, the output fabric; sep_io, downsized, converted to AXI-Lite and demultiplexed to the SPI host or DECERR; entropy_fifo through an AXI to AXI-Lite converter; and sep_external, whose demux sends the eFuse shim CSR window to the eFuse wrapper and the rest to the AXI extension port.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="888" fill="#ffffff"/>
+<rect class="smu" x="14" y="60" width="926" height="752" rx="6"/>
+<text class="b" x="28" y="800" text-anchor="start">sep</text>
+<rect class="fabric" x="450" y="160" width="130" height="612" rx="6"/>
+<text class="bs" x="515" y="180" text-anchor="middle">Local crossbar</text>
+<text class="s" x="515" y="152" text-anchor="middle">u_sep_local_axi_xbar</text>
+<text class="s" x="515" y="759" text-anchor="middle">5 x 10, ID 3 to 6</text>
+<text class="s" x="574" y="218" text-anchor="end">cpu_tcm</text>
+<text class="s" x="574" y="273" text-anchor="end">sram</text>
+<text class="s" x="574" y="328" text-anchor="end">dma_csr</text>
+<text class="s" x="574" y="383" text-anchor="end">sep_wdt</text>
+<text class="s" x="574" y="438" text-anchor="end">sep_reset_ctrl</text>
+<text class="s" x="574" y="493" text-anchor="end">sep_crypto</text>
+<text class="s" x="574" y="548" text-anchor="end">sep_system_</text>
+<text class="s" x="574" y="603" text-anchor="end">sep_io</text>
+<text class="s" x="574" y="658" text-anchor="end">entropy_fifo</text>
+<text class="s" x="574" y="713" text-anchor="end">sep_external</text>
+<text class="s" x="574" y="563" text-anchor="end">peripherals</text>
+<path class="axi" d="M580,214 L600,214"/>
+<rect class="core" x="600" y="194" width="270" height="40" rx="6"/>
+<text class="t" x="735" y="211" text-anchor="middle">Core DMA port</text>
+<text class="s" x="735" y="227" text-anchor="middle">ICCM, DCCM backdoor in sep_cpu</text>
+<path class="axi" d="M580,269 L600,269"/>
+<rect class="network" x="600" y="249" width="210" height="40" rx="4"/>
+<text class="t" x="705" y="266" text-anchor="middle">AXI4 to memory</text>
+<text class="s" x="705" y="282" text-anchor="middle">u_sram_memory_interface</text>
+<path class="sigo" d="M810,269 L950,269"/>
+<rect class="external" x="950" y="249" width="76" height="40" rx="6"/>
+<text class="s" x="988" y="266.5" text-anchor="middle">SRAM</text>
+<text class="s" x="988" y="281.5" text-anchor="middle">256 KiB</text>
+<path class="axi" d="M580,324 L600,324"/>
+<rect class="network" x="600" y="304" width="62" height="40" rx="4"/>
+<text class="s" x="631" y="321.5" text-anchor="middle">64 to 32</text>
+<text class="s" x="631" y="336.5" text-anchor="middle">bits</text>
+<path class="axin" d="M662,324 L674,324"/>
+<rect class="network" x="674" y="304" width="62" height="40" rx="4"/>
+<text class="s" x="705" y="321.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="705" y="336.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M736,324 L748,324"/>
+<rect class="network" x="748" y="304" width="62" height="40" rx="4"/>
+<text class="s" x="779" y="321.5" text-anchor="middle">AXI-Lite</text>
+<text class="s" x="779" y="336.5" text-anchor="middle">to TL-UL</text>
+<path class="axiln" d="M810,324 L822,324"/>
+<rect class="core" x="822" y="304" width="108" height="40" rx="6"/>
+<text class="t" x="876" y="321" text-anchor="middle">secure_dma</text>
+<text class="s" x="876" y="337" text-anchor="middle">u_sep_dma_wrap</text>
+<path class="axi" d="M580,379 L600,379"/>
+<rect class="network" x="600" y="359" width="62" height="40" rx="4"/>
+<text class="s" x="631" y="376.5" text-anchor="middle">64 to 32</text>
+<text class="s" x="631" y="391.5" text-anchor="middle">bits</text>
+<path class="axin" d="M662,379 L674,379"/>
+<rect class="network" x="674" y="359" width="62" height="40" rx="4"/>
+<text class="s" x="705" y="376.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="705" y="391.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M736,379 L748,379"/>
+<rect class="network" x="748" y="359" width="62" height="40" rx="4"/>
+<text class="s" x="779" y="376.5" text-anchor="middle">AXI-Lite</text>
+<text class="s" x="779" y="391.5" text-anchor="middle">to TL-UL</text>
+<path class="axiln" d="M810,379 L822,379"/>
+<rect class="core" x="822" y="359" width="108" height="40" rx="6"/>
+<text class="t" x="876" y="376" text-anchor="middle">aon_timer</text>
+<text class="s" x="876" y="392" text-anchor="middle">u_sep_wdt_wrap</text>
+<path class="axi" d="M580,434 L600,434"/>
+<rect class="network" x="600" y="414" width="62" height="40" rx="4"/>
+<text class="s" x="631" y="431.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="631" y="446.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M662,434 L674,434"/>
+<rect class="core" x="674" y="414" width="210" height="40" rx="6"/>
+<text class="t" x="779" y="431" text-anchor="middle">Reset controller</text>
+<text class="s" x="779" y="447" text-anchor="middle">u_sep_reset_ctrl</text>
+<path class="axi" d="M580,489 L600,489"/>
+<rect class="core" x="600" y="469" width="290" height="40" rx="6"/>
+<text class="t" x="745" y="486" text-anchor="middle">Crypto complex</text>
+<text class="s" x="745" y="502" text-anchor="middle">u_sep_crypto, own interconnect</text>
+<path class="axi" d="M580,544 L600,544"/>
+<rect class="fabric" x="600" y="524" width="290" height="40" rx="6"/>
+<text class="t" x="745" y="541" text-anchor="middle">System peripherals</text>
+<text class="si" x="745" y="557" text-anchor="middle">see the output fabric</text>
+<path class="axi" d="M580,654 L600,654"/>
+<rect class="network" x="600" y="634" width="62" height="40" rx="4"/>
+<text class="s" x="631" y="651.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="631" y="666.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M662,654 L674,654"/>
+<rect class="core" x="674" y="634" width="210" height="40" rx="6"/>
+<text class="t" x="779" y="651" text-anchor="middle">Entropy pool</text>
+<text class="s" x="779" y="667" text-anchor="middle">u_entropy_fifo, read-only</text>
+<path class="axi" d="M580,599 L600,599"/>
+<rect class="network" x="600" y="579" width="62" height="40" rx="4"/>
+<text class="s" x="631" y="596.5" text-anchor="middle">64 to 32</text>
+<text class="s" x="631" y="611.5" text-anchor="middle">bits</text>
+<path class="axin" d="M662,599 L674,599"/>
+<rect class="network" x="674" y="579" width="62" height="40" rx="4"/>
+<text class="s" x="705" y="596.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="705" y="611.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M736,599 L748,599"/>
+<path class="fabric" d="M748,587 L778,575 L778,623 L748,611 Z"/>
+<path class="axiln" d="M778,587 L794,587"/>
+<rect class="core" x="794" y="575" width="120" height="22" rx="4"/>
+<text class="s" x="854" y="591" text-anchor="middle">SPI host</text>
+<path class="axiln" d="M778,611 L794,611"/>
+<rect class="external" x="794" y="601" width="120" height="22" rx="4"/>
+<text class="s" x="854" y="617" text-anchor="middle">DECERR</text>
+<path class="axi" d="M580,709 L600,709"/>
+<path class="fabric" d="M600,696 L634,683 L634,735 L600,722 Z"/>
+<text class="s" x="646" y="690" text-anchor="start">u_efuse_shim_demux</text>
+<path class="axi" d="M634,697 L950,697"/>
+<rect class="external" x="950" y="677" width="76" height="40" rx="6"/>
+<text class="s" x="988" y="694.5" text-anchor="middle">AXI</text>
+<text class="s" x="988" y="709.5" text-anchor="middle">extension</text>
+<path class="axi" d="M634,721 L650,721 L650,755 L666,755"/>
+<rect class="core" x="666" y="735" width="264" height="40" rx="6"/>
+<text class="t" x="798" y="752" text-anchor="middle">eFuse wrapper</text>
+<text class="s" x="798" y="768" text-anchor="middle">via the eFuse mux in u_sep_crypto</text>
+<path class="fabric" d="M405,86 L435,99 L435,125 L405,138 Z"/>
+<text class="s" x="420" y="78" text-anchor="middle">u_boot_rom_axi_mux, ID 3 to 4</text>
+<path class="axi" d="M435,112 L600,112"/>
+<rect class="network" x="600" y="92" width="210" height="40" rx="4"/>
+<text class="t" x="705" y="109" text-anchor="middle">AXI4 to memory</text>
+<text class="s" x="705" y="125" text-anchor="middle">u_boot_rom_memory_interface</text>
+<path class="sigo" d="M810,112 L950,112"/>
+<rect class="external" x="950" y="92" width="76" height="40" rx="6"/>
+<text class="s" x="988" y="109.5" text-anchor="middle">Boot ROM</text>
+<text class="s" x="988" y="124.5" text-anchor="middle">64 KiB</text>
+<rect class="smu" x="24" y="160" width="401" height="292" rx="6"/>
+<text class="bs" x="34" y="442" text-anchor="start">sep_cpu</text>
+<rect class="core" x="34" y="180" width="80" height="240" rx="6"/>
+<text class="bs" x="74" y="288" text-anchor="middle">VeeR</text>
+<text class="bs" x="74" y="305" text-anchor="middle">EL2</text>
+<text class="s" x="74" y="322" text-anchor="middle">core</text>
+<path class="axi" d="M114,226 L132,226"/>
+<path class="fabric" d="M142,204 L214,204 L224,226 L214,248 L142,248 L132,226 Z"/>
+<text class="s" x="178" y="223.5" text-anchor="middle">alias</text>
+<text class="s" x="178" y="238.5" text-anchor="middle">remap</text>
+<text class="s" x="120" y="199" text-anchor="start">IFU</text>
+<path class="axi" d="M114,322 L132,322"/>
+<path class="fabric" d="M142,300 L214,300 L224,322 L214,344 L142,344 L132,322 Z"/>
+<text class="s" x="178" y="319.5" text-anchor="middle">alias</text>
+<text class="s" x="178" y="334.5" text-anchor="middle">remap</text>
+<text class="s" x="120" y="295" text-anchor="start">LSU</text>
+<path class="axi" d="M114,394 L132,394"/>
+<path class="fabric" d="M142,372 L214,372 L224,394 L214,416 L142,416 L132,394 Z"/>
+<text class="s" x="178" y="391.5" text-anchor="middle">alias</text>
+<text class="s" x="178" y="406.5" text-anchor="middle">remap</text>
+<text class="s" x="120" y="367" text-anchor="start">DBG</text>
+<path class="axi" d="M224,226 L246,226"/>
+<path class="fabric" d="M246,211 L276,196 L276,256 L246,241 Z"/>
+<path class="axi" d="M276,208 L292,208 L292,99 L405,99"/>
+<path class="axi" d="M276,226 L450,226"/>
+<text class="s" x="456" y="230" text-anchor="start">ifu_sram</text>
+<path class="axi" d="M276,244 L292,244 L292,260"/>
+<rect class="external" x="256" y="260" width="72" height="22" rx="4"/>
+<text class="s" x="292" y="276" text-anchor="middle">DECERR</text>
+<text class="s" x="284" y="182" text-anchor="end">u_ifu_axi_demux</text>
+<path class="axi" d="M224,322 L246,322"/>
+<path class="fabric" d="M246,309 L276,296 L276,348 L246,335 Z"/>
+<path class="axis" d="M276,310 L390,310 L390,233"/>
+<path class="axie" d="M390,219 L390,125 L405,125"/>
+<path class="axi" d="M276,334 L450,334"/>
+<text class="s" x="456" y="338" text-anchor="start">lsu</text>
+<text class="s" x="284" y="360" text-anchor="start">u_lsu_axi_demux</text>
+<path class="axi" d="M224,394 L450,394"/>
+<text class="s" x="456" y="398" text-anchor="start">dbg</text>
+<rect class="smu" x="24" y="482" width="401" height="110" rx="6"/>
+<text class="bs" x="34" y="582" text-anchor="start">u_sep_dma_wrap</text>
+<rect class="core" x="34" y="508" width="94" height="40" rx="6"/>
+<text class="t" x="81" y="533" text-anchor="middle">secure_dma</text>
+<path class="axiln" d="M128,528 L138,528"/>
+<rect class="network" x="138" y="508" width="62" height="40" rx="4"/>
+<text class="s" x="169" y="525.5" text-anchor="middle">TL-UL to</text>
+<text class="s" x="169" y="540.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M200,528 L210,528"/>
+<rect class="network" x="210" y="508" width="62" height="40" rx="4"/>
+<text class="s" x="241" y="525.5" text-anchor="middle">AXI-Lite</text>
+<text class="s" x="241" y="540.5" text-anchor="middle">to AXI4</text>
+<path class="axin" d="M272,528 L282,528"/>
+<rect class="network" x="282" y="508" width="62" height="40" rx="4"/>
+<text class="s" x="313" y="525.5" text-anchor="middle">32 to 64</text>
+<text class="s" x="313" y="540.5" text-anchor="middle">bits</text>
+<path class="axin" d="M344,528 L354,528"/>
+<path class="fabric" d="M363,506 L405,506 L414,528 L405,550 L363,550 L354,528 Z"/>
+<text class="s" x="384" y="525.5" text-anchor="middle">alias</text>
+<text class="s" x="384" y="540.5" text-anchor="middle">remap</text>
+<path class="axi" d="M414,528 L450,528"/>
+<text class="s" x="456" y="532" text-anchor="start">dma</text>
+<rect class="fabric" x="34" y="642" width="250" height="40" rx="6"/>
+<text class="t" x="159" y="659" text-anchor="middle">System peripherals</text>
+<text class="si" x="159" y="675" text-anchor="middle">see the input fabric</text>
+<path class="axi" d="M284,662 L450,662"/>
+<text class="s" x="296" y="654" text-anchor="start">addr 32, ID 3</text>
+<text class="s" x="456" y="666" text-anchor="start">ext</text>
+<rect class="fabric" x="14" y="833" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="846.5" text-anchor="start">Crossbar</text>
+<path class="fabric" d="M139.2,837 L161.2,832 L161.2,852 L139.2,847 Z"/>
+<text class="s" x="169.2" y="846.5" text-anchor="start">Mux, demux</text>
+<path class="fabric" d="M271.2,833 L293.2,833 L300.2,842 L293.2,851 L271.2,851 L264.2,842 Z"/>
+<text class="s" x="308.2" y="846.5" text-anchor="start">Address remap</text>
+<rect class="network" x="423.9" y="833" width="36" height="18" rx="3"/>
+<text class="s" x="467.9" y="846.5" text-anchor="start">Converter</text>
+<rect class="core" x="556" y="833" width="36" height="18" rx="4"/>
+<text class="s" x="600" y="846.5" text-anchor="start">RTL block</text>
+<rect class="external" x="688.1" y="833" width="36" height="18" rx="4"/>
+<text class="s" x="732.1" y="846.5" text-anchor="start">Outside SEP, error response</text>
+<text class="s" x="44" y="874.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M155.8,870 L197.8,870"/>
+<text class="s" x="208.8" y="874.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M265.4,870 L307.4,870"/>
+<text class="s" x="318.4" y="874.5" text-anchor="start">AXI-Lite, TL-UL</text>
+<path class="sigo" d="M450.9,870 L492.9,870"/>
+<text class="s" x="503.9" y="874.5" text-anchor="start">Memory macro interface</text>
+<rect class="pm" x="929.0" y="688.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="940" y="701.5" text-anchor="middle">M</text>
+<rect class="pm" x="14.0" y="861.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="874.5" text-anchor="middle">M</text>
+</svg>

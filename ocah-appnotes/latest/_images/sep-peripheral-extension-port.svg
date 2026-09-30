@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="736" viewBox="0 0 1040 736" role="img" aria-labelledby="title desc">
+<title id="title">SEP peripheral extension port</title>
+<desc id="desc">SEP reaches peripherals two ways. Its only local peripheral is the SPI host: the sep_io target of the SEP local crossbar is downsized to 32 bits, converted to AXI-Lite and demultiplexed to the SPI host u_sep_ot_spi_wrap or a DECERR responder, and the quad SPI signals leave for the SPI pads. The SMC peripherals are reached through the SMC aperture: the route demux in sep_system_peripherals sends it on sep_ext_to_smc_axi_req_o, AXI4 with a 56-bit address and 6-bit ID, without the outbound filter. The SMU wires it directly to the SMC's sep_axi_in port, with no crossbar and no clock-domain crossing. In the SMC input fabric u_sep_region_demux passes addresses inside the SMC local or global window, truncated to 32 bits, and answers every other address with DECERR; the local fabric rebases the address onto the SMC local base and the sep_in initiator of smc_local_xbar reaches every target. The peripheral port is converted to 32-bit AXI-Lite for the peripheral crossbar, which serves the UART, I2C and AVSBus controllers through clock-domain crossings and the I3C, GPIO and the remaining SMC peripheral registers directly.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="736" fill="#ffffff"/>
+<rect class="smu" x="14" y="40" width="886" height="620" rx="6"/>
+<text class="b" x="28" y="648" text-anchor="start">smu</text>
+<rect class="smu" x="30" y="60" width="854" height="244" rx="6"/>
+<text class="bs" x="42" y="292" text-anchor="start">sep</text>
+<rect class="fabric" x="50" y="84" width="100" height="190" rx="6"/>
+<text class="bs" x="100" y="166" text-anchor="middle">Local</text>
+<text class="bs" x="100" y="184" text-anchor="middle">crossbar</text>
+<rect class="smu" x="176" y="80" width="470" height="110" rx="6"/>
+<text class="bs" x="186" y="182" text-anchor="start">u_sep_io</text>
+<path class="axi" d="M150,124 L200,124"/>
+<text class="s" x="156" y="116" text-anchor="start">sep_io</text>
+<rect class="network" x="200" y="102" width="66" height="44" rx="4"/>
+<text class="s" x="233" y="121.5" text-anchor="middle">64 to 32</text>
+<text class="s" x="233" y="136.5" text-anchor="middle">bits</text>
+<path class="axin" d="M266,124 L276,124"/>
+<rect class="network" x="276" y="102" width="66" height="44" rx="4"/>
+<text class="s" x="309" y="121.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="309" y="136.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M342,124 L356,124"/>
+<path class="fabric" d="M356,109 L384,94 L384,154 L356,139 Z"/>
+<path class="axiln" d="M384,110 L400,110"/>
+<rect class="core" x="400" y="90" width="170" height="36" rx="6"/>
+<text class="t" x="485" y="105.5" text-anchor="middle">SPI host</text>
+<text class="s" x="485" y="120.5" text-anchor="middle">u_sep_ot_spi_wrap</text>
+<path class="axiln" d="M384,138 L400,138"/>
+<rect class="external" x="400" y="130" width="90" height="22" rx="4"/>
+<text class="s" x="445" y="146" text-anchor="middle">DECERR</text>
+<path class="sigo" d="M570,108 L930,108"/>
+<text class="s" x="582" y="102" text-anchor="start">quad SPI</text>
+<rect class="external" x="930" y="86" width="96" height="44" rx="6"/>
+<text class="s" x="978" y="113" text-anchor="middle">SPI pads</text>
+<rect class="smu" x="176" y="198" width="470" height="96" rx="6"/>
+<text class="bs" x="186" y="286" text-anchor="start">u_sep_system_peripherals</text>
+<path class="axi" d="M150,236 L196,236"/>
+<path class="fabric" d="M208,214 L284,214 L296,236 L284,258 L208,258 L196,236 Z"/>
+<text class="s" x="246" y="233.5" text-anchor="middle">alias</text>
+<text class="s" x="246" y="248.5" text-anchor="middle">remap</text>
+<path class="axi" d="M296,236 L320,236"/>
+<path class="fabric" d="M320,221 L350,206 L350,266 L320,251 Z"/>
+<text class="s" x="360" y="256" text-anchor="start">route demux; SMU, AP, STEE and local legs</text>
+<text class="si" x="360" y="272" text-anchor="start">in the SEP output fabric figure</text>
+<path class="axi" d="M350,222 L780,222 L780,304"/>
+<text class="s" x="360" y="216" text-anchor="start">SMC aperture</text>
+<path class="axin" d="M780,304 L780,350"/>
+<text class="s" x="770" y="324" text-anchor="end">sep_ext_to_smc_axi_req_o to sep_axi_in_req_i</text>
+<text class="si" x="770" y="341" text-anchor="end">AXI4, addr 56, ID 6; no filter, crossbar or CDC</text>
+<rect class="smu" x="30" y="350" width="854" height="280" rx="6"/>
+<text class="bs" x="42" y="618" text-anchor="start">smc</text>
+<path class="axi" d="M780,350 L780,366 L852,366 L852,410 L830,410"/>
+<path class="fabric" d="M800,382 L830,397 L830,427 L800,442 Z"/>
+<text class="s" x="776" y="440" text-anchor="end">u_sep_region_demux</text>
+<path class="axi" d="M800,398 L776,398"/>
+<path class="axi" d="M800,426 L794,426 L794,486"/>
+<rect class="external" x="758" y="486" width="72" height="22" rx="4"/>
+<text class="s" x="794" y="502" text-anchor="middle">DECERR</text>
+<rect class="network" x="710" y="376" width="66" height="44" rx="4"/>
+<text class="s" x="743" y="395.5" text-anchor="middle">56 to 32</text>
+<text class="s" x="743" y="410.5" text-anchor="middle">bits</text>
+<path class="axi" d="M710,398 L690,398"/>
+<rect class="network" x="624" y="376" width="66" height="44" rx="4"/>
+<text class="s" x="657" y="395.5" text-anchor="middle">rebase</text>
+<text class="s" x="657" y="410.5" text-anchor="middle">to local</text>
+<path class="axi" d="M624,398 L600,398"/>
+<text class="s" x="604" y="370" text-anchor="start">sep_in</text>
+<rect class="fabric" x="490" y="370" width="110" height="230" rx="6"/>
+<text class="bs" x="545" y="468" text-anchor="middle">SMC local</text>
+<text class="bs" x="545" y="485" text-anchor="middle">crossbar</text>
+<text class="s" x="545" y="502" text-anchor="middle">smc_local_xbar</text>
+<path class="axi" d="M490,470 L470,470"/>
+<rect class="network" x="390" y="448" width="80" height="44" rx="4"/>
+<text class="s" x="430" y="467.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="430" y="482.5" text-anchor="middle">AXI-Lite 32</text>
+<path class="axil" d="M390,470 L374,470"/>
+<rect class="fabric" x="284" y="370" width="90" height="230" rx="6"/>
+<text class="bs" x="329" y="458" text-anchor="middle">Periph</text>
+<text class="bs" x="329" y="475" text-anchor="middle">crossbar</text>
+<text class="s" x="329" y="492" text-anchor="middle">12 targets</text>
+<text class="s" x="482" y="510" text-anchor="end">peripheral port</text>
+<path class="axil" d="M284,384 L228,384"/>
+<rect class="core" x="50" y="370" width="178" height="28" rx="4"/>
+<text class="t" x="139" y="389" text-anchor="middle">UART</text>
+<path class="axil" d="M284,422 L228,422"/>
+<rect class="core" x="50" y="408" width="178" height="28" rx="4"/>
+<text class="t" x="139" y="427" text-anchor="middle">I2C</text>
+<path class="axil" d="M284,460 L228,460"/>
+<rect class="core" x="50" y="446" width="178" height="28" rx="4"/>
+<text class="t" x="139" y="465" text-anchor="middle">AVSBus</text>
+<path class="axil" d="M284,498 L228,498"/>
+<rect class="core" x="50" y="484" width="178" height="28" rx="4"/>
+<text class="t" x="139" y="503" text-anchor="middle">I3C</text>
+<path class="axil" d="M284,536 L228,536"/>
+<rect class="core" x="50" y="522" width="178" height="28" rx="4"/>
+<text class="t" x="139" y="541" text-anchor="middle">GPIO</text>
+<path class="axil" d="M284,580 L228,580"/>
+<rect class="core" x="50" y="560" width="178" height="42" rx="4"/>
+<text class="s" x="139" y="578.5" text-anchor="middle">timer, telemetry, eFuse,</text>
+<text class="s" x="139" y="593.5" text-anchor="middle">misc, reset unit, DTP, ext</text>
+<text class="s" x="612" y="566" text-anchor="start">sep_in also reaches the CPU front port,</text>
+<text class="s" x="612" y="583" text-anchor="start">data accelerator, internal CSRs and DFD</text>
+<rect class="fabric" x="14" y="681" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="694.5" text-anchor="start">Crossbar</text>
+<path class="fabric" d="M139.2,685 L161.2,680 L161.2,700 L139.2,695 Z"/>
+<text class="s" x="169.2" y="694.5" text-anchor="start">Demux</text>
+<path class="fabric" d="M236.7,681 L258.7,681 L265.7,690 L258.7,699 L236.7,699 L229.7,690 Z"/>
+<text class="s" x="273.7" y="694.5" text-anchor="start">Address remap</text>
+<rect class="network" x="389.4" y="681" width="36" height="18" rx="3"/>
+<text class="s" x="433.4" y="694.5" text-anchor="start">Converter</text>
+<rect class="core" x="521.5" y="681" width="36" height="18" rx="4"/>
+<text class="s" x="565.5" y="694.5" text-anchor="start">RTL block</text>
+<rect class="external" x="653.6" y="681" width="36" height="18" rx="4"/>
+<text class="s" x="697.6" y="694.5" text-anchor="start">Pads, DECERR</text>
+<text class="s" x="44" y="722.5" text-anchor="start">Subordinate port</text>
+<text class="s" x="210.4" y="722.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M322.20000000000005,718 L364.20000000000005,718"/>
+<text class="s" x="375.2" y="722.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M431.80000000000007,718 L473.80000000000007,718"/>
+<text class="s" x="484.8" y="722.5" text-anchor="start">AXI-Lite</text>
+<path class="sigo" d="M569.0,718 L611.0,718"/>
+<text class="s" x="622" y="722.5" text-anchor="start">Pad signals</text>
+<text class="s" x="769.9" y="722.5" text-anchor="start">Clock-domain crossing</text>
+<rect class="pm" x="769.0" y="295.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="780" y="308.5" text-anchor="middle">M</text>
+<rect class="ps" x="769.0" y="341.0" width="22" height="18" rx="4"/>
+<text class="pst" x="780" y="354.5" text-anchor="middle">S</text>
+<rect class="pc" x="240.6" y="375.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="256" y="388.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="240.6" y="413.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="256" y="426.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="240.6" y="451.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="256" y="464.5" text-anchor="middle">CDC</text>
+<rect class="ps" x="14.0" y="709.0" width="22" height="18" rx="4"/>
+<text class="pst" x="25" y="722.5" text-anchor="middle">S</text>
+<rect class="pm" x="180.4" y="709.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="191.4" y="722.5" text-anchor="middle">M</text>
+<rect class="pc" x="728.5" y="709.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="743.9" y="722.5" text-anchor="middle">CDC</text>
+</svg>

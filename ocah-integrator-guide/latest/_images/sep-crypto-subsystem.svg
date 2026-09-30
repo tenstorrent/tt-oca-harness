@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="744" viewBox="0 0 1040 744" role="img" aria-labelledby="title desc">
+<title id="title">SEP cryptographic subsystem</title>
+<desc id="desc">The SEP cryptographic subsystem, sep_crypto. A single 64-bit AXI4 port from the SEP local crossbar enters the crypto AXI interconnect, which decodes it to the TRNG CSR paths (ESRC, CSRNG and EDN), the external TRNG registers, OTBN, AES, KMAC, the Key Manager mailbox, HMAC, the lifecycle controller, the eFuse wrapper and Adams Bridge. Each of OTBN, AES, KMAC, HMAC and Adams Bridge holds a key CSR block that the Key Manager writes over its own private AXI4-Lite key bus. The Key Manager also reads the eFuse wrapper over AXI4-Lite and receives OTP data from the eFuse wrapper and the lifecycle controller, and Adams Bridge returns its shared-key interrupt to it. The TRNG chain runs from ESRC through CSRNG to EDN; three streams pass a source select that can take the external TRNG instead. One stream feeds the Key Manager DRBG sampler, one feeds an EDN adapter serving AES, KMAC and OTBN, and one feeds an EDN adapter serving the entropy pool outside sep_crypto. The OTBN IMEM and DMEM, the Adams Bridge SRAMs, the Key Manager ROM and SRAM and the eFuse shim and bank sit outside sep_crypto.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="ke" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#937027"/></marker>
+<marker id="ks" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#937027"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.key { fill: none; stroke: #937027; stroke-width: 2.5; marker-start: url(#ks); marker-end: url(#ke); }
+</style>
+</defs>
+<rect width="1040" height="744" fill="#ffffff"/>
+<rect class="smu" x="8" y="44" width="1024" height="528" rx="8"/>
+<text class="b" x="144" y="560" text-anchor="start">sep_crypto</text>
+<text class="t" x="520" y="18" text-anchor="middle">from SEP local crossbar (AXI4, 64-bit)</text>
+<path class="axi" d="M520,28 L520,51"/>
+<rect class="fabric" x="18" y="64" width="1004" height="54" rx="5"/>
+<text class="bs" x="620" y="88" text-anchor="middle">Crypto AXI interconnect</text>
+<text class="s" x="620" y="104" text-anchor="middle">sep_crypto_axi_interconnect: 13-port AXI4 demux, AXI4-Lite conversion, isolation</text>
+<rect class="core" x="48" y="172" width="220" height="104" rx="6"/>
+<text class="bs" x="58" y="266" text-anchor="start">TRNG (u_sep_trng)</text>
+<rect class="core" x="58" y="196" width="60" height="40" rx="6"/>
+<text class="s" x="88" y="221" text-anchor="middle">ESRC</text>
+<path class="axi" d="M88,131 L88,183"/>
+<rect class="core" x="134" y="196" width="64" height="40" rx="6"/>
+<text class="s" x="166" y="221" text-anchor="middle">CSRNG</text>
+<path class="axi" d="M166,131 L166,183"/>
+<rect class="core" x="214" y="196" width="44" height="40" rx="6"/>
+<text class="s" x="236" y="221" text-anchor="middle">EDN</text>
+<path class="axi" d="M236,131 L236,183"/>
+<path class="sigo" d="M118,216 L131,216"/>
+<path class="sigo" d="M198,216 L211,216"/>
+<path class="sigo" d="M236,236 L236,297"/>
+<text class="s" x="242" y="290" text-anchor="start">×3</text>
+<rect class="fabric" x="56" y="300" width="204" height="28" rx="6"/>
+<text class="s" x="158" y="319" text-anchor="middle">Source select ×3</text>
+<rect class="fabric" x="56" y="350" width="94" height="40" rx="6"/>
+<text class="s" x="103" y="367" text-anchor="middle">EDN adapter</text>
+<text class="s" x="103" y="383" text-anchor="middle">(pool)</text>
+<rect class="fabric" x="170" y="350" width="90" height="40" rx="6"/>
+<text class="s" x="215" y="367" text-anchor="middle">EDN adapter</text>
+<text class="s" x="215" y="383" text-anchor="middle">(crypto)</text>
+<path class="sigo" d="M100,328 L100,347"/>
+<path class="sigo" d="M215,328 L215,347"/>
+<path class="axi" d="M30,131 L30,595"/>
+<path class="sigo" d="M44,608 L44,314 L53,314"/>
+<text class="s" x="50" y="480" text-anchor="start">×3</text>
+<path class="sigo" d="M130,390 L130,605"/>
+<path class="sigo" d="M158,328 L158,432 L329,432"/>
+<text class="s" x="164" y="425" text-anchor="start">entropy</text>
+<path class="sigplain" d="M260,370 L276,370 L276,146 L332,146"/>
+<path class="sigplain" d="M348,146 L432,146"/>
+<path class="sigplain" d="M448,146 L488,146"/>
+<circle cx="300" cy="146" r="3.5" fill="#5b6670"/>
+<circle cx="402" cy="146" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M300,146 L300,169"/>
+<path class="sigo" d="M402,146 L402,169"/>
+<path class="sigo" d="M488,146 L488,169"/>
+<text class="s" x="371" y="141" text-anchor="middle">EDN</text>
+<rect class="core" x="286" y="172" width="90" height="124" rx="6"/>
+<text class="bs" x="331" y="202" text-anchor="middle">OTBN</text>
+<text class="s" x="331" y="220" text-anchor="middle">PKA</text>
+<rect class="fabric" x="292" y="234" width="78" height="52" rx="4"/>
+<text class="s" x="331" y="255" text-anchor="middle">Key CSR</text>
+<path class="axi" d="M340,131 L340,159"/>
+<rect class="core" x="390" y="172" width="72" height="124" rx="6"/>
+<text class="bs" x="426" y="210" text-anchor="middle">AES</text>
+<rect class="fabric" x="396" y="234" width="60" height="52" rx="4"/>
+<text class="s" x="426" y="255" text-anchor="middle">Key CSR</text>
+<path class="axi" d="M440,131 L440,159"/>
+<rect class="core" x="476" y="172" width="72" height="124" rx="6"/>
+<text class="bs" x="512" y="202" text-anchor="middle">KMAC</text>
+<text class="s" x="512" y="220" text-anchor="middle">SHA3</text>
+<rect class="fabric" x="482" y="234" width="60" height="52" rx="4"/>
+<text class="s" x="512" y="255" text-anchor="middle">Key CSR</text>
+<path class="axi" d="M524,131 L524,159"/>
+<rect class="core" x="588" y="172" width="72" height="124" rx="6"/>
+<text class="bs" x="624" y="202" text-anchor="middle">HMAC</text>
+<text class="s" x="624" y="220" text-anchor="middle">SHA2</text>
+<rect class="fabric" x="594" y="234" width="60" height="52" rx="4"/>
+<text class="s" x="624" y="255" text-anchor="middle">Key CSR</text>
+<path class="axi" d="M624,131 L624,159"/>
+<rect class="core" x="896" y="172" width="126" height="124" rx="6"/>
+<text class="bs" x="959" y="202" text-anchor="middle">Adams Bridge</text>
+<text class="s" x="959" y="220" text-anchor="middle">ML-DSA, ML-KEM</text>
+<rect class="fabric" x="902" y="234" width="114" height="52" rx="4"/>
+<text class="s" x="959" y="255" text-anchor="middle">Key CSR</text>
+<path class="axi" d="M963,131 L963,159"/>
+<rect class="core" x="676" y="172" width="90" height="124" rx="6"/>
+<text class="bs" x="721" y="230" text-anchor="middle">Lifecycle</text>
+<text class="bs" x="721" y="248" text-anchor="middle">controller</text>
+<path class="axi" d="M721,131 L721,159"/>
+<rect class="core" x="780" y="172" width="100" height="124" rx="6"/>
+<text class="bs" x="830" y="230" text-anchor="middle">eFuse</text>
+<text class="bs" x="830" y="248" text-anchor="middle">wrapper</text>
+<path class="axi" d="M827,131 L827,159"/>
+<path class="sigo" d="M780,262 L769,262"/>
+<text class="s" x="714" y="332" text-anchor="end">OTP data</text>
+<rect class="core" x="316" y="362" width="540" height="140" rx="6"/>
+<text class="b" x="604" y="490" text-anchor="start">Key Manager (key_manager)</text>
+<rect class="core" x="326" y="408" width="74" height="48" rx="6"/>
+<text class="s" x="363" y="429" text-anchor="middle">DRBG</text>
+<text class="s" x="363" y="445" text-anchor="middle">sampler</text>
+<rect class="core" x="410" y="408" width="140" height="48" rx="6"/>
+<text class="s" x="480" y="429" text-anchor="middle">PicoRV32 CPU</text>
+<text class="s" x="480" y="445" text-anchor="middle">and key crossbar</text>
+<rect class="core" x="556" y="384" width="64" height="44" rx="6"/>
+<text class="s" x="588" y="411" text-anchor="middle">Mailbox</text>
+<rect class="core" x="690" y="408" width="150" height="48" rx="6"/>
+<text class="s" x="765" y="429" text-anchor="middle">Key and policy</text>
+<text class="s" x="765" y="445" text-anchor="middle">vault (KPV)</text>
+<path class="key" d="M346,349 L346,295"/>
+<path class="key" d="M426,349 L426,295"/>
+<path class="key" d="M512,349 L512,295"/>
+<path class="key" d="M624,349 L624,295"/>
+<path class="key" d="M869,392 L930,392 L930,295"/>
+<path class="sigo" d="M990,296 L990,422 L859,422"/>
+<text class="s" x="886" y="414" text-anchor="start">shared-key IRQ</text>
+<path class="axi" d="M568,131 L568,371"/>
+<path class="sigo" d="M721,296 L721,359"/>
+<path class="sigo" d="M852,296 L852,359"/>
+<path class="axi" d="M800,349 L800,309"/>
+<rect class="external" x="12" y="608" width="66" height="50" rx="6"/>
+<text class="s" x="45" y="630" text-anchor="middle">External</text>
+<text class="s" x="45" y="646" text-anchor="middle">TRNG</text>
+<rect class="external" x="82" y="608" width="98" height="50" rx="6"/>
+<text class="s" x="131" y="630" text-anchor="middle">Entropy pool</text>
+<text class="s" x="131" y="646" text-anchor="middle">u_entropy_fifo</text>
+<rect class="external" x="232" y="608" width="132" height="50" rx="6"/>
+<text class="s" x="298" y="630" text-anchor="middle">OTBN IMEM 16 KiB</text>
+<text class="s" x="298" y="646" text-anchor="middle">and DMEM 32 KiB</text>
+<rect class="external" x="380" y="608" width="90" height="50" rx="6"/>
+<text class="s" x="425" y="630" text-anchor="middle">KM ROM</text>
+<text class="s" x="425" y="646" text-anchor="middle">16 KiB</text>
+<rect class="external" x="490" y="608" width="90" height="50" rx="6"/>
+<text class="s" x="535" y="630" text-anchor="middle">KM SRAM</text>
+<text class="s" x="535" y="646" text-anchor="middle">32 KiB</text>
+<rect class="external" x="826" y="608" width="100" height="50" rx="6"/>
+<text class="s" x="876" y="630" text-anchor="middle">eFuse shim</text>
+<text class="s" x="876" y="646" text-anchor="middle">and bank</text>
+<rect class="external" x="950" y="608" width="80" height="50" rx="6"/>
+<text class="s" x="990" y="630" text-anchor="middle">ABR SRAMs</text>
+<text class="s" x="990" y="646" text-anchor="middle">13 macros</text>
+<path class="sigo" d="M298,424 L298,299"/>
+<path class="sigo" d="M298,440 L298,605"/>
+<path class="sig" d="M425,459 L425,605"/>
+<path class="sig" d="M535,459 L535,605"/>
+<path class="sigo" d="M876,384 L876,299"/>
+<path class="sigplain" d="M876,400 L876,414"/>
+<path class="sigo" d="M876,430 L876,605"/>
+<path class="sig" d="M1000,299 L1000,605"/>
+<text class="s" x="42" y="703" text-anchor="start">Manager port</text>
+<text class="s" x="166" y="703" text-anchor="start">Subordinate port</text>
+<rect class="fabric" x="288" y="689" width="40" height="18" rx="4"/>
+<text class="s" x="336" y="703" text-anchor="start">Interconnect, key CSR or entropy logic</text>
+<rect class="external" x="600" y="689" width="40" height="18" rx="4"/>
+<text class="s" x="648" y="703" text-anchor="start">Outside sep_crypto</text>
+<path class="axi" d="M17,726 L51,726"/>
+<text class="s" x="62" y="731" text-anchor="start">AXI4 or AXI4-Lite</text>
+<path class="key" d="M192,726 L226,726"/>
+<text class="s" x="237" y="731" text-anchor="start">Key Manager private key bus (AXI4-Lite)</text>
+<path class="sigo" d="M500,726 L534,726"/>
+<text class="s" x="545" y="731" text-anchor="start">Entropy or status</text>
+<path class="sig" d="M670,726 L704,726"/>
+<text class="s" x="715" y="731" text-anchor="start">Memory or eFuse interface</text>
+<rect class="ps" x="509.0" y="55.0" width="22" height="18" rx="4"/>
+<text class="pst" x="520" y="68.5" text-anchor="middle">S</text>
+<rect class="pm" x="77.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="88" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="77.0" y="187.0" width="22" height="18" rx="4"/>
+<text class="pst" x="88" y="200.5" text-anchor="middle">S</text>
+<rect class="pm" x="155.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="166" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="155.0" y="187.0" width="22" height="18" rx="4"/>
+<text class="pst" x="166" y="200.5" text-anchor="middle">S</text>
+<rect class="pm" x="225.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="236" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="225.0" y="187.0" width="22" height="18" rx="4"/>
+<text class="pst" x="236" y="200.5" text-anchor="middle">S</text>
+<rect class="pm" x="19.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="30" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="19.0" y="599.0" width="22" height="18" rx="4"/>
+<text class="pst" x="30" y="612.5" text-anchor="middle">S</text>
+<rect class="pm" x="329.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="340" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="329.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="340" y="176.5" text-anchor="middle">S</text>
+<rect class="ps" x="335.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pst" x="346" y="290.5" text-anchor="middle">S</text>
+<rect class="pm" x="429.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="440" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="429.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="440" y="176.5" text-anchor="middle">S</text>
+<rect class="ps" x="415.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pst" x="426" y="290.5" text-anchor="middle">S</text>
+<rect class="pm" x="513.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="524" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="513.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="524" y="176.5" text-anchor="middle">S</text>
+<rect class="ps" x="501.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pst" x="512" y="290.5" text-anchor="middle">S</text>
+<rect class="pm" x="613.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="624" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="613.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="624" y="176.5" text-anchor="middle">S</text>
+<rect class="ps" x="613.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pst" x="624" y="290.5" text-anchor="middle">S</text>
+<rect class="pm" x="952.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="963" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="952.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="963" y="176.5" text-anchor="middle">S</text>
+<rect class="ps" x="919.0" y="277.0" width="22" height="18" rx="4"/>
+<text class="pst" x="930" y="290.5" text-anchor="middle">S</text>
+<rect class="pm" x="710.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="721" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="710.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="721" y="176.5" text-anchor="middle">S</text>
+<rect class="pm" x="816.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="827" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="816.0" y="163.0" width="22" height="18" rx="4"/>
+<text class="pst" x="827" y="176.5" text-anchor="middle">S</text>
+<rect class="pm" x="335.0" y="353.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="346" y="366.5" text-anchor="middle">M</text>
+<rect class="pm" x="415.0" y="353.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="426" y="366.5" text-anchor="middle">M</text>
+<rect class="pm" x="501.0" y="353.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="512" y="366.5" text-anchor="middle">M</text>
+<rect class="pm" x="613.0" y="353.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="624" y="366.5" text-anchor="middle">M</text>
+<rect class="pm" x="845.0" y="383.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="856" y="396.5" text-anchor="middle">M</text>
+<rect class="pm" x="557.0" y="109.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="568" y="122.5" text-anchor="middle">M</text>
+<rect class="ps" x="557.0" y="375.0" width="22" height="18" rx="4"/>
+<text class="pst" x="568" y="388.5" text-anchor="middle">S</text>
+<rect class="pm" x="789.0" y="353.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="800" y="366.5" text-anchor="middle">M</text>
+<rect class="ps" x="789.0" y="287.0" width="22" height="18" rx="4"/>
+<text class="pst" x="800" y="300.5" text-anchor="middle">S</text>
+<rect class="pm" x="14.0" y="689.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="702.5" text-anchor="middle">M</text>
+<rect class="ps" x="138.0" y="689.0" width="22" height="18" rx="4"/>
+<text class="pst" x="149" y="702.5" text-anchor="middle">S</text>
+</svg>

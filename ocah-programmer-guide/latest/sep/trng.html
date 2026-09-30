@@ -270,9 +270,25 @@ distribution paths.</p>
 </div>
 <div id="sep-trng-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_Trng_TopLevel_FIG011.drawio.png" alt="SEP TRNG and DRBG entropy distribution" width="100%">
+<img src="_images/sep-trng-distribution.svg" alt="SEP TRNG and DRBG entropy distribution: the entropy source seeds CSRNG through a seed packer, EDN fills three AXI-Stream FIFOs, a source select can replace each stream with the external TRNG, and the streams feed the Key Manager, an EDN adapter for AES, KMAC and OTBN, and the entropy pool" width="100%">
 </div>
 <div class="title">Figure 1. SEP TRNG and DRBG entropy distribution</div>
+</div>
+<div class="paragraph">
+<p><a href="#sep-trng-diagram">SEP TRNG and DRBG entropy distribution</a> reads left to right. Inside <code>u_sep_trng</code>, the entropy source
+drives a 32-bit stream into the DRBG, whose seed packer collects twelve words into
+each 384-bit CSRNG seed. EDN draws from CSRNG and fills one 8-entry AXI-Stream FIFO
+per endpoint. The crypto AXI interconnect reaches the entropy source, CSRNG and
+EDN registers, and the external TRNG register window. The source select holds one
+2:1 mux per stream; each bit of <code>EXT_TRNG_SRC_SEL</code> chooses the internal DRBG (0)
+or the external TRNG (1, the reset value) for its stream. Streams 0, 1 and 2 go
+to the Key Manager DRBG sampler, to the crypto EDN adapter and to the pool EDN
+adapter. The entropy pool sits in <code>sep</code>, outside <code>sep_crypto</code>, and packs the
+32-bit words into a 32-entry FIFO of 64-bit words that software reads through the
+SEP local crossbar. The CSRNG and EDN cores are OpenTitan IP; their internal
+structure and register semantics are described in the
+<a href="https://opentitan.org/book/hw/ip/csrng/">OpenTitan CSRNG</a> and
+<a href="https://opentitan.org/book/hw/ip/edn/">EDN</a> documentation.</p>
 </div>
 <div class="paragraph">
 <p>In OCAH the whitened entropy stream from the noise source is not routed

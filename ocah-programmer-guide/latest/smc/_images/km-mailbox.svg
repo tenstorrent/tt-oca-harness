@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="822" viewBox="0 0 1040 822" role="img" aria-labelledby="title desc">
+<title id="title">Key Manager mailbox</title>
+<desc id="desc">Block diagram of u_mailbox (km_mailbox). A KM-side AXI4-Lite subordinate port from u_xbar and a SEP-side AXI4-Lite subordinate port from the SEP host each enter an address decode. On the SEP side, SEP_WRITE_DATA pushes u_inbound_fifo and SEP_READ_DATA pops u_outbound_fifo; on the KM side, KM_WRITE_DATA pushes u_outbound_fifo and KM_READ_DATA pops u_inbound_fifo. Every other address reaches the side's own register block, u_km_regs or u_sep_regs, which hold STATUS, CTRL, IRQ_STATUS, IRQ_ENABLE and WRITE_SEPARATOR. Each FIFO word is 32 data bits plus a separator bit. Both register blocks see the depth, full, empty and separator status of both FIFOs, and a FLUSH from either side clears both FIFOs. Each register block ORs its enabled interrupt sources into mbox_irq_to_km_o or mbox_irq_to_sep_o.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="822" fill="#ffffff"/>
+<rect class="smu" x="180" y="100" width="710" height="560" rx="6"/>
+<text class="b" x="192" y="648" text-anchor="start">u_mailbox</text>
+<text class="s" x="280" y="648" text-anchor="start">km_mailbox</text>
+<rect class="external" x="320" y="18" width="200" height="44" rx="6"/>
+<text class="bs" x="420" y="37" text-anchor="middle">u_xbar</text>
+<text class="s" x="420" y="54" text-anchor="middle">KM CPU accesses</text>
+<path class="axi" d="M420,74 L420,118"/>
+<rect class="external" x="320" y="698" width="200" height="44" rx="6"/>
+<text class="bs" x="420" y="717" text-anchor="middle">SEP host</text>
+<text class="s" x="420" y="734" text-anchor="middle">via crypto interconnect</text>
+<path class="axi" d="M420,622 L420,686"/>
+<text class="s" x="428" y="96" text-anchor="start">km_axil_req_i</text>
+<text class="s" x="428" y="680" text-anchor="start">sep_axil_req_i</text>
+<rect class="fabric" x="200" y="130" width="440" height="50" rx="6"/>
+<text class="bs" x="300" y="151" text-anchor="middle">KM-side decode</text>
+<text class="s" x="300" y="169" text-anchor="middle">and response mux</text>
+<text class="s" x="530" y="151" text-anchor="middle">KM_WRITE_DATA: push</text>
+<text class="s" x="530" y="169" text-anchor="middle">KM_READ_DATA: pop</text>
+<rect class="fabric" x="200" y="560" width="440" height="50" rx="6"/>
+<text class="bs" x="300" y="581" text-anchor="middle">SEP-side decode</text>
+<text class="s" x="300" y="599" text-anchor="middle">and response mux</text>
+<text class="s" x="530" y="581" text-anchor="middle">SEP_WRITE_DATA: push</text>
+<text class="s" x="530" y="599" text-anchor="middle">SEP_READ_DATA: pop</text>
+<rect class="core" x="210" y="280" width="190" height="130" rx="6"/>
+<text class="bs" x="305" y="302" text-anchor="middle">u_inbound_fifo</text>
+<text class="s" x="305" y="320" text-anchor="middle">SEP to KM</text>
+<rect class="external" x="230" y="328" width="150" height="11" rx="1"/>
+<rect class="external" x="230" y="343" width="150" height="11" rx="1"/>
+<rect class="external" x="230" y="358" width="150" height="11" rx="1"/>
+<rect class="external" x="230" y="373" width="150" height="11" rx="1"/>
+<text class="s" x="305" y="403" text-anchor="middle">32 bits + separator</text>
+<rect class="core" x="440" y="280" width="190" height="130" rx="6"/>
+<text class="bs" x="535" y="302" text-anchor="middle">u_outbound_fifo</text>
+<text class="s" x="535" y="320" text-anchor="middle">KM to SEP</text>
+<rect class="external" x="460" y="328" width="150" height="11" rx="1"/>
+<rect class="external" x="460" y="343" width="150" height="11" rx="1"/>
+<rect class="external" x="460" y="358" width="150" height="11" rx="1"/>
+<rect class="external" x="460" y="373" width="150" height="11" rx="1"/>
+<text class="s" x="535" y="403" text-anchor="middle">32 bits + separator</text>
+<path class="sigo" d="M260,560 L260,416"/>
+<text class="s" x="254" y="500" text-anchor="end">push</text>
+<path class="sigo" d="M350,280 L350,186"/>
+<text class="s" x="356" y="236" text-anchor="start">pop</text>
+<path class="sigo" d="M490,180 L490,274"/>
+<text class="s" x="484" y="236" text-anchor="end">push</text>
+<path class="sigo" d="M580,410 L580,554"/>
+<text class="s" x="586" y="500" text-anchor="start">pop</text>
+<rect class="core" x="690" y="120" width="180" height="130" rx="6"/>
+<text class="bs" x="702" y="140" text-anchor="start">u_km_regs</text>
+<text class="s" x="702" y="160" text-anchor="start">KM_STATUS</text>
+<text class="s" x="702" y="177" text-anchor="start">KM_CTRL (FLUSH)</text>
+<text class="s" x="702" y="194" text-anchor="start">KM_IRQ_STATUS</text>
+<text class="s" x="702" y="211" text-anchor="start">KM_IRQ_ENABLE</text>
+<text class="s" x="702" y="228" text-anchor="start">KM_WRITE_SEPARATOR</text>
+<rect class="core" x="690" y="500" width="180" height="130" rx="6"/>
+<text class="bs" x="702" y="520" text-anchor="start">u_sep_regs</text>
+<text class="s" x="702" y="540" text-anchor="start">SEP_STATUS</text>
+<text class="s" x="702" y="557" text-anchor="start">SEP_CTRL (FLUSH)</text>
+<text class="s" x="702" y="574" text-anchor="start">SEP_IRQ_STATUS</text>
+<text class="s" x="702" y="591" text-anchor="start">SEP_IRQ_ENABLE</text>
+<text class="s" x="702" y="608" text-anchor="start">SEP_WRITE_SEPARATOR</text>
+<path class="sig" d="M646,155 L684,155"/>
+<path class="sig" d="M646,585 L684,585"/>
+<path class="sigplain" d="M320,410 L320,445 L572,445 M588,445 L660,445"/>
+<path class="sigplain" d="M530,410 L530,445"/>
+<circle cx="530" cy="445" r="3.5" fill="#5b6670"/>
+<path class="sig" d="M684,250 L660,250 L660,500 L684,500"/>
+<circle cx="660" cy="445" r="3.5" fill="#5b6670"/>
+<text class="s" x="330" y="464" text-anchor="start">FIFO status;</text>
+<text class="s" x="330" y="481" text-anchor="start">FLUSH clears both</text>
+<path class="sigo" d="M870,215 L1030,215"/>
+<text class="s" x="1030" y="207" text-anchor="end">mbox_irq_to_km_o</text>
+<text class="s" x="1030" y="233" text-anchor="end">to u_cpu irq[4]</text>
+<path class="sigo" d="M870,595 L1030,595"/>
+<text class="s" x="1030" y="587" text-anchor="end">mbox_irq_to_sep_o</text>
+<text class="s" x="1030" y="613" text-anchor="end">to the SEP host</text>
+<rect class="core" x="14" y="763" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="777" text-anchor="start">RTL instance</text>
+<rect class="fabric" x="168" y="763" width="40" height="18" rx="4"/>
+<text class="s" x="216" y="777" text-anchor="start">Decode logic</text>
+<rect class="external" x="322" y="763" width="40" height="18" rx="4"/>
+<text class="s" x="370" y="777" text-anchor="start">Outside u_mailbox</text>
+<text class="s" x="539" y="777" text-anchor="start">Subordinate port</text>
+<path class="axi" d="M669.0,772 L713.0,772"/>
+<text class="s" x="723" y="777" text-anchor="start">AXI4-Lite</text>
+<path class="sigo" d="M813.0,772 L857.0,772"/>
+<text class="s" x="867" y="777" text-anchor="start">Signals</text>
+<circle cx="44" cy="800" r="3.2" fill="#5b6670"/>
+<path class="sigplain" d="M14,800 L74,800 M44,800 L44,813"/>
+<text class="s" x="86" y="805" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M184,788 L184,795 M184,805 L184,812"/>
+<path class="sigplain" d="M154,800 L214,800"/>
+<text class="s" x="226" y="805" text-anchor="start">Crossing, not connected</text>
+<rect class="ps" x="409.0" y="121.0" width="22" height="18" rx="4"/>
+<text class="pst" x="420" y="134.5" text-anchor="middle">S</text>
+<rect class="ps" x="409.0" y="601.0" width="22" height="18" rx="4"/>
+<text class="pst" x="420" y="614.5" text-anchor="middle">S</text>
+<rect class="ps" x="511.0" y="763.0" width="22" height="18" rx="4"/>
+<text class="pst" x="522" y="776.5" text-anchor="middle">S</text>
+</svg>

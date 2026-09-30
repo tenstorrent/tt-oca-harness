@@ -4044,49 +4044,11 @@ shall parameterize the KDF rather than hard-code it.</p>
 </tr>
 </table>
 </div>
-<div id="fig:payload_pipeline" class="listingblock kroki-error">
-<div class="title">Payload verification pipeline</div>
+<div id="fig:payload_pipeline" class="imageblock kroki">
 <div class="content">
-<pre>@startuml
-skinparam ActivityBackgroundColor #f0f8e6
-skinparam ActivityDiamondBackgroundColor #fdf6e3
-start
-:stage payload into SEP SRAM
-(bounds-checked read);
-if (encrypted ? (control bit 0)) then (yes)
-  if (secure boot active ?) then (no)
-    :reject
-    (encryption requires secure boot);&lt;&lt;#ffe0e0&gt;&gt;
-    detach
-  else (yes)
-    :verify payload_hash
-    over CIPHERTEXT;
-    :derive key: KDF(CLASS_KEY,
-    kdf_input)  [PROVISIONAL];
-    :AES-256-CBC decrypt in place,
-    strip PKCS#7; zeroize keys;
-  endif
-else (no)
-  :verify payload_hash over the
-  TOC region (hashed_length = TOC span);
-endif
-:verify payload_hash_chain
-(h0 = SHA256 of TOC, then per entry
-in stored order
-h = SHA256 of h + SHA256 of image);
-:verify each TOC entry hash;
-:TOC structural checks
-(count, bounds, alignment, overlap);
-if (all checks pass ?) then (yes)
-  :payload accepted;&lt;&lt;#e6f0f8&gt;&gt;
-  detach
-else (no)
-  :fail slot attempt
-  (retry / backup bank);&lt;&lt;#ffe0e0&gt;&gt;
-  detach
-endif
-@enduml</pre>
+<img src="_images/payload-pipeline-790057e4eeeaeb51f3007e8051ec4c38fb732ce3.svg" alt="Payload verification pipeline">
 </div>
+<div class="title">Figure 14. Payload verification pipeline</div>
 </div>
 <div class="paragraph">
 <p>The ROM implements this order through the validation library&#8217;s <code>oca_check_payload_at()</code>,
@@ -4265,7 +4227,7 @@ the slot index.</p>
 <div class="content">
 <img src="_images/measurement-compose-01d5f7d0d83a0f6a28ed009f8c06d03af9ec615c.svg" alt="Measurement enrollment and PCRV hand-over">
 </div>
-<div class="title">Figure 14. Measurement enrollment and PCRV hand-over</div>
+<div class="title">Figure 15. Measurement enrollment and PCRV hand-over</div>
 </div>
 </div>
 </div>
@@ -4477,7 +4439,7 @@ re-entry paths are cold reset and the warm-reset protocol (<a href="#sec:warm_re
 <div class="content">
 <img src="_images/handoff-selfcheck-de4d2a6b31796f8a79150275c6b9c398e192309b.svg" alt="Pre-hand-off self-check and jump">
 </div>
-<div class="title">Figure 15. Pre-hand-off self-check and jump</div>
+<div class="title">Figure 16. Pre-hand-off self-check and jump</div>
 </div>
 <div class="admonitionblock warning">
 <table>
@@ -4565,7 +4527,7 @@ never leave a half-applied device-state change behind.</p>
 <div class="content">
 <img src="_images/retry-backup-sm-ddc7ec71be525f7fe6586b1e202ae1eaf07af471.svg" alt="Slot retry state machine (`BOOT_MODE_SPI`)">
 </div>
-<div class="title">Figure 16. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</div>
+<div class="title">Figure 17. Slot retry state machine (<code>BOOT_MODE_SPI</code>)</div>
 </div>
 </div>
 <div class="sect4">

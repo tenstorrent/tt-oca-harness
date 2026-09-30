@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="582" viewBox="0 0 1040 582" role="img" aria-labelledby="title desc">
+<title id="title">Scrambler datapath</title>
+<desc id="desc">Datapath of the combinational scrambler module. scrambler_key_i and addr_i feed u_addr_tweak, which repeats the address to 32 bits and XORs it with the key to form round_key. The address scramble function addr_scrambleN XORs addr_i with the low ADDR_WIDTH key bits, passes the result through sbox3 and sbox4 lanes and the permN permutation, and drives scrambled_addr_o. On the write path, write_data_i is XORed with round_key, passed through eight sbox4 S-boxes and then perm32, or perm8 on each byte when BYTE_WISE is 1, and leaves as scrambled_write_data_o. On the read path, scrambled_read_data_i passes through iperm32, or iperm8 per byte, then eight ibox4 inverse S-boxes, and is XORed with round_key to give read_data_o. The memory is outside the module.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="582" fill="#ffffff"/>
+<rect class="smu" x="190" y="30" width="640" height="470" rx="6"/>
+<text class="b" x="202" y="488" text-anchor="start">scrambler</text>
+<rect class="external" x="880" y="90" width="140" height="380" rx="6"/>
+<text class="bs" x="950" y="266" text-anchor="middle">SRAM or</text>
+<text class="bs" x="950" y="284" text-anchor="middle">register file</text>
+<text class="s" x="14" y="58" text-anchor="start">scrambler_key_i[31:0]</text>
+<text class="s" x="14" y="124" text-anchor="start">addr_i[ADDR_WIDTH-1:0]</text>
+<text class="s" x="14" y="284" text-anchor="start">write_data_i[31:0]</text>
+<text class="s" x="14" y="414" text-anchor="start">read_data_o[31:0]</text>
+<path class="sigplain" d="M10,64 L610,64"/>
+<path class="sigo" d="M610,64 L610,101"/>
+<circle cx="230" cy="64" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M230,64 L230,122 M230,138 L230,196 L286,196"/>
+<text class="s" x="618" y="90" text-anchor="start">key[ADDR_WIDTH-1:0]</text>
+<path class="sigo" d="M10,130 L514,130"/>
+<circle cx="250" cy="130" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M250,130 L250,220 L286,220"/>
+<rect class="fabric" x="520" y="105" width="180" height="50" rx="6"/>
+<text class="bs" x="610" y="126" text-anchor="middle">addr_scrambleN</text>
+<text class="s" x="610" y="144" text-anchor="middle">XOR, S-box lanes, permN</text>
+<path class="sigo" d="M700,130 L874,130"/>
+<text class="s" x="822" y="124" text-anchor="end">scrambled_addr_o</text>
+<rect class="core" x="290" y="180" width="150" height="56" rx="6"/>
+<text class="bs" x="365" y="202" text-anchor="middle">u_addr_tweak</text>
+<text class="s" x="365" y="221" text-anchor="middle">addr repeated, XOR key</text>
+<path class="sigplain" d="M440,208 L450,208 L450,282 M450,298 L450,384 L480,384 L480,404"/>
+<circle cx="450" cy="250" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M450,250 L480,250 L480,274"/>
+<text class="s" x="446" y="200" text-anchor="start">round_key</text>
+<circle class="core" cx="480" cy="290" r="12"/>
+<path class="sigplain" d="M471,290 L489,290 M480,281 L480,299"/>
+<path class="sigo" d="M10,290 L464,290"/>
+<rect class="fabric" x="520" y="265" width="110" height="50" rx="6"/>
+<text class="bs" x="575" y="286" text-anchor="middle">8 × sbox4</text>
+<text class="s" x="575" y="304" text-anchor="middle">per nibble</text>
+<path class="sigo" d="M492,290 L514,290"/>
+<rect class="fabric" x="660" y="265" width="130" height="50" rx="6"/>
+<text class="bs" x="725" y="286" text-anchor="middle">perm32</text>
+<text class="s" x="725" y="304" text-anchor="middle">or 4 × perm8</text>
+<path class="sigo" d="M630,290 L654,290"/>
+<path class="sigo" d="M790,290 L874,290"/>
+<text class="s" x="822" y="258" text-anchor="end">scrambled_write_data_o</text>
+<circle class="core" cx="480" cy="420" r="12"/>
+<path class="sigplain" d="M471,420 L489,420 M480,411 L480,429"/>
+<path class="sigo" d="M468,420 L14,420"/>
+<rect class="fabric" x="520" y="395" width="110" height="50" rx="6"/>
+<text class="bs" x="575" y="416" text-anchor="middle">8 × ibox4</text>
+<text class="s" x="575" y="434" text-anchor="middle">per nibble</text>
+<path class="sigo" d="M520,420 L496,420"/>
+<rect class="fabric" x="660" y="395" width="130" height="50" rx="6"/>
+<text class="bs" x="725" y="416" text-anchor="middle">iperm32</text>
+<text class="s" x="725" y="434" text-anchor="middle">or 4 × iperm8</text>
+<path class="sigo" d="M660,420 L636,420"/>
+<path class="sigo" d="M880,420 L796,420"/>
+<text class="s" x="822" y="462" text-anchor="end">scrambled_read_data_i</text>
+<rect class="core" x="14" y="523" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="537" text-anchor="start">RTL instance</text>
+<rect class="fabric" x="168" y="523" width="40" height="18" rx="4"/>
+<text class="s" x="216" y="537" text-anchor="start">Function from scrambler_pkg</text>
+<rect class="external" x="427" y="523" width="40" height="18" rx="4"/>
+<text class="s" x="475" y="537" text-anchor="start">Outside the module</text>
+<circle class="core" cx="635.0" cy="532" r="9"/>
+<path class="sigplain" d="M629.0,532 L641.0,532 M635.0,526 L635.0,538"/>
+<text class="s" x="653" y="537" text-anchor="start">XOR</text>
+<path class="sigo" d="M703.0,532 L747.0,532"/>
+<text class="s" x="757" y="537" text-anchor="start">Signals</text>
+<circle cx="44" cy="560" r="3.2" fill="#5b6670"/>
+<path class="sigplain" d="M14,560 L74,560 M44,560 L44,573"/>
+<text class="s" x="86" y="565" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M184,548 L184,555 M184,565 L184,572"/>
+<path class="sigplain" d="M154,560 L214,560"/>
+<text class="s" x="226" y="565" text-anchor="start">Crossing, not connected</text>
+</svg>

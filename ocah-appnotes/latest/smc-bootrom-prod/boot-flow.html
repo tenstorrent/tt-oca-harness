@@ -172,72 +172,11 @@
 After the C runtime is ready, hart 0 runs Phase 0 through Phase 5.
 Other harts remain in the runtime&#8217;s <code>wfi</code> loop.</p>
 </div>
-<div id="detailed-boot-flow" class="literalblock kroki-error">
-<div class="title">Detailed boot flow</div>
+<div id="detailed-boot-flow" class="imageblock kroki">
 <div class="content">
-<pre>@startuml
-start
-:Reset enters _enter at 0xC0040000;
-:Clear integer registers;
-:Conditionally zero SRAM with AXI zeroer;
-:Run strong MBIST check;
-if (MBIST result permits boot?) then (no)
-  :Record scratch 15 status;
-  :WFI forever;
-  stop
-endif
-:Run strong memory-repair check;
-if (Repair result permits boot?) then (no)
-  :Record scratch 15 status;
-  :WFI forever;
-  stop
-endif
-:Initialize gp and early mtvec;
-:Clear coordination scratch 8, 9, 11, 13, 14;
-:Select per-hart stack and enter _start;
-if (Hart 0?) then (yes)
-  :Copy initialized data, clear BSS,\nand run constructors;
-else (no)
-  :Skip runtime initialization;
-endif
-:Call no-op hart-synchronization hook;
-if (Hart 0?) then (yes)
-  :Continue to main;
-else (no)
-  :Enter secondary_main WFI loop;
-  stop
-endif
-:Phase 0 - initialize POST, status, and coordination;
-:Publish status-buffer offset and ready;
-:Publish SEP-safe SRAM range and SRAM ready;
-:Set POST phase 2;
-:Read eFuses and straps, then set POST phase 1;
-if (Lifecycle encoding and value valid?) then (no)
-  :Record invalid lifecycle;
-  :WFI forever;
-  stop
-endif
-:Call weak PLL hook if BL0_PLLCLK is set;
-:Phase 2 - record SRAM setup state;
-:Phase 3 - initialize interface map;
-:Phase 4 - initialize OCCP transports;
-if (All configured transports initialized?) then (no)
-  :Record OCCP initialization failure;
-  :WFI forever;
-  stop
-endif
-:Phase 5 - process OCCP commands;
-if (ExecuteImage accepted?) then (yes)
-  :Respond and jump;
-  stop
-elseif (AuthenticateImage accepted?) then (yes)
-  :Respond, publish manifest, WFI forever;
-  stop
-else
-  :Continue command loop;
-endif
-@enduml</pre>
+<img src="_images/diag-6d144de64ec6837c6f6e8d233468c5bb6b837bf7.svg" alt="Detailed boot flow">
 </div>
+<div class="title">Figure 1. Detailed boot flow</div>
 </div>
 <div class="sect2">
 <h3 id="assembly-early-boot"><a class="anchor" href="#assembly-early-boot"></a><a class="link" href="#assembly-early-boot">1.1. Assembly early boot</a></h3>

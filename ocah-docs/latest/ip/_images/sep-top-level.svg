@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1000" viewBox="0 0 1040 1000" role="img" aria-labelledby="title desc">
+<title id="title">SEP top-level microarchitecture</title>
+<desc id="desc">Block diagram of the SEP. Inside the SEP boundary the local AXI4 crossbar, sep_local_axi_xbar, has five managers and ten subordinates with 64-bit data and 32-bit addresses. Above it sit the VeeR EL2 CPU (sep_cpu), whose IFU, LSU and debug managers reach the crossbar and whose ICCM and DCCM subordinate port takes DMA accesses; the SRAM memory interface; the secure DMA with a manager and a register port; the quad SPI host; and the watchdog. The CPU IFU and LSU also reach the boot ROM through a dedicated AXI mux outside the crossbar. Below the crossbar sit the system peripherals (address remap, outbound and inbound filters, eight mailbox pairs, CPU control CSRs, cold and warm scratch CSRs and the reference counter), which carry the SMN outbound and inbound ports and the port to the SMC and feed inbound SMN traffic back into the crossbar as its fifth manager; the reset controller; the entropy pool FIFO, filled from the crypto subsystem EDN; and the eFuse shim demux, which sends the eFuse shim CSR window to the crypto subsystem and the rest of the external aperture to the AXI4 extension port. The crypto subsystem (sep_crypto) holds OTBN, AES, HMAC, KMAC, the optional Adams Bridge, the Key Manager, the TRNG, the life cycle controller and the eFuse controller. It exports the life cycle state and debug disables, has an AXI4-Lite subordinate port for OTP debug accesses, which the eFuse wrapper answers with DECERR in restricted life cycle states, and connects to external memory macros: OTBN IMEM and DMEM, Key Manager ROM and SRAM, the Adams Bridge SRAMs (nine macros, or 13 with ABR_MASKING_EN set), the eFuse bank and an optional external TRNG. The boot ROM, ICCM, DCCM and SEP SRAM macros are also outside the SEP. JTAG enters the CPU debug TAP.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="1000" fill="#ffffff"/>
+<rect class="smu" x="70" y="100" width="820" height="730" rx="8"/>
+<text class="b" x="82" y="820" text-anchor="start">SEP</text>
+<rect class="external" x="105" y="14" width="110" height="56" rx="6"/>
+<text class="s" x="160" y="39" text-anchor="middle">Boot ROM</text>
+<text class="s" x="160" y="55" text-anchor="middle">64 KiB</text>
+<rect class="external" x="234" y="14" width="92" height="56" rx="6"/>
+<text class="s" x="280" y="39" text-anchor="middle">ICCM</text>
+<text class="s" x="280" y="55" text-anchor="middle">256 KiB</text>
+<rect class="external" x="333" y="14" width="84" height="56" rx="6"/>
+<text class="s" x="375" y="39" text-anchor="middle">DCCM</text>
+<text class="s" x="375" y="55" text-anchor="middle">128 KiB</text>
+<rect class="external" x="420" y="14" width="100" height="56" rx="6"/>
+<text class="s" x="470" y="39" text-anchor="middle">SEP SRAM</text>
+<text class="s" x="470" y="55" text-anchor="middle">256 KiB</text>
+<rect class="core" x="90" y="108" width="140" height="50" rx="5"/>
+<text class="s" x="160" y="130" text-anchor="middle">Boot ROM mux + I/F</text>
+<path class="sig" d="M160,105 L160,73"/>
+<rect class="core" x="90" y="210" width="310" height="110" rx="6"/>
+<text class="b" x="250" y="264" text-anchor="middle">sep_cpu</text>
+<text class="s" x="250" y="283" text-anchor="middle">VeeR EL2 RV32 core, PIC, debug</text>
+<text class="s" x="120" y="238" text-anchor="middle">IFU</text>
+<path class="axi" d="M120,171 L120,197"/>
+<text class="s" x="180" y="238" text-anchor="middle">LSU</text>
+<path class="axi" d="M180,171 L180,197"/>
+<path class="sig" d="M280,207 L280,73"/>
+<path class="sig" d="M375,207 L375,73"/>
+<path class="jtagb" d="M8,265 L70,265"/>
+<text class="t" x="6" y="255" text-anchor="start">JTAG</text>
+<path class="axi" d="M125,333 L125,367"/>
+<text class="s" x="125" y="305" text-anchor="middle">IFU</text>
+<path class="axi" d="M190,333 L190,367"/>
+<text class="s" x="190" y="305" text-anchor="middle">LSU</text>
+<path class="axi" d="M255,333 L255,367"/>
+<text class="s" x="255" y="305" text-anchor="middle">DBG</text>
+<path class="axi" d="M350,333 L350,367"/>
+<text class="s" x="350" y="305" text-anchor="middle">TCM</text>
+<rect class="core" x="425" y="230" width="90" height="90" rx="6"/>
+<text class="t" x="470" y="271" text-anchor="middle">SRAM</text>
+<text class="t" x="470" y="289" text-anchor="middle">interface</text>
+<path class="sig" d="M470,227 L470,73"/>
+<path class="axi" d="M470,333 L470,367"/>
+<rect class="core" x="535" y="210" width="110" height="110" rx="6"/>
+<text class="t" x="590" y="251" text-anchor="middle">Secure</text>
+<text class="t" x="590" y="269" text-anchor="middle">DMA</text>
+<path class="axi" d="M565,333 L565,367"/>
+<path class="axi" d="M615,333 L615,367"/>
+<text class="s" x="565" y="305" text-anchor="middle">DMA</text>
+<text class="s" x="615" y="305" text-anchor="middle">CSR</text>
+<rect class="core" x="665" y="210" width="85" height="110" rx="6"/>
+<text class="t" x="707" y="251" text-anchor="middle">SPI</text>
+<text class="t" x="707" y="269" text-anchor="middle">host</text>
+<path class="sig" d="M707,207 L707,44"/>
+<text class="t" x="707" y="34" text-anchor="middle">Quad SPI</text>
+<path class="axi" d="M707,333 L707,367"/>
+<rect class="core" x="770" y="210" width="100" height="110" rx="6"/>
+<text class="t" x="820" y="244" text-anchor="middle">WDT</text>
+<path class="axi" d="M820,333 L820,367"/>
+<rect class="fabric" x="90" y="380" width="780" height="60" rx="5"/>
+<text class="bs" x="480" y="405" text-anchor="middle">Local AXI4 crossbar</text>
+<text class="s" x="480" y="424" text-anchor="middle">sep_local_axi_xbar: 5 managers × 10 subordinates, 64-bit data</text>
+<rect class="core" x="90" y="500" width="210" height="300" rx="6"/>
+<text class="bs" x="195" y="570" text-anchor="middle">System peripherals</text>
+<text class="s" x="195" y="598" text-anchor="middle">Address remap</text>
+<text class="s" x="195" y="618" text-anchor="middle">Outbound filter</text>
+<text class="s" x="195" y="638" text-anchor="middle">Inbound filter</text>
+<text class="s" x="195" y="658" text-anchor="middle">8 mailbox pairs</text>
+<text class="s" x="195" y="678" text-anchor="middle">CPU control CSRs</text>
+<text class="s" x="195" y="698" text-anchor="middle">Cold / warm scratch CSRs</text>
+<text class="s" x="195" y="726" text-anchor="middle">Reference counter</text>
+<path class="axi" d="M135,453 L135,487"/>
+<path class="axi" d="M255,453 L255,487"/>
+<text class="s" x="255" y="525" text-anchor="middle">SMN in</text>
+<path class="axi" d="M150,813 L150,860"/>
+<text class="s" x="150" y="878" text-anchor="middle">SMN</text>
+<text class="s" x="150" y="894" text-anchor="middle">outbound</text>
+<path class="axi" d="M210,813 L210,860"/>
+<text class="s" x="210" y="878" text-anchor="middle">SMN</text>
+<text class="s" x="210" y="894" text-anchor="middle">inbound</text>
+<path class="axi" d="M270,813 L270,860"/>
+<text class="s" x="270" y="878" text-anchor="middle">To SMC</text>
+<rect class="core" x="320" y="500" width="105" height="70" rx="6"/>
+<text class="t" x="372" y="531" text-anchor="middle">Reset</text>
+<text class="t" x="372" y="549" text-anchor="middle">controller</text>
+<path class="axi" d="M372,453 L372,487"/>
+<rect class="core" x="445" y="500" width="110" height="70" rx="6"/>
+<text class="t" x="500" y="531" text-anchor="middle">Entropy pool</text>
+<text class="t" x="500" y="549" text-anchor="middle">32 × 64-bit</text>
+<path class="axi" d="M500,453 L500,487"/>
+<path class="sigo" d="M500,627 L500,573"/>
+<text class="s" x="508" y="604" text-anchor="start">EDN</text>
+<rect class="core" x="680" y="500" width="190" height="70" rx="6"/>
+<text class="t" x="775" y="531" text-anchor="middle">eFuse shim demux</text>
+<text class="s" x="775" y="551" text-anchor="middle">u_efuse_shim_demux</text>
+<path class="axi" d="M725,453 L725,487"/>
+<path class="axi" d="M830,583 L830,617"/>
+<text class="s" x="822" y="604" text-anchor="end">eFuse shim CSR</text>
+<path class="axi" d="M883,535 L1030,535"/>
+<text class="s" x="960" y="523" text-anchor="middle">AXI4 extension port</text>
+<rect class="core" x="320" y="630" width="550" height="170" rx="6"/>
+<text class="bs" x="334" y="655" text-anchor="start">Crypto subsystem</text>
+<text class="s" x="482" y="655" text-anchor="start">sep_crypto</text>
+<path class="axi" d="M610,453 L610,617"/>
+<rect class="core" x="332" y="670" width="98" height="46" rx="5"/>
+<text class="s" x="381" y="698" text-anchor="middle">OTBN</text>
+<rect class="core" x="438" y="670" width="98" height="46" rx="5"/>
+<text class="s" x="487" y="698" text-anchor="middle">AES</text>
+<rect class="core" x="544" y="670" width="98" height="46" rx="5"/>
+<text class="s" x="593" y="698" text-anchor="middle">HMAC</text>
+<rect class="core" x="650" y="670" width="98" height="46" rx="5"/>
+<text class="s" x="699" y="698" text-anchor="middle">KMAC</text>
+<rect class="core opt" x="756" y="670" width="98" height="46" rx="5"/>
+<text class="s" x="805" y="698" text-anchor="middle">Adams Bridge</text>
+<rect class="core" x="332" y="728" width="98" height="46" rx="5"/>
+<text class="s" x="381" y="756" text-anchor="middle">Key Manager</text>
+<rect class="core" x="438" y="728" width="98" height="46" rx="5"/>
+<text class="s" x="487" y="756" text-anchor="middle">Life cycle</text>
+<rect class="core" x="544" y="728" width="98" height="46" rx="5"/>
+<text class="s" x="593" y="756" text-anchor="middle">eFuse ctrl</text>
+<rect class="core" x="650" y="728" width="204" height="46" rx="5"/>
+<text class="s" x="752" y="756" text-anchor="middle">TRNG: ESRC, CSRNG, EDN</text>
+<path class="sigo" d="M873,672 L1030,672"/>
+<text class="s" x="960" y="644" text-anchor="middle">Life cycle state,</text>
+<text class="s" x="960" y="660" text-anchor="middle">debug disables</text>
+<path class="axi" d="M1030,712 L883,712"/>
+<text class="s" x="960" y="700" text-anchor="middle">OTP debug (AXI4-Lite)</text>
+<rect class="external" x="296" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="336" y="879" text-anchor="middle">OTBN</text>
+<text class="s" x="336" y="894" text-anchor="middle">IMEM</text>
+<text class="s" x="336" y="909" text-anchor="middle">16 KiB</text>
+<path class="sig" d="M336,803 L336,857"/>
+<rect class="external" x="384" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="424" y="879" text-anchor="middle">OTBN</text>
+<text class="s" x="424" y="894" text-anchor="middle">DMEM</text>
+<text class="s" x="424" y="909" text-anchor="middle">32 KiB</text>
+<path class="sig" d="M424,803 L424,857"/>
+<rect class="external" x="472" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="512" y="886" text-anchor="middle">KM ROM</text>
+<text class="s" x="512" y="902" text-anchor="middle">16 KiB</text>
+<path class="sig" d="M512,803 L512,857"/>
+<rect class="external" x="560" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="600" y="886" text-anchor="middle">KM SRAM</text>
+<text class="s" x="600" y="902" text-anchor="middle">32 KiB</text>
+<path class="sig" d="M600,803 L600,857"/>
+<rect class="external opt" x="648" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="688" y="879" text-anchor="middle">ABR SRAM</text>
+<text class="s" x="688" y="894" text-anchor="middle">9 or 13</text>
+<text class="s" x="688" y="909" text-anchor="middle">macros</text>
+<path class="sig" d="M688,803 L688,857"/>
+<rect class="external" x="736" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="776" y="886" text-anchor="middle">eFuse</text>
+<text class="s" x="776" y="902" text-anchor="middle">bank</text>
+<path class="sig" d="M776,803 L776,857"/>
+<rect class="external opt" x="824" y="860" width="80" height="58" rx="6"/>
+<text class="s" x="864" y="886" text-anchor="middle">External</text>
+<text class="s" x="864" y="902" text-anchor="middle">TRNG</text>
+<path class="sig" d="M864,803 L864,857"/>
+<text class="s" x="42" y="955" text-anchor="start">Manager port</text>
+<text class="s" x="166" y="955" text-anchor="start">Subordinate port</text>
+<text class="s" x="320" y="955" text-anchor="start">JTAG TAP</text>
+<rect class="core opt" x="410" y="941" width="40" height="18" rx="4"/>
+<text class="s" x="458" y="955" text-anchor="start">Optional (build or adopter choice)</text>
+<rect class="external" x="700" y="941" width="40" height="18" rx="4"/>
+<text class="s" x="748" y="955" text-anchor="start">Macro or IP outside the SEP</text>
+<path class="axi" d="M17,976 L51,976"/>
+<text class="s" x="62" y="981" text-anchor="start">AXI4 or AXI4-Lite</text>
+<path class="jtagb" d="M193,976 L227,976"/>
+<text class="s" x="238" y="981" text-anchor="start">JTAG</text>
+<path class="sig" d="M288,976 L322,976"/>
+<text class="s" x="333" y="981" text-anchor="start">Signals and memory ports</text>
+<rect class="ps" x="109.0" y="149.0" width="22" height="18" rx="4"/>
+<text class="pst" x="120" y="162.5" text-anchor="middle">S</text>
+<rect class="pm" x="109.0" y="201.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="120" y="214.5" text-anchor="middle">M</text>
+<rect class="ps" x="169.0" y="149.0" width="22" height="18" rx="4"/>
+<text class="pst" x="180" y="162.5" text-anchor="middle">S</text>
+<rect class="pm" x="169.0" y="201.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="180" y="214.5" text-anchor="middle">M</text>
+<rect class="pj" x="74.6" y="256.0" width="30.8" height="18" rx="4"/>
+<text class="pjt" x="90" y="269.5" text-anchor="middle">TAP</text>
+<rect class="pm" x="114.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="125" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="114.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pst" x="125" y="384.5" text-anchor="middle">S</text>
+<rect class="pm" x="179.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="190" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="179.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pst" x="190" y="384.5" text-anchor="middle">S</text>
+<rect class="pm" x="244.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="255" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="244.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pst" x="255" y="384.5" text-anchor="middle">S</text>
+<rect class="ps" x="339.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="350" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="339.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="350" y="384.5" text-anchor="middle">M</text>
+<rect class="ps" x="459.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="470" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="459.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="470" y="384.5" text-anchor="middle">M</text>
+<rect class="pm" x="554.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="565" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="554.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pst" x="565" y="384.5" text-anchor="middle">S</text>
+<rect class="ps" x="604.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="615" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="604.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="615" y="384.5" text-anchor="middle">M</text>
+<rect class="ps" x="696.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="707" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="696.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="707" y="384.5" text-anchor="middle">M</text>
+<rect class="ps" x="809.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pst" x="820" y="324.5" text-anchor="middle">S</text>
+<rect class="pm" x="809.0" y="371.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="820" y="384.5" text-anchor="middle">M</text>
+<rect class="pm" x="124.0" y="431.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="135" y="444.5" text-anchor="middle">M</text>
+<rect class="ps" x="124.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pst" x="135" y="504.5" text-anchor="middle">S</text>
+<rect class="ps" x="244.0" y="431.0" width="22" height="18" rx="4"/>
+<text class="pst" x="255" y="444.5" text-anchor="middle">S</text>
+<rect class="pm" x="244.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="255" y="504.5" text-anchor="middle">M</text>
+<rect class="pm" x="139.0" y="791.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="150" y="804.5" text-anchor="middle">M</text>
+<rect class="ps" x="199.0" y="791.0" width="22" height="18" rx="4"/>
+<text class="pst" x="210" y="804.5" text-anchor="middle">S</text>
+<rect class="pm" x="259.0" y="791.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="270" y="804.5" text-anchor="middle">M</text>
+<rect class="pm" x="361.0" y="431.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="372" y="444.5" text-anchor="middle">M</text>
+<rect class="ps" x="361.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pst" x="372" y="504.5" text-anchor="middle">S</text>
+<rect class="pm" x="489.0" y="431.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="500" y="444.5" text-anchor="middle">M</text>
+<rect class="ps" x="489.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pst" x="500" y="504.5" text-anchor="middle">S</text>
+<rect class="pm" x="714.0" y="431.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="725" y="444.5" text-anchor="middle">M</text>
+<rect class="ps" x="714.0" y="491.0" width="22" height="18" rx="4"/>
+<text class="pst" x="725" y="504.5" text-anchor="middle">S</text>
+<rect class="pm" x="819.0" y="561.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="574.5" text-anchor="middle">M</text>
+<rect class="ps" x="819.0" y="621.0" width="22" height="18" rx="4"/>
+<text class="pst" x="830" y="634.5" text-anchor="middle">S</text>
+<rect class="pm" x="859.0" y="526.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="870" y="539.5" text-anchor="middle">M</text>
+<rect class="pm" x="599.0" y="431.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="610" y="444.5" text-anchor="middle">M</text>
+<rect class="ps" x="599.0" y="621.0" width="22" height="18" rx="4"/>
+<text class="pst" x="610" y="634.5" text-anchor="middle">S</text>
+<rect class="ps" x="859.0" y="703.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="716.5" text-anchor="middle">S</text>
+<rect class="pm" x="14.0" y="941.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="954.5" text-anchor="middle">M</text>
+<rect class="ps" x="138.0" y="941.0" width="22" height="18" rx="4"/>
+<text class="pst" x="149" y="954.5" text-anchor="middle">S</text>
+<rect class="pj" x="281.6" y="941.0" width="30.8" height="18" rx="4"/>
+<text class="pjt" x="297" y="954.5" text-anchor="middle">TAP</text>
+</svg>

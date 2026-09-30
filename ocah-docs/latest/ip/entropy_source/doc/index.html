@@ -659,7 +659,7 @@ individual noise generators and the combined stream.</p>
 </div>
 <div id="entropy-source-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_Esrc_TopLevel_FIG012.drawio.png" alt="Entropy source microarchitecture" width="100%">
+<img src="../../_images/entropy-source-architecture.svg" alt="Entropy source microarchitecture: twelve generator lanes feed the BIW extractor; a 32-bit health test and the main state machine gate the stream into the optional SHA-256 whitener, the output select and the main FIFO, whose write data also leaves towards the DRBG; observe FIFOs, the register block and the debug monitor sit beside the datapath" width="100%">
 </div>
 <div class="title">Figure 1. Entropy source microarchitecture</div>
 </div>
@@ -669,7 +669,30 @@ The client controls the component via the AXI4-Lite bus
 interface which provides access to a set of memory mapped configuration
 and status registers (CSRs) described later in this document. The noise
 generators feed the decorrelation, mixing, health-test, and optional whitening
-stages before the output FIFO supplies entropy to the DRBG.</p>
+stages. Each word written into the main FIFO also leaves the block as
+<code>entropy_stream_data_o</code>, qualified by <code>entropy_stream_vld_o</code>, towards the DRBG;
+the FIFO itself is drained through the <code>FIFO_RDATA</code> register.</p>
+</div>
+<div class="paragraph">
+<p>The main datapath in the figure runs left to right along the top row. The
+generator lane stands for all twelve lanes, and <a href="#entropy-rosc-diagram">Figure 2</a> shows its
+noise source and sample clock in detail. The boot gate passes entropy only after
+the main state machine has seen a passing boot health-test window; it qualifies
+the whitener input, the uncompressed-byte path and the BIW observe FIFO, while
+the 32-bit health test and the noise observe FIFO see the stream ungated. The
+output select takes the whitener output, or, when
+<code>CTRL.BYPASS_ENTROPY_COMPRESSOR</code> is set, the twelve uncompressed decorrelator
+bytes as three 32-bit words, downsampled by <code>CTRL.DOWNSAMPLE_RATE</code>. The 32-bit
+health test is clock-gated off in that mode. The register block configures every
+stage; its connections to individual stages are not drawn. The debug monitor
+routes one of 256 internal signals to <code>signal_monitor_o</code>.</p>
+</div>
+<div class="paragraph">
+<p>The health-test modules are OpenTitan&#8217;s <code>entropy_src</code> repetition count, adaptive
+proportion and Markov tests, and the main state machine is OpenTitan&#8217;s
+<code>entropy_src_main_sm</code>. Their internal structure is described in the
+<a href="https://opentitan.org/book/hw/ip/entropy_src/">OpenTitan entropy source</a>
+documentation.</p>
 </div>
 <div class="paragraph">
 <p>The entropy source is designed according to guidelines set forth in the
@@ -695,22 +718,112 @@ used to generate noise.</p>
 </div>
 <div id="entropy-rosc-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SEP_Esrc_ROSC_FIG013.drawio.png" alt="Entropy source ring-oscillator complex" width="100%">
+<img src="../../_images/entropy-source-rosc-complex.svg" alt="Entropy source ring-oscillator complex: per-lane sample clock selection and division, the noise lane from ring oscillator through sampling, synchronization, decorrelation, health test and auto-tune, and the ring oscillator stage chain with its tap mux" width="100%">
 </div>
 <div class="title">Figure 2. Entropy source ring-oscillator complex</div>
 </div>
-<p class="block-references">Figures and tables: <a href="#entropy-rosc-diagram">Figure 2</a>.</p>
+<div class="paragraph">
+<p><a href="#entropy-rosc-diagram">Figure 2</a> has three bands. The top band builds one sample clock
+per lane: <code>RING_OSC_CTRL.SAMPLE_CLK_SELECT</code> bit <em>i</em> chooses <code>rosc_sample_clk_i</code>
+(0) or the shared ring oscillator (1), and
+<code>GENERATOR_i_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE</code> picks one ripple-divider tap.
+The middle band is one of the twelve noise lanes; when <code>CTRL.AUTOTUNE_ENABLE</code> is
+set the lane detune follows the auto-tune FSM, otherwise
+<code>RING_OSC_TUNE.DETUNE</code> bit <em>i</em>. The bottom band is the ring oscillator used both
+in each lane and, with 109 and 53 stages, as the shared sampling oscillator. Green
+lines carry asynchronous oscillator signals, brown lines are in the sample-clock
+domain and grey lines are in the <code>clk_i</code> domain or are controls.
+<a href="#entropy-rosc-lengths-table">Table 1</a> lists the lane ring lengths.</p>
+</div>
+<table id="entropy-rosc-lengths-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Noise ring-oscillator lengths per lane</caption>
+<colgroup>
+<col style="width: 22.9166%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 6.25%;">
+<col style="width: 8.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Lane</th>
+<th class="tableblock halign-center valign-top">0</th>
+<th class="tableblock halign-center valign-top">1</th>
+<th class="tableblock halign-center valign-top">2</th>
+<th class="tableblock halign-center valign-top">3</th>
+<th class="tableblock halign-center valign-top">4</th>
+<th class="tableblock halign-center valign-top">5</th>
+<th class="tableblock halign-center valign-top">6</th>
+<th class="tableblock halign-center valign-top">7</th>
+<th class="tableblock halign-center valign-top">8</th>
+<th class="tableblock halign-center valign-top">9</th>
+<th class="tableblock halign-center valign-top">10</th>
+<th class="tableblock halign-center valign-top">11</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TOTAL_LENGTH</code> (detune 1)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">17</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">19</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">6</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">12</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">18</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">23</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>TAPPED_LENGTH</code> (detune 0)</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">3</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">5</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">9</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">10</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">14</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">16</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">4</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">7</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">11</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">13</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">15</p></td>
+<td class="tableblock halign-center valign-top"><p class="tableblock">21</p></td>
+</tr>
+</tbody>
+</table>
+<p class="block-references">Figures and tables: <a href="#entropy-rosc-diagram">Figure 2</a>; <a href="#entropy-rosc-lengths-table">Table 1</a>.</p>
 </div>
 </div>
 <div class="sect1">
 <h2 id="decorrelation-and-biw-mixing"><a class="anchor" href="#decorrelation-and-biw-mixing"></a><a class="link" href="#decorrelation-and-biw-mixing">2. Decorrelation and BIW Mixing</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the <code>sample_clk_div</code> CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.</p>
+<p>Each sampled noise bit enters a serial decorrelator (<code>entropy_decorrelator</code>), which shifts bits through a 29-stage shift register with XOR feedback from the last stage, as <a href="#entropy-decorrelator-diagram">Figure 3</a> shows. A downsample counter reloaded from <code>DECORRELATOR_CTRL.SAMPLE_CLK_DIV</code> latches the top 8 bits of the shift register as an entropy byte every <code>SAMPLE_CLK_DIV</code> + 1 <code>clk_i</code> cycles, 64 cycles at the reset value of 63, and pulses the byte-valid strobe for one cycle. The byte is ANDed with <code>DECORRELATOR_MASK.ENTROPY_BYTE_MASK</code>, so a cleared mask bit reads as zero; the mask and the divider are shared by all 12 lanes. Setting a lane&#8217;s bit in <code>DECORRELATOR_CTRL.BYPASS</code> forces the feedback to zero, so raw noise bits shift through the chain unmixed; the byte is still taken from the top 8 stages, downsampled and masked.</p>
+</div>
+<div id="entropy-decorrelator-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/entropy-source-decorrelator.svg" alt="Entropy source decorrelator: noise_i is XORed with the gated feedback from ff_stage[28] into a 29-stage shift chain; ff_stage[28:21] is ANDed with byte_mask_i and captured by the output register when the downsample counter reaches zero" width="100%">
+</div>
+<div class="title">Figure 3. Entropy source decorrelator</div>
+</div>
+<div class="paragraph">
+<p><a href="#entropy-decorrelator-diagram">Figure 3</a> shows one lane&#8217;s decorrelator. The chain shifts on every <code>clk_i</code> cycle while <code>enable_i</code> is high, and the eight taps from <code>ff_stage[21]</code> to <code>ff_stage[28]</code> join into one byte-wide bundle. The output register loads when the counter reaches zero. While <code>enable_i</code> is low, the chain holds its contents and the counter reloads from <code>sample_clk_div_i</code>.</p>
 </div>
 <div class="paragraph">
 <p>The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four <code>gf_muladd</code> instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.</p>
 </div>
+<p class="block-references">Figures and tables: <a href="#entropy-decorrelator-diagram">Figure 3</a>.</p>
 </div>
 </div>
 <div class="sect1">
@@ -764,7 +877,7 @@ used to generate noise.</p>
 <p>The conditioned entropy stream is stored in a 64-entry FIFO (<code>entropy_fifo</code>). Each entry is 36 bits wide: 32 data bits plus 4 byte-wise odd parity bits. The FIFO includes pointer integrity checking (normal and inverted pointer pairs with mismatch detection) and parity verification on reads. An optional churn mode XORs the incoming data with a word read from the diametrically opposite FIFO position, improving entropy distribution. Overflow, underflow, parity error, and pointer error conditions are all reported to the CSR block and can trigger interrupts.</p>
 </div>
 <div class="paragraph">
-<p>The FIFO output drives the <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports. These connect to the DRBG ingress path and to the distribution network for entropy consumers such as cryptographic accelerators.</p>
+<p>The <code>entropy_stream_data_o</code> and <code>entropy_stream_vld_o</code> top-level ports carry each word as it is written into the FIFO, not the FIFO read data, and there is no backpressure. In SEP they connect to the DRBG seed path, which distributes the generated random data to the entropy consumers.</p>
 </div>
 </div>
 </div>

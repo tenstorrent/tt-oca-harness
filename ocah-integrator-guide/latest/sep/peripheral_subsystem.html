@@ -223,9 +223,10 @@
 <h1 class="page">Peripheral Subsystem</h1>
 <div id="peripheral-subsystem" class="paragraph">
 <p>SEP will primarily rely on external serial IO peripherals resident in
-the SMC complex. SEP has an AXI4 extension port which has unfettered
-access to the SMC. Any peripherals in SMC will thus also be available
-for use by SEP.</p>
+the SMC complex. SEP has a dedicated AXI4 port to the SMC,
+<code>sep_ext_to_smc_axi_req_o</code>, which reaches every SMC local target without
+passing the SEP outbound filter. Any peripherals in SMC will thus also be
+available for use by SEP.</p>
 </div>
 <div class="paragraph">
 <p>The exception to this will be the SPI host controller which is required
@@ -244,9 +245,25 @@ shared with SMC.</p>
 </div>
 <div id="sep-peripheral-extension-port-figure" class="imageblock">
 <div class="content">
-<img src="_images/SEP_Peri_Ext_Port.png" alt="SEP_Peri_Ext_Port">
+<img src="_images/sep-peripheral-extension-port.svg" alt="SEP local SPI host path and the dedicated AXI4 port from the SEP route demux through the SMU to the SMC input fabric, local crossbar and peripheral crossbar" width="100%">
 </div>
 <div class="title">Figure 1. SEP peripheral extension port</div>
+</div>
+<div class="paragraph">
+<p>The figure reads from the SEP local crossbar outwards. The SPI host sits
+behind the <code>sep_io</code> target, which downsizes the 64-bit AXI4 request to 32
+bits, converts it to AXI-Lite and sends addresses outside the SPI host to a
+DECERR responder; the quad SPI signals leave for the SPI pads. Requests in the
+SMC aperture take the route demux of <code>sep_system_peripherals</code> (see
+<a href="fabric.html#sep-output-fabric-diagram" class="xref page">SEP output fabric</a>) onto the SMC port, which the SMU wires directly
+to the SMC&#8217;s <code>sep_axi_in</code> port with no crossbar and no clock-domain crossing.
+The SMC flow is drawn right to left. The SMC input fabric passes addresses in
+the SMC local or global window, truncated to 32 bits, and answers others with
+DECERR. The SMC local fabric rebases them onto the SMC local base, and the
+<code>sep_in</code> initiator of the SMC local crossbar reaches every target, including
+the peripheral port, which is converted to 32-bit AXI-Lite for the SMC
+peripheral crossbar. The UART, I2C and AVSBus controllers sit behind
+clock-domain crossings into the peripheral clock.</p>
 </div>
 </article>
   </div>

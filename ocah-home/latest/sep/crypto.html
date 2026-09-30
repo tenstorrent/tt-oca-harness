@@ -244,9 +244,34 @@ external memory interfaces.</p>
 </div>
 <div id="sep-crypto-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_Crypto_TopLevel_FIG010.drawio.png" alt="SEP cryptographic subsystem and external memory interfaces" width="100%">
+<img src="_images/sep-crypto-subsystem.svg" alt="SEP cryptographic subsystem: the crypto AXI interconnect serves the TRNG, the accelerators, the Key Manager mailbox, the lifecycle controller and the eFuse wrapper; the Key Manager writes the key CSR block of each accelerator over its private key bus; entropy streams from the TRNG feed the Key Manager, the accelerators and the entropy pool; memory macros sit outside sep_crypto" width="100%">
 </div>
 <div class="title">Figure 1. SEP cryptographic subsystem and external memory interfaces</div>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-crypto-diagram">SEP cryptographic subsystem and external memory interfaces</a>, dark lines are host AXI4 and AXI4-Lite paths from the
+crypto AXI interconnect, and brown lines are the Key Manager private key buses.
+Each accelerator&#8217;s key CSR block is the <code>&lt;accelerator&gt;_wrapper_key_reg</code> block that
+receives the <code>KEY_SHARE0</code>, <code>KEY_SHARE1</code> and <code>KEY_CTRL</code> writes described in
+<a href="#km-key-delivery">Key Manager Key Delivery</a> and drives the core&#8217;s sideload key port. The Key Manager
+reaches the key CSR blocks through its internal crossbar; the Adams Bridge key bus
+leaves on the right, beside the ML-KEM shared-key interrupt that Adams Bridge
+returns. The host paths to the Key Manager mailbox, the external TRNG registers,
+the eFuse wrapper and the lifecycle controller are not isolated, and the eFuse and
+lifecycle legs leave the interconnect as AXI4. All six Key Manager paths, including
+its eFuse access, pass an isolation stage in <code>sep_crypto_axi_interconnect</code>.</p>
+</div>
+<div class="paragraph">
+<p>The Key Manager also receives OTP data: the eFuse shadow registers supply the
+lifecycle state and the identity and class-key fields, and the lifecycle
+controller supplies the two demotion states. Grey arrows carry entropy, OTP data
+and status one way; the three entropy streams from the DRBG pass through a source
+select that can take the external TRNG instead, as the TRNG and DRBG page
+describes. Grey boxes are outside <code>sep_crypto</code>: the memory macros live in the
+integration layer, and the entropy pool is <code>u_entropy_fifo</code> in <code>sep</code>. The Adams
+Bridge SRAMs are 13 macros with masking enabled and 9 without. Interrupts and
+OpenTitan alerts are not drawn; <a href="#sep-crypto-alert-and-fault-routing-table">SEP crypto alert and fault routing</a> lists
+them.</p>
 </div>
 <div class="paragraph">
 <p>The integrator must instantiate the Adams Bridge working SRAMs outside SEP and
@@ -275,6 +300,27 @@ Controller drains and isolates both its host and Key Manager paths before
 asserting reset; a Key Manager reset similarly drains all of its key paths. The
 entropy source, CSRNG, and EDN share one coordinated reset. See
 <a href="reset_controller.html#sep-reset-controller" class="xref page">SEP Reset Controller</a> and <a href="reset_controller.html#sep-trng-reset" class="xref page">Resetting the TRNG</a>.</p>
+</div>
+<div class="paragraph">
+<p><a href="#sep-crypto-reset-diagram">SEP cryptographic subsystem resets</a> shows how the resets from the SEP Reset
+Controller reach the instances inside <code>u_sep_crypto</code>.</p>
+</div>
+<div id="sep-crypto-reset-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-crypto-resets.svg" alt="Resets inside u_sep_crypto, including the TRNG reset-active synchronizer, the EDN adapter resets and the Key Manager reset conditioner" width="100%">
+</div>
+<div class="title">Figure 2. SEP cryptographic subsystem resets</div>
+</div>
+<div class="paragraph">
+<p>Inside <code>u_sep_trng</code>, <code>por_rst_ni</code> resets a 2-flop synchronizer that samples the
+inverted TRNG reset and drives <code>trng_reset_active</code>. That signal synchronously
+clears both EDN AXIS adapters and, as <code>trng_entropy_clear_o</code>, the entropy pool.
+The crypto EDN adapter also takes per-endpoint resets from the gated OTBN, AES
+and KMAC resets, so a client&#8217;s reset cancels only its own endpoint. The Key
+Manager conditions <code>sep_reset_n</code> into its cold domain through
+<code>u_cold_rst_sync</code>, and the gated Key Manager reset or its software reset
+<code>soft_rst_n</code> into a warm reset held for at least 10 cycles, as
+<a href="../ip/key_manager/doc/index.html#key-manager-reset-diagram" class="xref page">Key Manager cold and warm reset conditioning</a> shows in more detail.</p>
 </div>
 </div>
 </div>

@@ -696,7 +696,8 @@ topic; the PDF numbers figures consecutively across the book.</p>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-point-to-point-chiplet-connections-figure">Figure 5. CTP point-to-point chiplet connections</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-request-acknowledge-timing-figure">Figure 6. CTP request-acknowledge timing</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-14">Entropy Source</h2><div class="sectionbody"><ul><li><a href="ip/entropy_source/doc/index.html#entropy-source-diagram">Figure 1. Entropy source microarchitecture</a></li>
-<li><a href="ip/entropy_source/doc/index.html#entropy-rosc-diagram">Figure 2. Entropy source ring-oscillator complex</a></li></ul></div></div>
+<li><a href="ip/entropy_source/doc/index.html#entropy-rosc-diagram">Figure 2. Entropy source ring-oscillator complex</a></li>
+<li><a href="ip/entropy_source/doc/index.html#entropy-decorrelator-diagram">Figure 3. Entropy source decorrelator</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-15">GPIO Peripheral</h2><div class="sectionbody"><ul><li><a href="ip/gpio/doc/index.html#gpio-interface-diagram">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</a></li>
 <li><a href="ip/gpio/doc/index.html#gpio-padring-diagram">Figure 2. SMC pad ring GPIO interfaces and adopter pad shims</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-16">I2C Controller</h2><div class="sectionbody"><ul><li><a href="ip/i2c/doc/index.html#i2c-core-diagram">Figure 1. OpenTitan I2C core reference architecture</a></li>
@@ -778,8 +779,9 @@ topic; the PDF numbers figures consecutively across the book.</p>
 <div class="sect1"><h2 id="catalog-topic-31">AES Cipher</h2><div class="sectionbody"><ul><li><a href="sep/aes.html#sep-aes-reference-diagram">Figure 1. OpenTitan AES core reference architecture</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-32">CPU Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/cpu.html#sep-cpu-diagram">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</a></li>
 <li><a href="sep/cpu.html#sep-dma-reference-diagram">Figure 2. OpenTitan DMA core and inline hashing reference architecture</a></li>
-<li><a href="sep/cpu.html#proposed-sep-dma-extensions-figure">Figure 3. Proposed SEP DMA extensions</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-33">Cryptographic Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/crypto.html#sep-crypto-diagram">Figure 1. SEP cryptographic subsystem and external memory interfaces</a></li></ul></div></div>
+<li><a href="sep/cpu.html#sep-dma-integration-figure">Figure 3. SEP secure DMA integration</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-33">Cryptographic Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/crypto.html#sep-crypto-diagram">Figure 1. SEP cryptographic subsystem and external memory interfaces</a></li>
+<li><a href="sep/crypto.html#sep-crypto-reset-diagram">Figure 2. SEP cryptographic subsystem resets</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-34">SEP Interconnect</h2><div class="sectionbody"><ul><li><a href="sep/fabric.html#sep-axi-connectivity">Figure 1. SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.</a></li>
 <li><a href="sep/fabric.html#sep-input-fabric-diagram">Figure 2. SEP input fabric</a></li>
 <li><a href="sep/fabric.html#sep-local-fabric-diagram">Figure 3. SEP local fabric</a></li>
@@ -799,13 +801,15 @@ topic; the PDF numbers figures consecutively across the book.</p>
 <li><a href="sep/overview.html#sep-clock-tree">Figure 2. SEP clock tree and clock domains</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-41">Peripheral Subsystem</h2><div class="sectionbody"><ul><li><a href="sep/peripheral_subsystem.html#sep-peripheral-extension-port-figure">Figure 1. SEP peripheral extension port</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-42">SEP Reset Controller</h2><div class="sectionbody"><ul><li><a href="sep/reset_controller.html#sep-reset-domain-diagram">Figure 1. SEP reset domains and reset sequencing</a></li>
-<li><a href="sep/reset_controller.html#sep-axi-isolation-diagram">Figure 2. SEP crypto AXI isolation</a></li></ul></div></div>
+<li><a href="sep/reset_controller.html#sep-reset-ctrl-logic-diagram">Figure 2. SEP Reset Controller reset logic</a></li>
+<li><a href="sep/reset_controller.html#sep-crypto-axi-isolation-diagram">Figure 3. SEP crypto AXI isolation</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-43">Token Processing</h2><div class="sectionbody"><ul><li><a href="sep/token_processing.html#sep-token-processing-figure">Figure 1. SEP token processing</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-44">TRNG and DRBG</h2><div class="sectionbody"><ul><li><a href="sep/trng.html#sep-trng-diagram">Figure 1. SEP TRNG and DRBG entropy distribution</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-45">undefined</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/boot-flow.html#detailed-boot-flow">Figure 1. Detailed boot flow</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-46">SMC Production ROM</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/index.html#detailed-boot-flow">Figure 1. Detailed boot flow</a></li>
 <li><a href="smc-bootrom-prod/index.html#i3c-flow-control">Figure 2. HCI target response flow</a></li>
-<li><a href="smc-bootrom-prod/index.html#occp-processing-flow">Figure 3. OCCP command-processing flow</a></li></ul></div></div>
+<li><a href="smc-bootrom-prod/index.html#status-reporting-flow">Figure 3. SMC ROM FW status-reporting flow</a></li>
+<li><a href="smc-bootrom-prod/index.html#occp-processing-flow">Figure 4. OCCP command-processing flow</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-47">undefined</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/interfaces.html#i3c-flow-control">Figure 1. HCI target response flow</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-48">undefined</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/occp-processing.html#occp-processing-flow">Figure 1. OCCP command-processing flow</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-49">undefined</h2><div class="sectionbody"><ul><li><a href="smc-bootrom-prod/status-coordination.html#status-reporting-flow">Figure 1. SMC ROM FW status-reporting flow</a></li></ul></div></div>

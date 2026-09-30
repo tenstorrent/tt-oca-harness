@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="596" viewBox="0 0 1040 596" role="img" aria-labelledby="title desc">
+<title id="title">SEP secure DMA</title>
+<desc id="desc">sep_dma_wrap around the OpenTitan secure_dma core. The register path from the local crossbar dma_csr target (AXI4, 64-bit data) is downsized to 32 bits, rebased by subtracting SEP_TOP_SECURE_DMA_BASE_ADDR, converted to AXI-Lite and then to TL-UL for the secure_dma registers. Inside secure_dma the controller runs the transfer, feeds the inline SHA2 engine (SHA-256, SHA-384 or SHA-512) and issues reads and writes on its host TL-UL port; the CTN and SYS ports are tied off. The host path is converted from TL-UL to AXI-Lite, with a command integrity check, to AXI4 with AxCACHE 0, upsized to 64 bits and passed through the local alias remap to the dma initiator of the local crossbar. The two TL-UL bridges latch their faults on dma_reg_bus_err_o and dma_host_intg_err_o. The core raises the done, chunk-done and error interrupts, takes the SPI trigger on lsio_trigger bit 0, and its alerts end in local alert receivers whose OR is dma_alert_o.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="596" fill="#ffffff"/>
+<rect class="smu" x="150" y="60" width="780" height="410" rx="6"/>
+<text class="b" x="164" y="458" text-anchor="start">u_sep_dma_wrap</text>
+<rect class="core" x="560" y="84" width="350" height="336" rx="6"/>
+<text class="bs" x="572" y="104" text-anchor="start">u_secure_dma (OpenTitan DMA)</text>
+<text class="t" x="14" y="116" text-anchor="start">from the local</text>
+<text class="t" x="14" y="133" text-anchor="start">crossbar dma_csr</text>
+<text class="s" x="14" y="162" text-anchor="start">AXI4, data 64</text>
+<path class="axi" d="M14,140 L172,140"/>
+<rect class="network" x="172" y="118" width="68" height="44" rx="4"/>
+<text class="s" x="206" y="137.5" text-anchor="middle">64 to 32</text>
+<text class="s" x="206" y="152.5" text-anchor="middle">bits</text>
+<path class="axin" d="M240,140 L250,140"/>
+<rect class="network" x="250" y="118" width="68" height="44" rx="4"/>
+<text class="s" x="284" y="137.5" text-anchor="middle">minus</text>
+<text class="s" x="284" y="152.5" text-anchor="middle">base</text>
+<path class="axin" d="M318,140 L328,140"/>
+<rect class="network" x="328" y="118" width="68" height="44" rx="4"/>
+<text class="s" x="362" y="137.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="362" y="152.5" text-anchor="middle">AXI-Lite</text>
+<path class="axiln" d="M396,140 L406,140"/>
+<rect class="network" x="406" y="118" width="68" height="44" rx="4"/>
+<text class="s" x="440" y="137.5" text-anchor="middle">AXI-Lite</text>
+<text class="s" x="440" y="152.5" text-anchor="middle">to TL-UL</text>
+<path class="axil" d="M474,140 L580,140"/>
+<rect class="core" x="580" y="114" width="150" height="52" rx="6"/>
+<text class="t" x="655" y="136.5" text-anchor="middle">Registers</text>
+<text class="s" x="655" y="153.5" text-anchor="middle">secure_dma_reg_top</text>
+<path class="sigo" d="M440.0,118 L440.0,38"/>
+<text class="s" x="448" y="34" text-anchor="start">dma_reg_bus_err_o</text>
+<rect class="core" x="580" y="200" width="150" height="100" rx="6"/>
+<text class="t" x="655" y="238" text-anchor="middle">Controller</text>
+<text class="s" x="655" y="255" text-anchor="middle">transfer FSM,</text>
+<text class="s" x="655" y="272" text-anchor="middle">ASID decode</text>
+<path class="sig" d="M655.0,166 L655.0,200"/>
+<rect class="core" x="760" y="200" width="130" height="100" rx="6"/>
+<text class="t" x="825" y="238" text-anchor="middle">Inline SHA2</text>
+<text class="s" x="825" y="255" text-anchor="middle">prim_sha2_32</text>
+<text class="s" x="825" y="272" text-anchor="middle">SHA-256, 384, 512</text>
+<path class="sig" d="M730,250.0 L760,250.0"/>
+<rect class="core opt" x="760" y="114" width="130" height="52" rx="6"/>
+<text class="t" x="825" y="136.5" text-anchor="middle">SYS port</text>
+<text class="si" x="825" y="153.5" text-anchor="middle">tied off</text>
+<rect class="core opt" x="760" y="334" width="130" height="52" rx="6"/>
+<text class="t" x="825" y="356.5" text-anchor="middle">CTN port</text>
+<text class="si" x="825" y="373.5" text-anchor="middle">tied off</text>
+<rect class="core" x="580" y="334" width="150" height="52" rx="6"/>
+<text class="t" x="655" y="356.5" text-anchor="middle">Host port</text>
+<text class="s" x="655" y="373.5" text-anchor="middle">tlul_adapter_host</text>
+<path class="sig" d="M655.0,300 L655.0,334"/>
+<path class="fabric" d="M181,336 L231,336 L240,360 L231,384 L181,384 L172,360 Z"/>
+<text class="s" x="206" y="357.5" text-anchor="middle">alias</text>
+<text class="s" x="206" y="372.5" text-anchor="middle">remap</text>
+<path class="axin" d="M240,360 L250,360"/>
+<rect class="network" x="250" y="338" width="68" height="44" rx="4"/>
+<text class="s" x="284" y="357.5" text-anchor="middle">32 to 64</text>
+<text class="s" x="284" y="372.5" text-anchor="middle">bits</text>
+<path class="axin" d="M318,360 L328,360"/>
+<rect class="network" x="328" y="338" width="68" height="44" rx="4"/>
+<text class="s" x="362" y="357.5" text-anchor="middle">AXI-Lite</text>
+<text class="s" x="362" y="372.5" text-anchor="middle">to AXI4</text>
+<path class="axiln" d="M396,360 L406,360"/>
+<rect class="network" x="406" y="338" width="68" height="44" rx="4"/>
+<text class="s" x="440" y="357.5" text-anchor="middle">TL-UL to</text>
+<text class="s" x="440" y="372.5" text-anchor="middle">AXI-Lite</text>
+<path class="axil" d="M474,360 L580,360"/>
+<path class="axi" d="M172,360 L14,360"/>
+<text class="t" x="14" y="336" text-anchor="start">to the local</text>
+<text class="t" x="14" y="353" text-anchor="start">crossbar dma</text>
+<text class="s" x="14" y="382" text-anchor="start">AXI4, ID 3</text>
+<path class="sigo" d="M440.0,382 L440.0,492"/>
+<text class="s" x="448" y="488" text-anchor="start">dma_host_intg_err_o</text>
+<path class="sigo" d="M700,420 L700,510"/>
+<text class="s" x="708" y="506" text-anchor="start">done, chunk done, error IRQs</text>
+<path class="sigo" d="M840,420 L840,430"/>
+<rect class="core" x="770" y="430" width="130" height="26" rx="4"/>
+<text class="s" x="835" y="448" text-anchor="middle">alert receivers</text>
+<path class="sigo" d="M900,443 L964,443"/>
+<text class="s" x="938" y="437" text-anchor="start">dma_alert_o</text>
+<path class="sigo" d="M964,318 L910,318"/>
+<text class="s" x="934" y="312" text-anchor="start">lsio_trigger</text>
+<text class="s" x="934" y="336" text-anchor="start">bit 0: SPI</text>
+<rect class="network" x="14" y="541" width="36" height="18" rx="3"/>
+<text class="s" x="58" y="554.5" text-anchor="start">Converter</text>
+<path class="fabric" d="M153.1,541 L175.1,541 L182.1,550 L175.1,559 L153.1,559 L146.1,550 Z"/>
+<text class="s" x="190.1" y="554.5" text-anchor="start">Address remap</text>
+<rect class="core" x="305.8" y="541" width="36" height="18" rx="4"/>
+<text class="s" x="349.8" y="554.5" text-anchor="start">RTL block</text>
+<text class="s" x="467.9" y="554.5" text-anchor="start">Subordinate port</text>
+<text class="s" x="634.3" y="554.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M17,578 L59,578"/>
+<text class="s" x="70" y="582.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M126.6,578 L168.6,578"/>
+<text class="s" x="179.6" y="582.5" text-anchor="start">AXI-Lite, TL-UL</text>
+<path class="sig" d="M312.1,578 L354.1,578"/>
+<text class="s" x="365.1" y="582.5" text-anchor="start">Internal control</text>
+<path class="sigo" d="M504.5,578 L546.5,578"/>
+<text class="s" x="557.5" y="582.5" text-anchor="start">Signals</text>
+<rect class="core opt" x="631.8" y="569" width="36" height="18" rx="4"/>
+<text class="s" x="675.8" y="582.5" text-anchor="start">Tied off</text>
+<rect class="ps" x="139.0" y="131.0" width="22" height="18" rx="4"/>
+<text class="pst" x="150" y="144.5" text-anchor="middle">S</text>
+<rect class="pm" x="139.0" y="351.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="150" y="364.5" text-anchor="middle">M</text>
+<rect class="ps" x="437.9" y="541.0" width="22" height="18" rx="4"/>
+<text class="pst" x="448.9" y="554.5" text-anchor="middle">S</text>
+<rect class="pm" x="604.3" y="541.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="615.3" y="554.5" text-anchor="middle">M</text>
+</svg>

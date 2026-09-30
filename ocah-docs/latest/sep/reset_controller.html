@@ -646,13 +646,74 @@ Controller.</p>
 </div>
 <div id="sep-reset-domain-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_ResetDomains_FIG003.1.png" alt="SEP reset domains and reset sequencing" width="100%">
+<img src="_images/sep-reset-distribution.svg" alt="SEP reset distribution from the boundary reset inputs through the SEP Reset Controller to each instance" width="100%">
 </div>
 <div class="title">Figure 1. SEP reset domains and reset sequencing</div>
 </div>
+<div class="paragraph">
+<p>Boundary reset inputs enter on the left and the generated resets run in the
+channel on the right, each net in its own colour, with the port it drives named
+at the instance edge. Inside each instance the figure shows which sub-instances
+each reset reaches. <a href="#sep-reset-ctrl-logic-diagram">Figure 2</a> shows the logic inside
+<code>u_sep_efuse_wrapper</code> and <code>u_sep_reset_ctrl</code>, and
+<a href="crypto.html#sep-crypto-reset-diagram" class="xref page">SEP cryptographic subsystem resets</a> shows the resets inside <code>u_sep_crypto</code>.</p>
+</div>
+<div class="paragraph">
+<p><code>u_sep_efuse_wrapper</code>, part of <code>u_sep_crypto</code>, ANDs <code>rst_ni</code>,
+<code>ext_boot_seq_done_i</code> and fuse-sense done and synchronizes the result into
+<code>sep_intermediate_reset_n</code>. The Reset Controller builds its three outputs from
+it, as <a href="#sep-reset-ctrl-logic-diagram">Figure 2</a> shows. The stacked row repeats once for
+each <code>SW_RESET_N</code> bit.</p>
+</div>
+<div id="sep-reset-ctrl-logic-diagram" class="imageblock">
+<div class="content">
+<img src="_images/sep-reset-ctrl-logic.svg" alt="Gates, muxes and synchronizers in the eFuse wrapper and the SEP Reset Controller that build sep_reset_no, sep_cpu_reset_no and sep_crypto_gated_rst_no" width="100%">
+</div>
+<div class="title">Figure 2. SEP Reset Controller reset logic</div>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>sep_reset_no</code>: the JTAG <code>sep_reset_n</code> override mux (<code>u_sep_reset_ovrd_mux</code>)
+selects <code>sep_intermediate_reset_n</code> or the JTAG value, and the 2-flop
+<code>u_sep_reset_sync</code> asserts the result asynchronously and releases it
+synchronously to <code>clk_i</code>. It resets the Reset Controller&#8217;s own register block,
+the Key Manager cold domain, the system peripherals, the SPI host, the DMA and
+the SRAM and boot ROM interfaces.</p>
+</li>
+<li>
+<p><code>sep_cpu_reset_no</code>: <code>sep_reset_n</code> ANDed with <code>wdt_rst_ni</code>
+(<code>u_sep_cpu_rst_and</code>), then the scan bypass <code>u_sep_cpu_rst_scan_bypass</code>. It
+resets the EL2 core (<code>rst_l</code>) and the warm scratch registers.</p>
+</li>
+<li>
+<p><code>sep_crypto_gated_rst_no[6:0]</code>: for each bit, the output of
+<code>u_&lt;blk&gt;_isolate_seq</code> ANDed with <code>sep_reset_n</code> (<code>u_&lt;blk&gt;_rst_and</code>), then the
+per-IP JTAG override mux <code>u_&lt;blk&gt;_rst_ovrd_mux</code>, then the scan bypass
+<code>u_&lt;blk&gt;_rst_scan_bypass</code>. The per-IP override bits reach the muxes through
+the 2-flop synchronizers <code>u_jtag_ip_ovrd_sync</code> and <code>u_jtag_ip_val_sync</code>. The
+seven bits reset OTBN, AES, HMAC, KMAC, the TRNG, Adams Bridge and the Key
+Manager warm domain.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p><code>rst_ni</code> resets the isolation sequencers and the JTAG override synchronizers.
+It also resets, directly, the crypto interconnect, life cycle controller, eFuse
+shim mux, alert receivers, encoders and EDN AXIS adapters, the TRNG power-on
+reset <code>por_rst_ni</code>, the watchdog, the local crossbar, the eFuse shim demux and
+the entropy pool. When the build does not define <code>SEP_ABR_EN</code>, the Adams Bridge
+error responders take <code>rst_ni</code> in place of the Adams Bridge wrapper. The
+watchdog synchronizes <code>rst_ni</code> into <code>clk_wdt_i</code> for its counter, and its bite
+leaves the SEP on <code>wdt_timer_rst_req_o</code>. <code>dbg_rstb_i</code> resets the EL2 debug
+module and <code>u_mpc_reset_run_req_sync</code>, and <code>jtag_trst_ni</code> resets the EL2 JTAG
+TAP. While <code>test_en_i</code> is high, <code>scan_rst_ni</code> replaces the outputs of
+<code>u_sep_reset_sync</code>, each scan bypass mux, <code>u_rst_wdt_sync</code> and both Key Manager
+reset conditioner paths.</p>
 </div>
 </div>
-<p class="block-references">Figures and tables: <a href="#sep-reset-domain-diagram">Figure 1</a>.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#sep-reset-domain-diagram">Figure 1</a>; <a href="#sep-reset-ctrl-logic-diagram">Figure 2</a>.</p>
 <div class="sect1">
 <h2 id="software-reset-register"><a class="anchor" href="#software-reset-register"></a><a class="link" href="#software-reset-register">1. Software Reset Register</a></h2>
 <div class="sectionbody">
@@ -745,13 +806,30 @@ reset.</p>
 <div class="paragraph">
 <p>Each <code>SW_RESET_N</code> bit drives a per-domain sequencer that isolates the domain&#8217;s
 AXI paths before asserting its reset, so no transaction is in flight when reset
-asserts. <a href="#sep-axi-isolation-diagram">Figure 2</a> shows the isolated paths.</p>
+asserts. <a href="#sep-crypto-axi-isolation-diagram">Figure 3</a> shows every isolate stage in the
+crypto AXI interconnect and the sequencer that requests it.</p>
 </div>
-<div id="sep-axi-isolation-diagram" class="imageblock">
+<div id="sep-crypto-axi-isolation-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_AXIIsolation_FIG030.png" alt="SEP crypto AXI isolation" width="100%">
+<img src="_images/sep-crypto-axi-isolation.svg" alt="Host and Key Manager AXI paths in sep_crypto, with the isolate stage on each path, the sequencer that requests it and the reset of each instance" width="100%">
 </div>
-<div class="title">Figure 2. SEP crypto AXI isolation</div>
+<div class="title">Figure 3. SEP crypto AXI isolation</div>
+</div>
+<div class="paragraph">
+<p>Host paths leave <code>u_axi_demux</code> on the left, with the bus type after conversion
+above each arrow. Key Manager paths leave <code>u_xbar</code> on the right. Both kinds of
+isolate stage sit in <code>u_sep_crypto_axi_interconnect</code>, whose outline wraps
+around the engine wrappers it serves. The italic line in an isolate stage names
+the <code>u_sep_reset_ctrl</code> sequencer that requests it: <code>otbn seq</code> is
+<code>u_otbn_isolate_seq</code>, and <code>otbn or km seq</code> means that either sequencer requests
+it. The eFuse, lifecycle, Key Manager mailbox and external TRNG ports have no
+isolate stage. The coloured bar at the left of each instance shows its reset.
+The interconnect and all its isolate stages run on <code>rst_ni</code>, so they stay out
+of reset while a domain behind them is reset. Each engine wrapper, <code>u_sep_trng</code>
+and the Key Manager crossbar are reset by their <code>gated_rst_ni</code> bit, and the
+mailbox by both the Key Manager cold reset <code>sep_reset_ni</code> and its warm reset.
+Without <code>SEP_ABR_EN</code>, error responders that return DECERR replace the Adams
+Bridge wrapper behind both of its isolate stages.</p>
 </div>
 <div class="paragraph">
 <p>A software reset proceeds as follows:</p>
@@ -824,7 +902,7 @@ place of the eFuse reset through the SEP slice of the IC_RESET TDR (see
 whose fuse sensing does not complete. The per-IP JTAG override muxes are
 applied last, allowing debug to force reset without waiting for isolation.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#sep-axi-isolation-diagram">Figure 2</a>; <a href="#sep-isolation-paths-table">Table 2</a>.</p>
+<p class="block-references">Figures and tables: <a href="#sep-crypto-axi-isolation-diagram">Figure 3</a>; <a href="#sep-isolation-paths-table">Table 2</a>.</p>
 </div>
 </div>
 <div class="sect1">

@@ -237,9 +237,28 @@ memory interfaces.</p>
 </div>
 <div id="sep-cpu-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_CPU_FIG004.svg" alt="SEP VeeR EL2 CPU subsystem and memory interfaces" width="100%">
+<img src="_images/sep-cpu.svg" alt="sep_cpu with the VeeR EL2 core complex, its ICCM, DCCM, PIC, debug module and DMA slave, and the alias remaps and demuxes on its AXI4 masters" width="100%">
 </div>
 <div class="title">Figure 1. SEP VeeR EL2 CPU subsystem and memory interfaces</div>
+</div>
+<div class="paragraph">
+<p><code>sep_cpu</code> holds the VeeR EL2 core complex, <code>u_el2_veer_wrapper</code>, and the fabric
+elements on its bus masters; the figure uses the notation of the
+<a href="fabric.html#sep-fabric-topology" class="xref page">fabric figures</a>. The ICCM and DCCM controllers are part of
+the core complex, but their RAM macros sit outside <code>sep_cpu</code> in
+<code>sep_tcm_wrapper</code>, each bank 32 data bits plus 7 ECC bits wide. The instruction
+cache is not configured. The DMA slave port is the local crossbar&#8217;s <code>cpu_tcm</code>
+target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
+The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
+IDs, and each carries <code>SEP_SOURCE_ID</code> in AxUSER. The debug master&#8217;s 1-bit ID is
+zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
+768 MiB window at <code>SEP_LOCAL_BASE_ADDR</code> to <code>0x1000_0000</code>. The IFU demux then
+sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local
+crossbar and everything else to a DECERR responder, and the LSU demux sends boot
+ROM addresses to the boot ROM mux and everything else to the local crossbar. The
+core and its buses run on the SEP clock. <code>mpc_reset_run_req_i</code> passes a two-flop
+synchronizer in <code>sep_cpu</code>; the core synchronizes the NMI, timer, software
+interrupt and the other halt and run requests itself.</p>
 </div>
 </div>
 </div>
@@ -249,7 +268,7 @@ memory interfaces.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>RV32IMC including bit manipulation extensions Zb(abcsefbr)</p>
+<p>RV32IMC including the bit manipulation extensions Zba, Zbb, Zbc and Zbe</p>
 </li>
 <li>
 <p>4-stage pipeline</p>
@@ -582,7 +601,7 @@ memories</p>
 <div class="ulist">
 <ul>
 <li>
-<p>SHA2-256 or SHA2-384</p>
+<p>SHA2-256, SHA2-384 or SHA2-512</p>
 </li>
 <li>
 <p>Digest stored in DMA CSR</p>
@@ -599,8 +618,9 @@ error</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Interrupts from IP peripherals enable streaming data transfers: UART,
-SPI</p>
+<p>Interrupts from IP peripherals enable streaming data transfers; in
+SEP only the SPI host drives a trigger, on <code>lsio_trigger</code> bit 0, and the
+other trigger bits are tied off</p>
 </li>
 <li>
 <p>Peripheral signals read FIFO data available and transmit FIFO space
@@ -624,21 +644,41 @@ to its AXI fabric as described below.</p>
 <div class="sect2">
 <h3 id="och-modifications"><a class="anchor" href="#och-modifications"></a><a class="link" href="#och-modifications">8.1. OCAH Modifications</a></h3>
 <div class="paragraph">
-<p>The DMA exposes full AXI4 at both external boundaries:</p>
+<p><a href="#sep-dma-integration-figure">SEP secure DMA integration</a> shows how <code>sep_dma_wrap</code> connects the DMA core
+to the SEP local crossbar. The register path runs left to right along the top
+and the host path right to left along the bottom; green boxes are converters,
+and the dashed ports are tied off.</p>
+</div>
+<div id="sep-dma-integration-figure" class="imageblock">
+<div class="content">
+<img src="_images/sep-dma.svg" alt="sep_dma_wrap with the secure_dma core, its register-path and host-path converters, the local alias remap and the tied-off CTN and SYS ports" width="100%">
+</div>
+<div class="title">Figure 3. SEP secure DMA integration</div>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>64-bit AXI4 register slave interface (for control and status)</p>
+<p>64-bit AXI4 register interface from the local crossbar, downsized to
+32 bits, rebased to the DMA register offset and bridged through AXI-Lite to
+the core&#8217;s 32-bit TL-UL register port</p>
 </li>
 <li>
-<p>64-bit AXI4 data master interface (for memory transfers)</p>
+<p>64-bit AXI4 master interface: the core&#8217;s TL-UL host port is bridged to
+AXI-Lite, with a command integrity check, then to AXI4 with AxCACHE 0,
+upsized to 64 bits and passed through the same local alias remap as the CPU
+masters. The master path leaves AxUSER at zero.</p>
+</li>
+<li>
+<p>The CTN and SYS ports of the core are tied off, so only transfers that
+select the OpenTitan internal address space reach the SEP fabric; a transfer
+that selects the CTN or SYS address space does not complete</p>
+</li>
+<li>
+<p>Both TL-UL bridges latch faults on <code>dma_reg_bus_err_o</code> and
+<code>dma_host_intg_err_o</code>, cleared through <code>DMA_BUS_ERR_CLEAR</code>, and the core&#8217;s
+alerts end in local alert receivers whose OR is <code>dma_alert_o</code></p>
 </li>
 </ul>
-</div>
-<div class="paragraph">
-<p>Internally, the DMA core uses the TL-UL protocol, which is translated to/from AXI4
-by protocol converters at the boundary.</p>
 </div>
 </div>
 <div class="sect2">
@@ -665,16 +705,6 @@ streaming interfaces</p>
 <div class="paragraph">
 <p>Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)</p>
-</div>
-<div class="paragraph">
-<p><a href="#proposed-sep-dma-extensions-figure">Proposed SEP DMA extensions</a> illustrates the proposed DMA datapath extensions
-described in this section.</p>
-</div>
-<div id="proposed-sep-dma-extensions-figure" class="imageblock">
-<div class="content">
-<img src="_images/SEP_DMA.png" alt="SEP_DMA">
-</div>
-<div class="title">Figure 3. Proposed SEP DMA extensions</div>
 </div>
 </div>
 </div>

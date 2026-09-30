@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="560" viewBox="0 0 1040 560" role="img" aria-labelledby="title desc">
+<title id="title">SEP Reset Controller reset logic</title>
+<desc id="desc">Reset logic that builds the SEP resets. In u_sep_efuse_wrapper, part of u_sep_crypto, an AND gate combines rst_ni, ext_boot_seq_done_i and fuse-sense done, and a synchroniser turns the result into sep_intermediate_reset_n. In u_sep_reset_ctrl the JTAG IC_RESET override mux, selected by the .ovrd field of jtag_sep_reset_ctrl_i and taking its .val field on input 1, and the 2-flop u_sep_reset_sync turn it into sep_reset_no. An AND gate combines sep_reset_n with wdt_rst_ni and a scan bypass mux follows, giving sep_cpu_reset_no. For each of the seven SW_RESET_N bits, an AND gate combines an isolate sequencer output with sep_reset_n, a JTAG IP override mux fed by synchronised override bits follows, then a scan bypass mux, forming sep_crypto_gated_rst_no. Each scan bypass mux selects scan_rst_ni while test_en_i is high. rst_ni resets the isolation sequencers and the JTAG IP override synchronisers.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-bus" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#b2566c"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.n-bus { fill: none; stroke: #b2566c; stroke-width: 3; }
+.a-bus { fill: none; stroke: #b2566c; stroke-width: 3; marker-end: url(#m-bus); }
+.n-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; }
+.a-dash { fill: none; stroke: #5b6670; stroke-width: 1.8; stroke-dasharray: 6 4; marker-end: url(#m-slate); }
+</style>
+</defs>
+<rect width="1040" height="560" fill="#ffffff"/>
+<rect class="core" x="262" y="24" width="278" height="108" rx="6"/>
+<text class="bs" x="272" y="44" text-anchor="start">u_sep_crypto.u_sep_efuse_wrapper</text>
+<rect class="core" x="290" y="104" width="80" height="20" rx="4"/>
+<text class="s" x="330" y="119" text-anchor="middle">fuse sense</text>
+<path class="fabric" d="M404,56 L427.8,56 A34.0,34.0 0 0 1 427.8,124 L404,124 Z"/>
+<rect class="fabric" x="468" y="78" width="58" height="22" rx="4"/>
+<text class="s" x="497" y="94" text-anchor="middle">sync</text>
+<path class="a-slate" d="M370,114 L400,114"/>
+<path class="a-slate" d="M461.8,90.0 L464,90.0"/>
+<text class="s" x="14" y="84" text-anchor="start">ext_boot_seq_done_i</text>
+<path class="sigo" d="M17,90 L400,90"/>
+<text class="s" x="14" y="60" text-anchor="start">rst_ni</text>
+<path class="a-smu" d="M17,66 L400,66"/>
+<circle cx="240" cy="66" r="4" fill="#103525"/>
+<rect class="core" x="262" y="146" width="538" height="336" rx="6"/>
+<text class="bs" x="272" y="166" text-anchor="start">u_sep_reset_ctrl</text>
+<path class="fabric" d="M600,178 L626,186 L626,214 L600,222 Z"/>
+<text class="s" x="608" y="193" text-anchor="middle">0</text>
+<text class="s" x="608" y="217" text-anchor="middle">1</text>
+<rect class="fabric" x="660" y="184" width="118" height="32" rx="4"/>
+<text class="s" x="719" y="205" text-anchor="middle">u_sep_reset_sync</text>
+<path class="n-wdt" d="M526,89 L545,89 L545,188"/>
+<path class="a-wdt" d="M545,188 L596,188"/>
+<path class="a-ref" d="M626,200 L656,200"/>
+<path class="n-ref" d="M778,200 L875,200"/>
+<text class="s" x="14" y="206" text-anchor="start">jtag_sep_reset_ctrl_i</text>
+<path class="a-jtag" d="M17,212 L596,212"/>
+<text class="s" x="594" y="207" text-anchor="end">.val</text>
+<circle cx="270" cy="212" r="3.5" fill="#42759b"/>
+<circle cx="566" cy="212" r="3.5" fill="#42759b"/>
+<path class="n-jtag" d="M566,212 L566,230 L613.0,230"/>
+<path class="a-jtag" d="M613.0,230 L613.0,222"/>
+<text class="s" x="619" y="240" text-anchor="start">.ovrd</text>
+<circle cx="785" cy="200" r="4" fill="#2f7f79"/>
+<path class="n-ref" d="M785,200 L785,244 L544,244"/>
+<path class="n-ref" d="M544,244 L544,264 M544,274 L544,339"/>
+<circle cx="544" cy="255" r="4" fill="#2f7f79"/>
+<path class="a-ref" d="M544,255 L556,255"/>
+<path class="a-ref" d="M544,339 L556,339"/>
+<path class="fabric" d="M560,248 L569.8,248 A14.0,14.0 0 0 1 569.8,276 L560,276 Z"/>
+<path class="fabric" d="M730,252 L756,260 L756,284 L730,292 Z"/>
+<text class="s" x="738" y="267" text-anchor="middle">0</text>
+<text class="s" x="738" y="287" text-anchor="middle">1</text>
+<path class="a-per" d="M583.8,262.0 L726,262.0"/>
+<path class="n-per" d="M756,272.0 L850,272.0"/>
+<text class="s" x="14" y="263" text-anchor="start">wdt_rst_ni</text>
+<path class="a-tel" d="M17,269 L556,269"/>
+<path class="a-slate" d="M704,282 L726,282"/>
+<text class="s" x="700" y="287" text-anchor="end">scan_rst_ni</text>
+<path class="a-dash" d="M743.0,304 L743.0,292"/>
+<text class="s" x="737" y="306" text-anchor="end">test_en_i</text>
+<text class="s" x="282" y="312" text-anchor="start">×7, one per SW_RESET_N bit</text>
+<rect class="core" x="280" y="328" width="100" height="36" rx="4"/>
+<text class="s" x="330" y="343.5" text-anchor="middle">u_reg</text>
+<text class="s" x="330" y="358.5" text-anchor="middle">SW_RESET_N</text>
+<rect class="fabric" x="398" y="326" width="138" height="28" rx="4"/>
+<rect class="fabric" x="395" y="329" width="138" height="28" rx="4"/>
+<rect class="fabric" x="392" y="332" width="138" height="28" rx="4"/>
+<text class="s" x="461" y="351" text-anchor="middle">u_&lt;blk&gt;_isolate_seq</text>
+<path class="fabric" d="M566,326 L575.8,326 A14.0,14.0 0 0 1 575.8,354 L566,354 Z"/>
+<path class="fabric" d="M563,329 L572.8,329 A14.0,14.0 0 0 1 572.8,357 L563,357 Z"/>
+<path class="fabric" d="M560,332 L569.8,332 A14.0,14.0 0 0 1 569.8,360 L560,360 Z"/>
+<path class="fabric" d="M620,330 L646,338 L646,362 L620,370 Z"/>
+<path class="fabric" d="M617,333 L643,341 L643,365 L617,373 Z"/>
+<path class="fabric" d="M614,336 L640,344 L640,368 L614,376 Z"/>
+<text class="s" x="622" y="351" text-anchor="middle">0</text>
+<text class="s" x="622" y="371" text-anchor="middle">1</text>
+<path class="fabric" d="M736,340 L762,348 L762,372 L736,380 Z"/>
+<path class="fabric" d="M733,343 L759,351 L759,375 L733,383 Z"/>
+<path class="fabric" d="M730,346 L756,354 L756,378 L730,386 Z"/>
+<text class="s" x="738" y="361" text-anchor="middle">0</text>
+<text class="s" x="738" y="381" text-anchor="middle">1</text>
+<path class="a-slate" d="M380,346 L388,346"/>
+<path class="a-slate" d="M530,353 L556,353"/>
+<path class="a-slate" d="M583.8,346.0 L610,346.0"/>
+<path class="a-slate" d="M640,356.0 L726,356.0"/>
+<path class="a-slate" d="M708,376 L726,376"/>
+<path class="a-dash" d="M743.0,396 L743.0,386"/>
+<path class="n-bus" d="M756,366.0 L825,366.0"/>
+<rect class="fabric" x="572" y="390" width="110" height="24" rx="4"/>
+<text class="s" x="627" y="407" text-anchor="middle">JTAG IP sync</text>
+<path class="a-jtag" d="M596,390 L596,366 L610,366"/>
+<path class="a-jtag" d="M627.0,390 L627.0,376"/>
+<text class="s" x="600" y="385" text-anchor="start">.val</text>
+<text class="s" x="633" y="385" text-anchor="start">.ovrd</text>
+<path class="n-jtag" d="M270,212 L270,264 M270,274 L270,402"/>
+<path class="a-jtag" d="M270,402 L568,402"/>
+<path class="a-smu" d="M240,430 L627,430 L627,418"/>
+<circle cx="240" cy="430" r="4" fill="#103525"/>
+<circle cx="461" cy="430" r="4" fill="#103525"/>
+<path class="n-smu" d="M461,430 L461,407"/>
+<path class="a-smu" d="M461,397 L461,364"/>
+<text class="s" x="14" y="440" text-anchor="start">scan_rst_ni</text>
+<path class="a-slate" d="M17,446 L256,446"/>
+<text class="s" x="14" y="464" text-anchor="start">test_en_i</text>
+<path class="a-dash" d="M17,470 L256,470"/>
+<text class="s" x="272" y="456" text-anchor="start">Test mode: scan_rst_ni replaces the outputs of u_sep_reset_sync, the scan</text>
+<text class="s" x="272" y="472" text-anchor="start">bypass muxes, u_rst_wdt_sync and both Key Manager reset conditioner paths</text>
+<path class="n-smu" d="M240,66 L240,85 M240,95 L240,207 M240,217 L240,264 M240,274 L240,430"/>
+<path class="a-ref" d="M875,200 L960,200"/>
+<text class="s" x="812" y="194" text-anchor="start">sep_reset_no</text>
+<path class="a-per" d="M850,272.0 L960,272.0"/>
+<text class="s" x="812" y="266" text-anchor="start">sep_cpu_reset_no</text>
+<path class="a-bus" d="M825,366.0 L960,366.0"/>
+<text class="s" x="812" y="358" text-anchor="start">sep_crypto_gated_rst_no[6:0]</text>
+<path class="n-smu" d="M14,510 L48,510"/>
+<text class="s" x="56" y="515" text-anchor="start">rst_ni</text>
+<path class="n-wdt" d="M106,510 L140,510"/>
+<text class="s" x="148" y="515" text-anchor="start">sep_intermediate_reset_n</text>
+<path class="n-ref" d="M324,510 L358,510"/>
+<text class="s" x="366" y="515" text-anchor="start">sep_reset_n</text>
+<path class="n-per" d="M451,510 L485,510"/>
+<text class="s" x="493" y="515" text-anchor="start">sep_cpu_reset_n</text>
+<path class="n-bus" d="M606,510 L640,510"/>
+<text class="s" x="648" y="515" text-anchor="start">sep_crypto_gated_rst_n[6:0]</text>
+<rect class="core" x="14" y="527" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="541" text-anchor="start">Instance</text>
+<rect class="fabric" x="140" y="527" width="40" height="18" rx="4"/>
+<text class="s" x="188" y="541" text-anchor="start">Reset logic</text>
+<path class="sigplain" d="M290,536 L330,536"/>
+<path class="sigplain" d="M310,536 L310,548"/>
+<circle cx="310" cy="536" r="3.5" fill="#5b6670"/>
+<text class="s" x="340" y="541" text-anchor="start">Fan-out</text>
+<path class="sigplain" d="M420,536 L460,536"/>
+<path class="sigplain" d="M440,524 L440,531 M440,541 L440,548"/>
+<text class="s" x="472" y="541" text-anchor="start">Crossing, not connected</text>
+</svg>

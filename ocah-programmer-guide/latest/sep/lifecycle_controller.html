@@ -251,9 +251,29 @@ components.</p>
 </div>
 <div id="sep-lifecycle-controller-figure" class="imageblock">
 <div class="content">
-<img src="_images/SEP_LC_Block.png" alt="SEP_LC_Block">
+<img src="_images/sep-lifecycle-controller.svg" alt="sep_lifecycle_ctrl: LC_STATE decoder, feature control decode, security-disable override, debug and DFT disable derivation, register block and demotion encoders" width="100%">
 </div>
 <div class="title">Figure 1. SEP lifecycle controller</div>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-lifecycle-controller-figure">SEP lifecycle controller</a>, the inputs enter on the left and the
+outputs leave on the right, each labelled with its consumer. <code>u_lc_state_dec</code>
+decodes the differentially encoded LC_STATE from the eFuse shadow registers and
+raises <code>lc_sigint_err</code> on a non-complementary codeword, which forces the feature
+control decode to all zeros. While <code>security_disable_i</code> is high, the
+multiplexer replaces the decoded vector with all ones, even on an integrity
+error. The <code>lc_sigint_err</code> line crosses the <code>security_disable_i</code> line without
+connecting; the gap marks the crossing.</p>
+</div>
+<div class="paragraph">
+<p>The debug and DFT disable derivation turns the <code>sip_debug</code>, <code>chiplet_dbg</code>,
+<code>sep_debug</code>, <code>sep_fuse_dbg</code> and <code>smc_fuse_dbg</code> bits of the result into the 11
+debug disables for the DTP and the two fuse DFT disables. No functional logic
+consumes the fuse DFT disables; they leave the SMU for adopter DFT insertion.
+The <code>demote</code> and <code>lock</code> bits of DEMOTE_1 and DEMOTE_2 are set-only: firmware
+can set <code>demote</code> only while <code>lock</code> is clear, and both hold until SEP cold
+reset. The demote bits feed the feature control decode and, through the
+differential encoders, the Key Manager KDF and the SEP outputs.</p>
 </div>
 </div>
 </div>
@@ -553,9 +573,21 @@ a local SEP and life-cycle state.</p>
 </div>
 <div id="sep-security-domains-figure" class="imageblock">
 <div class="content">
-<img src="_images/SEP_Security_Domains.png" alt="SEP_Security_Domains">
+<img src="_images/sep-security-domains.svg" alt="Three chiplets on one JTAG chain inside a SiP: the primary chiplet and a secondary chiplet with a SEP each gate debug traffic with SIP_DBG, CHIPLET_DBG and SEP_DBG, and a secondary chiplet without a SEP has no gate of its own" width="100%">
 </div>
 <div class="title">Figure 2. SEP security domains</div>
+</div>
+<div class="paragraph">
+<p>In <a href="#sep-security-domains-figure">SEP security domains</a>, each chiplet with a SEP gates the debug
+path from its PTAP downwards: SIP_DBG opens the Case 1 targets, CHIPLET_DBG adds
+the Case 2 targets and SEP_DBG adds the Case 3 targets, each listed to the right
+of its gate. The targets are the debug paths that <code>sep_lifecycle_ctrl</code> disables
+through <code>dbg_disable_o</code> and the two fuse DFT disables, as given in
+<a href="#dtp-path-gating">Debug and Test Port Path Gating</a>; the fuse DFT paths also need their own SEP_FUSE_DBG or
+SMC_FUSE_DBG bit. The green gate belongs to the SiP-owner domain and is a DBG_2
+bit, opened in the field by Demotion 2. The cream gates belong to the
+chiplet-owner domain and are DBG_1 bits, opened by Demotion 1. The I/O STAP
+forwards the chain to the next chiplet&#8217;s PTAP.</p>
 </div>
 <div class="paragraph">
 <p>Access is structured as follows:</p>
@@ -663,9 +695,21 @@ state.</p>
 </div>
 <div id="sep-lifecycle-state-machine-figure" class="imageblock">
 <div class="content">
-<img src="_images/SEP_LC_FSM.png" alt="SEP_LC_FSM">
+<img src="_images/sep-lifecycle-state-machine.svg" alt="Lifecycle states TEST_DEV, PROD, PROD_END, RMA_SIP and RMA_CHIPLET with their encodings and the LC_STATE bit that each transition sets, the in-field demotion overlay, and the INVALID end-of-life state" width="100%">
 </div>
 <div class="title">Figure 3. SEP lifecycle state machine</div>
+</div>
+<div class="paragraph">
+<p>Each rounded box in <a href="#sep-lifecycle-state-machine-figure">SEP lifecycle state machine</a> is a lifecycle state
+with its raw OTP encoding, where X marks a bit that does not change the state.
+LC_STATE bits can only be set, so each arrow names the bit that it sets.
+Setting LC_STATE[1] requires an RMA_SIP token match. Setting LC_STATE[2]
+requires an RMA_CHIPLET token match and a state that already has LC_STATE[1]
+set. Every other encoding is INVALID and permanent: for example, setting
+LC_STATE[3] in any state other than TEST_DEV, or setting any further bit in
+PROD_END. Before fuse sensing completes, the shadow output holds the INVALID
+encoding 4&#8217;b1111. The dashed box is the volatile demotion overlay, which acts
+in TEST_DEV and PROD without changing the encoding.</p>
 </div>
 <div class="paragraph">
 <p>During normal chiplet operation, the current LC state is retrieved from OTP and

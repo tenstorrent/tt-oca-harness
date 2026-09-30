@@ -439,15 +439,33 @@ distributed to its consumers.</p>
 </div>
 <div id="sep-token-processing-figure" class="imageblock">
 <div class="content">
-<img src="_images/SEP_Token_Processing.png" alt="SEP_Token_Processing">
+<img src="_images/sep-token-processing.svg" alt="efuse_token_processing: three token lanes, each with its token array, SHA-256 engine and triple-redundant comparator, followed by the match flops, the sticky fault bits, the security-disable logic and the shadow map gate" width="100%">
 </div>
 <div class="title">Figure 1. SEP token processing</div>
 </div>
 <div class="paragraph">
-<p>The 6-bit matching signal is distributed as is to each individual point
-of use i.e. logic where individual features are enabled or disabled.
-Distributing the final enable logic to each feature diversifies the gate
-keeping and helps prevent global unlocking.</p>
+<p>Each of the three rows in <a href="#sep-token-processing-figure">SEP token processing</a> is one token lane,
+from its token array and go bit in <code>efuse_mmr_reg</code>, through its SHA-256 engine,
+to its comparator. The expected digests and <code>fuse_sense_done_i</code> are named at
+their point of use; both come from the eFuse shadow registers at the lower
+left. <code>fuse_sense_done_i</code> gates only the two RMA comparators. The comparators'
+match codes and the sticky fault bits are also readable in the
+<code>*_TOKEN_MATCH</code> and <code>TOKEN_MATCH_FAULT</code> status registers. The RMA_CHIPLET match
+line crosses the RMA_SIP fault line without connecting; the gap marks the
+crossing.</p>
+</div>
+<div class="paragraph">
+<p>The two RMA match codes leave token processing as 6-bit codes, registered in
+their match flops, and each point of use, the LC_STATE write gate in the shadow
+registers and the fuse-programming gate in <code>efuse_guard</code>, compares the code
+with the match code itself. Distributing the final enable logic to each feature
+diversifies the gate keeping and helps prevent global unlocking. The SEC_DIS
+code is compared inside token processing, unregistered, and ANDed with a
+rev-cell enable, so a metal-only ECO can disable the SEC_DIS feature; the
+result leaves as the single <code>security_disable_o</code> bit. The shadow map gate passes
+the shadow registers downstream once fuse sensing completes or
+<code>security_disable_o</code> is high; before that it drives zeros with the INVALID
+lifecycle state.</p>
 </div>
 <div class="paragraph">
 <p>Match = token_match[5:0] = 6’b010101

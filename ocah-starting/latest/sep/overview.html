@@ -216,9 +216,30 @@
 </div>
 <div id="sep-top-level-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SEP_TopLevel_FIG001.drawio.png" alt="SEP top-level microarchitecture" width="100%">
+<img src="_images/sep-top-level.svg" alt="SEP top-level microarchitecture" width="100%">
 </div>
 <div class="title">Figure 1. SEP top-level microarchitecture</div>
+</div>
+<div class="paragraph">
+<p>Every AXI4 link carries a manager port (M) at the initiating end and a
+subordinate port (S) at the other. The local crossbar has five managers: the
+CPU IFU, LSU and debug ports, the DMA, and inbound SMN traffic after the system
+peripherals' inbound filter. Its ten subordinates are the CPU TCM port, the
+SRAM interface, the DMA registers, the SPI host, the watchdog, the system
+peripherals, the reset controller, the entropy pool, the crypto subsystem and
+the eFuse shim demux. <a href="fabric.html#sep-axi-connectivity" class="xref page">SEP AXI4 connectivity</a> gives the permitted paths. The
+IFU and LSU reach the boot ROM through a dedicated AXI mux rather than the
+crossbar, and the IFU crossbar port reaches only the SRAM. The eFuse shim demux
+sends accesses in the eFuse shim CSR window to the crypto subsystem and the
+rest of the external aperture to the AXI4 extension port.</p>
+</div>
+<div class="paragraph">
+<p>The grey boxes are the memory macros and IP that the integration layer
+instantiates outside the SEP. The Adams Bridge and its SRAMs are present only
+when the build defines <code>SEP_ABR_EN</code>; the Adams Bridge uses nine SRAMs, plus
+four masked copies when <code>ABR_MASKING_EN</code> is set. The external TRNG is an
+adopter choice. Interrupt lines to the CPU PIC are not drawn; see
+<a href="interrupts.html#sep-interrupts" class="xref page">Interrupts</a>.</p>
 </div>
 <div class="paragraph">
 <p>SEP is hierarchically organized as follows:</p>
@@ -260,7 +281,7 @@ interrupt</p>
 <div class="ulist">
 <ul>
 <li>
-<p>SPI controller interface (single/dual/quad)</p>
+<p>SPI controller interface (standard, dual or quad, on four data lanes)</p>
 </li>
 <li>
 <p><em>Remote peripherals shared with SMC: UART, GPIO</em></p>
@@ -368,12 +389,37 @@ components in order to make integration and migration easier.</p>
 <h2 id="sep-clock-distribution"><a class="anchor" href="#sep-clock-distribution"></a><a class="link" href="#sep-clock-distribution">1. Clock Distribution</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#sep-clock-tree">SEP clock tree and clock domains</a> shows the SEP clock distribution and the domains used by its
-subblocks.</p>
+<p><a href="#sep-clock-tree">SEP clock tree and clock domains</a> overlays the SEP clock domains on the top-level diagram.
+The SEP clock <code>clk_i</code>, which the SMU drives from <code>clk_smu_i</code>, clocks
+everything in the green zone. Three regions run on their own clocks, each
+tinted in the colour of the clock input that feeds it:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>clk_wdt_i</code>, the watchdog counter clock, drives the counter in the watchdog.
+The watchdog registers stay on <code>clk_i</code> and cross to the counter inside the
+watchdog.</p>
+</li>
+<li>
+<p><code>clk_ref_i</code>, the free-running reference clock, drives the reference counter
+in the system peripherals, which crosses its count into <code>clk_i</code>.</p>
+</li>
+<li>
+<p><code>entropy_rosc_sample_clk_i</code> drives the noise sampler of the entropy source in
+the TRNG. The sampled noise is resynchronised into <code>clk_i</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The CPU debug TAP runs on <code>jtag_tck_i</code> and hands DMI accesses to the core
+through a synchroniser into <code>clk_i</code>. The quad SPI serial clock is divided from
+<code>clk_i</code> inside the SPI host. The ICCM, DCCM and Adams Bridge SRAM requests
+carry their macro clock, derived from <code>clk_i</code>, alongside the request.</p>
 </div>
 <div id="sep-clock-tree" class="imageblock">
 <div class="content">
-<img src="_images/SEP_CLOCKING_FIG002.svg" alt="SEP clock tree and clock domains" width="100%">
+<img src="_images/sep-clock-domains.svg" alt="SEP clock domains overlaid on the top-level diagram" width="100%">
 </div>
 <div class="title">Figure 2. SEP clock tree and clock domains</div>
 </div>

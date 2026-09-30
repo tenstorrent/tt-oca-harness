@@ -1829,43 +1829,11 @@ implementation.</p></td>
 report. After most handlers return an error, the loop emits a second
 <code>SMC_OCCP_ERROR_CMD_FAILED</code> value with the returned internal error code.</p>
 </div>
-<div id="status-reporting-flow" class="literalblock kroki-error">
-<div class="title">SMC ROM FW status-reporting flow</div>
+<div id="status-reporting-flow" class="imageblock kroki">
 <div class="content">
-<pre>@startuml
-start
-:Initialize status buffers;
-:Publish status-buffer offset and readiness;
-:Status ROM_STARTED (0x001)\ninitialization marker;
-:Publish SEP-safe SRAM range and SRAM ready;
-:Status COORDINATION_ACTIVE (0x040);
-:Status ROM_STARTED (0x001)\nexplicit startup report;
-:Status PRIMARY_MODE (0x021)\nor SECONDARY_MODE (0x022);
-if (Recovery strap asserted?) then (yes)
-  :Warning RECOVERY_MODE (0x020);
-endif
-if (Lifecycle valid?) then (no)
-  :Error INVALID_SEC_MODE (0x025);
-  :WFI forever;
-  stop
-endif
-if (Optional PLL hook fails?) then (yes)
-  :Main emits no ring-buffer report;\nrecord POST interface error;
-  :WFI forever;
-  stop
-endif
-:Status BOOT_START (0x010);
-if (OCCP initialization succeeds?) then (no)
-  :Error OCCP_INIT_FAILED (0x030);
-  :WFI forever;
-  stop
-endif
-:Status OCCP_READY (0x031);
-:Status BOOT_COMPLETE (0x050);
-:Enter OCCP command loop;
-stop
-@enduml</pre>
+<img src="_images/diag-ca1c2f51b875f5aa7a243e0497a99aebd671389d.svg" alt="SMC ROM FW status-reporting flow">
 </div>
+<div class="title">Figure 3. SMC ROM FW status-reporting flow</div>
 </div>
 <div class="paragraph">
 <p>The <code>STATUS_RPT_DISABLE</code> strap does not disable ring-buffer initialization or writes.
@@ -2010,7 +1978,7 @@ Packet formats, command semantics, CRCs, transport binding, and controller-visib
 <div class="content">
 <img src="_images/diag-c8ce5d5dba90c44fe577a63c74961a7a59280531.svg" alt="OCCP command-processing flow">
 </div>
-<div class="title">Figure 3. OCCP command-processing flow</div>
+<div class="title">Figure 4. OCCP command-processing flow</div>
 </div>
 <div class="sect2">
 <h3 id="polling-and-latching"><a class="anchor" href="#polling-and-latching"></a><a class="link" href="#polling-and-latching">8.1. Polling and latching</a></h3>
