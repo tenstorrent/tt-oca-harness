@@ -9,10 +9,10 @@
 //-----------------------------------------------------------------------------
 
 module ext_boot_seq_done_qual (
-  input  logic clk_i,
-  input  logic rst_ni,
-  input  logic ext_boot_seq_done_i,
-  output logic ext_boot_seq_done_qual_o
+  input  logic clk_i,                    // Clock the asynchronous input is synchronized onto.
+  input  logic rst_ni,                   // Active-low cold reset; clears the sticky latch.
+  input  logic ext_boot_seq_done_i,      // Asynchronous boot-sequence-done from the integrator.
+  output logic ext_boot_seq_done_qual_o  // Qualified done, held set once seen until cold reset.
 );
 
   logic ext_boot_seq_done_sync;
