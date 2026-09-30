@@ -15,7 +15,12 @@ package output_remap_reg_pkg;
     } output_remap__output_remap_region__REGION_ATTRS__offset__out_t;
 
     typedef struct {
+        logic value;
+    } output_remap__output_remap_region__REGION_ATTRS__valid__out_t;
+
+    typedef struct {
         output_remap__output_remap_region__REGION_ATTRS__offset__out_t offset;
+        output_remap__output_remap_region__REGION_ATTRS__valid__out_t valid;
     } output_remap__output_remap_region__REGION_ATTRS__out_t;
 
     typedef struct {

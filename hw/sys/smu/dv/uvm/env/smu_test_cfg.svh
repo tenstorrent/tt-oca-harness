@@ -2,8 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SMU test configuration: the highest configuration level and the only
-// object the seed touches. Randomizes the four clock periods, the TCK
-// period, and the post-reset settle from the runner seed over the same
+// object the seed touches. Carries the periods of the three pll_wrap clocks
+// (ref and periph fixed, sys from +pll_sys_period_ns, as the cocotb
+// SmuEnvCfg resolves them), randomizes the SEP watchdog clock period, the
+// TCK period, and the post-reset settle from the runner seed over the same
 // choice sets as the cocotb SmuEnvCfg.randomize_timing, carries the
 // bring-up bounds of the cocotb base test and the scenario bounds of the
 // cocotb sequences, the negative-validation switches, the scoreboard
@@ -15,21 +17,20 @@
 class smu_test_cfg extends ocah_test_cfg;
   `uvm_object_utils(smu_test_cfg)
 
+  // --- pll_wrap clock periods ---------------------------------------------
+  // ref and periph are fixed by the model; sys follows +pll_sys_period_ns,
+  // read in read_knobs. The embedded DTP env and smu_tb_if count in whole
+  // nanoseconds, so this flow pins the plusarg to the model's 10 ns
+  // alternative (smu_sim_cfg.toml [frameworks.uvm.sim]) and read_knobs
+  // rejects a period that is not a whole number of nanoseconds.
+  int unsigned ref_clk_period_ns    = 10;
+  int unsigned smu_clk_period_ns    = 10;
+  int unsigned periph_clk_period_ns = 5;
+
   // --- randomized timing (cocotb randomize_timing choice sets) ------------
-  rand int unsigned ref_clk_period_ns;
-  rand int unsigned smu_clk_period_ns;
-  rand int unsigned periph_clk_period_ns;
   rand int unsigned sep_wdt_clk_period_ns;
   rand int unsigned tck_period_ns;
   rand int unsigned post_reset_settle_cycles;
-  constraint smu_c {smu_clk_period_ns inside {8, 10, 12};}
-  // clk_ref_i carries telemetry; a period equal to clk_smu_i leaves the two
-  // domains indistinguishable at the boundary.
-  constraint ref_c {
-    ref_clk_period_ns inside {10, 12, 16};
-    ref_clk_period_ns != smu_clk_period_ns;
-  }
-  constraint periph_c {periph_clk_period_ns inside {16, 20, 24};}
   constraint wdt_c {sep_wdt_clk_period_ns inside {80, 100, 120};}
   constraint tck_c {tck_period_ns inside {32, 40, 48};}
   // Above the cold-reset extender (255 ref cycles) plus deglitch margin.
@@ -82,7 +83,16 @@ class smu_test_cfg extends ocah_test_cfg;
     super.new(name);
   endfunction
 
+  // Fill the knob-derived controls through the one knob accessor, and the
+  // sys period from the plusarg pll_wrap itself reads.
   function void read_knobs();
+    real sys_period_ns = real'(smu_clk_period_ns);
+    void'($value$plusargs("pll_sys_period_ns=%f", sys_period_ns));
+    if (sys_period_ns != $floor(sys_period_ns) || sys_period_ns < 1.0)
+      `uvm_fatal(
+          get_type_name(), $sformatf(
+          "+pll_sys_period_ns=%0g: the SMU SV-UVM flow needs a whole number of ns", sys_period_ns))
+    smu_clk_period_ns          = int'(sys_period_ns);
     ptap_idcode_negative       = ocah_knobs::is_set("SMU_PTAP_IDCODE_NEGATIVE");
     ic_reset_tdr_negative      = ocah_knobs::is_set("SMU_IC_RESET_SCOREBOARD_NEGATIVE");
     debug_control_tdr_negative = ocah_knobs::is_set("SMU_DEBUG_CONTROL_SCOREBOARD_NEGATIVE");

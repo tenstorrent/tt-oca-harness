@@ -237,7 +237,7 @@ def _probes() -> tuple[DeadspaceProbe, ...]:
 
 
 class smc_deadspace_decode_test_seq(SmcCsrSeq):
-    """Sweep wrap-period offsets past PeakRDL SIZE and watch live CSRs."""
+    """Refuse offsets past each block's decoded extent and keep the live CSRs unchanged."""
 
     def __init__(self, name: str = "smc_deadspace_decode_test_seq") -> None:
         super().__init__(name)

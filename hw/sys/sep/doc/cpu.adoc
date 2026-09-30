@@ -6,10 +6,12 @@
 ifdef::backend-html5[]
 :sep-register-map: xref:sep:memory_map.adoc#sep-detailed-register-map[Detailed Register Map]
 :sep-rom-reference: xref:sep:rom.adoc#sep-rom[SEP Boot ROM]
+:sep-fabric-figures: xref:sep:fabric.adoc#sep-fabric-topology[fabric figures]
 endif::backend-html5[]
 ifdef::backend-pdf[]
 :sep-register-map: <<sep-detailed-register-map,Detailed Register Map>>
 :sep-rom-reference: <<sep-rom,SEP Boot ROM>>
+:sep-fabric-figures: <<sep-fabric-topology,fabric figures>>
 endif::backend-pdf[]
 
 [[cpu-subsystem]]
@@ -24,24 +26,32 @@ programming the CPU.
 <<sep-cpu-diagram>> shows the CPU subsystem and its instruction, data, and external
 memory interfaces.
 
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
-
 [[sep-cpu-diagram]]
 .SEP VeeR EL2 CPU subsystem and memory interfaces
-image::SEP_CPU_FIG004.svg[alt="SEP VeeR EL2 CPU subsystem and memory interfaces",width=100%,pdfwidth=100%]
+image::sep-cpu.svg[alt="sep_cpu with the VeeR EL2 core complex, its ICCM, DCCM, PIC, debug module and DMA slave, and the alias remaps and demuxes on its AXI4 masters",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=portrait]
-<<<
-endif::backend-pdf[]
+`sep_cpu` holds the VeeR EL2 core complex, `u_el2_veer_wrapper`, and the fabric
+elements on its bus masters; the figure uses the notation of the
+{sep-fabric-figures}. The ICCM and DCCM controllers are part of
+the core complex, but their RAM macros sit outside `sep_cpu` in
+`sep_tcm_wrapper`, each bank 32 data bits plus 7 ECC bits wide. The instruction
+cache is not configured. The DMA slave port is the local crossbar's `cpu_tcm`
+target, the backdoor through which the secure DMA preloads the ICCM and DCCM.
+The IFU, LSU and debug system-bus masters are AXI4 with 64-bit data and 3-bit
+IDs, and each carries `SEP_SOURCE_ID` in AxUSER. The debug master's 1-bit ID is
+zero-extended to 3 bits. Each master passes a local alias remap that rewrites the
+768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU demux then
+sends boot ROM addresses to the boot ROM mux, SEP SRAM addresses to the local
+crossbar and everything else to a DECERR responder, and the LSU demux sends boot
+ROM addresses to the boot ROM mux and everything else to the local crossbar. The
+core and its buses run on the SEP clock. `mpc_reset_run_req_i` passes a two-flop
+synchronizer in `sep_cpu`; the core synchronizes the NMI, timer, software
+interrupt and the other halt and run requests itself.
 
 [[cpu-feature-summary]]
 == CPU Feature Summary
 
-* RV32IMC including bit manipulation extensions Zb(abcsefbr)
+* RV32IMC including the bit manipulation extensions Zba, Zbb, Zbc and Zbe
 * 4-stage pipeline
 * DCLS (Dual Core Lock Step) option required for automotive applications
 for FUSA compliance
@@ -218,13 +228,14 @@ Features:
 ** Circular (wrapping) address range for buffers and queues in
 memories
 * Inline hashing during data transfer
-** SHA2-256 or SHA2-384
+** SHA2-256, SHA2-384 or SHA2-512
 ** Digest stored in DMA CSR
 * Interrupt Outputs: full transaction done, chunk transaction done,
 error
 * Hardware handshake via interrupt inputs
-** Interrupts from IP peripherals enable streaming data transfers: UART,
-SPI
+** Interrupts from IP peripherals enable streaming data transfers; in
+SEP only the SPI host drives a trigger, on `lsio_trigger` bit 0, and the
+other trigger bits are tied off
 ** Peripheral signals read FIFO data available and transmit FIFO space
 available to DMA for automatic flow control
 
@@ -238,13 +249,28 @@ to its AXI fabric as described below.
 [[och-modifications]]
 === OCAH Modifications
 
-The DMA exposes full AXI4 at both external boundaries:
+<<sep-dma-integration-figure>> shows how `sep_dma_wrap` connects the DMA core
+to the SEP local crossbar. The register path runs left to right along the top
+and the host path right to left along the bottom; green boxes are converters,
+and the dashed ports are tied off.
 
-* 64-bit AXI4 register slave interface (for control and status)
-* 64-bit AXI4 data master interface (for memory transfers)
+[[sep-dma-integration-figure]]
+.SEP secure DMA integration
+image::sep-dma.svg[alt="sep_dma_wrap with the secure_dma core, its register-path and host-path converters, the local alias remap and the tied-off CTN and SYS ports",width=100%,pdfwidth=100%]
 
-Internally, the DMA core uses the TL-UL protocol, which is translated to/from AXI4
-by protocol converters at the boundary.
+* 64-bit AXI4 register interface from the local crossbar, downsized to
+32 bits, rebased to the DMA register offset and bridged through AXI-Lite to
+the core's 32-bit TL-UL register port
+* 64-bit AXI4 master interface: the core's TL-UL host port is bridged to
+AXI-Lite, with a command integrity check, then to AXI4 with AxCACHE 0,
+upsized to 64 bits and passed through the same local alias remap as the CPU
+masters. The master path leaves AxUSER at zero.
+* The CTN and SYS ports of the core are tied off, so only transfers that
+select the OpenTitan internal address space reach the SEP fabric; a transfer
+that selects the CTN or SYS address space does not complete
+* Both TL-UL bridges latch faults on `dma_reg_bus_err_o` and
+`dma_host_intg_err_o`, cleared through `DMA_BUS_ERR_CLEAR`, and the core's
+alerts end in local alert receivers whose OR is `dma_alert_o`
 
 [[future-enhancements]]
 === Future Enhancements
@@ -260,13 +286,6 @@ streaming interfaces
 
 Replace the FSM based controller with microsequencer or simple CPU
 (potentially the same one as used in the Key Manager)
-
-<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
-described in this section.
-
-[[proposed-sep-dma-extensions-figure]]
-.Proposed SEP DMA extensions
-image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 [[alarm-aggregation-processor-agp-alarm-aggregation-processor-agp]]
 == Alarm Aggregation Processor (AGP)

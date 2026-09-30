@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA basic-breadth firmware-boot test (PyUVM).
 
-OSS rep DMA basic breadth. reference provenance: the uvm_tests/dma reg_rw / reg_reset /
+Reference provenance: the uvm_tests/dma reg_rw / reg_reset /
 cfg_regwen / range_regwen / addr_fixed / addr_wrap / addr_combo / mem_copy
 (width sweep) / err_opcode family. Boots the VeeR EL2 core and runs the
 dma_basic firmware, which drives the Secure DMA over the CPU LSU and proves the

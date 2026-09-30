@@ -23,6 +23,11 @@ addrmap output_remap {
                     e.g. SMC: 8 * 1MB regions --> 20 bits of address space per region, 36 MSBs from this register used
                         SEP: 16 * 512KB regions --> 19 bits of address space per region, 37 MSBs from this register used";
             } offset [55:0] = 0x0;
+            field {
+                sw = rw;
+                hw = r;
+                desc = "If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged";
+            } valid[63:63] = 0x0;
         };
 
         // Register instantiation with address

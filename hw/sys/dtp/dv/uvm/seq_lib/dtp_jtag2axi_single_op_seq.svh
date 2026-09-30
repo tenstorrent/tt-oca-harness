@@ -5,9 +5,11 @@
 // pack OP | SIZE | WSTRB | DATA | ADDR (dtp_types codec), load the target's
 // SINGLE_OP instruction, and shift the request through the wide DR path.
 // The bridge launches the AXI transaction in the system domain after the
-// shift; dtp_jtag2axi_single_status_seq polls its completion. Started by
+// shift; dtp_jtag2axi_single_status_seq polls its completion. `captured`
+// holds the image the request's own Capture-DR shifted out. Started by
 // dtp_jtag2axi_base_test_seq::issue_single(), which owns the evidence
-// arming. The cocotb twin is seq_lib/dtp_jtag2axi_single_op_seq.py.
+// arming. The cocotb realization issues the request from
+// dtp_jtag2axi_base_test_seq.write_target_single_raw.
 
 class dtp_jtag2axi_single_op_seq extends dtp_jtag_op_seq;
   `uvm_object_utils(dtp_jtag2axi_single_op_seq)
@@ -18,6 +20,8 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag_op_seq;
   bit [63:0]       data;
   bit [7:0]        wstrb;
   int unsigned     size;
+  // Result.
+  bit              captured[];
 
   function new(string name = "dtp_jtag2axi_single_op_seq");
     super.new(name);
@@ -25,11 +29,10 @@ class dtp_jtag2axi_single_op_seq extends dtp_jtag_op_seq;
 
   virtual task do_op();
     bit dr[];
-    bit unused[];
     bit [63:0] ir_captured;
     dtp_j2a_pack_single_op(target, op, addr, data, wstrb, size, dr);
     ir_scan(64'(target.single_op_instr), DtpIrWidth, ir_captured);
-    dr_scan_wide(dr, unused);
+    dr_scan_wide(dr, captured);
   endtask
 
 endclass : dtp_jtag2axi_single_op_seq

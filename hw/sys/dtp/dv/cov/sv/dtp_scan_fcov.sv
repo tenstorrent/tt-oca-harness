@@ -56,7 +56,10 @@ module dtp_scan_fcov (
   input wire stap_extra_sel_i,
   input wire stap_extra_sel_int_i,
   input wire stap_extra_tms_hold_i,
-  input wire stap_extra_config_hold_i
+  input wire stap_extra_config_hold_i,
+
+  // PTAP 3DCR select (hierarchical reference)
+  input wire ptap_stap_select_i
 );
 
   localparam logic [63:0] SelectIjtagInstr = 64'h1 << 6'h1A;
@@ -167,6 +170,13 @@ module dtp_scan_fcov (
   `OCAH_FCOV_COVER(c_3dcr_chain_sib_open, chain_sib_open_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_3dcr_chain_sib_closed, chain_sib_closed_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_3dcr_chain_selected_stap_in_path, chain_selected_in_path_e, tck_i, in_reset)
+
+  // A DR scan that completes with the PTAP select clear leaves the STAP
+  // chain held; one that completes with it set has shifted the chain.
+  wire chain_held_unselected_e = dr_committed && !ptap_stap_select_i;
+  wire chain_scanned_selected_e = dr_committed && ptap_stap_select_i;
+  `OCAH_FCOV_COVER(c_3dcr_chain_held_unselected, chain_held_unselected_e, tck_i, in_reset)
+  `OCAH_FCOV_COVER(c_3dcr_chain_scanned_selected, chain_scanned_selected_e, tck_i, in_reset)
 
   wire stap_security_enabled_e = !in_reset && any_sel;
   wire stap_security_gated_e = !in_reset

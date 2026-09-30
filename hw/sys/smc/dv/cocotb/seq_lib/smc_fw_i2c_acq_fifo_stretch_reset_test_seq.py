@@ -41,13 +41,14 @@ TB_ACK = 0xC10A
 TARGET_ADDR = 0x10
 VERIFY_WRITE_LEN = 4
 
-# Standard mode off the periph clock is ~10 us per SCL period, i.e. ~2000
-# clk_smc_i at 5 ns; the window spans ~20 periods. A clock-low phase in that
-# mode is under 5 us, so a contiguous target pull of 20 us cannot be a running
-# clock, and a pull covering the whole final quarter (~50 us) cannot be the
-# tail of the byte that was in flight when the marker was published.
-WINDOW_CYCLES = 40_000
-SAMPLE_EVERY_CYCLES = 50
+# Standard mode off the periph clock is ~10 us per SCL period; the window
+# spans ~20 periods. A clock-low phase in that mode is under 5 us, so a
+# contiguous target pull of 20 us cannot be a running clock, and a pull
+# covering the whole final quarter (~50 us) cannot be the tail of the byte
+# that was in flight when the marker was published. The window is in time,
+# not clk_smc_i cycles, so it holds at every sys-clock period.
+WINDOW_NS = 200_000
+SAMPLE_EVERY_NS = 250
 MIN_STRETCH_NS = 20_000
 TAIL_FRACTION = 4
 
@@ -87,8 +88,9 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         dut = cocotb.top
         pulled: list[int] = []
         scl: list[int] = []
-        for _ in range(WINDOW_CYCLES // SAMPLE_EVERY_CYCLES):
-            await ClockCycles(dut.clk_smc_i, SAMPLE_EVERY_CYCLES)
+        sample_cycles = max(1, round(SAMPLE_EVERY_NS / self.cfg.smc_clk_period_ns))
+        for _ in range(WINDOW_NS // SAMPLE_EVERY_NS):
+            await ClockCycles(dut.clk_smc_i, sample_cycles)
             pulled.append(int(dut.tb_i2c0_scl_dut_low.value))
             scl.append(int(dut.tb_i2c0_scl.value))
         return pulled, scl
@@ -106,7 +108,7 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         pulled, scl = await self._sample_target_scl()
         n = len(pulled)
         tail = n // TAIL_FRACTION
-        sample_ns = SAMPLE_EVERY_CYCLES * self.cfg.smc_clk_period_ns
+        sample_ns = SAMPLE_EVERY_NS
         longest_ns = self._longest_run(pulled) * sample_ns
         tail_pulled = sum(pulled[-tail:])
         tail_high = sum(scl[-tail:])
@@ -120,11 +122,11 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         self.stretch_ok = True
         cocotb.log.info(
             "CHK-FW-I2C-ACQ-STRETCH-SCL: tb_i2c0_scl_dut_low asserted in %d/%d samples over %d "
-            "clk_smc_i, longest continuous pull %d ns (>= %d), asserted with SCL low through "
+            "ns, longest continuous pull %d ns (>= %d), asserted with SCL low through "
             "the final %d samples; firmware ACQ level %d: the target holds SCL",
             sum(pulled),
             n,
-            WINDOW_CYCLES,
+            WINDOW_NS,
             longest_ns,
             MIN_STRETCH_NS,
             tail,
@@ -147,11 +149,11 @@ class smc_fw_i2c_acq_fifo_stretch_reset_test_seq(smc_fw_i2c_pair_test_seq):
         self.release_ok = True
         cocotb.log.info(
             "CHK-FW-I2C-ACQ-RELEASE-SCL: tb_i2c0_scl_dut_low released in %d/%d samples over %d "
-            "clk_smc_i (resolved SCL high in %d, the controller's own clocking); ACQ level "
+            "ns (resolved SCL high in %d, the controller's own clocking); ACQ level "
             "%d -> %d across the reset",
             samples - pulled,
             samples,
-            WINDOW_CYCLES,
+            WINDOW_NS,
             high,
             before,
             after,

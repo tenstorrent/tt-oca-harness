@@ -110,6 +110,35 @@ divider is used: bit 1 picks the source (0 = `clk_reg_i`, 1 = `clk_ref_i`) and
 bit 0 picks the divider (0 = bypass, 1 = divided). The reset value is `2'b11`,
 so the controller comes up on a divided `clk_ref_i`.
 
+<<avsbus-clock-select-diagram>> shows the clock path. Each source passes a clock gate that
+`TURN_OFF_ALL_PREMUX_CLOCKS` closes, then the anti-glitch mux `u_refclk_apbclk_mux`
+selects one of them, choosing `clk_ref_i` while in reset. The test mux substitutes
+`clk_test_i` in test mode. Inside `u_clk_div`, the glitch-free post-divider mux selects
+either the undivided clock or the divider output. The result, `avs_clk`, clocks the AVS
+domain and reaches `avs_clock_o` through `u_avs_bus_clkgate`, which the protocol FSM closes
+while the bus is idle if `STOP_AVS_CLOCK_ON_IDLE` is set. Each mux passes its input 0 when
+its select is 0. <<avs-clock-select-table>> lists the four settings.
+
+[[avsbus-clock-select-diagram]]
+.AVSBus clock selection
+image::avsbus-clock-select.svg[alt="clk_reg_i and clk_ref_i through their clock gates into the anti-glitch source mux, the test mux for clk_test_i, the programmable divider with its bypass and post-divider mux, and the AVS clock gate driving avs_clock_o",width=100%,pdfwidth=100%]
+
+[[avs-clock-select-table]]
+.AVS_CLOCK_SELECT settings
+[width="100%",cols="20%,20%,20%,40%",options="header",]
+|=====================================================================================
+|AVS_CLOCK_SELECT |Source mux |Post-divider mux |AVS clock
+
+|2'b00 |0 |0, bypass |`clk_reg_i`
+
+|2'b01 |0 |1, divided |`clk_reg_i` divided by `CLK_DIVIDER_VALUE`
+
+|2'b10 |1 |0, bypass |`clk_ref_i`
+
+|2'b11 (reset) |1 |1, divided |`clk_ref_i` divided by `CLK_DIVIDER_VALUE`, by 4 until
+software writes a non-zero value
+|=====================================================================================
+
 <<avs-clock-configuration-fields-table>> defines the source-selection and divider
 configuration fields.
 

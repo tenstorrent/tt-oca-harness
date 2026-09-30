@@ -85,7 +85,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     dtp_stap_3dcr_state_t clear_payloads[int];
     int no_sib[int];
     dtp_stap_3dcr_state_t no_pl[int];
-    string watch[$];
+    string watch[$], host[$], none[$];
     bit gates[DtpStapCount];
     bit [63:0] captured, unused;
     int unsigned edges;
@@ -95,13 +95,10 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
       all_sib[s] = 1;
       all_payloads[s]   = '{1'b1, 1'b1, 1'b1};
       clear_payloads[s] = '{1'b0, 1'b0, 1'b0};
-      watch.push_back({stap_prefix(s), "_tdo_oen"});
-      watch.push_back({stap_prefix(s), "_tms"});
+      stap_forwarding_watch(s, watch);
     end
-    watch.push_back("jtag_stap_host_select");
-    watch.push_back("jtag_stap_host_shift_en");
-    watch.push_back("jtag_stap_host_capture_en");
-    watch.push_back("jtag_stap_host_update_en");
+    stap_host_scan_controls(host);
+    watch = {watch, host};
 
     // Establish the configuration with every gate clear.
     enable_all_debug();
@@ -114,28 +111,15 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     start_scan_window(watch);
     stap_chain_maintain(d, {context_s, ".observe"}, captured);
     stop_scan_window(edges, counts);
-    check_window_shifted("CHK-SCAN-WIN", {context_s, ".window"});
+    if (dtp_dbg_path_disabled(d, DTP_DBG_PATH_STAP_HOST))
+      check_window_counts(edges, counts, host, none, {context_s, ".window"});
+    else check_window_counts(edges, counts, none, host, {context_s, ".window"});
 
     // Gated ports stop forwarding with tms parked at the stored
     // tms_hold=1; ungated ports keep forwarding.
     for (int unsigned s = 0; s < DtpStapCount; s++)
       check_stap_forwarding(edges, counts, s, ~gates[s], context_s);
 
-    if (dtp_dbg_path_disabled(d, DTP_DBG_PATH_STAP_HOST)) begin
-      family_check("CHK-SCAN-WIN", "stap_host select gated quiet",
-                   64'(counts["jtag_stap_host_select"]), 64'd0, context_s);
-      family_check("CHK-SCAN-WIN", "stap_host shift_en gated quiet",
-                   64'(counts["jtag_stap_host_shift_en"]), 64'd0, context_s);
-      family_check("CHK-SCAN-WIN", "stap_host capture_en gated quiet",
-                   64'(counts["jtag_stap_host_capture_en"]), 64'd0, context_s);
-      family_check("CHK-SCAN-WIN", "stap_host update_en gated quiet",
-                   64'(counts["jtag_stap_host_update_en"]), 64'd0, context_s);
-    end else begin
-      family_check("CHK-SCAN-WIN", "stap_host select active",
-                   64'(counts["jtag_stap_host_select"] > 0), 64'd1, context_s);
-      family_check("CHK-SCAN-WIN", "stap_host shift_en active",
-                   64'(counts["jtag_stap_host_shift_en"] > 0), 64'd1, context_s);
-    end
     check_stap_chain_readback(captured, d, {context_s, ".readback"});
 
     // Gated clearing update: ignored on gated ports, accepted on
@@ -157,6 +141,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
                               "CHK-SCAN-LEN", "CHK-SCAN-CHAIN"};
     bit [ScanFieldCount-1:0] row_bits[$];
     string row_labels[$];
+    string all_gated_controls[$];
     sep_lifecycle_ctrl_pkg::dbg_disable_t d;
     seed_scenario_rng();
     // Scenario-owned Shift-x exits: skip the scan-count cross-check.
@@ -208,7 +193,9 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     enable_all_debug();
     program_ijtag_sibs(3'b000, '0, "release.close");
     set_dbg_disable_full(scan_mask_from_bits('1));
-    program_ijtag_sibs(3'b111, scan_mask_from_bits('1), "release.gated_open_attempt");
+    ijtag_gated_controls(scan_mask_from_bits('1), all_gated_controls);
+    program_ijtag_sibs_quiet(3'b111, scan_mask_from_bits('1), all_gated_controls,
+                             "release.gated_open_attempt");
     enable_all_debug();
     check_ijtag_all_closed('0, "release.observe");
 

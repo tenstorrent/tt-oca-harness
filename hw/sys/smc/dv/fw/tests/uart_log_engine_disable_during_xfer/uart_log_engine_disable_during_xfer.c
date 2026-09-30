@@ -107,8 +107,12 @@ static uint32_t drain_uart_rx(uint8_t (*expect)(uint32_t), int *pattern_ok) {
     return count;
 }
 
-static uint8_t abort_pattern_a(uint32_t index) { return (uint8_t)(0xA0u + index); }
-static uint8_t abort_pattern_c(uint32_t index) { return (uint8_t)(0xC0u + (index & 0x3Fu)); }
+static uint8_t abort_pattern_a(uint32_t index) {
+    return (uint8_t)(0xA0u + index);
+}
+static uint8_t abort_pattern_c(uint32_t index) {
+    return (uint8_t)(0xC0u + (index & 0x3Fu));
+}
 
 // Abort check shared by scenarios A and C: the entry had started (at least one
 // byte reached the UART) and moved fewer bytes than it holds, the bytes it did
@@ -121,7 +125,8 @@ static void check_aborted_transfer(const char *tag, uint8_t (*expect)(uint32_t))
     info_msg_hex32_s(0, "bytes moved before the disable took effect=", moved);
     if (moved == 0u) {
         info_msg_s(0, tag);
-        info_msg_s(0, "FAIL: no byte reached the UART before the disable, so no transfer was halted");
+        info_msg_s(0,
+                   "FAIL: no byte reached the UART before the disable, so no transfer was halted");
         test_fail(0);
     }
     if (moved >= ABORT_ENTRY_BYTES) {
@@ -150,14 +155,10 @@ static void check_retrigger_delivers(const char *tag, uint8_t (*expect)(uint32_t
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, RETRIGGER_ENTRY_BYTES);
     {
-        /* Poll bound, in LOG_CTRL reads. The engine writes one byte per UART
-         * byte time, about 34 us with the bench's 10 ns peripheral clock, so a
-         * 16-byte entry takes about 0.55 ms to hwclr; a LOG_CTRL read crosses
-         * into the peripheral domain and costs about 2.7 us with the 4 ns core
-         * clock. 200 reads is 0.54 ms, no margin at all, and the leaf failed at
-         * that corner on both simulators; 500 reads is 1.35 ms, a 2.5x margin,
-         * and still expires inside the harness budget. */
-        uint32_t timeout = 500u;
+        /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
+         * fastest divisor, about 650 register reads at the 1.25 ns core clock;
+         * the bound must expire before the harness timeout. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
             timeout--;
         }
@@ -413,14 +414,10 @@ int main(void) {
 
     // Let replica[1] complete naturally
     {
-        /* Poll bound, in LOG_CTRL reads. The engine writes one byte per UART
-         * byte time, about 34 us with the bench's 10 ns peripheral clock, so a
-         * 16-byte entry takes about 0.55 ms to hwclr; a LOG_CTRL read crosses
-         * into the peripheral domain and costs about 2.7 us with the 4 ns core
-         * clock. 200 reads is 0.54 ms, no margin at all, and the leaf failed at
-         * that corner on both simulators; 500 reads is 1.35 ms, a 2.5x margin,
-         * and still expires inside the harness budget. */
-        uint32_t timeout = 500u;
+        /* Poll bound: a 16-byte entry takes ~2600 peripheral clocks at the
+         * fastest divisor, about 650 register reads at the 1.25 ns core clock;
+         * the bound must expire before the harness timeout. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
             timeout--;
         }

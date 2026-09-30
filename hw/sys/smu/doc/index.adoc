@@ -51,12 +51,13 @@ endif::backend-pdf[]
 
 [[smu-composition-diagram]]
 .SMU composition with the optional SEP subsystem
-image::SMU_TopLevel_FIG001.drawio.png[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
+image::smu-composition.svg[alt="SMU composition with the optional SEP subsystem",width=100%,pdfwidth=100%]
 
 The SMU composition is shown in <<smu-composition-diagram>>.
 The dashed SEP boundary denotes the optional subsystem controlled by the
 `SEP` integration parameter. Memory capacities in the diagram describe the
-illustrated configuration.
+illustrated configuration. Hatched blocks are future: the safety bus and the
+safety monitor, whose connections to the SEP and SMC are drawn dashed.
 
 [[smu-axi-crossbar]]
 == AXI Crossbar
@@ -69,7 +70,7 @@ but never its own inbound port.
 
 [[smu-crossbar-connectivity-diagram]]
 .SMU AXI crossbar connectivity
-image::SMU_AxiXbar_Connectivity_FIG002.1.drawio.png[alt="SMU AXI crossbar connectivity",width=100%,pdfwidth=100%]
+image::smu-crossbar-connectivity.svg[alt="SMU AXI crossbar connectivity",width=640,pdfwidth=62%]
 
 <<smu-axi-crossbar-ports-table>> lists the permitted initiator-to-subordinate paths and
 their purposes.
@@ -109,7 +110,8 @@ image::smu-aperture-decode.svg[alt="SMU aperture decode and routing",width=100%,
 <<smu-crossbar-decode-diagram>> shows the independent SEP and SMC address
 comparisons for each read or write request. Each aperture includes its base
 address and excludes `base + size`; the addition uses 57 bits to preserve
-carry from the 56-bit address.
+carry from the 56-bit address, and the address is zero-extended to 57 bits for
+the comparison. The SEP and SMC ranges must not overlap.
 
 The decoded aperture and the connectivity in
 <<smu-crossbar-connectivity-diagram>> together determine where each request
@@ -142,10 +144,18 @@ subordinate.
 
 <<smu-clock-distribution>> and <<smu-reset-distribution>> show the clock and
 reset distribution from the SMU boundary to DTP, SEP, SMC, and the shared
-AXI infrastructure. Each row identifies a source and its consumers; repeated
-instance names denote the same RTL instance. Boundary ports use blue boxes,
-SMU instances use grey boxes, and generated signals use green boxes.
-Arrows show signal direction. A comma-separated consumer list denotes fan-out.
+AXI infrastructure. Boundary inputs enter on the left and boundary outputs
+leave on the right; nets generated inside the SMU run in the channel to the
+right of the instances. A dot marks fan-out, and a gap in a line marks a
+crossing without a connection. Labels at an instance's right edge name the
+net it drives or the port that receives a generated net. Instance names match
+the SMU RTL hierarchy, and paths to the SEP exist only when the `SEP`
+parameter is non-zero.
+
+Active-low resets use the `_ni`, `_no` or `trst_n` suffixes; the SMC CPU JTAG
+reset is active-high, so `dtp_smc_stap_tap_ctrl.trst_n` passes through an
+inverter. <<smu-reset-distribution>> shows reset distribution within the SMU,
+not the reset logic inside each subsystem.
 
 [[smu-clock-distribution]]
 .SMU clock distribution
@@ -165,6 +175,27 @@ and the management functions in SMC, as shown in
 [[smu-lifecycle-propagation-diagram]]
 .SEP lifecycle and feature-control propagation to SMC and DTP
 image::smu-lifecycle-controls.svg[alt="SEP lifecycle and feature-control propagation to SMC and DTP",width=100%,pdfwidth=100%]
+
+In <<smu-lifecycle-propagation-diagram>>, the OTP shadow registers, the
+demotion CSRs and the security-disable token feed the Life Cycle Controller,
+and each named output runs to the block that consumes it; a slashed line
+carries its bus width. <<smu-lifecycle-effects-table>> gives the effect of
+each control on its consumer. The demotion CSRs clear on SEP cold reset, and security disable
+overrides the normal feature restrictions.
+
+[[smu-lifecycle-effects-table]]
+.SEP lifecycle and feature-control effects
+[cols="<32%,<68%",options="header"]
+|===
+|Control |Consumer and effect
+
+|`dbg_disable_o` |DTP: disables selected STAPs, SIBs and SMC-fabric JTAG2AXI access
+|`lc_state_o` |SMC: eFuse JTAG access policy and the `LC_STATE` CSR. Also an SMU boundary output.
+|`security_disable_o` |SMC `sep_security_disable_i`: security-disable override for the eFuse wrapper
+|`sep_fuse_dft_disable_o`, `smc_fuse_dft_disable_o` |SMU boundary outputs for adopter DFT insertion; each gates its DFT OTP access paths
+|`feat_ctrl.sep_debug` |SEP inbound AXI filter: `1` bypasses the filter; `0` filters external traffic
+|`LC_STATE`, `lcc_demote_state_1/2` |Key Manager: lifecycle and demotion context. The demotion state also reaches the SMU boundary.
+|===
 
 [[child-subsystems]]
 anchor:smu-child-subsystems[]The subsystem chapters (SEP, SMC, DTP) follow

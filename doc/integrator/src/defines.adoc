@@ -450,9 +450,9 @@ names:
 [[sep-defines]]
 === SEP
 
-The SEP graph adds four groups: the Adams Bridge block-selection defines, the
-VeeR EL2 core configuration, first-party view checks, and testbench-side DV
-names.
+The SEP graph adds five groups: the Adams Bridge block-selection defines, the
+VeeR EL2 core configuration, first-party view checks, the key manager's
+defines, and testbench-side DV names.
 
 [[sep-defines-abr]]
 ==== Adams Bridge
@@ -527,6 +527,34 @@ configuration and a trace of BTB events. No OCAH flow sets either.
   each ring oscillator stage so the ring oscillates. `SYNTHESIS` and
   `EMULATION` drop the delay, so a zero-delay simulation of either view has no
   entropy source oscillation.
+
+[[sep-defines-km]]
+==== Key manager
+
+[cols="<30%,<70%",options="header"]
+|===
+|Define |Effect
+
+|`OCAH_KM_VROM`
+|Decodes the virtual ROM window, `0x1000_0000`–`0x1000_FFFF`, in
+`picorv32_wrapper`. Key manager CPU accesses to the window leave on the
+`vrom_mem_*` nets instead of the AXI-Lite crossbar. The window is executable
+with `KMCSR.SRAM_EXEC_MODE` in either state and is exempt from the ROM
+lockout. An access completes only when the simulation drives
+`vrom_mem_ready`; otherwise the key manager CPU stalls. No OCAH flow sets it,
+SEP DV included.
+|===
+
+Without `OCAH_KM_VROM`, the window is an unmapped key manager address. A load
+or store answers DECERR and sets `KMCSR.IRQ_STATUS.AXI_DECERR`, and an
+instruction fetch sets `KMCSR.IRQ_STATUS.EXEC_VIOLATION`.
+
+[WARNING]
+====
+`OCAH_KM_VROM` is simulation-only. Elaboration fails with an `$error` when
+`SYNTHESIS` or `EMULATION` is also defined, because nothing outside a
+simulation drives `vrom_mem_ready`.
+====
 
 The key manager's picorv32 core reads `FORMAL`, which compiles its embedded
 `assert` and `restrict` properties, and the riscv-formal names
