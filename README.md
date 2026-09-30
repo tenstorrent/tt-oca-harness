@@ -6,12 +6,11 @@
   </picture>
 </p>
 
-<h1 align="center">Open Chiplet Atlas Harness (OCAH)</h1>
+<h1 align="center">Open Chiplet Atlas (OCA) Harness</h1>
 
 <p align="center">
-  Tenstorrent reference design (harness) for the Open Chiplet Atlas (OCA)
-  architecture — RTL, register descriptions, generated collateral, and
-  documentation.
+  Tenstorrent reference design for the OCA architecture — RTL, register
+  descriptions, generated collateral, and documentation.
 </p>
 
 <p align="center">
