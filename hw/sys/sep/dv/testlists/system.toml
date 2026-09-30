@@ -161,11 +161,11 @@ args = ["+skip_fuse_sense", "+esrc_noise_force"]
 # Entropy-pool 64-bit aperture at entropy_fifo.main. Empty pop SLVERR after an
 # accepted pop; status fifo_level / pool_err; irq-cause is {fill_stall,pool_low}
 # only; writes SLVERR; unmapped in-window SLVERR+RDATA=0; aggregator [36]
-# high-low-high and [37] first stall after ESRC disable for StallThresh.
+# high-low-high and [37] first stall after ESRC disable for STALL_THRESH.
 # RANDCFG: extra pops from the run seed; every seed walks the high-bit mirrors
 # of the live registers and all three unique-dead offsets. A 32-bit read of each
 # register's upper word is SLVERR+RDATA=0 and neither pops nor disturbs the FIFO.
-# [37] stays set when the stall is held past StallThresh (stall duration is
+# [37] stays set when the stall is held past STALL_THRESH (stall duration is
 # graded). Drain-under-fill is not claimed. no_cpu; +skip_fuse_sense
 # +esrc_noise_force.
 name = "sep_entropy_pool_aperture_test"

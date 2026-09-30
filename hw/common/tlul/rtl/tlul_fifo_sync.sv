@@ -6,18 +6,18 @@
 //
 // Instantiate separate request and response FIFOs to add elasticity on a TL-UL bus. The
 // response FIFO stores d_data as zero for any opcode other than AccessAckData.
-// ReqPass and RspPass allow fall-through when the corresponding FIFO is empty. SpareReqW
-// and SpareRspW carry optional sideband bits alongside each channel.
+// REQ_PASS and RSP_PASS allow fall-through when the corresponding FIFO is empty. SPARE_REQ_W
+// and SPARE_RSP_W carry optional sideband bits alongside each channel.
 
 module tlul_fifo_sync #(
-  parameter bit          ReqPass = 1'b1,     // Allow A-channel fall-through when empty.
-  parameter bit          RspPass = 1'b1,     // Allow D-channel fall-through when empty.
-  parameter int unsigned ReqDepth = 2,       // Depth of the host-to-device request FIFO;
-                                             // 0 bypasses it and requires ReqPass.
-  parameter int unsigned RspDepth = 2,       // Depth of the device-to-host response FIFO;
-                                             // 0 bypasses it and requires RspPass.
-  parameter int unsigned SpareReqW = 1,      // Width of spare bits with each request.
-  parameter int unsigned SpareRspW = 1       // Width of spare bits with each response.
+  parameter bit          REQ_PASS = 1'b1,    // Allow A-channel fall-through when empty.
+  parameter bit          RSP_PASS = 1'b1,    // Allow D-channel fall-through when empty.
+  parameter int unsigned REQ_DEPTH = 2,      // Depth of the host-to-device request FIFO;
+                                             // 0 bypasses it and requires REQ_PASS.
+  parameter int unsigned RSP_DEPTH = 2,      // Depth of the device-to-host response FIFO;
+                                             // 0 bypasses it and requires RSP_PASS.
+  parameter int unsigned SPARE_REQ_W = 1,    // Width of spare bits with each request.
+  parameter int unsigned SPARE_RSP_W = 1     // Width of spare bits with each response.
 ) (
   input                     clk_i,        // System clock.
   input                     rst_ni,       // Active-low reset.
@@ -25,18 +25,18 @@ module tlul_fifo_sync #(
   output tlul_pkg::tl_d2h_t tl_h_o,       // Host-side TL-UL response.
   output tlul_pkg::tl_h2d_t tl_d_o,       // Device-side TL-UL request.
   input  tlul_pkg::tl_d2h_t tl_d_i,       // Device-side TL-UL response.
-  input  [SpareReqW-1:0]    spare_req_i,  // Spare request bits entering with tl_h_i.
-  output [SpareReqW-1:0]    spare_req_o,  // Spare request bits leaving with tl_d_o.
-  input  [SpareRspW-1:0]    spare_rsp_i,  // Spare response bits entering with tl_d_i.
-  output [SpareRspW-1:0]    spare_rsp_o   // Spare response bits leaving with tl_h_o.
+  input  [SPARE_REQ_W-1:0]  spare_req_i,  // Spare request bits entering with tl_h_i.
+  output [SPARE_REQ_W-1:0]  spare_req_o,  // Spare request bits leaving with tl_d_o.
+  input  [SPARE_RSP_W-1:0]  spare_rsp_i,  // Spare response bits entering with tl_d_i.
+  output [SPARE_RSP_W-1:0]  spare_rsp_o   // Spare response bits leaving with tl_h_o.
 );
   // Put everything on the request side into one FIFO
-  localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SpareReqW;
+  localparam int unsigned REQFIFO_WIDTH = $bits(tlul_pkg::tl_h2d_t) - 2 + SPARE_REQ_W;
 
   prim_fifo_sync #(
     .Width(REQFIFO_WIDTH),
-    .Pass(ReqPass),
-    .Depth(ReqDepth)
+    .Pass(REQ_PASS),
+    .Depth(REQ_DEPTH)
   ) u_reqfifo (
     .clk_i,
     .rst_ni,
@@ -70,12 +70,12 @@ module tlul_fifo_sync #(
 
   // Put everything on the response side into the other FIFO
 
-  localparam int unsigned RSPFIFO_WIDTH = $bits(tlul_pkg::tl_d2h_t) - 2 + SpareRspW;
+  localparam int unsigned RSPFIFO_WIDTH = $bits(tlul_pkg::tl_d2h_t) - 2 + SPARE_RSP_W;
 
   prim_fifo_sync #(
     .Width(RSPFIFO_WIDTH),
-    .Pass(RspPass),
-    .Depth(RspDepth)
+    .Pass(RSP_PASS),
+    .Depth(RSP_DEPTH)
   ) u_rspfifo (
     .clk_i,
     .rst_ni,

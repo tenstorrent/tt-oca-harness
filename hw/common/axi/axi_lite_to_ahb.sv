@@ -14,13 +14,13 @@
 // 32-bit lane.
 //
 // Writes take HSIZE and HADDR[1:0] from WSTRB. A full-word strobe is always
-// issued. AllowSubWordWrite also admits the naturally aligned byte and
+// issued. ALLOW_SUB_WORD_WRITE also admits the naturally aligned byte and
 // halfword strobes; with it clear, and for every other non-zero strobe, the
 // write completes with SLVERR and no AHB transfer is issued. Keep it clear for
 // a slave that ignores HSIZE on writes, where a sub-word write overwrites the
 // rest of the word.
 //
-// AckZeroStrobeWrite: a write with WSTRB == 0 is a legal AXI no-op. An AXI
+// ACK_ZERO_STROBE_WRITE: a write with WSTRB == 0 is a legal AXI no-op. An AXI
 // data-width downsizer produces such beats when it splits a wider master's
 // beat, putting the lanes outside the master's strobe on the neighbouring
 // word. AHB-Lite has no zero-byte transfer, so such a write is never issued:
@@ -39,13 +39,13 @@
 // AxPROT[1] (non-secure) is not carried.
 
 module axi_lite_to_ahb #(
-  parameter int unsigned AXI_ADDR_WIDTH     = 32,
-  parameter int unsigned AXI_DATA_WIDTH     = 32,    // Must be 32
-  parameter int unsigned AHB_DATA_WIDTH     = 32,    // 32 or 64
-  parameter type         axi_lite_req_t     = logic,
-  parameter type         axi_lite_rsp_t     = logic,
-  parameter bit          AllowSubWordWrite  = 1'b0,  // Aligned byte/halfword WSTRB: HSIZE < word
-  parameter bit          AckZeroStrobeWrite = 1'b0   // WSTRB==0 writes: OKAY, no AHB transfer
+  parameter int unsigned AXI_ADDR_WIDTH        = 32,
+  parameter int unsigned AXI_DATA_WIDTH        = 32,    // Must be 32
+  parameter int unsigned AHB_DATA_WIDTH        = 32,    // 32 or 64
+  parameter type         axi_lite_req_t        = logic,
+  parameter type         axi_lite_rsp_t        = logic,
+  parameter bit          ALLOW_SUB_WORD_WRITE  = 1'b0,  // Aligned byte/halfword WSTRB: HSIZE < word
+  parameter bit          ACK_ZERO_STROBE_WRITE = 1'b0   // WSTRB==0 writes: OKAY, no AHB transfer
 ) (
   input  logic                      clk_i,
   input  logic                      rst_ni,
@@ -172,12 +172,12 @@ module axi_lite_to_ahb #(
         wr_strb_legal = 1'b1;
       end
       4'b0011, 4'b1100: begin
-        wr_strb_legal  = AllowSubWordWrite;
+        wr_strb_legal  = ALLOW_SUB_WORD_WRITE;
         wr_strb_size   = HSIZE_HALF;
         wr_strb_offset = {axi_lite_req_i.w.strb[2], 1'b0};
       end
       4'b0001, 4'b0010, 4'b0100, 4'b1000: begin
-        wr_strb_legal  = AllowSubWordWrite;
+        wr_strb_legal  = ALLOW_SUB_WORD_WRITE;
         wr_strb_size   = HSIZE_BYTE;
         wr_strb_offset = {axi_lite_req_i.w.strb[3] | axi_lite_req_i.w.strb[2],
                           axi_lite_req_i.w.strb[3] | axi_lite_req_i.w.strb[1]};
@@ -254,7 +254,7 @@ module axi_lite_to_ahb #(
           req_data_d  = axi_lite_req_i.w.data;
           wr_first_d  = 1'b0;
           if (axi_lite_req_i.w.strb == '0) begin
-            req_error_d = !AckZeroStrobeWrite;
+            req_error_d = !ACK_ZERO_STROBE_WRITE;
             state_d     = AXI_B_RESP;
           end else if (!wr_strb_legal) begin
             req_error_d = 1'b1;
@@ -344,8 +344,8 @@ module axi_lite_to_ahb #(
   always_comb begin
     case (ahb_hsize_o)
       HSIZE_WORD: ahb_xfer_aligned = (ahb_haddr_o[1:0] == 2'b00);
-      HSIZE_HALF: ahb_xfer_aligned = AllowSubWordWrite && ahb_hwrite_o && !ahb_haddr_o[0];
-      HSIZE_BYTE: ahb_xfer_aligned = AllowSubWordWrite && ahb_hwrite_o;
+      HSIZE_HALF: ahb_xfer_aligned = ALLOW_SUB_WORD_WRITE && ahb_hwrite_o && !ahb_haddr_o[0];
+      HSIZE_BYTE: ahb_xfer_aligned = ALLOW_SUB_WORD_WRITE && ahb_hwrite_o;
       default:    ahb_xfer_aligned = 1'b0;
     endcase
   end

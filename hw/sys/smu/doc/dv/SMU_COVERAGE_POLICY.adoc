@@ -130,7 +130,7 @@ Three mechanisms. Do not mix them.
 |`coverage_off` file patterns (`hw/sys/smu/rtl`, SMC, DTP, SEP, `hw/ip`,
 `hw/common`, CPU cluster, TB, vendor trees the file pattern can reach)
 |Structural OUT, by elaboration |the point is not elaborated, so it never
-enters the database and no waiver names it |the `SepPresent` parameter and
+enters the database and no waiver names it |the `SEP_PRESENT` parameter and
 its `g_sep` generate blocks in `cov/sv/*_fcov.sv`; a point whose observable
 exists only with SEP elaborated is absent from a SEP=0 build; the wrapper's
 single target elaborates SEP, so every `g_sep` point exists there

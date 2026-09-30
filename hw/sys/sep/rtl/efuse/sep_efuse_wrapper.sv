@@ -224,7 +224,7 @@ module sep_efuse_wrapper #(
   ///////////////////////////////////////////////////////////////
 
   prim_diff_decode_multi #(
-    .Width(sep_pkg::LC_STATE_BIT_WIDTH)
+    .WIDTH(sep_pkg::LC_STATE_BIT_WIDTH)
   ) u_lc_state_jtag_dec (
     .clk_i,
     .rst_ni,

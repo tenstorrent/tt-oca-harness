@@ -96,8 +96,8 @@ static inline uint32_t sep_get_smc_base(void) {
 // returning 0 would halt every boot with mem_repair_success clear.
 //
 // A SEP->SMC address remap cannot account for the difference: output_remap.sv
-// substitutes only bits [55:IdxStart] and passes [IdxStart-1:0] through
-// unchanged, with IdxStart = 19 (sep_pkg.sv, 512 KB granularity). Both 0xF800
+// substitutes only bits [55:IDX_START] and passes [IDX_START-1:0] through
+// unchanged, with IDX_START = 19 (sep_pkg.sv, 512 KB granularity). Both 0xF800
 // and 0xB800 lie inside those preserved low bits.
 #define SMC_DFX_CTRL_STATUS_SMU_OFFSET 0xB800u
 

@@ -11,15 +11,15 @@
 // and the rest are truncated to 32 bits for the local fabric.
 
 module smc_input_fabric #(
-  parameter bit          FilterReqPipelineEnable = 1'b0,  // Adds spill registers on the request
-                                                          // channels at the system inbound filter
-                                                          // boundary.
-  parameter bit          FilterRspPipelineEnable = 1'b0,  // Adds spill registers on the response
-                                                          // channels at the system inbound filter
-                                                          // boundary.
-  parameter int unsigned NumFilters              = 16  // Number of system inbound filter entries;
-                                                       // sizes the filter CSR arrays and the
-                                                       // hit-index outputs.
+  parameter bit          FILTER_REQ_PIPELINE_ENABLE = 1'b0,  // Adds spill registers on the request
+                                                             // channels at the system inbound
+                                                             // filter boundary.
+  parameter bit          FILTER_RSP_PIPELINE_ENABLE = 1'b0,  // Adds spill registers on the response
+                                                             // channels at the system inbound
+                                                             // filter boundary.
+  parameter int unsigned NUM_FILTERS                = 16  // Number of system inbound filter
+                                                          // entries; sizes the filter CSR arrays
+                                                          // and the hit-index outputs.
 ) (
   input  logic clk_i,                   // SMC core clock.
   input  logic rst_ni,                  // Primary reset, active-low, synchronized to the SMC core
@@ -98,30 +98,30 @@ module smc_input_fabric #(
                                                                             // through unchanged.
   input  smc_pkg::smc_local_32_64_6_12_axi_resp_t  sep_axi_id_remap_resp_i,  // Response to the SEP request.
 
-  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NumFilters-1:0],  // Per-entry system inbound
-                                                                                  // filter configuration from
-                                                                                  // the register block; the
-                                                                                  // filter matches source ID
-                                                                                  // and the non-secure flag.
-  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NumFilters-1:0],  // Per-entry system inbound
-                                                                                    // filter status returned to
-                                                                                    // the register block.
+  input  filter_ctrl_reg_pkg::filter_ctrl__out_t filter_ctrl_i [NUM_FILTERS-1:0],  // Per-entry system inbound
+                                                                                   // filter configuration from
+                                                                                   // the register block; the
+                                                                                   // filter matches source ID
+                                                                                   // and the non-secure flag.
+  output filter_ctrl_reg_pkg::filter_ctrl__in_t  filter_status_o [NUM_FILTERS-1:0],  // Per-entry system inbound
+                                                                                     // filter status returned to
+                                                                                     // the register block.
 
   input  alias_remap_reg_pkg::alias_remap__out_t aR_ctrl_i [smc_pkg::NUM_ALIAS_REMAP_REGIONS-1:0],  // Alias remap region
                                                                                                     // configuration from
                                                                                                     // the register block.
 
-  output smc_pkg::remap_debug_t         remap_debug_mmio_o,  // Alias region index hit by the MMIO path.
-  output smc_pkg::remap_debug_t         remap_debug_jtag_o,  // Alias region index hit by the JTAG path.
-  output smc_pkg::remap_debug_t         remap_debug_log_o,  // Alias region index hit by the log path.
-  output smc_pkg::remap_debug_t         remap_debug_dma_o,  // Alias region index hit by the data accelerator
-                                                            // path.
-  output logic [$clog2(NumFilters)-1:0] write_filter_hit_debug_o,  // System inbound filter entry hit by writes;
+  output smc_pkg::remap_debug_t          remap_debug_mmio_o,  // Alias region index hit by the MMIO path.
+  output smc_pkg::remap_debug_t          remap_debug_jtag_o,  // Alias region index hit by the JTAG path.
+  output smc_pkg::remap_debug_t          remap_debug_log_o,  // Alias region index hit by the log path.
+  output smc_pkg::remap_debug_t          remap_debug_dma_o,  // Alias region index hit by the data accelerator
+                                                             // path.
+  output logic [$clog2(NUM_FILTERS)-1:0] write_filter_hit_debug_o,  // System inbound filter entry hit by writes;
+                                                                    // tied to zero because the filter instance
+                                                                    // disables its debug output.
+  output logic [$clog2(NUM_FILTERS)-1:0] read_filter_hit_debug_o,  // System inbound filter entry hit by reads;
                                                                    // tied to zero because the filter instance
                                                                    // disables its debug output.
-  output logic [$clog2(NumFilters)-1:0] read_filter_hit_debug_o,  // System inbound filter entry hit by reads;
-                                                                  // tied to zero because the filter instance
-                                                                  // disables its debug output.
 
   output logic sys_in_filter_clk_active_o,  // High while the system inbound filter clock runs.
   output logic sys_in_filter_bus_active_o  // High while the system AXI input has a request valid or
@@ -374,9 +374,9 @@ module smc_input_fabric #(
 
   axi_cg_snoop #(
     // ALL IDs, both directions
-    .OutstandingTx(smc_pkg::FABRIC_OUTSTANDING_TX),
-    .DenyDelay(1),
-    .HystWidth(smc_pkg::CG_HYSTERESIS_W)
+    .OUTSTANDING_TX(smc_pkg::FABRIC_OUTSTANDING_TX),
+    .DENY_DELAY(1),
+    .HYST_WIDTH(smc_pkg::CG_HYSTERESIS_W)
   ) u_sys_in_filter_cg (
     .clk_i           (clk_i),
     .rst_ni          (rst_ni),
@@ -402,31 +402,31 @@ module smc_input_fabric #(
   );
 
   axi_filter_wrap #(
-    .NumFilters          (NumFilters),
-    .DebugOutput         (0),
-    .BlockByDefault      (1'b1),
-    .EnSrcIdFilter       (1'b1),
-    .SrcIdUserBitStart   (0),
-    .SrcIdWidth          (4),
-    .EnGroupIdFilter     (1'b0),
-    .GroupIdUserBitStart (4),
-    .GroupIdWidth        (4),
-    .EnNsFilter          (1'b1),
-    .AxiAddrWidth        (smc_pkg::AXI_ADDR_WIDTH),
-    .AxiIdWidth          (smc_pkg::SYS_IN_ID_WIDTH),
-    .AxiDataWidth        (smc_pkg::AXI_DATA_WIDTH),
-    .MaxTrans            (smc_pkg::FABRIC_MAX_TRANS),
-    .AxiLookBits         (smc_pkg::FABRIC_ID_LOOKUP_BITS),
-    .ErrSlvMaxTrans      (smc_pkg::ERR_SLV_MAX_TRANS),
-    .FlopReqEn           (FilterReqPipelineEnable),
-    .FlopRespEn          (FilterRspPipelineEnable),
-    .filter_axi_req_t    (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
-    .filter_axi_resp_t   (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t),
-    .filter_aw_chan_t    (smc_pkg::smc_sys_in_56_64_6_12_axi_aw_chan_t),
-    .filter_w_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_w_chan_t),
-    .filter_b_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_b_chan_t),
-    .filter_ar_chan_t    (smc_pkg::smc_sys_in_56_64_6_12_axi_ar_chan_t),
-    .filter_r_chan_t     (smc_pkg::smc_sys_in_56_64_6_12_axi_r_chan_t)
+    .NUM_FILTERS             (NUM_FILTERS),
+    .DEBUG_OUTPUT            (0),
+    .BLOCK_BY_DEFAULT        (1'b1),
+    .EN_SRC_ID_FILTER        (1'b1),
+    .SRC_ID_USER_BIT_START   (0),
+    .SRC_ID_WIDTH            (4),
+    .EN_GROUP_ID_FILTER      (1'b0),
+    .GROUP_ID_USER_BIT_START (4),
+    .GROUP_ID_WIDTH          (4),
+    .EN_NS_FILTER            (1'b1),
+    .AXI_ADDR_WIDTH          (smc_pkg::AXI_ADDR_WIDTH),
+    .AXI_ID_WIDTH            (smc_pkg::SYS_IN_ID_WIDTH),
+    .AXI_DATA_WIDTH          (smc_pkg::AXI_DATA_WIDTH),
+    .MAX_TRANS               (smc_pkg::FABRIC_MAX_TRANS),
+    .AXI_LOOK_BITS           (smc_pkg::FABRIC_ID_LOOKUP_BITS),
+    .ERR_SLV_MAX_TRANS       (smc_pkg::ERR_SLV_MAX_TRANS),
+    .FLOP_REQ_EN             (FILTER_REQ_PIPELINE_ENABLE),
+    .FLOP_RESP_EN            (FILTER_RSP_PIPELINE_ENABLE),
+    .filter_axi_req_t        (smc_pkg::smc_sys_in_56_64_6_12_axi_req_t),
+    .filter_axi_resp_t       (smc_pkg::smc_sys_in_56_64_6_12_axi_resp_t),
+    .filter_aw_chan_t        (smc_pkg::smc_sys_in_56_64_6_12_axi_aw_chan_t),
+    .filter_w_chan_t         (smc_pkg::smc_sys_in_56_64_6_12_axi_w_chan_t),
+    .filter_b_chan_t         (smc_pkg::smc_sys_in_56_64_6_12_axi_b_chan_t),
+    .filter_ar_chan_t        (smc_pkg::smc_sys_in_56_64_6_12_axi_ar_chan_t),
+    .filter_r_chan_t         (smc_pkg::smc_sys_in_56_64_6_12_axi_r_chan_t)
   ) u_smc_sys_inbound_filter (
     .clk_i                      (filter_clk),
     .rst_ni                     (rst_ni),

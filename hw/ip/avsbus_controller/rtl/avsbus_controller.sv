@@ -489,7 +489,7 @@ module avsbus_controller #(
   );
 
   prim_ag_clk_mux #(
-    .SelectOnReset(1'b1)
+    .SELECT_ON_RESET(1'b1)
   ) u_refclk_apbclk_mux (
     .rst_clk0_ni(rst_reg_ni),
     .rst_clk1_ni(rst_ref_ni),

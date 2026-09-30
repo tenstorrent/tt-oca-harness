@@ -161,13 +161,13 @@ module prim_apb_arb #(
   wire [$clog2(MASTER_SUM_NUM)-1:0] mst_sel_index;
   wire mst_sel_request;
   prim_fair_rr_arb #(
-    .NumIn(MASTER_SUM_NUM),
-    .DataWidth(0),
+    .NUM_IN(MASTER_SUM_NUM),
+    .DATA_WIDTH(0),
     .DataType(logic),
-    .ExtPrio(1'b0),
-    .AxiVldRdy(1'b1),
-    .LockIn(1'b1),
-    .FairArb(1'b1)
+    .EXT_PRIO(1'b0),
+    .AXI_VLD_RDY(1'b1),
+    .LOCK_IN(1'b1),
+    .FAIR_ARB(1'b1)
   ) u_apb_arb (
     .clk_i        (clk_i),
     .rst_ni       (rst_ni),

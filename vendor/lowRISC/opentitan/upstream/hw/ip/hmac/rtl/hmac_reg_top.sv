@@ -84,8 +84,8 @@ module hmac_reg_top (
   // outgoing integrity generation
   tlul_pkg::tl_d2h_t tl_o_pre;
   tlul_rsp_intg_gen #(
-    .EnableRspIntgGen(1),
-    .EnableDataIntgGen(1)
+    .ENABLE_RSP_INTG_GEN(1),
+    .ENABLE_DATA_INTG_GEN(1)
   ) u_rsp_intg_gen (
     .tl_i(tl_o_pre),
     .tl_o(tl_o)
@@ -105,16 +105,16 @@ module hmac_reg_top (
 
   // Create Socket_1n
   tlul_socket_1n #(
-    .N            (2),
-    .HReqPass     (1'b1),
-    .HRspPass     (1'b1),
-    .DReqPass     ({2{1'b1}}),
-    .DRspPass     ({2{1'b1}}),
-    .HReqDepth    (4'h0),
-    .HRspDepth    (4'h0),
-    .DReqDepth    ({2{4'h0}}),
-    .DRspDepth    ({2{4'h0}}),
-    .ExplicitErrs (1'b0)
+    .N             (2),
+    .H_REQ_PASS    (1'b1),
+    .H_RSP_PASS    (1'b1),
+    .D_REQ_PASS    ({2{1'b1}}),
+    .D_RSP_PASS    ({2{1'b1}}),
+    .H_REQ_DEPTH   (4'h0),
+    .H_RSP_DEPTH   (4'h0),
+    .D_REQ_DEPTH   ({2{4'h0}}),
+    .D_RSP_DEPTH   ({2{4'h0}}),
+    .EXPLICIT_ERRS (1'b0)
   ) u_socket (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
@@ -139,9 +139,9 @@ module hmac_reg_top (
   end
 
   tlul_adapter_reg #(
-    .RegAw(AW),
-    .RegDw(DW),
-    .EnableDataIntgGen(0)
+    .REG_AW(AW),
+    .REG_DW(DW),
+    .ENABLE_DATA_INTG_GEN(0)
   ) u_reg_if (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),

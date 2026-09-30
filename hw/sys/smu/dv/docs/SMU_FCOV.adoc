@@ -120,10 +120,10 @@ build passing: a wrong scope changes nothing and warns about nothing.
 
 * The scope file applies `coverage_off` by source file, so a point never
   enters the database. Structural, by file.
-* `SepPresent` gates the `g_sep` and `g_nosep` generate blocks. A point whose
+* `SEP_PRESENT` gates the `g_sep` and `g_nosep` generate blocks. A point whose
   observable exists only with the SEP elaborated, or only without it, is not
   elaborated on the other build. `tb_wrapper_top.sv` passes
-  `SepPresent = 1'b1`, so every `g_sep` point exists and no `g_nosep` point
+  `SEP_PRESENT = 1'b1`, so every `g_sep` point exists and no `g_nosep` point
   does. Structural, by elaboration.
 * `SMU_FCOV_PHASE2` guards the Phase 2 points. Structural, by plan.
 
