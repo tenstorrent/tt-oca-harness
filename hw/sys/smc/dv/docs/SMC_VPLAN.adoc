@@ -16,10 +16,12 @@ nothing for this plan's sign-off; a card's cocotb checkers alone carry its
 Pass Criteria here, and a card whose checkers were all SV-UVM would be
 unclosed. The enrolled testcases and the membership of the `all`
 sign-off group are defined in `testlists/all.toml`; `all` is every test this
-plan grades, partitioned into the `hosted`, `fw` and `dual` classes by what a
-leaf needs to build. Every defined leaf outside `all` is in
-`testlists/holdout.toml` and has its card under <<smc-held-out-testcases>>;
-where the reason is a defect, Known Limitations records the hole.
+plan grades, partitioned into the `hosted`, `fw` and `sanity` classes by what a
+leaf needs to build. Non-ROM leaves outside `all` are in
+`testlists/holdout.toml`; ROM/OCCP leaves are in `testlists/smc_rom.toml` and
+selected through `occp_rom`. Sign-off holdouts have cards under
+<<smc-held-out-testcases>>; where the reason is a defect, Known Limitations
+records the hole.
 
 Every card under Test Procedures names a testcase that exists and is a member
 of `all`, and says which groups enrol it. Where the harness
@@ -118,15 +120,17 @@ hosted fw --tool verilator --cov`
 ==== Live groups versus credit
 
 Executable membership is resolved from the testlists; the groups and their
-`expected_count` guards are in `hw/sys/smc/dv/testlists/all.toml`:
+`expected_count` guards are in `hw/sys/smc/dv/testlists/`:
 
 [cols="2,3",options="header",]
 |===
 |Group |Role
 |`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly (`regress.yml`): `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
+|`sanity` |The three dual-target leaves enrolled in `all`
+|`occp_rom` |All 34 BL0/SMC ROM cases, including the hours-long dual-SMC unsecure boot
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no feature credit
-|`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
+|`all` |The package regression, `hosted` + `fw` + `sanity`; `holdout.toml` defines the non-ROM leaves outside it and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
 `smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
@@ -7959,7 +7963,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-DUAL-I3C-IDLE` |The shared I3C0 wired-AND resolves, and resolves high, with no driver
 |===
 
-*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `all`, `dual`.
+*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `all`, `sanity`.
 
 '''''
 
@@ -7998,7 +8002,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `all`, `dual`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` must be 1 on both instances within the watch bound before the first probe access; the watcher raises otherwise. Enrolled in: `all`, `sanity`.
 
 '''''
 
@@ -8032,7 +8036,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-OCCP-SANITY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
 |===
 
-*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `all`, `dual`.
+*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `all`, `sanity`.
 
 '''''
 
@@ -11824,18 +11828,20 @@ checked by inverting one assertion. `--validate-configs` then lists
 |===
 |Group |Meaning
 |`smoke` |CI gate on every pull request and push (`sim.yml`): three toolchain-free bring-up leaves
-|`all` |Every test this plan grades and the coverage set: `hosted` + `fw` + `dual`, no overlap, nothing left over; `expected_count` is the membership gate
+|`all` |Every test this plan grades and the coverage set: `hosted` + `fw` + `sanity`, no overlap, nothing left over; `expected_count` is the membership gate
 |`hosted` |Toolchain-free class of `all`, single-instance model; the nightly and weekly tiers on the hosted runners, one seed per leaf (`reseed: 1` in `regress.yml`)
 |`fw` |Firmware class of `all`: the fifteen CPU-boot leaves whose image the `c_compile` stage builds with a picolibc-enabled RISC-V GCC or the toolchain container
-|`dual` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
+|`sanity` |SMC_DUAL class of `all`: the three `target = "dual"` leaves, each loading a ROM or firmware image
 |`axil`, `clock`, `combined`, `cpu`, `gpio`, `i2c`, `irq`, `reset`, `uart` |Feature subsets of `all` for a local run of one area; each lives in its feature testlist
-|`occp_boot`, `occp_dual` |Runtime hold-outs run on demand: the production ROM to its OCCP loop, and the dual-SMC unsecure boot. Not in `all`
+|`occp_rom` |All 34 BL0/SMC ROM cases, including the hours-long dual-SMC unsecure boot; run on demand
+|`occp_boot` |Runtime hold-out run on demand: the production ROM to its OCCP loop. Not in `all`
 |`held_out` |Leaves waiting on an RTL fix or ruling, run on demand to re-measure. Not in `all`
 |===
 
 `README.md` owns the commands that run these groups (CI, nightly, hosted and
-single-test forms). Every leaf outside `all` is defined in
-`testlists/holdout.toml` and has its card under <<smc-held-out-testcases>>.
+single-test forms). Non-ROM leaves outside `all` are defined in
+`testlists/holdout.toml`; ROM/OCCP leaves are defined in
+`testlists/smc_rom.toml`.
 
 
 === Signoff Package
@@ -11919,7 +11925,7 @@ the `expected_count` guards in `hw/sys/smc/dv/testlists/all.toml`.
 |`smoke` |PR gate: canonical bring-up, cold reset, and a CSR frontdoor read
 |`hosted` |Nightly and weekly: `all` minus the twenty leaves that need the RISC-V toolchain (fifteen `fw` leaves, three dual-target leaves that run a ROM or firmware image, and the two `mmio_wedge` leaves of `cpu`)
 |`rtl_issue` |Weekly on its own `regress.yml` row: defect reproducers graded under `expect_fail`; no bring-up credit
-|`all` |The package regression, `hosted` + `fw` + `dual`; `holdout.toml` defines the leaves outside it and <<smc-held-out-testcases>> records each
+|`all` |The package regression, `hosted` + `fw` + `sanity`; `holdout.toml` defines the non-ROM leaves outside it and <<smc-held-out-testcases>> records the sign-off holdouts
 |===
 
 [[smc-canonical-credit]]
@@ -12072,8 +12078,10 @@ in <<smc-deferred-disposition>>.
 [[smc-held-out-testcases]]
 ==== Held-out testcases
 
-Every leaf defined in `testlists/holdout.toml`. None is a member of `all`;
-each card below states what a run of the leaf must show and records no pass.
+Every leaf defined in `testlists/holdout.toml`, plus the hours-long
+`smc_occp_dual_unsecure_boot_test` defined in `testlists/smc_rom.toml`.
+None is a member of `all`; each card below states what a run of the leaf must
+show and records no pass.
 The reproducers are the `rtl_issue` group:
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
@@ -12200,7 +12208,7 @@ Drive `smc_isolate_req_smc_lane_test_seq`. Each checker below is a named compare
 
 `CHK-OCCP-TRANSFER-LANDED` depends on `smc_scratch_map_pkg` decoding the drawn destination the same way `smc_dual_axi_sram_probe_test` holds against AXI. `pick_payload_addresses` draws from anywhere in the OCCP window, so the peek is almost never reading offset 0, and a decode right only for the first 256 bytes of the window would look in the wrong bank. The six-offset agreement in `smc_dual_axi_sram_probe_test` is what makes the checker able to raise.
 
-Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_dual` only -- held out of `all` on runtime and run on demand as `occp_dual` (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
+Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_rom` only -- held out of `all` on runtime and run on demand as `occp_rom` (see <<smc-held-out-testcases>>). This card records what a run must show, not a pass.
 
 '''''
 
@@ -12760,18 +12768,19 @@ to make, and waits on a ruling.
 |`smc_fw_uart_log_engine_fetch_err_test` |`fw`, `all` |`firmware = "uart_log_engine_fetch_err"`, same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_fw_narrow_store_lane_test` |`fw`, `all` |`firmware = "narrow_store_lane"`, same build path |SMC DV |2026-12-15 |As above
 |`smc_prod_rom_occp_ready_test` |`occp_boot` |`firmware = { name = "prod_rom", mode = "bootrom" }` builds `hw/sys/smc/bootrom/prod` with RISC-V GCC; `run_modes = ["prod_rom"]`, 3600 s |minshaoho (`9282d8c14`) |2026-12-15 |As above, plus a weekly `items: occp_boot` row (one seed, about one hour)
-|`smc_dual_elaboration_test` |`all`, `dual` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`dual.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` (undeclared nets in the dual harness) |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and #1802 (the dual-harness net declarations) merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
-|`smc_dual_axi_sram_probe_test` |`all`, `dual` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
-|`smc_occp_sanity_test` |`all`, `dual` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
-|`smc_occp_dual_unsecure_boot_test` |`occp_dual` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits it: its own weekly `items: occp_dual` row with a timeout near the six-hour hosted cap
+|`smc_dual_elaboration_test` |`all`, `sanity` |`target = "dual"` and `firmware = prod_rom`: the `SMC_DUAL` elaboration alone `$error`s at time zero without a ROM image (`smc_rom.toml` header), so the leaf is not toolchain-free. It also TIMEOUTs on `dut_fuse_sense_done` (undeclared nets in the dual harness) |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and #1802 (the dual-harness net declarations) merged; then covered by the weekly `all` row. Its checkers read boot-sequencer and AXI signals only, so pointing `+rom_hex` at `assets/smc_rom_default.hex` and `+smc_efuse_hex` at `assets/smc_efuse_default.hex` and dropping `firmware` would make it toolchain-free; that is a test-behaviour change for the SMC owner, not this record
+|`smc_dual_axi_sram_probe_test` |`all`, `sanity` |`target = "dual"` and `firmware = prod_rom` |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the same zero-ROM re-pointing applies
+|`smc_occp_sanity_test` |`all`, `sanity` |`target = "dual"` and `firmware = occp_sanity` (the production ROM plus one DV controller image); genuinely needs the built images |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above
+|`smc_occp_dual_unsecure_boot_test` |`occp_rom` |`target = "dual"`, `firmware = dual_occp` (three images), `timeout_sec = 21600`: hours of wall clock while a full sram image crosses a ~2.6 MHz serial bus |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above and a runner budget that fits the complete 34-case `items: occp_rom` group, including this hours-long member
 |`smc_cpu_mmio_read_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`: the wedge image is built with RISC-V GCC and picolibc, so no hosted-runner tier can run it. The two `smc_cpu_l2_*_wedge_test` leaves beside it in `cpu.toml` need no image and are enrolled in `hosted`; these two are not |minshaoho (`9282d8c14`) |2026-12-15 |Toolchain as above; the leaf then joins `hosted` alongside the L2 pair and this row closes
 |`smc_cpu_mmio_write_wedge_test` |`cpu`, `all` |`firmware = "mmio_wedge"`, the same image and the same build path |minshaoho (`9282d8c14`) |2026-12-15 |As above
 |`smc_ref_clock_timer_rate_test` |none |In `testlists/holdout.toml` (`held_out`), outside `all`, run on demand. It fails the rate comparison it was written to make: `clk_rst.adoc:37-39` places the OCTS system timer in the reference clock domain, `smc_peripherals.sv:945-947` clocks `system_timer_octs` from `clk_smc_i`, and on seed 608337836 TIMER_COUNT advanced 992 counts while 428 `clk_ref_i` and 1026 `clk_smc_i` edges elapsed over the same window, against a tolerance of 14. It keeps its `[[tests]]` entry in `cpu.toml` and runs on demand (`--items smc_ref_clock_timer_rate_test`) |minshaoho (`9282d8c14`) |2026-12-15 |The clock-domain discrepancy is ruled: either `system_timer_octs` takes `clk_ref_i` and the leaf joins the `clock` group with the `ci` tag, or `clk_rst.adoc` is corrected and the leaf's expectation moves to `clk_smc_i`; if neither is ruled, the leaf joins `rtl_issue` under `expect_fail` with the rate assertion as `expect_fail_match`
 |===
 
-`dual.toml` is therefore in the toolchain bucket, not an "elaboration only"
-bucket: all four of its leaves declare `firmware`. `dual` is the class group of the three leaves in `all`;
-`--items occp_dual` selects the unsecure-boot leaf.
+`smc_rom.toml` is therefore in the toolchain bucket, not an "elaboration only"
+bucket: all 36 of its leaves declare `firmware`. `sanity` is the class group
+of the three leaves in `all`; `--items occp_rom` selects all 34 ROM cases,
+including the hours-long unsecure-boot leaf.
 
 `rtl_issue` reproducers are not hold-outs. Such an entry carries
 `expect_fail` and `expect_fail_match` (`hw/sys/smc/dv/testlists/holdout.toml`),
@@ -12827,16 +12836,16 @@ point at it. SMU's record of the tests that stage SMC images is
 |Image |Bucket |Consumer
 |hello_world
 |enrolled
-|`smc_fw_hello_world_test` (`testlists/fw.toml`, `[c_build.default]`, in `all`); OCCP payload of `smc_occp_dual_unsecure_boot_test` (`testlists/holdout.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `occp_dual`).
+|`smc_fw_hello_world_test` (`testlists/fw.toml`, `[c_build.default]`, in `all`); OCCP payload of `smc_occp_dual_unsecure_boot_test` (`testlists/smc_rom.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `occp_rom`).
 |plic_sanity
 |enrolled
 |`smc_fw_plic_claim_test` (`testlists/fw.toml`, `[c_build.default]`).
 |occp_sanity
 |enrolled
-|`smc_occp_sanity_test` (`testlists/dual.toml`, `[c_build.occp_sanity]`).
+|`smc_occp_sanity_test` (`testlists/smc_rom.toml`, `[c_build.occp_sanity]`).
 |occp_unsecure_boot_test
 |enrolled
-|`smc_occp_dual_unsecure_boot_test` (`testlists/holdout.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `occp_dual`).
+|`smc_occp_dual_unsecure_boot_test` (`testlists/smc_rom.toml`, `[c_build.dual_occp]`; held out of `all` on runtime, runs as `occp_rom`).
 |hello_world_multicore
 |enrolled
 |`smc_fw_hello_world_multicore_test` (`testlists/fw.toml`, `[c_build.default]`); the bench reads harts 2 and 3's markers back from `CPU_CTRL SCRATCH_2/3`.
@@ -13106,73 +13115,73 @@ the first image that consumes it, not ahead of it.
 |ROM banks 1..3 decode and endian flip under eFuse scramble; the cocotb aliases `smc_rom_efuse_bits_0_test` / `_1_test` are catalog-only in <<smc-deferred-disposition>>. Closes with a scrambled four-bank `+rom_hex` asset, a matching `+smc_efuse_hex`, and a `smc_fw_hello_world_test`-pattern leaf (`firmware = "rom_efuse_bits"`, `+smc_scratch_ram_hex=rom_efuse_bits.ecc.hex`, `+smc_hold_cpu_boot`) in `testlists/fw.toml`.
 |occp_comprehensive_error_verification_test
 |deferred
-|OCCP error codes and the SMC status ring against the status-coordination contract. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|OCCP error codes and the SMC status ring against the status-coordination contract. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`).
 |occp_crc_err_injection_test
 |deferred
-|Header and body CRC fault injection, wire error plus status ring. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Header and body CRC fault injection, wire error plus status ring. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`).
 |occp_invalid_cmd_test
 |deferred
-|Invalid command code rejection and the status low byte. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Invalid command code rejection and the status low byte. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`).
 |occp_ring_buffer_overflow_test
 |deferred
-|SMC status ring overflow (sole user of `include/smc_ring_buffer.h`). Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|SMC status ring overflow (sole user of `include/smc_ring_buffer.h`). Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`).
 |occp_zero_length_rw_test
 |deferred
-|Zero WLen/RLen -> `0x03 Invalid_header`. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Zero WLen/RLen -> `0x03 Invalid_header`. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`).
 |occp_zero_length_test
 |deferred
-|Zero-length operations and status records 0x120/0x130. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`).
+|Zero-length operations and status records 0x120/0x130. Closes with a generic rom-mode `[c_build.*]` in `smc_sim_cfg.toml` that builds the production ROM plus `\{fw_target}`, added together with its first consumer, and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`).
 |occp_boot_sequence_status_test
 |deferred
-|Boot status codes 0x001..0x021 in the SMC ring. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Boot status codes 0x001..0x021 in the SMC ring. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_invalid_length_field_test
 |deferred
-|Global invalid-length injection over random traffic. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Global invalid-length injection over random traffic. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_jump_invalid_region_test
 |deferred
-|JUMP into a protected region (unsecure). OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|JUMP into a protected region (unsecure). OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_max_size_transfer_test
 |deferred
-|Maximum-size READ/WRITE. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Maximum-size READ/WRITE. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_mem_boundary_access_test
 |deferred
-|Scoreboarded top and bottom 256 B of the accessible range. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Scoreboarded top and bottom 256 B of the accessible range. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_min_size_transfer_test
 |deferred
-|Minimum-size READ/WRITE. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Minimum-size READ/WRITE. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_oversize_body_test
 |deferred
-|Oversize body rejection. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Oversize body rejection. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_random_test
 |deferred
-|Random commands, GET_STATUS and ring drain. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Random commands, GET_STATUS and ring drain. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_register_access_test
 |deferred
-|Non-secure external register write and readback over OCCP. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Non-secure external register write and readback over OCCP. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_ring_buffer_advanced_test
 |deferred
-|Ring wrap at 512 with interleaved SMC/SEP reads. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Ring wrap at 512 with interleaved SMC/SEP reads. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_ring_buffer_stress_test
 |deferred
-|Ring fill, wrap and underflow structure. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Ring fill, wrap and underflow structure. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_ring_buffer_test
 |deferred
-|Ring buffer core behaviour. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Ring buffer core behaviour. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_unaligned_access_test
 |deferred
-|Unaligned READ/WRITE/VALIDATE_BOOT/JUMP -> `OCCP_INVALID_ADDRESS`. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Unaligned READ/WRITE/VALIDATE_BOOT/JUMP -> `OCCP_INVALID_ADDRESS`. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_undersize_body_test
 |deferred
-|Undersize body rejection. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Undersize body rejection. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_undersize_header_test
 |deferred
-|Undersize header rejection. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Undersize header rejection. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_unsupported_status_id_test
 |deferred
-|Unsupported GET_* status_id. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|Unsupported GET_* status_id. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_validate_boot_reject_test
 |deferred
-|VALIDATE_AND_BOOT rejected in non-secure mode. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/dual.toml`); or moves to `superseded` when a live leaf proves the same property.
+|VALIDATE_AND_BOOT rejected in non-secure mode. OCCP master-BFM image. Closes after `occp_comprehensive_error_verification_test`, `occp_crc_err_injection_test`, `occp_invalid_cmd_test`, `occp_ring_buffer_overflow_test`, `occp_zero_length_rw_test` and `occp_zero_length_test` have their leaves, with the same generic rom-mode `[c_build.*]` and a `smc_occp_sanity_test`-pattern leaf on the dual bench (`testlists/smc_rom.toml`); or moves to `superseded` when a live leaf proves the same property.
 |occp_jump_reject
 |deferred
 |JUMP rejected in secure mode with `JUMP_SECURITY` status. Needs a secure-mode eFuse image; `efuse_preload/configurations/` carries only the default. Closes when the ROM owner supplies that image and a dual-bench leaf names it.
