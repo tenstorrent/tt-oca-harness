@@ -226,6 +226,16 @@ state machine controls outgoing cross-trigger requests, while the receiver state
 machine handles incoming requests. Both state machines operate synchronously in
 the system clock domain on synchronized GPIO inputs.
 
+The state machines run only in point-to-point mode. While wire-OR mode is
+selected, `cross_trigger_port_core` holds the sender in SENDER_IDLE with
+`ct_req_out=0` and blocks `ct_src_i` from reaching it. The `CT_Req_in` and
+`CT_Ack_in` pad inputs are disabled in wire-OR mode, and after point-to-point
+mode is selected their synchronizers hold the disabled pad level for two
+cycles. The core presents both synchronized inputs to the state machines as
+deasserted until the delayed input enable shows the synchronizers carry pad
+data. Neither a trigger raised in wire-OR mode nor the level of a disabled pad
+reaches the point-to-point pads when the mode changes.
+
 *Sender State Machine:*
 
 <<ctp-sender-state-transitions-table>> lists the sender handshake states, transition
@@ -260,6 +270,11 @@ endif::backend-html5[]
 
 |Any state
 |`reset_i` asserted
+|SENDER_IDLE
+|Force `ct_req_out=0`
+
+|Any state
+|Wire-OR mode selected
 |SENDER_IDLE
 |Force `ct_req_out=0`
 |===

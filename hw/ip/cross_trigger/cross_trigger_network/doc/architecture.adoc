@@ -221,7 +221,8 @@ The CTM is programmed at runtime via firmware or debug transactions. Proper
 configuration of the CTMs in each chiplet will minimize trigger latency and
 prevent loops in the SiP cross trigger network. Configuration is accomplished
 via CSRs. The CTM register interface is described in the <<ctn-memory-map,CTN Memory Map>>
-section below.
+section below, and <<ctn-programming>> gives the order in which to program the
+CTPs and the CTM.
 
 === Address Map
 

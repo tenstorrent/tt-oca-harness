@@ -7,6 +7,8 @@
 // stretch_mult_i sets wire-OR stretch; handshake_reset_i recovers P2P deadlock.
 // Synchronizes pad inputs, stretches or handshakes ct_src_i, and reports busy plus
 // REQ/ACK status for CSR readback.
+// The handshake runs only in point-to-point mode and ignores the point-to-point pad inputs until
+// their synchronizers carry pad data.
 // ct_dst_o, busy_o, and the pad controls are registered and reset low.
 
 module cross_trigger_port_core (
@@ -14,7 +16,8 @@ module cross_trigger_port_core (
   input  logic        rst_ni,           // Active-low asynchronous system reset.
 
   input  logic        mode_wire_or_i,   // Pad protocol select: 1'b1 = wire-OR, 1'b0 =
-                                        // point-to-point.
+                                        // point-to-point. Wire-OR holds the point-to-point
+                                        // handshake idle with its request low.
   input  logic        invert_i,         // Inverts the synchronized pad inputs and the driven pad
                                         // data outputs; pad enables are not inverted.
   input  logic        handshake_reset_i,  // Resets the outgoing point-to-point handshake state
@@ -116,6 +119,7 @@ module cross_trigger_port_core (
   );
 
   // Handshake controller for point-to-point mode
+  logic p2p_din_valid;
   logic handshake_ct_dst;
   logic handshake_ct_req_out;
   logic handshake_ct_ack_out;
@@ -124,11 +128,11 @@ module cross_trigger_port_core (
   ctp_handshake_ctrl u_handshake_ctrl (
     .clk_i              (clk_i),
     .rst_ni             (rst_ni),
-    .ct_src_i           (ct_src_i),
+    .ct_src_i           (ct_src_i & ~mode_wire_or_i),
     .ct_dst_o           (handshake_ct_dst),
-    .reset_i            (handshake_reset_i),
-    .ct_req_in_sync_i   (ct_req_in_din_sync_inv),
-    .ct_ack_in_sync_i   (ct_ack_in_din_sync_inv),
+    .reset_i            (handshake_reset_i | mode_wire_or_i),
+    .ct_req_in_sync_i   (ct_req_in_din_sync_inv & p2p_din_valid),
+    .ct_ack_in_sync_i   (ct_ack_in_din_sync_inv & p2p_din_valid),
     .ct_req_out_o       (handshake_ct_req_out),
     .ct_ack_out_o       (handshake_ct_ack_out),
     .busy_o             (handshake_busy)
@@ -236,6 +240,18 @@ module cross_trigger_port_core (
   assign ct_ack_in_din_en_o   = ct_ack_in_din_en_q;
   assign ct_ack_out_dout_en_o = ct_ack_out_dout_en_q;
   assign ct_ack_out_dout_o    = ct_ack_out_dout_q;
+
+  // The synchronized point-to-point pad inputs carry pad data two cycles after the registered
+  // input enable rises; until then they carry the level of the disabled pad.
+  logic [1:0] p2p_din_valid_q;
+  always_ff @(posedge clk_i or negedge rst_ni) begin
+    if (!rst_ni) begin
+      p2p_din_valid_q <= 2'b00;
+    end else begin
+      p2p_din_valid_q <= {p2p_din_valid_q[0], ct_req_in_din_en_q};
+    end
+  end
+  assign p2p_din_valid = p2p_din_valid_q[1];
 
   // BUSY signal generation
   logic wire_or_busy;
