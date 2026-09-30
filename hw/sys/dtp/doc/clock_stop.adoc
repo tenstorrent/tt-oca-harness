@@ -16,8 +16,9 @@ for debugger readback.
 halt path, with the DTP as the SMU instantiates it. The DEBUG_CONTROL TDR is drawn
 as its five bits, with bit 0 nearest TDO. The grey box below the DTP is the part of
 the SMC DFD block (`smc_dfd_wrap`) that produces the SMC's clock-stop request and
-exchanges cross-triggers with the DTP. CDC badges mark the two-flop synchronizers
-where a signal enters the TCK or `clk_i` domain.
+exchanges cross-triggers with the DTP. Gate and flop symbols draw the logic of the
+path, and CDC badges mark the two-flop synchronizers where a signal enters the TCK or
+`clk_i` domain.
 
 [[dtp-clock-stop-diagram]]
 .DTP JTAG and CLA clock-stop aggregation
@@ -62,10 +63,11 @@ This architecture keeps CLA observability distinct from the JTAG direct-stop
 path, while either source can assert the functional chiplet halt through
 `stop_clks_o`.
 
-In the SMU, lane 0 of the nine `xtrig_clk_stop_req_i` lanes carries the SMC DFD's
-clocks-stopped output. That output is the CLA halt-clock action, masked by bit 0
-of `xtrig_clk_halt_mask` in the SMC DFX CSRs and ANDed with `cla_clock_stop_en_o`;
-it also raises an SMC CPU interrupt. Lanes 8 to 1 come from the SMU's own
+In the SMU, lane 0 of the `XTRIG_NUM_CLK_STOP_REQ` `xtrig_clk_stop_req_i` lanes
+carries the SMC DFD's clocks-stopped output. That output is the CLA halt-clock
+action, masked by bit 0 of `xtrig_clk_halt_mask` in the SMC DFX CSRs and ANDed
+with `cla_clock_stop_en_o`; it also raises an SMC CPU interrupt. The remaining lanes,
+`xtrig_clk_stop_req_i[XTRIG_NUM_CLK_STOP_REQ-1:1]`, come from the SMU's own
 `xtrig_clk_stop_req_i` ports. The same mask gates the CLA cross-trigger outputs,
 which reach the cross-trigger matrix through internal lanes 1 and 0
 (`xtrig_ctm_dst_req_i[1:0]`); `xtrig_ctm_src_req_o[1:0]` returns to the CLA. The
@@ -105,23 +107,26 @@ image::dtp-clock-distribution.svg[alt="DTP clock distribution: clk_i to the cros
 
 <<dtp-reset-tree>> shows the reset distribution for DTP system logic and the JTAG scan
 paths. Each reset has its own colour, and the input names below the DTP ports are
-the SMU nets that drive them.
+the SMU nets that drive them. Gate and flop symbols show where resets are combined,
+and a reset ends on the bottom edge of the flop it resets.
 
 * `rst_n_i` (`rst_primary_smc_clk_no` in the SMU) resets the cross-trigger network
   and the AXI side of the JTAG2AXI bridges.
 * `pwr_on_rst_ni` (`powergood_stable` in the SMU) sets the `dbg_disable_i`
   synchronizers to 1, disabling every debug path until the lifecycle value arrives.
   `u_trst_n_and` ANDs it with the TRST pin to form the combined TRST.
-* The combined TRST resets the TAP controller, the TMP controller and the TDO
-  retiming flop. It also holds the 3DCR and IC_RESET TDRs and the STAPs in reset,
-  and leaves unchanged on the host TAP control of every STAP.
+* The combined TRST resets the TAP controller, including its Test-Logic-Reset flop,
+  the TMP controller and the TDO retiming flop. It also resets the hold flops of the
+  3DCR and IC_RESET TDRs, the 3DCR scan register and the STAPs, and leaves unchanged
+  on the host TAP control of every STAP.
 * The TAP controller derives the scan reset `rst_n`, which is low in
   Test-Logic-Reset, and the scan channel reset `chrst_n`, which the TMP persistence
   mode holds released through Test-Logic-Reset. `rst_n` resets the instruction
   register, most TDRs, the TCK side of the JTAG2AXI bridges, the STAPs and the SIBs.
-  The 3DCR and IC_RESET TDRs take it only while their hold bits are clear. `chrst_n`
-  is not used inside the DTP; both leave on the host scan control of the
-  boundary-scan, extended STAP, DFT and DFD ports.
+  The 3DCR TDR takes it only while its hold bit is clear, and the IC_RESET TDR only
+  while its `reset_hold` bit is set. `chrst_n` is not used inside the DTP; both
+  leave on the host scan control of the boundary-scan, extended STAP, DFT and DFD
+  ports.
 
 The two-flop `cla_clock_stop` synchronizer in the DEBUG_CONTROL TDR has no reset.
 `test_en_i` and `scan_rst_ni` are not connected inside the DTP. A STAP whose enable
