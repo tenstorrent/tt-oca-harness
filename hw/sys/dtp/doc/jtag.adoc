@@ -34,9 +34,14 @@ Read <<dtp-jtag-scan-chain-figure>> along the arrows from TDI to TDO. TDI reache
 every register and external chain at once; the IR and TDR mux returns the
 instruction register in Shift-IR and, in Shift-DR, the register the current
 instruction selects. Italic labels beside a mux name the instructions or the
-select bit that choose its input. The PTAP output then enters the STAP chain, whose
-return reaches TDO only while the `TAP_3DCR` STAP-select bit is set; otherwise TDO
-takes the PTAP output directly. Each STAP and SIB carries, in italics, the
+select bit that choose its input, and 0 or 1 at a mux input is the select value
+that picks it. The PTAP output then enters the STAP chain, whose return reaches TDO
+only while the `TAP_3DCR` STAP-select bit is set; otherwise TDO takes the PTAP
+output directly. TDO is retimed on the falling edge of TCK except during a
+`ZERO_LENGTH_BYPASS` DR scan, when the last mux takes the TDO mux output ahead of
+the retimer and TDI reaches TDO combinationally. The figure counts the extra STAPs
+by the `jtag_intf_unit` parameter `NUM_EXTRA_STAPS`, which `dtp` sets from
+`JTAG_NUM_EXTRA_STAPS`. Each STAP and SIB carries, in italics, the
 `dbg_disable_i` field that closes it. Dashed blocks exist only when their enable
 parameter is set, as the list below gives for the STAPs; the JTAG2AXI bridges
 follow `JTAG_SMC_DBG_ENABLE` and `JTAG_SEP_DBG_ENABLE`. Each STAP adds one SIB bit

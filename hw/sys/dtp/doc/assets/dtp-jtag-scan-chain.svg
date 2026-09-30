@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="746" viewBox="0 0 1040 746" role="img" aria-labelledby="title desc">
 <title id="title">DTP JTAG scan-chain topology</title>
-<desc id="desc">Scan-chain topology of the JTAG interface unit u_jtag_intf_unit. TCK, TMS and TRST_n drive the TAP controller of the primary TAP u_jtag_ptap. TDI fans out to the 6-bit instruction register, the internal data registers, the three optional JTAG2AXI bridge registers, the external boundary-scan chain and the iJTAG chain. The iJTAG chain runs through three SIBs in series, u_dft_secure_sib, u_dft_nonsecure_sib and u_dfd_sib; each SIB bit, when open, inserts its external scan segment after it, and the dft_secure, dft_nonsecure and dfd debug-disable fields hold each one closed. The IR and TDR mux selects the instruction register in Shift-IR, or in Shift-DR the register the instruction selects: the boundary-scan return under EXTEST, SAMPLE/PRELOAD, EXTEST_TRAIN, EXTEST_PULSE and INTEST, and the iJTAG return under SELECT_IJTAG and RUNBIST. A zero-length bypass mux passes TDI straight through under ZERO_LENGTH_BYPASS. The PTAP output feeds both the TDO mux and the secondary TAP chain: the optional STAPs u_stap_io, u_stap_smc_dbg, u_stap_sep_dbg and u_stap_extra[0] to u_stap_extra[N-1] in series, each of which can splice in its secondary TAP, the next chiplet's TAP chain, the SMC CPU debug TAP, the SEP CPU debug TAP or a local TAP. Each is gated by its debug-disable field: stap_io, stap_smc, stap_sep or stap_extra. After the last STAP the chain leaves for an external STAP chain; the stap_host field replaces its return with the last STAP's output. The TDO mux selects the STAP chain return while the TAP_3DCR STAP-select bit is set, and the output is retimed on the falling edge of TCK before TDO.</desc>
+<desc id="desc">Scan-chain topology of the JTAG interface unit u_jtag_intf_unit. TCK, TMS and TRST_n drive the TAP controller of the primary TAP u_jtag_ptap. TDI fans out to the 6-bit instruction register, the internal data registers, the three optional JTAG2AXI bridge registers, the external boundary-scan chain and the iJTAG chain. The iJTAG chain runs through three SIBs in series, u_dft_secure_sib, u_dft_nonsecure_sib and u_dfd_sib; each SIB bit, when open, inserts its external scan segment after it, and the dft_secure, dft_nonsecure and dfd debug-disable fields hold each one closed. The IR and TDR mux selects the instruction register in Shift-IR, or in Shift-DR the register the instruction selects: the boundary-scan return under EXTEST, SAMPLE/PRELOAD, EXTEST_TRAIN, EXTEST_PULSE and INTEST, and the iJTAG return under SELECT_IJTAG and RUNBIST. The zero-length bypass mux takes the IR and TDR mux on input 0 and TDI on input 1, which it selects during a ZERO_LENGTH_BYPASS DR scan. Its output, the PTAP output, feeds both the TDO mux and the secondary TAP chain: the optional STAPs u_stap_io, u_stap_smc_dbg, u_stap_sep_dbg and NUM_EXTRA_STAPS instances of u_stap_extra in series, each of which can splice in its secondary TAP, the next chiplet's TAP chain, the SMC CPU debug TAP, the SEP CPU debug TAP or a local TAP. Each is gated by its debug-disable field: stap_io, stap_smc, stap_sep or stap_extra. After the last STAP the chain leaves for an external STAP chain; the stap_host field selects input 1 of the stap_host mux, replacing its return with the last STAP's output. The TDO mux selects the STAP chain return on input 1 while the TAP_3DCR STAP-select bit is set, and the PTAP output on input 0 otherwise. Its output is retimed on the falling edge of TCK and reaches input 0 of the zero-length bypass TDO mux, whose input 1 taps the TDO mux output before the retimer; during a ZERO_LENGTH_BYPASS DR scan TDO takes input 1, unretimed.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -118,6 +118,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="jt" d="M184,284 L382,284 L382,334"/>
 <path class="jtag" d="M382,334 L397,334"/>
 <text class="si" x="376" y="279" text-anchor="end">ZERO_LENGTH_BYPASS</text>
+<text class="s" x="408" y="338.5" text-anchor="middle">1</text>
+<text class="s" x="408" y="376.5" text-anchor="middle">0</text>
 <rect class="core opt" x="440" y="112" width="108" height="50" rx="6"/>
 <text class="s" x="494" y="133" text-anchor="middle">u_stap_io</text>
 <text class="si" x="494" y="151" text-anchor="middle">stap_io</text>
@@ -147,12 +149,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="jtag" d="M792,137 L803,137"/>
 <rect class="core opt" x="811" y="107" width="108" height="50" rx="6"/>
 <rect class="core opt" x="806" y="112" width="108" height="50" rx="6"/>
-<text class="s" x="860" y="133" text-anchor="middle">u_stap_extra[N]</text>
+<text class="s" x="860" y="133" text-anchor="middle">u_stap_extra[i]</text>
 <text class="si" x="860" y="151" text-anchor="middle">stap_extra</text>
 <rect class="external" x="806" y="12" width="108" height="46" rx="6"/>
 <text class="s" x="860" y="40" text-anchor="middle">Local TAPs</text>
 <path class="jtag" d="M840,107 L840,61"/>
 <path class="jtag" d="M880,58 L880,104"/>
+<text class="s" x="862.5" y="178" text-anchor="middle">× NUM_EXTRA_STAPS</text>
 <path class="jt" d="M424,369.0 L460,369.0"/>
 <circle cx="460" cy="369" r="3.5" fill="#42759b"/>
 <path class="jtag" d="M460,369.0 L460,165"/>
@@ -165,18 +168,29 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="jtag" d="M952,137 L952,183"/>
 <path class="jtag" d="M984,58 L984,183"/>
 <path class="fabric" d="M940,186 L992,186 L979,210 L953,210 Z"/>
-<text class="si" x="934" y="202" text-anchor="end">stap_host</text>
-<path class="fabric" d="M930,290 L954,303.5 L954,366.5 L930,380 Z"/>
-<path class="jtag" d="M966,210 L966,248 L910,248 L910,306 L927,306"/>
-<path class="jtag" d="M460,369.0 L890,369.0 L890,362 L927,362"/>
-<text class="si" x="902" y="330" text-anchor="end">TAP_3DCR</text>
-<text class="si" x="902" y="346" text-anchor="end">stap_sel</text>
-<rect class="core" x="930" y="404" width="44" height="40" rx="4"/>
-<text class="s" x="952" y="421.5" text-anchor="middle">neg</text>
-<text class="s" x="952" y="436.5" text-anchor="middle">edge</text>
-<path class="jtag" d="M954,335 L966,335 L966,401"/>
-<path class="jtag" d="M974,424 L1032,424"/>
-<text class="s" x="1000" y="416" text-anchor="start">TDO</text>
+<text class="si" x="934" y="208" text-anchor="end">stap_host</text>
+<text class="s" x="956" y="202" text-anchor="middle">1</text>
+<text class="s" x="978" y="202" text-anchor="middle">0</text>
+<path class="fabric" d="M838,288 L862,303.3 L862,374.7 L838,390 Z"/>
+<path class="jtag" d="M966,210 L966,248 L822,248 L822,306 L835,306"/>
+<path class="jtag" d="M460,369.0 L835,369.0"/>
+<text class="s" x="846" y="310.5" text-anchor="middle">1</text>
+<text class="s" x="846" y="373.5" text-anchor="middle">0</text>
+<text class="si" x="830" y="330" text-anchor="end">TAP_3DCR</text>
+<text class="si" x="830" y="346" text-anchor="end">stap_sel</text>
+<rect class="core" x="888" y="319" width="44" height="40" rx="4"/>
+<text class="s" x="910" y="336.5" text-anchor="middle">neg</text>
+<text class="s" x="910" y="351.5" text-anchor="middle">edge</text>
+<path class="jtag" d="M862,339.0 L885,339.0"/>
+<circle cx="874" cy="339" r="3.5" fill="#42759b"/>
+<path class="fabric" d="M950,322 L974,336.4 L974,403.6 L950,418 Z"/>
+<path class="jtag" d="M932,339.0 L947,339.0"/>
+<path class="jtag" d="M874,339.0 L874,400 L947,400"/>
+<text class="s" x="958" y="343.5" text-anchor="middle">0</text>
+<text class="s" x="958" y="404.5" text-anchor="middle">1</text>
+<path class="jtag" d="M974,370.0 L1032,370.0"/>
+<text class="s" x="1000" y="362" text-anchor="start">TDO</text>
+<text class="si" x="976" y="440" text-anchor="end">ZERO_LENGTH_BYPASS</text>
 <circle cx="184" cy="541" r="3.5" fill="#42759b"/>
 <path class="jtag" d="M184,541 L325,541 M335,541 L357,541"/>
 <rect class="core" x="360" y="516" width="150" height="50" rx="6"/>

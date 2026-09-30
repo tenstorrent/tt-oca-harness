@@ -8,9 +8,13 @@ a unified debug access point.
 
 <<jtag-interface-unit-scan-chain-figure>> shows the PTAP, STAP chain, and iJTAG network
 at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
-a mux name the instructions or select bit that choose its input, and italic labels
-in the STAPs and SIBs name the `dbg_disable_i` field that closes each one. Dashed
-blocks exist only when their enable parameter is set.
+a mux name the instructions or select bit that choose its input, 0 or 1 at a mux
+input is the select value that picks it, and italic labels in the STAPs and SIBs
+name the `dbg_disable_i` field that closes each one. Dashed blocks exist only when
+their enable parameter is set; `NUM_EXTRA_STAPS` sets the number of `u_stap_extra`
+instances. TDO is retimed on the falling edge of TCK except during a
+`ZERO_LENGTH_BYPASS` DR scan, when the last mux takes the TDO mux output ahead of
+the retimer and TDI reaches TDO combinationally.
 
 [[jtag-interface-unit-scan-chain-figure]]
 .JTAG Interface Unit scan chain
