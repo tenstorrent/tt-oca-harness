@@ -1281,6 +1281,10 @@ module dtp_uvm_top
   assign u_scan_if.jtag_stap_host_shift_en    = jtag_stap_host_shift_en;
   assign u_scan_if.jtag_stap_host_capture_en  = jtag_stap_host_capture_en;
   assign u_scan_if.jtag_stap_host_update_en   = jtag_stap_host_update_en;
+  assign u_scan_if.jtag_dft_secure_host_scan_out = dft_secure_scan_out;
+  assign u_scan_if.jtag_dft_host_scan_out        = dft_scan_out;
+  assign u_scan_if.jtag_dfd_host_scan_out        = dfd_scan_out;
+  assign u_scan_if.jtag_stap_host_scan_out       = stap_host_scan_out;
   assign u_scan_if.jtag_stap_io_tck         = jtag_stap_io_tck;
   assign u_scan_if.jtag_stap_io_trst_n      = jtag_stap_io_trst_n;
   assign u_scan_if.jtag_stap_smc_tck        = jtag_stap_smc_tck;

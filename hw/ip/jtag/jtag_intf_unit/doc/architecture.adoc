@@ -76,6 +76,9 @@ one TCK of latency to every scan through the STAP chain. The last STAP's scan
 output also drives `stap_host_scan_out_o`, which launches on the rising edge of
 TCK like the host scan outputs of the iJTAG SIBs.
 
+`stap_host_scan_out_o` carries the scan bit of the last STAP's SIB. That bit
+resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.
+
 ==== Debug Disable Synchronization
 
 `dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is in the system clock
@@ -133,6 +136,9 @@ disable field.
 
 The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
 chains. Each SIB is gated by the corresponding synchronized debug-disable field.
+Each SIB's scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
+so `dft_secure_host_scan_out_o`, `dft_host_scan_out_o` and `dfd_host_scan_out_o`
+read 0 from reset, whether or not the SIB is disabled.
 
 ==== DFT Secure Chain
 
