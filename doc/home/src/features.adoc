@@ -3,12 +3,12 @@
 
 = Feature Overview
 
-OCAH provides the non-application-specific framework logic that is common
+OCA Harness provides the non-application-specific framework logic that is common
 across chiplets built to the Open Chiplet Atlas (OCA) standard.
 
 == Architecture
 
-OCAH implements the common non-application functions an OCA chiplet
+OCA Harness implements the common non-application functions an OCA chiplet
 needs, so adopters get them by construction rather than rebuilding
 them per project::
 
@@ -24,7 +24,7 @@ them per project::
 
 == OCA Standard Layers
 
-OCAH is built to the OCA specification's five-layer model, from top to
+OCA Harness is built to the OCA specification's five-layer model, from top to
 bottom: Software, System, Protocol, Transport, and Physical. Each layer
 abstracts the one below it, so adopters aren't locked to specific
 lower-layer choices.
