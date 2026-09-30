@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="934" viewBox="0 0 1040 934" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="972" viewBox="0 0 1040 972" role="img" aria-labelledby="title desc">
 <title id="title">Key Manager architecture</title>
-<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_mailbox, u_drbg_sampler and u_kpv, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller through an address remap. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The SEP host reaches u_mailbox through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream, u_kpv receives wipe_state_i, and u_cpu drives unrecoverable_err_o. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i and scan_rst_ni into the cold and warm resets of every instance.</desc>
+<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_kpv, u_mailbox and u_drbg_sampler, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller through an address remap. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The CPU trap drives unrecoverable_err_o and is ORed with wipe_state_i; the rising edge of the result is a single-cycle wipe pulse that drives both u_kpv and u_kmcsr. The SEP host reaches u_mailbox, whose two FIFOs are MAILBOX_DEPTH words deep, through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i, scan_rst_ni and the soft_rst_n output of u_kmcsr into the cold and warm resets of every instance; the warm reset is held for MIN_RESET_CYCLES cycles.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -76,9 +76,9 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
 </style>
 </defs>
-<rect width="1040" height="934" fill="#ffffff"/>
-<rect class="smu" x="180" y="110" width="630" height="742" rx="6"/>
-<text class="b" x="192" y="840" text-anchor="start">key_manager</text>
+<rect width="1040" height="972" fill="#ffffff"/>
+<rect class="smu" x="180" y="110" width="630" height="780" rx="6"/>
+<text class="b" x="192" y="878" text-anchor="start">key_manager</text>
 <rect class="external" x="222" y="25" width="116" height="50" rx="6"/>
 <text class="bs" x="280" y="46" text-anchor="middle">KM ROM</text>
 <text class="s" x="280" y="64" text-anchor="middle">16 KiB</text>
@@ -99,67 +99,80 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="272" y="287" text-anchor="start">picorv32_wrapper</text>
 <path class="sig" d="M280,79 L280,138"/>
 <path class="sig" d="M410,79 L410,138"/>
-<rect class="fabric" x="530" y="200" width="100" height="500" rx="6"/>
-<text class="bs" x="580" y="430" text-anchor="middle">u_xbar</text>
-<text class="s" x="580" y="458.5" text-anchor="middle">AXI4-Lite</text>
-<text class="s" x="580" y="475.5" text-anchor="middle">crossbar</text>
+<rect class="fabric" x="530" y="200" width="100" height="670" rx="6"/>
+<text class="bs" x="580" y="635" text-anchor="middle">u_xbar</text>
+<text class="s" x="580" y="663.5" text-anchor="middle">AXI4-Lite</text>
+<text class="s" x="580" y="680.5" text-anchor="middle">crossbar</text>
 <path class="axi" d="M492,226 L518,226"/>
-<rect class="core" x="210" y="350" width="210" height="80" rx="6"/>
-<text class="bs" x="222" y="370" text-anchor="start">u_kmcsr</text>
-<text class="s" x="222" y="388" text-anchor="start">control and status,</text>
-<text class="s" x="222" y="404" text-anchor="start">IRQ aggregation</text>
-<path class="axi" d="M432,390 L518,390"/>
-<rect class="core" x="210" y="450" width="270" height="75" rx="6"/>
-<text class="bs" x="230" y="470" text-anchor="start">u_mailbox</text>
-<text class="s" x="230" y="488" text-anchor="start">two 16-word FIFOs,</text>
-<text class="s" x="230" y="504" text-anchor="start">SEP-to-KM and KM-to-SEP</text>
-<path class="axi" d="M492,500 L518,500"/>
-<rect class="core" x="210" y="550" width="270" height="60" rx="6"/>
-<text class="bs" x="230" y="570" text-anchor="start">u_drbg_sampler</text>
-<text class="s" x="230" y="588" text-anchor="start">DRBG random words</text>
-<path class="axi" d="M492,580 L518,580"/>
-<rect class="core" x="210" y="630" width="270" height="75" rx="6"/>
-<text class="bs" x="222" y="650" text-anchor="start">u_kpv</text>
-<text class="s" x="222" y="668" text-anchor="start">Key and Policy Vault,</text>
-<text class="s" x="222" y="684" text-anchor="start">64 slots of 16 words</text>
-<path class="axi" d="M492,668 L518,668"/>
-<path class="sigo" d="M235,350 L235,306"/>
-<text class="s" x="241" y="330" text-anchor="start">km_irq</text>
-<path class="sig" d="M300,344 L300,306"/>
-<text class="s" x="306" y="330" text-anchor="start">control, errors</text>
-<path class="sigo" d="M455,450 L455,398 M455,382 L455,306"/>
-<text class="s" x="449" y="344" text-anchor="end">mbox irq</text>
-<path class="sigo" d="M210,250 L14,250"/>
-<text class="s" x="14" y="244" text-anchor="start">unrecoverable_err_o</text>
-<path class="sigo" d="M10,378 L206,378"/>
-<text class="s" x="14" y="372" text-anchor="start">otp_data_i</text>
-<path class="sigo" d="M210,410 L14,410"/>
-<text class="s" x="14" y="404" text-anchor="start">recoverable_err_o</text>
-<path class="axi" d="M22,480 L198,480"/>
-<text class="s" x="14" y="456" text-anchor="start">mbox_sep_req_i,</text>
-<text class="s" x="14" y="472" text-anchor="start">mbox_sep_resp_o</text>
-<path class="sigo" d="M210,510 L14,510"/>
-<text class="s" x="14" y="504" text-anchor="start">mbox_irq_to_sep_o</text>
-<path class="axi" d="M22,590 L198,590"/>
-<text class="s" x="14" y="566" text-anchor="start">drbg_axis_req_i,</text>
-<text class="s" x="14" y="582" text-anchor="start">drbg_axis_resp_o</text>
-<path class="sigo" d="M10,668 L206,668"/>
-<text class="s" x="14" y="662" text-anchor="start">wipe_state_i</text>
-<rect class="core" x="210" y="726" width="220" height="86" rx="6"/>
-<text class="bs" x="222" y="746" text-anchor="start">u_reset_conditioner</text>
-<text class="s" x="222" y="766" text-anchor="start">cold: AASD synchroniser</text>
-<text class="s" x="222" y="784" text-anchor="start">warm: &gt;= 10-cycle hold</text>
-<path class="sigo" d="M10,740 L206,740"/>
-<text class="s" x="14" y="734" text-anchor="start">cold_rst_ni</text>
-<path class="sigo" d="M10,762 L206,762"/>
-<text class="s" x="14" y="756" text-anchor="start">warm_rst_ni</text>
-<path class="sigo" d="M10,784 L206,784"/>
-<text class="s" x="14" y="778" text-anchor="start">test_en_i</text>
-<path class="sigo" d="M10,806 L206,806"/>
-<text class="s" x="14" y="800" text-anchor="start">scan_rst_ni</text>
-<path class="sigo" d="M430,769 L470,769"/>
-<text class="s" x="478" y="764" text-anchor="start">rst_cold_aasd_n and rst_warm_sync_n</text>
-<text class="s" x="478" y="782" text-anchor="start">to every instance</text>
+<rect class="core" x="305" y="340" width="135" height="90" rx="6"/>
+<text class="bs" x="317" y="360" text-anchor="start">u_kmcsr</text>
+<text class="s" x="317" y="378" text-anchor="start">control and</text>
+<text class="s" x="317" y="394" text-anchor="start">status, IRQ</text>
+<text class="s" x="317" y="410" text-anchor="start">aggregation</text>
+<path class="axi" d="M452,400 L518,400"/>
+<rect class="core" x="300" y="470" width="140" height="80" rx="6"/>
+<text class="bs" x="312" y="490" text-anchor="start">u_kpv</text>
+<text class="s" x="312" y="508" text-anchor="start">Key and Policy</text>
+<text class="s" x="312" y="524" text-anchor="start">Vault, 64 slots</text>
+<text class="s" x="312" y="540" text-anchor="start">of 16 words</text>
+<path class="axi" d="M452,520 L518,520"/>
+<rect class="core" x="210" y="700" width="270" height="75" rx="6"/>
+<text class="bs" x="230" y="720" text-anchor="start">u_mailbox</text>
+<text class="s" x="230" y="738" text-anchor="start">two FIFOs of</text>
+<text class="s" x="230" y="754" text-anchor="start">MAILBOX_DEPTH words</text>
+<path class="axi" d="M492,750 L518,750"/>
+<rect class="core" x="210" y="795" width="270" height="60" rx="6"/>
+<text class="bs" x="230" y="815" text-anchor="start">u_drbg_sampler</text>
+<text class="s" x="230" y="833" text-anchor="start">DRBG random words</text>
+<path class="axi" d="M492,825 L518,825"/>
+<path class="sigo" d="M320,340 L320,306"/>
+<text class="s" x="314" y="328" text-anchor="end">km_irq</text>
+<path class="sig" d="M345,334 L345,306"/>
+<text class="s" x="351" y="328" text-anchor="start">control, errors</text>
+<path class="sigo" d="M470,700 L470,528 M470,512 L470,408 M470,392 L470,306"/>
+<text class="s" x="464" y="464" text-anchor="end">mbox irq</text>
+<rect class="fabric" x="200" y="352" width="90" height="50" rx="6"/>
+<text class="s" x="245" y="373" text-anchor="middle">OR, then</text>
+<text class="s" x="245" y="390" text-anchor="middle">rising edge</text>
+<path class="sigo" d="M235,300 L235,346"/>
+<text class="s" x="241" y="318" text-anchor="start">trap</text>
+<circle cx="235" cy="334" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M235,334 L14,334"/>
+<text class="s" x="14" y="328" text-anchor="start">unrecoverable_err_o</text>
+<path class="sigo" d="M10,380 L196,380"/>
+<text class="s" x="14" y="374" text-anchor="start">wipe_state_i</text>
+<path class="sigo" d="M290,366 L301,366"/>
+<path class="sigo" d="M255,402 L255,406 M255,418 L255,430 M255,442 L255,510 L296,510"/>
+<path class="sigo" d="M10,412 L301,412"/>
+<text class="s" x="14" y="406" text-anchor="start">otp_data_i</text>
+<path class="sigo" d="M305,436 L14,436"/>
+<text class="s" x="14" y="430" text-anchor="start">recoverable_err_o</text>
+<rect class="core" x="210" y="580" width="185" height="100" rx="6"/>
+<text class="bs" x="222" y="600" text-anchor="start">u_reset_conditioner</text>
+<text class="s" x="222" y="620" text-anchor="start">cold: AASD synchroniser</text>
+<text class="s" x="222" y="638" text-anchor="start">warm: held for</text>
+<text class="s" x="222" y="656" text-anchor="start">MIN_RESET_CYCLES</text>
+<path class="sigo" d="M10,602 L206,602"/>
+<text class="s" x="14" y="596" text-anchor="start">cold_rst_ni</text>
+<path class="sigo" d="M10,622 L206,622"/>
+<text class="s" x="14" y="616" text-anchor="start">warm_rst_ni</text>
+<path class="sigo" d="M10,642 L206,642"/>
+<text class="s" x="14" y="636" text-anchor="start">test_en_i</text>
+<path class="sigo" d="M10,662 L206,662"/>
+<text class="s" x="14" y="656" text-anchor="start">scan_rst_ni</text>
+<path class="sigo" d="M330,430 L330,455 L261,455 M249,455 L225,455 L225,576"/>
+<text class="s" x="231" y="568" text-anchor="start">soft_rst_n</text>
+<path class="sigo" d="M395,610 L431,610"/>
+<text class="s" x="431" y="635" text-anchor="middle">to every</text>
+<text class="s" x="431" y="651" text-anchor="middle">instance</text>
+<path class="axi" d="M22,730 L198,730"/>
+<text class="s" x="14" y="706" text-anchor="start">mbox_sep_req_i,</text>
+<text class="s" x="14" y="722" text-anchor="start">mbox_sep_resp_o</text>
+<path class="sigo" d="M210,760 L14,760"/>
+<text class="s" x="14" y="754" text-anchor="start">mbox_irq_to_sep_o</text>
+<path class="axi" d="M22,835 L198,835"/>
+<text class="s" x="14" y="811" text-anchor="start">drbg_axis_req_i,</text>
+<text class="s" x="14" y="827" text-anchor="start">drbg_axis_resp_o</text>
 <rect class="external" x="870" y="218" width="160" height="44" rx="6"/>
 <text class="bs" x="950" y="237" text-anchor="middle">Adams Bridge</text>
 <text class="s" x="950" y="254" text-anchor="middle">key CSRs</text>
@@ -197,45 +210,45 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="950" y="584" text-anchor="middle">controller</text>
 <path class="sigo" d="M890,218.0 L890,160 L486,160"/>
 <text class="s" x="640" y="153" text-anchor="start">abr_mlkem_sharedkey_irq_i</text>
-<rect class="core" x="14" y="877" width="40" height="18" rx="4"/>
-<text class="s" x="62" y="891" text-anchor="start">RTL instance</text>
-<rect class="fabric" x="172" y="877" width="40" height="18" rx="4"/>
-<text class="s" x="220" y="891" text-anchor="start">Interconnect or glue logic</text>
-<rect class="external" x="428" y="877" width="40" height="18" rx="4"/>
-<text class="s" x="476" y="891" text-anchor="start">Outside key_manager</text>
-<text class="s" x="663" y="891" text-anchor="start">Manager port</text>
-<text class="s" x="803" y="891" text-anchor="start">Subordinate port</text>
-<path class="axi" d="M18,914 L68,914"/>
-<text class="s" x="78" y="919" text-anchor="start">AXI4-Lite or AXI-Stream</text>
-<path class="sigo" d="M250,914 L300,914"/>
-<text class="s" x="310" y="919" text-anchor="start">Signals</text>
-<path class="sigplain" d="M402,902 L402,909 M402,919 L402,926"/>
-<path class="sigplain" d="M372,914 L432,914"/>
-<text class="s" x="444" y="919" text-anchor="start">Crossing, not connected</text>
+<rect class="core" x="14" y="915" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="929" text-anchor="start">RTL instance</text>
+<rect class="fabric" x="172" y="915" width="40" height="18" rx="4"/>
+<text class="s" x="220" y="929" text-anchor="start">Interconnect or glue logic</text>
+<rect class="external" x="428" y="915" width="40" height="18" rx="4"/>
+<text class="s" x="476" y="929" text-anchor="start">Outside key_manager</text>
+<text class="s" x="663" y="929" text-anchor="start">Manager port</text>
+<text class="s" x="803" y="929" text-anchor="start">Subordinate port</text>
+<path class="axi" d="M18,952 L68,952"/>
+<text class="s" x="78" y="957" text-anchor="start">AXI4-Lite or AXI-Stream</text>
+<path class="sigo" d="M250,952 L300,952"/>
+<text class="s" x="310" y="957" text-anchor="start">Signals</text>
+<path class="sigplain" d="M402,940 L402,947 M402,957 L402,964"/>
+<path class="sigplain" d="M372,952 L432,952"/>
+<text class="s" x="444" y="957" text-anchor="start">Crossing, not connected</text>
 <rect class="pm" x="469.0" y="217.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="480" y="230.5" text-anchor="middle">M</text>
 <rect class="ps" x="519.0" y="217.0" width="22" height="18" rx="4"/>
 <text class="pst" x="530" y="230.5" text-anchor="middle">S</text>
-<rect class="ps" x="409.0" y="381.0" width="22" height="18" rx="4"/>
-<text class="pst" x="420" y="394.5" text-anchor="middle">S</text>
-<rect class="pm" x="519.0" y="381.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="530" y="394.5" text-anchor="middle">M</text>
-<rect class="ps" x="469.0" y="491.0" width="22" height="18" rx="4"/>
-<text class="pst" x="480" y="504.5" text-anchor="middle">S</text>
-<rect class="pm" x="519.0" y="491.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="530" y="504.5" text-anchor="middle">M</text>
-<rect class="ps" x="469.0" y="571.0" width="22" height="18" rx="4"/>
-<text class="pst" x="480" y="584.5" text-anchor="middle">S</text>
-<rect class="pm" x="519.0" y="571.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="530" y="584.5" text-anchor="middle">M</text>
-<rect class="ps" x="469.0" y="659.0" width="22" height="18" rx="4"/>
-<text class="pst" x="480" y="672.5" text-anchor="middle">S</text>
-<rect class="pm" x="519.0" y="659.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="530" y="672.5" text-anchor="middle">M</text>
-<rect class="ps" x="199.0" y="471.0" width="22" height="18" rx="4"/>
-<text class="pst" x="210" y="484.5" text-anchor="middle">S</text>
-<rect class="ps" x="199.0" y="581.0" width="22" height="18" rx="4"/>
-<text class="pst" x="210" y="594.5" text-anchor="middle">S</text>
+<rect class="ps" x="429.0" y="391.0" width="22" height="18" rx="4"/>
+<text class="pst" x="440" y="404.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="391.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="404.5" text-anchor="middle">M</text>
+<rect class="ps" x="429.0" y="511.0" width="22" height="18" rx="4"/>
+<text class="pst" x="440" y="524.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="511.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="524.5" text-anchor="middle">M</text>
+<rect class="ps" x="469.0" y="741.0" width="22" height="18" rx="4"/>
+<text class="pst" x="480" y="754.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="741.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="754.5" text-anchor="middle">M</text>
+<rect class="ps" x="469.0" y="816.0" width="22" height="18" rx="4"/>
+<text class="pst" x="480" y="829.5" text-anchor="middle">S</text>
+<rect class="pm" x="519.0" y="816.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="530" y="829.5" text-anchor="middle">M</text>
+<rect class="ps" x="199.0" y="721.0" width="22" height="18" rx="4"/>
+<text class="pst" x="210" y="734.5" text-anchor="middle">S</text>
+<rect class="ps" x="199.0" y="826.0" width="22" height="18" rx="4"/>
+<text class="pst" x="210" y="839.5" text-anchor="middle">S</text>
 <rect class="pm" x="619.0" y="231.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="630" y="244.5" text-anchor="middle">M</text>
 <rect class="ps" x="859.0" y="231.0" width="22" height="18" rx="4"/>
@@ -260,8 +273,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pmt" x="630" y="574.5" text-anchor="middle">M</text>
 <rect class="ps" x="859.0" y="561.0" width="22" height="18" rx="4"/>
 <text class="pst" x="870" y="574.5" text-anchor="middle">S</text>
-<rect class="pm" x="635.0" y="877.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="646" y="890.5" text-anchor="middle">M</text>
-<rect class="ps" x="775.0" y="877.0" width="22" height="18" rx="4"/>
-<text class="pst" x="786" y="890.5" text-anchor="middle">S</text>
+<rect class="pm" x="635.0" y="915.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="646" y="928.5" text-anchor="middle">M</text>
+<rect class="ps" x="775.0" y="915.0" width="22" height="18" rx="4"/>
+<text class="pst" x="786" y="928.5" text-anchor="middle">S</text>
 </svg>

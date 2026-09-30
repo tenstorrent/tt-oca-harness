@@ -73,8 +73,10 @@ with `OTP_EFUSE_REMAP_BASE[31:12]` before driving `efuse_req_o`.
 
 A rising edge on `wipe_state_i`, or a CPU trap, zeroes the KPV and sets
 `IRQ_STATUS.WIPE_STATE` in KMCSR. The CPU trap also drives
-`unrecoverable_err_o`. `test_en_i` selects the scan reset in
-`u_reset_conditioner` and drives the test inputs of `u_xbar` and `u_mailbox`.
+`unrecoverable_err_o`. `u_kmcsr` drives `soft_rst_n` into
+`u_reset_conditioner` (<<key-manager-reset-diagram>>). `test_en_i` selects the
+scan reset in `u_reset_conditioner` and drives the test inputs of `u_xbar` and
+`u_mailbox`.
 
 == Parameters
 
@@ -396,10 +398,13 @@ of the two shares is the key. The shares are 8 words each, or 12 words for
 OTBN.
 
 The SEP host reaches the engine's own registers on a separate path: the
-crypto interconnect demultiplexes the 64-bit AXI4 host bus, converts it to
-32-bit AXI4-Lite, and passes it through `u_<eng>_host_isolate`, and the wrapper
-bridges it to the engine's TL-UL port. The host path does not reach the key
-registers, and the KM path does not reach the engine's control registers.
+crypto interconnect demultiplexes the 64-bit AXI4 host bus in `u_axi_demux`,
+converts it to 32 bits in `u_<eng>_axi_dw_converter` and to AXI4-Lite in
+`u_<eng>_axi_to_axi_lite`, and passes it through `u_<eng>_host_isolate`, and the
+wrapper bridges it to the engine's TL-UL port. `isolate_req_i` from
+`sep_reset_ctrl` drives both isolation stages. The host path does not reach
+the key registers, and the KM path does not reach the engine's control
+registers.
 Adams Bridge follows the same pattern through `u_abr_key_isolate` and
 `abr_wrapper_key_reg`, where `sep_abr_kv_shim` turns the registers into
 Adams Bridge key-vault reads (see <<adams-bridge-key-sideload>>).
