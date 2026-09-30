@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1000" viewBox="0 0 1040 1000" role="img" aria-labelledby="title desc">
 <title id="title">SEP top-level microarchitecture</title>
-<desc id="desc">Block diagram of the SEP. Inside the SEP boundary the local AXI4 crossbar, sep_local_axi_xbar, has five managers and ten subordinates with 64-bit data and 32-bit addresses. Above it sit the VeeR EL2 CPU (sep_cpu), whose IFU, LSU and debug managers reach the crossbar and whose ICCM and DCCM subordinate port takes DMA accesses; the SRAM memory interface; the secure DMA with a manager and a register port; the quad SPI host; and the watchdog. The CPU IFU and LSU also reach the boot ROM through a dedicated AXI mux outside the crossbar. Below the crossbar sit the system peripherals (address remap, outbound and inbound filters, eight mailbox pairs, CPU control CSRs, cold and warm scratch CSRs and the reference counter), which carry the SMN outbound and inbound ports and the port to the SMC and feed inbound SMN traffic back into the crossbar as its fifth manager; the reset controller; the entropy pool FIFO, filled from the crypto subsystem EDN; and the eFuse shim demux, which sends the eFuse shim CSR window to the crypto subsystem and the rest of the external aperture to the AXI4 extension port. The crypto subsystem (sep_crypto) holds OTBN, AES, HMAC, KMAC, the optional Adams Bridge, the Key Manager, the TRNG, the life cycle controller and the eFuse controller. It exports the life cycle state and debug disables, accepts OTP debug AXI-Lite accesses from the DTP, and connects to external memory macros: OTBN IMEM and DMEM, Key Manager ROM and SRAM, the Adams Bridge SRAMs, the eFuse bank and an optional external TRNG. The boot ROM, ICCM, DCCM and SEP SRAM macros are also outside the SEP. JTAG enters the CPU debug TAP.</desc>
+<desc id="desc">Block diagram of the SEP. Inside the SEP boundary the local AXI4 crossbar, sep_local_axi_xbar, has five managers and ten subordinates with 64-bit data and 32-bit addresses. Above it sit the VeeR EL2 CPU (sep_cpu), whose IFU, LSU and debug managers reach the crossbar and whose ICCM and DCCM subordinate port takes DMA accesses; the SRAM memory interface; the secure DMA with a manager and a register port; the quad SPI host; and the watchdog. The CPU IFU and LSU also reach the boot ROM through a dedicated AXI mux outside the crossbar. Below the crossbar sit the system peripherals (address remap, outbound and inbound filters, eight mailbox pairs, CPU control CSRs, cold and warm scratch CSRs and the reference counter), which carry the SMN outbound and inbound ports and the port to the SMC and feed inbound SMN traffic back into the crossbar as its fifth manager; the reset controller; the entropy pool FIFO, filled from the crypto subsystem EDN; and the eFuse shim demux, which sends the eFuse shim CSR window to the crypto subsystem and the rest of the external aperture to the AXI4 extension port. The crypto subsystem (sep_crypto) holds OTBN, AES, HMAC, KMAC, the optional Adams Bridge, the Key Manager, the TRNG, the life cycle controller and the eFuse controller. It exports the life cycle state and debug disables, has an AXI4-Lite subordinate port for OTP debug accesses, which the eFuse wrapper answers with DECERR in restricted life cycle states, and connects to external memory macros: OTBN IMEM and DMEM, Key Manager ROM and SRAM, the Adams Bridge SRAMs (nine macros, or 13 with ABR_MASKING_EN set), the eFuse bank and an optional external TRNG. The boot ROM, ICCM, DCCM and SEP SRAM macros are also outside the SEP. JTAG enters the CPU debug TAP.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -200,8 +200,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigo" d="M873,672 L1030,672"/>
 <text class="s" x="960" y="644" text-anchor="middle">Life cycle state,</text>
 <text class="s" x="960" y="660" text-anchor="middle">debug disables</text>
-<path class="sigo" d="M1030,712 L873,712"/>
-<text class="s" x="960" y="702" text-anchor="middle">OTP debug (DTP)</text>
+<path class="axi" d="M1030,712 L883,712"/>
+<text class="s" x="960" y="700" text-anchor="middle">OTP debug (AXI4-Lite)</text>
 <rect class="external" x="296" y="860" width="80" height="58" rx="6"/>
 <text class="s" x="336" y="879" text-anchor="middle">OTBN</text>
 <text class="s" x="336" y="894" text-anchor="middle">IMEM</text>
@@ -221,8 +221,9 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="600" y="902" text-anchor="middle">32 KiB</text>
 <path class="sig" d="M600,803 L600,857"/>
 <rect class="external opt" x="648" y="860" width="80" height="58" rx="6"/>
-<text class="s" x="688" y="886" text-anchor="middle">ABR SRAM</text>
-<text class="s" x="688" y="902" text-anchor="middle">13 macros</text>
+<text class="s" x="688" y="879" text-anchor="middle">ABR SRAM</text>
+<text class="s" x="688" y="894" text-anchor="middle">9 or 13</text>
+<text class="s" x="688" y="909" text-anchor="middle">macros</text>
 <path class="sig" d="M688,803 L688,857"/>
 <rect class="external" x="736" y="860" width="80" height="58" rx="6"/>
 <text class="s" x="776" y="886" text-anchor="middle">eFuse</text>
@@ -240,11 +241,11 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <rect class="external" x="700" y="941" width="40" height="18" rx="4"/>
 <text class="s" x="748" y="955" text-anchor="start">Macro or IP outside the SEP</text>
 <path class="axi" d="M17,976 L51,976"/>
-<text class="s" x="62" y="981" text-anchor="start">AXI4</text>
-<path class="jtagb" d="M113,976 L147,976"/>
-<text class="s" x="158" y="981" text-anchor="start">JTAG</text>
-<path class="sig" d="M208,976 L242,976"/>
-<text class="s" x="253" y="981" text-anchor="start">Signals and memory ports</text>
+<text class="s" x="62" y="981" text-anchor="start">AXI4 or AXI4-Lite</text>
+<path class="jtagb" d="M193,976 L227,976"/>
+<text class="s" x="238" y="981" text-anchor="start">JTAG</text>
+<path class="sig" d="M288,976 L322,976"/>
+<text class="s" x="333" y="981" text-anchor="start">Signals and memory ports</text>
 <rect class="ps" x="109.0" y="149.0" width="22" height="18" rx="4"/>
 <text class="pst" x="120" y="162.5" text-anchor="middle">S</text>
 <rect class="pm" x="109.0" y="201.0" width="22" height="18" rx="4"/>
@@ -327,6 +328,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pmt" x="610" y="444.5" text-anchor="middle">M</text>
 <rect class="ps" x="599.0" y="621.0" width="22" height="18" rx="4"/>
 <text class="pst" x="610" y="634.5" text-anchor="middle">S</text>
+<rect class="ps" x="859.0" y="703.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="716.5" text-anchor="middle">S</text>
 <rect class="pm" x="14.0" y="941.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="25" y="954.5" text-anchor="middle">M</text>
 <rect class="ps" x="138.0" y="941.0" width="22" height="18" rx="4"/>
