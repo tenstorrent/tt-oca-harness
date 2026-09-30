@@ -56,7 +56,7 @@ OCAH_REG_NO_RTL_BLOCKS += $(OCAH_REG_NO_RTL_BLOCKS_EXTRA)
 #
 # Composite sub-blocks are named (they are not blocks in their own right); leaves
 # are listed by block id, because a name is not unique -- efuse_shim_ctrl is both
-# the open DV placeholder and the Samsung shim that shadows it, and only the
+# the open DV placeholder and the foundry shim that shadows it, and only the
 # latter gets a RAL.
 #
 # aes/hmac/kmac/otbn/aon_timer/secure_dma, spi_controller and efuse_mmr are RAL
@@ -147,7 +147,7 @@ ocah_reg_ral_blocks = $(filter $(OCAH_REG_RAL_SUB_BLOCKS),$(call ocah_reg_ch_blo
 # They are separate because the two reasons to override are unrelated: a wrapper
 # RDL whose model is known by a shorter name than its top addrmap (axil_mailbox),
 # versus a vendor block that must stay distinguishable from the open block it
-# shadows (the Samsung eFuse shim, whose addrmap is deliberately named
+# shadows (the foundry eFuse shim, whose addrmap is deliberately named
 # efuse_shim_ctrl so the canonical top instantiates it unchanged).
 OCAH_REG_RAL_MODEL_hw_ip_axi_lite_mailbox_unit_regs_axil_mailbox_sep_wrap ?= axil_mailbox
 
