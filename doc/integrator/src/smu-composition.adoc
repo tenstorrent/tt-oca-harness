@@ -823,6 +823,7 @@ the SEP-to-SMC dedicated AXI connection.
 
 |`skip_mem_repair_o` |output |1 |SMU external port
 |`ext_boot_seq_done_i` |input |1 |SMU external port
+|`ext_boot_seq_done_qual_o` |output |1 |Internal: drives SEP `ext_boot_seq_done_i` when `SEP=1`
 |===
 
 [[smu-lc-state]]
