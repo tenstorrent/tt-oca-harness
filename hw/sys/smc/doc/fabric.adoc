@@ -355,18 +355,23 @@ Their places in the fabric are in <<smc-input-fabric-diagram>> and
 
 [[smc-traffic-filter-diagram]]
 .SMC inbound and outbound traffic-filter mechanism
-image::smc-traffic-filters.svg[alt="Traffic filter decode: per-entry match conditions and permission bit, then the lowest-hit priority encoder, block decision and demux to the filtered output or a DECERR responder",width=100%,pdfwidth=100%]
+image::smc-traffic-filters.svg[alt="Traffic filter decode: per-entry match conditions and permission bit, then the lowest-hit priority encoder, the pass-select and block muxes, and the demux to the filtered output or a DECERR responder",width=100%,pdfwidth=100%]
 
-The upper part of <<smc-traffic-filter-diagram>> is one `traffic_filter`,
-instantiated for every entry on each of the AW and AR channels. The entry hits
-when all five conditions on the left hold; its permission bit, gated with the
-channel's valid, is evaluated separately. The lower part is one channel of
-`axi_filter_wrap`. A priority encoder picks the lowest-numbered entry that hits,
-and the block decision uses that entry's permission bit, or `BlockByDefault`
-when no entry hits. `filter_skip_i` would disable blocking but is tied low in
-both SMC instances. Group ID matching is not built into either instance. The
-decision steers the transaction through a demux either to the filtered output
-or to an error responder that returns DECERR.
+The figure draws primitive logic with gate symbols and keeps labelled boxes
+for comparisons and larger blocks. The upper part of
+<<smc-traffic-filter-diagram>> is one `traffic_filter`, instantiated for every
+entry on each of the AW and AR channels. The entry hits when all five
+conditions on the left hold, which the AND gate with the extended input bar
+combines; the source ID and burst conditions are each an OR of two terms. Its
+permission bit, ANDed with the channel's valid, is evaluated separately. The
+lower part is one channel of `axi_filter_wrap`. A priority encoder picks the
+lowest-numbered entry that hits, a 16:1 mux selects that entry's permission
+bit, and the inverted bit requests a block. When no entry hits, the next mux
+takes `BlockByDefault` instead. The last mux forces the block bit to 0 when
+`filter_skip_i` is set; `filter_skip_i` is tied low in both SMC instances.
+Group ID matching is not built into either instance. The block bit steers the
+transaction through a demux either to the filtered output or to an error
+responder that returns DECERR.
 
 Inbound filtering protects SMC resources from unauthorized external
 access by evaluating three dimensions of each transaction:

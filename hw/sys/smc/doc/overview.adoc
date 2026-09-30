@@ -85,8 +85,10 @@ the peripheral port. Its internal AXI-Lite crossbar splits the internal CSRs
 into eight blocks in `smc_internal_regs`: base configuration, the alias,
 M-mode and Xvisor remaps, the inbound and outbound filters, the mailboxes
 and the DFX CSRs. `smc_base` also builds the CPU interrupt vector from the
-external, peripheral, mailbox and internal sources, and its three AXI hang
-detectors watch the system inbound, SEP inbound and data accelerator ports.
+external, peripheral, mailbox and internal sources. Its three AXI hang
+detectors, marked HD on the links they watch, observe the system inbound,
+SEP inbound and data accelerator AXI links without sitting in the data
+path; their combined interrupt reaches the PLIC through `smc_peripherals`.
 
 The peripheral crossbar, `smc_periph_axi_lite_xbar`, has twelve targets.
 Ten of them are inside `smc_peripherals`. The UART, I2C, I3C and AVSBus
