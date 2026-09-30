@@ -174,19 +174,34 @@ addrmap key_manager {
 
 `ifdef OCAH_DOC_MEMORY_MAP
     ocah_aperture_size = 0x1D000;
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::DECERR, rdata: 0xBADCAB1E, bresp: ocah_resp_e::DECERR};
     mailbox_km->ocah_aperture_size = 0x20;
+    mailbox_km->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     otp_efuse_map->desc = "SEP eFuse shadow-register pass-through.";
+    otp_efuse_map->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     otp_efuse_ctrl->ocah_aperture_size = 0x100;
     otp_efuse_ctrl->desc = "SEP eFuse command and status pass-through.";
+    otp_efuse_ctrl->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_ctrl->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
     otp_efuse_mmr->ocah_aperture_size = 0x100;
     otp_efuse_mmr->desc = "SEP eFuse security-token pass-through.";
+    otp_efuse_mmr->ocah_hole_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_mmr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::FORWARD, rdata: 0x0, bresp: ocah_resp_e::FORWARD};
+    otp_efuse_mmr->ocah_following_gap_note = "The OTP/eFuse pass-through forwards this range to SEP, so an access here is answered there rather than with DECERR.";
     kpv->ocah_aperture_size = 0x2000;
+    kpv->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     kmcsr->ocah_aperture_size = 0x800;
+    kmcsr->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     otbn_wrapper_key->ocah_aperture_size = 0x80;
+    otbn_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     aes_wrapper_key->ocah_aperture_size = 0x80;
+    aes_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     kmac_wrapper_key->ocah_aperture_size = 0x80;
+    kmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     hmac_wrapper_key->ocah_aperture_size = 0x80;
+    hmac_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
     abr_wrapper_key->ocah_aperture_size = 0x800;
+    abr_wrapper_key->ocah_past_extent_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
 `endif
 
     //=========================================================================

@@ -69,8 +69,8 @@ localparam     int unsigned REMAP_REGION_REGION_END_END_ADDR_SHIFT              
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_OFFSET_MASK                                                 = 64'hFFFFFFFFFFF000;
 localparam     int unsigned REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT                                                = 12;
 
-localparam longint unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK                                              = 64'h4000000000000000;
-localparam     int unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT                                             = 62;
+localparam longint unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_MASK                                              = 64'hF00000000000000;
+localparam     int unsigned REMAP_REGION_REGION_ATTRS_CACHEABLE_SHIFT                                             = 56;
 
 localparam longint unsigned REMAP_REGION_REGION_ATTRS_VALID_MASK                                                  = 64'h8000000000000000;
 localparam     int unsigned REMAP_REGION_REGION_ATTRS_VALID_SHIFT                                                 = 63;
@@ -95,8 +95,8 @@ typedef struct packed {
 
 typedef struct packed {
     logic [0:0]   valid ;
-    logic [0:0]   cacheable ;
-    logic [5:0]   rsvd_1 ;
+    logic [2:0]   rsvd_1 ;
+    logic [3:0]   cacheable ;
     logic [43:0]   offset ;
     logic [11:0]   rsvd_0 ;
 } remap_region_region_attrs_reg_t;

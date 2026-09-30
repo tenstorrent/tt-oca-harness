@@ -12,14 +12,6 @@ https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES] design.
 Key sizes: 128, 192 and 256
 Modes: ECB, CBC, CFB, OFB, CTR, CTR-GCM
 
-The accelerator consumes 128-bit data blocks written into its CSR memory
-space and produces 128-bit output blocks _round_ number of cycles. The
-_round_ value depends on the key size used.
-
-* 128 bit key: 10 rounds
-* 192 bit key: 12 rounds
-* 256 bit key: 14 rounds
-
 [[sep-aes-reference-diagram]]
 .OpenTitan AES core reference architecture
 image::opentitan_aes.svg[alt="OpenTitan AES core reference architecture",width=100%,pdfwidth=100%]

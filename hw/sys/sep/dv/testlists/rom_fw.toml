@@ -287,6 +287,39 @@ args = [
 ]
 
 [[tests]]
+# SBOOT_DIS reserved bits are a fuse-integrity fault, not a second chicken bit.
+#
+# The companion to the entry above, on the other half of the same register:
+# there the chicken bit is blown and must be honoured, here a RESERVED bit is
+# set and must not be mistaken for it. rsvd[31:1] is hw=rw in the RDL, so a real
+# part can present a non-zero word without disable_secure_boot being blown, and
+# [S18] stops on it (SEP-ROM-SB-041).
+#
+# +sep_efuse_preload carries an explicit path for the same reason as the entry
+# above: a bare plusarg resolves to the committed default, which is TEST_DEV with
+# an all-zero SBOOT_DIS and would make this vacuous.
+#
+# Neither +sep_boot_from_spi nor +esrc_noise_force: [S18] precedes boot-mode
+# selection and SPI bring-up ([S21]) and entropy is brought up lazily by the
+# first crypto callback, so no transport is chosen and no EDN handshake is owed.
+# If this test ever needs either plusarg, the fault has stopped being terminal.
+#
+# Budget matches sep_firmware_mbist_fail_test: this run halts before any RSA
+# work, and the ROM self-hash at [S17] is the expensive part in front of it.
+name = "sep_firmware_sboot_dis_rsvd_terminal_test"
+module = "rom_fw.sep_firmware_sboot_dis_rsvd_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "efuse", "secure", "lifecycle", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis_rsvd.toml",
+]
+
+[[tests]]
 # Enforced secure boot under PROD.
 # The full RSA-3072 chain runs on OTBN, which parks in UrndRefresh until EDN
 # grants entropy. The ROM brings that chain up itself, so this needs only

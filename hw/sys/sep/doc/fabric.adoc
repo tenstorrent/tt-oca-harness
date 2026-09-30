@@ -229,7 +229,7 @@ remapper. Remappers define the following attributes:
 
 * Input address range
 * Remapped output address offset
-* Cacheable flag
+* AxCACHE value, which replaces the transaction's own on a hit
 
 The programmable remap regions accomplish several jobs. First, they
 expand local 32-bit addresses to the global 56-bit address space.

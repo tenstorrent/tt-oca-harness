@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+`ifndef ERROR_DEVICE_RDL
+`define ERROR_DEVICE_RDL
+
+mem error_device #(
+    longint unsigned NUM_ENTRIES = 1024,
+    longint unsigned WIDTH       = 32
+) {
+    desc = "Error responder. Every read or write in this region completes with a bus error; no storage is present.";
+
+    mementries = NUM_ENTRIES;
+    memwidth   = WIDTH;
+
+    reg mem_word {
+        regwidth = 32;
+        field {
+           sw=rw;
+           hw=rw;
+        } data[WIDTH-1:0];
+    };
+
+    mem_word mem_array[NUM_ENTRIES];
+
+};
+
+`endif

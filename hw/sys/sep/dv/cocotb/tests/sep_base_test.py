@@ -313,6 +313,17 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "jtag_kmac_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_trng_rst_hold_i", 0)
         self._set_if_exists(dut, "jtag_abr_rst_hold_i", 0)
+        self._set_if_exists(dut, "jtag_sep_reset_n_ovrd_i", 0)
+        self._set_if_exists(dut, "jtag_sep_reset_n_val_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_tdr_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_tck_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_select_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_capture_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_shift_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_update_en_i", 0)
+        self._set_if_exists(dut, "jtag_ic_reset_rst_n_i", 1)
+        self._set_if_exists(dut, "jtag_ic_reset_trst_n_i", 1)
+        self._set_if_exists(dut, "jtag_ic_reset_tdi_i", 0)
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
@@ -866,6 +877,34 @@ class sep_base_test(uvm_test):
         new = sb.errors[errs:]
         assert not new, f"{chk} FAIL: scoreboard rejected {len(new)} read(s): " + "; ".join(new)
         assert sb.value_checks > judged, f"{chk} FAIL: the scoreboard judged no read value"
+
+    def watch_sys_csr_lite(self, *, write: bool) -> tuple[object, list[int]]:
+        """Record system-CSR AXI-Lite handshakes until the caller kills the task.
+
+        Returns ``(task, addrs)``. ``addrs`` is appended in place while the
+        task runs, one entry per AW (``write``) or AR handshake at the
+        ``sys_csr_axil_*`` observation ports. Lite has no AxLEN; each handshake
+        is one converted single.
+        """
+        dut = cocotb.top
+        addrs: list[int] = []
+
+        async def _mon() -> None:
+            while True:
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if write:
+                    valid = dut.sys_csr_axil_awvalid_o
+                    ready = dut.sys_csr_axil_awready_o
+                    addr = dut.sys_csr_axil_awaddr_o
+                else:
+                    valid = dut.sys_csr_axil_arvalid_o
+                    ready = dut.sys_csr_axil_arready_o
+                    addr = dut.sys_csr_axil_araddr_o
+                if self.rd_known(valid) and self.rd_known(ready):
+                    addrs.append(self.rd_known(addr) & 0xFFFF_FFFF)
+
+        return cocotb.start_soon(_mon()), addrs
 
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
