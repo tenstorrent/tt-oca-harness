@@ -313,7 +313,10 @@ defines them and their codes. The KM CPU does not see these responses: an error 
 <div class="paragraph">
 <p>The OTP/eFuse window is the exception: hardware preserves its lower 12 address
 bits and replaces the upper bits with the integration parameter
-<code>OTP_EFUSE_REMAP_BASE</code> before forwarding the transaction to SEP.</p>
+<code>OTP_EFUSE_REMAP_BASE</code> before forwarding the transaction to SEP. Only the
+MAP, CTRL and MMR register maps are forwarded. The Key Manager answers any
+other offset in the window with SLVERR, so the KM CPU cannot reach the eFuse
+shim control registers.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Key Manager CPU Memory Map</caption>
@@ -408,7 +411,7 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Interface Control Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse command and status pass-through.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xBADCAB1E / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00011500</p></td>
@@ -418,7 +421,7 @@ bits and replaces the upper bits with the integration parameter
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse Token Registers Address Map</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP eFuse security-token pass-through.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Forwarded</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SLVERR, 0xBADCAB1E / SLVERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00011600</p></td>
@@ -585,7 +588,7 @@ bits and replaces the upper bits with the integration parameter
 <div class="paragraph">
 <div class="title">Notes</div>
 <p><a id="km-cpu-note-1"></a><sup>[1]</sup> A write completes without an error response, is dropped, and sets IRQ_STATUS.ROM_WRITE_ERR.<br>
-<a id="km-cpu-note-2"></a><sup>[2]</sup> The OTP/eFuse pass-through forwards this range to SEP, so an access here is answered there rather than with DECERR.</p>
+<a id="km-cpu-note-2"></a><sup>[2]</sup> This range is inside the OTP/eFuse window, which answers every offset outside its register maps with SLVERR and read data 0xBADCAB1E rather than DECERR.</p>
 </div>
 </div>
 <div class="sect2">

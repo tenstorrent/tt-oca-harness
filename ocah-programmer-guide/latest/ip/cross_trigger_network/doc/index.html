@@ -1135,15 +1135,14 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 instances</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">16 B</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration and status registers for the cross trigger port</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#cross-trigger-network-note-2">[2]</a></sup></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY<sup><a href="#cross-trigger-network-note-2">[2]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
 <div class="title">Notes</div>
-<p><a id="cross-trigger-network-note-1"></a><sup>[1]</sup> 0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY, except byte address 0x1FF, which answers DECERR, 0xBADCAB1E / DECERR.<br>
-<a id="cross-trigger-network-note-2"></a><sup>[2]</sup> The last byte of each port&#8217;s 16-byte window answers DECERR, 0xBADCAB1E / DECERR.</p>
+<p><a id="cross-trigger-network-note-1"></a><sup>[1]</sup> 0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY.</p>
 </div>
 <div class="paragraph">
 <p>The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
@@ -1222,10 +1221,10 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1329,10 +1328,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1354,10 +1353,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1379,10 +1378,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1404,10 +1403,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1429,10 +1428,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1454,10 +1453,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1479,10 +1478,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1504,10 +1503,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1529,10 +1528,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1554,10 +1553,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1579,10 +1578,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1604,10 +1603,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1629,10 +1628,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1654,10 +1653,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1679,10 +1678,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>
@@ -1704,10 +1703,10 @@ composition. The individual block maps above give offsets within each block.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:8</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value.</td></tr>
+<tr><td>7</td><td>ACK_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>6</td><td>REQ_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Req_in signal value.</td></tr>
 <tr><td>5</td><td>ACK_IN</td><td>R</td><td>0x0</td><td>Readout of the current synchronized CT_Ack_in signal value.</td></tr>
-<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value.</td></tr>
+<tr><td>4</td><td>REQ_OUT</td><td>R</td><td>0x0</td><td>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates whether a pulse assertion or handshake is currently in progress. 0 - Pulse or handshake is not in progress, 1 - Pulse or handshake is currently in progress</td></tr>
 </table>

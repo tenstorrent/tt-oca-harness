@@ -634,7 +634,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">km_axi_lite_xbar</h1>
-<p>Route Key Manager CPU AXI4-Lite transactions by address to the ten KM peripheral ports.</p><p>Address rules use the Key Manager interface constants defined in km_intf_pkg. Routes to KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode. OTP addresses leave this block unchanged; key_manager remaps addr[31:12] before driving efuse_req_o. An address outside every rule is answered with DECERR by the xbar. The channel type parameters must match the req/resp types.</p>
+<p>Route Key Manager CPU AXI4-Lite transactions by address to the ten KM peripheral ports.</p><p>Address rules use the Key Manager interface constants defined in km_intf_pkg. Routes to KPV, KMCSR, DRBG sampler, mailbox, OTBN, AES, KMAC, HMAC, Adams Bridge, and the OTP/eFuse pass-through at index 8. Uses the PULP axi_lite_xbar in zero-latency mode. OTP addresses leave this block unchanged; key_manager filters them to the eFuse register maps and remaps them before driving efuse_req_o. An address outside every rule is answered with DECERR by the xbar. The channel type parameters must match the req/resp types.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
@@ -662,7 +662,7 @@
 <tr><td><code>hmac_resp_i</code></td><td>input</td><td><code>axil_resp_t</code></td><td>Master port response from HMAC.</td></tr>
 <tr><td><code>abr_req_o</code></td><td>output</td><td><code>axil_req_t</code></td><td>External crypto engine master port request to Adams Bridge.</td></tr>
 <tr><td><code>abr_resp_i</code></td><td>input</td><td><code>axil_resp_t</code></td><td>Master port response from Adams Bridge.</td></tr>
-<tr><td><code>otp_req_o</code></td><td>output</td><td><code>axil_req_t</code></td><td>OTP/eFuse pass-through port request (index 8, OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded unchanged; key_manager.sv applies the OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.</td></tr>
+<tr><td><code>otp_req_o</code></td><td>output</td><td><code>axil_req_t</code></td><td>OTP/eFuse pass-through port request (index 8, OTP_BASE_ADDR-OTP_END_ADDR). Addresses are forwarded unchanged; key_manager.sv refuses offsets outside the eFuse register maps and applies the OTP_EFUSE_REMAP_BASE remap before driving efuse_req_o.</td></tr>
 <tr><td><code>otp_resp_i</code></td><td>input</td><td><code>axil_resp_t</code></td><td>OTP/eFuse pass-through port response.</td></tr>
 </table>
 </div>
