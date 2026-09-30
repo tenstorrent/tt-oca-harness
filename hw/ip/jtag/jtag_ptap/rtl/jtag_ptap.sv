@@ -15,8 +15,10 @@
 // Per-bridge security_disable inputs are active-high (1 disables the bridge),
 // synchronized to TCK upstream.
 //
-// The STAP scan interface carries both IR and DR scans. While the 3DCR STAP-select bit is set,
-// TDO comes from stap_host_scan_in_i instead of the IR or selected TDR. TDO is retimed on the
+// The STAP scan interface carries both IR and DR scans while the 3DCR STAP-select bit is set, and
+// TDO then comes from stap_host_scan_in_i instead of the IR or selected TDR. While the bit is
+// clear, the select, capture, shift and update strobes of the STAP scan interface stay low, so
+// the STAP chain holds its state through every scan. TDO is retimed on the
 // falling TCK edge, except during a ZERO_LENGTH_BYPASS DR shift, where TDI reaches TDO
 // combinationally.
 //
@@ -137,7 +139,9 @@ module jtag_ptap
     output logic             ijtag_host_scan_out_o,  // Client TDI forwarded to the iJTAG network.
 
     output jtag_scan_ctrl_t  stap_host_scan_ctrl_o,  // DR scan control with select, capture, shift
-                                                     // and update ORed with the IR scan control.
+                                                     // and update ORed with the IR scan control,
+                                                     // and held low while the 3DCR STAP-select
+                                                     // bit is clear.
     input  logic             stap_host_scan_in_i,  // STAP chain return; drives TDO while the 3DCR
                                                    // STAP-select bit is set.
     output logic             stap_host_scan_out_o,  // IR or selected TDR output, or TDI under
@@ -1317,13 +1321,17 @@ module jtag_ptap
     // STAP Clock/Control Outputs (IEEE 1838 Section 5.4)
     //--------------------------------------------------------------------------
 
-    // STAP scan control signals (OR of IR and DR controls)
+    // STAP scan control signals (OR of IR and DR controls, gated by the 3DCR STAP-select bit)
     always_comb begin
         stap_host_scan_ctrl_o = dr_scan_ctrl;
-        stap_host_scan_ctrl_o.select     = dr_scan_ctrl.select     | ir_scan_ctrl.select;
-        stap_host_scan_ctrl_o.capture_en = dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en;
-        stap_host_scan_ctrl_o.shift_en   = dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en;
-        stap_host_scan_ctrl_o.update_en  = dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en;
+        stap_host_scan_ctrl_o.select     = stap_select &&
+                                           (dr_scan_ctrl.select     | ir_scan_ctrl.select);
+        stap_host_scan_ctrl_o.capture_en = stap_select &&
+                                           (dr_scan_ctrl.capture_en | ir_scan_ctrl.capture_en);
+        stap_host_scan_ctrl_o.shift_en   = stap_select &&
+                                           (dr_scan_ctrl.shift_en   | ir_scan_ctrl.shift_en);
+        stap_host_scan_ctrl_o.update_en  = stap_select &&
+                                           (dr_scan_ctrl.update_en  | ir_scan_ctrl.update_en);
     end
 
     // STAP scan data output (from zero-length bypass TDR multiplexer to STAP chain)
