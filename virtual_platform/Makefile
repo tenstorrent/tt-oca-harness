@@ -109,7 +109,7 @@ WHISPER_REV_SOURCE = $(SIM_DIR)/.github/workflows/ci-rhel8.yml
 WHISPER_REV     ?= $(shell sed -n 's/^[[:space:]]*WHISPER_REV:[[:space:]]*"\{0,1\}\([0-9a-f]\{7,\}\)"\{0,1\}.*/\1/p' $(WHISPER_REV_SOURCE) 2>/dev/null)
 NPROC           ?= $(shell nproc)
 # SW_TEST: used by the optional `smoke` target
-SW_TEST         ?= sep-gpio-test
+SW_TEST         ?= otbn-dv-test
 # RISCV_TOOLCHAIN: optional RISC-V cross-toolchain prefix; its bin/ is
 # prepended to PATH for the firmware builds when set. Leave unset when
 # riscv64-unknown-elf-gcc is already on PATH — ROM/DV builds fall back to the
@@ -964,7 +964,7 @@ check-tt-oca-harness-model:
 ## @section SEP firmware test harness
 
 ## Build and run one sw/sep-vp-tests test in sep-vp; skips if it cannot.
-## @param SW_TEST=sep-gpio-test Which test to build and run
+## @param SW_TEST=otbn-dv-test Which test to build and run
 smoke: vp
 	@echo "[VP] Smoke: build + run sw/sep-vp-tests/$(SW_TEST) in sep-vp"
 	TESTDIR="$(SIM_DIR)/sw/sep-vp-tests/$(SW_TEST)"
@@ -982,7 +982,7 @@ smoke: vp
 	fi
 	echo "[VP] Building test firmware ($(SW_TEST))..."
 	$(MAKE) -C "$$TESTDIR"
-	# The ELF name is the test Makefile's TARGET (e.g. sep-gpio-test -> sep_gpio_test).
+	# The ELF name is the test Makefile's TARGET, which need not match the directory.
 	TARGET=$$(sed -n 's/^[[:space:]]*TARGET[[:space:]]*=[[:space:]]*//p' "$$TESTDIR/Makefile" | head -1)
 	if [ -z "$$TARGET" ] || [ ! -f "$$TESTDIR/$$TARGET" ]; then
 	  echo "[VP] WARNING: could not locate built ELF for $(SW_TEST); skipping run." >&2
