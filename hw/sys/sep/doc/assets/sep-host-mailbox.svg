@@ -153,7 +153,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="478" y="424" text-anchor="start">outbound_interrupt_o[7:0]</text>
 <text class="s" x="828" y="398" text-anchor="start">inbound_interrupt_o[7:0]</text>
 <rect class="external" x="310" y="500" width="320" height="50" rx="6"/>
-<text class="t" x="470" y="521.5" text-anchor="middle">SMC, via the SMU</text>
+<text class="t" x="470" y="521.5" text-anchor="middle">SMC</text>
 <text class="s" x="470" y="538.5" text-anchor="middle">smc_mailbox_interrupt_o to peripheral IRQs 7:0</text>
 <rect class="core" x="670" y="500" width="300" height="50" rx="6"/>
 <text class="t" x="820" y="521.5" text-anchor="middle">SEP CPU PIC</text>

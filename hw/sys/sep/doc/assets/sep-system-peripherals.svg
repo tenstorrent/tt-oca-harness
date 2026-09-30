@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="676" viewBox="0 0 1040 676" role="img" aria-labelledby="title desc">
 <title id="title">SEP system peripherals</title>
-<desc id="desc">Overview of sep_system_peripherals in both directions. Outbound, a local-master request from the SEP local crossbar is widened from 32 to 56 address bits, passes the 16-region alias remap and a register cut, and reaches the route demux. The demux sends the SMC aperture straight to the SMC without filtering; the SMU aperture and addresses at or above 0x1_0000_0000 to the outbound mux; the AP and STEE regions through their 16-region output remaps, which set the source ID to OTHERS, to the same mux; and every other address to the peripheral crossbar. The mux feeds the 32-entry outbound filter, whose output goes to the SMU crossbar. Inbound, a request from the SMU crossbar passes the 16-entry inbound filter and the global-to-local remap into the peripheral crossbar, which serves the 8-mailbox unit and the system CSRs and returns every other address below 0x4000_0000, converted to 32 address bits and a 3-bit ID, to the local crossbar. The mailbox unit raises inbound interrupts to the SEP CPU and outbound interrupts to the SMC; the system CSRs program the remaps, the filters and the apertures.</desc>
+<desc id="desc">Overview of sep_system_peripherals in both directions. Outbound, a local-master request from the SEP local crossbar is widened from 32 to 56 address bits, passes the 16-region alias remap and a register cut, and reaches the route demux. The demux sends the SMC aperture straight to the SMC without filtering; the SMU aperture and addresses at or above 0x1_0000_0000 to the outbound mux; the AP and STEE regions through their 16-region output remaps, which set the source ID to OTHERS, to the same mux; and every other address to the peripheral crossbar. The mux feeds the 32-entry outbound filter, whose output goes to the system interconnect. Inbound, a request from the system interconnect passes the 16-entry inbound filter and the global-to-local remap into the peripheral crossbar, which serves the 8-mailbox unit and the system CSRs and returns every other address below 0x4000_0000, converted to 32 address bits and a 3-bit ID, to the local crossbar. The mailbox unit raises inbound interrupts to the SEP CPU and outbound interrupts to the SMC; the system CSRs program the remaps, the filters and the apertures.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -127,10 +127,10 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="816" y="177.5" text-anchor="middle">Outbound</text>
 <text class="s" x="816" y="192.5" text-anchor="middle">filter, 32</text>
 <path class="axi" d="M868,180.0 L930,180.0"/>
-<text class="t" x="900" y="147" text-anchor="start">to the SMU</text>
-<text class="t" x="900" y="164" text-anchor="start">crossbar</text>
-<text class="t" x="900" y="320" text-anchor="start">from the SMU</text>
-<text class="t" x="900" y="337" text-anchor="start">crossbar</text>
+<text class="t" x="900" y="147" text-anchor="start">to the system</text>
+<text class="t" x="900" y="164" text-anchor="start">interconnect</text>
+<text class="t" x="900" y="320" text-anchor="start">from the system</text>
+<text class="t" x="900" y="337" text-anchor="start">interconnect</text>
 <text class="s" x="900" y="384" text-anchor="start">addr 56, ID 6</text>
 <path class="axi" d="M1026,360 L868,360"/>
 <path class="fabric" d="M767,332 L859,332 L868,341 L868,379 L859,388 L767,388 L758,379 L758,341 Z"/>

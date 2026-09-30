@@ -96,7 +96,7 @@ mark where a path crosses the module boundary.
 .SEP input fabric
 image::sep-input-fabric.svg[alt="Inbound path of sep_system_peripherals: inbound filter, global-to-local remap, peripheral crossbar with mailbox, system CSR and local-fabric legs",width=100%,pdfwidth=100%]
 
-<<sep-input-fabric-diagram>> follows a request from the SMU crossbar through
+<<sep-input-fabric-diagram>> follows a request from the system interconnect through
 `sep_system_peripherals`. The inbound filter checks it first; while SEP-scope
 debug is enabled, `SEP_DBG` bypasses the filter. The global-to-local remap then
 rebases the `SEP_REGION_SIZE` window at `SEP_GLOBAL_BASE_ADDR` to address 0 and
@@ -142,7 +142,7 @@ pass their output remaps, which replace the address with the programmed region
 offset and set the source ID to `OTHERS`, before the same mux; and every other
 address returns to the peripheral crossbar of the input fabric. The outbound mux
 widens the ID from 6 to 8 bits, and the outbound filter, which has no bypass,
-guards the path to the SMU crossbar.
+guards the path to the system interconnect.
 
 [[subsystem-external-interfaces]]
 == Subsystem External Interfaces

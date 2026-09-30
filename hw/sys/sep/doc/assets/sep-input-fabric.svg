@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="846" viewBox="0 0 1040 846" role="img" aria-labelledby="title desc">
 <title id="title">SEP input fabric</title>
-<desc id="desc">Inbound path of sep_system_peripherals. A request from the SMU crossbar on smn_inbound_axi_req_i (56-bit global address, 6-bit ID) passes the inbound traffic filter u_inbound_filter (16 entries, block by default, bypassed while SEP_DBG is set), then u_inbound_global_to_local_addr_remap, which rebases the window of SEP_REGION_SIZE bytes at SEP_GLOBAL_BASE_ADDR to address 0 and passes other addresses unchanged. It enters the 2 by 3 peripheral crossbar u_sep_system_peripherals_xbar_wrapper, whose other initiator is the SEP_LOCAL port of the output fabric's u_axi_demux. The crossbar sends 0x10A0_0000 to 0x10A0_FFFF to the mailbox, 0x10A1_0000 to 0x10A4_FFFF and 0x1080_2000 to 0x1080_20FF to the system CSRs, both through AXI to AXI-Lite converters, and every other address below 0x4000_0000 to smn_inbound_from_xbar; anything else gets DECERR. The mailbox leg passes u_mailbox_addr_fixer (56 to 32 bits) into the 8-mailbox u_sep_axil_mailbox, whose inbound interrupts go to the SEP CPU PIC and outbound interrupts to the SMC. The smn_inbound_from_xbar leg is truncated to 32 address bits and its ID converted from 7 to 3 bits before it leaves on smn_inbound_to_sep_axi_req_o for the ext initiator of the SEP local crossbar. The system CSRs program the filter entries and the SEP aperture used by the remap.</desc>
+<desc id="desc">Inbound path of sep_system_peripherals. A request from the system interconnect on smn_inbound_axi_req_i (56-bit global address, 6-bit ID) passes the inbound traffic filter u_inbound_filter (16 entries, block by default, bypassed while SEP_DBG is set), then u_inbound_global_to_local_addr_remap, which rebases the window of SEP_REGION_SIZE bytes at SEP_GLOBAL_BASE_ADDR to address 0 and passes other addresses unchanged. It enters the 2 by 3 peripheral crossbar u_sep_system_peripherals_xbar_wrapper, whose other initiator is the SEP_LOCAL port of the output fabric's u_axi_demux. The crossbar sends 0x10A0_0000 to 0x10A0_FFFF to the mailbox, 0x10A1_0000 to 0x10A4_FFFF and 0x1080_2000 to 0x1080_20FF to the system CSRs, both through AXI to AXI-Lite converters, and every other address below 0x4000_0000 to smn_inbound_from_xbar; anything else gets DECERR. The mailbox leg passes u_mailbox_addr_fixer (56 to 32 bits) into the 8-mailbox u_sep_axil_mailbox, whose inbound interrupts go to the SEP CPU PIC and outbound interrupts to the SMC. The smn_inbound_from_xbar leg is truncated to 32 address bits and its ID converted from 7 to 3 bits before it leaves on smn_inbound_to_sep_axi_req_o for the ext initiator of the SEP local crossbar. The system CSRs program the filter entries and the SEP aperture used by the remap.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -76,12 +76,16 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
 .axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
 .sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
 </style>
 </defs>
 <rect width="1040" height="846" fill="#ffffff"/>
 <rect class="smu" x="40" y="70" width="960" height="630" rx="6"/>
 <text class="b" x="54" y="688" text-anchor="start">sep_system_peripherals</text>
-<text class="t" x="652" y="26" text-anchor="start">from the SMU crossbar</text>
+<text class="t" x="652" y="26" text-anchor="start">from the system interconnect</text>
 <text class="s" x="652" y="44" text-anchor="start">smn_inbound_axi_req_i, addr 56, ID 6</text>
 <path class="axi" d="M640,14 L640,96"/>
 <path class="fabric" d="M502,96 L778,96 L790,108 L790,154 L778,166 L502,166 L490,154 L490,108 Z"/>
