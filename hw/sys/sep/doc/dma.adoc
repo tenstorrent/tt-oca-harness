@@ -35,6 +35,15 @@ to its AXI fabric as described below.
 [[och-modifications]]
 == OCAH Modifications
 
+<<sep-dma-integration-figure>> shows how `sep_dma_wrap` connects the DMA core
+to the SEP local crossbar. The register path runs left to right along the top
+and the host path right to left along the bottom; green boxes are converters,
+and the dashed ports are tied off.
+
+[[sep-dma-integration-figure]]
+.SEP secure DMA integration
+image::sep-dma.svg[alt="sep_dma_wrap with the secure_dma core, its register-path and host-path converters, the local alias remap and the tied-off CTN and SYS ports",width=100%,pdfwidth=100%]
+
 The wrapper exposes separate AXI4 register-slave and DMA-master interfaces,
 both with 32-bit addresses and 64-bit data. Internally, the register path
 converts AXI4 to 32-bit AXI4-Lite and then TL-UL; the data path converts the
@@ -106,13 +115,6 @@ streaming interfaces
 
 * Replace the FSM controller with a microsequencer or simple CPU, potentially
   shared with the Key Manager
-
-<<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
-described in this section.
-
-[[proposed-sep-dma-extensions-figure]]
-.Proposed SEP DMA extensions
-image::SEP_DMA.png[SEP_DMA,scaledwidth=90.0%]
 
 == Memory Map and Register Reference
 

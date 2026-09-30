@@ -19,7 +19,18 @@ endif::backend-pdf[]
 
 [[sep-mailbox-diagram]]
 .SEP host mailbox architecture and interrupt routing
-image::SEP_AXILmailbox_FIG008.png[alt="SEP host mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
+image::sep-host-mailbox.svg[alt="Mailbox unit with its AXI-Lite demux, mailboxes 0 and 7 with their outbound and inbound ports and FIFOs, and the interrupt routing to the SMC and the SEP CPU PIC",width=100%,pdfwidth=100%]
+
+The mailbox unit takes one AXI-Lite port from the peripheral crossbar, and its
+demux selects one of sixteen 2 kB port apertures from address bits 14 to 11.
+Mailbox _m_ occupies the 4 kB at `0x10A0_0000` + _m_ × `0x1000`, with its
+outbound port at offset `0x000` and its inbound port at offset `0x800`. The
+figure draws mailboxes 0 and 7; mailboxes 1 to 6 are identical. Each mailbox
+holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the
+FIFO that `READ_DATA` in the other port pops. Every port has its own
+level-sensitive, active-high interrupt. The eight inbound-port interrupts are
+SEP CPU PIC sources 1 to 8. The eight outbound-port interrupts leave SEP on
+`smc_mailbox_interrupt_o` and reach the SMC as its peripheral interrupts 7 to 0.
 
 SEP uses mailboxes to exchange service requests with system clients, such as
 software running on application-processor (AP) cores. A client is the requester
@@ -33,8 +44,7 @@ Its privacy depends on the programmed access policy, not on a distinct
 hardware mailbox type. When the inbox is
 written, an interrupt is sent to the SEP CPU to notify it of an incoming
 service request. Similarly, when the outbox is written by the SEP, an
-interrupt is sent out of the SMU to the system’s interrupt controller
-(APLIC). The outbox is only used for communication with AP cores. For
+interrupt is sent to the SMC. The outbox is only used for communication with AP cores. For
 all other resources we only use inboxes on both ends of the transaction.
 
 The SEP mailboxes have 64-bit data registers while SEP is a 32-bit system.
