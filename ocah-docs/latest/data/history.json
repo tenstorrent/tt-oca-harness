@@ -2202,6 +2202,88 @@
         }
       ],
       "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 6,
+      "flaky_tests": 5,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-30T12:31:19+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "assertion": 96.44,
+            "branch": 86.54,
+            "condition": 82.39,
+            "fsm_state": 89.66,
+            "functional": 100.0,
+            "line": 95.48,
+            "toggle": 36.98,
+            "user": 99.7988
+          },
+          "flow": "smc",
+          "framework": "cocotb",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 97.99
+    },
+    {
+      "failed_tests": 12,
+      "flaky_tests": 5,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-30T12:32:08+00:00",
+      "per_dut": [
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.52,
+            "branch": 86.27,
+            "condition": 83.76,
+            "fsm_state": 73.47,
+            "functional": 100.0,
+            "line": 94.1,
+            "toggle": 93.52,
+            "user": 96.4211
+          },
+          "flow": "dtp",
+          "framework": "cocotb",
+          "tool": "vcs"
+        },
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 94.48,
+            "branch": 86.9,
+            "condition": 83.95,
+            "fsm_state": 73.76,
+            "functional": 98.43,
+            "line": 94.77,
+            "toggle": 92.61,
+            "user": 94.5263
+          },
+          "flow": "dtp",
+          "framework": "uvm",
+          "tool": "vcs"
+        },
+        {
+          "coverage_status": "FAIL",
+          "effective_metrics": {
+            "assertion": 95.52,
+            "branch": 87.21,
+            "condition": 84.88,
+            "fsm_state": 73.76,
+            "functional": 100.0,
+            "line": 94.9,
+            "toggle": 93.75,
+            "user": 96.4211
+          },
+          "flow": "dtp",
+          "framework": "",
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 96.05
     }
   ]
 }
