@@ -1562,6 +1562,29 @@ module sep_uvm_top
 `undef DMA_HOST_CMD_INTG_DI
 
     // ------------------------------------------------------------------
+    // DMA host-port stall.
+    // ------------------------------------------------------------------
+    // +sep_dma_host_stall holds the host TL-UL response idle -- a_ready and
+    // d_valid both 0 -- so the secure DMA can neither issue a request nor see a
+    // response: it stays busy and reports neither DONE nor ERROR, which is the
+    // wedge the ROM's bounded completion poll must turn into an error. The whole
+    // struct is forced, since d_valid=0 keeps its integrity fields unchecked.
+    // The force targets the wrapper-local net the adapter drives, not the
+    // engine's input port. Re-issued every clock for Verilator, as above.
+    logic dma_host_stall_on;
+    initial begin
+        dma_host_stall_on = $test$plusargs("sep_dma_host_stall");
+        if (dma_host_stall_on) begin
+            $display("[tb] +sep_dma_host_stall: secure DMA host port held idle");
+        end
+    end
+`define DMA_HOST_RSP `SEP_CORE.u_sep_dma_wrap.host_tl_h_i
+    always @(posedge clk_i) begin
+        if (dma_host_stall_on) force `DMA_HOST_RSP = '0;
+    end
+`undef DMA_HOST_RSP
+
+    // ------------------------------------------------------------------
     // ESRC raw-noise force + entropy datapath probes.
     // ------------------------------------------------------------------
     // The ESRC ring oscillators' `#delay` feedback is ignored under Verilator, so

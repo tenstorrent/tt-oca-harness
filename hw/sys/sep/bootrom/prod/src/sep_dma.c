@@ -41,6 +41,25 @@
 #define SEP_EXT_SRAM_BASE ((uint32_t)SEP_TOP_SEP_SRAM_BASE_ADDR)
 #define SEP_SRAM_SIZE ((uint32_t)SEP_TOP_SEP_SRAM_SIZE)
 
+// secure_dma CONTROL / STATUS bits. The IP is vendored, so the generated headers
+// carry no field macros for it.
+#define DMA_CTRL_ABORT BIT(27) // forces the engine idle; not gated by cfg_regwen
+#define DMA_STATUS_BUSY BIT(0)
+#define DMA_STATUS_DONE BIT(1)
+#define DMA_STATUS_ERROR BIT(3)
+
+// Completion-poll budget for one transfer, counted in STATUS reads.
+//
+// The largest transfer dma_transfer() accepts is SMC SRAM's 1 MiB, 256 Ki beats
+// of 4 bytes. A STATUS read is at least one bus round trip, taken here as no
+// less than 4 core cycles, so DMA_POLLS_PER_BEAT allows over 1000 core cycles
+// per beat: slower than any on-chip copy, and than an XIP source read one lane
+// wide at an SCK no slower than core/32. DMA_POLLS_SETUP covers the engine
+// starting and the last write response, a few bus transactions each, with at
+// least 40000 core cycles. The largest budget, ~67 M reads, fits uint32_t.
+#define DMA_POLLS_SETUP 10000u
+#define DMA_POLLS_PER_BEAT 256u
+
 // Minimal local error codes for the ROM DMA path.
 enum {
     SEP_MSG_OUT_OF_RANGE_ERROR = 0x00020001u,
@@ -151,22 +170,40 @@ static uint32_t dma_transfer(uint32_t dest, uint32_t src, uint32_t n, int src_in
     // Start: OPCODE=COPY (0), INITIAL_TRANSFER=1 (bit 8), GO=1 (bit 31).
     dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, 0x80000100u);
 
-    // Wait for completion (no timeout in the ROM DMA path).
-    uint32_t result = 0;
-    for (;;) {
-        const uint32_t status = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
-        if (status & BIT(1)) { // DONE
+    // Wait for completion, bounded so that an engine which neither finishes nor
+    // errors becomes a DMA error rather than a hang. n is range-checked above,
+    // so the budget cannot overflow.
+    const uint32_t poll_max = DMA_POLLS_SETUP + (n / 4u) * DMA_POLLS_PER_BEAT;
+    uint32_t result = SEP_MSG_DMA_ERROR;
+    uint32_t status = 0u;
+    uint32_t polls = 0u;
+    for (; polls < poll_max; ++polls) {
+        status = dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR);
+        if (status & DMA_STATUS_DONE) {
+            result = 0u;
             break;
         }
-        if (status & BIT(3)) { // ERROR
+        if (status & DMA_STATUS_ERROR) {
             uint32_t ecode = dma_read(SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
             simputshex32("DMA_STS=", status);
             simputshex32("DMA_EC=", ecode);
             simputshex32("DMA_DST=", dest);
             simputshex32("DMA_SRC=", src);
             simputshex32("DMA_LEN=", n);
-            result = SEP_MSG_DMA_ERROR;
             break;
+        }
+    }
+    if (polls == poll_max) {
+        // Stop the engine before returning, so it issues no further beats into
+        // memory the caller goes on to reuse -- the next manifest slot, for one.
+        simputshex32("DMA_TIMEOUT_STS=", status);
+        simputshex32("DMA_DST=", dest);
+        simputshex32("DMA_LEN=", n);
+        dma_write(SEP_TOP_SECURE_DMA_CONTROL_BASE_ADDR, DMA_CTRL_ABORT);
+        for (uint32_t i = 0u; i < DMA_POLLS_SETUP; ++i) {
+            if (!(dma_read(SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR) & DMA_STATUS_BUSY)) {
+                break;
+            }
         }
     }
 

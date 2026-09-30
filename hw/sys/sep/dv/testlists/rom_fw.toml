@@ -2465,3 +2465,25 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid_0x9.toml",
 ]
+
+[[tests]]
+# A wedged secure DMA fails the boot instead of hanging it.
+#
+# +sep_dma_host_stall holds the DMA host port's response channel idle, so the
+# engine stays busy and reports neither DONE nor ERROR. The SMC-SRAM manifest read is the
+# first DMA transfer and that path makes one attempt, so the ROM must time the
+# transfer out, fail the slot with OCA_BOOT_ERR_DMA and halt with FAIL.
+# Same ROM build and SMC image as sep_rom_non_secure_boot_test.
+name = "sep_rom_dma_stall_terminal_test"
+module = "rom_fw.sep_rom_dma_stall_terminal_test"
+target = "rom_boot"
+firmware = { name = "boot_rom", mode = "boot_rom" }
+seed = 1
+timeout_sec = 3600
+tags = ["boot", "rom", "dma", "negative", "error", "cpu", "subsystem"]
+run_modes = ["cpu"]
+args = [
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
+  "+sep_dma_host_stall",
+]
