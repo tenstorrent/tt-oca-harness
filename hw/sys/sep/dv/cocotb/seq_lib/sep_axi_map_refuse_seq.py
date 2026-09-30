@@ -37,6 +37,9 @@ RESP_OKAY = 0
 MAPPED_CSR_ADDR = SEP_CPU_CTRL.addr("SEP_NMI_VEC")
 MAPPED_CSR_EXP = SEP_CPU_CTRL.reset32("SEP_NMI_VEC")
 ROM_ONE_PAST = sym("SEP_BOOT_ROM_MEM_BASE_ADDR") + sym("SEP_BOOT_ROM_MEM_SIZE")
+# First byte above the last OTP register block (EFUSE_MMR) in the generated
+# export. No RDL block owns the OTP window from here to 0x1093_FFFF.
+OTP_ONE_PAST = sym("EFUSE_MMR_REG_MAP_BASE_ADDR") + sym("EFUSE_MMR_REG_MAP_SIZE")
 
 # Live words a refused read must not return. A refused access never reaches a
 # unit (memory_map.adoc), so a refused read that hands back one of these values
@@ -95,17 +98,17 @@ SHORT_ROW_LIMIT = 5
 
 # Anchors that survive the exclude list. A drop here does not move
 # short_regions, so the count is held on its own.
-ANCHOR_KEPT = 7
+ANCHOR_KEPT = 8
 
 # Reserved gaps walked on every seed: one address just past the end of a live
-# block. Four sit in unnamed-refuse spans and are dropped, so seven survive.
+# block. Three sit in excluded spans and are dropped, so eight survive.
 _ANCHORS: tuple[tuple[int, str], ...] = (
     (ROM_ONE_PAST, "r"),
     (0x1080_3008, "r"),  # first byte above the reset controller
     (0x1080_3008, "w"),
     (0x1091_4000, "r"),  # KMAC/DRBG gap
     (0x1092_1000, "r"),  # above the Key Manager window
-    (0x1093_8000, "r"),  # above the OTP window
+    (OTP_ONE_PAST, "r"),  # above the last OTP register block
     (0x1096_0000, "r"),  # above the entropy pool
     (0x10A4_0000, "r"),  # above the system-bus window
     (0x1200_0000, "r"),  # above the STEE remap region

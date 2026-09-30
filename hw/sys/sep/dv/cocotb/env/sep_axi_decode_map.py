@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from sep_reg_meta import indexed_block_count, sep_reg, sym
+
 # A row at least this wide is a container the detailed rows carve up, not an
 # allocation in its own right.
 _COARSE_SPAN = 0x0100_0000
@@ -34,6 +36,90 @@ class SpecRegion:
     def contains(self, addr: int) -> bool:
         return self.base <= addr <= self.end_addr
 
+
+def _block_span(stem: str) -> tuple[int, int]:
+    """(base, end_inclusive) of one generated register block or register array.
+
+    ``stem`` names a ``<stem>_REG_MAP_BASE_ADDR`` / ``_SIZE`` pair in the
+    generated SystemRDL export (``hw/sys/sep/regs/gen/py/sep_reg.py``), or an
+    RDL array ``<stem>_0_`` ... ``<stem>_<n-1>_``. An array spans all ``n``
+    elements at the array stride, so the padding after each element belongs to
+    the array.
+    """
+    if hasattr(sep_reg, f"{stem}_REG_MAP_BASE_ADDR"):
+        base = sym(f"{stem}_REG_MAP_BASE_ADDR")
+        return base, base + sym(f"{stem}_REG_MAP_SIZE") - 1
+    count = indexed_block_count(stem)
+    base = sym(f"{stem}_0__REG_MAP_BASE_ADDR")
+    if count == 1:
+        return base, base + sym(f"{stem}_0__REG_MAP_SIZE") - 1
+    stride = sym(f"{stem}_1__REG_MAP_BASE_ADDR") - base
+    for k in range(count):
+        if sym(f"{stem}_{k}__REG_MAP_BASE_ADDR") != base + k * stride:
+            raise RuntimeError(f"{stem}: array element {k} is not at the array stride")
+    return base, base + count * stride - 1
+
+
+def _rdl_window_rows(
+    base: int, end_addr: int, blocks: tuple[tuple[str, str, str], ...]
+) -> tuple[tuple[int, int, str, str], ...]:
+    """Rows for one memory-map window whose units are generated RDL blocks.
+
+    Each block row spans that block's decoded extent in the register export.
+    Every span inside [``base``, ``end_addr``] that no block owns is a reserved
+    row: no RDL block claims it, so an access there must be refused.
+    """
+    spans = sorted((*_block_span(stem), unit, desc) for stem, unit, desc in blocks)
+    rows: list[tuple[int, int, str, str]] = []
+    cursor = base
+    for lo, hi, unit, desc in spans:
+        if lo < cursor or hi > end_addr:
+            raise RuntimeError(
+                f"{unit} 0x{lo:08x}-0x{hi:08x} overlaps a neighbour or leaves "
+                f"window 0x{base:08x}-0x{end_addr:08x}"
+            )
+        if lo > cursor:
+            rows.append((cursor, lo - 1, _RSV, "Reserved (no RDL block)"))
+        rows.append((lo, hi, unit, desc))
+        cursor = hi + 1
+    if cursor <= end_addr:
+        rows.append((cursor, end_addr, _RSV, "Reserved (no RDL block)"))
+    return tuple(rows)
+
+
+# Dual scratch register banks (0x1080_2000-0x1080_2FFF), OTP (0x1093_0000-0x1093_FFFF)
+# and System Bus I/F (0x10A0_0000-0x10A3_FFFF): each window holds several RDL
+# blocks with reserved space between them, so its rows come from the export.
+_SRB_ROWS = _rdl_window_rows(
+    0x1080_2000,
+    0x1080_2FFF,
+    (
+        ("SEP_SCRATCH_COLD", "SRB cold", "Cold-reset scratch register bank"),
+        ("SEP_SCRATCH_WARM", "SRB warm", "Warm-reset scratch register bank"),
+    ),
+)
+_OTP_ROWS = _rdl_window_rows(
+    0x1093_0000,
+    0x1093_FFFF,
+    (
+        ("SEP_EFUSE_MAP", "OTP shadow", "eFuse shadow map"),
+        ("EFUSE_INTERFACE_CTRL", "OTP interface", "eFuse command and status registers"),
+        ("EFUSE_MMR", "OTP MMR", "eFuse security-token registers"),
+    ),
+)
+_SYS_ROWS = _rdl_window_rows(
+    0x10A0_0000,
+    0x10A3_FFFF,
+    (
+        ("AXIL_MAILBOX", "SYS mailbox", "Mailbox pairs"),
+        ("LOCAL_MASTER_ALIAS_REMAP_CTRL", "SYS alias remap", "Local master alias remap"),
+        ("AP_OUTPUT_REMAP_CTRL", "SYS AP remap", "AP output remap"),
+        ("STEE_OUTPUT_REMAP_CTRL", "SYS STEE remap", "STEE output remap"),
+        ("OUTBOUND_FILTER_CTRL", "SYS outbound filter", "Outbound filter control"),
+        ("INBOUND_FILTER_CTRL", "SYS inbound filter", "Inbound filter control"),
+        ("SEP_CPU_CTRL", "SYS CPU control", "SEP CPU control and interrupt registers"),
+    ),
+)
 
 # From the SEP address map in hw/sys/sep/doc/memory_map.adoc (its tables are
 # hw/sys/sep/regs/gen/adoc/memory_map.adoc). Inclusive ends. Reserved rows use _RSV_.
@@ -59,7 +145,7 @@ _MAP_ROWS = (
     (0x1005_0000, 0x107F_FFFF, _RSV, "reserved"),
     (0x1080_0000, 0x1080_0FFF, "DMA", "DMA CSR"),
     (0x1080_1000, 0x1080_1FFF, "WDT", "Watchdog Timer"),
-    (0x1080_2000, 0x1080_2FFF, "SRB", "Dual Scratch Register Banks"),
+    *_SRB_ROWS,
     (
         0x1080_3000,
         0x1080_3007,
@@ -78,8 +164,7 @@ _MAP_ROWS = (
     (0x1091_8000, 0x1091_FFFF, "LC", "Life Cycle Controller"),
     (0x1092_0000, 0x1092_0FFF, "KM", "Key Manager"),
     (0x1092_1000, 0x1092_FFFF, _RSV, "Reserved"),
-    (0x1093_0000, 0x1093_7FFF, "OTP", "Fuse Control and Shadow Memory"),
-    (0x1093_8000, 0x1093_FFFF, _RSV, "Reserved"),
+    *_OTP_ROWS,
     (
         0x1094_0000,
         0x1094_FFFF,
@@ -93,7 +178,7 @@ _MAP_ROWS = (
         "Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.",
     ),
     (0x1096_0000, 0x109F_FFFF, _RSV, "Reserved"),
-    (0x10A0_0000, 0x10A3_FFFF, "SYS", "System Bus I/F"),
+    *_SYS_ROWS,
     (0x10A4_0000, 0x10AF_FFFF, _RSV, "Reserved"),
     (0x10B0_0000, 0x10BF_FFFF, "IO", "External IO Peripherals Bridge: UART, GPIO etc."),
     (
@@ -182,8 +267,31 @@ def may_complete(addr: int, regions=None) -> bool:
 
 
 def _selftest() -> None:
-    assert len(_MAP_ROWS) == 43, f"DV-owned map has {len(_MAP_ROWS)} rows, want 43"
     regions = spec_regions()
+    # Inside the SRB, OTP and SYS windows, no RDL block owns these spans
+    # (hw/sys/sep/regs/gen/py/sep_reg.py bases and sizes), so none may complete.
+    for lo, hi in (
+        (0x1080_2040, 0x1080_207F),
+        (0x1080_20C0, 0x1080_2FFF),
+        (0x1093_0600, 0x1093_FFFF),
+        (0x10A1_0280, 0x10A1_02FF),
+        (0x10A1_0380, 0x10A1_FFFF),
+        (0x10A2_0400, 0x10A2_0FFF),
+        (0x10A2_1200, 0x10A2_FFFF),
+        (0x10A3_2000, 0x10A3_FFFF),
+    ):
+        for a in (lo, hi & ~0x3):
+            assert not may_complete(a, regions), f"0x{a:08x} has no RDL block but reads allocated"
+    for unit, stem in (
+        ("SRB cold", "SEP_SCRATCH_COLD"),
+        ("SRB warm", "SEP_SCRATCH_WARM"),
+        ("OTP MMR", "EFUSE_MMR"),
+        ("SYS CPU control", "SEP_CPU_CTRL"),
+    ):
+        hit = region_of(sym(f"{stem}_REG_MAP_BASE_ADDR"), regions)
+        assert hit is not None and hit.unit == unit, f"{stem} base -> {hit}"
+    infilt = region_of(sym("INBOUND_FILTER_CTRL_15__REG_MAP_BASE_ADDR") + 0x18, regions)
+    assert infilt is not None and infilt.unit == "SYS inbound filter", f"array padding -> {infilt}"
     assert len(regions) >= 25, f"only {len(regions)} memory-map rows after holes"
 
     assert may_complete(0x1080_0000, regions), "DMA CSR base read as unallocated"
@@ -191,8 +299,6 @@ def _selftest() -> None:
     assert sram is not None and sram.unit == "SRAM", f"0x10010000 -> {sram}"
     # The SRAM row must span the generated SystemRDL memory, so a map edit that
     # shrinks or grows either side fails here instead of in the refuse walk.
-    from sep_reg_meta import sym
-
     assert sram.base == sym("SEP_SRAM_MEM_BASE_ADDR"), f"{sram}"
     assert sram.end_addr + 1 - sram.base == sym("SEP_SRAM_MEM_SIZE"), f"{sram}"
     assert may_complete(0x1080_1FFF, regions), "WDT window top read as unallocated"
