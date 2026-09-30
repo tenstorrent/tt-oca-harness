@@ -677,7 +677,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_key_policy_vault_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
+|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, a store past the KPV register map raises `IRQ_STATUS` AXI_SLVERR only, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 |`sep_km_command_set_rand_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, KM path / golden
@@ -6972,7 +6972,7 @@ two codes as one field.
 
 *Randomization*: RANDCFG — slot, SRAM lock region and the seal/free slot pair from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
 
-*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
+*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, a store past the KPV register map raises `IRQ_STATUS` AXI_SLVERR only, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 
 *Test Coverage*: Vault lock, seal, retire, erase, and SRAM write-lock on the KM CPU bus.
 
@@ -6982,7 +6982,7 @@ two codes as one field.
 . Dedicated `km_rom_vault` on the KM CPU bus, not `rom_main`.
 . The seal walk lives here rather than on the command set because no mailbox command seals a slot: over that surface an erase always frees, so the retire path has no vehicle there.
 . PicoRV32 is RV32E (`x0`–`x15` only).
-. A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR or DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
+. A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR and not DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
 
 *Checkers*:
 
@@ -6996,7 +6996,7 @@ two codes as one field.
 |CHK-LOCKUSE
 |A key-data read of a `lock_use` slot raises SLVERR and returns zero data. Both halves are required: the refusal alone would not show the data path is also forced.
 |CHK-EXTENT
-|Store to `0x13108` sets `IRQ_STATUS` AXI_SLVERR or AXI_DECERR.
+|Store to `0x13108` sets `IRQ_STATUS` AXI_SLVERR and leaves AXI_DECERR clear. `hw/ip/key_manager/regs/key_manager.rdl` (memory-map summary): an unmapped offset inside a window answers SLVERR.
 |CHK-DROP
 |Write to the locked SRAM region is dropped (readback unchanged).
 |CHK-VIOL

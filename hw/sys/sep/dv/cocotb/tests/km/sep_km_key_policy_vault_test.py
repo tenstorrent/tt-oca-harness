@@ -95,7 +95,10 @@ class sep_km_key_policy_vault_test(sep_base_test):
             "returned zero, after a known non-zero store landed on that slot"
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
-        self.logger.info("CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
+        self.logger.info(
+            "CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR with AXI_DECERR clear "
+            "(key_manager.rdl: unmapped offset inside a window answers SLVERR)"
+        )
         _bit(FLAG_DROP, "CHK-DROP")
         self.logger.info("CHK-DROP PASS: locked SRAM write dropped (readback unchanged)")
         _bit(FLAG_VIOL, "CHK-VIOL")
