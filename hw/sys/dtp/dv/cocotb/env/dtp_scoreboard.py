@@ -20,7 +20,7 @@ from pyuvm import ConfigDB, uvm_subscriber
 
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_tap_device import DTP_DEFAULT_IDCODE
-from .dtp_types import DtpJtag2AxiStatus
+from .dtp_types import DtpJtag2AxiStatus, get_jtag2axi_target
 
 
 class DtpScoreboard(uvm_subscriber):
@@ -53,13 +53,16 @@ class DtpScoreboard(uvm_subscriber):
             if item.status != DtpJtag2AxiStatus.SUCCESS:
                 self._fail(f"J2A write status {DtpJtag2AxiStatus(item.status).name}")
             elif self.cfg.axi_ram is not None:
-                byte_count = 1 << item.axi_size
-                mem = self.cfg.axi_ram.read(item.axi_addr, byte_count)
-                expected = item.axi_data.to_bytes(8, "little")[:byte_count]
-                for idx in range(byte_count):
+                # The TDR data and wstrb fields are the bus lanes of the
+                # beat holding the address.
+                beat_bytes = get_jtag2axi_target("smc_axi").beat_bytes
+                beat_addr = item.axi_addr - item.axi_addr % beat_bytes
+                mem = self.cfg.axi_ram.read(beat_addr % self.cfg.axi_mem_size, beat_bytes)
+                expected = item.axi_data.to_bytes(beat_bytes, "little")
+                for idx in range(beat_bytes):
                     if ((item.axi_wstrb >> idx) & 0x1) and mem[idx] != expected[idx]:
                         self._fail(
-                            f"J2A write byte {idx} mismatch at 0x{item.axi_addr + idx:x}: "
+                            f"J2A write lane {idx} mismatch at 0x{beat_addr + idx:x}: "
                             f"expected 0x{expected[idx]:02x}, got 0x{mem[idx]:02x} "
                             f"(wstrb=0x{item.axi_wstrb:02x}, size={item.axi_size})"
                         )
@@ -80,11 +83,18 @@ class DtpScoreboard(uvm_subscriber):
                 self._fail(f"J2A read status {DtpJtag2AxiStatus(item.status).name}")
             elif self.cfg.axi_ram is not None:
                 byte_count = 1 << item.axi_size
-                mem = int.from_bytes(self.cfg.axi_ram.read(item.axi_addr, byte_count), "little")
+                mem = int.from_bytes(
+                    self.cfg.axi_ram.read(item.axi_addr % self.cfg.axi_mem_size, byte_count),
+                    "little",
+                )
                 mask = (1 << (8 * byte_count)) - 1
-                if (item.rdata & mask) != mem:
+                # The data field returns the whole beat; the addressed bytes
+                # sit on the lanes the address selects.
+                lane = item.axi_addr % get_jtag2axi_target("smc_axi").beat_bytes
+                rdata = (item.rdata >> (8 * lane)) & mask
+                if rdata != mem:
                     self._fail(
-                        f"J2A read 0x{item.rdata & mask:0{byte_count * 2}x} != "
+                        f"J2A read 0x{rdata:0{byte_count * 2}x} != "
                         f"AxiRam[0x{item.axi_addr:x}]=0x{mem:0{byte_count * 2}x} "
                         f"(size={item.axi_size})"
                     )
@@ -93,7 +103,7 @@ class DtpScoreboard(uvm_subscriber):
                         "J2A read OK: addr=0x%x size=%d data=0x%x",
                         item.axi_addr,
                         item.axi_size,
-                        item.rdata & mask,
+                        rdata,
                     )
 
     def check_phase(self) -> None:

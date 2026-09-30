@@ -302,6 +302,8 @@ class DtpScanCtrlExpect(Enum):
     GATED = "gated"
 
 
+# A reset the sequence drove advanced its tb_top assertion counter by one.
+RESET_COUNT_CHECK_ID = "CHK-RESET-COUNT"
 # Reset-abort scenario evidence: the bridge observed mid-flight before the
 # reset, its FSM back in IDLE after it, the CDC's TCK-side clear seen, no
 # escaped write, and a recovered status.
@@ -314,6 +316,14 @@ ABORT_RECOVERY_CHECK_ID = "CHK-J2A-ABORT-RECOVERY"
 # stalled path and the first status poll reads BUSY_OR_FULL.
 STALL_FSM_CHECK_ID = "CHK-J2A-STALL-FSM"
 STALL_BUSY_CHECK_ID = "CHK-J2A-STALL-BUSY"
+# The READY stall observed on the bridge port: the tb_top stall counter of each
+# channel the operation stalls advanced across it, and a channel of the
+# operation the stall leaves alone counted no stall cycle.
+STALL_HOLD_CHECK_ID = "CHK-J2A-STALL-HOLD"
+# A gated bridge's SINGLE_OP register stays in the scan path and latches no
+# update: every capture while gated equals the NOP capture taken before the
+# disable, field by field.
+GATE_TDR_CHECK_ID = "CHK-J2A-GATE-TDR"
 # The op-status or SERIES_CTRL status carries the injected error code, and the
 # WITH_ERROR_STATUS bit follows the faulted beat.
 FAULT_STATUS_CHECK_ID = "CHK-J2A-FAULT-STATUS"
@@ -544,6 +554,29 @@ def unpack_single_op(
     status = value & 0x3
     rdata = (value >> data_off) & ((1 << cfg.data_width) - 1)
     return status, rdata
+
+
+def unpack_single_op_fields(
+    value: int,
+    *,
+    target: str | DtpJtag2AxiTargetCfg = "smc_axi",
+) -> tuple[int, int, int, int, int]:
+    """Return (op, size, wstrb, data, addr) of a target SINGLE_OP DR value.
+
+    The field order of ``pack_single_op``; on a capture ``op`` is the status.
+    """
+    cfg = get_jtag2axi_target(target)
+    size_off = 2
+    wstrb_off = size_off + cfg.size_bits
+    data_off = wstrb_off + cfg.wstrb_bits
+    addr_off = data_off + cfg.data_width
+    return (
+        value & 0x3,
+        (value >> size_off) & ((1 << cfg.size_bits) - 1),
+        (value >> wstrb_off) & ((1 << cfg.wstrb_bits) - 1),
+        (value >> data_off) & ((1 << cfg.data_width) - 1),
+        (value >> addr_off) & ((1 << cfg.addr_width) - 1),
+    )
 
 
 def pack_series_ctrl(

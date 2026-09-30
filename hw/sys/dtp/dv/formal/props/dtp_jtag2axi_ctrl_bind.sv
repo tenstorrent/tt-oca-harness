@@ -31,6 +31,7 @@ bind jtag2axi dtp_jtag2axi_ctrl_props #(
   .sticky_full_i          (sticky_axi_status_full_tclk),
   .ctrl_reset_bit_i       (update_register_q_tclk[AXISERIESCTRL_RESET_HIGH]),
   .current_op_i           (current_op_tclk),
+  .single_tx_i            (current_tx_is_from_single_buffer_tclk),
   .single_valid_i         (single_tx_req_valid_tclk),
   .req_fifo_count_i       (series_request_fifo_count_tclk),
   .rsp_fifo_count_i       (series_rsp_fifo_count_tclk),

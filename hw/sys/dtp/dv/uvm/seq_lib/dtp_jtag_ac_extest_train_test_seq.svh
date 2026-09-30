@@ -5,7 +5,7 @@
 // boundary-scan chain, which this bench loops back without boundary cells.
 // The chain's run_test_idle strobe is the Run-Test/Idle decode the AC
 // training launches on: high while the TAP is parked in Run-Test/Idle, low
-// in Test-Logic-Reset, and one pulse across a DR scan, on the return to
+// in Test-Logic-Reset, and low across a DR scan until the scan returns to
 // Run-Test/Idle (CHK-BSR-RTI). Mirrors the cocotb
 // dtp_jtag_ac_extest_train_test_seq.
 
@@ -66,12 +66,10 @@ class dtp_jtag_ac_extest_train_test_seq extends dtp_jtag_base_test_seq;
               UVM_LOW)
     check_run_test_idle_strobe();
     `uvm_info(get_type_name(),
-              "Step 4: EXTEST_TRAIN scan controls; run_test_idle pulses once, on the return",
-              UVM_LOW)
+              "Step 4: EXTEST_TRAIN scan controls; run_test_idle high only on the return", UVM_LOW)
     check_bsr_scan_ctrl_counts(6'(EXTEST_TRAIN_INSTR), random_pattern(DtpBsrModelLen),
                                DtpBsrModelLen, DTP_SCAN_CTRL_SELECTED, extra, counts);
-    family_check(RtiCheckId, {RtiSignal, " pulses across the scan"}, 64'(counts[RtiSignal]), 64'd1,
-                 "EXTEST_TRAIN DR scan");
+    check_run_test_idle_window(RtiCheckId, RtiSignal, counts, "EXTEST_TRAIN DR scan");
     `uvm_info(get_type_name(), "Step 5: BYPASS scan: select stays low while the TAP strobes pulse",
               UVM_LOW)
     check_bsr_scan_ctrl(6'(BYPASS_INSTR), 64'h3C3C, 16, DTP_SCAN_CTRL_UNSELECTED);

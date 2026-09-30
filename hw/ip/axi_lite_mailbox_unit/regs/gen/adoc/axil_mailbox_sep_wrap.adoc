@@ -183,7 +183,7 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-READ_DATA]
@@ -192,7 +192,7 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-STATUS]
@@ -215,8 +215,8 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_0-WIRQT]
@@ -246,19 +246,19 @@ The outbound/inbound naming reflects intended use, not an access restriction.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -303,8 +303,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WRITE_DATA]
@@ -313,7 +313,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-READ_DATA]
@@ -322,7 +322,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-STATUS]
@@ -345,8 +345,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_0-WIRQT]
@@ -376,19 +376,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -433,8 +433,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WRITE_DATA]
@@ -443,7 +443,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-READ_DATA]
@@ -452,7 +452,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-STATUS]
@@ -475,8 +475,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_1-WIRQT]
@@ -506,19 +506,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -563,8 +563,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WRITE_DATA]
@@ -573,7 +573,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-READ_DATA]
@@ -582,7 +582,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-STATUS]
@@ -605,8 +605,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_1-WIRQT]
@@ -636,19 +636,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -693,8 +693,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WRITE_DATA]
@@ -703,7 +703,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-READ_DATA]
@@ -712,7 +712,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-STATUS]
@@ -735,8 +735,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_2-WIRQT]
@@ -766,19 +766,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -823,8 +823,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WRITE_DATA]
@@ -833,7 +833,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-READ_DATA]
@@ -842,7 +842,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-STATUS]
@@ -865,8 +865,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_2-WIRQT]
@@ -896,19 +896,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -953,8 +953,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WRITE_DATA]
@@ -963,7 +963,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-READ_DATA]
@@ -972,7 +972,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-STATUS]
@@ -995,8 +995,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_3-WIRQT]
@@ -1026,19 +1026,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1083,8 +1083,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WRITE_DATA]
@@ -1093,7 +1093,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-READ_DATA]
@@ -1102,7 +1102,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-STATUS]
@@ -1125,8 +1125,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_3-WIRQT]
@@ -1156,19 +1156,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1213,8 +1213,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WRITE_DATA]
@@ -1223,7 +1223,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-READ_DATA]
@@ -1232,7 +1232,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-STATUS]
@@ -1255,8 +1255,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_4-WIRQT]
@@ -1286,19 +1286,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1343,8 +1343,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WRITE_DATA]
@@ -1353,7 +1353,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-READ_DATA]
@@ -1362,7 +1362,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-STATUS]
@@ -1385,8 +1385,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_4-WIRQT]
@@ -1416,19 +1416,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1473,8 +1473,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WRITE_DATA]
@@ -1483,7 +1483,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-READ_DATA]
@@ -1492,7 +1492,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-STATUS]
@@ -1515,8 +1515,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_5-WIRQT]
@@ -1546,19 +1546,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1603,8 +1603,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WRITE_DATA]
@@ -1613,7 +1613,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-READ_DATA]
@@ -1622,7 +1622,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-STATUS]
@@ -1645,8 +1645,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_5-WIRQT]
@@ -1676,19 +1676,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1733,8 +1733,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WRITE_DATA]
@@ -1743,7 +1743,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-READ_DATA]
@@ -1752,7 +1752,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-STATUS]
@@ -1775,8 +1775,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_6-WIRQT]
@@ -1806,19 +1806,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1863,8 +1863,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WRITE_DATA]
@@ -1873,7 +1873,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-READ_DATA]
@@ -1882,7 +1882,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-STATUS]
@@ -1905,8 +1905,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_6-WIRQT]
@@ -1936,19 +1936,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -1993,8 +1993,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WRITE_DATA]
@@ -2003,7 +2003,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-READ_DATA]
@@ -2012,7 +2012,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-STATUS]
@@ -2035,8 +2035,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-outbound_mailbox_7-WIRQT]
@@ -2066,19 +2066,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -2123,8 +2123,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WRITE_DATA]
@@ -2133,7 +2133,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
+| 63:0 | `write_data` | W WMOD | 0x0 a| Write data to mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-READ_DATA]
@@ -2142,7 +2142,7 @@ On write:
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63:0 | `read_data` | R | - a| Read data from mailbox fifo
+| 63:0 | `read_data` | R RMOD | - a| Read data from mailbox fifo
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-STATUS]
@@ -2165,8 +2165,8 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `write_error` | R | 0x0 a| Attempted write to a full mailbox
-| 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
+| 1 | `write_error` | R RC | 0x0 a| Attempted write to a full mailbox
+| 0 | `read_error` | R RC | 0x0 a| Attempted read from an empty mailbox
 |===
 
 [#reg-{regmap-instance}-axil_mailbox_sep_wrap-inbound_mailbox_7-WIRQT]
@@ -2196,19 +2196,19 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:3 | `Reserved` | - | - a| Reserved
-| 2 | `eirq` | RW | 0x0 a| On read:
+| 2 | `eirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Error on mailbox access
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 1 | `rtirq` | RW | 0x0 a| On read:
+| 1 | `rtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in read mailbox exceeded
 On write:
 [0]: No acknowledge
 [1]: Acknowledge and clear interrupt request
-| 0 | `wtirq` | RW | 0x0 a| On read:
+| 0 | `wtirq` | RW1C | 0x0 a| On read:
 [0]: No interrupt request
 [1]: Usage level threshold in write mailbox exceeded
 On write:
@@ -2253,6 +2253,6 @@ On write:
 |===
 | Bits | Field | Access | Reset | Description
 | 63:2 | `Reserved` | - | - a| Reserved
-| 1 | `rflush` | W | 0x0 a| Flush the read FIFO for this port
-| 0 | `wflush` | W | 0x0 a| Flush the write FIFO for this port
+| 1 | `rflush` | W WMOD | 0x0 a| Flush the read FIFO for this port
+| 0 | `wflush` | W WMOD | 0x0 a| Flush the write FIFO for this port
 |===

@@ -22,7 +22,7 @@ Contains the write-only registers accessible only when `LCR.DLAB = 0`.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:8 | `Reserved` | - | - a| Reserved
-| 7:0 | `DATA` | W | 0x0 a| Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this
+| 7:0 | `DATA` | W WMOD | 0x0 a| Transmit Data. Holds a character to be transmitted. If FIFOs are enabled, this
 field points to the top of the TX FIFO. Otherwise, this field points to a
 single-byte Transmitter Holding Register.
 |===
@@ -53,8 +53,8 @@ configurations for the trigger levels are:
 | 3 | `DMA_MODE_SELECT` | W | 0x0 a| DMA mode select:
 * `0` - DMA Mode 0
 * `1` - DMA Mode 1
-| 2 | `XMIT_FIFO_RESET` | W | 0x0 a| Transmitter FIFO Reset. Writing `1` clears the TX FIFO.
-| 1 | `RCVR_FIFO_RESET` | W | 0x0 a| Receiver FIFO Reset. Writing `1` clears the RX FIFO.
+| 2 | `XMIT_FIFO_RESET` | W 1P | 0x0 a| Transmitter FIFO Reset. Writing `1` clears the TX FIFO.
+| 1 | `RCVR_FIFO_RESET` | W 1P | 0x0 a| Receiver FIFO Reset. Writing `1` clears the RX FIFO.
 | 0 | `FIFO_ENABLE` | W | 0x0 a| FIFO Enable. When set, enables the TX and RX FIFOs (FIFO Mode). When unset,
 disables the FIFOs (Non-FIFO Mode).
 |===
