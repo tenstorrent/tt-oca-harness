@@ -478,7 +478,7 @@
 `SEP_TB_OUT(logic, abr_host_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_km_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_host_isolate_req_probe_o)
-// IP-interrupt aggregator: observation-only mirror of the 34-bit
+// IP-interrupt aggregator: observation-only mirror of the NUM_INTERNAL_IRQS-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
 // mapped bit here. Mirrors the reference sep_irq_probe_if wire-tap of

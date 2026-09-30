@@ -1545,8 +1545,8 @@ module sep_uvm_top
     // command user code -- the engine always emits a matching pair. When
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
-    // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the aggregate interrupt probe. Re-issue every clock
+    // err_o. err_o stays gated on a_valid. STATUS / PIC source 42 (vector
+    // bit [41]) / CLEAR stay frontdoor or the aggregate interrupt probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \

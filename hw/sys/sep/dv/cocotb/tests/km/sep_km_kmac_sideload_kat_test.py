@@ -22,7 +22,7 @@ VPLAN-parity checkers:
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only KMAC of the four
-            sideload targets released; AES/HMAC/OTBN parked
+            non-ABR sideload engines released; AES/HMAC/OTBN parked
   CHK-B     CMD_KEY_TRANSFER rc=0 to KMAC
   PUB-OBS   public KMAC KEY_SHARE0/1 read back zero after sideload. NOT a checker:
             kmac.hjson declares them swaccess=wo, so the read cannot fail
@@ -115,7 +115,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
         self.km = SepKmMailbox(self)
         self.kmac = SepKmac(self)
 
-        # All four sideload targets JTAG-held across rst_ni release, then parked in SW_RESET_N. KMAC is released only
+        # The four non-ABR sideload engines (OTBN, AES, HMAC, KMAC) are JTAG-held
+        # across rst_ni release, then parked in SW_RESET_N. KMAC is released only
         # before the transfer so its keyed ops pull EDN masking entropy.
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
@@ -163,7 +164,7 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
             [hex(w) for w in c_dummy],
         )
 
-        # CHK-ISO: only KMAC (of the four sideload targets) is released; others parked.
+        # CHK-ISO: only KMAC (of the four non-ABR sideload engines) is released; others parked.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["aes"])

@@ -97,10 +97,14 @@ class sep_fabric_remap_filter_csr_bank_test(sep_base_test):
         """
         count, mismatches = await self.fab.bank_field_walk()
         # The expected total is the plan's number, written out: a walk that
-        # covered fewer words would otherwise pass on whatever it reached.
+        # covered fewer words would otherwise pass on whatever it reached. The
+        # entry counts (16 alias, 16 + 32 filter) come from the register export;
+        # the words per entry are the walk's own choice of R/W words, not an RDL
+        # count: REGION_START lo/hi, REGION_END lo, REGION_ATTRS lo/hi per alias
+        # region, and FILTER_CONFIG lo, START_ADDR lo, END_ADDR lo per filter.
         assert count == 224, (
             f"CHK-BANK-INDEP FAIL: the walk covered {count} words, not the 224 "
-            f"the address map declares (16 alias x 5 + 48 filter entries x 3)"
+            f"it plans (16 alias x 5 words + 48 filter entries x 3 words)"
         )
         assert not mismatches, (
             f"CHK-BANK-INDEP FAIL: {len(mismatches)} of {count} bank words did not "

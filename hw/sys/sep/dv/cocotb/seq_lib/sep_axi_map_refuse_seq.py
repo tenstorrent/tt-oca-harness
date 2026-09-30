@@ -3,8 +3,10 @@
 """Whole-map response expectation for sep_axi_map_refuse_test.
 
 Every probe address is classified by ``env/sep_axi_decode_map.py``. A
-reserved address must not answer OKAY. The map names no refusal flavour,
-so any refusal is accepted and the flavour is logged.
+reserved address must not answer OKAY. The generated memory map
+(``hw/sys/sep/regs/gen/adoc/memory_map.adoc``) names a response code for each
+reserved span, but those codes were taken from the RTL, so they are not an
+expected value here: any refusal is accepted and the code is logged.
 ``sep_fabric_deadspace_decode_test`` owns the dead tail inside a window.
 This sequence owns the gaps between windows.
 
@@ -64,12 +66,16 @@ _PROBE_EXCLUDE: dict[tuple[int, int], str] = {
     # is the testbench, so a refusal there is a TB property.
     (0x0000_0000, 0x0FFF_FFFF): "external chiplet aperture, TB-terminated",
     (0x4000_0000, 0xBFFF_FFFF): "external SMU aperture, TB-terminated",
-    # Reserved in the map; this test does not assert a refusal flavour.
-    (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, refuse unnamed",
-    (0x1092_1000, 0x1092_FFFF): "reserved KM gap, refuse unnamed",
-    (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, refuse unnamed",
-    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, refuse unnamed",
-    (0x2000_0000, 0x3FFF_FFFF): "adopter extension, refuse unnamed",
+    # Reserved in the map and excluded from this walk. The generated memory map
+    # names a code for them, but those codes were taken from the RTL and are
+    # not an expected value; the system-bus span is graded for refusal by
+    # sep_unmapped_access_policy_test.
+    (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, excluded",
+    (0x1092_1000, 0x1092_FFFF): "reserved KM gap, excluded",
+    (0x1093_8000, 0x1093_FFFF): "reserved OTP gap, excluded",
+    (0x10A4_0000, 0x10A5_FFFF): "reserved SYS gap, excluded",
+    # SEP External: memory_map.adoc gives an adopter-defined response.
+    (0x2000_0000, 0x3FFF_FFFF): "SEP External window, adopter-defined",
 }
 
 
@@ -319,7 +325,7 @@ def _selftest() -> None:
         )
         assert len(c.short_regions) <= SHORT_ROW_LIMIT, (
             f"seed {seed} left {len(c.short_regions)} reserved row(s) short of "
-            f"their quota, above the {SHORT_ROW_LIMIT} unnamed-refuse rows"
+            f"their quota, above the limit of {SHORT_ROW_LIMIT}"
         )
         n_anchor = sum(1 for p in c.probes if p.anchor)
         assert n_anchor == ANCHOR_KEPT, (

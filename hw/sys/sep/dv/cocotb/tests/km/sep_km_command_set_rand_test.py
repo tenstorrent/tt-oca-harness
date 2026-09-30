@@ -235,7 +235,7 @@ class SepKmCommandSetCfg:
         are where an off-by-one in the validity test shows up. The rest come
         from the seed.
         """
-        # The four defined runs are 0x00-0x04, 0x10-0x12 and 0x22-0x28, so these
+        # The three defined runs are 0x00-0x04, 0x10-0x12 and 0x22-0x28, so these
         # are the IDs immediately outside them -- 0x21 included, since a
         # boundary slip there would invent a command inside the key range.
         picked = [0x05, 0x0F, 0x13, 0x21, 0x29]

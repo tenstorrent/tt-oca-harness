@@ -128,7 +128,14 @@ _MAP_ROWS = (
     # Coarse CPU view.
     (0x0000_0000, 0x0FFF_FFFF, "External", "External to chiplet, but not in SMU (SMC, DTP, etc)."),
     (0x1000_0000, 0x1FFF_FFFF, "SEP Local", "SEP Local resources (DMA, Crypto, etc)"),
-    (0x2000_0000, 0x3FFF_FFFF, _RSV, "Reserved for adopter extension IP"),
+    # memory_map.adoc gives SEP External an adopter-defined response, so the map
+    # does not require a refusal there.
+    (
+        0x2000_0000,
+        0x3FFF_FFFF,
+        "SEP External",
+        "SEP external address map (eFuse SHIM control and execute-in-place window)",
+    ),
     (0x4000_0000, 0x7FFF_FFFF, "SMC", "SMC Resources"),
     (0x8000_0000, 0xBFFF_FFFF, "SMU", "SMU Resources (DTP, etc)"),
     (0xC000_0000, 0xCFFF_FFFF, "SEP CPU Resources", "EL2 Veer Resources (DCCM, ICCM, PIC)"),
@@ -194,7 +201,6 @@ _MAP_ROWS = (
         "Write to this region to be routed to the STEE remapper",
     ),
     (0x1200_0000, 0x1FFF_FFFF, _RSV, "Reserved"),
-    (0x2000_0000, 0x3FFF_FFFF, _RSV, "Reserved for adopter extension IP"),
 )
 
 

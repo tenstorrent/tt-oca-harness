@@ -6,13 +6,14 @@ no_cpu / +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
 plus seed-selected dead offsets inside each block window.
 
 A write or read past a block's allocated size must be refused (DECERR
-or SLVERR; the specification does not mandate which), and no live
+or SLVERR; the generated memory map names a code, but its codes were taken
+from the RTL and are not an expected value here), and no live
 register in that block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
 registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
 address past the extent a unit allocates, and such an access never
-reaches a unit. It names no response flavour.
+reaches a unit.
 
 Every probe in the set is asserted, the wrapping anchors included; the
 contract is not carried by a probe that is logged or waived.
@@ -235,7 +236,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 )
 
             # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
-            # DECERR-only. The specification does not mandate DECERR vs SLVERR.
+            # DECERR-only. The map's per-block codes come from the RTL and are
+            # not an expected value.
             # A window whose past-extent single beat answers SLVERR must still
             # fail an OKAY burst to the same address.
             worst = max(resps) if resps else RESP_OKAY
@@ -290,15 +292,15 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(DEADSPACE_ANCHORS),
             cfg.seed,
         )
-        # Reported, not asserted: memory_map.adoc says such an access is
-        # refused but names no response flavour, and which error responses are
-        # permitted is a specification question for the design owner.
+        # Reported, not asserted: the generated memory map names a code, but its
+        # codes were taken from the RTL, so which error response is correct is a
+        # question for the design owner.
         for line in dead.flavour_findings:
             self.logger.info("DEADSPACE-FLAVOUR: %s", line)
         if dead.flavour_findings:
             self.logger.info(
                 "DEADSPACE-FLAVOUR: %d refusal(s) used an error response other "
-                "than the DECERR memory_map.adoc names. The access was refused, "
+                "than DECERR. The access was refused, "
                 "which is the asserted contract.",
                 len(dead.flavour_findings),
             )
