@@ -297,13 +297,14 @@ Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.<
 <div class="sect2">
 <h3 id="wrapper-clock-architecture"><a class="anchor" href="#wrapper-clock-architecture"></a><a class="link" href="#wrapper-clock-architecture">1.2. Wrapper Clock Architecture</a></h3>
 <div class="paragraph">
-<p>The <code>smu_wrapper.sv</code> reference wrapper accepts pre-generated clocks directly:
-<code>clk_smu_i</code> (primary), <code>clk_ref_i</code> (reference), and <code>clk_periph_i</code>
-(peripheral). The <code>smc_wrapper.sv</code> uses <code>clk_smc_i</code> for the primary clock.
-Clock generation is entirely the adopter&#8217;s responsibility. The <code>pll_wrap</code> model
-included in the DV environment only terminates the SMC&#8217;s AXI-Lite PLL control
-interface; it does not generate functional clocks and must not be used as a
-synthesis model.</p>
+<p>The behavioral <code>pll_wrap</code> model is a DV/reference
+placeholder: it free-runs refclk, sys_clk, and periph_clk at 100 / 800 / 200 MHz
+(<code>+pll_sys_period_ns=10</code> runs sys_clk at 100 MHz; with <code>+pll_osc_bench</code> a bench
+toggles the oscillator nets itself), muxes sys and periph with ref
+through <code>prim_clock_mux2</code> then <code>prim_ag_clk_mux</code>, and terminates the AXI-Lite PLL
+control interface with OKAY. It is not a synthesis stand-in. An adopter who
+replaces <code>smc_ip_integration</code> supplies equivalent clocks internally; the
+bare cores still have the three clock inputs.</p>
 </div>
 </div>
 </div>
