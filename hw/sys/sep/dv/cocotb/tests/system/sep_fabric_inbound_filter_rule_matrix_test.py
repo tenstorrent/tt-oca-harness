@@ -67,8 +67,9 @@ hw/ip/axi_filter/doc/index.adoc "Locking a Filter Entry"), so both refused
 writes must answer DECERR. The field reads back unchanged, and a 2-beat INCR
 inside the widened page still passes OKAY as two Lite singles. A single beat
 would not do: START/END already hold the page, so a single beat inside it passes
-with allow_burst 0 or 1. The lock is sticky until reset, so this cell runs last
-on entry 15.
+with allow_burst 0 or 1. The response codes are logged at once and graded after
+the 2-beat INCR, so the burst is checked whatever code the writes answered. The
+lock is sticky until reset, so this cell runs last on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
@@ -536,11 +537,6 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             resp_hi,
             RESP_DECERR,
         )
-        assert (resp_lo, resp_hi) == (RESP_DECERR, RESP_DECERR), (
-            f"CHK-CONFIG-LOCK FAIL: writes to locked FILTER_CONFIG answered lo resp={resp_lo}, "
-            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI error subordinate "
-            f"and completes DECERR ({RESP_DECERR})"
-        )
         # The frozen bit still drives the hardware, not just the CSR readback.
         # START/END already hold the widened page, so a single beat inside it is
         # granted whether allow_burst is 0 or 1. The probe is a 2-beat INCR: the
@@ -555,6 +551,20 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             "readback of allow_burst"
         )
         self._expect_lite_split(lite_ar, start=probe_addr, nbeats=2, tag="CHK-CONFIG-LOCK burst AR")
+        self.logger.info(
+            "CHK-CONFIG-LOCK entry %d 2-beat INCR at 0x%08x under the lock: resp=%d "
+            "rdata=0x%08x, Lite AR %s",
+            wcfg.entry,
+            probe_addr,
+            probe_resp,
+            data,
+            [hex(a) for a in lite_ar],
+        )
+        assert (resp_lo, resp_hi) == (RESP_DECERR, RESP_DECERR), (
+            f"CHK-CONFIG-LOCK FAIL: writes to locked FILTER_CONFIG answered lo resp={resp_lo}, "
+            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI error subordinate "
+            f"and completes DECERR ({RESP_DECERR})"
+        )
         self.logger.info(
             "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d, DECERR) "
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
