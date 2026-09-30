@@ -238,8 +238,8 @@ integration and software portability, letting local agents access resources
 consistently across different SoC mappings.
 
 The alias remap logic organizes eight independently configurable regions, each
-specifying an input address range, a remap offset for translation, and a
-cacheable flag. This enables:
+specifying an input address range, a remap offset for translation, and an
+AxCACHE value that replaces the transaction's own on a hit. This enables:
 
 - Translation between local alias addresses (0xC000_0000 at reset) and global
   addresses, ensuring compatibility with both internal and external software
@@ -480,7 +480,7 @@ bypasses remap stages and goes directly to the system NoC, reducing
 latency.
 
 Each outbound transaction carries a Source ID identifying its privilege
-level and routing path, plus a cacheable flag from the alias remap
+level and routing path, plus the AxCACHE value from the alias remap
 configuration (<<smc-source-id-by-traffic-path-table>>).
 
 [[smc-source-id-by-traffic-path-table]]
@@ -516,7 +516,11 @@ endif::backend-pdf[]
 The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
 regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
-(intermediate privilege) operations.
+(intermediate privilege) operations. Each region carries a
+`REGION_ATTRS.valid` bit (reset 0): when set, accesses selecting the
+region are remapped through its offset; when clear, they pass through
+with their address unchanged, so an unprogrammed entry acts as an
+identity mapping rather than forcing every access to offset 0.
 
 ifdef::backend-html5[]
 ++++

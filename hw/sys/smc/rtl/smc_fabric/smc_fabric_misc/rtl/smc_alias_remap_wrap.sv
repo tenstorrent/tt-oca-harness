@@ -6,8 +6,8 @@
 // Converts the alias remap CSR fields into one remap_table, with the address bits below
 // ALIAS_REMAP_IDX_START tied to zero, and feeds it to four combinational axi_alias_remap
 // instances: MMIO, JTAG, log and data accelerator. A request that hits a valid region has
-// its address rebased by the region offset and its AxCACHE set from the region's cacheable
-// bit; a miss passes through unchanged.
+// its address rebased by the region offset and its AxCACHE replaced by the region's cacheable
+// field; a miss passes through unchanged.
 
 module smc_alias_remap_wrap (
   input  smc_pkg::smc_input_fabric_56_64_4_12_axi_req_t  axi_in_jtag_req_i,  // JTAG AXI Input

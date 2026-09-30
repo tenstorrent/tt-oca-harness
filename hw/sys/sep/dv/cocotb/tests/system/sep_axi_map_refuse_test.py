@@ -12,6 +12,11 @@ The expectation comes from ``env/sep_axi_decode_map.py``. A reserved
 row allocates nothing, so an access there must not answer OKAY. DECERR
 versus SLVERR is unnamed, so the flavour is counted and logged.
 
+CHK-MAP-REFUSE-DATA: a refused read returns none of the live words sampled on
+the same bus (the live-bus control, SW_RESET_N, boot-ROM word 0). A refused
+access never reaches a unit, so a refused read that hands back live data has
+reached one. The sampled set is named in ``seq_lib/sep_axi_map_refuse_seq.py``.
+
 CHK-OKAY is the live-bus control: a known-mapped CSR on the same bus returns
 OKAY and its generated reset value. Without it a wedged or dead bus would
 refuse every probe and read as a clean pass.
@@ -58,6 +63,12 @@ class sep_axi_map_refuse_test(sep_base_test):
             "CHK-OKAY PASS: mapped CSR 0x%08x returned OKAY with its generated reset value",
             MAPPED_CSR_ADDR,
         )
+        miss = await refuse.sample_live()
+        assert miss is None, f"CHK-MAP-REFUSE-DATA FAIL: {miss}"
+        assert refuse.live, (
+            "CHK-MAP-REFUSE-DATA FAIL: every sampled live word read zero, so the "
+            "refused-read data compare cannot fail"
+        )
 
         # Every probe is a reserved address this test asserts. Unnamed-refuse
         # spans are excluded when the set is built.
@@ -83,6 +94,20 @@ class sep_axi_map_refuse_test(sep_base_test):
                 f"decode rule covers were not refused "
                 f"({refuse.refused} of {len(cfg.probes)} refused)"
             )
+
+        # A refused read whose data equals a sampled live word already failed
+        # CHK-MAP-REFUSE above with the word named. This line is the positive
+        # evidence, and it needs at least one refused read to compare.
+        assert refuse.reads_compared > 0, (
+            "CHK-MAP-REFUSE-DATA FAIL: no refused read was compared against the live words"
+        )
+        self.logger.info(
+            "CHK-MAP-REFUSE-DATA PASS: %d refused read(s) returned none of the %d live "
+            "word(s) sampled (%s)",
+            refuse.reads_compared,
+            len(refuse.live),
+            ", ".join(f"{label}=0x{val:08x}" for val, label in refuse.live.values()),
+        )
 
         # Positive evidence: both channels were exercised. A write reaches the
         # B path and a read the R path, and a decoder can refuse one while

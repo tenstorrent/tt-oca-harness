@@ -15,7 +15,7 @@ sep_address_map_seq writes the same value.
 Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions
       REGION_START +0x00 (64b), REGION_END +0x08 (64b, 4KB-aligned),
-      REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[62], valid[63]=R/W)
+      REGION_ATTRS +0x10 (64b; remap offset [55:12], cacheable[59:56], valid[63]=R/W)
   AP   output-remap        : base 0x10A1_0200, stride 0x08; REGION_ATTRS +0x00 (64b)
   STEE output-remap        : base 0x10A1_0300, stride 0x08; REGION_ATTRS +0x00 (64b)
   Inbound  filter          : base 0x10A2_1000, stride 0x20, 16 entries
@@ -68,13 +68,16 @@ AP_BASE = sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 STEE_BASE = sym("STEE_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR")
 REMAP_STRIDE = sym("AP_OUTPUT_REMAP_CTRL_1__REG_MAP_BASE_ADDR") - AP_BASE
 REMAP_ATTRS = sym("AP_OUTPUT_REMAP_CTRL_0__REGION_REGION_ATTRS_REG_OFFSET")
-# REGION_ATTRS.offset is sw=rw over its whole RDL width (output_remap.rdl), so
-# the CSR R/W stimulus drives every bit of it, the SEP 512 KB granule (bit 19
-# and up) included. AP and STEE are both instances of the output_remap type.
+# REGION_ATTRS.offset and .valid are sw=rw over their whole RDL width
+# (output_remap.rdl), so the CSR R/W stimulus drives every bit of them, the SEP
+# 512 KB granule (bit 19 and up) included. AP and STEE are both instances of the
+# output_remap type.
 _OUTPUT_REMAP = RegBlock("OUTPUT_REMAP")
 REMAP_OFFSET_MASK = _OUTPUT_REMAP.field_mask("REGION_REGION_ATTRS", "offset")
 REMAP_OFFSET_LO_MASK = REMAP_OFFSET_MASK & 0xFFFF_FFFF
-REMAP_OFFSET_HI_MASK = REMAP_OFFSET_MASK >> 32
+REMAP_RW_HI_MASK = (
+    REMAP_OFFSET_MASK | _OUTPUT_REMAP.field_mask("REGION_REGION_ATTRS", "valid")
+) >> 32
 
 # --- inbound / outbound filter config -----------------------------------------
 INFILT_BASE = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
@@ -172,9 +175,9 @@ class SepFabricCsrCfg:
         self.end_lo = rng.getrandbits(32) & ALIAS_END_MASK  # 4KB-aligned
         self.attrs_lo = rng.getrandbits(32) & ALIAS_ATTRS_MASK  # remap offset [31:12]
         self.ap_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
-        self.ap_hi = rng.getrandbits(32) & REMAP_OFFSET_HI_MASK
+        self.ap_hi = rng.getrandbits(32) & REMAP_RW_HI_MASK
         self.stee_lo = rng.getrandbits(32) & REMAP_OFFSET_LO_MASK
-        self.stee_hi = rng.getrandbits(32) & REMAP_OFFSET_HI_MASK
+        self.stee_hi = rng.getrandbits(32) & REMAP_RW_HI_MASK
         # Random legal FILTER_CONFIG RW fields (never the RO data_bus_width [14:12]).
         p = 0
         for b in (F_READ_ALLOWED, F_WRITE_ALLOWED, F_ENTRY_ENABLED, F_ALLOW_NS, F_ALLOW_BURST):

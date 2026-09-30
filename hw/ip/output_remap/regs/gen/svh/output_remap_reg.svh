@@ -57,11 +57,16 @@ localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT        
 localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_MASK                                          = 64'hFFFFFFFFFFFFFF;
 localparam     int unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_OFFSET_SHIFT                                         = 0;
 
+localparam longint unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_MASK                                           = 64'h8000000000000000;
+localparam     int unsigned OUTPUT_REMAP_REGION_REGION_ATTRS_VALID_SHIFT                                          = 63;
+
 
 
 
 
 typedef struct packed {
+    logic [0:0]   valid ;
+    logic [6:0]   rsvd_0 ;
     logic [55:0]   offset ;
 } output_remap_region_region_attrs_reg_t;
 

@@ -7,7 +7,10 @@ cells, first with DIS=0, then one PROD compose cell that closes
 ``sep_fuse_dbg`` / ``smc_fuse_dbg`` while the DTP cases stay open, then a
 seed-extended pinned DIS pair. ``feat_ctrl`` is checked against the
 spec-derived golden. One live inbound filter probe per cell follows
-``sep_debug`` (DECERR when 0, OKAY when 1). The two DFT-inserted fuse-path
+``sep_debug`` (DECERR when 0, OKAY when 1); that rule is the specification
+contract recorded in ``seq_lib/sep_lcc_inbound_filter_gating_seq.py``
+(``lifecycle_controller.adoc``, ``fabric.adoc`` sep-traffic-filter-decode,
+``hw/ip/axi_filter/doc/index.adoc`` axi-traffic-filter-blocked). The two DFT-inserted fuse-path
 disable ports follow the same FEAT_CTRL.
 
 The stitch test stays the LC->feat_ctrl e2e. This test owns the product.

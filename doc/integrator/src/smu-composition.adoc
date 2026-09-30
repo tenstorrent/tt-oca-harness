@@ -99,8 +99,9 @@ Reference Manual for connectivity and the responsibility split between
 hardware-fixed and firmware-programmable apertures.
 endif::backend-pdf[]
 
-The crossbar uses a *runtime* address map. Only the SEP and SMC
-apertures are programmable at runtime; the `ext_out` rule is static:
+The crossbar uses a *runtime* address map with two rules, the SEP and
+SMC apertures, both programmable at runtime. `ext_out` has no address
+rule. The apertures are driven as follows:
 
 * `sep_global_base_addr_i` / `sep_region_size_i` come from the
   `sep_cpu_ctrl` CSRs `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`,
@@ -121,10 +122,14 @@ apertures are programmable at runtime; the `ext_out` rule is static:
 
 SEP, SMC, and `smu_axi_xbar` all run on `clk_smu_i`, so these
 quasi-static CSR fields need no clock-domain crossing. The crossbar's
-address arithmetic is done on 57-bit widened sums. `ext_out` is a
-catch-all port that carries any outbound SEP/SMC manager request not matched by
-the programmed apertures; it has no fixed lower-bound address. Unmatched
-inbound (`ext_in`) requests return a decode error and do not reach `ext_out`.
+address arithmetic is done on 57-bit widened sums. For where unmatched
+requests go, and which requests return `DECERR`, see
+ifdef::backend-html5[]
+xref:ocah-docs:smu:index.adoc#smu-axi-crossbar-routing-table[SMU AXI crossbar routing].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the SMU AXI Crossbar section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[smu-firmware-programming-order]]
 === Firmware programming order
