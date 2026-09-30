@@ -6001,6 +6001,7 @@ reported as such rather than counted as a pass.
 [arabic]
 . Measure the CSRNG `INTR_ENABLE` writable width, then a lone write and a lone read, and place the AW-then-AR overlap from the measured crossbar latencies (`CHK-CONCURRENT-CAL`).
 . Present that overlap on `INTR_ENABLE` / `INTR_STATE`. Confirm the CSRNG adapter port (`drbg_csrng_axil_chan_o`) saw the named ordering (`CHK-CONCURRENT-STIM`).
+. Require AR to handshake at the adapter port only after both AW and W have handshaken (`CHK-CONCURRENT-ARB`).
 . Require both accesses to retire and the write to land (`CHK-CONCURRENT-LAND`).
 
 *Checkers*:
@@ -6014,6 +6015,9 @@ reported as such rather than counted as a pass.
 
 |CHK-CONCURRENT-STIM
 |The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
+
+|CHK-CONCURRENT-ARB
+|The arbitration rule, read off the handshakes at `drbg_csrng_axil_chan_o`: AR handshakes only after both AW and W have handshaken, so the adapter accepted no read while a write half was pending.
 
 |CHK-CONCURRENT-LAND
 |Both accesses retire and the write lands. The check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss still fails the leaf.
@@ -6049,6 +6053,7 @@ reported as such rather than counted as a pass.
 [arabic]
 . Measure the EDN `INTR_ENABLE` writable width, then a lone write and a lone read, and place the AW-then-AR overlap from the measured crossbar latencies (`CHK-CONCURRENT-CAL`).
 . Present that overlap on the EDN block's own registers. Confirm the EDN adapter port (`drbg_edn_axil_chan_o`) saw the named ordering (`CHK-CONCURRENT-STIM`).
+. Require AR to handshake at the adapter port only after both AW and W have handshaken (`CHK-CONCURRENT-ARB`).
 . Require both accesses to retire and the write to land (`CHK-CONCURRENT-LAND`).
 
 *Checkers*:
@@ -6062,6 +6067,9 @@ reported as such rather than counted as a pass.
 
 |CHK-CONCURRENT-STIM
 |The ordering the EDN adapter port presented, read off `drbg_edn_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`.
+
+|CHK-CONCURRENT-ARB
+|Same contract as <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, read off the handshakes at `drbg_edn_axil_chan_o`.
 
 |CHK-CONCURRENT-LAND
 |Both accesses retire and the write lands. The stall signature is the same held-valids-with-every-ready-low bound as the CSRNG leaf.
