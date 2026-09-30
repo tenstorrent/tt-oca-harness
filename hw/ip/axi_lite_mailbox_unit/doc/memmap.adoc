@@ -40,7 +40,15 @@ authoritative for offsets, widths, access, and field descriptions. The `CTRL`
 flush bits are pulses rather than stored state, so reads return zero with an
 OKAY response.
 
-Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.
+ifdef::backend-html5[]
+The xref:smc:memmap.adoc#smc-memory-map[SMC] and
+xref:sep:memory_map.adoc#sep-memory-map[SEP] memory maps state how an offset
+above the registers answers.
+endif::backend-html5[]
+ifdef::backend-pdf[]
+The <<smc-memory-map,SMC>> and <<sep-memory-map,SEP>> memory maps state how an
+offset above the registers answers.
+endif::backend-pdf[]
 
 === Address Examples
 

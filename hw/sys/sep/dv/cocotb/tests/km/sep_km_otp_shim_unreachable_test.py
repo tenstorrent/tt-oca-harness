@@ -1,22 +1,21 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""The KM CPU cannot reach the eFuse shim CSR port past the OTP MMR aperture.
+"""The KM CPU cannot reach the eFuse shim CSR port past the OTP MMR register map.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_bus_err.parhex. RANDCFG: the
 value the host programs into the shim register. Not ``rom_main``: only code on
 the KM CPU can present a KM-side OTP address.
 
 Contract. ``hw/ip/key_manager/regs/key_manager.rdl`` (OTP / eFuse Pass-Through)
-says only the MAP, CTRL and MMR sub-regions are decoded and "efuse_shim_ctrl
-is intentionally excluded (not in the AXIL path)". Its memory-map summary
-places the 4 KB OTP/eFuse window at 0x0001_1000-0x0001_1FFF and says an
-unmapped offset inside a window answers SLVERR. The KM CPU observes that
+says only the MAP, CTRL and MMR register maps are forwarded to SEP, any other
+offset in the 4 KB window answers SLVERR, and "efuse_shim_ctrl is
+intentionally excluded (not in the AXIL path)". The KM CPU observes that
 response only as the sticky ``IRQ_STATUS.AXI_SLVERR`` bit (``km_csr.rdl``).
 
-The KM image loads from, then stores OTP_WR_VALUE to, the first word after the
-0x100-byte OTP_EFUSE_MMR aperture, which is inside the OTP window. The host reads and writes the shim register
-``EFUSE_BANK_INIT_TIME`` on its real path, the SEP-side
-``SEP_EXTERNAL_EFUSE_SHIM_CTRL`` window, before and after.
+The KM image loads from, then stores OTP_WR_VALUE to, OTP_EFUSE_MMR base +
+size, the first word past the MMR register map and inside the OTP window. The
+host reads and writes the shim register ``EFUSE_BANK_INIT_TIME`` on its real
+path, the SEP-side ``SEP_EXTERNAL_EFUSE_SHIM_CTRL`` window, before and after.
 
   CHK-KM-SHIM-HOST-PATH   control: the host read of EFUSE_BANK_INIT_TIME is
                           OKAY at its RDL reset, and a seeded value written
@@ -69,7 +68,7 @@ _SHIM_MASK = _SHIM.mask_all(_SHIM_REG)
 
 @pyuvm.test()
 class sep_km_otp_shim_unreachable_test(sep_base_test):
-    """KM access past the OTP MMR aperture is refused and does not reach the shim."""
+    """KM access past the OTP MMR register map is refused and does not reach the shim."""
 
     required_evidence = (
         "CHK-KM-SHIM-HOST-PATH",
@@ -150,7 +149,7 @@ class sep_km_otp_shim_unreachable_test(sep_base_test):
             f"CHK-KM-OTP-WINDOW-LIVE FAIL: IRQ_STATUS=0x{ok:08x} ({irq_names(ok)}) after "
             "a KM load from the mapped OTP_EFUSE_MMR SEC_DISABLE_TOKEN_MATCH register; "
             "the OTP window refuses a mapped offset, so a SLVERR below would not be about "
-            "the offset past the MMR aperture"
+            "the offset past the MMR register map"
         )
         self.logger.info(
             "CHK-KM-OTP-WINDOW-LIVE PASS: KM load from the mapped OTP_EFUSE_MMR "
@@ -195,11 +194,11 @@ class sep_km_otp_shim_unreachable_test(sep_base_test):
         assert not faults, (
             "CHK-KM-OTP-SHIM-EXCLUDED FAIL: key_manager.rdl excludes efuse_shim_ctrl "
             "from the KM AXI-Lite path and makes an unmapped offset inside the OTP "
-            "window answer SLVERR, but a KM access past the OTP MMR aperture was not "
+            "window answer SLVERR, but a KM access past the OTP MMR register map was not "
             "refused that way: " + "; ".join(faults)
         )
         self.logger.info(
-            "CHK-KM-OTP-SHIM-EXCLUDED PASS: the KM load and store past the MMR aperture "
+            "CHK-KM-OTP-SHIM-EXCLUDED PASS: the KM load and store past the MMR register map "
             "answered SLVERR (%s, %s), the load did not return %s, and the register kept "
             "the host value 0x%08x",
             irq_names(rd_irq),

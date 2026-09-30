@@ -272,6 +272,11 @@ python_paths = [
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
+# The bench toggles the pll_wrap oscillators itself (tb_wrapper_top.sv); the
+# model's own generators stay off.
+[frameworks.cocotb.sim]
+args = ["+pll_osc_bench"]
+
 # Firmware/preload builds. Outputs are the staging manifest: the sim stage
 # copies each declared output into the per-test run directory, where the
 # time-zero SV loaders resolve the plusarg basenames.
@@ -731,7 +736,9 @@ sources = [
 ]
 
 [frameworks.uvm.sim]
-args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+# The embedded DTP env counts in whole nanoseconds, so the SV-UVM flow runs pll_wrap's 10 ns
+# sys-period alternative.
+args = ["+UVM_VERBOSITY=UVM_MEDIUM", "+pll_sys_period_ns=10"]
 
 # The bare `UVM` define (selects the SV-UVM shape of the shared tb_wrapper_top.sv) comes from
 # the native profile's [frameworks.uvm] overlay -- no per-DUT copy. Both targets share one

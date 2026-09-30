@@ -235,9 +235,11 @@ module dtp
   input  logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_i,  // CTP ack-out pad input.
   output logic [XTRIG_NUM_CTP-1:0]  xtrig_ctp_ack_out_din_en_o,  // CTP ack-out pad input enable.
 
-  input  logic  test_en_i,                      // DFT test enable; not connected inside DTP.
-  input  logic  scan_rst_ni                     // DFT scan reset, active-low; not connected inside
-                                                // DTP.
+  input  logic  test_en_i,                      // DFT test-mode enable, active-high, for the
+                                                // JTAG2AXI bridges and the CTN CSR crossbar.
+  input  logic  scan_rst_ni                     // DFT scan reset, active-low; unused. DTP has no
+                                                // reset synchronizer, so rst_n_i must arrive
+                                                // scan-controlled.
 );
 
   //--------------------------------------------------------------------------
@@ -292,6 +294,7 @@ module dtp
   ) u_jtag_intf_unit (
     .clk_i                       (clk_i),
     .rst_n_i                     (rst_n_i),
+    .test_en_i                   (test_en_i),
     .pwr_on_rst_ni               (pwr_on_rst_ni),
     .dbg_disable_i               (dbg_disable_i),
     .ptap_client_tap_ctrl_i      (jtag_ptap_client_tap_ctrl_i),
@@ -361,6 +364,7 @@ module dtp
   ) u_cross_trigger_network (
     .clk_i               (clk_i),
     .rst_ni              (rst_n_i),
+    .test_en_i           (test_en_i),
 
     // AXI-Lite CSR interface
     .axil_req_i          (axil_xtrig_req_i),

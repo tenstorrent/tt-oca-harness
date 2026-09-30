@@ -60,12 +60,12 @@ asserted when the number of entries in the buffer is greater than this value.
 transmitter. The flushing is done via the ATB AF interface. This bit clears
 itself after the flush completes.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `TELEMETRY_RX_FLUSH` | W | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+| 4 | `TELEMETRY_RX_FLUSH` | W 1P | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
 pointer. Stored payload bytes are not cleared. In particular, a later short
 message can retain trailing counter values and validity from an earlier
 message. This operation does not erase storage.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `BUFFER_POP` | W | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
+| 0 | `BUFFER_POP` | W 1P | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
 Writing `1` pops the buffer and thus updates the data in the
 `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
 registers.
@@ -94,7 +94,7 @@ registers.
 telemetry messages in the Telemetry Message Buffer is greater than
 `CTRL.BUFFER_THRESHOLD`.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | RW | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
+| 0 | `MISSING_LAST` | RW1C | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
 received a Last Packet flag when the maximum number of packets a message can
 consist of has been received.
 |===
@@ -121,7 +121,7 @@ consist of has been received.
 | 4 | `BUFFER_THRESHOLD` | RW | 0x0 a| Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
 interrupt and writing `0` releases it.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | W | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
+| 0 | `MISSING_LAST` | W 1P | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
 |===
 
 [#reg-{regmap-instance}-telemetry_receiver_wrap-telemetry_receiver-0-TELEMETRY_PROBE_ID]
@@ -170,12 +170,12 @@ asserted when the number of entries in the buffer is greater than this value.
 transmitter. The flushing is done via the ATB AF interface. This bit clears
 itself after the flush completes.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `TELEMETRY_RX_FLUSH` | W | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+| 4 | `TELEMETRY_RX_FLUSH` | W 1P | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
 pointer. Stored payload bytes are not cleared. In particular, a later short
 message can retain trailing counter values and validity from an earlier
 message. This operation does not erase storage.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `BUFFER_POP` | W | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
+| 0 | `BUFFER_POP` | W 1P | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
 Writing `1` pops the buffer and thus updates the data in the
 `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
 registers.
@@ -204,7 +204,7 @@ registers.
 telemetry messages in the Telemetry Message Buffer is greater than
 `CTRL.BUFFER_THRESHOLD`.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | RW | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
+| 0 | `MISSING_LAST` | RW1C | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
 received a Last Packet flag when the maximum number of packets a message can
 consist of has been received.
 |===
@@ -231,7 +231,7 @@ consist of has been received.
 | 4 | `BUFFER_THRESHOLD` | RW | 0x0 a| Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
 interrupt and writing `0` releases it.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | W | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
+| 0 | `MISSING_LAST` | W 1P | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
 |===
 
 [#reg-{regmap-instance}-telemetry_receiver_wrap-telemetry_receiver-1-TELEMETRY_PROBE_ID]
@@ -280,12 +280,12 @@ asserted when the number of entries in the buffer is greater than this value.
 transmitter. The flushing is done via the ATB AF interface. This bit clears
 itself after the flush completes.
 | 7:5 | `Reserved` | - | - a| Reserved
-| 4 | `TELEMETRY_RX_FLUSH` | W | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
+| 4 | `TELEMETRY_RX_FLUSH` | W 1P | 0x0 a| Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write
 pointer. Stored payload bytes are not cleared. In particular, a later short
 message can retain trailing counter values and validity from an earlier
 message. This operation does not erase storage.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `BUFFER_POP` | W | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
+| 0 | `BUFFER_POP` | W 1P | 0x0 a| Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.
 Writing `1` pops the buffer and thus updates the data in the
 `TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`
 registers.
@@ -314,7 +314,7 @@ registers.
 telemetry messages in the Telemetry Message Buffer is greater than
 `CTRL.BUFFER_THRESHOLD`.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | RW | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
+| 0 | `MISSING_LAST` | RW1C | 0x0 a| Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not
 received a Last Packet flag when the maximum number of packets a message can
 consist of has been received.
 |===
@@ -341,7 +341,7 @@ consist of has been received.
 | 4 | `BUFFER_THRESHOLD` | RW | 0x0 a| Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the
 interrupt and writing `0` releases it.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `MISSING_LAST` | W | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
+| 0 | `MISSING_LAST` | W 1P | 0x0 a| Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.
 |===
 
 [#reg-{regmap-instance}-telemetry_receiver_wrap-telemetry_receiver-2-TELEMETRY_PROBE_ID]

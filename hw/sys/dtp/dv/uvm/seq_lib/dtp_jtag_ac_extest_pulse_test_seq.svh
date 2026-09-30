@@ -4,7 +4,7 @@
 // AC EXTEST_PULSE scan-loopback scenario. EXTEST_PULSE (IR 0x06) selects the
 // boundary-scan chain, which this bench loops back without boundary cells.
 // The chain's run_test_idle strobe is the Run-Test/Idle decode the AC pulse
-// launches on: one pulse across a DR scan, on the return to Run-Test/Idle,
+// launches on: low across a DR scan until the scan returns to Run-Test/Idle,
 // and high while the TAP is parked there (CHK-BSR-RTI). Mirrors the cocotb
 // dtp_jtag_ac_extest_pulse_test_seq.
 
@@ -35,12 +35,10 @@ class dtp_jtag_ac_extest_pulse_test_seq extends dtp_jtag_base_test_seq;
     foreach (walking_patterns[p]) check_loopback_scan(6'(EXTEST_PULSE_INSTR), walking_patterns[p]);
     foreach (edge_patterns[p]) check_loopback_scan(6'(EXTEST_PULSE_INSTR), edge_patterns[p]);
     `uvm_info(get_type_name(),
-              "Step 3: EXTEST_PULSE scan controls; run_test_idle pulses once, on the return",
-              UVM_LOW)
+              "Step 3: EXTEST_PULSE scan controls; run_test_idle high only on the return", UVM_LOW)
     check_bsr_scan_ctrl_counts(6'(EXTEST_PULSE_INSTR), random_pattern(DtpBsrModelLen),
                                DtpBsrModelLen, DTP_SCAN_CTRL_SELECTED, extra, counts);
-    family_check(RtiCheckId, {RtiSignal, " pulses across the scan"}, 64'(counts[RtiSignal]), 64'd1,
-                 "EXTEST_PULSE DR scan");
+    check_run_test_idle_window(RtiCheckId, RtiSignal, counts, "EXTEST_PULSE DR scan");
     `uvm_info(get_type_name(),
               "Step 4: EXTEST_PULSE parked in Run-Test/Idle holds run_test_idle high", UVM_LOW)
     check_scan_observable(RtiCheckId, RtiSignal, 1'b1, "EXTEST_PULSE parked in Run-Test/Idle");

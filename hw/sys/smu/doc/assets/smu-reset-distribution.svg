@@ -1,145 +1,168 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1050" height="1220" viewBox="0 0 1050 1220" role="img" aria-labelledby="title desc">
+<?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<title id="title">SMU reset sources and consumers</title><desc id="desc">Reset inputs, SMC-generated resets and JTAG resets are separated. Active-low resets use ni, no or trst_n suffixes; SMC CPU JTAG reset is inverted.</desc>
-<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#405469"/></marker></defs>
-<rect width="1050" height="1220" fill="white"/>
-<g font-family="DejaVu Sans, sans-serif" fill="#182c40">
-<text x="24" y="34" font-size="22" font-weight="700" text-anchor="start">
-<tspan x="24" dy="0">SMU reset sources and consumers</tspan>
-</text>
-<rect x="24" y="54" width="185" height="33" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="116.5" y="75.6" font-size="15" font-weight="400" text-anchor="middle">
-<tspan x="116.5" dy="0">Boundary port</tspan>
-</text>
-<rect x="230" y="54" width="210" height="33" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="335.0" y="75.6" font-size="15" font-weight="400" text-anchor="middle">
-<tspan x="335.0" dy="0">SMU RTL instance</tspan>
-</text>
-<rect x="461" y="54" width="225" height="33" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="573.5" y="75.6" font-size="15" font-weight="400" text-anchor="middle">
-<tspan x="573.5" dy="0">Generated signal</tspan>
-</text>
-<text x="24" y="115" font-size="15" font-weight="400" text-anchor="start">
-<tspan x="24" dy="0">Arrows show direction. Consumer lists show fan-out; repeated names refer to the same instance.</tspan>
-</text>
-<text x="24" y="155" font-size="16" font-weight="700" text-anchor="start">
-<tspan x="24" dy="0">BOUNDARY INPUTS</tspan>
-</text>
-<rect x="24" y="173" width="439" height="61" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="243.5" y="197.805" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">powergood_i, rst_cold_ni</tspan>
-<tspan x="243.5" dy="22.950000000000003">rst_cool_n_from_pin_i</tspan>
-</text>
-<path d="M463 203 L497 203" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="173" width="522" height="61" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="209.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_smc (power and reset sequencing)</tspan>
-</text>
-<rect x="24" y="248" width="439" height="61" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="243.5" y="284.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">rst_telemetry_ni</tspan>
-</text>
-<path d="M463 278 L497 278" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="248" width="522" height="61" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="284.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_smc (telemetry domain)</tspan>
-</text>
-<rect x="24" y="323" width="439" height="61" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="243.5" y="359.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">scan_rst_ni</tspan>
-</text>
-<path d="M463 353 L497 353" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="323" width="522" height="61" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="359.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_dtp, u_sep, u_smc (scan reset)</tspan>
-</text>
-<rect x="24" y="398" width="439" height="61" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="243.5" y="434.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">jtag_ptap_client_tap_ctrl_i.trst_n</tspan>
-</text>
-<path d="M463 428 L497 428" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="398" width="522" height="61" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="434.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_dtp (primary TAP reset)</tspan>
-</text>
-<text x="24" y="505" font-size="16" font-weight="700" text-anchor="start">
-<tspan x="24" dy="0">SMC OUTPUTS</tspan>
-</text>
-<rect x="24" y="526" width="439" height="77" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="570.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">powergood_stable</tspan>
-</text>
-<path d="M463 564 L497 564" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="526" width="522" height="77" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="558.805" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_dtp.pwr_on_rst_ni</tspan>
-<tspan x="765.0" dy="22.950000000000003">u_sep.dbg_rstb_i</tspan>
-</text>
-<rect x="24" y="618" width="439" height="77" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="662.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">rst_primary_smc_clk_no</tspan>
-</text>
-<path d="M463 656 L497 656" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="618" width="522" height="77" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="650.805" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_dtp, u_sep, u_smu_axi_xbar</tspan>
-<tspan x="765.0" dy="22.950000000000003">u_iw_conv_sep, u_iw_conv_smc; boundary output</tspan>
-</text>
-<rect x="24" y="710" width="439" height="77" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="754.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">rst_wdt_n</tspan>
-</text>
-<path d="M463 748 L497 748" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="710" width="522" height="77" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="754.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_sep.wdt_rst_ni</tspan>
-</text>
-<rect x="24" y="802" width="439" height="77" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="823.3299999999999" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">rst_cold_stable_ref_clk_no</tspan>
-<tspan x="243.5" dy="22.950000000000003">rst_primary_ref_clk_no</tspan>
-<tspan x="243.5" dy="22.950000000000003">rst_primary_periph_clk_no</tspan>
-</text>
-<path d="M463 840 L497 840" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="802" width="522" height="77" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="765.0" y="834.805" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">Boundary reset outputs</tspan>
-<tspan x="765.0" dy="22.950000000000003">for reference / peripheral clock domains</tspan>
-</text>
-<text x="24" y="923" font-size="16" font-weight="700" text-anchor="start">
-<tspan x="24" dy="0">DTP JTAG OUTPUTS</tspan>
-</text>
-<rect x="24" y="942" width="439" height="59" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="977.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">dtp_sep_stap_tap_ctrl.trst_n</tspan>
-</text>
-<path d="M463 971 L497 971" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="942" width="522" height="59" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="977.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">u_sep.jtag_trst_ni</tspan>
-</text>
-<rect x="24" y="1014" width="439" height="59" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="1049.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">dtp_smc_stap_tap_ctrl.trst_n</tspan>
-</text>
-<path d="M463 1043 L497 1043" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="1014" width="522" height="59" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
-<text x="765.0" y="1049.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">Invert → u_smc.smc_cpu_jtag_reset_i</tspan>
-</text>
-<rect x="24" y="1086" width="439" height="59" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
-<text x="243.5" y="1121.28" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="243.5" dy="0">Host scan-chain resets</tspan>
-</text>
-<path d="M463 1115 L497 1115" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
-<rect x="504" y="1086" width="522" height="59" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
-<text x="765.0" y="1109.805" font-size="17" font-weight="400" text-anchor="middle">
-<tspan x="765.0" dy="0">I/O / extra TAP TRST_n; host TRST_n</tspan>
-<tspan x="765.0" dy="22.950000000000003">Host RST_n and CHRST_n reset controls</tspan>
-</text>
-<text x="24" y="1177" font-size="16" font-weight="400" text-anchor="start">
-<tspan x="24" dy="0">Active-low resets use _ni, _no or trst_n suffixes. The SMC CPU JTAG reset is active-high.</tspan>
-<tspan x="24" dy="21.6">SEP-related paths exist when SEP = 1. The diagram shows SMU distribution, not internal reset logic.</tspan>
-</text>
-</g></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="832" viewBox="0 0 1040 832" role="img" aria-labelledby="title desc">
+<title id="title">SMU reset sources and consumers</title>
+<desc id="desc">Reset inputs enter the SMC and DTP from the left, and scan_rst_ni reaches the DTP, SEP and SMC. The SMC generates powergood_stable for the DTP and SEP, rst_wdt_n for the SEP, and rst_primary_smc_clk_no for the DTP, SEP, AXI infrastructure and the boundary, together with the reference- and peripheral-domain boundary resets. The DTP drives the SEP STAP reset, the inverted SMC CPU JTAG reset, and the host TAP and scan-chain resets.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+</style>
+</defs>
+<rect width="1040" height="832" fill="#ffffff"/>
+<text class="s" x="14" y="130" text-anchor="start">jtag_ptap_client_tap_ctrl_i.trst_n</text>
+<text class="s" x="14" y="154" text-anchor="start">scan_rst_ni</text>
+<text class="s" x="14" y="514" text-anchor="start">rst_cold_ni</text>
+<text class="s" x="14" y="538" text-anchor="start">powergood_i</text>
+<text class="s" x="14" y="562" text-anchor="start">rst_cool_n_from_pin_i</text>
+<text class="s" x="14" y="586" text-anchor="start">rst_telemetry_ni</text>
+<text class="s" x="714" y="70" text-anchor="start">jtag_stap_{io,extra}_host_tap_ctrl_o.trst_n</text>
+<text class="s" x="714" y="94" text-anchor="start">jtag_*_host_scan_ctrl_o.rst_n</text>
+<text class="s" x="714" y="118" text-anchor="start">jtag_*_host_scan_ctrl_o.chrst_n</text>
+<text class="s" x="714" y="538" text-anchor="start">rst_primary_smc_clk_no</text>
+<text class="s" x="714" y="562" text-anchor="start">rst_cold_stable_ref_clk_no</text>
+<text class="s" x="714" y="586" text-anchor="start">rst_primary_ref_clk_no</text>
+<text class="s" x="714" y="610" text-anchor="start">rst_primary_periph_clk_no</text>
+<rect class="smu" x="226" y="14" width="474" height="760" rx="8"/>
+<text class="b" x="238" y="762" text-anchor="start">smu</text>
+<path class="n-wdt" d="M250.0,160.0 L250.0,496.0"/>
+<path class="a-wdt" d="M250,346.0 L284,346.0"/>
+<path class="a-wdt" d="M250,496.0 L284,496.0"/>
+<path class="n-jtag" d="M554.0,148.0 L554.0,191.0 M554.0,201.0 L554.0,215.0 M554.0,225.0 L554.0,310.0"/>
+<path class="n-jtag" d="M590.0,172.0 L590.0,191.0 M590.0,201.0 L590.0,215.0 M590.0,225.0 L590.0,329.0 M590.0,339.0 L590.0,353.0 M590.0,363.0 L590.0,377.0 M590.0,387.0 L590.0,472.0"/>
+<path class="n-jtag" d="M590,472.0 L574.0,472.0"/>
+<path class="a-jtag" d="M552.0,472.0 L546,472.0"/>
+<path class="n-pg" d="M614.0,196.0 L614.0,215.0 M614.0,225.0 L614.0,353.0 M614.0,363.0 L614.0,377.0 M614.0,387.0 L614.0,496.0"/>
+<path class="n-tel" d="M638.0,358.0 L638.0,377.0 M638.0,387.0 L638.0,520.0"/>
+<path class="n-smu" d="M666.0,220.0 L666.0,563.0 M666.0,573.0 L666.0,587.0 M666.0,597.0 L666.0,611.0 M666.0,621.0 L666.0,738.0"/>
+<path class="a-jtag" d="M17,136.0 L284,136.0"/>
+<path class="a-wdt" d="M17,160.0 L284,160.0"/>
+<path class="a-slate" d="M17,520.0 L284,520.0"/>
+<path class="a-slate" d="M17,544.0 L284,544.0"/>
+<path class="a-slate" d="M17,568.0 L284,568.0"/>
+<path class="a-tel" d="M17,592.0 L284,592.0"/>
+<path class="a-jtag" d="M540,76.0 L1023,76.0"/>
+<path class="a-jtag" d="M540,100.0 L1023,100.0"/>
+<path class="a-jtag" d="M540,124.0 L1023,124.0"/>
+<path class="n-jtag" d="M540,148.0 L554,148.0"/>
+<path class="a-jtag" d="M554,310.0 L546,310.0"/>
+<path class="n-jtag" d="M540,172.0 L590,172.0"/>
+<path class="n-pg" d="M540,496.0 L614,496.0"/>
+<path class="a-pg" d="M614,196.0 L546,196.0"/>
+<path class="a-pg" d="M614,334.0 L546,334.0"/>
+<path class="n-tel" d="M540,520.0 L638,520.0"/>
+<path class="a-tel" d="M638,358.0 L546,358.0"/>
+<path class="n-smu" d="M540,544.0 L666,544.0"/>
+<path class="a-smu" d="M666,220.0 L546,220.0"/>
+<path class="a-smu" d="M666,382.0 L546,382.0"/>
+<path class="a-smu" d="M666,738.0 L546,738.0"/>
+<path class="a-smu" d="M666,544.0 L1023,544.0"/>
+<path class="a-ref" d="M540,568.0 L1023,568.0"/>
+<path class="a-ref" d="M540,592.0 L1023,592.0"/>
+<path class="a-per" d="M540,616.0 L1023,616.0"/>
+<rect class="core" x="290" y="30" width="250" height="210" rx="6"/>
+<text class="bs" x="300" y="50" text-anchor="start">u_dtp</text>
+<text class="s" x="532" y="152" text-anchor="end">dtp_sep_stap_tap_ctrl.trst_n</text>
+<text class="s" x="532" y="176" text-anchor="end">dtp_smc_stap_tap_ctrl.trst_n</text>
+<text class="s" x="532" y="200" text-anchor="end">pwr_on_rst_ni</text>
+<rect class="core opt" x="290" y="264" width="250" height="138" rx="6"/>
+<text class="bs" x="300" y="284" text-anchor="start">u_sep</text>
+<text class="s" x="532" y="314" text-anchor="end">jtag_trst_ni</text>
+<text class="s" x="532" y="338" text-anchor="end">dbg_rstb_i</text>
+<text class="s" x="532" y="362" text-anchor="end">wdt_rst_ni</text>
+<rect class="core" x="290" y="426" width="250" height="210" rx="6"/>
+<text class="bs" x="300" y="446" text-anchor="start">u_smc</text>
+<text class="s" x="532" y="476" text-anchor="end">smc_cpu_jtag_reset_i</text>
+<text class="s" x="532" y="500" text-anchor="end">powergood_stable</text>
+<text class="s" x="532" y="524" text-anchor="end">rst_wdt_n</text>
+<rect class="core" x="290" y="660" width="250" height="98" rx="6"/>
+<text class="bs" x="300" y="680" text-anchor="start">u_smu_axi_xbar</text>
+<text class="bs" x="300" y="696" text-anchor="start">u_iw_conv_sep</text>
+<text class="bs" x="300" y="712" text-anchor="start">u_iw_conv_smc</text>
+<path d="M574.0,464.0 L558.0,472.0 L574.0,480.0 Z" fill="#ffffff" stroke="#42759b" stroke-width="1.5"/>
+<circle cx="555.0" cy="472.0" r="3" fill="#ffffff" stroke="#42759b" stroke-width="1.5"/>
+<circle cx="250" cy="160.0" r="3.2" fill="#77736b"/>
+<circle cx="250" cy="346.0" r="3.2" fill="#77736b"/>
+<circle cx="250" cy="496.0" r="3.2" fill="#77736b"/>
+<circle cx="614" cy="334.0" r="3.2" fill="#336633"/>
+<circle cx="666" cy="382.0" r="3.2" fill="#103525"/>
+<circle cx="666" cy="544.0" r="3.2" fill="#103525"/>
+<circle cx="666" cy="544.0" r="3.2" fill="#103525"/>
+<rect class="core" x="14" y="798" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="812" text-anchor="start">SMU RTL instance</text>
+<rect class="core opt" x="211.2" y="798" width="40" height="18" rx="4"/>
+<text class="s" x="259.2" y="812" text-anchor="start">Optional (SEP parameter)</text>
+<circle cx="530" cy="807" r="3.2" fill="#5b6670"/>
+<path class="n-slate" d="M500,807 L560,807 M530,807 L530,820"/>
+<text class="s" x="572" y="812" text-anchor="start">Fan-out</text>
+<path class="n-jtag" d="M690,795 L690,802 M690,812 L690,819"/>
+<path class="n-slate" d="M660,807 L720,807"/>
+<text class="s" x="732" y="812" text-anchor="start">Crossing, not connected</text>
+</svg>

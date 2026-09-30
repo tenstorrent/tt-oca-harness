@@ -124,7 +124,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3:0</td><td>REGWEN</td><td>RW</td><td>0x6</td><td>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.<br>Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.<br><br>Default Value = kMultiBitBool4True -&gt; Unlocked at reset.</td></tr>
+<tr><td>3:0</td><td>REGWEN</td><td>RW0C</td><td>0x6</td><td>Used by firmware to lock the DMA enabled memory range configuration registers from further modification.<br>Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.<br><br>Default Value = kMultiBitBool4True -&gt; Unlocked at reset.</td></tr>
 </table>
 <h3 id="CFG_REGWEN">CFG_REGWEN</h3>
 <table>
@@ -179,11 +179,11 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>CHUNK_DONE</td><td>RW</td><td>0x0</td><td>Transfer of a single chunk is complete.<br>Only raised for multi-chunk memory-to-memory transfers.<br>Cleared automatically by the hardware when starting the transfer of a new chunk.</td></tr>
+<tr><td>5</td><td>CHUNK_DONE</td><td>RW1C</td><td>0x0</td><td>Transfer of a single chunk is complete.<br>Only raised for multi-chunk memory-to-memory transfers.<br>Cleared automatically by the hardware when starting the transfer of a new chunk.</td></tr>
 <tr><td>4</td><td>SHA2_DIGEST_VALID</td><td>R</td><td>0x0</td><td>Indicates whether the SHA2_DIGEST register contains a valid digest.<br>This value is cleared on the initial transfer and set when the digest is written.</td></tr>
-<tr><td>3</td><td>ERROR</td><td>RW</td><td>0x0</td><td>Error occurred during the operation.<br>ERROR_CODE register denotes the source of the error.</td></tr>
-<tr><td>2</td><td>ABORTED</td><td>RW</td><td>0x0</td><td>Set once aborted operation drains.</td></tr>
-<tr><td>1</td><td>DONE</td><td>RW</td><td>0x0</td><td>Configured DMA operation is complete.<br>Cleared automatically by the hardware when starting a new transfer.</td></tr>
+<tr><td>3</td><td>ERROR</td><td>RW1C</td><td>0x0</td><td>Error occurred during the operation.<br>ERROR_CODE register denotes the source of the error.</td></tr>
+<tr><td>2</td><td>ABORTED</td><td>RW1C</td><td>0x0</td><td>Set once aborted operation drains.</td></tr>
+<tr><td>1</td><td>DONE</td><td>RW1C</td><td>0x0</td><td>Configured DMA operation is complete.<br>Cleared automatically by the hardware when starting a new transfer.</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>DMA operation is active if this bit is set.<br>DMA engine clears this bit when operation is complete.<br>This bit may be set as long as hardware handshake mode is active and triggered.</td></tr>
 </table>
 <h3 id="ERROR_CODE">ERROR_CODE</h3>

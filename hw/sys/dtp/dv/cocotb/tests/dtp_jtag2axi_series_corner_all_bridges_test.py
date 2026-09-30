@@ -19,6 +19,8 @@ class dtp_jtag2axi_series_corner_all_bridges_test(dtp_base_test):
         "CHK-AXI-RESP",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+    )
+    axi_checker_target_required_ids = (
         "CHK-J2A-SERIES-ADDR",
         "CHK-J2A-FAULT-STATUS",
     )

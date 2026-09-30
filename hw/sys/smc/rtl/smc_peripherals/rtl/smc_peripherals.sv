@@ -35,8 +35,8 @@ module smc_peripherals #(
 
   input  logic clk_telemetry_i,         // Telemetry clock, gated by tel_cg_en_i before it
                                         // reaches the telemetry receivers.
-  input  logic rst_telemetry_ni,        // Telemetry-domain reset, active-low, passed to the
-                                        // telemetry receivers without synchronization.
+  input  logic rst_telemetry_ni,        // Telemetry-domain reset, active-low, for the
+                                        // telemetry receivers' ATB FIFOs.
 
   input  logic i3c_cg_en_i,             // Stops the I3C peripheral clock when high;
                                         // synchronized to the peripheral clock.
@@ -989,6 +989,9 @@ module smc_peripherals #(
     .rst_ni                     (rst_primary_smc_clk_no),
     .clk_telemetry_i            (gated_clk_telemetry),
     .rst_telemetry_ni           (rst_telemetry_ni),
+
+    .test_en_i                  (test_en_i),
+    .scan_rst_ni                (scan_rst_ni),
 
     .axil_req_i                 (axil_telemetry_req),
     .axil_resp_o                (axil_telemetry_resp),

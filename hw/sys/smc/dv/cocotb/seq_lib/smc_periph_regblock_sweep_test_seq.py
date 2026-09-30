@@ -41,10 +41,15 @@ Three registers need more than that, and say so at the call site:
   rounding the RDL gives a `PULSE_WIDTH` of 0 ("a value of 0 will be rounded up
   to 1"). Both constrained fields sit in the same half of the word, so the
   half-register writes never leave an illegal pair resident either.
-* The telemetry `INTR_TEST.BUFFER_THRESHOLD` field is plain storage, so the
-  generic cycle drives it and leaves the event it raises in INTR_STATUS. Each
-  receiver's INTR_STATUS is therefore cleared afterwards and re-read, which is
-  also the `oneToClear` contract for that register.
+* The telemetry `INTR_TEST` forces the two INTR_STATUS events, and the generic
+  cycle leaves the level one released and never pulses the other. Each receiver
+  therefore takes an interrupt leg afterwards. `telemetry_receiver.rdl` makes
+  `INTR_TEST.BUFFER_THRESHOLD` plain storage that forces the interrupt on 1 and
+  releases it on 0 over a read-only `INTR_STATUS.BUFFER_THRESHOLD`, so writing
+  it to 1 has to set exactly that status bit and writing it back to 0 has to
+  release it. `INTR_TEST.MISSING_LAST` is a write-only `singlepulse` over a
+  `oneToClear` `INTR_STATUS.MISSING_LAST`, so a pulse of it has to set exactly
+  that status bit, which then holds until a write of its own mask clears it.
 
 `log_engine/CTRL` is swept last of the log-engine registers, so the enable is
 only ever set while the region and write addresses are back at their reset and
@@ -61,6 +66,7 @@ import cocotb
 
 from .smc_addr_map import efuse_ifc_u32
 from .smc_log_engine_utils import WRAP, WRAP_PY
+from .smc_rdl_regmap import RdlField
 from .smc_regblock_field_sweep_utils import (
     RegInstance,
     SmcRegblockFieldSweepSeq,
@@ -137,6 +143,9 @@ _TELEMETRY_PY = "SMC_TELEMETRY_RECEIVER_WRAP_TELEMETRY_RECEIVER_{index}__"
 # INTR_ENABLE is swept before INTR_TEST, so the event the test field raises
 # cannot reach the interrupt output.
 _TELEMETRY_REGS = ("INTR_ENABLE", "INTR_TEST", "CTRL")
+# The two events, by the field name INTR_TEST and INTR_STATUS share.
+_TELEMETRY_LEVEL_EVENT = "BUFFER_THRESHOLD"
+_TELEMETRY_STICKY_EVENT = "MISSING_LAST"
 
 _LOG_ENGINE_PATH = "smc_uart_wrap/uart_log_engine_wrap/log_engine"
 # CTRL last: the enable is only set once the addresses are back at their reset.
@@ -144,7 +153,11 @@ _LOG_ENGINE_REGS = ("LOG_REGION_SIZE", "LOG_REGION_ADDR", "LOG_WRITE_ADDR", "CTR
 
 _ACCESSES_PER_CYCLE = 12
 _ACCESSES_PER_WORD_CYCLE = 7
-_ACCESSES_PER_INTR_CLEAR = 3
+# The telemetry interrupt leg: the idle read; the force write, its readback,
+# the release write, its readback; the pulse write, its readback, the clear
+# write, its readback.
+_ACCESSES_PER_INTR_LEG = 9
+_PREDICTED_PER_INTR_LEG = 5
 # The eFuse status leg: the idle read, the write of the three clears, the readback.
 _ACCESSES_PER_EFUSE_STATUS_LEG = 3
 
@@ -199,6 +212,13 @@ def _timer_ctrl_words(inst: RegInstance) -> tuple[tuple[int, int], ...]:
     return tuple(out)
 
 
+def _field(inst: RegInstance, name: str) -> RdlField:
+    for field in inst.reg.fields:
+        if field.name == name:
+            return field
+    raise AssertionError(f"{inst.label}: the generated map declares no field named {name}")
+
+
 def _telemetry_spec(register: str) -> tuple[str, str, str, str]:
     return (
         f"{_TELEMETRY_PATH}/{register}",
@@ -225,16 +245,67 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         self.intr_status_cleared = 0
         self.status_legs = 0
 
-    async def _clear_telemetry_status(self, inst: RegInstance) -> None:
-        """W1C the events the INTR_TEST cycle raised, and prove they went."""
-        declared = inst.reg.declared_mask
-        raised = await self.csr_read(f"{inst.label}:raised", inst.addr)
-        await self.csr_write(f"{inst.label}:clear", inst.addr, declared)
-        cleared = await self.csr_read(f"{inst.label}:cleared", inst.addr, expected=0)
+    async def _telemetry_intr_leg(self, test: RegInstance, status: RegInstance) -> None:
+        """Force each INTR_STATUS event through INTR_TEST and take it back out.
+
+        Every INTR_STATUS read here is predicted exactly: with INTR_ENABLE and
+        CTRL back at their reset and no telemetry traffic, the only thing that
+        can set an event is the INTR_TEST word this leg has just written.
+        """
+        declared = status.reg.declared_mask
+        level_test = _field(test, _TELEMETRY_LEVEL_EVENT)
+        level_status = _field(status, _TELEMETRY_LEVEL_EVENT)
+        sticky_test = _field(test, _TELEMETRY_STICKY_EVENT)
+        sticky_status = _field(status, _TELEMETRY_STICKY_EVENT)
+        assert level_test.plain_rw and level_status.access == "read-only", (
+            f"{test.label}.{_TELEMETRY_LEVEL_EVENT}: the generated map no longer declares a "
+            f"plain read-write test field over a read-only status field"
+        )
+        assert (
+            sticky_test.access == "write-only" and sticky_status.modified_write == "oneToClear"
+        ), (
+            f"{test.label}.{_TELEMETRY_STICKY_EVENT}: the generated map no longer declares a "
+            f"write-only test field over a `oneToClear` status field"
+        )
+
+        idle = await self.csr_read(f"{status.label}:idle", status.addr, expected=0)
+        assert idle & declared == 0, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{idle:x} before this leg forced "
+            f"anything; every event it goes on to observe has to be one it raised itself"
+        )
+
+        await self.csr_write(f"{test.label}:force", test.addr, level_test.mask)
+        forced = await self.csr_read(
+            f"{status.label}:forced", status.addr, expected=level_status.mask
+        )
+        assert forced & declared == level_status.mask, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{forced:x} with "
+            f"INTR_TEST.{_TELEMETRY_LEVEL_EVENT} written to 1; the RDL forces exactly "
+            f"{_TELEMETRY_LEVEL_EVENT} (0x{level_status.mask:x})"
+        )
+        await self.csr_write(f"{test.label}:release", test.addr, test.reg.reset_word)
+        released = await self.csr_read(f"{status.label}:released", status.addr, expected=0)
+        assert released & declared == 0, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{released:x} with "
+            f"INTR_TEST.{_TELEMETRY_LEVEL_EVENT} written back to 0; the RDL releases the "
+            f"interrupt on that write and the status field is read-only, so nothing may stay set"
+        )
+
+        await self.csr_write(f"{test.label}:pulse", test.addr, sticky_test.mask)
+        raised = await self.csr_read(
+            f"{status.label}:raised", status.addr, expected=sticky_status.mask
+        )
+        assert raised & declared == sticky_status.mask, (
+            f"{status.label} @ 0x{status.addr:08x}: reads 0x{raised:x} after a pulse of the "
+            f"write-only INTR_TEST.{_TELEMETRY_STICKY_EVENT}; exactly {_TELEMETRY_STICKY_EVENT} "
+            f"(0x{sticky_status.mask:x}) has to be set and held"
+        )
+        await self.csr_write(f"{status.label}:clear", status.addr, sticky_status.mask)
+        cleared = await self.csr_read(f"{status.label}:cleared", status.addr, expected=0)
         assert cleared & declared == 0, (
-            f"{inst.label} @ 0x{inst.addr:08x}: a write of 0x{declared:x} into the "
-            f"`oneToClear` events left 0x{cleared & declared:x} of them set (0x{raised:x} "
-            f"was pending before the write)"
+            f"{status.label} @ 0x{status.addr:08x}: a write of 0x{sticky_status.mask:x} into "
+            f"the `oneToClear` event left the register at 0x{cleared:x} (0x{raised:x} was "
+            f"pending before the write)"
         )
         self.intr_status_cleared += 1
 
@@ -332,14 +403,20 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         for index in range(receivers):
             for name in _TELEMETRY_REGS:
                 await self.granule_cycle(telemetry[name][index])
-            await self._clear_telemetry_status(telemetry_status[index])
+            await self._telemetry_intr_leg(telemetry["INTR_TEST"][index], telemetry_status[index])
         cocotb.log.info(
             "CHK-PERIPH-TELEMETRY-SWEEP: %d telemetry receivers each cycled %s against their "
-            "RDL contract and were restored, and the events the INTR_TEST field raised were "
-            "then cleared out of INTR_STATUS by a write of its declared mask, which is the "
-            "`oneToClear` contract that register carries",
+            "RDL contract and were restored; on each, INTR_STATUS read clear at idle, "
+            "INTR_TEST.%s written to 1 set exactly INTR_STATUS.%s and written back to 0 "
+            "released it, and a pulse of the write-only INTR_TEST.%s set exactly "
+            "INTR_STATUS.%s, which held until a write of its own mask cleared it, the "
+            "`oneToClear` contract that field carries",
             receivers,
             ", ".join(_TELEMETRY_REGS),
+            _TELEMETRY_LEVEL_EVENT,
+            _TELEMETRY_LEVEL_EVENT,
+            _TELEMETRY_STICKY_EVENT,
+            _TELEMETRY_STICKY_EVENT,
         )
 
         for index in range(wraps):
@@ -363,7 +440,7 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         expected = (
             cycles * _ACCESSES_PER_CYCLE
             + len(word_only) * _ACCESSES_PER_WORD_CYCLE
-            + receivers * _ACCESSES_PER_INTR_CLEAR
+            + receivers * _ACCESSES_PER_INTR_LEG
             + _ACCESSES_PER_EFUSE_STATUS_LEG
         )
         cycles += len(word_only)
@@ -375,7 +452,7 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
             f"{self.intr_status_cleared} of {receivers} telemetry INTR_STATUS registers cleared"
         )
         # Predicted words: every read of a register no field of which hardware
-        # drives, plus the cleared INTR_STATUS read of each receiver.
+        # drives, plus the INTR_STATUS reads of each receiver's interrupt leg.
         predicted = sum(6 for inst, _hold in singles if self.volatile_mask(inst) == 0)
         if self.volatile_mask(timer_ctrl) == 0:
             predicted += 6 * len(_TIMER_CTRL_LEGS)
@@ -385,7 +462,7 @@ class smc_periph_regblock_sweep_test_seq(SmcRegblockFieldSweepSeq):
         predicted += sum(
             6 * wraps for name in _LOG_ENGINE_REGS if self.volatile_mask(log_engine[name][0]) == 0
         )
-        predicted += receivers
+        predicted += _PREDICTED_PER_INTR_LEG * receivers
         self.assert_value_checks(sb_before, predicted, "PERIPH_REGBLOCK_SWEEP")
         assert self.status_legs == 1, f"{self.status_legs} eFuse status legs; the leaf runs one"
         cocotb.log.info(

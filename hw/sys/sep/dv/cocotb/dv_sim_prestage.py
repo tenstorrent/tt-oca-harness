@@ -86,6 +86,13 @@ def _locked_field_irq_fixed(seed: int) -> dict[str, int]:
     return mod.SepLockedFieldIrqCfg(seed).image_fixed()
 
 
+def _program_lock_spares_fixed() -> dict[str, int]:
+    """Same pins as ``sep_efuse_program_lock_matrix_test``: every spare field at 0."""
+    mod = _load_env_module("sep_locked_field_irq", "sep_locked_field_irq.py")
+    pins: dict[str, int] = mod.spare_zero_pins()
+    return pins
+
+
 def _lc_transition_fixed(seed: int) -> dict[str, int]:
     """Same pins as ``sep_lcc_lc_state_transition_matrix_test``'s ``cfg.image_fixed()``.
 
@@ -192,12 +199,12 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     "sep_km_abr_seed_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_km_abr_mlkem_sideload_test": {"mode": "random", "lc_raw": 0x1},
     "sep_drbg_real_sink_multi_km_aes_test": {"mode": "random", "lc_raw": 0x1},
-    # Spare-field lock x program. SPARE0..7 pinned 0 so the unlocked-then-lock
-    # walk starts from a known-zero field (lock_prob stays 0).
+    # Spare-field lock x program. Every spare field is pinned 0 so the
+    # unlocked-then-lock walk starts from a known-zero field (lock_prob stays 0).
     "sep_efuse_program_lock_matrix_test": {
         "mode": "random",
         "lc_raw": 0x0,
-        "fixed": {f"SPARE{i}": 0 for i in range(8)},
+        "fixed_from": "program_lock_spares",
     },
     # Demote product starts at TEST_DEV with DIS=0; the pinned DIS pair is
     # W1S-programmed after the first LC walk.
@@ -418,6 +425,8 @@ def stage(item: str, seed: int, cwd, *, sim_args=None, root=None) -> bool:
             fixed = _set_only_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "lc_transition":
             fixed = _lc_transition_fixed(seed + int(spec.get("seed_offset", 0)))
+        elif spec.get("fixed_from") == "program_lock_spares":
+            fixed = _program_lock_spares_fixed()
         elif spec.get("fixed_from") == "locked_field_irq":
             fixed = _locked_field_irq_fixed(seed + int(spec.get("seed_offset", 0)))
         elif spec.get("fixed_from") == "km_otp_id":

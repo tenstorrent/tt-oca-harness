@@ -21,10 +21,6 @@
 #include "sep.h"
 #include "sep_smc_interface.h"
 
-// SMC CPU CTRL reset control register offset (holds SMC cores in reset).
-// Writing 1 to core*_reset_n_n0_scan bits asserts reset on each SMC core.
-#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x0020u
-
 // ---------------------------------------------------------------------------
 // LC state read helper.
 // ---------------------------------------------------------------------------
@@ -131,11 +127,16 @@ uint32_t rom_lifecycle_policy(void) {
         // Put SMC in reset to make the whole SMU inoperative.
         // Invalid LC_STATE may indicate fuse attack or HW fault — do not let
         // SMC continue running in an unknown state.
-        uint32_t smc_base = sep_get_smc_base();
-        uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        rst |= 0xFu; // core0~core3 reset_n bits → hold all cores in reset
-        mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
+        uint32_t reset_ctrl = sep_get_smc_base() + SMC_CPU_CTRL_RESET_CTRL_OFFSET;
+        uint32_t rst = mmio_read32(reset_ctrl);
+        mmio_write32(reset_ctrl, rst & ~SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK);
         simputs("SMC_RESET_ON_INVALID_LC\n");
+        // Diagnostic only: the halt below happens either way. A core bit that
+        // reads back set means that core is still running.
+        rst = mmio_read32(reset_ctrl);
+        if ((rst & SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK) != 0u) {
+            simputshex32("SMC_RESET_NOT_HELD=", rst);
+        }
 
         rom_err_fail_ext(ROM_ERR_LIFECYCLE_INVALID);
     }
@@ -177,4 +178,40 @@ uint32_t rom_lifecycle_policy(void) {
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_LIFECYCLE_VALID);
     return lc_state;
+}
+
+// ---------------------------------------------------------------------------
+// Secure-boot chicken bit ([S18])
+// ---------------------------------------------------------------------------
+
+// Error code for a SBOOT_DIS reserved-bit fault.
+#define ROM_ERR_SBOOT_DIS_RSVD_SET 0x0000F008u
+
+// Latched by rom_sboot_dis_policy(). Zero-initialised, and zero reports "not
+// disabled", so a caller that runs before [S18] enforces secure boot.
+static bool g_sboot_dis;
+
+bool sboot_dis_disabled(void) {
+    return g_sboot_dis;
+}
+
+void rom_sboot_dis_policy(void) {
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+
+    // rsvd[31:1] is hw=rw in the RDL: driven from the fuse array rather than
+    // tied off, so it can read non-zero on a real part. On a healthy one it
+    // reads zero, and anything else means the array is not what the ROM thinks
+    // it is -- a state to stop in, not to interpret.
+    if ((reg & SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bm) != 0u) {
+        simputshex32("SBOOT_DIS_RSVD=", reg);
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_FUSE_SBOOT_DIS_RSVD);
+        rom_err_fail_ext(ROM_ERR_SBOOT_DIS_RSVD_SET);
+    }
+
+    g_sboot_dis = (reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+    get_bl0_state()->sboot_dis = g_sboot_dis;
+
+    simputsdec24("FUSE: SBOOT_DIS: ", g_sboot_dis);
+    report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);
+    report_status(STATUS_TYPE_INFO_EXT, g_sboot_dis);
 }

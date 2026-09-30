@@ -360,8 +360,9 @@ module smu #(
   input  logic  test_en_i,                      // Scan test mode enable, active-high; forwarded to
                                                 // the DTP, the SMC, the SEP and the SMU AXI
                                                 // crossbar.
-  input  logic  scan_rst_ni,                    // DFT scan reset, active-low, used in place of
-                                                // functional resets while test_en_i is high.
+  input  logic  scan_rst_ni,                    // DFT scan reset, active-low; the SMC and the SEP
+                                                // use it in place of functional resets while
+                                                // test_en_i is high. The DTP does not use it.
 
   input  logic mem_repair_done_i,               // Memory repair sequence done.
   input  logic mem_repair_success_i,            // Memory repair sequence succeeded.

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module mux_sel
 import dst_pkg::*;
 import tt_dbm_pkg::*;

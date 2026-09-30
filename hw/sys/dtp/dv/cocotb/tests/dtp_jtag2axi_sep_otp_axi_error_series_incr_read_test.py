@@ -23,7 +23,10 @@ class dtp_jtag2axi_sep_otp_axi_error_series_incr_read_test(dtp_base_test):
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-BUS-REQ",
         "CHK-J2A-ERR-RDATA",
+        "CHK-J2A-FAULT-STATUS",
+        "CHK-J2A-SERIES-ADDR",
     )
     axi_checker_stream_minimums = {"sep_otp": 2}
 

@@ -21,8 +21,8 @@ module cross_trigger_matrix
   input  logic                    rst_ni,  // Active-low asynchronous system reset.
 
   input  axil_req_t               axil_req_i,  // AXI-Lite CSR request that programs the per-source
-                                               // routing masks; only address bits [7:0] are
-                                               // decoded.
+                                               // routing masks; only the address bits the
+                                               // register map spans are decoded.
   output axil_resp_t              axil_resp_o,  // AXI-Lite CSR response.
 
   input  logic [NUM_CT_DST-1:0]   ct_dst_i,  // Cross-trigger pulses into the routing matrix, one
@@ -45,6 +45,9 @@ module cross_trigger_matrix
 
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(NumCtDstMatchesField_A, NUM_CT_DST == CT_DST_SELECT_WIDTH)
 
+  localparam int unsigned REG_ADDR_WIDTH =
+      cross_trigger_matrix_reg_pkg::CROSS_TRIGGER_MATRIX_REG_MIN_ADDR_WIDTH;
+
   // Register module instantiation - wire AXI-Lite structs directly
   cross_trigger_matrix_reg u_reg (
     .clk           (clk_i),
@@ -53,7 +56,7 @@ module cross_trigger_matrix
     // Write address channel
     .s_axil_awready (axil_resp_o.aw_ready),
     .s_axil_awvalid (axil_req_i.aw_valid),
-    .s_axil_awaddr  (axil_req_i.aw.addr[7:0]),
+    .s_axil_awaddr  (axil_req_i.aw.addr[REG_ADDR_WIDTH-1:0]),
     .s_axil_awprot  (axil_req_i.aw.prot),
 
     // Write data channel
@@ -70,7 +73,7 @@ module cross_trigger_matrix
     // Read address channel
     .s_axil_arready (axil_resp_o.ar_ready),
     .s_axil_arvalid (axil_req_i.ar_valid),
-    .s_axil_araddr  (axil_req_i.ar.addr[7:0]),
+    .s_axil_araddr  (axil_req_i.ar.addr[REG_ADDR_WIDTH-1:0]),
     .s_axil_arprot  (axil_req_i.ar.prot),
 
     // Read data channel

@@ -70,6 +70,16 @@ ifdef::backend-pdf[]
 include::interface.adoc[]
 endif::backend-pdf[]
 
+[[ctn-programming]]
+== Programming
+
+ifdef::backend-html5[]
+include::partial$cross_trigger_network/doc/programming.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::programming.adoc[]
+endif::backend-pdf[]
+
 == Memory Map
 
 ifdef::backend-html5[]
