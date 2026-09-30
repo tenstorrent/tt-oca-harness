@@ -16,7 +16,7 @@
  * inbound port non-empty, checks the latched arrival IRQ, pops+verifies the
  * token (0x15000000|ch), W1C-clears the read IRQ, reads back IRQS=0/IRQP=0,
  * holds the port quiet across the no-refire window, and publishes per-channel
- * progress on scratch3. After channel 7 it publishes the SMU015_SMC_PASS verdict
+ * progress on scratch3. After channel 7 it publishes the SEP_MBOX_IRQ_SMC_PASS verdict
  * on scratch10 and parks in a named loop. No force/deposit: the SMC opens its
  * OWN outbound egress filter over the mailbox window and drives only real
  * AXI-lite MMIO.
@@ -49,7 +49,8 @@ __attribute__((naked, section(".text"), used)) void smu_sep_mailbox_irq_smc_fail
 #define SMC_FILTER_END_ADDR SMC_TOP_SMC_OUTBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(SMC_MBOX_FILTER_IDX)
 
 /* Per-channel inbound (SMC-facing) mailbox register absolute addresses. */
-#define IN_BASE(ch) (SMU015_MBOX_INBOUND_BASE + (uint32_t)SMU015_MBOX_CH_STRIDE * (uint32_t)(ch))
+#define IN_BASE(ch) \
+    (SEP_MBOX_IRQ_MBOX_INBOUND_BASE + (uint32_t)SEP_MBOX_IRQ_MBOX_CH_STRIDE * (uint32_t)(ch))
 #define IN_RDATA(ch) (IN_BASE(ch) + MBOX_READ_DATA_OFFSET)
 #define IN_STATUS(ch) (IN_BASE(ch) + MBOX_STATUS_OFFSET)
 #define IN_RIRQT(ch) (IN_BASE(ch) + MBOX_RIRQT_OFFSET)
@@ -62,7 +63,7 @@ __attribute__((naked, section(".text"), used)) void smu_sep_mailbox_irq_smc_fail
 #define SMC_WAIT_NOT_EMPTY_CH(ch, okvar) \
     do { \
         okvar = 0; \
-        for (uint32_t _i = 0; _i < (uint32_t)SMU015_POLL_LIMIT; ++_i) { \
+        for (uint32_t _i = 0; _i < (uint32_t)SEP_MBOX_IRQ_POLL_LIMIT; ++_i) { \
             if ((SMC_RD32(IN_STATUS(ch)) & MBOX_STATUS_EMPTY_MASK) == 0u) { \
                 okvar = 1; \
                 break; \
@@ -75,18 +76,18 @@ int main(void) {
 
     /* a. Clear the progress + verdict scratch and the READY rendezvous; confirm
      *    read-back 0. */
-    SMC_WR32(SMU015_SMC_SCRATCH3_LOCAL, 0u);
-    SMC_WR32(SMU015_SMC_SCRATCH10_LOCAL, 0u);
-    SMC_WR32(SMU015_SMC_SCRATCH12_LOCAL, 0u);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH3_LOCAL, 0u);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH10_LOCAL, 0u);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH12_LOCAL, 0u);
     SMC_FENCE();
-    if (SMC_RD32(SMU015_SMC_SCRATCH3_LOCAL) != 0u) goto fail;
-    if (SMC_RD32(SMU015_SMC_SCRATCH10_LOCAL) != 0u) goto fail;
-    if (SMC_RD32(SMU015_SMC_SCRATCH12_LOCAL) != 0u) goto fail;
+    if (SMC_RD32(SEP_MBOX_IRQ_SMC_SCRATCH3_LOCAL) != 0u) goto fail;
+    if (SMC_RD32(SEP_MBOX_IRQ_SMC_SCRATCH10_LOCAL) != 0u) goto fail;
+    if (SMC_RD32(SEP_MBOX_IRQ_SMC_SCRATCH12_LOCAL) != 0u) goto fail;
 
     /* a2. Publish the SMC "up" marker on scratch2 (never cleared). The SEP polls
      *     this before its first SMC-scratch write, so READY can never race the
      *     SMC scratch init. */
-    SMC_WR32(SMU015_SMC_SCRATCH2_LOCAL, SMU015_SMC_UP);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH2_LOCAL, SEP_MBOX_IRQ_SMC_UP);
     SMC_FENCE();
 
     /* b. Open the SMC outbound egress filter over the mailbox region (START/END
@@ -94,20 +95,20 @@ int main(void) {
      *    read-back returns hardware-fixed bits that differ from the written
      *    value. The cocotb checker verifies the filter programming via
      *    filter_ctrl_reg.field_storage. */
-    SMC_WR64(SMC_FILTER_START_ADDR, SMU015_MBOX_FILTER_START);
-    SMC_WR64(SMC_FILTER_END_ADDR, SMU015_MBOX_FILTER_END);
-    SMC_WR64(SMC_FILTER_CONFIG_ADDR, SMU015_MBOX_FILTER_CFG);
+    SMC_WR64(SMC_FILTER_START_ADDR, SEP_MBOX_IRQ_MBOX_FILTER_START);
+    SMC_WR64(SMC_FILTER_END_ADDR, SEP_MBOX_IRQ_MBOX_FILTER_END);
+    SMC_WR64(SMC_FILTER_CONFIG_ADDR, SEP_MBOX_IRQ_MBOX_FILTER_CFG);
     SMC_FENCE();
 
     /* c. Wait for the SEP READY (its aperture + inbound filters are up) before
      *    touching any inbound mailbox port. */
-    SMC_WAIT_EQ(SMU015_SMC_SCRATCH12_LOCAL, SMU015_READY, SMU015_POLL_LIMIT, ok);
+    SMC_WAIT_EQ(SEP_MBOX_IRQ_SMC_SCRATCH12_LOCAL, SEP_MBOX_IRQ_READY, SEP_MBOX_IRQ_POLL_LIMIT, ok);
     if (!ok) goto fail;
 
     /* d. Arm every inbound channel's read-data IRQ (threshold 0 -> fire on any
      *    word; enable bit1); read back and confirm each port starts idle (RX
      *    empty, IRQ 0). */
-    for (uint32_t ch = 0; ch < SMU015_NUM_CHANNELS; ++ch) {
+    for (uint32_t ch = 0; ch < SEP_MBOX_IRQ_NUM_CHANNELS; ++ch) {
         SMC_WR32(IN_RIRQT(ch), 0u);
         SMC_WR32(IN_IRQEN(ch), MBOX_IRQ_READ_MASK);
         SMC_FENCE();
@@ -119,11 +120,11 @@ int main(void) {
     }
 
     /* e. Signal ARMED: the SEP may now start pushing channel 0. */
-    SMC_WR32(SMU015_SMC_SCRATCH3_LOCAL, SMU015_PROGRESS_ARMED);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH3_LOCAL, SEP_MBOX_IRQ_PROGRESS_ARMED);
     SMC_FENCE();
 
     /* f. Service all eight channels strictly in order. */
-    for (uint32_t ch = 0; ch < SMU015_NUM_CHANNELS; ++ch) {
+    for (uint32_t ch = 0; ch < SEP_MBOX_IRQ_NUM_CHANNELS; ++ch) {
         /* f1. Wait this channel's inbound RX FIFO non-empty (the SEP pushed its
          *     token). */
         SMC_WAIT_NOT_EMPTY_CH(ch, ok);
@@ -132,28 +133,28 @@ int main(void) {
         if ((SMC_RD32(IN_IRQS(ch)) & MBOX_IRQ_READ_MASK) == 0u) goto fail;
         if ((SMC_RD32(IN_IRQP(ch)) & MBOX_IRQ_READ_MASK) == 0u) goto fail;
         /* f3. Pop + verify the exact per-channel token. */
-        if (SMC_RD32(IN_RDATA(ch)) != (SMU015_TOKEN_BASE | ch)) goto fail;
+        if (SMC_RD32(IN_RDATA(ch)) != (SEP_MBOX_IRQ_TOKEN_BASE | ch)) goto fail;
         /* f4. W1C the read IRQ, then read back IRQS=0 / IRQP=0 (full clear). */
-        SMC_WR32(IN_IRQS(ch), SMU015_W1C_VALUE);
+        SMC_WR32(IN_IRQS(ch), SEP_MBOX_IRQ_W1C_VALUE);
         SMC_FENCE();
         if (SMC_RD32(IN_IRQS(ch)) != 0u) goto fail;
         if (SMC_RD32(IN_IRQP(ch)) != 0u) goto fail;
         /* f5. Hold the port quiet across the no-refire window (well beyond
          *     64 clk_smc). */
-        SMC_DELAY_ITERS(SMU015_NOREFIRE_HOLD_ITERS);
+        SMC_DELAY_ITERS(SEP_MBOX_IRQ_NOREFIRE_HOLD_ITERS);
         /* f6. Publish per-channel done so the SEP advances to ch+1. */
-        SMC_WR32(SMU015_SMC_SCRATCH3_LOCAL, SMU015_PROGRESS_ARMED | (ch + 1u));
+        SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH3_LOCAL, SEP_MBOX_IRQ_PROGRESS_ARMED | (ch + 1u));
         SMC_FENCE();
     }
 
     /* g. All eight channels consumed + cleared: publish the SMC verdict and park
      *    (named loop). */
-    SMC_WR32(SMU015_SMC_SCRATCH10_LOCAL, SMU015_SMC_PASS);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH10_LOCAL, SEP_MBOX_IRQ_SMC_PASS);
     SMC_FENCE();
     __asm__ volatile("j smu_sep_mailbox_irq_smc_pass_loop");
 
 fail:
-    SMC_WR32(SMU015_SMC_SCRATCH10_LOCAL, SMU015_SMC_FAIL);
+    SMC_WR32(SEP_MBOX_IRQ_SMC_SCRATCH10_LOCAL, SEP_MBOX_IRQ_SMC_FAIL);
     SMC_FENCE();
     __asm__ volatile("j smu_sep_mailbox_irq_smc_fail_loop");
     return 0; /* unreachable */
