@@ -140,7 +140,10 @@ module cross_trigger_network
 
     // Address space sizes
     localparam int unsigned ADDR_CTM_SIZE = CSR_ADDR_CTM_SIZE;  // 512 bytes for CTM
+    localparam int unsigned ADDR_CTM_REG_SIZE = CSR_ADDR_CTM_REG_SIZE;
     localparam int unsigned ADDR_CTP_SIZE = CSR_ADDR_CTP_SIZE;  // 16 bytes per CTP
+
+    `OCAH_OT_ASSERT_STATIC_IN_PACKAGE(CtmRegsFitAperture_A, ADDR_CTM_REG_SIZE <= ADDR_CTM_SIZE)
 
     //--------------------------------------------------------------------------
     // AXI-Lite Crossbar Type Definitions
@@ -181,10 +184,11 @@ module cross_trigger_network
 
     // Generate address map: CTM first at address 0, then external CTPs
     generate
-        // CTM is the first port (index 0, address 0x0000-0x01FF)
+        // CTM is the first port (index 0). Its rule ends at the register map's extent, so the
+        // rest of its 512-byte aperture decodes as unmapped.
         assign addr_map[0].idx        = 0;
         assign addr_map[0].start_addr = 0;
-        assign addr_map[0].end_addr   = ADDR_CTM_SIZE;
+        assign addr_map[0].end_addr   = ADDR_CTM_REG_SIZE;
 
         // External CTPs follow (indices 1 to NUM_CTP, starting at 0x0200)
         for (genvar i = 0; i < NUM_CTP; i++) begin : gen_ctp_addr_map

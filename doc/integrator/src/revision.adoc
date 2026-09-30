@@ -49,4 +49,8 @@ configuration, the shared-cell defines to leave unset, and the
 |0.0.13 |2026-09-28 |Ben Melton |Documented the SEP defines: the Adams Bridge
 block-selection defines, the VeeR EL2 snapshot configuration, SEP view checks,
 and the SEP DV testbench names.
+|0.0.14 |2026-09-29 |Ben Melton |Documented `OCAH_KM_VROM`, the
+simulation-only define that decodes the key manager virtual ROM window, the
+DECERR and execute-violation responses without it, and the elaboration error
+when `SYNTHESIS` or `EMULATION` is also set.
 |=======================================================================

@@ -319,8 +319,8 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
 [[tests]]
 # KM CPU load from the VROM base must complete with DECERR: the key_manager.rdl
 # memory-map summary does not list VROM and maps every other address to DECERR.
-# The KM CPU wrapper routes the range to a testbench-only port with ready tied
-# to 0. The image marks the point before the load, so a load that never
+# The KM CPU wrapper decodes the range only under OCAH_KM_VROM, which SEP DV
+# does not set. The image marks the point before the load, so a load that never
 # completes is graded against a live image. no_cpu; +skip_fuse_sense.
 name = "sep_km_vrom_decerr_test"
 module = "km.sep_km_vrom_decerr_test"

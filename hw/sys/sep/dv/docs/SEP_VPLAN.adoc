@@ -721,7 +721,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_vrom_decerr_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
-|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper routes the range to a testbench-only port whose ready the RTL ties to 0, so the load does not complete and `CHK-KM-VROM-DECERR` fails against an image shown alive up to the load.
+|A KM CPU load from the VROM base `0x1000_0000` must complete with DECERR: the `key_manager.rdl` memory-map summary does not list VROM and maps every other address to DECERR. The KM CPU wrapper decodes the range only under the simulation-only `OCAH_KM_VROM` define, which SEP DV does not set, so the load reaches the AXI crossbar.
 |===
 
 [[iconic-scorecard]]
@@ -1239,7 +1239,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *Test Coverage*: Key Manager instruction ROM and data SRAM reachability; SRAM scrambler read-back of consecutive reads of different words; the stored representation of a scrambled store; SRAM read-response latency (measured, not graded).
 
-*Why the latency is logged, not graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. No specification states the KM SRAM read latency, so the test does not grade it. The `KM-SRAM-RD-LAT` log line records the accept, one-cycle-later and mismatch counts as the measured precondition. The verdict on the read path is the data round trip in CHK-KM-SRAM-SCR-RT: a response descrambled with the wrong address fails that compare.
+*Why the latency is logged, not graded*: `km_sram_interface` descrambles a read response with the address it captures on the accepting edge. That is correct only while the SRAM answers at least one cycle after the accept; a response in the accept cycle would be descrambled with the previous read's address. The integrator guide (`doc/integrator/src/smu-sep.adoc`) states that requirement, and the `km_sram_interface` assertion `ReadCompletesAfterAccept_A` fails a response in the accept cycle. `prim_assert.sv` withholds `OCAH_OT_INC_ASSERT` when `VERILATOR` is defined, so the assertion exists only in the VCS build. The test does not grade the latency itself. The `KM-SRAM-RD-LAT` log line records the accept, one-cycle-later and mismatch counts as the measured precondition. The verdict on the read path is the data round trip in CHK-KM-SRAM-SCR-RT: a response descrambled with the wrong address fails that compare.
 
 *Test Procedure*:
 
@@ -1267,7 +1267,7 @@ The `KM-SRAM-RD-LAT` log line is a measurement, not a checker: the count of KM S
 
 *Evidence*: `CHK-KM-MEM`, `CHK-KM-SRAM-SCR-RT` and `CHK-KM-SRAM-SCR-STORED` are each their own record (`cocotb/tests/km/sep_km_mem_smoke_test.py`); `KM-SRAM-RD-LAT` is a logged measurement. The latency counters are the tb_top KM SRAM read-timing monitor (`km_sram_rd_*_count_o`, `km_sram_scr_rd_count_o`), and the scrambled-store rows come from the scrambled-write monitor (`km_sram_scr_wr_*_o`): observation-only reads of the wrapper `km_sram_mem_req` / `km_sram_mem_rsp` nets, the KM scrambler enable and the macro array.
 
-*Not claimed*: a KM SRAM read latency. No specification states it; the test logs the measured value. The descramble address under back-to-back reads of different words: this image produces none. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
+*Not claimed*: a KM SRAM read latency. The requirement is at least one cycle, which `ReadCompletesAfterAccept_A` checks in the VCS build; the test logs the measured value. The descramble address under back-to-back reads of different words: this image produces none. A ciphertext value or a physical row: both come from the scrambler key and are logged, not compared against a golden. The scrambler key is not locked here, so the lock path stays with the `rom_main` leaves.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -7908,13 +7908,11 @@ the wipe security contract.
 
 *BFM / Model*: ocah_axi_vip, KM CPU image
 
-*Tracking*: #2511
-
 *Randomization*: RAND-NONE — one directed load.
 
-*Objective*: The KM CPU wrapper (`hw/ip/key_manager/rtl/picorv32_wrapper.sv`) decodes `0x1000_0000`–`0x1000_FFFF` as the virtual ROM (VROM) and routes it to a dedicated port, not to the AXI crossbar. `hw/ip/key_manager/rtl/km_intf_pkg.sv` lists that 64 KB window. `hw/ip/key_manager/doc/architecture.adoc` names VROM a testbench-only window that does not exist in production silicon. The wrapper ties the port's ready to 0, so a load from the window never completes unless a testbench forces a response. Nothing in this integration forces one. The memory-map summary in `hw/ip/key_manager/regs/key_manager.rdl` does not list VROM and ends with "Every other address | Reserved/Unmapped | DECERR". This leaf grades that summary: a KM CPU load from `0x1000_0000` must complete and answer DECERR. The load does not complete, so `CHK-KM-VROM-DECERR` fails. The RTL, `km_intf_pkg.sv` and `architecture.adoc` on one side, and the RDL summary on the other, disagree about this window. The leaf turns green when the SEP build refuses the range, and it is retired if the RDL lists VROM as a window with no response.
+*Objective*: The memory-map summary in `hw/ip/key_manager/regs/key_manager.rdl` does not list the virtual ROM (VROM) window `0x1000_0000`–`0x1000_FFFF` and ends with "Every other address | Reserved/Unmapped | DECERR". The KM CPU wrapper (`hw/ip/key_manager/rtl/picorv32_wrapper.sv`) decodes the window only when the simulation-only `OCAH_KM_VROM` define is set. SEP DV does not set it, so the SEP build must send the range to the AXI crossbar like any other unmapped address. This leaf grades the RDL summary: a KM CPU load from `0x1000_0000` must complete and answer DECERR.
 
-*Test Coverage*: KM CPU access to the VROM range, which the wrapper decodes and the `key_manager.rdl` memory-map summary does not list.
+*Test Coverage*: KM CPU access to the VROM range, which the `key_manager.rdl` memory-map summary does not list and the SEP build does not decode.
 
 *Test Procedure*:
 
@@ -7936,12 +7934,10 @@ the wipe security contract.
 |CHK-KM-VROM-PRE
 |The image reached the virtual ROM load, with the watched `IRQ_STATUS` bits clear just before it.
 |CHK-KM-VROM-DECERR
-|The post-load marker appears within the bound, and the load set `IRQ_STATUS.AXI_DECERR`. The claim is completion, so expiry of the bound is a failure, graded against an image shown alive up to the load. The load does not complete, so this checker fails.
+|The post-load marker appears within the bound, and the load set `IRQ_STATUS.AXI_DECERR`. The claim is completion, so expiry of the bound is a failure, graded against an image shown alive up to the load.
 |===
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
-
-*Current status*: red on the current RTL. `CHK-KM-VROM-DECERR` fails, and every other named checker PASSes. See <<known-limitations>>.
 
 '''''
 
@@ -7976,8 +7972,8 @@ constraint is not an open defect.
 |KM application ROM wipe paths
 |Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.
 
-|KM CPU bus responses outside the RDL (hardware)
-|One KM CPU address answers differently from `hw/ip/key_manager/regs/key_manager.rdl`, and it has a leaf that fails on its own checker until the RTL or the RDL changes. A load from the VROM base never completes: the KM CPU wrapper routes that range to a testbench-only port whose ready the RTL ties to 0, and the RDL memory-map summary does not list the window and maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
+|KM CPU bus error visibility
+|The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
 
 |Locked filter entry write response (hardware)
 |`hw/ip/axi_filter/regs/filter_ctrl.rdl` (`FILTER_CONFIG.locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry") say that a write to a locked entry's `FILTER_CONFIG`, `START_ADDR` or `END_ADDR` goes to the AXI error subordinate and completes DECERR. On SEP the write completes SLVERR, on the inbound and the outbound bank, and the word keeps its value. `CHK-WOSET` in `sep_fabric_remap_filter_csr_bank_test` and `CHK-CONFIG-LOCK` in `sep_fabric_inbound_filter_rule_matrix_test` grade DECERR and fail until the RTL or the specification changes. `CHK-CONFIG-LOCK` grades the response code after its 2-beat `allow_burst` read, so that read still runs on the current RTL.

@@ -65,6 +65,7 @@ NUM_INT_CT_WIRE_OR = NUM_INT_CT // 2
 # CSR address map: CTM window first, then one window per external CTP
 # (cross_trigger_network_pkg CSR_ADDR_CTM_SIZE / CSR_ADDR_CTP_SIZE).
 CTM_BASE_ADDR = 0x000
+CTM_REG_END = CTM_BASE_ADDR + _ctm_reg.CROSS_TRIGGER_MATRIX_REG_MAP_SIZE  # first address past it
 CTP_BASE_ADDR = 0x200
 CTP_STRIDE = 0x10
 UNMAPPED_ADDR = CTP_BASE_ADDR + NUM_CTP * CTP_STRIDE  # first address past the map
@@ -381,6 +382,7 @@ __all__ = [
     "CLK_PERIOD_NS",
     "CT_DST_LATENCY",
     "CTM_BASE_ADDR",
+    "CTM_REG_END",
     "CTM_SELECT_MASK",
     "CTP_BASE_ADDR",
     "CTP_CONFIG_OFFSET",

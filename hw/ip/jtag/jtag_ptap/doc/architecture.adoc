@@ -547,6 +547,12 @@ scan size-field width: 1 bit for `D <= 16`, 2 bits for `D <= 64`, and 3 bits
 otherwise. The single-operation TDR has `2 + S + D/8 + D + A` bits.
 For `D=64` and `A=51`, it has 127 bits.
 
+The size field requests a transfer of `2**size` bytes. The AXI protocol does not
+allow a transfer wider than the data bus, so the bridge uses the effective size
+`E = min(size, data_size)`, where `data_size = log2(D/8)` is the capability field of
+the same name. A size above `data_size` transfers one full `D`-bit beat: for
+`D=32`, the 2-bit size field admits 3, and the bridge transfers 4 bytes.
+
 <<jtag2axi-single-operation-layout-figure>> shows the single-operation TDR for a 64-bit
 data bus and a 51-bit address bus. In this and the following layout figures the most
 significant bit is on the left, nearest TDI, and bit 0 on the right shifts out to TDO
@@ -568,7 +574,7 @@ and operation fields.
 |(2+S+D/8+D) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued. On a Capture-DR, this field holds the previous value.
 |(2+S+D/8) +: D |data |RW |0 |The data to write on an AXI write during Update-DR. On a Capture-DR, this field contains the data returned from an AXI read if the previous operation was a read, or holds the write data previously used if the previous operation was a write.
 |(2+S) +: (D/8) |wstrb |RW |0 |The byte strobes for a write transaction. This value is driven on WSTRB when the transaction is a write. On a Capture-DR, this field holds the previous value.
-|2 +: S |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
 |1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop) Don't send anything over AXI during Update-DR. This operation should never result in a busy or error response. 1: Read from address (read) 2: Write data to address (write) 3: Reserved When the debugger reads this field, it means the following: 0: The previous operation completed successfully and returned an OKAY status 1: The previous operation completed but failed and returned a SLVERR status 2: The previous operation completed but failed and returned a DECERR or other error status. 3: The latest operation was attempted before the previous operation completed; the previous AXI request is still in progress. The operation attempted in this access will be ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle.
 |===
 
@@ -606,7 +612,7 @@ manage a series of AXI accesses.
 |(2+S+P+A) |reset |RW |0 |Reset the pending error flags reported in op.
 |(2+S+P) +: A |address |RW |0 |Address used for AXI access. In Update-DR the AXI transaction is issued.
 |(2+S) +: P |pl_depth |RW |0 |pipeline_depth For write transactions, this sets the number of pending unissued write transactions that can be queued by this block to pl_depth + 1. Setting a non-zero value allows the debugger to queue additional write transactions before the previous ones have been issued. For read transactions, this field sets the number of read responses that this block will pipeline. This allows the debugger to queue multiple reads to targets with long or variable latency while getting read data responses in a deterministic fashion. The first pl_depth + 1 reads will return DEADBEEF marker data. This field can be set to a value between 0 and the (wr/rd)_pl_depth field read from the bridge's `*_JTAG2AXI_CAPS` register. When the debugger reads this field, an indication of whether there are any pending transactions will be returned: 2'b00: There are no pending transactions 2'b01: There is at least one pending transaction
-|2 +: S |size |RW |0 |The number of bytes to read/write. This field is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
+|2 +: S |size |RW |0 |The requested transfer size in powers-of-2 bytes. The effective size `E`, the smaller of this field and `data_size`, is used as AxSIZE for the transaction. 0: 1 byte (8 bits) 1: 2 bytes (16 bits) 2: 4 bytes (32 bits) 3: 8 bytes (64 bits) 4: 16 bytes (128 bits) 5: 32 bytes (256 bits) 6: 64 bytes (512 bits) 7: 128 bytes (1024 bits)
 |1:0 |op |RW |0 |When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don't do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved; treated as nop. When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.
 |===
 
@@ -618,15 +624,15 @@ previously specified.
 After the access is completed, an internal address register used for the series,
 which was previously loaded by AXI_SERIES_CTRL, is incremented as follows:
 
-AXI_SERIES_CTRL.address += 2**AXI_SERIES_CTRL.size
+AXI_SERIES_CTRL.address += 2**E
 
 This allows the debugger to load or dump contiguous regions of address space.
 
 Note that this is a variable-length data register. The length is n bits where
-n = 8*(2**AXI_SERIES_CTRL.size).
+n = 8*(2**E).
 
 The data field is the logical transfer payload. The bridge places that payload
-on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+on the AXI byte lanes selected by the current address and the effective size `E`,
 and Capture-DR returns the payload from those lanes.
 
 The data field is drawn as the payload bytes it holds, with bit 0 aligned across the
@@ -675,10 +681,10 @@ write this same address using additional AXI_SERIES_DATA_NO_INCR instructions.
 This is useful for repeated polling or triggering.
 
 Note that this is a variable-length data register. The length is n bits where
-n = 8*(2**AXI_SERIES_CTRL.size).
+n = 8*(2**E).
 
 The data field is the logical transfer payload. The bridge places that payload
-on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+on the AXI byte lanes selected by the current address and the effective size `E`,
 and Capture-DR returns the payload from those lanes.
 
 The non-incrementing data register has the same layout as the incrementing one, so
@@ -726,10 +732,10 @@ returned. This instruction is used when granular error reporting is desired
 during a block operation.
 
 Note that this is a variable-length data register. The length is n+1 bits where
-n = 8*(2**AXI_SERIES_CTRL.size).
+n = 8*(2**E).
 
 The data field is the logical transfer payload. The bridge places that payload
-on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
+on the AXI byte lanes selected by the current address and the effective size `E`,
 and Capture-DR returns the payload from those lanes.
 
 The error-status payload layouts for effective sizes `E` of 0, 1, 2, and 3 are

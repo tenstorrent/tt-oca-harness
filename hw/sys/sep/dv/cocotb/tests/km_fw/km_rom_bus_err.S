@@ -52,7 +52,8 @@
     .equ OTP_PAST_MMR,  KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR + KEY_MANAGER_OTP_EFUSE_MMR_SIZE
     # key_manager.rdl: the OTP/eFuse pass-through is one 4 KB decode window.
     .equ OTP_PAGE_END,  KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR + 0x1000
-    # hw/ip/key_manager/doc/architecture.adoc: the testbench virtual ROM base.
+    # hw/ip/key_manager/doc/architecture.adoc: the virtual ROM base, decoded
+    # only under OCAH_KM_VROM.
     # The generated map has no symbol for it.
     .equ VROM_BASE,     0x10000000
 

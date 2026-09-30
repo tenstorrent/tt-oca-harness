@@ -8,6 +8,8 @@
 // AXISeriesCtrl.pipeline_depth programs 0..FIFO_DEPTH, larger values saturate, and the
 // effective depth is pipeline_depth + 1.
 // Every transaction carries ID 0, user 0, one INCR beat, AxCACHE 0b0010 and AxPROT 0b000.
+// A scanned size wider than the bus is taken as one full beat: AxSIZE, the series write
+// strobes, the series address step and the series data length all use the bus width.
 //
 // The following logic lives in the TCK domain:
 //
@@ -71,7 +73,7 @@ module jtag2axi #(
   output logic [ID_WIDTH-1:0]     awid_o,  // Write-address ID, always zero.
   output logic [ADDR_WIDTH-1:0]   awaddr_o,  // Write address.
   output logic [7:0]              awlen_o,  // Write burst length, always zero for a single beat.
-  output logic [2:0]              awsize_o,  // Write beat size from the scanned size field.
+  output logic [2:0]              awsize_o,  // Write beat size: the scanned size, at most the bus width.
   output logic [1:0]              awburst_o,  // Write burst type, always INCR.
   output logic                    awlock_o,  // Write lock, always zero.
   output logic [3:0]              awcache_o,  // Write cache attributes, always 0b0010.
@@ -99,7 +101,7 @@ module jtag2axi #(
   output logic [ID_WIDTH-1:0]     arid_o,  // Read-address ID, always zero.
   output logic [ADDR_WIDTH-1:0]   araddr_o,  // Read address.
   output logic [7:0]              arlen_o,  // Read burst length, always zero for a single beat.
-  output logic [2:0]              arsize_o,  // Read beat size from the scanned size field.
+  output logic [2:0]              arsize_o,  // Read beat size: the scanned size, at most the bus width.
   output logic [1:0]              arburst_o,  // Read burst type, always INCR.
   output logic                    arlock_o,  // Read lock, always zero.
   output logic [3:0]              arcache_o,  // Read cache attributes, always 0b0010.
@@ -227,6 +229,7 @@ module jtag2axi #(
   localparam int CDC_LOG_DEPTH = (FIFO_DEPTH + 2 <= 2) ? 1 : $clog2(FIFO_DEPTH + 2);
   localparam int unsigned BEAT_BYTES = DATA_WIDTH / 8;
   localparam int unsigned BYTE_OFFSET_BITS = (BEAT_BYTES <= 1) ? 0 : $clog2(BEAT_BYTES);
+  localparam logic [2:0] MAX_AXSIZE = 3'(BYTE_OFFSET_BITS);
 
   //--------------------------------------------------------------------------
   // AXI Channel and Request/Response Typedefs (PULP AXI)
@@ -1231,32 +1234,13 @@ module jtag2axi #(
     src_req.ar.user   = USER_WIDTH'(0);
   end
 
-  // Derive current_axi_axsize from the scanned jtag size field
-  generate
-    if (SCAN_CHAIN_SIZE_FIELD_WIDTH == 1) begin : gen_axsize_1bit
-      always_comb begin
-        current_axi_axsize_tclk = {2'b00, current_jtag_size_tclk[0]};
-      end
-    end else if (SCAN_CHAIN_SIZE_FIELD_WIDTH == 2) begin : gen_axsize_2bit
-      always_comb begin
-        current_axi_axsize_tclk = {1'b0, current_jtag_size_tclk[1:0]};
-      end
-    end else if (SCAN_CHAIN_SIZE_FIELD_WIDTH == 3) begin : gen_axsize_3bit
-      always_comb begin
-        logic [2:0] temp_axsize_val;
-        temp_axsize_val = current_jtag_size_tclk[2:0];
-        if (temp_axsize_val[2]) begin
-          current_axi_axsize_tclk = 3'b011;
-        end else begin
-          current_axi_axsize_tclk = temp_axsize_val;
-        end
-      end
-    end else begin : gen_axsize_default
-      always_comb begin
-        current_axi_axsize_tclk = 3'b000;
-      end
+  // AxSIZE must not exceed the bus width (IHI 0022 A3.4.1).
+  always_comb begin
+    current_axi_axsize_tclk = 3'(current_jtag_size_tclk);
+    if (current_axi_axsize_tclk > MAX_AXSIZE) begin
+      current_axi_axsize_tclk = MAX_AXSIZE;
     end
-  endgenerate
+  end
 
   // current_wstrb: custom mask for single-buffer writes, lane-aligned
   // generated mask for series writes.
