@@ -446,4 +446,5 @@ tests = [
     "sep_rom_oca_encrypted_boot_test",
     "sep_rom_oca_otp_key_boot_test",
     "sep_rom_oca_tamper_test",
+    "sep_rom_lc_state_invalid_test",
 ]
