@@ -123,7 +123,8 @@ package km_intf_pkg;
   //  | KMAC   | 0x0001_A000 | 0x0001_A07F | 128 B |                                         |
   //  | HMAC   | 0x0001_B000 | 0x0001_B07F | 128 B |                                         |
   //  | ABR    | 0x0001_C000 | 0x0001_C7FF |  2 KB |                                         |
-  //  | VROM   | 0x1000_0000 | 0x1000_FFFF | 64 KB |                                         |
+  //  | VROM   | 0x1000_0000 | 0x1000_FFFF | 64 KB | Simulation-only; decoded only under     |
+  //  |        |             |             |       | OCAH_KM_VROM, otherwise DECERR          |
   //
   // Addresses between one port's end and the next port's base are outside every crossbar
   // rule, so the crossbar answers DECERR; unmapped offsets inside a port's window reach its
@@ -223,7 +224,7 @@ package km_intf_pkg;
       ABR_BASE_ADDR, abr_wrapper_key_reg_pkg::ABR_WRAPPER_KEY_REG_MIN_ADDR_WIDTH
   );  // Adams Bridge window end
 
-  // Testbench virtual ROM (rodata)
+  // Virtual ROM, decoded by picorv32_wrapper only under OCAH_KM_VROM
   localparam km_addr_t VROM_BASE_ADDR = 32'h1000_0000;  // Virtual ROM window base
   localparam km_addr_t VROM_END_ADDR = 32'h1000_FFFF;  // Virtual ROM window end
 
