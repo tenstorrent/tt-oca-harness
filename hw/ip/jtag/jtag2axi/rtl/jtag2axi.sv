@@ -1728,7 +1728,7 @@ module jtag2axi #(
       automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] mapped_data_bits_cap_local;
       automatic int num_bytes_to_copy;
       automatic logic[DATA_WIDTH-1:0] capture_value_data_local;
-      logic [1:0] captured_op_status_local;
+      automatic logic [1:0] captured_op_status_local;
 
       mapped_data_bits_cap_local = size_to_bits(3'(latched_series_size_for_len_tclk));
       if (mapped_data_bits_cap_local > DATA_WIDTH) mapped_data_bits_cap_local = DATA_WIDTH;
