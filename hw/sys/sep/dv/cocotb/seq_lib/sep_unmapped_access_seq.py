@@ -27,11 +27,11 @@ An array's extent is ``SEP_TOP_<ARRAY>_TOTAL_SIZE`` from the generated
 every slot, the last one included, so every slot tail is inside the extent and
 reads zero with OKAY. The array's aperture in the map must equal that size.
 
-The map's Decoded Extent for these arrays ends at the last slot's registers,
-because ``sep.rdl`` does not set ``ocah_full_stride_extent`` on them, so the map
-lists the last slot's tail as Past Extent. Where the map and the RDL allocation
-disagree on a tail word, the word is graded by the extent rule only and is
-listed in ``SepUnmappedCfg.map_disagree``.
+``sep.rdl`` sets ``ocah_full_stride_extent`` on these arrays, so the map's
+Decoded Extent is the full allocation and the map states OKAY with zero for
+every tail. Where the map and the RDL allocation disagree on a tail word, the
+word is graded by the extent rule only and is listed in
+``SepUnmappedCfg.map_disagree``.
 
 Every other probe and tail access carries the response the map states for it
 (``SepUnmappedCfg.expect``). The config refuses to build if a refusal-group
