@@ -12,40 +12,18 @@ ifdef::backend-html5[]
 ++++
 endif::backend-html5[]
 
-The SEP DMA is based on the
-https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller].
-It copies data between memory and peripherals and can compute SHA2 hashes
-during a transfer. The upstream documentation describes the core behavior;
-the OCAH integration and register map follow below.
+The SEP DMA copies data between addressable memories and peripheral registers,
+with optional inline SHA-256, SHA-384 or SHA-512 hashing. It uses the
+https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA Controller]
+inside an AXI wrapper. The integration below defines which upstream ports
+and hardware triggers are available in SEP.
 
-Transfers operate on a word by word basis. This is because the TL-UL
-bus, used in the OpenTitan implementation, does not support burst
-transfers. AXI4-lite also does not support bursts.
-
-Features:
-
-* Transfer modes
-** Memory to memory
-*** e.g. Scratch SRAM to CPU ICCM SRAM
-** Memory to peripheral
-*** e.g. Scratch SRAM to I3C
-** Peripheral to memory
-*** e.g. SPI to Scratch SRAM
-* Addressing modes
-** Autoincrementing source and/or destination address for memories
-** Fixed address for peripherals
-** Circular (wrapping) address range for buffers and queues in
-memories
-* Inline hashing during data transfer
-** SHA2-256 or SHA2-384
-** Digest stored in DMA CSR
-* Interrupt Outputs: full transaction done, chunk transaction done,
-error
-* Hardware handshake via interrupt inputs
-** Interrupts from IP peripherals enable streaming data transfers: UART,
-SPI
-** Peripheral signals read FIFO data available and transmit FIFO space
-available to DMA for automatic flow control
+Source and destination addresses independently support incrementing, fixed
+address and wrap-at-chunk-boundary operation. Use incrementing addresses for
+memory and a fixed address for a peripheral FIFO. Transfers use 1-, 2- or
+4-byte accesses; inline hashing requires 4-byte transfers. The core issues
+individual TL-UL transactions, so the AXI wrapper does not turn a copy into
+a burst transfer. Hash results are read from the DMA digest registers.
 
 [[sep-dma-reference-diagram]]
 .OpenTitan DMA core and inline hashing reference architecture
@@ -57,14 +35,68 @@ to its AXI fabric as described below.
 [[och-modifications]]
 == OCAH Modifications
 
-* Full AXI4 interfaces at the SEP DMA wrapper boundaries, with internal
-AXI4-Lite and TL-UL conversion for the OpenTitan core.
+The wrapper exposes separate AXI4 register-slave and DMA-master interfaces,
+both with 32-bit addresses and 64-bit data. Internally, the register path
+converts AXI4 to 32-bit AXI4-Lite and then TL-UL; the data path converts the
+core's TL-UL host port back to AXI4. A local-alias remapper precedes the SEP
+crossbar and leaves the CPU TCM backdoor range available to DMA.
+
+Use source and destination address-space ID `0x7` (the core's internal host
+port), with both high address registers zero. The upstream SoC control and
+system ports are tied off in this wrapper; their ASIDs do not provide
+additional SEP routes. Reachability is governed by the SEP fabric and filters.
+
+Only handshake input 0 is connected, to the OpenTitan SPI peripheral's LSIO
+trigger. All remaining trigger inputs are tied low: the upstream UART or I3C
+handshake examples do not describe wired SEP trigger paths. This does not
+prevent software-initiated accesses to reachable peripheral registers.
+
+[[sep-dma-programming]]
+=== Programming a Copy
+
+For one contiguous memory-to-memory copy:
+
+. Wait until the previous operation has finished and configuration is writable
+  (`CFG_REGWEN`). Configure a valid enabled-memory base/limit pair and set
+  `RANGE_VALID` before starting; observe `RANGE_REGWEN` if firmware has locked
+  that configuration.
+. Write `SRC_ADDR_LO` and `DST_ADDR_LO`, clear both high address registers,
+  and select `0x7` for both fields in `ADDR_SPACE_ID` (`0x77` combined).
+. Set `TRANSFER_WIDTH` to 0, 1 or 2 for 1, 2 or 4 bytes respectively. Align
+  both addresses to that width. Enable `INCREMENT` and clear `WRAP` in both
+  `SRC_CONFIG` and `DST_CONFIG`.
+. Set `CHUNK_DATA_SIZE` and `TOTAL_DATA_SIZE` to the same nonzero byte count.
+. Write `CONTROL` with `OPCODE=0` (copy), `HARDWARE_HANDSHAKE_ENABLE=0`,
+  `INITIAL_TRANSFER=1` and `GO=1`.
+. Check `STATUS.ERROR` and `ERROR_CODE` while waiting for `STATUS.DONE`.
+  Use a bounded wait in firmware. For interrupt-driven operation, enable
+  the required completion/error sources and acknowledge `INTR_STATE`.
+
+The core reports transaction completion, chunk completion and error separately.
+Chunk completion applies to multi-chunk transfers without hardware handshake;
+it is not a per-trigger interrupt in handshake mode. Status completion/error
+bits are write-one-to-clear; the detailed register map defines each bit.
+
+For hashing, select opcode 1, 2 or 3 for SHA-256, SHA-384 or SHA-512 and use
+4-byte transfers. Set `INITIAL_TRANSFER` on the first transfer of the message;
+read the digest only when `STATUS.SHA2_DIGEST_VALID` is set. `DIGEST_SWAP`
+controls byte order within each digest register, not register order.
+
+For SPI handshake operation, select trigger 0 in `HANDSHAKE_INTR_ENABLE`,
+configure the peripheral FIFO and chunk size, and enable hardware handshake.
+A chunk consumes the configured number of bytes per service operation.
+Firmware must clear `GO` when stopping handshake operation. To abort an active
+operation, request `CONTROL.ABORT` and wait for `STATUS.ABORTED` before reusing
+its buffers or configuration. For a peripheral requiring an explicit trigger-clear
+write, configure `CLEAR_INTR_SRC`, `CLEAR_INTR_BUS`, `INTR_SRC_ADDR` and
+`INTR_SRC_WR_VAL` for the connected host port (`CLEAR_INTR_BUS` bit 0 = 1);
+otherwise leave that source
+unselected in `CLEAR_INTR_SRC`.
 
 [[future-enhancements]]
 == Future Enhancements
 
-_The following feature enhancements will be considered for the next
-generation implementation:_
+The following are proposals, not capabilities of the current SEP integration:
 
 * Inline AES encryption or decryption (with/without inline hashing)
 * Inline hashing with only digest written to target slave
@@ -72,8 +104,8 @@ generation implementation:_
 HMAC-SHA2) engines inside the cryptographic subsystem and adding
 streaming interfaces
 
-Replace the FSM based controller with microsequencer or simple CPU
-(potentially the same one as used in the Key Manager)
+* Replace the FSM controller with a microsequencer or simple CPU, potentially
+  shared with the Key Manager
 
 <<proposed-sep-dma-extensions-figure>> illustrates the proposed DMA datapath extensions
 described in this section.
