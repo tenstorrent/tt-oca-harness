@@ -31,12 +31,23 @@ integration.
 
 == Architecture Overview
 
-<<smc-dma-zeroer-diagram>> shows the DMA and zeroer connections to their shared fabric
-path.
+<<smc-dma-zeroer-diagram>> shows the DMA frontend and backend and the fabric path the
+DMA shares with the memory zeroer.
 
 [[smc-dma-zeroer-diagram]]
-.SMC DMA and memory-zeroer architecture and shared fabric path
-image::SMC_DMA_ZEROER_FIG013_FIG014.png[alt="SMC DMA and memory-zeroer architecture and shared fabric path",width=100%,pdfwidth=100%]
+.SMC DMA frontend, backend and shared fabric path
+image::smc-dma.svg[alt="SMC DMA frontend, request manager and backend inside the data-accelerator wrapper, with the control demux and master mux shared with the memory zeroer",width=100%,pdfwidth=100%]
+
+The DMA and the zeroer share `smc_data_accelerator_wrap`. Its control demux sends the
+zeroer register window to the zeroer and every other address to the DMA, and each
+control path narrows the address to its own register window. Its master mux merges the
+two master ports onto the port to the input fabric and adds one ID bit to tell their
+responses apart. In the figure, thick lines are AXI4, thin dark lines are the register
+bus, and grey lines are iDMA requests and responses, gated clocks and status outputs.
+The dashed box is the manager-to-backend FIFO, which is absent because SMC sets
+`M2B_FIFO_DEPTH` to 0. With one control interface and one master interface, the
+request manager is a passthrough, so the arbitration described under
+<<smc-dma-request-arbitration>> is not instantiated.
 
 The DMA controller implements a frontend-backend architecture with the
 following modules:
@@ -168,6 +179,7 @@ interfaces or master interfaces are configured. In the simplest case
 (single control interface and single master interface), the module
 operates as a passthrough with no arbitration overhead.
 
+[[smc-dma-request-arbitration]]
 === Request Arbitration
 
 When multiple control or master interfaces are present, the request

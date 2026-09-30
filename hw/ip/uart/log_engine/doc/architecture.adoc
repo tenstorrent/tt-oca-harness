@@ -90,8 +90,8 @@ preserved (except control fields).
 *Log Fetch*: 64-bit AXI4-Lite read, single-beat transfers, errors
 signaled via LOG_FETCH_ERR.
 
-*Log Write*: 32-bit AXI4-Lite write, single byte accesses using strobes,
-errors signaled via LOG_WRITE_ERR.
+*Log Write*: 32-bit AXI4-Lite write carrying one byte in bits [7:0], with
+all four strobes set, errors signaled via LOG_WRITE_ERR.
 
 === Performance Characteristics
 
