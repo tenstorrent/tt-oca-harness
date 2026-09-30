@@ -794,7 +794,7 @@ robust operation during complex reset scenarios.</p>
 <h3 id="SS_CONFIG_LOCK">SS_CONFIG_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>config_lock</td><td>RW</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
+<tr><td>31:0</td><td>config_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
 </table>
 <h3 id="SS_COLD_RESET_N">SS_COLD_RESET_N</h3>
 <table>
@@ -834,7 +834,7 @@ robust operation during complex reset scenarios.</p>
 <h3 id="SS_COLD_RESET_LOCK">SS_COLD_RESET_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>cold_reset_lock</td><td>RW</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
+<tr><td>31:0</td><td>cold_reset_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
 </table>
 <h3 id="SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</h3>
 <table>

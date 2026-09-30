@@ -1251,7 +1251,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
-<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW1C</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
 <tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
 <tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
@@ -1318,11 +1318,11 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
-<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
-<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
-<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
-<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW1C</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW1C</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW1C</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW1C</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
 <tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_0_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[0].I3CBase.INTR_STATUS_ENABLE</h3>
@@ -1505,9 +1505,9 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer error</td></tr>
 <tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer aborted</td></tr>
 <tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
 <tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
 <tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
@@ -1633,7 +1633,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
-<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW RC</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
 <tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_0_.I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1">i3c_csr[0].I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1</h3>
@@ -1649,13 +1649,13 @@ windows in the generated map describe address decoding, not independent
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
 <tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
-<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW1C</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_0_.I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL">i3c_csr[0].I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW1C</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
 <tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
 <tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
 </table>
@@ -1751,7 +1751,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
-<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW WS</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
 <tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -1943,7 +1943,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
+<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W 1P</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
 <tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>TTI IBI Queue Buffer Software Reset</td></tr>
 <tr><td>4</td><td>RX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI RX Data Queue Buffer Software Reset</td></tr>
 <tr><td>3</td><td>TX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can&#x27;t be cleared otherwise.</td></tr>
@@ -1989,25 +1989,25 @@ windows in the generated map describe address decoding, not independent
 <h3 id="i3c_csr_0_.I3C_EC.TTI.INTERRUPT_STATUS">i3c_csr[0].I3C_EC.TTI.INTERRUPT_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
 <tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
 <tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW1C</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
-<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
 </table>
 <h3 id="i3c_csr_0_.I3C_EC.TTI.INTERRUPT_ENABLE">i3c_csr[0].I3C_EC.TTI.INTERRUPT_ENABLE</h3>
 <table>
@@ -2071,19 +2071,19 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
-<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
-<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
-<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
-<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
-<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
-<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
-<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
-<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
-<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
-<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
-<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
-<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_0_.I3C_EC.TTI.TARGET_ERR_INTR_ENABLE">i3c_csr[0].I3C_EC.TTI.TARGET_ERR_INTR_ENABLE</h3>
@@ -2549,7 +2549,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
-<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW1C</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
 <tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
 <tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
@@ -2616,11 +2616,11 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
-<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
-<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
-<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
-<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW1C</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW1C</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW1C</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW1C</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
 <tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_1_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[1].I3CBase.INTR_STATUS_ENABLE</h3>
@@ -2803,9 +2803,9 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer error</td></tr>
 <tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer aborted</td></tr>
 <tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
 <tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
 <tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
@@ -2931,7 +2931,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
-<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW RC</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
 <tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_1_.I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1">i3c_csr[1].I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1</h3>
@@ -2947,13 +2947,13 @@ windows in the generated map describe address decoding, not independent
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
 <tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
-<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW1C</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_1_.I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL">i3c_csr[1].I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW1C</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
 <tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
 <tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
 </table>
@@ -3049,7 +3049,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
-<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW WS</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
 <tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -3241,7 +3241,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
+<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W 1P</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
 <tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>TTI IBI Queue Buffer Software Reset</td></tr>
 <tr><td>4</td><td>RX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI RX Data Queue Buffer Software Reset</td></tr>
 <tr><td>3</td><td>TX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can&#x27;t be cleared otherwise.</td></tr>
@@ -3287,25 +3287,25 @@ windows in the generated map describe address decoding, not independent
 <h3 id="i3c_csr_1_.I3C_EC.TTI.INTERRUPT_STATUS">i3c_csr[1].I3C_EC.TTI.INTERRUPT_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
 <tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
 <tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW1C</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
-<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
 </table>
 <h3 id="i3c_csr_1_.I3C_EC.TTI.INTERRUPT_ENABLE">i3c_csr[1].I3C_EC.TTI.INTERRUPT_ENABLE</h3>
 <table>
@@ -3369,19 +3369,19 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
-<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
-<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
-<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
-<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
-<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
-<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
-<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
-<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
-<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
-<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
-<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
-<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_1_.I3C_EC.TTI.TARGET_ERR_INTR_ENABLE">i3c_csr[1].I3C_EC.TTI.TARGET_ERR_INTR_ENABLE</h3>
@@ -3847,7 +3847,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
-<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW1C</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
 <tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
 <tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
@@ -3914,11 +3914,11 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
-<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
-<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
-<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
-<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW1C</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW1C</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW1C</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW1C</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
 <tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_2_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[2].I3CBase.INTR_STATUS_ENABLE</h3>
@@ -4101,9 +4101,9 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer error</td></tr>
 <tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer aborted</td></tr>
 <tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
 <tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
 <tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
@@ -4229,7 +4229,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
-<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW RC</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
 <tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_2_.I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1">i3c_csr[2].I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1</h3>
@@ -4245,13 +4245,13 @@ windows in the generated map describe address decoding, not independent
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
 <tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
-<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW1C</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_2_.I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL">i3c_csr[2].I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW1C</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
 <tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
 <tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
 </table>
@@ -4347,7 +4347,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
-<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW WS</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
 <tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -4539,7 +4539,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
+<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W 1P</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
 <tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>TTI IBI Queue Buffer Software Reset</td></tr>
 <tr><td>4</td><td>RX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI RX Data Queue Buffer Software Reset</td></tr>
 <tr><td>3</td><td>TX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can&#x27;t be cleared otherwise.</td></tr>
@@ -4585,25 +4585,25 @@ windows in the generated map describe address decoding, not independent
 <h3 id="i3c_csr_2_.I3C_EC.TTI.INTERRUPT_STATUS">i3c_csr[2].I3C_EC.TTI.INTERRUPT_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
 <tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
 <tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW1C</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
-<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
 </table>
 <h3 id="i3c_csr_2_.I3C_EC.TTI.INTERRUPT_ENABLE">i3c_csr[2].I3C_EC.TTI.INTERRUPT_ENABLE</h3>
 <table>
@@ -4667,19 +4667,19 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
-<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
-<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
-<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
-<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
-<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
-<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
-<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
-<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
-<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
-<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
-<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
-<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_2_.I3C_EC.TTI.TARGET_ERR_INTR_ENABLE">i3c_csr[2].I3C_EC.TTI.TARGET_ERR_INTR_ENABLE</h3>
@@ -5145,7 +5145,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
-<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW1C</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
 <tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
 <tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
@@ -5212,11 +5212,11 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
-<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
-<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
-<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
-<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW1C</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW1C</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW1C</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW1C</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
 <tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_3_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[3].I3CBase.INTR_STATUS_ENABLE</h3>
@@ -5399,9 +5399,9 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer error</td></tr>
 <tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer aborted</td></tr>
 <tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
 <tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
 <tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
@@ -5527,7 +5527,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
-<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW RC</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
 <tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_3_.I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1">i3c_csr[3].I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1</h3>
@@ -5543,13 +5543,13 @@ windows in the generated map describe address decoding, not independent
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
 <tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
-<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW1C</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_3_.I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL">i3c_csr[3].I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW1C</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
 <tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
 <tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
 </table>
@@ -5645,7 +5645,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
-<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW WS</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
 <tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -5837,7 +5837,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
+<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W 1P</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
 <tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>TTI IBI Queue Buffer Software Reset</td></tr>
 <tr><td>4</td><td>RX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI RX Data Queue Buffer Software Reset</td></tr>
 <tr><td>3</td><td>TX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can&#x27;t be cleared otherwise.</td></tr>
@@ -5883,25 +5883,25 @@ windows in the generated map describe address decoding, not independent
 <h3 id="i3c_csr_3_.I3C_EC.TTI.INTERRUPT_STATUS">i3c_csr[3].I3C_EC.TTI.INTERRUPT_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
 <tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
 <tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW1C</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
-<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
 </table>
 <h3 id="i3c_csr_3_.I3C_EC.TTI.INTERRUPT_ENABLE">i3c_csr[3].I3C_EC.TTI.INTERRUPT_ENABLE</h3>
 <table>
@@ -5965,19 +5965,19 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
-<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
-<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
-<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
-<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
-<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
-<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
-<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
-<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
-<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
-<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
-<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
-<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_3_.I3C_EC.TTI.TARGET_ERR_INTR_ENABLE">i3c_csr[3].I3C_EC.TTI.TARGET_ERR_INTR_ENABLE</h3>
@@ -6443,7 +6443,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
-<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW1C</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
 <tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
 <tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
@@ -6510,11 +6510,11 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
-<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
-<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
-<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
-<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW1C</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW1C</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW1C</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW1C</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
 <tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_4_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[4].I3CBase.INTR_STATUS_ENABLE</h3>
@@ -6697,9 +6697,9 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer error</td></tr>
 <tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer aborted</td></tr>
 <tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
 <tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
 <tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
@@ -6825,7 +6825,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
-<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW RC</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
 <tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_4_.I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1">i3c_csr[4].I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1</h3>
@@ -6841,13 +6841,13 @@ windows in the generated map describe address decoding, not independent
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
 <tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
-<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW1C</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_4_.I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL">i3c_csr[4].I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW1C</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
 <tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
 <tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
 </table>
@@ -6943,7 +6943,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
-<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW WS</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
 <tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -7135,7 +7135,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
+<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W 1P</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
 <tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>TTI IBI Queue Buffer Software Reset</td></tr>
 <tr><td>4</td><td>RX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI RX Data Queue Buffer Software Reset</td></tr>
 <tr><td>3</td><td>TX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can&#x27;t be cleared otherwise.</td></tr>
@@ -7181,25 +7181,25 @@ windows in the generated map describe address decoding, not independent
 <h3 id="i3c_csr_4_.I3C_EC.TTI.INTERRUPT_STATUS">i3c_csr[4].I3C_EC.TTI.INTERRUPT_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
 <tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
 <tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW1C</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
-<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
 </table>
 <h3 id="i3c_csr_4_.I3C_EC.TTI.INTERRUPT_ENABLE">i3c_csr[4].I3C_EC.TTI.INTERRUPT_ENABLE</h3>
 <table>
@@ -7263,19 +7263,19 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
-<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
-<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
-<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
-<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
-<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
-<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
-<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
-<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
-<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
-<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
-<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
-<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_4_.I3C_EC.TTI.TARGET_ERR_INTR_ENABLE">i3c_csr[4].I3C_EC.TTI.TARGET_ERR_INTR_ENABLE</h3>
@@ -7741,7 +7741,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>BUS_ENABLE</td><td>RW</td><td>0x0</td><td>Host Controller Bus Enable</td></tr>
-<tr><td>30</td><td>RESUME</td><td>RW</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
+<tr><td>30</td><td>RESUME</td><td>RW1C</td><td>0x0</td><td>Host Controller Resume:<br><br>0 - Controller is running<br><br>1 - Controller is suspended<br><br>Write 1 to resume Controller operations.</td></tr>
 <tr><td>29</td><td>ABORT</td><td>RW</td><td>0x0</td><td>Host Controller Abort when set to 1</td></tr>
 <tr><td>28:13</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>12</td><td>HALT_ON_CMD_SEQ_TIMEOUT</td><td>RW</td><td>0x0</td><td>Halt on Command Sequence Timeout when set to 1</td></tr>
@@ -7808,11 +7808,11 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:15</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
-<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
-<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
-<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
-<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
+<tr><td>14</td><td>SCHED_CMD_MISSED_TICK_STAT</td><td>RW1C</td><td>0x0</td><td>Scheduled commands could be executed due to controller being busy.</td></tr>
+<tr><td>13</td><td>HC_ERR_CMD_SEQ_TIMEOUT_STAT</td><td>RW1C</td><td>0x0</td><td>Command timeout after prolonged stall.</td></tr>
+<tr><td>12</td><td>HC_WARN_CMD_SEQ_STALL_STAT</td><td>RW1C</td><td>0x0</td><td>Clock stalled due to lack of commands.</td></tr>
+<tr><td>11</td><td>HC_SEQ_CANCEL_STAT</td><td>RW1C</td><td>0x0</td><td>Controller had to cancel command sequence.</td></tr>
+<tr><td>10</td><td>HC_INTERNAL_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Controller internal unrecoverable error.</td></tr>
 <tr><td>9:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_5_.I3CBase.INTR_STATUS_ENABLE">i3c_csr[5].I3CBase.INTR_STATUS_ENABLE</h3>
@@ -7995,9 +7995,9 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:10</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>Transfer error</td></tr>
+<tr><td>9</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer error</td></tr>
 <tr><td>8:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>Transfer aborted</td></tr>
+<tr><td>5</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>Transfer aborted</td></tr>
 <tr><td>4</td><td>RESP_READY_STAT</td><td>R</td><td>0x0</td><td>Response queue fulfils RESP_BUF_THLD</td></tr>
 <tr><td>3</td><td>CMD_QUEUE_READY_STAT</td><td>R</td><td>0x0</td><td>Command queue fulfils CMD_EMPTY_BUF_THLD</td></tr>
 <tr><td>2</td><td>IBI_STATUS_THLD_STAT</td><td>R</td><td>0x0</td><td>IBI queue fulfils IBI_STATUS_THLD</td></tr>
@@ -8123,7 +8123,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:16</td><td>REC_REASON_CODE</td><td>RW</td><td>0x0</td><td>* 0x0: No Boot Failure detected (BFNF)<br><br>* 0x1: Generic hardware error (BFGHWE)<br><br>* 0x2: Generic hardware soft error (BFGSE) - soft error may be recoverable<br><br>* 0x3: Self-test failure (BFSTF) (e.g., RSA self test failure, FIPs self test failure,, etc.)<br><br>* 0x4: Corrupted/missing critical data (BFCD)<br><br>* 0x5: Missing/corrupt key manifest (BFKMMC)<br><br>* 0x6: Authentication Failure on key manifest (BFKMAF)<br><br>* 0x7: Anti-rollback failure on key manifest (BFKIAR)<br><br>* 0x8: Missing/corrupt boot loader (first mutable code) firmware image (BFFIMC)<br><br>* 0x9: Authentication failure on boot loader ( 1st mutable code) firmware image (BFFIAF)<br><br>* 0xA: Anti-rollback failure boot loader (1st mutable code) firmware image (BFFIAR)<br><br>* 0xB: Missing/corrupt main/management firmware image (BFMFMC)<br><br>* 0xC: Authentication Failure main/management firmware image (BFMFAF)<br><br>* 0xD: Anti-rollback Failure main/management firmware image (BFMFAR)<br><br>* 0xE: Missing/corrupt recovery firmware (BFRFMC)<br><br>* 0xF: Authentication Failure recovery firmware (BFRFAF)<br><br>* 0x10: Anti-rollback Failure on recovery firmware (BFRFAR)<br><br>* 0x11: Forced Recovery (FR)<br><br>* 0x12: Flashless/Streaming Boot (FSB)<br><br>* 0x13-0x7F: Reserved<br><br>* 0x80-0xFF: Vendor Unique Boot Failure Codes</td></tr>
-<tr><td>15:8</td><td>PROT_ERROR</td><td>RW</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
+<tr><td>15:8</td><td>PROT_ERROR</td><td>RW RC</td><td>0x0</td><td>* 0x0: No Protocol Error<br><br>* 0x1: Unsupported/Write Command - command is not support or a write to a RO command<br><br>* 0x2: Unsupported Parameter<br><br>* 0x3: Length write error (length of write command is incorrect)<br><br>* 0x4: CRC Error (if supported)<br><br>* 0x5-0xFE: Reserved<br><br>* 0xFF: General Protocol Error - catch all unclassified errors</td></tr>
 <tr><td>7:0</td><td>DEV_STATUS</td><td>RW</td><td>0x0</td><td>* 0x0: Status Pending (Recover Reason Code not populated)<br><br>* 0x1: Device healthy (Recover Reason Code not populated)<br><br>* 0x2: Device Error (“soft” error or other error state) - (Recover Reason Code not populated)<br><br>* 0x3: Recovery mode - ready to accept recovery image - (Recover Reason Code populated)<br><br>* 0x4: Recovery Pending (waiting for activation) - (Recover Reason Code populated)<br><br>* 0x5: Running Recovery Image ( Recover Reason Code not populated)<br><br>* 0x6-0xD: Reserved<br><br>* 0xE: Boot Failure (Recover Reason Code populated)<br><br>* 0xF: Fatal Error (Recover Reason Code not populated)<br><br>* 0x10-FF:Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_5_.I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1">i3c_csr[5].I3C_EC.SecFwRecoveryIf.DEVICE_STATUS_1</h3>
@@ -8139,13 +8139,13 @@ windows in the generated map describe address decoding, not independent
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>IF_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: Disable Interface mastering<br><br>* 0x1: Enable Interface mastering</td></tr>
 <tr><td>15:8</td><td>FORCED_RECOVERY</td><td>RW</td><td>0x0</td><td>* 0x0: No forced recovery<br><br>* 0x01-0xD: Reserved<br><br>* 0xE: Enter flashless boot mode on next platform reset<br><br>* 0xF: Enter recovery mode on next platform reset<br><br>* 0x10-FF: Reserved</td></tr>
-<tr><td>7:0</td><td>RESET_CTRL</td><td>RW</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
+<tr><td>7:0</td><td>RESET_CTRL</td><td>RW1C</td><td>0x0</td><td>* 0x0: No reset<br><br>* 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)<br><br>* 0x2: Reset Management. This reset will reset the management subsystem. If supported, this reset MUST not be bus disruptive (cause re-enumeration)<br><br>* 0x3-FF: Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_5_.I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL">i3c_csr[5].I3C_EC.SecFwRecoveryIf.RECOVERY_CTRL</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
+<tr><td>23:16</td><td>ACTIVATE_REC_IMG</td><td>RW1C</td><td>0x0</td><td>* 0x0: do not activate recovery image - after activation device will report this code.<br><br>* 0xF: Activate recovery image<br><br>* 0x10-FF-reserved</td></tr>
 <tr><td>15:8</td><td>REC_IMG_SEL</td><td>RW</td><td>0x0</td><td>* 0x0: No operation<br><br>* 0x1: Use Recovery Image from memory window (CMS)<br><br>* 0x2: Use Recovery Image stored on device (C-image)<br><br>* 0x3-FF: reserved</td></tr>
 <tr><td>7:0</td><td>CMS</td><td>RW</td><td>0x0</td><td>* 0-255: Selects a component memory space where the recovery image is. 0 is the default</td></tr>
 </table>
@@ -8241,7 +8241,7 @@ windows in the generated map describe address decoding, not independent
 <tr><td>10:8</td><td>BAST_CCC_IBI_RING</td><td>RW</td><td>0x0</td><td>Indicates which Ring Bundle will be used to capture Broadcast CCC data sent by the Active Controller.<br>The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also be initialized and ready to receive data.</td></tr>
 <tr><td>7:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5</td><td>CR_REQUEST_SEND</td><td>W</td><td>0x0</td><td>Write of 1&#x27;b1 to this field shall instruct the Secondary Controller Logic<br>to attempt to send a Controller Role Request to the I3C Bus.</td></tr>
-<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
+<tr><td>4</td><td>HANDOFF_DEEP_SLEEP</td><td>RW WS</td><td>0x0</td><td>If this field has a value of 1&#x27;b1, then the Secondary Controller Logic shall<br>report a return from Deep Sleep state to the Active Controller.<br>Writing 1&#x27;b1 to this bit is sticky. This field shall automatically clear to 1&#x27;b0<br>after accepting the Controller Role and transitioning to Active Controller mode.</td></tr>
 <tr><td>3</td><td>PRIME_ACCEPT_GETACCCR</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>2</td><td>ACR_FSM_OP_SELECT</td><td>RW</td><td>0x0</td><td>-</td></tr>
 <tr><td>1</td><td>HANDOFF_DELAY_NACK</td><td>RW</td><td>0x0</td><td>-</td></tr>
@@ -8433,7 +8433,7 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
+<tr><td>6</td><td>IBI_RETRY_CTR_RST</td><td>W 1P</td><td>0x0</td><td>TTI IBI Retry Counter Software Reset</td></tr>
 <tr><td>5</td><td>IBI_QUEUE_RST</td><td>RW</td><td>0x0</td><td>TTI IBI Queue Buffer Software Reset</td></tr>
 <tr><td>4</td><td>RX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI RX Data Queue Buffer Software Reset</td></tr>
 <tr><td>3</td><td>TX_DATA_RST</td><td>RW</td><td>0x0</td><td>TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can&#x27;t be cleared otherwise.</td></tr>
@@ -8479,25 +8479,25 @@ windows in the generated map describe address decoding, not independent
 <h3 id="i3c_csr_5_.I3C_EC.TTI.INTERRUPT_STATUS">i3c_csr[5].I3C_EC.TTI.INTERRUPT_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>31</td><td>TRANSFER_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>30:27</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>26</td><td>TX_DESC_COMPLETE</td><td>RW1C</td><td>0x0</td><td>Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>25</td><td>TRANSFER_ABORT_STAT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>24:21</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>20</td><td>PENDING_IBI</td><td>R</td><td>0x0</td><td>At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).</td></tr>
 <tr><td>19:16</td><td>PENDING_INTERRUPT</td><td>RW</td><td>0x0</td><td>Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.</td></tr>
 <tr><td>15:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>IBI_DONE</td><td>RW</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
-<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>13</td><td>IBI_DONE</td><td>RW1C</td><td>0x0</td><td>IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>12</td><td>IBI_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is &gt;= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>11</td><td>RX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is &gt;= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>10</td><td>TX_DESC_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is &gt;= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>9</td><td>RX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is &gt;= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>8</td><td>TX_DATA_THLD_STAT</td><td>RW1C</td><td>0x0</td><td>TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is &gt;= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
 <tr><td>7:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
-<tr><td>1</td><td>TX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
-<tr><td>0</td><td>RX_DESC_STAT</td><td>RW</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
+<tr><td>3</td><td>TX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>2</td><td>RX_DESC_TIMEOUT</td><td>RW1C</td><td>0x0</td><td>NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).</td></tr>
+<tr><td>1</td><td>TX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).</td></tr>
+<tr><td>0</td><td>RX_DESC_STAT</td><td>RW1C</td><td>0x0</td><td>There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.</td></tr>
 </table>
 <h3 id="i3c_csr_5_.I3C_EC.TTI.INTERRUPT_ENABLE">i3c_csr[5].I3C_EC.TTI.INTERRUPT_ENABLE</h3>
 <table>
@@ -8561,19 +8561,19 @@ windows in the generated map describe address decoding, not independent
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:14</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
-<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
-<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
-<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
-<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
-<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
-<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
-<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
-<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
-<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
-<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
-<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
-<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
+<tr><td>13</td><td>RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface INDIRECT FIFO overflow error detected</td></tr>
+<tr><td>12</td><td>RI_RX_FIFO_OVERFLOW_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface RX FIFO overflow error detected</td></tr>
+<tr><td>11</td><td>RI_UNSUPPORTED_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface unsupported command error detected</td></tr>
+<tr><td>10</td><td>RI_READONLY_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface write-to-read-only error detected</td></tr>
+<tr><td>9</td><td>RI_LENGTH_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface length mismatch error detected</td></tr>
+<tr><td>8</td><td>RI_PEC_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>Recovery Interface PEC/CRC error detected</td></tr>
+<tr><td>7</td><td>FRAMING_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)</td></tr>
+<tr><td>6</td><td>TE5_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE5: Broadcast/Direct CCC wrong R/W direction</td></tr>
+<tr><td>5</td><td>TE4_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE4: ENTDAA BCR/DCR mismatch</td></tr>
+<tr><td>4</td><td>TE3_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE3: ENTDAA PID mismatch</td></tr>
+<tr><td>3</td><td>TE2_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE2: CCC or Private Write data parity error</td></tr>
+<tr><td>2</td><td>TE1_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE1: CCC command parity error</td></tr>
+<tr><td>1</td><td>TE0_ERR_STAT</td><td>RW1C</td><td>0x0</td><td>TE0: Invalid reserved address + RnW combination</td></tr>
 <tr><td>0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="i3c_csr_5_.I3C_EC.TTI.TARGET_ERR_INTR_ENABLE">i3c_csr[5].I3C_EC.TTI.TARGET_ERR_INTR_ENABLE</h3>

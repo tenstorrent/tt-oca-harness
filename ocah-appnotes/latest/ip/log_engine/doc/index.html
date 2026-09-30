@@ -540,9 +540,9 @@ groups for ease of use and programming.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>RW1C</td><td>0x0</td><td>Log Write Error Interrupt. Asserted when the bus for writing log data returns<br>an error.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>RW1C</td><td>0x0</td><td>Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns<br>an error.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -556,9 +556,9 @@ groups for ease of use and programming.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>4</td><td>LOG_WRITE_ERR</td><td>W 1P</td><td>0x0</td><td>Log Write Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>0</td><td>LOG_FETCH_ERR</td><td>W 1P</td><td>0x0</td><td>Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
 <h3 id="LOG_CTRL_16_">LOG_CTRL[16]</h3>
 <table>

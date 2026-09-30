@@ -544,6 +544,9 @@
     <span class="nav-text">Appendices</span>
 <ul class="nav-list">
   <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../register-field-access.html">Register Field Access Notation</a>
+  </li>
+  <li class="nav-item" data-depth="2">
     <a class="nav-link" href="../referenced-documents.html">Referenced Documents</a>
   </li>
 </ul>
@@ -1226,7 +1229,7 @@ robust operation during complex reset scenarios.</p>
 <table id="trm-table-8">
 <caption class="title"><a href="#trm-table-8">Table 8</a>. reset_unit.SS_CONFIG_LOCK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>config_lock</td><td>RW</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
+<tr><td>31:0</td><td>config_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS config. If bit 0 is written, then bit 0 of other SS config<br>cannot be written to again</td></tr>
 </table>
 <h3 id="SS_COLD_RESET_N">SS_COLD_RESET_N</h3>
 <table id="trm-table-9">
@@ -1274,7 +1277,7 @@ robust operation during complex reset scenarios.</p>
 <table id="trm-table-16">
 <caption class="title"><a href="#trm-table-16">Table 16</a>. reset_unit.SS_COLD_RESET_LOCK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>cold_reset_lock</td><td>RW</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
+<tr><td>31:0</td><td>cold_reset_lock</td><td>RW1S</td><td>0x0</td><td>Written to lock down SS cold reset. If bit 0 is written, then bit 0 of other SS cold reset<br>cannot be written to again</td></tr>
 </table>
 <h3 id="SS_FORCE_TO_REF_CLK">SS_FORCE_TO_REF_CLK</h3>
 <table id="trm-table-17">

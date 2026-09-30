@@ -1126,7 +1126,7 @@ software before use</p></td>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>START</td><td>RW</td><td>0x0</td><td>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure<br>both primary and secondary are out of reset.</td></tr>
+<tr><td>0</td><td>START</td><td>RW 1P</td><td>0x0</td><td>Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure<br>both primary and secondary are out of reset.</td></tr>
 </table>
 <h3 id="CTRL">CTRL</h3>
 <table>

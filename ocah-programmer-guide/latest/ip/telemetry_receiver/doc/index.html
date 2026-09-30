@@ -646,9 +646,9 @@ with the system clock domain.</p>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W 1P</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>BUFFER_POP</td><td>W</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
 <h3 id="STATUS">STATUS</h3>
 <table>
@@ -664,7 +664,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
 <h3 id="INTR_ENABLE">INTR_ENABLE</h3>
 <table>
@@ -680,7 +680,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>W</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
 <h3 id="TELEMETRY_PROBE_ID">TELEMETRY_PROBE_ID</h3>
 <table>
@@ -752,9 +752,9 @@ with the system clock domain.</p>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W 1P</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>BUFFER_POP</td><td>W</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
 <h3 id="telemetry_receiver_0_.STATUS">telemetry_receiver[0].STATUS</h3>
 <table>
@@ -770,7 +770,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
 <h3 id="telemetry_receiver_0_.INTR_ENABLE">telemetry_receiver[0].INTR_ENABLE</h3>
 <table>
@@ -786,7 +786,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>W</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
 <h3 id="telemetry_receiver_0_.TELEMETRY_PROBE_ID">telemetry_receiver[0].TELEMETRY_PROBE_ID</h3>
 <table>
@@ -812,9 +812,9 @@ with the system clock domain.</p>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W 1P</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>BUFFER_POP</td><td>W</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
 <h3 id="telemetry_receiver_1_.STATUS">telemetry_receiver[1].STATUS</h3>
 <table>
@@ -830,7 +830,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
 <h3 id="telemetry_receiver_1_.INTR_ENABLE">telemetry_receiver[1].INTR_ENABLE</h3>
 <table>
@@ -846,7 +846,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>W</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
 <h3 id="telemetry_receiver_1_.TELEMETRY_PROBE_ID">telemetry_receiver[1].TELEMETRY_PROBE_ID</h3>
 <table>
@@ -872,9 +872,9 @@ with the system clock domain.</p>
 <tr><td>11:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>TELEMETRY_TX_FLUSH</td><td>RW</td><td>0x0</td><td>Telemetry Transmitter Flush. Writing `1` flushes all FIFOs in the telemetry<br>transmitter. The flushing is done via the ATB AF interface. This bit clears<br>itself after the flush completes.</td></tr>
 <tr><td>7:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
+<tr><td>4</td><td>TELEMETRY_RX_FLUSH</td><td>W 1P</td><td>0x0</td><td>Telemetry Receiver Flush. Writing `1` discards queued messages and resets the assembly write<br>pointer. Stored payload bytes are not cleared. In particular, a later short<br>message can retain trailing counter values and validity from an earlier<br>message. This operation does not erase storage.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>BUFFER_POP</td><td>W</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
+<tr><td>0</td><td>BUFFER_POP</td><td>W 1P</td><td>0x0</td><td>Telemetry Message Buffer Pop. Effective only if `STATUS.BUFFER_EMPTY = 0`.<br>Writing `1` pops the buffer and thus updates the data in the<br>`TELEMETRY_PROBE_ID`, `TELEMETRY_COUNTER_VLDS`, and `TELEMETRY_COUNTER[32]`<br>registers.</td></tr>
 </table>
 <h3 id="telemetry_receiver_2_.STATUS">telemetry_receiver[2].STATUS</h3>
 <table>
@@ -890,7 +890,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>R</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt. Asserted when the number of<br>telemetry messages in the Telemetry Message Buffer is greater than<br>`CTRL.BUFFER_THRESHOLD`.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>RW</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>RW1C</td><td>0x0</td><td>Last Packet Missing Interrupt. Asserted when the Telemetry Receiver has not<br>received a Last Packet flag when the maximum number of packets a message can<br>consist of has been received.</td></tr>
 </table>
 <h3 id="telemetry_receiver_2_.INTR_ENABLE">telemetry_receiver[2].INTR_ENABLE</h3>
 <table>
@@ -906,7 +906,7 @@ with the system clock domain.</p>
 <tr><td>31:5</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>4</td><td>BUFFER_THRESHOLD</td><td>RW</td><td>0x0</td><td>Telemetry Message Buffer Threshold Interrupt Test. Writing `1` forces the<br>interrupt and writing `0` releases it.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>MISSING_LAST</td><td>W</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
+<tr><td>0</td><td>MISSING_LAST</td><td>W 1P</td><td>0x0</td><td>Last Packet Missing Interrupt Test. Writing `1` forces the interrupt.</td></tr>
 </table>
 <h3 id="telemetry_receiver_2_.TELEMETRY_PROBE_ID">telemetry_receiver[2].TELEMETRY_PROBE_ID</h3>
 <table>

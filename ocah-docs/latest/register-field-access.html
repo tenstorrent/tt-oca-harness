@@ -3,7 +3,10 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Verification Trends :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <title>Register Field Access Notation :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <link rel="prev" href="dashboard.html">
+    <link rel="next" href="referenced-documents.html">
+    <meta name="description" content="How to read the Access column of the generated register and field tables.">
     <meta name="generator" content="Antora 3.1.15">
     <link rel="stylesheet" href="../../_/css/site.css">
     <link rel="stylesheet" href="../../_/css/extra.css">
@@ -540,7 +543,7 @@
     <button class="nav-item-toggle"></button>
     <span class="nav-text">Appendices</span>
 <ul class="nav-list">
-  <li class="nav-item" data-depth="2">
+  <li class="nav-item is-current-page" data-depth="2">
     <a class="nav-link" href="register-field-access.html">Register Field Access Notation</a>
   </li>
   <li class="nav-item" data-depth="2">
@@ -618,7 +621,8 @@
 <nav class="breadcrumbs" aria-label="breadcrumbs">
   <ul>
     <li><a href="index.html">Open Chiplet Atlas (OCA) Harness Technical Reference Manual</a></li>
-    <li><a href="dashboard-trends.html">Verification Trends</a></li>
+    <li>Appendices</li>
+    <li><a href="register-field-access.html">Register Field Access Notation</a></li>
   </ul>
 </nav>
 </div>
@@ -627,64 +631,188 @@
   <div class="toc-menu"></div>
 </aside>
 <article class="doc">
-<h1 class="page">Verification Trends</h1>
+<h1 class="page">Register Field Access Notation</h1>
 <div id="preamble">
 <div class="sectionbody">
 <div class="paragraph">
-<p>Published regression results over time, from the trend history on the
-<a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
-branch. Choose how many runs to show, and which series each chart plots.</p>
+<p>The register tables in this manual are generated from each block&#8217;s SystemRDL
+description by the PeakRDL toolchain. Their <strong>Access</strong> column reports a field&#8217;s
+software access together with any read or write side effect as one compact
+token, so a status bit that a write of 1 clears reads as <code>RW1C</code> rather than a
+bare <code>RW</code>. This appendix decodes that notation.</p>
 </div>
-<div class="dashboard">
-  <p class="dashboard-back"><a href="dashboard.html">&#8592; Back to the verification dashboard</a></p>
-
-  <div id="dashboard-status" class="dashboard-status">Loading trend data&hellip;</div>
-
-  <p class="dashboard-window">
-    <label for="dashboard-window-select">Window</label>
-    <select id="dashboard-window-select">
-      <option value="10">Last 10 runs</option>
-      <option value="30" selected>Last 30 runs</option>
-      <option value="0">All</option>
-    </select>
-  </p>
-
-  <div id="dashboard-trends" hidden>
-    <h3>Test Pass Rate</h3>
-    <p class="dashboard-window">
-      <label for="dashboard-series-tests">Series</label>
-      <select id="dashboard-series-tests"></select>
-    </p>
-    <div id="dashboard-trend-tests" class="dashboard-chart"></div>
-
-    <h3>Coverage</h3>
-    <p class="dashboard-window">
-      <label for="dashboard-series-coverage">Series</label>
-      <select id="dashboard-series-coverage"></select>
-    </p>
-    <div id="dashboard-trend-coverage" class="dashboard-chart"></div>
-
-    <h3>Failing and Flaky Tests</h3>
-    <p class="dashboard-window">
-      <label for="dashboard-series-failures">Series</label>
-      <select id="dashboard-series-failures"></select>
-    </p>
-    <div id="dashboard-trend-failures" class="dashboard-chart"></div>
-  </div>
-
-  <noscript>
-    <p class="dashboard-status dashboard-status-error">
-      This page renders live regression data with JavaScript. With scripting
-      disabled, read the published data directly from the
-      <a href="https://github.com/tenstorrent/tt-oca-harness/tree/dv-dashboard-data"><code>dv-dashboard-data</code></a>
-      branch.
-    </p>
-  </noscript>
+<div class="paragraph">
+<p>An Access cell is built in three parts:</p>
 </div>
-<script src="../../_/js/vendor/echarts/echarts.min.js"></script>
-<script src="../../_/js/dashboard.js"></script>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>a <strong>base access</strong> token, giving whether software can read the field, write it,
+or neither;</p>
+</li>
+<li>
+<p>an optional <strong>write side-effect suffix</strong> joined directly to the base for an
+effect that an individual written bit triggers (<code>RW1C</code>, <code>W1S</code>, <code>RW0C</code>);</p>
+</li>
+<li>
+<p>optional <strong>space-separated flags</strong> for whole-field write effects, read effects,
+and single-cycle pulses (<code>R RC</code>, <code>RW WS</code>, <code>W 1P</code>).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>A field with no side effect keeps the bare base token. The same base tokens
+appear in the per-register summary tables, where they aggregate the access of
+the register&#8217;s fields.</p>
+</div>
+<table id="trm-register-field-access-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 1. Register field access tokens</caption>
+<colgroup>
+<col style="width: 12%;">
+<col style="width: 58%;">
+<col style="width: 30%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Token</th>
+<th class="tableblock halign-left valign-top">Meaning</th>
+<th class="tableblock halign-left valign-top">SystemRDL property</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="3"><p class="tableblock"><strong>Base access</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>R</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software can read the field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sw = r</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>W</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software can write the field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sw = w</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RW</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Software can read and write the field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sw = rw</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>-</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved, or no software access.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sw = na</code>, or a reserved gap</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="3"><p class="tableblock"><strong>Write side-effect suffix</strong>&#8201;&#8212;&#8201;acts on the individual written bit</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writing 1 to a bit clears it; writing 0 leaves it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = woclr</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1S</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writing 1 to a bit sets it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = woset</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1T</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writing 1 to a bit toggles it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wot</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writing 0 to a bit clears it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wzc</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0S</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writing 0 to a bit sets it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wzs</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0T</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Writing 0 to a bit toggles it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wzt</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="3"><p class="tableblock"><strong>Write flags</strong>&#8201;&#8212;&#8201;act on any write to the field</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Any write clears the whole field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wclr</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Any write sets the whole field.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wset</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>WMOD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">A write invokes a block-specific hardware function.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onwrite = wuser</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="3"><p class="tableblock"><strong>Read flags</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RC</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reading the field clears it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onread = rclr</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RS</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reading the field sets it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onread = rset</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>RMOD</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reading the field invokes a block-specific hardware function.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>onread = ruser</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top" colspan="3"><p class="tableblock"><strong>Pulse</strong></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>1P</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The field self-clears the cycle after it is written, producing a one-cycle
+pulse.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>singlepulse</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
+<p class="block-references">Figures and tables: <a href="#trm-register-field-access-table">Table 1</a>.</p>
+<div class="sect1">
+<h2 id="references"><a class="anchor" href="#references"></a><a class="link" href="#references">1. References</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p><a href="#trm-register-field-access-table">Table 1</a> follows the field-property semantics of the
+SystemRDL 2.0 register description language (Accellera), as rendered by the
+PeakRDL toolchain.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://peakrdl.readthedocs.io/en/latest/">PeakRDL</a>&#8201;&#8212;&#8201;the control and status
+register generator toolchain that produces these register tables.</p>
+</li>
+<li>
+<p><a href="https://systemrdl-compiler.readthedocs.io/en/stable/properties.html">systemrdl-compiler
+field properties</a>&#8201;&#8212;&#8201;the <code>onwrite</code>, <code>onread</code> and <code>singlepulse</code> properties and
+their <code>woclr</code> / <code>woset</code> / <code>rclr</code> / <code>rset</code> shorthand forms.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<nav class="pagination">
+  <span class="prev"><a href="dashboard.html">Verification Dashboard</a></span>
+  <span class="next"><a href="referenced-documents.html">Referenced Documents</a></span>
+</nav>
 </article>
   </div>
 </main>
