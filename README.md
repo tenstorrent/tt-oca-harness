@@ -9,8 +9,9 @@
 <h1 align="center">Open Chiplet Atlas Harness (OCAH)</h1>
 
 <p align="center">
-  The open hardware tree for the OCA design — RTL, register descriptions,
-  generated collateral, and documentation.
+  Tenstorrent reference design (harness) for the Open Chiplet Atlas (OCA)
+  architecture — RTL, register descriptions, generated collateral, and
+  documentation.
 </p>
 
 <p align="center">
