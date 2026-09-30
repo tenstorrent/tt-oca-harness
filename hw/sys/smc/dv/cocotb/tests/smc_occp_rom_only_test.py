@@ -40,7 +40,7 @@ PROGRESS_EVERY = 200
 REQUIRED_EVIDENCE = ("CHK-OCCP-SANITY",)
 
 
-def _poll_interval_ns() -> int:
+def _poll_interval_ns() -> float:
     return POLL_CYCLES * SMC_CLK_PERIOD_NS
 
 
@@ -52,7 +52,7 @@ def _poll_iterations() -> tuple[int, str]:
     if budget_ns <= 0:
         raise AssertionError(f"+rom_test_timeout must be a positive ns value, got {budget!r}")
     interval = _poll_interval_ns()
-    iters = max(1, -(-budget_ns // interval))
+    iters = max(1, int(-(-budget_ns // interval)))
     return iters, f"+rom_test_timeout={budget_ns} ns / {interval} ns -> {iters} polls"
 
 

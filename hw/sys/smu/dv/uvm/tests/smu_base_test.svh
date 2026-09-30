@@ -8,11 +8,11 @@
 // and random volume from the library      accessors, the knob-derived
 // controls, then the test's      configure_test_cfg() hook (required
 // scoreboard features, aggregate      JTAG evidence policy, the TCK floor);
-// srandom(seed) + randomize()      draws the clock periods, the TCK period,
-// and the settle;   2. derive smu_env_cfg from it and publish both through
+// srandom(seed) + randomize()      draws the watchdog clock period, the TCK
+// period, and the settle;   2. derive smu_env_cfg from it and publish both through
 // uvm_config_db;      build smu_env;   3. bring_up(): the cocotb
-// smu_base_test.bring_up ladder through      smu_tb_if in ref-clock cycles of
-// the randomized period -- a TAP reset      before the cold-reset release and
+// smu_base_test.bring_up ladder through      smu_tb_if in ref-clock cycles --
+// a TAP reset      before the cold-reset release and
 // another after it, so the IC_RESET      TDR loads its reset image instead of
 // holding the SMC in reset --      then the bounded polls of the cold-stable
 // and primary reset      releases; run_looped_scenario() (ocah_test) then
@@ -106,8 +106,7 @@ class smu_base_test extends ocah_test;
   // after the power-good sync and the 32-cycle cold deglitch, a second TAP
   // reset, then the post-reset settle and the bounded polls of the
   // cold-stable and primary reset releases. The ladder holds the only
-  // wall-clock waits in test code, derived from the randomized ref-clock
-  // period.
+  // wall-clock waits in test code, derived from the ref-clock period.
   virtual task bring_up();
     m_env.tb_vif.powergood  <= 1'b0;
     m_env.tb_vif.rst_cold_n <= 1'b0;

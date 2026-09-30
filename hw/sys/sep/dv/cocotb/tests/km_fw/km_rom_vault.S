@@ -18,7 +18,8 @@
 #   write LOCK_WRITE on slot 0, the seed slot, and slot 63; read back bit 0
 #   store to 0x13108 (KPV base 0x12000 + KM_KPV_SIZE 0x1108, so the first
 #     byte past the register map and still inside the 8 KB KPV decode window)
-#     and require AXI_SLVERR (or DECERR)
+#     and require AXI_SLVERR with AXI_DECERR clear (key_manager.rdl: an
+#     unmapped offset inside a window answers SLVERR)
 #   lock the seed SRAM region, store, require the write dropped plus
 #     SRAM_WRITE_LOCK_VIOLATION and IRQ_STATUS.SRAM_WRITE_LOCK_ERR, then W1C
 #   seal a slot (one write; hardware raises lock_write with it), erase it, and
@@ -205,8 +206,9 @@ lockuse_err:
 lockuse_done:
 
     # --- past last KPV register, still in the 8 KB window ---
-    # PeakRDL --err-if-bad-addr answers SLVERR; IRQ_STATUS is sticky on the
-    # B-handshake pulse, so poll a bounded number of times.
+    # key_manager.rdl (memory-map summary): an unmapped offset inside a window
+    # answers SLVERR. IRQ_STATUS is sticky on the B-handshake pulse, so poll a
+    # bounded number of times.
     #
     # Clear the two error bits and require them to read back 0 FIRST. They are
     # sticky, so without this the check would also be satisfied by an earlier
@@ -222,12 +224,16 @@ lockuse_done:
     addi  x12, x0, 32
 3:  lw    x7, 0(x9)
     andi  x11, x7, IRQ_AXI_ERR
-    bnez  x11, extent_ok
+    bnez  x11, extent_seen
     addi  x12, x12, -1
     bnez  x12, 3b
     j     extent_done
-extent_ok:
+extent_seen:
+    # SLVERR alone: a DECERR bit, with or without SLVERR, fails the check.
+    addi  x12, x0, IRQ_AXI_SLVERR
+    bne   x11, x12, extent_clear
     ori   x5, x5, 0x2           # CHK-EXTENT
+extent_clear:
     addi  x11, x0, IRQ_AXI_ERR
     sw    x11, 0(x9)            # W1C those bits so later IRQ checks are clean
 extent_done:

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // Generic, non-proprietary clock gating cell (scrubbed version)
 // Functionally equivalent to a typical clock gate: o_clk is i_clk when enabled, otherwise held low.

@@ -219,7 +219,7 @@ latches.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:1 | `Reserved` | - | - a| Reserved
-| 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
+| 0 | `reserved` | W 1P | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-TIMEOUT_MODE]
@@ -349,7 +349,7 @@ see the register description for the required programming order.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:1 | `Reserved` | - | - a| Reserved
-| 0 | `lock` | RW | 0x0 a| Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.
+| 0 | `lock` | RW1S | 0x0 a| Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.
 The NMI interrupt is used for the WDT Bark interrupt.
 |===
 
@@ -372,7 +372,7 @@ The NMI interrupt is used for the WDT Bark interrupt.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:1 | `Reserved` | - | - a| Reserved
-| 0 | `lock` | RW | 0x0 a| Lock TRNG source selection. Once set, cannot be cleared by software.
+| 0 | `lock` | RW1S | 0x0 a| Lock TRNG source selection. Once set, cannot be cleared by software.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-KM_WIPE_CTRL]
@@ -408,7 +408,7 @@ access also received SLVERR synchronously.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:1 | `Reserved` | - | - a| Reserved
-| 0 | `clr` | W | 0x0 a| Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
+| 0 | `clr` | W 1P | 0x0 a| Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-PERIPH_BUS_ERR_STATUS]
@@ -434,13 +434,13 @@ access also received SLVERR synchronously.
 |===
 | Bits | Field | Access | Reset | Description
 | 63:7 | `Reserved` | - | - a| Reserved
-| 6 | `wdt` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
-| 5 | `edn` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
-| 4 | `csrng` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
-| 3 | `otbn` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.
-| 2 | `kmac` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.
-| 1 | `hmac` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.
-| 0 | `aes` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
+| 6 | `wdt` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.
+| 5 | `edn` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.
+| 4 | `csrng` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.
+| 3 | `otbn` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.
+| 2 | `kmac` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.
+| 1 | `hmac` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.
+| 0 | `aes` | W 1P | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
 |===
 
 [#reg-{regmap-instance}-sep_cpu_ctrl-SEP_VERSION_ID]

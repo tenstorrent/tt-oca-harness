@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 module generic_decoded_mux #(
     parameter DISABLE_ASSERTIONS = 0,
     parameter VALUE_WIDTH = 32,

@@ -44,7 +44,7 @@ module jtag_tmp_status_reg
   // On capture: TMP-status captures persistence_mode_i, bypass-escape retains its value
   prim_jtag_scan_reg #(
     .WIDTH(REG_WIDTH),
-    .RESET_VAL(2'b10),  // Default: bypass_escape=1, persistence=0
+    .RESET_VAL(2'b10),  // bypass_escape (bit 0) resets to 0; bit 1 is overwritten at Capture-DR
     .jtag_scan_ctrl_t(jtag_scan_ctrl_t)
   ) u_tmp_status_scan_reg (
     .scan_ctrl_i   (scan_ctrl_i),

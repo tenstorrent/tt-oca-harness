@@ -185,7 +185,7 @@ Source and destination address must have the same alignment.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3:0 | `REGWEN` | RW | 0x6 a| Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
+| 3:0 | `REGWEN` | RW0C | 0x6 a| Used by firmware to lock the DMA enabled memory range configuration registers from further modification.
 Once this register is set to kMultiBitBool4False, it can only be set to kMultiBitBool4True through a reset event.
 
 Default Value = kMultiBitBool4True -> Unlocked at reset.
@@ -317,15 +317,15 @@ When 1: Destination address is incremented by transfer_width after each write.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
-| 5 | `CHUNK_DONE` | RW | 0x0 a| Transfer of a single chunk is complete.
+| 5 | `CHUNK_DONE` | RW1C | 0x0 a| Transfer of a single chunk is complete.
 Only raised for multi-chunk memory-to-memory transfers.
 Cleared automatically by the hardware when starting the transfer of a new chunk.
 | 4 | `SHA2_DIGEST_VALID` | R | 0x0 a| Indicates whether the SHA2_DIGEST register contains a valid digest.
 This value is cleared on the initial transfer and set when the digest is written.
-| 3 | `ERROR` | RW | 0x0 a| Error occurred during the operation.
+| 3 | `ERROR` | RW1C | 0x0 a| Error occurred during the operation.
 ERROR_CODE register denotes the source of the error.
-| 2 | `ABORTED` | RW | 0x0 a| Set once aborted operation drains.
-| 1 | `DONE` | RW | 0x0 a| Configured DMA operation is complete.
+| 2 | `ABORTED` | RW1C | 0x0 a| Set once aborted operation drains.
+| 1 | `DONE` | RW1C | 0x0 a| Configured DMA operation is complete.
 Cleared automatically by the hardware when starting a new transfer.
 | 0 | `BUSY` | R | 0x0 a| DMA operation is active if this bit is set.
 DMA engine clears this bit when operation is complete.

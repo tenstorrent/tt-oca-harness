@@ -798,12 +798,12 @@ Actual storage is in km_kpv_regfile; CSR field is a protocol placeholder.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `rsvd_31_4` | R | 0x0 a| Reserved
-| 3 | `seal` | RW | 0x0 a| Seals this key entry until warm reset. Read-any, write-1-only. Setting this
+| 3 | `seal` | RW1S | 0x0 a| Seals this key entry until warm reset. Read-any, write-1-only. Setting this
 bit also sets lock_write in hardware, so a single write seals the slot: its
 data can be read but not overwritten. Erase remains available, and erasing
 a sealed slot retires it rather than freeing it (see ERASE), so a sealed
 slot's material can be destroyed but its slot never reused.
-| 2 | `erase` | RW | 0x0 a| Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
+| 2 | `erase` | RW1S | 0x0 a| Write-1 to start hardware erase of this slot: an LFSR fills all 16 key
 words (through the KPV scrambler). Hardware self-clears this bit when the
 erase completes. Never blocked: neither lock_write, lock_use nor seal
 prevents an erase. The slot's seal state when the erase completes decides
@@ -812,10 +812,10 @@ reusable. Sealed, lock_write stays set and lock_use is set, retiring the
 slot: its data is destroyed and it can be neither read, rewritten nor
 reused until warm reset. A seal taken while an erase is already in flight
 therefore still retires the slot.
-| 1 | `lock_use` | RW | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
+| 1 | `lock_use` | RW1S | 0x0 a| Prevents KM read of this key entry data until reset. Read-any, write-1-only.
 Hardware sets this bit when an erase of a sealed slot completes, retiring
 the slot: its destroyed contents cannot be read back.
-| 0 | `lock_write` | RW | 0x0 a| Prevents KM write to this key entry data until reset; this register stays
+| 0 | `lock_write` | RW1S | 0x0 a| Prevents KM write to this key entry data until reset; this register stays
 writable so that a locked slot can still be read-locked and erased.
 Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is
 set, so sealing a slot write-locks it without a separate write here.
@@ -837,6 +837,6 @@ set, so sealing a slot write-locks it without a separate write here.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `rsvd` | R | 0x0 a| Reserved
-| 1 | `lock` | RW | 0x0 a| Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
+| 1 | `lock` | RW1S | 0x0 a| Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.
 | 0 | `enable` | RW | 0x0 a| 1 = scramble key entry data on write, descramble on read; 0 = passthrough.
 |===

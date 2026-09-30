@@ -77,6 +77,9 @@ enum ocah_resp_e {
 
 struct ocah_resp {
     ocah_resp_e rresp;
+    // The word a 32-bit read returns, on either half of a 64-bit bus. A value
+    // wider than 32 bits is a 64-bit bus word: its low word answers with
+    // address bit 2 clear, its high word with it set.
     longint unsigned rdata;
     ocah_resp_e bresp;
 };

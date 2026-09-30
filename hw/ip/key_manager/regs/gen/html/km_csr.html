@@ -179,18 +179,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:12</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>11</td><td>rom_access_violation</td><td>RW</td><td>0x0</td><td>KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.</td></tr>
-<tr><td>10</td><td>exec_violation</td><td>RW</td><td>0x0</td><td>Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.</td></tr>
-<tr><td>9</td><td>otp_sigint</td><td>RW</td><td>0x0</td><td>OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.</td></tr>
-<tr><td>8</td><td>otp_change</td><td>RW</td><td>0x0</td><td>An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).</td></tr>
-<tr><td>7</td><td>wipe_state</td><td>RW</td><td>0x0</td><td>Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.</td></tr>
-<tr><td>6</td><td>drbg_err</td><td>RW</td><td>0x0</td><td>DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.</td></tr>
-<tr><td>5</td><td>axi_decerr</td><td>RW</td><td>0x0</td><td>AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
-<tr><td>4</td><td>axi_slverr</td><td>RW</td><td>0x0</td><td>AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
-<tr><td>3</td><td>sram_write_lock_err</td><td>RW</td><td>0x0</td><td>SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.</td></tr>
-<tr><td>2</td><td>rom_write_err</td><td>RW</td><td>0x0</td><td>ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.</td></tr>
-<tr><td>1</td><td>sram_parity_err</td><td>RW</td><td>0x0</td><td>SRAM parity error detected. Sticky, write 1 to clear.</td></tr>
-<tr><td>0</td><td>rom_parity_err</td><td>RW</td><td>0x0</td><td>ROM parity error detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>11</td><td>rom_access_violation</td><td>RW1C</td><td>0x0</td><td>KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.</td></tr>
+<tr><td>10</td><td>exec_violation</td><td>RW1C</td><td>0x0</td><td>Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.</td></tr>
+<tr><td>9</td><td>otp_sigint</td><td>RW1C</td><td>0x0</td><td>OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.</td></tr>
+<tr><td>8</td><td>otp_change</td><td>RW1C</td><td>0x0</td><td>An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).</td></tr>
+<tr><td>7</td><td>wipe_state</td><td>RW1C</td><td>0x0</td><td>Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.</td></tr>
+<tr><td>6</td><td>drbg_err</td><td>RW1C</td><td>0x0</td><td>DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.</td></tr>
+<tr><td>5</td><td>axi_decerr</td><td>RW1C</td><td>0x0</td><td>AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>axi_slverr</td><td>RW1C</td><td>0x0</td><td>AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>sram_write_lock_err</td><td>RW1C</td><td>0x0</td><td>SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>rom_write_err</td><td>RW1C</td><td>0x0</td><td>ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>sram_parity_err</td><td>RW1C</td><td>0x0</td><td>SRAM parity error detected. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>rom_parity_err</td><td>RW1C</td><td>0x0</td><td>ROM parity error detected. Sticky, write 1 to clear.</td></tr>
 </table>
 <h3 id="IRQ_ENABLE">IRQ_ENABLE</h3>
 <table>
@@ -224,29 +224,29 @@
 <h3 id="SRAM_LOCK">SRAM_LOCK</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>lock_bits</td><td>RW</td><td>0x0</td><td>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+<tr><td>31:0</td><td>lock_bits</td><td>RW1S</td><td>0x0</td><td>One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
 </table>
 <h3 id="IRQ_SET">IRQ_SET</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:12</td><td>rsvd</td><td>W</td><td>0x0</td><td>Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)</td></tr>
-<tr><td>11</td><td>rom_access_violation_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)</td></tr>
-<tr><td>10</td><td>exec_violation_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)</td></tr>
-<tr><td>9</td><td>otp_sigint_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)</td></tr>
-<tr><td>8</td><td>otp_change_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)</td></tr>
-<tr><td>7</td><td>wipe_state_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)</td></tr>
-<tr><td>6</td><td>drbg_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)</td></tr>
-<tr><td>5</td><td>axi_decerr_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)</td></tr>
-<tr><td>4</td><td>axi_slverr_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)</td></tr>
-<tr><td>3</td><td>sram_write_lock_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)</td></tr>
-<tr><td>2</td><td>rom_write_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)</td></tr>
-<tr><td>1</td><td>sram_parity_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)</td></tr>
-<tr><td>0</td><td>rom_parity_err_set</td><td>W</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)</td></tr>
+<tr><td>11</td><td>rom_access_violation_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)</td></tr>
+<tr><td>10</td><td>exec_violation_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)</td></tr>
+<tr><td>9</td><td>otp_sigint_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)</td></tr>
+<tr><td>8</td><td>otp_change_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)</td></tr>
+<tr><td>7</td><td>wipe_state_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)</td></tr>
+<tr><td>6</td><td>drbg_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)</td></tr>
+<tr><td>5</td><td>axi_decerr_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)</td></tr>
+<tr><td>4</td><td>axi_slverr_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)</td></tr>
+<tr><td>3</td><td>sram_write_lock_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)</td></tr>
+<tr><td>2</td><td>rom_write_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)</td></tr>
+<tr><td>1</td><td>sram_parity_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)</td></tr>
+<tr><td>0</td><td>rom_parity_err_set</td><td>W 1P</td><td>0x0</td><td>Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)</td></tr>
 </table>
 <h3 id="SRAM_WRITE_LOCK_VIOLATION">SRAM_WRITE_LOCK_VIOLATION</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:0</td><td>violation_bits</td><td>RW</td><td>0x0</td><td>Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.</td></tr>
+<tr><td>31:0</td><td>violation_bits</td><td>RW1C</td><td>0x0</td><td>Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.</td></tr>
 </table>
 <h3 id="RECOVERABLE_ERR">RECOVERABLE_ERR</h3>
 <table>
@@ -258,7 +258,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>cold_boot_done</td><td>RW</td><td>0x0</td><td>Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).</td></tr>
+<tr><td>0</td><td>cold_boot_done</td><td>RW1S</td><td>0x0</td><td>Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).</td></tr>
 </table>
 <h3 id="OTP_LIFE_CYCLE">OTP_LIFE_CYCLE</h3>
 <table>
@@ -277,7 +277,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
+<tr><td>0</td><td>enable</td><td>RW1S</td><td>0x0</td><td>Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.</td></tr>
 </table>
 <h3 id="IRQ_ENTRY_ADDR">IRQ_ENTRY_ADDR</h3>
 <table>
@@ -288,7 +288,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved; reads as zero.</td></tr>
-<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Write 1 to set; write 0 has no effect; sticky until reset.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Write 1 to set; write 0 has no effect; sticky until reset.</td></tr>
 </table>
 <h3 id="VUART_TX">VUART_TX</h3>
 <table>
@@ -681,43 +681,43 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>8</td><td>sep_sys_id</td><td>RW</td><td>0x0</td><td>Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>7</td><td>sep_sip_id</td><td>RW</td><td>0x0</td><td>Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>6</td><td>sep_chiplet_id</td><td>RW</td><td>0x0</td><td>Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)</td></tr>
-<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>Lock OTP_DEMOTION_STATE reads (returns zero when locked)</td></tr>
-<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>Lock OTP_LIFE_CYCLE reads (returns zero when locked)</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1S</td><td>0x0</td><td>Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1S</td><td>0x0</td><td>Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1S</td><td>0x0</td><td>Lock OTP_DEMOTION_STATE reads (returns zero when locked)</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1S</td><td>0x0</td><td>Lock OTP_LIFE_CYCLE reads (returns zero when locked)</td></tr>
 </table>
 <h3 id="OTP_CHANGE_STATUS">OTP_CHANGE_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>8</td><td>sep_sys_id</td><td>RW</td><td>0x0</td><td>OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>7</td><td>sep_sip_id</td><td>RW</td><td>0x0</td><td>OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>6</td><td>sep_chiplet_id</td><td>RW</td><td>0x0</td><td>OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
-<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1C</td><td>0x0</td><td>OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1C</td><td>0x0</td><td>OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1C</td><td>0x0</td><td>OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1C</td><td>0x0</td><td>OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1C</td><td>0x0</td><td>OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1C</td><td>0x0</td><td>OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1C</td><td>0x0</td><td>OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.</td></tr>
 </table>
 <h3 id="OTP_READ_LOCK_COLD">OTP_READ_LOCK_COLD</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>8</td><td>sep_sys_id</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.</td></tr>
-<tr><td>7</td><td>sep_sip_id</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.</td></tr>
-<tr><td>6</td><td>sep_chiplet_id</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.</td></tr>
-<tr><td>5</td><td>class_key</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.</td></tr>
-<tr><td>4</td><td>sys_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.</td></tr>
-<tr><td>3</td><td>sip_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.</td></tr>
-<tr><td>2</td><td>chiplet_uid</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.</td></tr>
-<tr><td>1</td><td>demotion</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.</td></tr>
-<tr><td>0</td><td>life_cycle</td><td>RW</td><td>0x0</td><td>Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.</td></tr>
+<tr><td>8</td><td>sep_sys_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id | OTP_READ_LOCK_COLD.sep_sys_id.</td></tr>
+<tr><td>7</td><td>sep_sip_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id | OTP_READ_LOCK_COLD.sep_sip_id.</td></tr>
+<tr><td>6</td><td>sep_chiplet_id</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id | OTP_READ_LOCK_COLD.sep_chiplet_id.</td></tr>
+<tr><td>5</td><td>class_key</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key | OTP_READ_LOCK_COLD.class_key.</td></tr>
+<tr><td>4</td><td>sys_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid | OTP_READ_LOCK_COLD.sys_uid.</td></tr>
+<tr><td>3</td><td>sip_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid | OTP_READ_LOCK_COLD.sip_uid.</td></tr>
+<tr><td>2</td><td>chiplet_uid</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid | OTP_READ_LOCK_COLD.chiplet_uid.</td></tr>
+<tr><td>1</td><td>demotion</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion | OTP_READ_LOCK_COLD.demotion.</td></tr>
+<tr><td>0</td><td>life_cycle</td><td>RW1S</td><td>0x0</td><td>Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle | OTP_READ_LOCK_COLD.life_cycle.</td></tr>
 </table>
 <h3 id="OTP_SEP_CHIPLET_ID_VAL_0">OTP_SEP_CHIPLET_ID_VAL_0</h3>
 <table>

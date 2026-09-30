@@ -32,9 +32,11 @@
 #   - one BIW 32b word per decor-valid event (out[0] -> word[31:24]).
 #   - whitening ON: 16 BIW words -> one SHA block -> 8x32b digest words.
 #   - seed: accumulate 12 consecutive 32b compressor-output words (post-SHA when
-#     whitening) -> 384b es_bits (word0 -> bits[31:0]). The reference scoreboard skips
-#     the first INGRESS_FIFO_DEPTH=12 compressor words before seed accumulation
-#     (distribution FIFO absorption); modeled as ``ingress_skip``.
+#     whitening) -> 384b es_bits (word0 -> bits[31:0]). ``ingress_skip`` words are
+#     dropped before seed accumulation. It defaults to 0: the seed adapter takes
+#     one 32-bit word per valid cycle directly from the entropy source, with no
+#     upstream routing or distribution FIFO (hw/ip/drbg/doc/architecture.adoc,
+#     Seed Assembly), so no word is absorbed ahead of the packer.
 #   - CTR_DRBG: first 384b seed -> instantiate; generate glen 128b blocks.
 #   - EDN->KM: each 128b block -> 4x32b beats, LSW-first
 #     beat0=block[31:0], beat1=[63:32], beat2=[95:64], beat3=[127:96].
@@ -85,7 +87,7 @@ class SepEntropyGolden:
         bypass=False,
         sha_whitening=True,
         glen=32,
-        ingress_skip=12,
+        ingress_skip=0,
         noise_model_mode="unbiased",
         noise_seed_base=0x1234_5678,
         km_word_order="lsw",
@@ -216,7 +218,7 @@ class SepEntropyGolden:
         self.expected_compress_words.append(word)
         self.n_compress_words += 1
 
-        # reference scoreboard skips the first ingress_skip words (FIFO absorption).
+        # Words dropped ahead of the seed packer (0 for this DRBG, see the header).
         if self._ingress_seen < self.ingress_skip:
             self._ingress_seen += 1
             return
@@ -308,7 +310,8 @@ class SepEntropyGolden:
 # ===========================================================================
 if __name__ == "__main__":
     GLEN = 32
-    INGRESS = 12
+    # hw/ip/drbg/doc/architecture.adoc: no distribution FIFO ahead of the packer.
+    INGRESS = 0
 
     g = SepEntropyGolden(
         sample_clk_div=7,

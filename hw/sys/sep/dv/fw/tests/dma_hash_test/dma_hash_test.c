@@ -194,7 +194,8 @@ int main(void) {
     WRITE_REG(SEP_TOP_SECURE_DMA_SRC_ADDR_HI_BASE_ADDR, SEP_TOP_SEP_SRAM_BASE_ADDR >> 32);
 
     // Set the destination address (use high DCCM to avoid BSS overlap)
-    // BSS is at low DCCM (~0x80000-0x80FFF), so use 0x82000+
+    // .data/.bss start at the DCCM base (0xC004_0000, fw/link/modes/tcm.ld), so use
+    // DCCM base + 0x2000
 #define DMA_DST_ADDR (SEP_TOP_SEP_DCCM_BASE_ADDR + 0x2000)
     WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_LO_BASE_ADDR, DMA_DST_ADDR);
     WRITE_REG(SEP_TOP_SECURE_DMA_DST_ADDR_HI_BASE_ADDR, DMA_DST_ADDR >> 32);

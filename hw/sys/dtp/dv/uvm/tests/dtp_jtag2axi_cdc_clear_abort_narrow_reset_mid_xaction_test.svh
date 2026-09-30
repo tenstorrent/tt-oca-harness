@@ -25,6 +25,11 @@ class dtp_jtag2axi_cdc_clear_abort_narrow_reset_mid_xaction_test extends dtp_jta
     return "DTP_JTAG2AXI_CDC_CLEAR_ABORT_NARROW_RESET_MID_XACTION_TEST_LOOPS";
   endfunction
 
+  virtual function void configure_test_cfg(dtp_test_cfg cfg);
+    super.configure_test_cfg(cfg);
+    cfg.require_jtag_ids('{"CHK-RESET-COUNT"});
+  endfunction
+
   virtual function void add_required_axi_ids(ref string ids[$]);
     super.add_required_axi_ids(ids);
     ids.push_back("CHK-AXI-WADDR");

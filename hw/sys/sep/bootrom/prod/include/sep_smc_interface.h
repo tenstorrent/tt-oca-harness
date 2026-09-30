@@ -55,6 +55,13 @@ static inline uint32_t sep_get_smc_base(void) {
 // seeded at whatever address the ROM reads, so any offset "works" in simulation.
 #define SMC_SCRATCH_BASE_OFFSET 0x39080u
 
+// CPU_CTRL.RESET_CTRL: 0x39020 is SMC_TOP_SMC_CPU_CTRL_RESET_CTRL_BASE_ADDR
+// (smc_addr.h), 0xC0039020 SMC-local. A 64-bit register; the per-core resets
+// core0..3_reset_n_n0_scan are bits [3:0] of the low word, active low with reset
+// value 1, so clearing a bit holds that core in reset.
+#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x39020u
+#define SMC_CPU_CTRL_RESET_CTRL_CORE_RESET_N_MASK 0xFu
+
 // Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
 

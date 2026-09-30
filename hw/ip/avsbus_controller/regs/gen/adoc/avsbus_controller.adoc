@@ -84,21 +84,21 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:30 | `SLAVE_ACK` | R | 0x0 a| Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]
+| 31:30 | `SLAVE_ACK` | R RMOD | 0x0 a| Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]
 [*]0x0: Action Performed
 [*]0x1: Good CRC received but resource unavailable - hardware will retry
 [*]0x2: Bad CRC received - hardware will retry
 [*]0x3: Good CRC received but bad data, data type or selector - no hardware retry
 [/list]
-| 29 | `CONST0` | R | 0x0 a| Always 0
-| 28:24 | `STATUS_RESPONSE` | R | 0x0 a| 5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]
+| 29 | `CONST0` | R RMOD | 0x0 a| Always 0
+| 28:24 | `STATUS_RESPONSE` | R RMOD | 0x0 a| 5-bit field indicating general condition of the slave, per AVS spec StatusReponse field: [list]
 [*]bit 4: VDone - AND of all VDone bits of active rails
 [*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details
 [*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.
 [*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific
 [*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific
 [/list]
-| 23:8 | `CMD_DATA` | R | 0x0 a| Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]
+| 23:8 | `CMD_DATA` | R RMOD | 0x0 a| Read Cmd Data. Format depends on cmd_code in previous master subframe:[list]
 [*]Voltage (cmd_code 0x0): 16-bit unsigned int, 1LSB=1mV
 [*]Transition Rate (cmd_code 0x1): [list]
 [*]MSByte: Rise Rate, 8-bit unsigned int, 1LSB=1mV/us
@@ -114,7 +114,7 @@ Set to 1 for manufacturer-specific Command Code (cmd_code), otherwise 0
 [*]If master issued a write (rw!=0x2) in previous master subframe, this field is 0xffff
 [/list]
 | 7:3 | `Reserved` | - | - a| Reserved
-| 2:0 | `CRC` | R | 0x0 a| The CRC-3 code received from slave
+| 2:0 | `CRC` | R RMOD | 0x0 a| The CRC-3 code received from slave
 |===
 
 [#reg-{regmap-instance}-avsbus_controller-AVS_DEBUG_READBACK]
@@ -242,15 +242,15 @@ the AVS bus can accept the next command, thus freeing space in the cmd fifo
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `Reserved` | - | - a| Reserved
-| 8 | `CLEAR_READBACK_OVERFLOW_INT` | W | 0x0 a| Clear readback_overflow interrupt
-| 7 | `CLEAR_READBACK_UNDERFLOW_INT` | W | 0x0 a| Clear readback_underflow interrupt
-| 6 | `CLEAR_CMD_FIFO_OVERFLOW_INT` | W | 0x0 a| Clear cmd_fifo_overflow interrupt
-| 5 | `CLEAR_MAX_RETRIES_ATTEMPTED_INT` | W | 0x0 a| Clear max_retries_attempted interrupt
-| 4 | `CLEAR_SLAVE_UNRESPONSIVE_INT` | W | 0x0 a| Clear slave_unresponsive interrupt
-| 3 | `CLEAR_READBACK_HAS_DATA_INT` | W | 0x0 a| Clear readback_has_data interrupt
-| 2 | `CLEAR_READBACK_FIFO_FULL_INT` | W | 0x0 a| Clear readback_fifo_full interrupt
-| 1 | `CLEAR_CMD_FIFO_FULL_INT` | W | 0x0 a| Clear cmd_fifo_full interrupt
-| 0 | `CLEAR_AVS_SLAVE_ISSUED_INTERRUPT` | W | 0x0 a| Clear avs_slave_issued_interrupt
+| 8 | `CLEAR_READBACK_OVERFLOW_INT` | W 1P | 0x0 a| Clear readback_overflow interrupt
+| 7 | `CLEAR_READBACK_UNDERFLOW_INT` | W 1P | 0x0 a| Clear readback_underflow interrupt
+| 6 | `CLEAR_CMD_FIFO_OVERFLOW_INT` | W 1P | 0x0 a| Clear cmd_fifo_overflow interrupt
+| 5 | `CLEAR_MAX_RETRIES_ATTEMPTED_INT` | W 1P | 0x0 a| Clear max_retries_attempted interrupt
+| 4 | `CLEAR_SLAVE_UNRESPONSIVE_INT` | W 1P | 0x0 a| Clear slave_unresponsive interrupt
+| 3 | `CLEAR_READBACK_HAS_DATA_INT` | W 1P | 0x0 a| Clear readback_has_data interrupt
+| 2 | `CLEAR_READBACK_FIFO_FULL_INT` | W 1P | 0x0 a| Clear readback_fifo_full interrupt
+| 1 | `CLEAR_CMD_FIFO_FULL_INT` | W 1P | 0x0 a| Clear cmd_fifo_full interrupt
+| 0 | `CLEAR_AVS_SLAVE_ISSUED_INTERRUPT` | W 1P | 0x0 a| Clear avs_slave_issued_interrupt
 |===
 
 [#reg-{regmap-instance}-avsbus_controller-AVS_CFG_0]
@@ -283,7 +283,7 @@ duty cycle is only possible on even clk_divider_values with clk_divider_duty_cyc
 (divider=0x4) by matching the FF default in the resynced version of the signal.
 | 15:11 | `Reserved` | - | - a| Reserved
 | 10 | `TURN_OFF_ALL_PREMUX_CLOCKS` | RW | 0x0 a| Gate off all clocks entering the AVS clock mux - do this before changing the mux selection or changing the clock divider settings, then turn back on afterwards
-| 9 | `FORCE_SLAVE_RESYNC_OPERATION` | RW | 0x0 a| Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.
+| 9 | `FORCE_SLAVE_RESYNC_OPERATION` | RW 1P | 0x0 a| Force master to issue a slave resync (34 clock cycles of holding the mdata signal high) at the next possible opportunity. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.
 | 8 | `STOP_AVS_CLOCK_ON_IDLE` | RW | 0x0 a| When the AVS bus is idle, gate the avs_clock from running. Restart it when there are new commands to be run.
 The master will always first issue 34 slave-resync cycles when the clock first restarts.
 | 7:2 | `Reserved` | - | - a| Reserved

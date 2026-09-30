@@ -8,11 +8,7 @@
 [cols="<,<,<,<,<,<,<,<,<,<",options="header"]
 |===
 |Base Address |End Address |Size |Decoded Extent |Unit |Instances |Stride |Description |Hole in Extent (R / W) |Past Extent (R / W)
-|0x00000000 |0x000001FF |512 B |208 B |Cross Trigger Matrix Address Map |1 instance |- |Configuration registers for the cross trigger matrix |OKAY, 0x0 / OKAY |Aliases registers^<<cross-trigger-network-note-1,[1]>>^
-|0x00000200 |0x000002FF |256 B |252 B |Cross Trigger Port Address Map |16 instances |16 B |Configuration and status registers for the cross trigger port |OKAY, 0x0 / OKAY^<<cross-trigger-network-note-2,[2]>>^ |OKAY, 0x0 / OKAY^<<cross-trigger-network-note-2,[2]>>^
+|0x00000000 |0x000001FF |512 B |208 B |Cross Trigger Matrix Address Map |1 instance |- |Configuration registers for the cross trigger matrix |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E / DECERR
+|0x00000200 |0x000002FF |256 B |252 B |Cross Trigger Port Address Map |16 instances |16 B |Configuration and status registers for the cross trigger port |OKAY, 0x0 / OKAY |OKAY, 0x0 / OKAY
 |===
-
-.Notes
-[[cross-trigger-network-note-1]]^[1]^ 0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY, except byte address 0x1FF, which answers DECERR, 0xBADCAB1E / DECERR. +
-[[cross-trigger-network-note-2]]^[2]^ The last byte of each port's 16-byte window answers DECERR, 0xBADCAB1E / DECERR.
 // end::cross-trigger-network[]

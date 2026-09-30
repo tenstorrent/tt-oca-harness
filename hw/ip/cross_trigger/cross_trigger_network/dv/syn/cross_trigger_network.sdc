@@ -7,6 +7,9 @@ create_clock -name clk -period 10.0 [get_ports clk_i]
 # Reset is asynchronous
 set_false_path -from [get_ports rst_ni]
 
+# DFT test-mode enable is static
+set_false_path -from [get_ports test_en_i]
+
 # stop_clks_o is a registered output; the clock gates it feeds are constrained at the top level
 
 # AXI-Lite interface timing
