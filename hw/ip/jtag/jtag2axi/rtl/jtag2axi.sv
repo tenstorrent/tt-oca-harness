@@ -25,8 +25,9 @@
 // outstanding transactions, and drains responses to requests issued before a CDC clear.
 // When the clear reaches the TCK side, the bridge aborts every operation in flight or queued:
 // the FSM returns to idle and holds there until the clear completes, the series FIFOs and
-// pipeline accounting are flushed, and the status of an aborted operation reads DECERR.
-// The SERIES_CTRL configuration is kept.
+// pipeline accounting are flushed, and the status that reports an aborted operation reads
+// DECERR. The sticky series status takes DECERR only while it holds no earlier error. Every
+// other status, and the SERIES_CTRL configuration, is kept.
 //
 // Parameter constraints:
 //
@@ -599,7 +600,7 @@ module jtag2axi #(
   logic src_clear_pending_q_tclk;
   logic cdc_clear_abort_tclk;
   logic single_op_aborted_tclk;
-  logic transaction_aborted_tclk;
+  logic series_aborted_tclk;
 
   logic write_discard_rsp_q;
   logic read_discard_rsp_q;
@@ -668,9 +669,10 @@ module jtag2axi #(
   assign cdc_clear_abort_tclk = src_clear_pending_tclk && !src_clear_pending_q_tclk;
 
   assign single_op_aborted_tclk = single_op_pending_tclk || series_errstat_pending_tclk;
-  assign transaction_aborted_tclk =
-        single_op_aborted_tclk ||
-        ((axi_state_q_tclk != AXI_IDLE) && (axi_state_q_tclk != AXI_UPDATE_STATUS)) ||
+  assign series_aborted_tclk =
+        series_errstat_pending_tclk ||
+        ((axi_state_q_tclk != AXI_IDLE) && (axi_state_q_tclk != AXI_UPDATE_STATUS) &&
+         !current_tx_is_from_single_buffer_tclk) ||
         !series_request_fifo_empty_tclk || series_request_fifo_push_tclk ||
         !series_rsp_fifo_empty_tclk;
 
@@ -1375,16 +1377,17 @@ module jtag2axi #(
       single_tx_req_valid_tclk_d       = 1'b0;
       single_op_pending_tclk_d         = 1'b0;
       series_errstat_pending_tclk_d    = 1'b0;
-      last_single_op_status_tclk_d     = single_op_aborted_tclk ? CAPTURE_STATUS_DECERR :
-                                                                  CAPTURE_STATUS_SUCCESS;
-      last_read_data_tclk_d            = '0;
-      sticky_axi_status_tclk_d         = transaction_aborted_tclk ? CAPTURE_STATUS_DECERR :
-                                                                    CAPTURE_STATUS_SUCCESS;
-      sticky_axi_status_full_tclk_d    = 1'b0;
       series_read_preload_count_tclk_d = '0;
       plain_reads_pending_tclk_d       = '0;
       series_reads_in_flight_tclk_d    = '0;
       series_reads_pushed_tclk_d       = '0;
+      if (single_op_aborted_tclk) begin
+        last_single_op_status_tclk_d = CAPTURE_STATUS_DECERR;
+        last_read_data_tclk_d        = '0;
+      end
+      if (series_aborted_tclk && (sticky_axi_status_tclk_d == CAPTURE_STATUS_SUCCESS)) begin
+        sticky_axi_status_tclk_d = CAPTURE_STATUS_DECERR;
+      end
     end
 
     // `single_tx_req_valid_tclk` is only cleared by security-disable, not by
