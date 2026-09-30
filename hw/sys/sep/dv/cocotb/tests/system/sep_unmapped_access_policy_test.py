@@ -38,12 +38,10 @@ next slot.
 
 CHK-UNMAPPED-CODE: every probe and tail access answers the response code the
 map states for that address and channel, and every read returns the stated
-read data (the word for address bit 2 where the map gives one). The tail words
-where the map and the RDL allocation disagree are graded by CHK-ARRAY-TAIL
-only and logged as UNMAPPED-MAP-DISAGREE. Where the RDL rdata carries no upper
-word under a non-zero low word, the spec does not state the upper-half word,
-so a bit-2 read there is graded on its code only and its data is logged
-(UNMAPPED-RDATA-UNGRADED). Past the efuse_interface_ctrl and spi_controller
+read data: a 32-bit RDL rdata on either bus half, and the upper word of a
+64-bit rdata for address bit 2. The tail words where the map and the RDL
+allocation disagree are graded by CHK-ARRAY-TAIL only and logged as
+UNMAPPED-MAP-DISAGREE. Past the efuse_interface_ctrl and spi_controller
 extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the read data of every error response for
 X/Z, so an unknown payload fails instead of reading as zero; every such read
 must have been lane-checked.
@@ -95,21 +93,14 @@ def _code(resp: int) -> str:
 
 
 def _grade(cfg: SepUnmappedCfg, where: str, addr: int, op: str, resp: int, rdata: int):
-    """Grade one access against the map.
-
-    Returns ``(failure, ungraded)``: a CHK-UNMAPPED-CODE failure string or None,
-    and, for a read whose data the map does not state one way, a report line.
-    """
+    """Grade one access against the map; return a CHK-UNMAPPED-CODE failure or None."""
     e = cfg.expect[(addr, op)]
-    graded = op == "r" and e.rdata is not None
-    ungraded = None
-    if op == "r" and e.rdata is None:
-        ungraded = f"{where} answered {_code(resp)}, 0x{rdata:08x}; {e.rdata_note}"
+    graded = op == "r"
     if resp == e.resp and (not graded or rdata == e.rdata):
-        return None, ungraded
+        return None
     want = f"{_code(e.resp)}, 0x{e.rdata:08x}" if graded else _code(e.resp)
     got = f"{_code(resp)}, 0x{rdata:08x}" if graded else _code(resp)
-    return f"{where} answered {got}; the map states {want} ({e.row}, {e.column})", ungraded
+    return f"{where} answered {got}; the map states {want} ({e.row}, {e.column})"
 
 
 @pyuvm.test()
@@ -160,7 +151,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
         alias_fails: list[str] = []
         per_group: dict[str, list[str]] = {g: [] for g in REFUSE_GROUPS}
         code_fails: list[str] = []
-        ungraded: list[str] = []
         n_code = 0
         for p in cfg.probes:
             r = await ua.probe(p)
@@ -177,11 +167,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 per_group[p.group].append(f"{where} answered OKAY")
             if not r.timed_out:
                 n_code += 1
-                f, u = _grade(cfg, where, p.addr, p.op, r.resp, r.rdata)
+                f = _grade(cfg, where, p.addr, p.op, r.resp, r.rdata)
                 if f:
                     code_fails.append(f)
-                if u:
-                    ungraded.append(u)
             if r.alias is not None:
                 alias_fails.append(f"{where} returned 0x{r.rdata:08x}, the value of {r.alias}")
             if r.changed:
@@ -253,11 +241,9 @@ class sep_unmapped_access_policy_test(sep_base_test):
                     )
                 elif not to:
                     n_code += 1
-                    f, u = _grade(cfg, where, t.addr, op, resp, rdata)
+                    f = _grade(cfg, where, t.addr, op, resp, rdata)
                     if f:
                         code_fails.append(f)
-                    if u:
-                        ungraded.append(u)
                 if to:
                     tail_fails.append(f"{where} timed out")
                 elif t.in_extent:
@@ -309,10 +295,6 @@ class sep_unmapped_access_policy_test(sep_base_test):
         verdict["CHK-ARRAY-TAIL"] = tail_fails
         if n_code == 0:
             code_fails.append("no probe or tail access completed, so no code was graded")
-        # Report, not a verdict: the spec does not state this upper-half read
-        # word, so only its response code is graded.
-        for line in ungraded:
-            self.logger.info("UNMAPPED-RDATA-UNGRADED: %s", line)
         if ua.err_reads == 0 or ua.err_reads_lane_checked != ua.err_reads:
             code_fails.append(
                 f"{ua.err_reads_lane_checked} of {ua.err_reads} error-response read(s) had "
@@ -352,8 +334,7 @@ class sep_unmapped_access_policy_test(sep_base_test):
             ),
             "CHK-UNMAPPED-CODE": (
                 f"{n_code} probe and tail access(es) answered the response code and read "
-                f"data the SEP memory map states ({len(ungraded)} read(s) graded on the code "
-                f"only, see UNMAPPED-RDATA-UNGRADED); all {ua.err_reads} error-response "
+                f"data the SEP memory map states; all {ua.err_reads} error-response "
                 "read(s) were lane-checked for X/Z"
             ),
             "CHK-UNMAPPED-NO-ALIAS": (

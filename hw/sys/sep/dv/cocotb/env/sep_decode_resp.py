@@ -22,12 +22,9 @@ write to a reserved address in <range> or <range> answers <code>."
 ``hw/common/regs/regblock_udps.rdl``). A 64-bit RDL rdata states both words:
 the low word for address bit 2 clear and the upper word for address bit 2 set.
 An RDL rdata that carries no upper word (a 32-bit value such as
-``0xBADCAB1E``) does not state the upper-half word: the Decode Response Codes
-definition gives one read word per 32-bit access and does not say which word a
-read with address bit 2 set returns. Such a read is not graded on its data, so
-``Expected.rdata`` is None and ``rdata_note`` says why; the response code is
-still graded. Where the low word is 0 and there is no upper word, both words
-are 0, so every other read has one stated word.
+``0xBADCAB1E``) is the word a 32-bit read returns on either half of the bus
+(the ``ocah_resp.rdata`` definition and Decode Response Codes in
+``doc/trm/src/memory_map.adoc``), so every read has one stated word.
 
 A lookup that meets any other note, a row with more than one hole response, or
 a response that is not a bus response (``FORWARD``, ``ADOPTER``) raises: the
@@ -92,11 +89,10 @@ class Expected:
     """What the RDL memory map states for one 32-bit access."""
 
     resp: int
-    rdata: int | None  # None for a write, or for a read whose data is not graded
+    rdata: int | None  # None for a write
     row: str
     column: str
     cell: str
-    rdata_note: str = ""  # why a read's data is not graded
 
 
 def _cell(parts: tuple, notes: tuple[str, ...]) -> Cell | None:
@@ -195,16 +191,9 @@ def expected_unbacked(addr: int, op: str) -> Expected:
     if cell.unmodeled:
         raise ValueError(f"{where}: {cell.unmodeled} is not modeled")
     if op == "r":
-        if not addr & 0x4:
-            rdata = cell.rdata_lo
-        elif cell.hi_noted or cell.rdata_lo == 0:
-            rdata = cell.rdata_hi
-        else:
-            note = (
-                f"the RDL rdata 0x{cell.rdata_lo:08x} carries no upper word, and the spec "
-                "does not state the upper-half word"
-            )
-            return Expected(RESP_CODE[cell.rresp], None, row.unit, column, cell.text, note)
+        # A 32-bit rdata answers on both halves; a 64-bit rdata gives the upper
+        # word for address bit 2.
+        rdata = cell.rdata_hi if addr & 0x4 and cell.hi_noted else cell.rdata_lo
         return Expected(RESP_CODE[cell.rresp], rdata, row.unit, column, cell.text)
     code = cell.bresp
     if cell.write_code and any(lo <= addr <= hi for lo, hi in cell.write_ranges):
