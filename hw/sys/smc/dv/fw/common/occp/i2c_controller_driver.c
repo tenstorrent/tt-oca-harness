@@ -13,7 +13,7 @@
 
 #define debug_mode 1
 
-#define I2C_CLOCK_PERIOD_NS 10u
+#define I2C_CLOCK_PERIOD_NS 5u
 // debug_mode shortens SCL for simulation: I2C_SCL_PERIOD_NS can only lengthen SCL beyond the
 // speed-mode minimums, and debug_mode skips the clamp to the slowest target's period.
 #if debug_mode

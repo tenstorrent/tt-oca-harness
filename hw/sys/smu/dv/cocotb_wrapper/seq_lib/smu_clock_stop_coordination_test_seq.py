@@ -127,6 +127,27 @@ class smu_clock_stop_coordination_test_seq:
             f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect} name={name}"
         )
 
+    async def _watch_gate_release(self, dut, *, bound: int, label: str) -> int:
+        """clk_smu cycles from the DTP dropping the stall to the fuse gate opening.
+
+        Started before the JTAG write that clears DEBUG_CONTROL: the gate opens
+        as soon as the stall drops, while that write is still shifting, so a
+        wait begun after the write could find it already open.
+        """
+        name = "smc_fuse_reset_n_delayed_o"
+        while self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd") and self._sample(
+            dut.jtag_boot_stall, "jtag_boot_stall"
+        ):
+            if self._sample(dut.smc_fuse_reset_n_delayed_o, name) != 0:
+                raise AssertionError(f"{label}: {name} rose while the stall was still asserted")
+            await RisingEdge(dut.clk_smu_i)
+        if self._sample(dut.smc_fuse_reset_n_delayed_o, name) == 1:
+            self._timeout_paths.append(f"{label}: bound={bound} ok cycles=0")
+            return 0
+        return await self._wait_rise(
+            dut.smc_fuse_reset_n_delayed_o, clk=dut.clk_smu_i, bound=bound, label=label, name=name
+        )
+
     async def _wait_rise(
         self,
         signal,
@@ -370,16 +391,17 @@ class smu_clock_stop_coordination_test_seq:
                 f"BOOT-STALL.S2 precondition: sense_done={sense_before_clear} "
                 f"fuse_reset={fuse_before_clear} before the clear (expect 1 / 0)"
             )
-        await jtag.write("DEBUG_CONTROL", 0)
-        # The sense is already done, so the rise below is the gate opening:
-        # bound it by the gate path, then require it to stay open.
-        release_cycles = await self._wait_rise(
-            dut.smc_fuse_reset_n_delayed_o,
-            clk=dut.clk_smu_i,
-            bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
-            label="s3_fuse_release_after_clear",
-            name="smc_fuse_reset_n_delayed_o",
+        # The sense is already done, so the rise is the gate opening: bound it
+        # by the gate path from the stall clearing, then require it to stay open.
+        release_watch = cocotb.start_soon(
+            self._watch_gate_release(
+                dut,
+                bound=FUSE_GATE_RELEASE_BOUND_CYCLES,
+                label="s3_fuse_release_after_clear",
+            )
         )
+        await jtag.write("DEBUG_CONTROL", 0)
+        release_cycles = await release_watch
         # The S1 hold above asserted fuse_reset stayed 0 for FUSE_GATE_HOLD_CYCLES
         # while the stall was on. That is evidence only if a gate ignoring the
         # stall would have released inside the window -- which is exactly the

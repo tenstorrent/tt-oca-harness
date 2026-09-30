@@ -50,15 +50,19 @@ ADDR_COUNT_LO = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_LO_BASE_ADDR
 ADDR_COUNT_HI = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_COUNT_HI_BASE_ADDR")
 STATUS_RUNNING = system_timer_octs_bm("SYSTEM_TIMER_OCTS__STATUS__RUNNING_bm")
 
-PRESET = 0x1000
+# Well above the ticks one J2A access costs at any sys-clock period (about
+# 12000 at 800 MHz), so the count sampled after START can only be reached
+# from the preset, not from zero.
+PRESET = 0x10000
 STATUS_POLL_MAX = 4096
 PIN_POLL_MAX = 8192
 PIN_POLL_STEP = 8
 POLL_STEP = 32
-# Cycles of STATUS/J2A overhead after START before pin sample.
-RELOAD_PIN_SLACK = 4096
-# Every bit from 13 up set, and 8192 counts short of the 64-bit wrap, so the
-# count cannot wrap inside RELOAD_PIN_SLACK.
+# Timer ticks of STATUS/J2A overhead after START before the pin sample, at a
+# 10 ns timer clock; the check scales it to the sys-clock period in use.
+RELOAD_PIN_SLACK_10NS = 4096
+# Every bit from 13 up set; the extremes leg backs it off by whole low-bit
+# spans so the count cannot wrap inside the reload slack before the pin sample.
 PRESET_HIGH = ((1 << 64) - 1) & ~((1 << 13) - 1)
 LOW_BITS = 13
 LOW_BIT_BOUND = 1 << 18
@@ -233,7 +237,15 @@ class smu_system_timer_octs_test_seq:
         )
 
         # S3: larger PRESET + START must reload count (not only keep free-run).
-        reload_preset = PRESET * 2
+        # The reload preset is placed two slacks above the count sampled here,
+        # so a timer that kept free-running through the reload accesses (about
+        # one slack's worth of ticks) cannot reach the acceptance window, while
+        # a reloaded one lands inside it.
+        slack = int(RELOAD_PIN_SLACK_10NS * 10 / self.cfg.smu_clk_period_ns)
+        pin_pre = self._sample_pin_count()
+        if pin_pre is None:
+            raise AssertionError("tb_timer_count unobservable before the reload")
+        reload_preset = pin_pre + 2 * slack
         await self._j2a_wr32(jtag, ADDR_PRESET_LO, reload_preset, "PRESET_LO_RELOAD")
         await self._j2a_wr32(jtag, ADDR_PRESET_HI, 0, "PRESET_HI_RELOAD")
         reload_rb = await self._j2a_rd32(jtag, ADDR_PRESET_LO, "PRESET_LO_RELOAD_RB")
@@ -248,10 +260,10 @@ class smu_system_timer_octs_test_seq:
             raise AssertionError("tb_timer_count unobservable after reload")
         # Exact reload effect: count must sit near the new PRESET, not merely
         # continue free-run from the prior trajectory.
-        if pin2 < reload_preset or pin2 > reload_preset + RELOAD_PIN_SLACK:
+        if pin2 < reload_preset or pin2 > reload_preset + slack:
             raise AssertionError(
                 f"after reload START pin={pin2} not in "
-                f"[{reload_preset}, {reload_preset + RELOAD_PIN_SLACK}] "
+                f"[{reload_preset}, {reload_preset + slack}] "
                 f"(preset_rb=0x{reload_rb:x})"
             )
         pin3 = await self._poll_pin_above(pin2, "after preset reload")
@@ -261,16 +273,19 @@ class smu_system_timer_octs_test_seq:
         self._log(
             f"CHK-OCTS-PRESET-RELOAD: pin {pin2} -> {pin3} "
             f"(preset_rb=0x{reload_rb:x} window="
-            f"[{reload_preset},{reload_preset + RELOAD_PIN_SLACK}])"
+            f"[{reload_preset},{reload_preset + slack}])"
         )
         sb.expect_true(
             "CHK-OCTS-PRESET-RELOAD",
-            reload_preset <= pin2 <= reload_preset + RELOAD_PIN_SLACK,
+            reload_preset <= pin2 <= reload_preset + slack,
         )
         sb.expect_true("CHK-OCTS-PRESET-RELOAD-ADVANCE", pin3 > pin2)
 
         pins = []
-        for preset in (PRESET_HIGH, 0):
+        span = 1 << LOW_BITS
+        backoff = ((2 * slack + span - 1) // span) * span
+        preset_high = PRESET_HIGH - backoff
+        for preset in (preset_high, 0):
             await self._j2a_wr32(jtag, ADDR_PRESET_LO, preset & 0xFFFFFFFF, "PRESET_LO_EXTREME")
             await self._j2a_wr32(jtag, ADDR_PRESET_HI, preset >> 32, "PRESET_HI_EXTREME")
             await self._j2a_wr32(jtag, ADDR_START, 1, "TIMER_START_EXTREME")
@@ -299,7 +314,7 @@ class smu_system_timer_octs_test_seq:
         )
         sb.expect_eq(
             "CHK-OCTS-PRESET-EXTREMES",
-            (all(p <= v <= p + RELOAD_PIN_SLACK for p, v in pins), seen_one, seen_zero),
+            (all(p <= v <= p + slack for p, v in pins), seen_one, seen_zero),
             (True, low_mask, low_mask),
             evidence="CHK-OCTS-PRESET-EXTREMES",
         )
