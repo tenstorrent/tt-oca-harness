@@ -415,9 +415,9 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Unmapped points next to live registers: system-CSR holes, the reserved row
 # above SEP CPU control, the mailbox page's upper half, past each eFuse sibling
-# block, and every remap / filter array slot tail. Refused, or zero inside an
-# extent, and never aliased onto a live word. The refusal code is logged, not
-# graded. Addresses come from the generated register export.
+# block and the SPI host, and every remap / filter array slot tail. Each answers the response
+# code and read data the SEP memory map states, and none aliases onto a live
+# word. Addresses come from the generated register export.
 name = "sep_unmapped_access_policy_test"
 module = "system.sep_unmapped_access_policy_test"
 seed = 1
