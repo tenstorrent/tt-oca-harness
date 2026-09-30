@@ -466,12 +466,18 @@
 `SEP_TB_OUT(logic, hmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
+// Isolate request on the HMAC host path. High from the software reset request
+// until release, so a test can place a beat inside the drain that precedes the
+// gated reset rather than after it.
+`SEP_TB_OUT(logic, hmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, kmac_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, kmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, kmac_km_isolated_probe_o)
+`SEP_TB_OUT(logic, kmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, abr_gated_rst_n_probe_o)
 `SEP_TB_OUT(logic, abr_host_isolated_probe_o)
 `SEP_TB_OUT(logic, abr_km_isolated_probe_o)
+`SEP_TB_OUT(logic, abr_host_isolate_req_probe_o)
 // IP-interrupt aggregator: observation-only mirror of the 34-bit
 // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
 // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the

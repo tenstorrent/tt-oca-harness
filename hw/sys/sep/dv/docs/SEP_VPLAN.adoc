@@ -3159,18 +3159,18 @@ order is observed at the assert edge rather than read off a settled host path. A
 design that never isolates the host path never releases the sequencer and fails
 here.
 |CHK-ABR-HOST-DRAIN
-|Host reads issued before the ABR reset request resolve OKAY or SLVERR, never
-DECERR and never a hang. The test records the event identities still unretired
-at the cycle the isolate closes, requires that set to be non-empty, and requires
-at least one event from that exact set to drain OKAY. Thus an earlier completed
-read cannot satisfy the drain verdict. The number still
-unretired at the cycle the isolate closes is asserted non-zero, so the leg
+|Host reads issued in the same cycle as the ABR reset request resolve OKAY or
+SLVERR, never DECERR and never a hang. The test records the event identities
+still unretired at the cycle the isolate request rises, requires that set to be
+non-empty, and requires at least one event from that exact set to drain OKAY.
+Thus an earlier completed read cannot satisfy the drain verdict, and the leg
 grades traffic the isolate had to drain rather than beats that had already
 completed.
 |CHK-ABR-DRAIN-ARRIVAL
-|A read issued WHILE the ABR isolate is draining resolves rather than hanging.
-It may drain or terminate; the graded property is that the path is not left
-wedged.
+|The `CHK-DRAIN-ARRIVAL` contract on the ABR full-AXI isolate: the arrival AR
+is accepted on `s_axi` while the isolate request is up and the gated reset is
+still released, and the read then resolves. It may drain or terminate; it may
+not hang.
 |CHK-ABR-JTAG-OVERRIDE
 |The JTAG `IC_RESET` override holds the ABR domain while `SW_RESET_N`, read back
 inside the window, still reports it released -- so the hold is attributable to
@@ -3193,9 +3193,9 @@ releases. Both mux directions are graded.
 |CHK-DRAIN-ORDER
 |The HMAC gated reset does not assert until both AXI-Lite paths that domain depends on — the SEP host path and the Key Manager path — report isolated. The host isolate bit is 0 when the request is issued. The Key Manager path may already be isolated: that request is the OR of this engine and the Key Manager isolate, and the Key Manager stays at its reset default on this leaf. Read from the two named TB probe bits, sampled every cycle so the assert edge cannot be missed.
 |CHK-HOST-DRAIN
-|Host reads issued before the host isolate closes resolve OKAY or SLVERR — never DECERR and never a hang. The event identities still unretired when isolation closes are captured, and at least one event from that exact set must resolve OKAY, so a read completed before the drain window cannot satisfy the verdict.
+|Host reads issued in the same cycle as the reset request resolve OKAY or SLVERR — never DECERR and never a hang. The event identities still unretired when the isolate request rises are captured, and at least one event from that exact set must resolve OKAY, so a read completed before the drain window cannot satisfy the verdict.
 |CHK-DRAIN-ARRIVAL
-|A read issued *inside an observed drain window* also resolves. The beat is issued on the first cycle a TB probe shows an isolate bit asserted while the gated reset is still released, and the probe values at issue are recorded in the log, so the beat's position in the window is evidence rather than a timing assumption. It may drain (OKAY) or be terminated (SLVERR); it may not hang. A domain that asserts its gated reset with no such cycle at all fails this checker rather than re-scoring `CHK-HOST-DRAIN`'s property.
+|A read *accepted inside an observed drain window* also resolves. The window is the cycles in which the TB probe of the HMAC host isolate request is high and the gated reset is still released; the sequencer asserts the reset one cycle after every path reports isolated, so the window is a few cycles long. The arrival read is issued on the first cycle the request is seen, with an empty AR queue and its own AXI ID. Its AR handshake on `s_axi` is sampled in the same loop as the probes, and the checker requires that handshake to fall while the request is high and the gated reset is released, before the reset edge. The handshake time, the probe values at it, and the reset edge time are in the log. It may drain (OKAY) or be terminated (SLVERR); it may not hang. A beat that reaches the bus only after the reset asserts fails this checker rather than re-scoring `CHK-ISOLATE-SLVERR`.
 |CHK-ISOLATE-REOPEN
 |After release the same `DIGEST_0` answers OKAY again. This is also what shows the drain did not leave the path wedged.
 |CHK-ISOLATE-RESET-DEFAULT
@@ -3203,7 +3203,7 @@ releases. Both mux directions are graded.
 |CHK-KMAC-DRAIN-ORDER
 |The KMAC gated reset does not assert until both the host and Key Manager AXI-Lite paths report isolated, sampled in the same cycle as the observed assert edge. The host isolate bit and the gated reset are 0 / released when the request is issued. The Key Manager path may already be isolated (same OR as HMAC; Key Manager held). A domain that asserted with no host-path drain window fails rather than scoring a steady state.
 |CHK-KMAC-DRAIN-ARRIVAL
-|A read issued on the first cycle a probe shows the KMAC drain window open also resolves OKAY or SLVERR. Fails explicitly if no window was ever observed, so the property cannot be satisfied by re-scoring the pre-request batch.
+|The `CHK-DRAIN-ARRIVAL` contract on the KMAC host path: a read issued on the first cycle the KMAC host isolate request is seen has its AR accepted on `s_axi` while the request is up and the gated reset is still released, and it resolves OKAY or SLVERR. Fails explicitly if no window was ever observed or the handshake falls after the reset edge.
 |CHK-TRNG-NEIGHBORS
 |Parking the shared TRNG reset holds the TRNG `SW_RESET_N` bit and leaves the five accelerator bits released (OTBN, AES, HMAC, KMAC, ABR). HMAC DIGEST and AES DATA_OUT stay unchanged in that window. KMAC STATE, OTBN `LOAD_CHECKSUM` and the ABR datapath are not sampled here.
 |CHK-EDN-PEND
@@ -3233,12 +3233,11 @@ releases. Both mux directions are graded.
 `CHK-HOST-DRAIN` and `CHK-DRAIN-ARRIVAL`, for the Adams Bridge domain by
 `CHK-ABR-DRAIN-ORDER`, `CHK-ABR-HOST-DRAIN` and `CHK-ABR-DRAIN-ARRIVAL`,
 and for the KMAC domain by `CHK-KMAC-DRAIN-ORDER` and `CHK-KMAC-DRAIN-ARRIVAL`.
-The KMAC leg does not claim accepted-traffic drain: pre-request reads retire
-before the host path isolates on that domain, so none remain in flight at
-isolate close and there is no accepted traffic for the isolate to complete. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
+The KMAC leg does not claim accepted-traffic drain: its drain reads go out with
+the request only to give the isolate traffic, and their outcome is not graded. Adams Bridge does carry that property, on a full-AXI isolate. HMAC
 drain runs against a live golden-checked result on a path this entry isolates.
-ABR drain counts outstanding host reads at isolate close so it grades traffic
-the isolate has to retire. The shared TRNG domain grades drain-before-reset in
+ABR drain counts the host reads still outstanding when the isolate request
+rises, so it grades traffic the isolate has to retire. The shared TRNG domain grades drain-before-reset in
 <<sep_trng_reset_recovery_test>>.
 
 *Not claimed*: drain-before-reset for the AES and OTBN domains — the
