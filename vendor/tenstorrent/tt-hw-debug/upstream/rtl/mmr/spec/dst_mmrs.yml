@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # Default values: {'ALIAS_OF': '', 'MASKED_BY': '', 'MASK_WRITES_ONLY?': '', 'SPEC_COPIES': '', 'DST_MMR_SIZE': '64', 'HW_READ': '', 'HW_WRITE': '', 'SW_READ': '', 'SW_WRITE': ''}
 # List of all register info fields:
 #['NAME', 'ALIAS_OF', 'MASKED_BY', 'MASK_WRITES_ONLY?', 'SPEC_COPIES', 'VISIBILITY', 'TYPE', 'SUB_CATEGORY', 'ADDRESS', 'DST_MMR_SIZE', 'FIELDS_NAME', 'FIELDS_WIDTH', 'FIELDS_RANGE', 'RESET_VALUE', 'RESET_PORT', 'LEGAL_VALUE', 'SW_TYPE', 'SW_READ', 'SW_WRITE', 'HW_READ', 'HW_WRITE', 'DESCRIPTION']
