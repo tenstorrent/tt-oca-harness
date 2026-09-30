@@ -973,7 +973,7 @@ transactions to the CTM and external CTPs based on address decoding.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTM</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x0000 - 0x01FF</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">512 bytes</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Matrix configuration registers (26 sources × 2 config registers)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Cross Trigger Matrix configuration registers (one 8-byte <code>CT_SRC[k].CONFIG_0</code> slot per CT_Src port, up to 64 ports)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP[0]</p></td>
@@ -1655,7 +1655,7 @@ answers <code>DECERR</code>, with read data <code>0xBADCAB1E</code>.</p>
 <caption class="title"><a href="#trm-table-10">Table 10</a>. Cross Trigger Port Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#CONFIG">CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x4</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x4</td><td><a href="#STATUS">STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x8</td><td><a href="#STRETCH_MULT">STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>
@@ -1715,52 +1715,52 @@ composition. The individual block maps above give offsets within each block.</p>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0 - 0xC8</td><td><a href="#CT_SRC_26_.CONFIG_0">CT_SRC[26].CONFIG_0</a></td><td>RW</td><td>Cross Trigger Source Configuration - CT_Dst select mask</td></tr>
 <tr><td>0x200</td><td><a href="#ctp_0_.CONFIG">ctp[0].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x204</td><td><a href="#ctp_0_.STATUS">ctp[0].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x204</td><td><a href="#ctp_0_.STATUS">ctp[0].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x208</td><td><a href="#ctp_0_.STRETCH_MULT">ctp[0].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x210</td><td><a href="#ctp_1_.CONFIG">ctp[1].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x214</td><td><a href="#ctp_1_.STATUS">ctp[1].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x214</td><td><a href="#ctp_1_.STATUS">ctp[1].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x218</td><td><a href="#ctp_1_.STRETCH_MULT">ctp[1].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x220</td><td><a href="#ctp_2_.CONFIG">ctp[2].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x224</td><td><a href="#ctp_2_.STATUS">ctp[2].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x224</td><td><a href="#ctp_2_.STATUS">ctp[2].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x228</td><td><a href="#ctp_2_.STRETCH_MULT">ctp[2].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x230</td><td><a href="#ctp_3_.CONFIG">ctp[3].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x234</td><td><a href="#ctp_3_.STATUS">ctp[3].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x234</td><td><a href="#ctp_3_.STATUS">ctp[3].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x238</td><td><a href="#ctp_3_.STRETCH_MULT">ctp[3].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x240</td><td><a href="#ctp_4_.CONFIG">ctp[4].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x244</td><td><a href="#ctp_4_.STATUS">ctp[4].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x244</td><td><a href="#ctp_4_.STATUS">ctp[4].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x248</td><td><a href="#ctp_4_.STRETCH_MULT">ctp[4].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x250</td><td><a href="#ctp_5_.CONFIG">ctp[5].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x254</td><td><a href="#ctp_5_.STATUS">ctp[5].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x254</td><td><a href="#ctp_5_.STATUS">ctp[5].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x258</td><td><a href="#ctp_5_.STRETCH_MULT">ctp[5].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x260</td><td><a href="#ctp_6_.CONFIG">ctp[6].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x264</td><td><a href="#ctp_6_.STATUS">ctp[6].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x264</td><td><a href="#ctp_6_.STATUS">ctp[6].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x268</td><td><a href="#ctp_6_.STRETCH_MULT">ctp[6].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x270</td><td><a href="#ctp_7_.CONFIG">ctp[7].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x274</td><td><a href="#ctp_7_.STATUS">ctp[7].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x274</td><td><a href="#ctp_7_.STATUS">ctp[7].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x278</td><td><a href="#ctp_7_.STRETCH_MULT">ctp[7].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x280</td><td><a href="#ctp_8_.CONFIG">ctp[8].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x284</td><td><a href="#ctp_8_.STATUS">ctp[8].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x284</td><td><a href="#ctp_8_.STATUS">ctp[8].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x288</td><td><a href="#ctp_8_.STRETCH_MULT">ctp[8].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x290</td><td><a href="#ctp_9_.CONFIG">ctp[9].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x294</td><td><a href="#ctp_9_.STATUS">ctp[9].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x294</td><td><a href="#ctp_9_.STATUS">ctp[9].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x298</td><td><a href="#ctp_9_.STRETCH_MULT">ctp[9].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x2A0</td><td><a href="#ctp_10_.CONFIG">ctp[10].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2A4</td><td><a href="#ctp_10_.STATUS">ctp[10].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2A4</td><td><a href="#ctp_10_.STATUS">ctp[10].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x2A8</td><td><a href="#ctp_10_.STRETCH_MULT">ctp[10].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x2B0</td><td><a href="#ctp_11_.CONFIG">ctp[11].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2B4</td><td><a href="#ctp_11_.STATUS">ctp[11].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2B4</td><td><a href="#ctp_11_.STATUS">ctp[11].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x2B8</td><td><a href="#ctp_11_.STRETCH_MULT">ctp[11].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x2C0</td><td><a href="#ctp_12_.CONFIG">ctp[12].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2C4</td><td><a href="#ctp_12_.STATUS">ctp[12].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2C4</td><td><a href="#ctp_12_.STATUS">ctp[12].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x2C8</td><td><a href="#ctp_12_.STRETCH_MULT">ctp[12].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x2D0</td><td><a href="#ctp_13_.CONFIG">ctp[13].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2D4</td><td><a href="#ctp_13_.STATUS">ctp[13].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2D4</td><td><a href="#ctp_13_.STATUS">ctp[13].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x2D8</td><td><a href="#ctp_13_.STRETCH_MULT">ctp[13].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x2E0</td><td><a href="#ctp_14_.CONFIG">ctp[14].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2E4</td><td><a href="#ctp_14_.STATUS">ctp[14].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2E4</td><td><a href="#ctp_14_.STATUS">ctp[14].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x2E8</td><td><a href="#ctp_14_.STRETCH_MULT">ctp[14].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 <tr><td>0x2F0</td><td><a href="#ctp_15_.CONFIG">ctp[15].CONFIG</a></td><td>RW</td><td>Cross Trigger Port Configuration</td></tr>
-<tr><td>0x2F4</td><td><a href="#ctp_15_.STATUS">ctp[15].STATUS</a></td><td>R</td><td>Cross Trigger Port Status</td></tr>
+<tr><td>0x2F4</td><td><a href="#ctp_15_.STATUS">ctp[15].STATUS</a></td><td>R</td><td>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</td></tr>
 <tr><td>0x2F8</td><td><a href="#ctp_15_.STRETCH_MULT">ctp[15].STRETCH_MULT</a></td><td>RW</td><td>Pulse Stretch Multiplier</td></tr>
 </table>
 <p><strong>Register Details:</strong></p>

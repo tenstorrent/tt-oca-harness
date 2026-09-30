@@ -780,17 +780,22 @@ configuration and physical role.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs [N-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">i == N-1 ? 1 : 0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Local debug ports (scan output lockup on last STAP only)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Local debug ports</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
 <p>The I/O STAP enables TDI lockup to handle the longer propagation delays across
 die boundaries. On-chip STAPs (SMC Debug, SEP Debug) disable TDI lockup since
-signal routing is local to the chiplet. The final extra STAP in the chain
-enables scan output lockup when <code>NUM_EXTRA_STAPS &gt; 0</code>, providing additional
-output timing margin before the scan path returns to the PTAP.</p>
+signal routing is local to the chiplet.</p>
+</div>
+<div class="paragraph">
+<p>No STAP in the chain enables scan output lockup. The chain return reaches the
+PTAP&#8217;s falling-edge TDO retimer, and a lockup ahead of that retimer would add
+one TCK of latency to every scan through the STAP chain. The last STAP&#8217;s scan
+output also drives <code>stap_host_scan_out_o</code>, which launches on the rising edge of
+TCK like the host scan outputs of the iJTAG SIBs.</p>
 </div>
 <p class="block-references">Figures and tables: <a href="#jiu-stap-chain-hierarchy-table">Table 1</a>.</p>
 </div>
