@@ -72,7 +72,7 @@ after POR and configured by SEP firmware.
 
 [[sep-axi-connectivity]]
 .SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
-image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
+image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720,pdfwidth=70%]
 
 [[sep-fabric-topology]]
 == Fabric Topology

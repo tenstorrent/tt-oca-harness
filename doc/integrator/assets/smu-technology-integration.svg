@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="794" viewBox="0 0 1040 794" role="img" aria-labelledby="title desc">
+<title id="title">SMU technology integration</title>
+<desc id="desc">smu_wrapper joins the technology-independent OCAH smu module to two reference integration modules that an adopter replaces with its own technology IP. smu holds the SEP, the SMU AXI4 crossbar, the SMC and the DTP, and exposes its technology integration interfaces at its boundary: the SEP and SMC memory interfaces, a separate eFuse command and control interface for each of the SEP and the SMC, the SMC adopter AXI-Lite window, the SEP external TRNG and AXI extension, and the GPIO pad signals. Below the OCAH and adopter boundary, sep_ip_integration holds the SEP eFuse interface shim and eFuse bank, the SRAM, ROM and TCM shims in front of their memory macros, the crypto and Key Manager memories, and DECERR terminations for the external TRNG and AXI extension. smc_ip_integration holds the SMC eFuse interface shim and eFuse bank, the external AXI-Lite demux in front of the PLL, PVT and strap models, one GPIO pad shim per pin driving the physical padring through gpio_pad_io, and the CPU, trace and I3C memories. The rest of the SoC connects to smu through the wrapper: clocks, resets and JTAG; the system AXI ports and interrupts; telemetry, reset, isolation, cross-trigger and clock stop; lifecycle, debug, trace, lockstep and peripheral interrupts; and fuse sense, memory repair, MBIST and boot completion handshakes.</desc>
+<defs>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.bd { font-size: 13px; font-weight: bold; fill: #937027; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.opt { stroke-dasharray: 7 5; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.boundary { fill: none; stroke: #937027; stroke-width: 2; stroke-dasharray: 9 6; }
+.harness { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; }
+</style>
+</defs>
+<rect width="1040" height="794" fill="#ffffff"/>
+<rect class="pj" x="14" y="14" width="192" height="92" rx="6"/>
+<text class="bs" x="110" y="38" text-anchor="middle">Clocks, resets, JTAG</text>
+<text class="s" x="110" y="60" text-anchor="middle">SMU, reference and</text>
+<text class="s" x="110" y="77" text-anchor="middle">peripheral clocks, cold reset</text>
+<text class="s" x="110" y="94" text-anchor="middle">JTAG TAPs and scan chains</text>
+<rect class="pj" x="219" y="14" width="192" height="92" rx="6"/>
+<text class="bs" x="315" y="38" text-anchor="middle">System fabric</text>
+<text class="s" x="315" y="60" text-anchor="middle">smu_axi_in, smu_axi_out</text>
+<text class="s" x="315" y="77" text-anchor="middle">external interrupts</text>
+<text class="s" x="315" y="94" text-anchor="middle">mailbox interrupts</text>
+<rect class="pj" x="424" y="14" width="192" height="92" rx="6"/>
+<text class="bs" x="520" y="38" text-anchor="middle">System control</text>
+<text class="s" x="520" y="60" text-anchor="middle">ATB telemetry</text>
+<text class="s" x="520" y="77" text-anchor="middle">subsystem reset, isolation</text>
+<text class="s" x="520" y="94" text-anchor="middle">cross-trigger, clock stop</text>
+<rect class="pj" x="629" y="14" width="192" height="92" rx="6"/>
+<text class="bs" x="725" y="38" text-anchor="middle">Security and status</text>
+<text class="s" x="725" y="60" text-anchor="middle">lifecycle state, debug</text>
+<text class="s" x="725" y="77" text-anchor="middle">SEP trace and lockstep</text>
+<text class="s" x="725" y="94" text-anchor="middle">GPIO and UART interrupts</text>
+<rect class="pj" x="834" y="14" width="192" height="92" rx="6"/>
+<text class="bs" x="930" y="38" text-anchor="middle">DFT and memory repair</text>
+<text class="s" x="930" y="60" text-anchor="middle">fuse sense done</text>
+<text class="s" x="930" y="77" text-anchor="middle">repair and MBIST status</text>
+<text class="s" x="930" y="94" text-anchor="middle">boot completion handshake</text>
+<rect class="smu" x="14" y="124" width="1012" height="536" rx="8"/>
+<text class="b" x="26" y="648" text-anchor="start">smu_wrapper</text>
+<text class="si" x="144" y="648" text-anchor="start">(reference top)</text>
+<path class="sig" d="M110,109 L110,157"/>
+<path class="sig" d="M315,109 L315,157"/>
+<path class="sig" d="M520,109 L520,157"/>
+<path class="sig" d="M725,109 L725,157"/>
+<path class="sig" d="M930,109 L930,157"/>
+<rect class="harness" x="34" y="160" width="972" height="206" rx="8"/>
+<text class="b" x="46" y="184" text-anchor="start">smu</text>
+<text class="si" x="84" y="184" text-anchor="start">(OCAH deliverable, technology-independent RTL)</text>
+<rect class="core opt" x="50" y="198" width="223" height="72" rx="6"/>
+<text class="b" x="161.5" y="222" text-anchor="middle">SEP</text>
+<text class="s" x="161.5" y="242" text-anchor="middle">security enclave, lifecycle</text>
+<text class="s" x="161.5" y="259" text-anchor="middle">crypto, key management</text>
+<rect class="fabric" x="289" y="198" width="223" height="72" rx="6"/>
+<text class="b" x="400.5" y="222" text-anchor="middle">SMU AXI4 crossbar</text>
+<text class="s" x="400.5" y="242" text-anchor="middle">routes SEP, SMC and</text>
+<text class="s" x="400.5" y="259" text-anchor="middle">system AXI traffic</text>
+<rect class="core" x="528" y="198" width="223" height="72" rx="6"/>
+<text class="b" x="639.5" y="222" text-anchor="middle">SMC</text>
+<text class="s" x="639.5" y="242" text-anchor="middle">management CPU, reset</text>
+<text class="s" x="639.5" y="259" text-anchor="middle">and power, timers, trace</text>
+<rect class="core" x="767" y="198" width="223" height="72" rx="6"/>
+<text class="b" x="878.5" y="222" text-anchor="middle">DTP</text>
+<text class="s" x="878.5" y="242" text-anchor="middle">JTAG TAPs, cross-trigger</text>
+<text class="s" x="878.5" y="259" text-anchor="middle">clock stop</text>
+<rect class="network" x="50" y="286" width="940" height="64" rx="6"/>
+<text class="bs" x="520" y="306" text-anchor="middle">Technology integration interfaces</text>
+<text class="s" x="520" y="324" text-anchor="middle">SEP SRAM, ROM, TCM and crypto memories · SEP and SMC eFuse command and control · SEP external TRNG and AXI extension</text>
+<text class="s" x="520" y="341" text-anchor="middle">SMC CPU, trace and I3C memories · SMC adopter AXI-Lite window · GPIO pad signals</text>
+<path class="boundary" d="M34,388 L1006,388"/>
+<rect x="462" y="370" width="106" height="36" fill="#ffffff"/>
+<text class="bd" x="515" y="385" text-anchor="middle">OCAH / adopter</text>
+<text class="bd" x="515" y="401" text-anchor="middle">boundary</text>
+<rect class="external" x="34" y="410" width="472" height="212" rx="6"/>
+<text class="bs" x="46" y="610" text-anchor="start">sep_ip_integration</text>
+<rect class="external" x="522" y="410" width="484" height="212" rx="6"/>
+<text class="bs" x="534" y="610" text-anchor="start">smc_ip_integration</text>
+<path class="sig" d="M99,353 L99,437"/>
+<rect class="fabric" x="46" y="440" width="106" height="48" rx="6"/>
+<text class="s" x="99" y="460" text-anchor="middle">eFuse</text>
+<text class="s" x="99" y="477" text-anchor="middle">interface shim</text>
+<path class="sig" d="M99,491 L99,511"/>
+<rect class="smu" x="46" y="514" width="106" height="76" rx="6"/>
+<text class="s" x="99" y="548" text-anchor="middle">eFuse bank</text>
+<text class="s" x="99" y="565" text-anchor="middle">(SEP instance)</text>
+<path class="sig" d="M213,353 L213,437"/>
+<rect class="fabric" x="160" y="440" width="106" height="48" rx="6"/>
+<text class="s" x="213" y="460" text-anchor="middle">SRAM, ROM</text>
+<text class="s" x="213" y="477" text-anchor="middle">and TCM shims</text>
+<path class="sig" d="M213,491 L213,511"/>
+<rect class="smu" x="160" y="514" width="106" height="76" rx="6"/>
+<text class="s" x="213" y="540" text-anchor="middle">SRAM, boot</text>
+<text class="s" x="213" y="557" text-anchor="middle">ROM and TCM</text>
+<text class="s" x="213" y="574" text-anchor="middle">macros</text>
+<path class="sig" d="M327,353 L327,511"/>
+<rect class="smu" x="274" y="514" width="106" height="76" rx="6"/>
+<text class="s" x="327" y="540" text-anchor="middle">Crypto and</text>
+<text class="s" x="327" y="557" text-anchor="middle">Key Manager</text>
+<text class="s" x="327" y="574" text-anchor="middle">memories</text>
+<path class="sig" d="M441,353 L441,511"/>
+<rect class="smu" x="388" y="514" width="106" height="76" rx="6"/>
+<text class="s" x="441" y="531" text-anchor="middle">External TRNG</text>
+<text class="s" x="441" y="548" text-anchor="middle">and AXI</text>
+<text class="s" x="441" y="565" text-anchor="middle">extension</text>
+<text class="s" x="441" y="582" text-anchor="middle">(DECERR)</text>
+<path class="sig" d="M588.5,353 L588.5,437"/>
+<rect class="fabric" x="534" y="440" width="109" height="48" rx="6"/>
+<text class="s" x="588.5" y="460" text-anchor="middle">eFuse</text>
+<text class="s" x="588.5" y="477" text-anchor="middle">interface shim</text>
+<path class="sig" d="M588.5,491 L588.5,511"/>
+<rect class="smu" x="534" y="514" width="109" height="76" rx="6"/>
+<text class="s" x="588.5" y="548" text-anchor="middle">eFuse bank</text>
+<text class="s" x="588.5" y="565" text-anchor="middle">(SMC instance)</text>
+<path class="sig" d="M705.5,353 L705.5,437"/>
+<rect class="fabric" x="651" y="440" width="109" height="48" rx="6"/>
+<text class="s" x="705.5" y="460" text-anchor="middle">External</text>
+<text class="s" x="705.5" y="477" text-anchor="middle">AXI-Lite demux</text>
+<path class="sig" d="M705.5,491 L705.5,511"/>
+<rect class="smu" x="651" y="514" width="109" height="76" rx="6"/>
+<text class="s" x="705.5" y="540" text-anchor="middle">PLL, PVT</text>
+<text class="s" x="705.5" y="557" text-anchor="middle">and strap</text>
+<text class="s" x="705.5" y="574" text-anchor="middle">models</text>
+<path class="sig" d="M822.5,353 L822.5,437"/>
+<rect class="fabric" x="768" y="440" width="109" height="48" rx="6"/>
+<text class="s" x="822.5" y="460" text-anchor="middle">GPIO pad</text>
+<text class="s" x="822.5" y="477" text-anchor="middle">shims</text>
+<path class="sig" d="M822.5,491 L822.5,683"/>
+<text class="s" x="830" y="676" text-anchor="start">gpio_pad_io</text>
+<path class="sig" d="M939.5,353 L939.5,511"/>
+<rect class="smu" x="885" y="514" width="109" height="76" rx="6"/>
+<text class="s" x="939.5" y="531" text-anchor="middle">CPU ROM,</text>
+<text class="s" x="939.5" y="548" text-anchor="middle">scratch and L1,</text>
+<text class="s" x="939.5" y="565" text-anchor="middle">trace and I3C</text>
+<text class="s" x="939.5" y="582" text-anchor="middle">memories</text>
+<rect class="pj" x="768" y="686" width="109" height="44" rx="6"/>
+<text class="s" x="822.5" y="713" text-anchor="middle">Physical padring</text>
+<rect class="harness" x="14" y="756" width="40" height="18" rx="4"/>
+<text class="s" x="62" y="770" text-anchor="start">OCAH deliverable</text>
+<rect class="external" x="186" y="756" width="40" height="18" rx="4"/>
+<text class="s" x="234" y="770" text-anchor="start">Reference integration</text>
+<rect class="fabric" x="382" y="756" width="40" height="18" rx="4"/>
+<text class="s" x="430" y="770" text-anchor="start">Shim or fabric</text>
+<rect class="smu" x="534" y="756" width="40" height="18" rx="4"/>
+<text class="s" x="582" y="770" text-anchor="start">Model, macro or stub</text>
+<rect class="pj" x="734" y="756" width="40" height="18" rx="4"/>
+<text class="s" x="782" y="770" text-anchor="start">Adopter SoC</text>
+<rect class="core opt" x="890" y="756" width="40" height="18" rx="4"/>
+<text class="s" x="938" y="770" text-anchor="start">Optional (SEP)</text>
+</svg>
