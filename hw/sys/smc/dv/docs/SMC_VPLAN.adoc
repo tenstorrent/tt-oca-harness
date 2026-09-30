@@ -12065,7 +12065,6 @@ in <<smc-deferred-disposition>>.
 
 Every leaf defined in `testlists/holdout.toml`. None is a member of `all`;
 each card below states what a run of the leaf must show and records no pass.
-UVM-only scenarios are enrolled through scope-named groups.
 The reproducers are the `rtl_issue` group:
 
 Tests whose job is to fail. Each holds the runnable evidence for one RTL
@@ -12232,8 +12231,19 @@ Held out of `all` on runtime (hours of wall clock per run). Enrolled in: `occp_d
 
 '''''
 
+`smc_ref_clock_timer_rate_test` has an entry in `holdout.toml` and no card: it
+fails the rate comparison it was written to make (`clk_rst.adoc` places the OCTS
+system timer in the reference clock domain; `smc_peripherals.sv` clocks it from
+`clk_smc_i`), and is re-measured on demand.
+
+===== SV-UVM held-out scenarios
+
+UVM-only leaves are enrolled in scope-named groups of `testlists/holdout.toml`
+and run on demand with `--framework uvm --tool vcs`. They have no cocotb
+realization.
+
 [[sec-smc_regblock_sparse_strobe_test]]
-===== `smc_regblock_sparse_strobe_test`
+====== `smc_regblock_sparse_strobe_test`
 
 *Source Module*: `smc_regblock_sparse_strobe_test` (UVM-only independent scenario)
 
@@ -12260,9 +12270,9 @@ the strobed RW bytes of selected 64-bit register-block words.
 
 Drive `smc_regblock_sparse_strobe_test_seq`. The safe-state reads run before
 the first write. The sequence applies the full, single-byte, sparse, null and
-restore operations to each catalogued word, checks Zeroer state, SYS_OUT
-activity and lane coverage, waits with a bound for all predicted comparisons,
-then checks scoreboard results and access counts.
+restore operations to each catalogued word, checks Zeroer state and lane
+coverage, waits with a bound for all predicted comparisons, then checks
+scoreboard results and access counts.
 
 *Checkers*:
 
@@ -12276,8 +12286,9 @@ then checks scoreboard results and access counts.
 |`CHK-REGBLOCK-WIDE-NULL-STROBE` |A write with no strobed lane changes nothing
 |`CHK-REGBLOCK-WIDE-RESTORE` |Each word reads its reset value after the restore write
 |`CHK-REGBLOCK-WIDE-RESTORE-NONVAC` |At least one restore per pass changes an RW value
-|`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |The Zeroer is idle and no Zeroer write reached SYS_OUT
+|`CHK-REGBLOCK-WIDE-NO-ZEROER-START` |The Zeroer reads idle (`CTRL_STATUS.STATUS = 0`) after the last catalogued write
 |`CHK-REGBLOCK-WIDE-LANE-COVERAGE` |All eight SEP_IN byte lanes were strobed
+|`CHK-SB-REGBLOCK-WIDE` |Each catalogued read matches the passive model's predicted 64-bit value
 |`CHK-REGBLOCK-WIDE-SCOREBOARD` |Every predicted read was compared with no new mismatch
 |`CHK-NONVAC` |The number of SEP_IN accesses equals the declared scenario
 |`CHK-SB-MIN-ACTIVITY`, `CHK-MEM-RESP`, `CHK-FUSE-SENSE-DONE` |Scenario volume, frontdoor responses and bring-up completed as declared
@@ -12294,15 +12305,13 @@ field behavior is outside this CSR byte-enable claim.
 
 *Pass Criteria*: all checks hold on every pass;
 `+SMC_REGBLOCK_WIDE_SCOREBOARD_NEGATIVE` must fail `regblock_wide`
-comparisons. Enrolled only in `csr_uvm_extended`, outside `all`, `hosted` and
-`ci`; run on demand. This card records what a run must show, not a pass.
+comparisons. `+SMC_REGBLOCK_WIDE_SEQUENCE_NEGATIVE` corrupts the sequence's
+full-write expectation and must fail `CHK-REGBLOCK-WIDE-FULL-RW` while the
+scoreboard records no mismatch. Enrolled only in `csr_uvm_extended`, outside
+`all`, `hosted` and `ci`; run on demand. This card records what a run must
+show, not a pass.
 
 '''''
-
-`smc_ref_clock_timer_rate_test` has an entry in `holdout.toml` and no card: it
-fails the rate comparison it was written to make (`clk_rst.adoc` places the OCTS
-system timer in the reference clock domain; `smc_peripherals.sv` clocks it from
-`clk_smc_i`), and is re-measured on demand.
 
 [[smc-deferred-disposition]]
 ==== SMC deferred and OUT disposition

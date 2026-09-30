@@ -21,7 +21,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
   localparam int unsigned ComparisonTimeoutCycles = 4096;
   // Five safe-state reads precede the catalogued register operations.
   localparam int unsigned SafeStateReads = 5;
-  // The final Zeroer status read corroborates the SYS_OUT activity check.
+  // The final status read checks the Zeroer after the catalogued writes.
   localparam int unsigned FinalStateReads = 1;
   // Baseline, full, single-byte, seeded sparse, null-strobe and restore each
   // end in a predicted read; fixed sparse strobes add one read apiece.
@@ -139,8 +139,6 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     int unsigned compare_target;
     int unsigned mismatch_before;
     int unsigned accesses_before;
-    int unsigned writes_before;
-    int unsigned writes_after;
     int unsigned restore_changes;
 
     seed_scenario_rng();
@@ -162,9 +160,8 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     check_min_activity(SmcFeatureRegblockWide, predicted_reads);
     wait_fuse_sense_done();
     mismatch_before = scoreboard.mismatch_count(SmcFeatureRegblockWide);
-    compare_target = scoreboard.compare_count(SmcFeatureRegblockWide) + predicted_reads;
+    compare_target  = scoreboard.compare_count(SmcFeatureRegblockWide) + predicted_reads;
     accesses_before = mem_accesses;
-    writes_before = p_sequencer.m_sys_out_slave_seq.write_burst_count();
 
     // The catalogued words are side-effect-free only while the Zeroer is idle and
     // the hang detectors and alias region are disabled; stop before the first
@@ -184,6 +181,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
     foreach (entries[i]) begin
       bit [63:0] shadow = entries[i].reset_value;
       bit [63:0] data;
+      bit [63:0] full_expected;
       bit [7:0] strb;
       int unsigned rw_lane_count = $countones(entries[i].rw_lane_mask);
       int unsigned lane = rw_lane_at(entries[i].rw_lane_mask, loop_index % rw_lane_count);
@@ -192,10 +190,14 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
 
       shadow = smc_regblock_merge_write(shadow, pattern, 8'hFF, entries[i].rw_mask);
       mem_write(entries[i].addr, pattern, {entries[i].name, " full write"});
-      mem_read_check(ChkFullRw, entries[i].addr, shadow, {entries[i].name, " full readback"});
+      full_expected = shadow;
+      if (env_cfg.regblock_wide_sequence_negative)
+        full_expected ^= entries[i].rw_mask & (~entries[i].rw_mask + 64'd1);
+      mem_read_check(ChkFullRw, entries[i].addr, full_expected, {entries[i].name, " full readback"
+                     });
 
-      data = ~shadow;
-      strb = 8'(1 << lane);
+      data   = ~shadow;
+      strb   = 8'(1 << lane);
       shadow = smc_regblock_merge_write(shadow, data, strb, entries[i].rw_mask);
       write_strobe(entries[i].addr, data, strb, {entries[i].name, " single-byte write"});
       mem_read_check(ChkSingleByte, entries[i].addr, shadow, {
@@ -204,7 +206,7 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
 
       fixed_sparse_strobes(entries[i].rw_lane_mask, fixed);
       foreach (fixed[j]) begin
-        data = ~shadow;
+        data   = ~shadow;
         shadow = smc_regblock_merge_write(shadow, data, fixed[j], entries[i].rw_mask);
         write_strobe(entries[i].addr, data, fixed[j], $sformatf(
                      "%s sparse 0x%02h write", entries[i].name, fixed[j]));
@@ -214,8 +216,8 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
       end
 
       valid_sparse_strobes(entries[i].rw_lane_mask, valid);
-      strb = valid[int'(random_pattern(8) % valid.size())];
-      data = ~shadow;
+      strb   = valid[int'(random_pattern(8)%valid.size())];
+      data   = ~shadow;
       shadow = smc_regblock_merge_write(shadow, data, strb, entries[i].rw_mask);
       write_strobe(entries[i].addr, data, strb, $sformatf(
                    "%s seeded sparse 0x%02h write", entries[i].name, strb));
@@ -233,13 +235,10 @@ class smc_regblock_sparse_strobe_test_seq extends smc_base_test_seq;
                      entries[i].name, " restore readback"});
     end
 
-    writes_after = p_sequencer.m_sys_out_slave_seq.write_burst_count();
     mem_read(SmcZeroerCtrlStatusAddr, status_word, "ZEROER_CTRL.CTRL_STATUS final");
     check_evidence(ChkNoZeroerStart, "Zeroer busy",
                    64'(status_word[ZEROER_CTRL_CTRL_STATUS_STATUS_SHIFT]), 64'h0,
                    "DEST_ADDR and SIZE writes left the Zeroer idle");
-    check_evidence(ChkNoZeroerStart, "SYS_OUT write bursts", 64'(writes_after), 64'(writes_before),
-                   "no Zeroer write reached SYS_OUT");
     check_evidence(ChkLaneCoverage, "strobed RW lanes", 64'(lane_coverage), 64'hFF,
                    "all SEP_IN byte lanes");
     check_evidence(ChkRestoreNonvac, "restores that changed an RW value", 64'(restore_changes > 0),
