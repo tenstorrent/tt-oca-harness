@@ -38,3 +38,13 @@ endif::backend-html5[]
 ifdef::backend-pdf[]
 <<ctn-memory-map,CTN Register Map>>
 endif::backend-pdf[]
+
+The CTN Programming section gives the configuration sequence for the port modes
+and matrix routes referenced above.
+
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-programming[CTN Programming]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-programming,CTN Programming>>
+endif::backend-pdf[]
