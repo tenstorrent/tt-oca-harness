@@ -26,6 +26,9 @@ ifdef::backend-pdf[]
 endif::backend-pdf[]
 Each zone boundary runs through the CDCs that separate the domains. The AoU
 bridges, the D2D macros and the future safety monitor are not assigned a zone.
+The SMN reaches each AoU through its APB register port, whose clock is
+asynchronous to the AoU core clock; the CDC marker inside each AoU is the
+bridge's own APB synchroniser.
 The SMU zone marks `clk_smu_i`, which clocks the DTP, the crossbar, the SEP and
 the SMC. Pills inside the SEP and SMC list their clock inputs: both also use
 `clk_ref_i`. The SMC uses `clk_periph_i` for its peripherals and
