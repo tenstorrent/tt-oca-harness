@@ -112,9 +112,9 @@ package km_intf_pkg;
   //  |        |             |             |       | future ROM expansion to 32 KB           |
   //  | SRAM   | 0x0000_8000 | 0x0000_FFFF | 32 KB |                                         |
   //  | MBOX   | 0x0001_0000 | 0x0001_001F |  32 B |                                         |
-  //  | OTP    | 0x0001_1000 | 0x0001_1FFF |  4 KB | External pass-through; HW remaps to     |
-  //  |        |             |             |       | OTP_EFUSE_REMAP_BASE (MAP/CTRL/MMR),    |
-  //  |        |             |             |       | which needs the whole page              |
+  //  | OTP    | 0x0001_1000 | 0x0001_1FFF |  4 KB | External pass-through of MAP/CTRL/MMR;  |
+  //  |        |             |             |       | HW remaps to OTP_EFUSE_REMAP_BASE and   |
+  //  |        |             |             |       | answers other offsets with SLVERR       |
   //  | KPV    | 0x0001_2000 | 0x0001_3FFF |  8 KB | 64 slots; 8 KB-aligned                  |
   //  | KMCSR  | 0x0001_4000 | 0x0001_47FF |  2 KB |                                         |
   //  | DRBG   | 0x0001_5000 | 0x0001_500F |  16 B |                                         |
@@ -127,7 +127,9 @@ package km_intf_pkg;
   //
   // Addresses between one port's end and the next port's base are outside every crossbar
   // rule, so the crossbar answers DECERR; unmapped offsets inside a port's window reach its
-  // register block, which is generated with --err-if-bad-addr and answers SLVERR.
+  // register block, which is generated with --err-if-bad-addr and answers SLVERR. On the OTP
+  // port, key_manager answers SLVERR itself for every offset outside the MAP, CTRL and MMR
+  // register maps, so only those reach the eFuse controller.
 
   // Internal memory
   localparam km_addr_t ROM_BASE_ADDR = 32'h0000_0000;  // ROM window base.
@@ -160,14 +162,44 @@ package km_intf_pkg;
       DRBG_SAMPLER_BASE_ADDR, km_drbg_sampler_reg_pkg::KM_DRBG_SAMPLER_REG_MIN_ADDR_WIDTH
   );  // DRBG sampler window end
 
-  // OTP / eFuse access port. The crossbar routes 0x0001_1xxx to xbar master port 8;
-  // key_manager.sv replaces addr[31:12] with OTP_EFUSE_REMAP_BASE[31:12] before driving
-  // efuse_req_o, so the shared SEP efuse_interface_controller is reached correctly.
-  // Accessible sub-regions: MAP/shadow (offset 0x000-0x3FF), CTRL (offset 0x400-0x41B),
-  // MMR (offset 0x500-0x56F). This rule is a full 4 KB page: the remap keeps addr[11:0]
-  // and the sub-regions run to 0x56F.
-  localparam km_addr_t OTP_BASE_ADDR = 32'h0001_1000;  // OTP/eFuse KM-local window base
-  localparam km_addr_t OTP_END_ADDR = 32'h0001_1FFF;  // OTP/eFuse KM-local window end
+  // OTP / eFuse access port. The crossbar routes the OTP page to xbar master port 8.
+  // key_manager.sv forwards only the MAP, CTRL and MMR register maps to efuse_req_o, with
+  // addr[KM_AXI_ADDR_WIDTH-1:OTP_REMAP_ADDR_WIDTH] replaced by OTP_EFUSE_REMAP_BASE, so the
+  // shared SEP efuse_interface_controller is reached at the same offsets. The register maps
+  // come from the generated KM address map and must lie inside the page.
+  localparam int unsigned OTP_REMAP_ADDR_WIDTH = 12;  // Offset bits the OTP remap keeps.
+  localparam km_addr_t OTP_PAGE_MASK = km_addr_t'(
+      (32'd1 << OTP_REMAP_ADDR_WIDTH) - 1
+  );  // OTP page offset bits
+  localparam km_addr_t OTP_MAP_BASE_ADDR = km_addr_t'(
+      key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR
+  );  // eFuse shadow map base
+  localparam km_addr_t OTP_MAP_END_ADDR = OTP_MAP_BASE_ADDR + km_addr_t'(
+      key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MAP_SIZE - 1
+  );  // eFuse shadow map end
+  localparam km_addr_t OTP_CTRL_BASE_ADDR = km_addr_t'(
+      key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_CTRL_BASE_ADDR
+  );  // eFuse interface control base
+  localparam km_addr_t OTP_CTRL_END_ADDR = OTP_CTRL_BASE_ADDR + km_addr_t'(
+      key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_CTRL_SIZE - 1
+  );  // eFuse interface control end
+  localparam km_addr_t OTP_MMR_BASE_ADDR = km_addr_t'(
+      key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR
+  );  // eFuse token MMR base
+  localparam km_addr_t OTP_MMR_END_ADDR = OTP_MMR_BASE_ADDR + km_addr_t'(
+      key_manager_addrmap_pkg::KEY_MANAGER_OTP_EFUSE_MMR_SIZE - 1
+  );  // eFuse token MMR end
+  localparam km_addr_t OTP_BASE_ADDR = OTP_MAP_BASE_ADDR & ~OTP_PAGE_MASK;  // OTP page base
+  localparam km_addr_t OTP_END_ADDR = km_window_end(
+      OTP_BASE_ADDR, OTP_REMAP_ADDR_WIDTH
+  );  // OTP page end
+
+  // True when addr falls in the MAP, CTRL or MMR register map of the OTP page.
+  function automatic logic otp_addr_decoded(km_addr_t addr);
+    return (addr >= OTP_MAP_BASE_ADDR && addr <= OTP_MAP_END_ADDR) ||
+           (addr >= OTP_CTRL_BASE_ADDR && addr <= OTP_CTRL_END_ADDR) ||
+           (addr >= OTP_MMR_BASE_ADDR && addr <= OTP_MMR_END_ADDR);
+  endfunction
 
   // External crypto engine ports
   localparam km_addr_t OTBN_BASE_ADDR = 32'h0001_8000;  // OTBN window base

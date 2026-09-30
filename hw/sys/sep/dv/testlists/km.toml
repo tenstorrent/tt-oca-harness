@@ -300,7 +300,7 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
 
 [[tests]]
-# KM CPU load and store past the OTP_EFUSE_MMR aperture must be refused and must
+# KM CPU load and store past the OTP_EFUSE_MMR register map must be refused and must
 # not reach the eFuse shim register, which key_manager.rdl excludes from the KM
 # path. The host programs and reads the shim register on its SEP-side window.
 # RANDCFG: the host shim value from the run seed. no_cpu; +skip_fuse_sense.

@@ -110,7 +110,10 @@ defines them and their codes. The KM CPU does not see these responses: an error 
 
 The OTP/eFuse window is the exception: hardware preserves its lower 12 address
 bits and replaces the upper bits with the integration parameter
-`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP.
+`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP. Only the
+MAP, CTRL and MMR register maps are forwarded. The Key Manager answers any
+other offset in the window with SLVERR, so the KM CPU cannot reach the eFuse
+shim control registers.
 
 ifdef::backend-html5[]
 include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]

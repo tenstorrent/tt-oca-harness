@@ -24,8 +24,9 @@
 #      growth) row of the key_manager.rdl memory-map summary.
 #   3. ROM write: load a ROM word, store its complement to it, poll, and load
 #      it again.
-#   4. OTP window past the MMR aperture: load from, then store to, the first
-#      word of the Reserved rows after OTP_EFUSE_MMR's 0x100-byte aperture.
+#   4. OTP window past the MMR register map: load from, then store to,
+#      KEY_MANAGER_OTP_EFUSE_MMR base + size, the first word after the last
+#      register the eFuse controller decodes.
 #   5. OKAY control in the same OTP window: load from the mapped
 #      OTP_EFUSE_MMR SEC_DISABLE_TOKEN_MATCH register.
 #   6. Store PRE_MARKER to KM SRAM word 0 (the km_sram_word0_o probe). Every
@@ -48,17 +49,15 @@
     .equ SRAM_BASE,     KEY_MANAGER_SRAM_BASE_ADDR
     .equ KPV_PAST_MAP,  KEY_MANAGER_KPV_BASE_ADDR + KEY_MANAGER_KPV_SIZE
     .equ ROM_GROWTH,    KEY_MANAGER_ROM_BASE_ADDR + KEY_MANAGER_ROM_SIZE
-    # key_manager.rdl OCAH_DOC_MEMORY_MAP: otp_efuse_mmr ocah_aperture_size.
-    .equ MMR_APERTURE,  0x100
-    .equ OTP_PAST_MMR,  KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR + MMR_APERTURE
+    .equ OTP_PAST_MMR,  KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR + KEY_MANAGER_OTP_EFUSE_MMR_SIZE
     # key_manager.rdl: the OTP/eFuse pass-through is one 4 KB decode window.
     .equ OTP_PAGE_END,  KEY_MANAGER_OTP_EFUSE_MAP_BASE_ADDR + 0x1000
     # hw/ip/key_manager/doc/architecture.adoc: the testbench virtual ROM base.
     # The generated map has no symbol for it.
     .equ VROM_BASE,     0x10000000
 
-    .if OTP_PAST_MMR < (KEY_MANAGER_OTP_EFUSE_MMR_BASE_ADDR + KEY_MANAGER_OTP_EFUSE_MMR_SIZE)
-    .error "OTP_PAST_MMR is inside the OTP_EFUSE_MMR register map"
+    .if OTP_PAST_MMR & 3
+    .error "OTP_PAST_MMR is not word-aligned"
     .endif
     .if OTP_PAST_MMR >= OTP_PAGE_END
     .error "OTP_PAST_MMR is outside the OTP/eFuse decode window"
@@ -138,7 +137,7 @@ _start:
     lw    x6, 0(x3)
     sw    x6, W_ROM_AFTER(x2)
 
-    # 4. OTP window past the MMR aperture: load, then store.
+    # 4. OTP window past the MMR register map: load, then store.
     jal   x13, irq_clean
     sw    x5, W_OTP_RD_CLEAN(x2)
     li    x3, OTP_PAST_MMR
