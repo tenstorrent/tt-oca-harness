@@ -26,6 +26,16 @@ class RegisterLinks(unittest.TestCase):
             '<a href="other.html#INTR_STATE">other</a>',
         )
 
+    def test_regmap_ids_remain_unscoped(self):
+        spec = importlib.util.spec_from_file_location("scope_register_ids", PATH)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        html = '<h2 id="regmap-UART_CTRL">UART Controller</h2><a href="#regmap-UART_CTRL">link</a>'
+        result = module.scope_ids(html, "testblock")
+        self.assertIn('id="regmap-UART_CTRL"', result)
+        self.assertIn('href="#regmap-UART_CTRL"', result)
+        self.assertNotIn('testblock-regmap-', result)
+
 
 if __name__ == "__main__":
     unittest.main()

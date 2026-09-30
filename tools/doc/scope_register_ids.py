@@ -13,12 +13,12 @@ def scope_ids(text: str, namespace: str) -> str:
     ids = set(re.findall(r'\bid="([^"]+)"', text))
     text = re.sub(
         r'\bid="([^"]+)"',
-        lambda m: f'id="{namespace}-{m[1]}" data-register-alias="{m[1]}"',
+        lambda m: m[0] if m[1].startswith('regmap-') else f'id="{namespace}-{m[1]}" data-register-alias="{m[1]}"',
         text,
     )
     return re.sub(
         r'\bhref="#([^"]+)"',
-        lambda m: f'href="#{namespace}-{m[1]}"' if m[1] in ids else m[0],
+        lambda m: f'href="#{namespace}-{m[1]}"' if m[1] in ids and not m[1].startswith('regmap-') else m[0],
         text,
     )
 
