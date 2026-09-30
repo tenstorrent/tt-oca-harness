@@ -33,11 +33,14 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         disable_field = IJTAG_SIB_DISABLE[sib]
         # Baseline: everything enabled, all SIBs closed.
         await self.check_pattern(0b000, context=f"{context}.baseline")
-        # Attempt to open the target SIB while its disable is asserted.
-        await self.set_dbg_disable_vector({disable_field: 1})
-        await self.program_ijtag_sibs(
+        # Attempt to open the target SIB while its disable is asserted: its
+        # four scan controls stay quiet across the whole attempt.
+        gate = {disable_field: 1}
+        await self.set_dbg_disable_vector(gate)
+        await self.program_ijtag_sibs_quiet(
             open_pattern,
-            dbg_disable={disable_field: 1},
+            dbg_disable=gate,
+            quiet=self.ijtag_gated_controls(gate),
             context=f"{context}.gated_open_attempt",
         )
         # Release the disable without any reset: the gated open attempt must

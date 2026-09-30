@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_smc_axi_single_write_read_test — the single write/read scenario
-// on the SMC fabric AXI4 manager port (132-bit wide TDR scans, 64-bit data,
-// ID-tagged bursts observed by the shared monitor).
+// dtp_jtag2axi_smc_axi_single_write_read_test — the `single_write_read` SMC
+// fabric JTAG2AXI scenario: one write, a write to the neighbouring beat, and a
+// readback of the first word through SMC_AXI_SINGLE_OP. The shared passive
+// AXI env compares every observed transaction with the stimulus intents; the
+// required evidence IDs make a silent no-op run fail at finalization.
 
 class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_single_write_read_test)
@@ -19,22 +21,20 @@ class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
                         '{
                             "CHK-AXI-RESP",
                             "CHK-AXI-RDATA",
-                            "CHK-AXI-ERR-INJ",
                             "CHK-AXI-STRB",
                             "CHK-AXI-WADDR",
                             "CHK-AXI-WDATA",
                             "CHK-AXI-RADDR",
-                            "CHK-AXI-GATE-AW",
-                            "CHK-AXI-GATE-AR"
+                            "CHK-AXI-WMEM",
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ"
                         });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
-    dtp_jtag2axi_single_write_read_test_seq seq =
-            dtp_jtag2axi_single_write_read_test_seq::type_id::create(
-        "seq"
-    );
-    seq.target_name = "smc_axi";
+    dtp_jtag2axi_smc_axi_rd_test_seq seq = dtp_jtag2axi_smc_axi_rd_test_seq::type_id::create("seq");
+    seq.scenario = "single_write_read";
     return seq;
   endfunction
 
@@ -47,14 +47,13 @@ class dtp_jtag2axi_smc_axi_single_write_read_test extends dtp_base_test;
   endfunction
 
   virtual function void plumb_scenario_seq(ocah_sequence seq);
-    dtp_jtag2axi_single_write_read_test_seq wr_rd;
+    dtp_jtag2axi_smc_axi_rd_test_seq rd_seq;
     super.plumb_scenario_seq(seq);
-    if (!$cast(wr_rd, seq))
-      `uvm_fatal(get_type_name(),
-                 "scenario sequence is not a dtp_jtag2axi_single_write_read_test_seq")
-    wr_rd.axi_cfg       = m_env.m_smc_axi_cfg;
-    wr_rd.axi_evidence  = m_env.m_smc_axi_env.m_checker;
-    wr_rd.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
+    if (!$cast(rd_seq, seq))
+      `uvm_fatal(get_type_name(), "scenario sequence is not the rd-side type")
+    rd_seq.axi_cfg       = m_env.m_smc_axi_cfg;
+    rd_seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
+    rd_seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
   endfunction
 
 endclass : dtp_jtag2axi_smc_axi_single_write_read_test

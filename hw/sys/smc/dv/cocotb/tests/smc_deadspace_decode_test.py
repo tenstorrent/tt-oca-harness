@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_deadspace_decode_test(smc_base_test):
-    """Probe wrap-period offsets past PeakRDL SIZE and watch live CSRs."""
+    """Refuse offsets past each block's decoded extent and keep the live CSRs unchanged."""
 
     required_evidence = (
         "CHK-DEADSPACE-BYSTANDER",
@@ -33,9 +33,10 @@ class smc_deadspace_decode_test(smc_base_test):
             type(self).__name__,
             # Directed stimulus floor: 5 unconditional accesses per probe
             # (live read, seed write, seed readback, dead read, restore write)
-            # for each of the 9 DeadspaceProbe entries; the dead-write legs are
-            # conditional on the dead read completing. Literal here, not read
-            # from `seq.accesses`.
+            # for each of the 9 DeadspaceProbe entries; the two dead writes and
+            # their live readbacks per probe also run on the passing path and
+            # are left out of the floor. Literal here, not read from
+            # `seq.accesses`.
             min_csr_accesses=45,
             csr_accesses=seq.accesses,
             # Not measured on this path, so `n/a` rather than a clean-looking

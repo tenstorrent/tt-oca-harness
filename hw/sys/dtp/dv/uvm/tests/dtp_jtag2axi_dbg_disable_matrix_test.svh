@@ -4,9 +4,9 @@
 // dtp_jtag2axi_dbg_disable_matrix_test — the debug-disable matrix over the
 // three JTAG2AXI bridge gate fields: allowed bridges complete write+read
 // with real request activity, blocked bridges show zero activity with RAM
-// sentinels intact through release (no delayed replay), then recover. Each
-// matrix pass sweeps one all_clear row, one one-hot row per bridge gate
-// field, the configured number of seeded multi-hot rows, and one
+// sentinels intact through release (no delayed replay), then recover. The
+// matrix runs one pass, which sweeps one all_clear row, one one-hot row per
+// bridge gate field, the configured number of seeded multi-hot rows, and one
 // all_disabled row.
 
 class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_test;
@@ -21,10 +21,13 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
     ids.push_back("CHK-AXI-WADDR");
     ids.push_back("CHK-AXI-WDATA");
     ids.push_back("CHK-AXI-STRB");
+    ids.push_back("CHK-AXI-RADDR");
     ids.push_back("CHK-AXI-RDATA");
     ids.push_back("CHK-AXI-GATE-AW");
     ids.push_back("CHK-AXI-GATE-W");
     ids.push_back("CHK-AXI-GATE-AR");
+    ids.push_back("CHK-AXI-GATE-EXACT");
+    ids.push_back(DtpJ2aGateTdrCheckId);
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();
@@ -36,8 +39,10 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
     return seq;
   endfunction
 
-  virtual function string specific_loops_knob();
-    return "DTP_JTAG2AXI_DBG_DISABLE_MATRIX_TEST_LOOPS";
-  endfunction
+  task run_phase(uvm_phase phase);
+    phase.raise_objection(this, {get_type_name(), " running"});
+    run_single_pass();
+    phase.drop_objection(this, {get_type_name(), " done"});
+  endtask
 
 endclass : dtp_jtag2axi_dbg_disable_matrix_test

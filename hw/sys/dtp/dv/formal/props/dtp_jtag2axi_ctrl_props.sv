@@ -44,6 +44,7 @@ module dtp_jtag2axi_ctrl_props #(
   input logic              sticky_full_i,          // sticky_axi_status_full_tclk
   input logic              ctrl_reset_bit_i,       // update_register_q_tclk[AXISERIESCTRL_RESET_HIGH]
   input logic [1:0]        current_op_i,           // current_op_tclk
+  input logic              single_tx_i,            // current_tx_is_from_single_buffer_tclk
   input logic              single_valid_i,         // single_tx_req_valid_tclk
   input logic [CNT_W-1:0]  req_fifo_count_i,       // series_request_fifo_count_tclk
   input logic [CNT_W-1:0]  rsp_fifo_count_i,       // series_rsp_fifo_count_tclk
@@ -124,6 +125,10 @@ module dtp_jtag2axi_ctrl_props #(
                   tck_i, trst_ni)
 
   // ---- Status encoding and the sticky series status ----------------------------------------
+  // An error code holds until a reset write (PTAP document, *_AXI_SERIES_CTRL op), and a later
+  // error completion leaves either the held code or its own. A series completion into a clean
+  // status without a reset write beside it encodes its response; a SINGLE_OP completion into a
+  // clean status carries no series-status contract.
   `OCAH_FV_ASSERT(ast_j2a_status_encodes_resp,
                   `OCAH_FV_IMPLIES(bresp_update_i,
                                    state_i == WAIT_BRESP && src_b_valid_i &&
@@ -131,7 +136,10 @@ module dtp_jtag2axi_ctrl_props #(
                   `OCAH_FV_IMPLIES(rdata_update_i,
                                    state_i == WAIT_RDATA && src_r_valid_i && src_r_ready_i &&
                                    next_status_i == status_of(src_r_resp_i)) &&
-                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(bresp_update_i || rdata_update_i),
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(bresp_update_i || rdata_update_i) &&
+                                   !$past(single_tx_i) &&
+                                   $past(sticky_status_i) == STATUS_SUCCESS &&
+                                   !$past(ctrl_reset_write),
                                    sticky_status_i == $past(next_status_i)),
                   tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_series_status_sticky,
@@ -145,8 +153,20 @@ module dtp_jtag2axi_ctrl_props #(
                                    !$past(bresp_update_i || rdata_update_i),
                                    sticky_status_i == STATUS_SUCCESS && !sticky_full_i),
                   tck_i, trst_ni)
+  `OCAH_FV_ASSERT(ast_j2a_series_error_holds,
+                  `OCAH_FV_IMPLIES($past(trst_ni) && $past(sticky_status_i) != STATUS_SUCCESS &&
+                                   !$past(ctrl_reset_write),
+                                   sticky_status_i == $past(sticky_status_i) ||
+                                   ($past(bresp_update_i || rdata_update_i) &&
+                                    $past(next_status_i) != STATUS_SUCCESS &&
+                                    sticky_status_i == $past(next_status_i))),
+                  tck_i, trst_ni)
 
   // ---- Admission: the request FIFO and the read pipeline never exceed pipeline_depth + 1 -----
+  `OCAH_FV_ASSERT(ast_j2a_one_read_in_flight,
+                  reads_in_flight_i <= CNT_W'(1) &&
+                  `OCAH_FV_IMPLIES(reads_in_flight_i != '0, state_i == WAIT_RDATA),
+                  tck_i, trst_ni)
   `OCAH_FV_ASSERT(ast_j2a_admit_bounded_by_depth,
                   pipeline_depth_i <= PD_W'(FIFO_DEPTH) &&
                   req_fifo_count_i <= admit_limit &&
@@ -202,6 +222,11 @@ module dtp_jtag2axi_ctrl_props #(
                  reads_pushed_i == CNT_W'(FIFO_DEPTH + 1), tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_status_slverr, sticky_status_i == STATUS_SLVERR, tck_i, trst_ni)
   `OCAH_FV_COVER(cov_j2a_status_decerr, sticky_status_i == STATUS_DECERR, tck_i, trst_ni)
+  `OCAH_FV_COVER(cov_j2a_error_then_clean_completion,
+                 $past(sticky_status_i) != STATUS_SUCCESS &&
+                 $past(bresp_update_i || rdata_update_i) &&
+                 $past(next_status_i) == STATUS_SUCCESS && !$past(ctrl_reset_write),
+                 tck_i, trst_ni)
   for (genvar s = 1; s <= 6; s++) begin : gen_disable_in_state
     `OCAH_FV_COVER(cov_j2a_disable_in_state, security_disable_i && state_i == 3'(s),
                    tck_i, trst_ni)

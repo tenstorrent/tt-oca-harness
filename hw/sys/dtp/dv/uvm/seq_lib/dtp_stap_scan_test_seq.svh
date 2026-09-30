@@ -18,9 +18,11 @@
 //       TMS or parks) corroborate the downstream evidence; on a bench without
 //       attached downstream TAPs the same flow runs against the wire
 //       loopbacks with the window and chain-readback evidence only;
-//   ext_stap_scan  the extended STAP host scan interface follows the PTAP
-//       3DCR select, its controls stay quiet under the stap_host disable
-//       (seeded gated attempt), and recover without reset;
+//   ext_stap_scan  against the host segment the bench places behind the
+//       extended STAP host scan interface: the host scan controls and the
+//       PTAP chain return follow the PTAP 3DCR select and stap_host (the
+//       segment returns the chain while enabled, the last STAP's scan-out
+//       while disabled), and recover without reset;
 //   config_hold    per STAP (seeded order), the PTAP 3DCR and the STAP 3DCR
 //       are written with CONFIG_HOLD=1 or 0 through composed chain scans,
 //       reset (TLR or TRST), reloaded with a composed IR scan, and read
@@ -88,11 +90,13 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   protected task run_stap_select(int unsigned stap);
     sep_lifecycle_ctrl_pkg::dbg_disable_t gate = stap_gate_mask(stap);
     string prefix = stap_prefix(stap);
-    string watch[$];
+    string trst_n = {prefix, "_trst_n"};
+    string watch[$], gated_watch[$];
     string quiet[$], active[$];
     int unsigned neighbor = (stap + 1) % DtpStapCount;
     int unsigned edges;
     int unsigned counts[string];
+    int unsigned trst_before, trst_asserts;
     int no_sib[int];
     int iso_sib[int];
     dtp_stap_3dcr_state_t no_pl[int];
@@ -102,8 +106,8 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     bit downstream = ds_attached(stap);
     dtp_stap_ds_reg_t tdr;
     bit [63:0] v_select = '0, v_recover = '0, v_neighbor = '0;
-    watch.push_back({prefix, "_tdo_oen"});
-    watch.push_back({prefix, "_tms"});
+    stap_forwarding_watch(stap, watch);
+    gated_watch = {watch, trst_n};
     `uvm_info(get_type_name(), $sformatf("STAP selection: %s (downstream TAP %s)", stap_name(stap),
                                          downstream ? "attached" : "absent"), UVM_LOW)
     if (downstream) begin
@@ -134,24 +138,37 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
 
     // Step 2: assert exactly the port's disable — forwarding stops and
     // a randomized deselecting 3DCR update attempt is ignored.
+    // Step 1 leaves the device in Run-Test/Idle, in lockstep with the PTAP,
+    // so the park has to move it into Test-Logic-Reset.
+    if (downstream)
+      void'(m_stap_ds_seq[stap].check_state(
+          OCAH_JTAG_RUN_TEST_IDLE, {stap_name(stap), ".pre_gate"}, "CHK-DS-PARKED-TLR"
+      ));
+    trst_before = stap_trst_assert_count(stap);
     set_dbg_disable_full(gate);
     attempt = '{bit'($urandom_range(1)), 1'b0, 1'b0};
     `uvm_info(get_type_name(), $sformatf("%s gated 3DCR update attempt config_hold=%0d", stap_name(
                                          stap), attempt.config_hold), UVM_LOW)
     if (downstream) m_stap_ds_seq[stap].clear_updates();
-    start_scan_window(watch);
+    start_scan_window(gated_watch);
     iso_pl.delete();
     iso_pl[stap] = attempt;
     stap_chain_write(gate, -1, -1, no_sib, iso_pl, {stap_name(stap), ".gated_update_attempt"},
                      captured);
     stop_scan_window(edges, counts);
+    trst_asserts = stap_trst_assert_count(stap) - trst_before;
     check_window_shifted("CHK-SCAN-WIN", {stap_name(stap), ".gated"});
     check_stap_forwarding(edges, counts, stap, 1'b0, {stap_name(stap), ".gated"});
+    family_check("CHK-SCAN-WIN", {trst_n, " deasserted"}, 64'(counts[trst_n]), 64'(edges),
+                 $sformatf("%s.gated edges=%0d", stap_name(stap), edges));
+    family_check("CHK-SCAN-WIN", {trst_n, " not asserted across the gate"}, 64'(trst_asserts),
+                 64'd0, $sformatf("%s.gated asserts=%0d", stap_name(stap), trst_asserts));
     check_stap_chain_readback(captured, gate, {stap_name(stap), ".gated_readback"});
     if (downstream) begin
-      // The gated port parks its host TMS high: the downstream TAP sits
-      // in Test-Logic-Reset (checked after the scan, which supplies the
-      // five parked TCKs), latched nothing, and still holds the value.
+      // The gated port parks its host TMS high with TRST deasserted. The
+      // disable settle and the gated scan clock the parked TMS, walking the
+      // downstream TAP from Run-Test/Idle into Test-Logic-Reset, checked
+      // after the scan; it latches nothing and keeps the written value.
       void'(m_stap_ds_seq[stap].check_update_count(0, StapDsTdrName, {stap_name(stap), ".gated"}));
       void'(m_stap_ds_seq[stap].check_register(
           StapDsTdrName, v_select, {stap_name(stap), ".gated"}, "CHK-DS-TDR-HOLD"
@@ -225,54 +242,69 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     stap_chain_flush({stap_name(stap), ".cleanup"});
   endtask
 
+  // Four legs of composed TAP_3DCR scans, each back in Run-Test/Idle and
+  // none followed by a reset once the chain is flushed. Ungated, the host
+  // segment is the chain return at the TDO end; gated, the last STAP's
+  // scan-out returns instead and the segment holds its value. The segment
+  // value is non-zero, so a gated scan that reached the segment would latch
+  // the zeros composed at its position and fail the release leg.
   protected task run_ext_stap_scan();
     sep_lifecycle_ctrl_pkg::dbg_disable_t gate = '0;
-    string host_controls[$];
-    string active[$], none[$];
-    bit [63:0] unused;
-    bit [1:0] gated_attempt;
-    host_controls.push_back("jtag_stap_host_select");
-    host_controls.push_back("jtag_stap_host_shift_en");
-    host_controls.push_back("jtag_stap_host_capture_en");
-    host_controls.push_back("jtag_stap_host_update_en");
-    active.push_back("jtag_stap_host_select");
-    active.push_back("jtag_stap_host_shift_en");
-    `uvm_info(get_type_name(), "extended STAP scan interface", UVM_LOW)
-
-    write_ptap_3dcr(1'b1, 1'b1, "ext.enable");
-    start_scan_window(host_controls);
-    shift_dr(64'h2, Ptap3dcrWidth, unused);
-    check_scan_window(none, active, "ext.enabled_window");
-
-    // With the PTAP select clear the host scan strobes still follow every
-    // PTAP scan (they are the TAP's; the select routes the scan data), so
-    // the deselected scan is judged for pulsing strobes, not for silence.
-    write_ptap_3dcr(1'b0, 1'b0, "ext.disable");
-    active.delete();
-    active.push_back("jtag_stap_host_shift_en");
-    start_scan_window(host_controls);
-    shift_dr(64'h0, Ptap3dcrWidth, unused);
-    check_scan_window(none, active, "ext.deselected_window");
-    active.delete();
-    active.push_back("jtag_stap_host_select");
-    active.push_back("jtag_stap_host_shift_en");
-
-    write_ptap_3dcr(1'b1, 1'b1, "ext.gate_enable");
+    string controls[$], none[$];
+    int no_sib[int];
+    dtp_stap_3dcr_state_t no_pl[int];
+    bit [63:0] captured, unused, marker;
+    int segment;
+    bit gate_hold;
+    if (!stap_model.host_segment_attached)
+      `uvm_fatal(get_type_name(), "the bench has no host segment attached")
+    stap_host_scan_controls(controls);
     dtp_dbg_path_set(gate, DTP_DBG_PATH_STAP_HOST);
-    set_dbg_disable_full(gate);
-    // Seeded per-pass gated attempt: any value with the select bit set
-    // is an equally valid attempt that must be ignored while gated.
-    gated_attempt = ($urandom_range(1) == 0) ? 2'b10 : 2'b11;
-    start_scan_window(host_controls);
-    shift_dr(64'(gated_attempt), Ptap3dcrWidth, unused);
-    check_scan_window(host_controls, none, "ext.host_gated_window");
+    segment   = int'($urandom_range((1 << DtpStapHostSegmentWidth) - 1, 1));
+    marker    = random_pattern(DtpScanMarkerWidth) | (64'h1 << (DtpScanMarkerWidth - 1));
+    gate_hold = bit'($urandom_range(1));
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            "extended STAP scan interface: host segment=0x%02h marker=0x%04h gate config_hold=%0d",
+            segment, marker, gate_hold), UVM_LOW)
 
-    // Recovery without reset: normal host scan control resumes once the
-    // disable clears.
+    // Step 1: PTAP_3DCR.SELECT=1, the host segment returns the chain.
+    stap_chain_flush("ext.flush");
+    stap_chain_write('0, 1, 1, no_sib, no_pl, "ext.enable", unused, '0, segment);
+    start_scan_window(controls);
+    stap_chain_maintain('0, "ext.enabled_observe", captured, marker);
+    check_scan_window(none, controls, "ext.enabled_window");
+    check_stap_chain_readback(captured, '0, "ext.enabled_readback");
+    check_stap_chain_marker(captured, marker, '0, "ext.enabled_marker");
+
+    // Step 2: PTAP_3DCR.SELECT=0, TDO carries the PTAP 3DCR. The host scan
+    // strobes follow every PTAP scan whatever the PTAP select (they are the
+    // TAP's; the select routes the scan data), so the deselected scan is
+    // judged for pulsing strobes, not for silence.
+    stap_chain_write('0, 0, -1, no_sib, no_pl, "ext.deselect", unused);
+    start_scan_window(controls);
+    read_ptap_3dcr_deselected(marker, "ext.deselected_readback");
+    check_scan_window(none, controls, "ext.deselected_window");
+
+    // Step 3: stap_host gated, the controls stay quiet and scan-in is
+    // bypassed.
+    stap_chain_write('0, 1, int'(gate_hold), no_sib, no_pl, "ext.gate_enable", unused);
+    set_dbg_disable_full(gate);
+    start_scan_window(controls);
+    stap_chain_maintain(gate, "ext.gated_observe", captured, marker);
+    check_scan_window(controls, none, "ext.gated_window");
+    check_stap_chain_readback(captured, gate, "ext.gated_readback");
+    check_stap_chain_marker(captured, marker, gate, "ext.gated_marker");
+
+    // Step 4: stap_host released without reset, the segment returns its
+    // value.
     enable_all_debug();
-    start_scan_window(host_controls);
-    shift_dr(64'h2, Ptap3dcrWidth, unused);
-    check_scan_window(none, active, "ext.recover_window");
+    start_scan_window(controls);
+    stap_chain_maintain('0, "ext.recover_observe", captured, marker);
+    check_scan_window(none, controls, "ext.recover_window");
+    check_stap_chain_readback(captured, '0, "ext.recover_readback");
+    check_stap_chain_marker(captured, marker, '0, "ext.recover_marker");
   endtask
 
   // Program the PTAP 3DCR (select=1, config_hold=hold) and one STAP's 3DCR
@@ -348,7 +380,6 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
   // quiet, and that the 3DCR reads back as written.
   protected task tms_hold_case(int unsigned stap, bit hold);
     string ctx = $sformatf("tms_hold.%s.hold%0d", stap_name(stap), hold);
-    string prefix = stap_prefix(stap);
     string watch[$];
     int sib_en[int];
     int no_sib[int];
@@ -358,8 +389,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
     int unsigned edges;
     int unsigned counts[string];
     sib_en[stap] = 1;
-    watch.push_back({prefix, "_tdo_oen"});
-    watch.push_back({prefix, "_tms"});
+    stap_forwarding_watch(stap, watch);
     stap_chain_flush({ctx, ".flush"});
     stap_chain_write('0, 1, -1, sib_en, no_pl, {ctx, ".open_sib"}, unused);
     payloads[stap] = '{1'b0, 1'b1, hold};
@@ -427,7 +457,7 @@ class dtp_stap_scan_test_seq extends dtp_scan_base_test_seq;
       "stap_sel_sep":   stap_sel_required_ids(int'(ST_SEP), required);
       "stap_sel_extra": stap_sel_required_ids(int'(ST_EXTRA0), required);
       "ext_stap_scan":
-                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"};
+                required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"};
       "config_hold":
                 required = '{"CHK-TAP-RESET-TLR", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"};
       "tms_hold":

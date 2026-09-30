@@ -11,11 +11,19 @@
 //                operation is still pending (then it is rejected: status
 //                BUSY_OR_FULL, sticky full). Capture-DR presents
 //                BUSY_OR_FULL while pending, else the last completion
-//                status, and the last read data after a read.
+//                status, and the last read data after a read. The PTAP
+//                document states no status for an operation a system reset
+//                aborted, so a capture between that reset and the next
+//                launched operation carries no contract.
 //   SERIES_CTRL  Update-DR with op != NOP latches op, size, pipeline depth
 //                and address and restarts the read budget; the reset bit
-//                clears the sticky status. Capture-DR presents the sticky
-//                status (the latest completion, BUSY_OR_FULL while full).
+//                clears the sticky status. Capture-DR presents SUCCESS
+//                (BUSY_OR_FULL while full) until an error completes, then
+//                that error's code, and once only OKAY completions follow a
+//                single series error, that code or SUCCESS. A capture after
+//                a second error, after a SINGLE_OP error, or while full
+//                after an error carries no contract until a TAP reset or
+//                the reset bit (DTP_TB_ARCH, jtag2axi_status).
 //   SERIES_DATA  Update-DR launches one transaction at the series address
 //                on the byte lanes that address selects; a read is issued
 //                only within the budget of pipeline_depth + 1 per CTRL
@@ -23,12 +31,15 @@
 //                advances the address by the transfer size on completion.
 //
 // A gated update (the lifecycle disable of the bridge asserted) changes
-// nothing but clears the read budget. Completions are applied at the
-// capture or update time that follows them, so a capture during a shift
-// sees the state of its own Capture-DR. Plain class held by
-// dtp_jtag2axi_req_ref_model and dtp_jtag2axi_status_ref_model; no
-// reporting. Not modelled: the series read-data FIFO a SERIES_DATA capture
-// returns, and true request-FIFO backpressure. No cocotb twin.
+// nothing but clears the read budget, and a completion while the disable is
+// asserted leaves the bridge idle and disabled, which drops every request
+// queued behind it (DTP JTAG document, "Debug Disable": buffered requests
+// are dropped). Completions are applied at the capture or update time that
+// follows them, so a capture during a shift sees the state of its own
+// Capture-DR. Plain class held by dtp_jtag2axi_req_ref_model and
+// dtp_jtag2axi_status_ref_model; no reporting. Not modelled: the series
+// read-data FIFO a SERIES_DATA capture returns, and true request-FIFO
+// backpressure. No cocotb twin.
 
 class dtp_jtag2axi_model;
 
@@ -42,6 +53,7 @@ class dtp_jtag2axi_model;
 
   typedef struct {
     bit              single_pending;
+    bit              abort_unresolved;  // a system reset aborted the pending op
     dtp_j2a_status_e last_single_status;
     bit              last_single_was_read;
     bit [63:0]       last_read_data;
@@ -52,6 +64,10 @@ class dtp_jtag2axi_model;
     int unsigned     series_reads_pushed;
     dtp_j2a_status_e sticky_status;
     bit              sticky_full;
+    int unsigned     error_count;   // error completions since a TAP or series reset
+    dtp_j2a_status_e held_status;   // the first of them
+    bit              after_error;   // another completion followed one of them
+    bit              single_error;  // one of them was a SINGLE_OP
     bit              completion_seen;
     time             last_completion;
   } bridge_t;
@@ -76,6 +92,7 @@ class dtp_jtag2axi_model;
       issued_t      no_issued[$];
       ocah_axi_item no_completed[$];
       b.single_pending        = 1'b0;
+      b.abort_unresolved      = 1'b0;
       b.last_single_status    = DTP_J2A_SUCCESS;
       b.last_single_was_read  = 1'b0;
       b.last_read_data        = '0;
@@ -86,6 +103,10 @@ class dtp_jtag2axi_model;
       b.series_reads_pushed   = 0;
       b.sticky_status         = DTP_J2A_SUCCESS;
       b.sticky_full           = 1'b0;
+      b.error_count           = 0;
+      b.held_status           = DTP_J2A_SUCCESS;
+      b.after_error           = 1'b0;
+      b.single_error          = 1'b0;
       b.completion_seen       = 1'b0;
       b.last_completion       = 0;
       m_bridge[names[i]]      = b;
@@ -103,6 +124,7 @@ class dtp_jtag2axi_model;
       ocah_axi_item no_completed[$];
       m_issued_q[n]    = no_issued;
       m_completed_q[n] = no_completed;
+      if (m_bridge[n].single_pending) m_bridge[n].abort_unresolved = 1'b1;
       m_bridge[n].single_pending = 1'b0;
     end
   endfunction
@@ -162,9 +184,14 @@ class dtp_jtag2axi_model;
   endfunction
 
   // An AXI completion observed on a bridge port, applied at the next
-  // capture or update that follows it in time.
-  function void complete(string target, ocah_axi_item obs);
+  // capture or update that follows it in time. `disabled`: the bridge's
+  // lifecycle disable is asserted, so the requests issued behind the
+  // observed completions are dropped.
+  function void complete(string target, ocah_axi_item obs, bit disabled = 1'b0);
     m_completed_q[target].push_back(obs);
+    if (!disabled) return;
+    while (m_issued_q[target].size() > m_completed_q[target].size())
+    void'(m_issued_q[target].pop_back());
   endfunction
 
   // Expected capture of a SINGLE_OP or SERIES_CTRL scan whose Capture-DR
@@ -182,6 +209,7 @@ class dtp_jtag2axi_model;
             ((capture_time - m_bridge[n].last_completion) < settle_window))
       exp.compare = 1'b0;
     if (kind == DTP_J2A_SCAN_SINGLE_OP) begin
+      if (m_bridge[n].abort_unresolved) exp.compare = 1'b0;
       exp.status = m_bridge[n].single_pending ? DTP_J2A_BUSY_OR_FULL
                                                     : m_bridge[n].last_single_status;
       exp.compare_rdata = !m_bridge[n].single_pending && m_bridge[n].last_single_was_read &&
@@ -192,6 +220,14 @@ class dtp_jtag2axi_model;
     end
     exp.status = m_bridge[n].sticky_full ? DTP_J2A_BUSY_OR_FULL : m_bridge[n].sticky_status;
     exp.compare_rdata = 1'b0;
+    if (m_bridge[n].error_count == 1 && m_bridge[n].after_error && !m_bridge[n].single_error &&
+            !m_bridge[n].sticky_full) begin
+      exp.status     = m_bridge[n].held_status;
+      exp.alt_valid  = 1'b1;
+      exp.alt_status = DTP_J2A_SUCCESS;
+    end else if (m_bridge[n].error_count > 0 &&
+            (m_bridge[n].after_error || m_bridge[n].single_error || m_bridge[n].sticky_full))
+      exp.compare = 1'b0;
   endfunction
 
   // ------------------------------------------------------------------
@@ -212,6 +248,7 @@ class dtp_jtag2axi_model;
       return 1'b0;
     end
     m_bridge[n].single_pending       = 1'b1;
+    m_bridge[n].abort_unresolved     = 1'b0;
     m_bridge[n].last_single_was_read = (r.op == DTP_J2A_OP_READ);
     e.single      = 1'b1;
     e.is_read     = (r.op == DTP_J2A_OP_READ);
@@ -243,6 +280,10 @@ class dtp_jtag2axi_model;
     if (r.series_reset) begin
       m_bridge[n].sticky_status = DTP_J2A_SUCCESS;
       m_bridge[n].sticky_full   = 1'b0;
+      m_bridge[n].error_count   = 0;
+      m_bridge[n].held_status   = DTP_J2A_SUCCESS;
+      m_bridge[n].after_error   = 1'b0;
+      m_bridge[n].single_error  = 1'b0;
     end
   endfunction
 
@@ -310,6 +351,12 @@ class dtp_jtag2axi_model;
     // unpredicted transaction; the bridge state has no entry to update.
     if (m_issued_q[n].size() == 0) return;
     e = m_issued_q[n].pop_front();
+    if (m_bridge[n].error_count > 0) m_bridge[n].after_error = 1'b1;
+    if (st != DTP_J2A_SUCCESS) begin
+      if (m_bridge[n].error_count == 0) m_bridge[n].held_status = st;
+      m_bridge[n].error_count++;
+      if (e.single) m_bridge[n].single_error = 1'b1;
+    end
     m_bridge[n].sticky_status = st;
     if (e.single || e.with_status) m_bridge[n].last_single_status = st;
     if (e.single) begin
