@@ -451,4 +451,13 @@ tests = [
     "sep_rom_oca_otp_key_boot_test",
     "sep_rom_oca_tamper_test",
     "sep_rom_lc_state_invalid_test",
+    # TEST_DEV chiplet debug lock (SEP-ROM-SB-025) and the LC_STATE decode
+    # (SEP-ROM-FUSE-020).
+    "sep_rom_dbg_lock_sip_dis_refuse_test",
+    "sep_rom_dbg_lock_sys_dis_refuse_test",
+    "sep_rom_dbg_lock_read_locked_refuse_test",
+    "sep_rom_dbg_lock_secure_boot_test",
+    "sep_rom_dbg_lock_sboot_dis_boot_test",
+    "sep_rom_lc_state_invalid_0x4_test",
+    "sep_rom_lc_state_invalid_0x5_test",
 ]

@@ -33,7 +33,7 @@
 //   [S15]  EXT SRAM clear
 //   [S16]  ICCM clear
 //   [S17]  ROM self-hash → measurement slot 0
-//   [S18]  read sboot_dis fuse
+//   [S18]  read secure-boot posture fuses (SBOOT_DIS, CHIPLET_DBG)
 //   [S19]  stack canary write
 //   [S20]  DMA init
 //   [S21]  boot mode branch (SPI / recovery / secondary)
@@ -714,12 +714,15 @@ void rom_main(void) {
     rom_iccm_clear();
     simputs("<<C9b_ICCM_CLR\n");
 
-    // ── [S18] Read sboot_dis fuse ──
+    // ── [S18] Read secure-boot posture fuses ──
     // One read of the SBOOT_DIS shadow, masked to bit 0 and latched in
     // lifecycle.c. bl0_state, the boot measurement and the secure-boot callback
     // all take that latched value, so they cannot disagree about which bits of
     // the word matter or about when it was sampled. Terminal on a reserved bit.
     rom_sboot_dis_policy();
+    // CHIPLET_DBG from SIP_DIS / SYS_DIS, latched the same way. It makes a
+    // TEST_DEV part enforce secure boot, and SBOOT_DIS overrides it.
+    rom_chiplet_dbg_policy(lc_state);
 
     // ── [S19] Stack canary write ──
     // Place canary at __stack_bottom (lowest stack address, just above .bss).
