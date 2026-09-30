@@ -4,14 +4,11 @@
 [[gpio-interface]]
 == Interface
 
-The tables distinguish the per-pad controller from its shim. Pad count and
-padring address allocation belong to the enclosing subsystem. The modules
-shown here expose AXI4-Lite; they do not contain an APB port.
+The GPIO peripheral provides bus interfaces for register access, LSIO
+integration for hardware protocols, and direct GPIO pad connections.
 
-The SMC integration defines 65 GPIO wrappers: 61 bonded pads and four
-unbonded pads (`smc_pkg::NUM_BONDED_GPIO` and `NUM_UNBONDED_GPIO`).
-These are subsystem constants, not `NUM_GPIO` or `BUS_PROTOCOL` parameters
-of the per-pad controller. Address and data widths are both 32 bits.
+Each `gpio` instance drives one pad. The peripheral comprises 65 pads: 61 bonded and 4
+unbonded.
 
 ifdef::backend-html5[]
 The parameters and ports of `gpio` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/gpio/gpio.adoc[gpio].
@@ -20,115 +17,44 @@ ifndef::backend-html5[]
 The parameters and ports of `gpio` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-ifdef::backend-html5[]
-++++
-<span id="configuration-parameters"></span>
-++++
-endif::backend-html5[]
+=== LSIO Interface
 
-[[gpio-configuration-parameters-table]]
-[cols="2,1,4",options="header"]
-.GPIO controller parameters
-|===
-|Parameter |Default |Meaning
-|`MAX_TRANS` |32 |Outstanding-transaction limit passed to the access-filter demux.
-|`INPUT_BY_DEFAULT` |1 |Enable RX when cold reset or the default path owns the pad.
-|`GPIO_INTF_REG_MAP_SIZE` |0 |Integration must supply the aperture size;
-its logarithm sets the register-address slice width.
-|===
+The LSIO (Low Speed Input/Output) interface enables hardware-controlled
+GPIO operation for protocol processing.
 
-`gpio_pkg` defines 32-bit addresses and data. The shim has three parameters:
-`INPUT_BY_DEFAULT = 1`, `ENABLE_PULL = 0`, and `USE_PULL_UP = 0`.
-These select strap capture and the default electrical settings.
+=== LSIO Protocol Specifications
 
-ifdef::backend-html5[]
-++++
-<span id="signal-interface-definitions"></span>
-<span id="global-interface"></span>
-++++
-endif::backend-html5[]
+* *Selection Priority*: an asserted `lsio_interface_select_i` overrides
+register-driven control, including DATA_CTRL.interface_enable and the
+DATA_CTRL_ENABLE.use_reg_* per-field overrides. The software force bit
+DATA_CTRL.lsio_select ranks the other way, below the register interface;
+DATA_CTRL.lsio_disable gates both
+* *Enable Logic*: Active-low enables for both transmit and receive paths
+* *Data Latency*: Zero-cycle latency for data path when selected
+* *Mode Switching*: Immediate effect, no settling time required
+* *Status Reflection*: hardware LSIO request status available in
+DATA_CTRL.lsio_enable register. The field tracks the hardware request line
+gated by lsio_disable, so it reads 0 during a software-forced LSIO
 
-[[gpio-global-interface-signals-table]]
-[cols="2,1,4",options="header"]
-.Clock, reset and register interfaces (both blocks)
-|===
-|Signal |Direction |Meaning
-|`clk_i` |Input |Clock for registers and controller interrupt logic.
-|`rst_primary_ni` |Input |Active-low asynchronous register reset.
-|`rst_cold_ni` |Input |Active-low cold-reset override; also gates the shim strap latch.
-|`test_en_i` |Input |Test-mode input passed to the AXI-Lite demux.
-|`axil_req_i` / `axil_resp_o` |Input / Output |AXI4-Lite request/response bundles;
-controller and shim each have a separate pair.
-|===
+=== GPIO Pad Interface
 
-ifdef::backend-html5[]
-++++
-<span id="lsio-interface"></span>
-++++
-endif::backend-html5[]
+The GPIO pad interface provides direct connection to external pads with
+bidirectional capabilities.
 
-[[gpio-lsio-interface-signals-table]]
-[cols="2,1,4",options="header"]
-.Controller LSIO interface
-|===
-|Signal |Direction |Meaning
-|`lsio_interface_select_i` |Input |Hardware LSIO request; highest priority unless disabled.
-|`lsio_core2pad_data_i` |Input |LSIO output data.
-|`lsio_core2pad_en_ni` |Input |Active-low LSIO transmit enable.
-|`lsio_pad2core_en_ni` |Input |Active-low LSIO receive enable.
-|`lsio_pad2core_data_o` |Output |Unsynchronized input returned under the conditions in Input Readback.
-|===
+=== Interrupt Interface
 
-ifdef::backend-html5[]
-++++
-<span id="gpio-pad-interface"></span>
-++++
-endif::backend-html5[]
+The interrupt interface provides event notification capabilities with
+configurable trigger modes.
 
-[[gpio-pad-interface-signals-table]]
-[cols="2,1,4",options="header"]
-.Controller connection to the shim
-|===
-|Signal |Direction at controller |Meaning
-|`core2pad_o` |Output |Selected output data; connects to shim `core2pad_i`.
-|`core2pad_en_o` |Output |Active-high TX enable; connects to shim `core2pad_en_i`.
-|`pad2core_i` |Input |Input from shim `pad2core_o`.
-|`pad2core_en_o` |Output |Active-high RX enable; connects to shim `pad2core_en_i`.
-|===
+The strap-capture output `captured_strap_o` is a port of `gpio_shim`, not of `gpio`; it
+holds the pad value captured when the cold reset is released.
 
-ifdef::backend-html5[]
-++++
-<span id="interrupt-interface"></span>
-++++
-endif::backend-html5[]
+=== Interrupt Specifications
 
-[[gpio-interrupt-interface-signals-table]]
-[cols="2,1,4",options="header"]
-.Interrupt and strap outputs
-|===
-|Signal |Owner |Meaning
-|`interrupt_o` |Controller |Active-high interrupt request; level or pulse as configured.
-|`captured_strap_o` |Shim |Captured strap value, not a completion indicator.
-|===
-
-[cols="2,4",options="header"]
-.Shim pad and override interface
-|===
-|Signals |Meaning
-|`gpio_in_i`, `gpio_out_o`, `gpio_in_en_o`, `gpio_out_en_o`
-|Pad data and active-high RX/TX enables.
-|`gpio_ctrl_o`, `gpio_status_i`
-|Pad-control and status bundles defined by `gpio_shim_pkg`. The current shim does not use `gpio_status_i`.
-|`core2pad_ovrd_i`, `core2pad_en_ovrd_i`, `pad2core_en_ovrd_i`, `pad2core_ovrd_o`
-|Secondary-function data, active-high direction controls and input return.
-|`force_primary_i` |Suppresses the secondary-function override while asserted.
-|`ext_intf_sel_i`, `reg_lsio_sel_i`, `reg_lsio_disable_i`
-|Hardware request, software request and disable controls for electrical-setting ownership.
-|`ext_drive_strength_i`, `ext_pull_en_i`, `ext_pull_sel_i`, `ext_gf_disable_i`
-|LSIO electrical settings: 3-bit drive strength, pull enable, pull direction
-(0 down, 1 up), and active-high input-conditioning disable.
-|===
-
-Data and direction muxes are combinational. This does not guarantee a
-glitch-free handover or a pad settling time; coordinate ownership changes
-with the connected peripheral and external driver.
+* *Polarity*: Active high (asserted when high)
+* *Duration*: Level-sensitive, remains asserted based on configuration
+* *Trigger Modes*: Level (active-high/low) and edge (rising/falling)
+detection
+* *Clearing*: Automatic clearing based on trigger mode and pad state
+* *Latency*: Interrupt assertion within 2-3 clock cycles of triggering
+event

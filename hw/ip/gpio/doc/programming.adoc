@@ -7,8 +7,6 @@
 The sequences below use register names relative to one pad's interface and
 control banks. Preserve unrelated fields when updating a register.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="basic-gpio-configuration"></span>
@@ -35,8 +33,6 @@ TX. Input-only mode disables TX; enabling both paths allows readback while
 driving. The pad implementation determines electrical behavior and settling
 requirements.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="configuration-strap-capture"></span>
@@ -50,8 +46,6 @@ After cold reset is released, read `CONTROL.strap_valid` and
 pad was configured for input by default and strap capture is supported;
 it does not indicate that reset has completed. See <<gpio-reset-straps>>.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="interrupt-configuration"></span>
@@ -71,8 +65,6 @@ A level interrupt can assert as soon as it is enabled if the selected level
 is already present. This block has no pending-event queue or software-clear
 bit; handle or mask the condition at its source.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="lsio-interface-operation"></span>
@@ -96,11 +88,9 @@ control and does not set `lsio_enable`.
 To reclaim the primary path, set `lsio_disable = 1`, then program register
 data and direction. Setting `interface_enable` alone cannot reclaim a pad
 whose hardware request remains asserted. In SMC, this includes pads with
-permanently selected hardware functions: the isolate-request, boot-stall
+permanently selected hardware functions: the I3C pads, and the isolate-request, boot-stall
 and cool-reset-out signals.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="security-configuration"></span>

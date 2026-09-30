@@ -35,11 +35,6 @@ reset to zero. The generated map gives field access and side effects.
 |`LOG_CTRL[i]` |`0x40 + 4*i` |Submitted byte length for slot 0–15; cleared on completion.
 |===
 
-ifdef::backend-html5[]
-++++
-++++
-endif::backend-html5[]
-
 === Detailed Register Map
 
 ifdef::backend-html5[]

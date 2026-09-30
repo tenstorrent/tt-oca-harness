@@ -11,7 +11,6 @@ sample characters. All core logic uses `clk_i`.
 === Transmit and Receive Paths
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="overview-2"></span>
 <span id="hierarchical-structure"></span>
@@ -41,7 +40,6 @@ and stop-bit configuration. `LCR.SET_BREAK` forces the transmit line low.
 === Baud Timing and Register Views
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="divisor-latch-access-mode"></span>
 <span id="serial-interface-timing"></span>
@@ -57,7 +55,6 @@ The smallest usable divisor, 1, gives a maximum baud rate of `clk_i_frequency/32
 === FIFO Protection and Line Errors
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="error-handling-architecture"></span>
 <span id="fifo-parity-protection"></span>
@@ -90,7 +87,6 @@ The generated map specifies the status fields and their access side effects.
 === Interrupt Priority and Service
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="interrupt-interface"></span>
 <span id="uart-interrupt-interface-signals-table"></span>

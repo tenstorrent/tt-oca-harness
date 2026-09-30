@@ -36,14 +36,6 @@ endif::backend-html5[]
 |`TIMER_GPIO_ENABLE` |`0x20` |0 |Timer GPIO LSIO selection starts disabled.
 |===
 
-The generated STATUS description refers to a mode parameter. In this wrapper,
-mode comes from the `is_primary_i` input.
-
-ifdef::backend-html5[]
-++++
-++++
-endif::backend-html5[]
-
 === Detailed Register Map
 
 ifdef::backend-html5[]

@@ -4,8 +4,6 @@
 [[gpio-peripheral]]
 = GPIO Peripheral
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="description-and-features"></span>

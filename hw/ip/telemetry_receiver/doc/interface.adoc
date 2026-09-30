@@ -4,6 +4,11 @@
 [[telemetry-receiver-interface]]
 == Interface
 
+The Telemetry Receiver component provides AXI4-Lite register access and
+Advanced Trace Bus (ATB) telemetry data reception interfaces.
+
+=== Configuration Parameters
+
 ifdef::backend-html5[]
 The parameters and ports of `telemetry_receiver` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.adoc[telemetry_receiver].
 endif::backend-html5[]
@@ -11,64 +16,65 @@ ifndef::backend-html5[]
 The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.
 endif::backend-html5[]
 
-=== Configuration Parameters
-
-[[telemetry-receiver-configuration-parameters-table]]
-[cols="2,1,3",options="header",role="telemetry-table"]
-.Telemetry receiver configuration
-|===
-|Core parameter |Default |Meaning
-|`BUFFER_DEPTH` |8 |Decoded-message queue depth. Use a power-of-two depth of
-at least two: the RTL pointer wraps by its binary width.
-|`MAX_NUM_COUNTERS_PER_MESSAGE` |4 |Counter positions decoded per message;
-the software register bank exposes 32 positions. This also determines assembly
-capacity. Values beyond 32 cannot all be exposed through that register bank.
-|===
+The telemetry buffer dimensions are described as `NUM_BUFFERS` (default
+2, a dual-buffer architecture), `BUFFER_DEPTH` (default 16 entries per
+buffer), `ATB_DATA_WIDTH` (default 8 bits), `PACKET_WIDTH` (default 64
+bits), `ADDR_WIDTH` (default 32-bit register address) and `DATA_WIDTH`
+(default 32-bit data bus).
 
 The ATB beat width (8 bits), packet width (64 bits), counter width (32 bits)
 and ATB ID width (7 bits) are package constants.
 The core register port has an 8-bit address and 32-bit data path.
 
-=== Signals
+=== Signal Interfaces
 
-ifdef::backend-html5[]
-++++
-<span id="signal-interfaces"></span>
-<span id="global-interface"></span>
-<span id="atb-telemetry-interface"></span>
-<span id="telemetry-receiver-atb-interface-signals-table"></span>
-<span id="atb-protocol-specifications"></span>
-<span id="interrupt-interface"></span>
-<span id="telemetry-receiver-interrupt-interface-signals-table"></span>
-<span id="interrupt-specifications"></span>
-++++
-endif::backend-html5[]
+=== Global Interface
 
-[[telemetry-receiver-global-interface-signals-table]]
-[cols="2,1,3",options="header",role="telemetry-table"]
-.Telemetry receiver signals
-|===
-|Signal |Direction / width |Use
-|`clk_i`, `rst_ni` |Input / 1 each |Core and register clock; active-low reset.
-|`axil_req_i`, `axil_resp_o` |Input / output structs |AXI4-Lite register access.
-|`atdata_i` |Input / 8 |One byte per accepted ATB beat.
-|`atid_i` |Input / 7 |Present on the port but not used by the core decoder.
-|`atvalid_i`, `atready_o` |Input / output / 1 each |Beat accepted when both are
-high. The core lowers ready during receiver flush, not on message-queue full.
-|`afvalid_o`, `afready_i` |Output / input / 1 each |Upstream flush request and
-acknowledgement.
-|`irq_o` |Output / 1 |Active-high level interrupt; see the interrupt conditions.
-|`debug_o` |Output / 4 |Bits 0–3: missing-last event, message queue full,
-message queue empty, assembly buffer full.
-|===
+The global interface provides fundamental clock and reset signals
+required for basic operation.
+
+=== Clock and Reset Specifications
+
+* *Clock Frequency*: The component can operate at frequencies up to 200
+MHz
+* *Clock Jitter*: Maximum 100ps peak-to-peak jitter tolerance
+* *Reset Duration*: Minimum 10 clock cycles for complete reset
+* *Reset Recovery*: Component ready for operation 2 clock cycles after
+reset deassertion
+
+=== ATB Telemetry Interface
+
+The ATB (Advanced Trace Bus) interface receives telemetry data using standard
+ATB protocol.
+
+=== ATB Protocol Specifications
+
+* *Data Width*: 8 bits per beat
+* *ID Width*: 7 bits (128 unique trace sources)
+* *Flow Control*: Valid/ready handshaking for reliable data transfer
+* *Flush Support*: Bidirectional flush signaling for stream management
+* *Back-pressure*: Component can assert `atready_o` low to apply
+back-pressure
+* *Latency*: Zero-cycle latency when ready, immediate acceptance when
+`atready_o` is high
+
+=== Interrupt Interface
+
+The interrupt interface provides a single interrupt output for event
+notification.
+
+=== Interrupt Specifications
+
+* *Polarity*: Active high (asserted when high)
+* *Duration*: Level-sensitive, remains asserted until cleared
+* *Sources*: Buffer threshold and error condition interrupts
+* *Clearing*: `MISSING_LAST` is write-one-to-clear. The read-only
+`BUFFER_THRESHOLD` source remains asserted while occupancy exceeds the configured
+threshold or its test bit is set; it cannot be cleared by writing status.
+* *Latency*: Interrupt assertion within 2 clock cycles of triggering
+condition
 
 === Subsystem Wrapper
-
-ifdef::backend-html5[]
-++++
-<span id="clock-and-reset-specifications"></span>
-++++
-endif::backend-html5[]
 
 `telemetry_receiver_wrap` defaults to three receivers. It configures their queue
 depth with `TELEMETRY_RECEIVER_BUFFER_DEPTH` (default 8) and counter counts with

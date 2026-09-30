@@ -11,7 +11,6 @@ configurable telemetry channel.
 === Assembly and Decode
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="functional-blocks"></span>
 <span id="atb-interface-block"></span>
@@ -44,7 +43,6 @@ only reset clears that storage.
 === Message Queue and Readout
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="register-interface-block"></span>
 <span id="message-buffer"></span>
@@ -85,7 +83,6 @@ Writing the status bit does not clear this source.
 === Reset and Flush
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="clocking-and-reset"></span>
 <span id="reset-behavior"></span>
