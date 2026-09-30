@@ -8,13 +8,13 @@
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/history.json",
-    "history_points": 25,
+    "history_points": 26,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/dtp/uvm/vcs/dtp_uvm/dashboard-data/summary.json",
     "tests": {
-      "failing": 3,
+      "failing": 4,
       "incomplete_runs": 0,
-      "pass_rate": 98.03,
-      "passing": 149,
+      "pass_rate": 97.37,
+      "passing": 148,
       "skipped": 0,
       "total": 152,
       "unknown": 0
@@ -25,14 +25,14 @@
     "dtp_uvm: native status=FAIL",
     "dtp_uvm: normalized status=FAIL"
   ],
-  "generated_at": "2026-09-29T08:53:22.038462+00:00",
+  "generated_at": "2026-09-30T08:53:20.623434+00:00",
   "git": {
-    "commit": "db3d76539de46ceefdad91026aac6e654f9bd681",
-    "requested_ref": "db3d76539de46ceefdad91026aac6e654f9bd681"
+    "commit": "650fed8cfb2df1471f7d7b14534d307cf2488e18",
+    "requested_ref": "650fed8cfb2df1471f7d7b14534d307cf2488e18"
   },
   "jenkins": {
-    "build_number": "107",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/107/",
+    "build_number": "108",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/108/",
     "job_name": "tt-oca-harness/dtp/uvm",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/dtp/job/uvm/"
   },
