@@ -163,7 +163,6 @@ ifdef::backend-html5[]
 ++++
 <span id="preamble"></span>
 <span id="detailed-address-map"></span>
-<span id="spare-smc-register-blocks"></span>
 <span id="component-specific-register-documentation"></span>
 ++++
 endif::backend-html5[]
@@ -191,6 +190,12 @@ include::../regs/gen/adoc/blocks/straps.adoc[leveloffset=+2]
 endif::backend-pdf[]
 
 == Spare SMC Register Blocks
+
+ifdef::backend-html5[]
+++++
+<span id="spare-smc-register-blocks"></span>
+++++
+endif::backend-html5[]
 
 The following shows the detailed register map of a set of
 programmer-visible spare SMC blocks. They are spare but essential: for
