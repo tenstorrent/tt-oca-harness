@@ -113,8 +113,8 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
       bit          series_reset;
       bit [63:0]   addr_after;
       int unsigned pl_depth, size_rd;
-      // SINGLE_OP status polls shift a NOP image. SERIES_CTRL Capture-DR
-      // must still report the last completion, not sticky BUSY_OR_FULL.
+      // SINGLE_OP status polls shift a NOP image. Neither they nor the
+      // SINGLE_OP completions reach the series status or its BUSY_OR_FULL flag.
       read_series_ctrl(t, 3, series_reset, addr_after, pl_depth, size_rd, status);
       check_status("single_write.series_ctrl", status, DTP_J2A_SUCCESS);
     end

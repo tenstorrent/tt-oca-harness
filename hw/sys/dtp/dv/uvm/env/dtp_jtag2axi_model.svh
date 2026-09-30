@@ -17,13 +17,10 @@
 //                launched operation carries no contract.
 //   SERIES_CTRL  Update-DR with op != NOP latches op, size, pipeline depth
 //                and address and restarts the read budget; the reset bit
-//                clears the sticky status. Capture-DR presents SUCCESS
-//                (BUSY_OR_FULL while full) until an error completes, then
-//                that error's code, and once only OKAY completions follow a
-//                single series error, that code or SUCCESS. A capture after
-//                a second error, after a SINGLE_OP error, or while full
-//                after an error carries no contract until a TAP reset or
-//                the reset bit (DTP_TB_ARCH, jtag2axi_status).
+//                clears the sticky status. Capture-DR presents the sticky
+//                status: BUSY_OR_FULL while full, else the first series
+//                error since the reset bit, else SUCCESS. SINGLE_OP
+//                completions do not reach it.
 //   SERIES_DATA  Update-DR launches one transaction at the series address
 //                on the byte lanes that address selects; a read is issued
 //                only within the budget of pipeline_depth + 1 per CTRL
@@ -64,10 +61,6 @@ class dtp_jtag2axi_model;
     int unsigned     series_reads_pushed;
     dtp_j2a_status_e sticky_status;
     bit              sticky_full;
-    int unsigned     error_count;   // error completions since a TAP or series reset
-    dtp_j2a_status_e held_status;   // the first of them
-    bit              after_error;   // another completion followed one of them
-    bit              single_error;  // one of them was a SINGLE_OP
     bit              completion_seen;
     time             last_completion;
   } bridge_t;
@@ -103,10 +96,6 @@ class dtp_jtag2axi_model;
       b.series_reads_pushed   = 0;
       b.sticky_status         = DTP_J2A_SUCCESS;
       b.sticky_full           = 1'b0;
-      b.error_count           = 0;
-      b.held_status           = DTP_J2A_SUCCESS;
-      b.after_error           = 1'b0;
-      b.single_error          = 1'b0;
       b.completion_seen       = 1'b0;
       b.last_completion       = 0;
       m_bridge[names[i]]      = b;
@@ -220,14 +209,6 @@ class dtp_jtag2axi_model;
     end
     exp.status = m_bridge[n].sticky_full ? DTP_J2A_BUSY_OR_FULL : m_bridge[n].sticky_status;
     exp.compare_rdata = 1'b0;
-    if (m_bridge[n].error_count == 1 && m_bridge[n].after_error && !m_bridge[n].single_error &&
-            !m_bridge[n].sticky_full) begin
-      exp.status     = m_bridge[n].held_status;
-      exp.alt_valid  = 1'b1;
-      exp.alt_status = DTP_J2A_SUCCESS;
-    end else if (m_bridge[n].error_count > 0 &&
-            (m_bridge[n].after_error || m_bridge[n].single_error || m_bridge[n].sticky_full))
-      exp.compare = 1'b0;
   endfunction
 
   // ------------------------------------------------------------------
@@ -280,10 +261,6 @@ class dtp_jtag2axi_model;
     if (r.series_reset) begin
       m_bridge[n].sticky_status = DTP_J2A_SUCCESS;
       m_bridge[n].sticky_full   = 1'b0;
-      m_bridge[n].error_count   = 0;
-      m_bridge[n].held_status   = DTP_J2A_SUCCESS;
-      m_bridge[n].after_error   = 1'b0;
-      m_bridge[n].single_error  = 1'b0;
     end
   endfunction
 
@@ -351,13 +328,7 @@ class dtp_jtag2axi_model;
     // unpredicted transaction; the bridge state has no entry to update.
     if (m_issued_q[n].size() == 0) return;
     e = m_issued_q[n].pop_front();
-    if (m_bridge[n].error_count > 0) m_bridge[n].after_error = 1'b1;
-    if (st != DTP_J2A_SUCCESS) begin
-      if (m_bridge[n].error_count == 0) m_bridge[n].held_status = st;
-      m_bridge[n].error_count++;
-      if (e.single) m_bridge[n].single_error = 1'b1;
-    end
-    m_bridge[n].sticky_status = st;
+    if (!e.single && m_bridge[n].sticky_status == DTP_J2A_SUCCESS) m_bridge[n].sticky_status = st;
     if (e.single || e.with_status) m_bridge[n].last_single_status = st;
     if (e.single) begin
       m_bridge[n].single_pending = 1'b0;
