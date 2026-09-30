@@ -1940,10 +1940,24 @@ status channel.</p>
 <div class="sect4">
 <h5 id="secure-boot-chicken-bit-s18"><a class="anchor" href="#secure-boot-chicken-bit-s18"></a><a class="link" href="#secure-boot-chicken-bit-s18">Secure-Boot Chicken Bit ([S18])</a></h5>
 <div class="paragraph">
-<p><code>SEP_EFUSE_MAP_SBOOT_DIS</code> (<code>0x1093_000C</code>) bit 0 (<code>disable_secure_boot</code>) is the secure-boot
+<p><code>SEP_EFUSE_MAP_SBOOT_DIS</code> (<code>0x1093_0010</code>) bit 0 (<code>disable_secure_boot</code>) is the secure-boot
 chicken bit. It is read once, recorded in <code>bl0_state.sboot_dis</code>, and consumed by the
 secure-boot decision (<a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a>) and the boot measurement
 (<a href="#sec:boot_measurement">Boot Measurement</a>).</p>
+</div>
+<div class="paragraph">
+<p><strong>Only bit 0 carries that meaning.</strong> <code>rsvd[31:1]</code> is <code>hw=rw</code> in the RDL — driven from the fuse
+array rather than tied off — so the word can read non-zero on a real part without the chicken
+bit being blown. [S18] therefore masks to <code>disable_secure_boot</code>, and the single masked value it
+latches is what <code>bl0_state</code>, the boot measurement and the library&#8217;s
+<code>is_secure_boot_disabled()</code> callback all consume. No later stage re-reads the shadow: one
+physical read means the policy input and the attestation of that input cannot disagree, either
+about which bit matters or about when it was sampled.</p>
+</div>
+<div class="paragraph">
+<p>A non-zero <code>rsvd</code> is a fuse-integrity fault. On a healthy part the field reads zero, so a set
+bit means the array is not what the ROM believes it to be; [S18] stops there with
+<code>ROM_ERR_SBOOT_DIS_RSVD_SET</code> rather than interpreting the rest of the word.</p>
 </div>
 </div>
 <div class="sect4">
@@ -3208,6 +3222,19 @@ lifecycle reporter cannot put a production image on an unverified path. <code>SB
 governs images that do not carry the signed request, which is what a manufacturing escape
 hatch needs to do. Every signed image this tree packs sets the bit, so on those the fuse has
 no effect.</p>
+</div>
+</li>
+<li>
+<p><a id="req-SEP-ROM-SB-041"></a><strong>[SEP-ROM-SB-041]</strong> The <code>SBOOT_DIS</code> word shall be read exactly once,
+masked to <code>disable_secure_boot</code> (bit 0), and that one masked value shall be what the
+secure-boot decision consumes, what <code>bl0_state.sboot_dis</code> records, and what the boot-state
+measurement attests. A non-zero <code>rsvd[31:1]</code> shall be terminal
+(<code>ROM_ERR_SBOOT_DIS_RSVD_SET</code>).</p>
+<div class="paragraph">
+<p><code>rsvd[31:1]</code> is <code>hw=rw</code>, so a whole-word test would make 31 fuse-driven bits equivalent to the
+chicken bit, and a second reader applying a different predicate would let the device disable
+enforcement while the measurement attested that it had not. One read and one mask is what
+keeps the decision and the attestation of that decision the same fact.</p>
 </div>
 </li>
 </ol>
@@ -5380,6 +5407,12 @@ embedded hash) (<a href="#sec:boot_measurement">Boot Measurement</a>).</p></td>
 i.e. <code></em>bl0_state_reserve</code> in <code>link/rom.ld</code> and <code>BL0_STATE_RESERVE_BYTES</code> in
 <code>include/bl0_state.h</code> have drifted apart (<a href="#sec:handoff">Hand-off to BL1</a>).</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ROM_ERR_SBOOT_DIS_RSVD_SET</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>0xF008</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>SBOOT_DIS.rsvd[31:1]</code> read non-zero: a fuse-integrity
+fault (<a href="#sec:fuses">Fuse and System State</a>).</p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -5501,7 +5534,8 @@ denotes a following 16-bit payload word.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S18] SBOOT_DIS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>FUSE_SBOOT_DIS</code> → <code>INFO_EXT</code> (value)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">—</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>FUSE_SBOOT_DIS_RSVD</code> (ERROR)<br>
+<code>ROM_ERR_SBOOT_DIS_RSVD_SET</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[S20] DMA</p></td>
@@ -6398,6 +6432,12 @@ validation only</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-040">SEP-ROM-SB-040</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS disables unless signed secure_boot_control asks</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-041">SEP-ROM-SB-041</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SBOOT_DIS read once and masked to bit 0; rsvd set is
+terminal</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Secure Boot Decision and Signature Verification</a></p></td>
 </tr>
 <tr>
