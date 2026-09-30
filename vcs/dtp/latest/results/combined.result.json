@@ -8,17 +8,17 @@
     "run_dir": "vcs/dtp/runs/combined"
   },
   "coverage": {
-    "comparison_key": "COVCMP-2b0f6209b18a649d",
+    "comparison_key": "COVCMP-cc8d46b45ad85a12",
     "details_available": true,
     "effective_metrics": {
-      "assertion": 95.52,
+      "assertion": 95.53,
       "branch": 87.21,
-      "condition": 84.88,
-      "fsm_state": 73.76,
+      "condition": 84.91,
+      "fsm_state": 75.25,
       "functional": 100.0,
       "line": 94.9,
-      "toggle": 93.75,
-      "user": 96.4211
+      "toggle": 93.51,
+      "user": 96.4361
     },
     "holes_summary": {
       "accepted": 0,
@@ -56,7 +56,7 @@
         "unclassified_points": 0
       },
       {
-        "actual_percent": 84.88,
+        "actual_percent": 84.91,
         "id": "condition",
         "max_unclassified_points": null,
         "met": false,
@@ -67,7 +67,7 @@
         "unclassified_points": 0
       },
       {
-        "actual_percent": 93.75,
+        "actual_percent": 93.51,
         "id": "toggle",
         "max_unclassified_points": null,
         "met": false,
@@ -78,7 +78,7 @@
         "unclassified_points": 0
       },
       {
-        "actual_percent": 73.76,
+        "actual_percent": 75.25,
         "id": "fsm",
         "max_unclassified_points": null,
         "met": false,
@@ -100,7 +100,7 @@
         "unclassified_points": 0
       },
       {
-        "actual_percent": 95.52,
+        "actual_percent": 95.53,
         "id": "assertion",
         "max_unclassified_points": null,
         "met": false,
@@ -123,14 +123,14 @@
       }
     ],
     "raw_metrics": {
-      "assertion": 95.52,
+      "assertion": 95.53,
       "branch": 83.33,
-      "condition": 82.8,
-      "fsm_state": 54.38,
+      "condition": 82.87,
+      "fsm_state": 55.47,
       "functional": 100.0,
       "line": 92.84,
-      "toggle": 65.96,
-      "user": 96.4211
+      "toggle": 65.8,
+      "user": 96.4361
     },
     "report": "artifacts/dtp/coverage/report",
     "source_manifest": "vcs/dtp/runs/combined/cov/coverage.json",
@@ -142,7 +142,7 @@
     "target": "default",
     "threshold": 0.0,
     "threshold_met": false,
-    "total_percent": 90.0
+    "total_percent": 90.19
   },
   "failure_buckets": [
     {
@@ -156,11 +156,11 @@
   ],
   "flow": "dtp",
   "framework": "",
-  "generated_at": "2026-09-30T15:47:04+00:00",
+  "generated_at": "2026-09-30T19:50:06+00:00",
   "git": {
     "branch": "HEAD",
-    "sha": "b4092377b0d0d661863518cb2af057c157a0c7ce",
-    "short_sha": "b4092377b"
+    "sha": "a7c4e61058ce9f0646a88a90c1b96434029ae790",
+    "short_sha": "a7c4e6105"
   },
   "junit_xml": {
     "missing": 0,
@@ -169,10 +169,10 @@
   "kind": "dv",
   "run_metadata": {
     "executor": "local",
-    "generated_at": "2026-09-30T15:47:02.329119+00:00",
+    "generated_at": "2026-09-30T19:50:04.996857+00:00",
     "git": {
       "branch": "HEAD",
-      "commit": "b4092377b0d0d661863518cb2af057c157a0c7ce",
+      "commit": "a7c4e61058ce9f0646a88a90c1b96434029ae790",
       "dirty": "false"
     },
     "label": "combine",
@@ -190,16 +190,16 @@
   "status": "FAIL",
   "tests": {
     "completed": true,
-    "failing": 8,
-    "pass_rate": 97.37,
-    "passing": 296,
-    "total": 304
+    "failing": 9,
+    "pass_rate": 97.06,
+    "passing": 297,
+    "total": 306
   },
   "tests_detail": [],
   "timing": {
-    "duration_sec": 16.832,
-    "end_time": "2026-09-30T15:47:01.973959+00:00",
-    "start_time": "2026-09-30T15:46:45.126615+00:00"
+    "duration_sec": 14.668,
+    "end_time": "2026-09-30T19:50:04.608169+00:00",
+    "start_time": "2026-09-30T19:49:49.931016+00:00"
   },
   "tool": "vcs"
 }
