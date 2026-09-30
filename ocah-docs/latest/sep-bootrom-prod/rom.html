@@ -1101,7 +1101,12 @@ boot flow. Addresses are as seen by the SEP CPU.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256 KiB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Destination for the manifest and payload; BL1 may also
 execute from here when <code>BL1_SRAM_EXEC_ENABLE</code> permits it (<a href="#sec:manifest">Section 1.13</a>). Cleared by the ROM
-before use ([S15]).</p></td>
+before use ([S15]). The top 8 bytes are reserved: <code>sep_dma_zero()</code> fills from a source word
+the engine re-reads for every beat, and the CPU rewrites that word immediately before each
+fill, so the manifest body, the payload and BL1&#8217;s permitted load span all stop short of it
+(<code>SEP_SRAM_USABLE_SIZE</code>). SEP has no zeroing engine and the secure DMA has no fill opcode, so
+a fill needs a real source address; ROM <code>.rodata</code> cannot serve as one, because the engine
+cannot read the ROM aperture.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot ROM</p></td>
@@ -4055,6 +4060,19 @@ ROM otherwise does not use. An earlier specification described provisioning the 
 public key <code>(n, e)</code> into the Key Manager through its software write port; that description
 is withdrawn and should not be reintroduced.</p>
 </div>
+<div class="paragraph">
+<p><a id="req-SEP-ROM-SB-120"></a><strong>[SEP-ROM-SB-120]</strong> Signature verification shall not report success
+unless OTBN is confirmed to have executed. The RSA application uses one DMEM buffer
+(<code>inout</code>) for both the signature and the modexp result, so a command the block never
+accepted leaves the caller&#8217;s own signature bytes where the result belongs — and a signature
+authored as a well-formed PKCS#1 v1.5 block then verifies against itself, with no private
+key involved. Neither register the completion path would naturally consult distinguishes
+that case: <code>STATUS</code> reads idle, which is the state OTBN was already in, and <code>ERR_BITS</code> reads
+zero, because nothing ran to fail. <code>INTR_STATE.done</code>, cleared before the command and
+required after it, is the signal that separates "finished" from "never started". The ROM
+shall additionally reject a result bit-identical to the signature it supplied, since
+<code>sig^e mod n</code> cannot equal <code>sig</code> for a value that also parses as that block.</p>
+</div>
 <div id="fig:key_select_revoke" class="imageblock kroki">
 <div class="content">
 <img src="_images/key-select-revoke-8965f4c05d370d155915ceffae907b652d8cf049.svg" alt="Key authorization, revocation, and verification">
@@ -6972,6 +6990,12 @@ terminal</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-110">SEP-ROM-SB-110</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Public key goes straight to OTBN; Key Manager not
 involved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 1.15</a></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#req-SEP-ROM-SB-120">SEP-ROM-SB-120</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">No verified verdict unless OTBN is confirmed to have
+executed</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="#sec:secure_boot">Section 1.15</a></p></td>
 </tr>
 <tr>
