@@ -3,7 +3,7 @@
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="972" viewBox="0 0 1040 972" role="img" aria-labelledby="title desc">
 <title id="title">Key Manager architecture</title>
-<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_kpv, u_mailbox and u_drbg_sampler, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller through an address remap. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The CPU trap drives unrecoverable_err_o and is ORed with wipe_state_i; the rising edge of the result is a single-cycle wipe pulse that drives both u_kpv and u_kmcsr. The SEP host reaches u_mailbox, whose two FIFOs are MAILBOX_DEPTH words deep, through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i, scan_rst_ni and the soft_rst_n output of u_kmcsr into the cold and warm resets of every instance; the warm reset is held for MIN_RESET_CYCLES cycles.</desc>
+<desc id="desc">Block diagram of key_manager. The CPU u_cpu (picorv32_wrapper) holds the PicoRV32 RV32EMC core, and the ROM and SRAM interfaces u_rom_if (parity) and u_sram_if (scrambling and parity), which connect to the 16 KiB ROM and 32 KiB SRAM hard macros outside the block. The CPU AXI4-Lite master drives the crossbar u_xbar. The crossbar serves four internal subordinates, u_kmcsr, u_kpv, u_mailbox and u_drbg_sampler, and six external ports: the key CSRs of Adams Bridge, OTBN, AES, KMAC and HMAC, and the SEP eFuse controller. u_otp_demux decodes the eFuse port by register map: offsets in the MAP, CTRL and MMR register maps have address bits 31 to 12 replaced by OTP_EFUSE_REMAP_BASE and leave on efuse_req_o, and every other offset is answered with SLVERR by u_otp_err_slv. The CPU receives three interrupts: km_irq from u_kmcsr, the mailbox interrupt from u_mailbox and the Adams Bridge ML-KEM shared-key interrupt. u_kmcsr receives otp_data_i and drives recoverable_err_o and the scrambler, SRAM lock and execute-mode controls of u_cpu, which returns its error events. The CPU trap drives unrecoverable_err_o and is ORed with wipe_state_i; the rising edge of the result is a single-cycle wipe pulse that drives both u_kpv and u_kmcsr. The SEP host reaches u_mailbox, whose two FIFOs are MAILBOX_DEPTH words deep, through mbox_sep_req_i and receives mbox_irq_to_sep_o. u_drbg_sampler receives the DRBG AXI-Stream. u_reset_conditioner turns cold_rst_ni, warm_rst_ni, test_en_i, scan_rst_ni and the soft_rst_n output of u_kmcsr into the cold and warm resets of every instance; the warm reset is held for MIN_RESET_CYCLES cycles.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -198,16 +198,26 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="950" y="494" text-anchor="middle">key CSRs</text>
 <path class="axi" d="M642,480 L858,480"/>
 <text class="s" x="750" y="473" text-anchor="middle">hmac_req_o, hmac_resp_i</text>
-<rect class="fabric" x="664" y="545" width="84" height="50" rx="6"/>
-<text class="s" x="706" y="567" text-anchor="middle">addr[31:12]</text>
-<text class="s" x="706" y="584" text-anchor="middle">remap</text>
-<path class="axi" d="M642,570 L664,570"/>
-<path class="axi" d="M748,570 L858,570"/>
-<text class="s" x="803" y="591" text-anchor="middle">efuse_req_o,</text>
-<text class="s" x="803" y="607" text-anchor="middle">efuse_resp_i</text>
-<rect class="external" x="870" y="548" width="160" height="44" rx="6"/>
-<text class="bs" x="950" y="567" text-anchor="middle">SEP eFuse</text>
-<text class="s" x="950" y="584" text-anchor="middle">controller</text>
+<rect class="fabric" x="656" y="546" width="134" height="48" rx="6"/>
+<text class="bs" x="723" y="566" text-anchor="middle">u_otp_demux</text>
+<text class="s" x="723" y="584" text-anchor="middle">register map decode</text>
+<path class="axi" d="M642,570 L656,570"/>
+<rect class="fabric" x="716" y="636" width="84" height="48" rx="6"/>
+<text class="s" x="758" y="656" text-anchor="middle">addr[31:12]</text>
+<text class="s" x="758" y="673" text-anchor="middle">remap</text>
+<path class="axi" d="M758,594 L758,636"/>
+<path class="axi" d="M800,660 L858,660"/>
+<rect class="external" x="870" y="638" width="160" height="44" rx="6"/>
+<text class="bs" x="950" y="657" text-anchor="middle">SEP eFuse</text>
+<text class="s" x="950" y="674" text-anchor="middle">controller</text>
+<text class="s" x="950" y="700" text-anchor="middle">efuse_req_o, efuse_resp_i</text>
+<text class="s" x="752" y="614" text-anchor="end">MAP, CTRL,</text>
+<text class="s" x="752" y="629" text-anchor="end">MMR</text>
+<path class="axi" d="M672,594 L672,730"/>
+<text class="s" x="680" y="716" text-anchor="start">other offsets</text>
+<rect class="core" x="650" y="730" width="140" height="48" rx="6"/>
+<text class="bs" x="720" y="750" text-anchor="middle">u_otp_err_slv</text>
+<text class="s" x="720" y="768" text-anchor="middle">SLVERR</text>
 <path class="sigo" d="M890,218.0 L890,160 L486,160"/>
 <text class="s" x="640" y="153" text-anchor="start">abr_mlkem_sharedkey_irq_i</text>
 <rect class="core" x="14" y="915" width="40" height="18" rx="4"/>
@@ -271,8 +281,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="pst" x="870" y="484.5" text-anchor="middle">S</text>
 <rect class="pm" x="619.0" y="561.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="630" y="574.5" text-anchor="middle">M</text>
-<rect class="ps" x="859.0" y="561.0" width="22" height="18" rx="4"/>
-<text class="pst" x="870" y="574.5" text-anchor="middle">S</text>
+<rect class="ps" x="859.0" y="651.0" width="22" height="18" rx="4"/>
+<text class="pst" x="870" y="664.5" text-anchor="middle">S</text>
 <rect class="pm" x="635.0" y="915.0" width="22" height="18" rx="4"/>
 <text class="pmt" x="646" y="928.5" text-anchor="middle">M</text>
 <rect class="ps" x="775.0" y="915.0" width="22" height="18" rx="4"/>

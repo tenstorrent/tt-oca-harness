@@ -68,8 +68,10 @@ other CPU access leaves the PicoRV32 AXI4-Lite master and is decoded by
 The five engine ports reach only the key CSRs of each engine wrapper. In SEP
 each passes through its own isolation stage and carries no host traffic; the
 SEP host reaches the engines' data registers through the crypto interconnect,
-a path the KM does not see. The OTP/eFuse port replaces address bits `[31:12]`
-with `OTP_EFUSE_REMAP_BASE[31:12]` before driving `efuse_req_o`.
+a path the KM does not see. For offsets in the MAP, CTRL and MMR register maps,
+the OTP/eFuse port replaces address bits `[31:12]` with
+`OTP_EFUSE_REMAP_BASE[31:12]` before driving `efuse_req_o`; it answers every
+other offset in the window with SLVERR.
 
 A rising edge on `wipe_state_i`, or a CPU trap, zeroes the KPV and sets
 `IRQ_STATUS.WIPE_STATE` in KMCSR. The CPU trap also drives
