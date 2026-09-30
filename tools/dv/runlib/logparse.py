@@ -320,7 +320,7 @@ def parse_xunit_result(path: Path, root: Path) -> tuple[str, dict[str, str]]:
     return "PASS", evidence_record("results_xml", path, root, "PASS", f"{total} testcase(s) passed")
 
 
-def xunit_failure_messages(path: Path, *, limit: int = 8, width: int = 400) -> list[str]:
+def xunit_failure_messages(path: Path) -> list[str]:
     """The message of every failure/error node in a JUnit file, first line only.
 
     cocotb writes the assertion text as `error_msg`; JUnit proper uses `message`; a node
@@ -337,10 +337,64 @@ def xunit_failure_messages(path: Path, *, limit: int = 8, width: int = 400) -> l
         text = node.get("message") or node.get("error_msg") or (node.text or "")
         first = text.strip().splitlines()[0].strip() if text.strip() else ""
         if first:
-            messages.append(first[:width])
-        if len(messages) >= limit:
-            break
+            messages.append(first)
     return messages
+
+
+def log_failure_messages(log_path: Path, policy: dict[str, Any]) -> list[str]:
+    """Every log line holding a fail-pattern match that no ignore pattern covers, in log order.
+
+    The fail and ignore patterns apply to the whole log as in the fail-pattern pass of
+    `parse_stage_result`, whether or not the parser reaches that pass. Each line is returned
+    once, whole and stripped. Returns [] for a missing log.
+    """
+    if not log_path.is_file():
+        return []
+    text = log_path.read_text(errors="replace")
+    if policy["strip_ansi"]:
+        text = ANSI_ESCAPE_RE.sub("", text)
+    starts: set[int] = set()
+    for pattern in policy["fail_patterns"]:
+        for match in re.finditer(pattern, text, flags=re.MULTILINE):
+            matched = match.group(0)
+            if _is_ignored(matched.strip() or pattern, policy["ignore_patterns"]):
+                continue
+            # A match that opens with whitespace, such as `^\s*Error:`, may start on an
+            # earlier line than the one it reports.
+            first = match.start() + len(matched) - len(matched.lstrip())
+            starts.add(text.rfind("\n", 0, first) + 1)
+    messages: list[str] = []
+    for start in sorted(starts):
+        end = text.find("\n", start)
+        line = text[start : end if end >= 0 else len(text)].strip()
+        if line:
+            messages.append(line)
+    return messages
+
+
+def observed_failure_messages(
+    *,
+    flow: Flow,
+    tool: str,
+    policies: dict[str, Any],
+    simulators: dict[str, Any],
+    log_path: Path,
+    results_dir: Path,
+) -> list[str]:
+    """The failure messages of a leaf, from the source its parser policy grades it by.
+
+    A policy with structured results reads those files, which the framework writes. Any other
+    policy reads the log's fail-pattern lines; a results.xml beside such a leaf is the
+    runner's report of the graded status, never evidence.
+    """
+    _, policy, _ = resolved_parser_policy(flow, tool, policies, simulators)
+    if policy["structured_results"]:
+        return [
+            message
+            for name in policy["structured_results"]
+            for message in xunit_failure_messages(results_dir / name)
+        ]
+    return log_failure_messages(log_path, policy)
 
 
 def _match_lines(patterns: list[str], text: str) -> list[str]:

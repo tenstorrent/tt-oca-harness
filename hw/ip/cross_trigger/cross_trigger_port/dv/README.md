@@ -58,6 +58,11 @@ Tests
 * `ctp_p2p_test` — pad enable matrix, sender and receiver four-phase
   handshake FSMs, full-duplex operation, `CONFIG.RESET` deadlock recovery,
   and INVERT-sense operation with logical STATUS readouts.
+* `ctp_mode_switch_test` — switching between wire-OR and point-to-point
+  behind a pad model that reads 0 while an input is disabled: no request
+  left behind by a wire-OR trigger or a handshake abandoned mid-exchange, no
+  request when MODE and RESET share a write, and no `ct_dst` pulse or
+  acknowledge when MODE and INVERT share a write against an idle far end.
 
 Expected behavior is taken from `../doc/architecture.adoc`,
 `../doc/interface.adoc`, and `../regs/cross_trigger_port.rdl`. The subsystem

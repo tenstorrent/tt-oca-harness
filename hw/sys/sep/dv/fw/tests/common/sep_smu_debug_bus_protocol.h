@@ -3,7 +3,7 @@
 /*
  * smu_sep_debug_bus_test -- shared protocol contract.
  *
- * Handshake (card S3): SMC clears scratch2/3 and publishes PH_CLEARED on
+ * Handshake: SMC clears scratch2/3 and publishes PH_CLEARED on
  * scratch4; SEP waits for PH_CLEARED, then publishes SEP_WAIT on scratch3 and
  * parks at debug_bus_wait_for_go polling scratch2 for GO. Dedicated SMC
  * DFD-arm firmware programs DFX/DFD/CLA (bogus negative then exact marker PC)

@@ -10,6 +10,7 @@ from env.dtp_scan_ref_model import (
     IJTAG_SIB_ORDER,
     PTAP_3DCR_WIDTH,
     SCAN_MARKER_WIDTH,
+    STAP_HOST_SEGMENT_WIDTH,
     STAP_ORDER,
     DtpIjtagSibModel,
     DtpStap3dcrModel,
@@ -17,7 +18,7 @@ from env.dtp_scan_ref_model import (
     Stap3dcrState,
 )
 from env.dtp_scan_window_monitor import DtpScanControlWindowMonitor
-from env.dtp_types import DtpJtagInstr
+from env.dtp_types import DtpJtagInstr, DtpTapState
 from ocah_jtag_vip import OcahJtagSlaveSequence
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
@@ -77,39 +78,6 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
                 context=f"{context} count={counts[name]}/{edges}",
             )
         return edges, counts
-
-    # --- generic observable checks ------------------------------------------
-    async def sample_signals(self) -> dict[str, int]:
-        return (await self.sample_observables()).signals
-
-    def check_observable(
-        self, signals: dict[str, int], name: str, expected: int, *, context: str
-    ) -> None:
-        assert name in signals, f"{name} is not exposed by the DTP JTAG driver"
-        self.assert_equal(name, signals[name], expected, context)
-
-    async def finish_dr_update(self) -> None:
-        """Return to Run-Test/Idle from the Select-DR-Scan state a
-        ``shift_dr(back_to_rti=False)`` ends in (its Update-DR has already
-        happened). The path crosses Test-Logic-Reset, which clears every
-        TDR without a hold bit and the SIB chain state."""
-        await self.tms_step(1)
-        await self.tms_step(1)
-        await self.tms_step(0)
-        self.ijtag_model.reset()
-        self.stap_model.tlr()
-
-    async def shift_dr_observe(
-        self, value: int, width: int, *, context: str
-    ) -> tuple[int, dict[str, int]]:
-        """Shift DR, sample the controls in Select-DR-Scan, then finish through TLR."""
-        item = await self.shift_dr(value, width, back_to_rti=False)
-        signals = await self.sample_signals()
-        self.log.info(
-            "%s observed TDO=0x%x width=%d signals=%s", context, item.result, width, signals
-        )
-        await self.finish_dr_update()
-        return item.result, signals
 
     # --- iJTAG ---------------------------------------------------------------
     IJTAG_SIGNAL_PREFIX = {
@@ -191,6 +159,34 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         )
         return state
 
+    def ijtag_gated_controls(self, dbg_disable: dict[str, int] | None) -> tuple[str, ...]:
+        """The select, shift, capture, and update controls of every SIB
+        ``dbg_disable`` gates."""
+        return tuple(
+            f"{self.IJTAG_SIGNAL_PREFIX[name]}_{suffix}"
+            for name, gated in self.ijtag_model.gates(dbg_disable).items()
+            if gated
+            for suffix in ("select", "shift_en", "capture_en", "update_en")
+        )
+
+    async def program_ijtag_sibs_quiet(
+        self,
+        pattern: int,
+        *,
+        dbg_disable: dict[str, int] | None,
+        quiet: tuple[str, ...],
+        inst_values: dict[str, int] | None = None,
+        context: str,
+    ) -> IjtagSibState:
+        """``program_ijtag_sibs`` inside a temporal window: every control in
+        ``quiet`` stays low across the whole program scan (``CHK-SCAN-WIN``)."""
+        window = self.start_scan_window(quiet)
+        state = await self.program_ijtag_sibs(
+            pattern, dbg_disable=dbg_disable, inst_values=inst_values, context=context
+        )
+        self.check_scan_window(window, quiet=quiet, context=f"{context}.program_window")
+        return state
+
     def check_ijtag_chain_latency(
         self, observed: int, marker: int, chain_len: int, *, context: str
     ) -> None:
@@ -242,10 +238,11 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         """Program a SIB pattern under a disable mask and prove the outcome.
 
         Drives the full disable vector, programs the SIBs with seeded
-        instrument values, then observes a marker scan under a temporal
-        window: the control windows, the measured chain latency, and the
-        captured SIB states and instrument registers must all match the
-        model. Returns the model state."""
+        instrument values (inside a window over every gated SIB's controls
+        when the mask gates one), then observes a marker scan under a
+        temporal window: the control windows, the measured chain latency,
+        and the captured SIB states and instrument registers must all match
+        the model. Returns the model state."""
         dbg = dict(dbg_disable or {})
         rng = self.rng(f"ijtag.{context}")
         inst_values = {
@@ -253,9 +250,19 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         }
         marker = rng.getrandbits(SCAN_MARKER_WIDTH) | (1 << (SCAN_MARKER_WIDTH - 1))
         await self.set_dbg_disable_vector(dbg)
-        state = await self.program_ijtag_sibs(
-            pattern, dbg_disable=dbg, inst_values=inst_values, context=f"{context}.program"
-        )
+        gated_controls = self.ijtag_gated_controls(dbg)
+        if gated_controls:
+            state = await self.program_ijtag_sibs_quiet(
+                pattern,
+                dbg_disable=dbg,
+                quiet=gated_controls,
+                inst_values=inst_values,
+                context=f"{context}.program",
+            )
+        else:
+            state = await self.program_ijtag_sibs(
+                pattern, dbg_disable=dbg, inst_values=inst_values, context=f"{context}.program"
+            )
         quiet, active = self.ijtag_window_signals(state)
         window = self.start_scan_window(quiet + active)
         observed = await self.ijtag_scan(
@@ -284,6 +291,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         self.check_scan_window(window, quiet=quiet, context=f"{context}.window")
 
     # --- STAP / 3DCR ---------------------------------------------------------
+    # The extended STAP host scan controls on dtp_scan_if.
+    HOST_SCAN_CONTROLS = dtp_jtag_base_test_seq.scan_ctrl_signals("jtag_stap_host")
+
     @staticmethod
     def stap_index(name: str) -> int:
         return STAP_ORDER.index(name)
@@ -311,22 +321,33 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         return await self.read_tdr("TAP_3DCR", shift_value=shift_value)
 
     # --- composed TAP_3DCR chain scans (IEEE 1838 serial configuration) -------
-    # The TAP_3DCR data register is the 2-bit PTAP 3DCR followed serially by
-    # the STAP configuration chain, and the chain shifts on every scan, so
-    # each scan drives the full chain state. Scans are over-length: leading
-    # zeros pass through and the trailing bits land in the chain. 64 bits
+    # With the PTAP 3DCR select set, the TAP_3DCR data register is the 2-bit
+    # PTAP 3DCR followed serially by the STAP configuration chain, and the
+    # chain shifts on every scan, so each scan drives the full chain state.
+    # With the select clear the chain holds and a scan reaches only the PTAP
+    # 3DCR. Scans are over-length: leading zeros pass through and the
+    # trailing bits land in the chain. 64 bits
     # holds the worst case (PTAP 3DCR + a 32-bit downstream IDCODE + the
-    # I/O STAP splice + four open SIBs with their 3DCRs).
+    # I/O STAP splice + four open SIBs with their 3DCRs + the host segment).
     STAP_CHAIN_SCAN_WIDTH = 64
+    # The PTAP instruction of each composed data-scan kind.
+    CHAIN_SCAN_NAMES = {"dr": "TAP_3DCR", "zlb": "ZERO_LENGTH_BYPASS", "bypass": "BYPASS"}
 
     # --- downstream STAP TAPs ------------------------------------------------
     def attach_downstream_taps(self) -> None:
-        """Seed the chain model with every attached downstream TAP and route
-        their slave-sequence evidence into this pass's family checker.
+        """Seed the chain model with every attached downstream TAP and the
+        host segment, and route the downstream slave-sequence evidence into
+        this pass's family checker.
 
         Call once per pass after ``attach_family_checker``; a scenario on a
         bench with no attached ports is unaffected.
         """
+        if self.cfg.stap_host_segment:
+            self.stap_model.attach_host_segment()
+            self.log.info(
+                "host segment behind the extended STAP host scan: width=%d",
+                STAP_HOST_SEGMENT_WIDTH,
+            )
         for stap in STAP_ORDER:
             if stap not in self.cfg.stap_ds_attach:
                 continue
@@ -368,11 +389,9 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         """Reset the scan network and load TAP_3DCR over a zeroed chain.
 
         TRST clears the PTAP 3DCR and every STAP SIB and 3DCR (a held
-        config_hold included) and parks the downstream TAPs on IDCODE. The
-        PTAP shifts every IR and DR scan through the STAP chain, so the
-        plain TAP_3DCR load that follows can reopen SIBs with the IR capture
-        bits; the over-length zero scan closes them again and zeroes every
-        field it reaches, leaving the chain in the model's flushed state.
+        config_hold included) and parks the downstream TAPs on IDCODE. With
+        the PTAP select clear the chain holds through the TAP_3DCR load and
+        the over-length zero scan, which leaves the PTAP 3DCR cleared.
         """
         self.log.info("%s reset and flush the TAP_3DCR configuration chain", context)
         await self.apply_trst()
@@ -400,17 +419,41 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         payloads: dict[str, dict[str, int]] | None = None,
         ds_values: dict[str, int] | None = None,
         dbg_disable: dict[str, int] | None = None,
+        host_segment: int | None = None,
         marker: int = 0,
         context: str,
+        scan_kind: str = "dr",
     ) -> int:
-        """One composed TAP_3DCR scan driving the full chain state.
+        """One composed data scan driving the full chain state.
 
-        TAP_3DCR must already be loaded (stap_chain_flush). Unspecified
-        fields keep their stored values, so a bare call is a maintain scan
-        whose captured bits read back the pre-scan chain state; ``ds_values``
-        writes a spliced downstream TAP's selected (writable) register.
+        The loaded PTAP instruction must match ``scan_kind``: TAP_3DCR
+        (stap_chain_flush) for ``"dr"``, ZERO_LENGTH_BYPASS for ``"zlb"``,
+        or BYPASS for ``"bypass"``, the last two with the PTAP 3DCR select
+        set and no PTAP 3DCR field in the scan. Unspecified fields keep
+        their stored values, so a bare call is a maintain scan whose
+        captured bits read back the pre-scan chain state; ``ds_values``
+        writes a spliced downstream TAP's selected (writable) register and
+        ``host_segment`` the host segment while it is in the chain.
         ``marker`` rides in the leading bits that pass through the chain.
+        The chain moves only while the PTAP select is already set, so a call
+        that sets the select and writes chain fields first sets the select
+        in a scan of its own.
         """
+        assert scan_kind == "dr" or (ptap_select is None and ptap_config_hold is None), (
+            f"a {scan_kind} scan does not reach the PTAP 3DCR"
+        )
+        if (
+            ptap_select
+            and not self.stap_model.ptap_select
+            and (sib_en or payloads or ds_values or host_segment is not None)
+        ):
+            await self.stap_chain_write(
+                ptap_select=ptap_select,
+                ptap_config_hold=ptap_config_hold,
+                dbg_disable=dbg_disable,
+                context=f"{context}.ptap_select",
+            )
+            ptap_select = ptap_config_hold = None
         kwargs = {
             "ptap_select": ptap_select,
             "ptap_config_hold": ptap_config_hold,
@@ -418,19 +461,25 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
             "payloads": self._payload_states(payloads),
             "ds_values": ds_values,
             "dbg_disable": dbg_disable,
+            "host_segment": host_segment,
         }
-        value = self.stap_model.compose_scan(self.STAP_CHAIN_SCAN_WIDTH, **kwargs)
-        chain_len = len(self.stap_model.chain_layout(dbg_disable))
+        value = self.stap_model.compose_scan(
+            self.STAP_CHAIN_SCAN_WIDTH, scan_kind=scan_kind, **kwargs
+        )
+        chain_len = len(self.stap_model.chain_layout(dbg_disable, scan_kind))
         assert marker < 1 << (self.STAP_CHAIN_SCAN_WIDTH - chain_len), "marker overlaps the chain"
         value |= marker
         self.log.info(
-            "%s TAP_3DCR chain scan value=0x%016x chain_len=%d sib_en=%s payloads=%s ds=%s",
+            "%s %s chain scan value=0x%016x chain_len=%d sib_en=%s payloads=%s ds=%s "
+            "host_segment=%s",
             context,
+            self.CHAIN_SCAN_NAMES[scan_kind],
             value,
             chain_len,
             sib_en,
             payloads,
             ds_values,
+            host_segment,
         )
         item = await self.shift_dr(value, self.STAP_CHAIN_SCAN_WIDTH)
         self.stap_model.apply_scan(**kwargs)
@@ -451,7 +500,8 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         With the PTAP 3DCR select set the IR shift-out feeds the STAP chain,
         so the scan carries the PTAP instruction, every SIB/3DCR field
         (maintained unless given), and each spliced downstream TAP's IR
-        (``ds_ir`` names new instructions; others keep the active one).
+        (``ds_ir`` names new instructions; others keep the active one). With
+        the select clear the scan carries the PTAP instruction alone.
         """
         kwargs = {
             "ds_ir": ds_ir,
@@ -476,10 +526,17 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         return item.result
 
     async def stap_chain_maintain(
-        self, *, dbg_disable: dict[str, int] | None = None, marker: int = 0, context: str
+        self,
+        *,
+        dbg_disable: dict[str, int] | None = None,
+        marker: int = 0,
+        context: str,
+        scan_kind: str = "dr",
     ) -> int:
         """State-preserving chain scan; the capture reads back stored state."""
-        return await self.stap_chain_write(dbg_disable=dbg_disable, marker=marker, context=context)
+        return await self.stap_chain_write(
+            dbg_disable=dbg_disable, marker=marker, context=context, scan_kind=scan_kind
+        )
 
     def check_stap_chain_readback(
         self,
@@ -511,6 +568,29 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
             captured & care,
             expected & care,
             context=f"{context} len={chain_len} care=0x{care:x}",
+        )
+
+    def check_stap_chain_marker(
+        self,
+        captured: int,
+        marker: int,
+        *,
+        dbg_disable: dict[str, int] | None = None,
+        context: str,
+    ) -> None:
+        """The marker a maintain scan shifts ahead of the chain image leaves
+        TDO right behind the captured chain, so where it arrives is the
+        length of the chain the scan returned through (``CHK-SCAN-CHAIN``).
+
+        Valid while the PTAP 3DCR select was already 1 before the scan.
+        """
+        chain_len = len(self.stap_model.chain_layout(dbg_disable))
+        self.family_check(
+            "CHK-SCAN-CHAIN",
+            "stap_chain_marker_passthrough",
+            (captured >> chain_len) & self.bit_mask(SCAN_MARKER_WIDTH),
+            marker,
+            context=f"{context} len={chain_len} captured=0x{captured:x}",
         )
 
     async def read_ptap_3dcr_deselected(self, *, marker: int, context: str) -> int:
@@ -638,11 +718,76 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
             stap, check_id="CHK-DS-IDCODE", dbg_disable=dbg_disable, context=context
         )
 
+    def stap_forwarding_watch(self, stap: str) -> tuple[str, ...]:
+        """The host-port observables ``check_stap_forwarding`` judges."""
+        prefix = self.stap_signal_prefix(stap)
+        return (f"{prefix}_tdo_oen", f"{prefix}_tms", f"{prefix}_tms_mismatch")
+
+    def check_stap_forwarding(
+        self,
+        edges: int,
+        counts: dict[str, int],
+        *,
+        stap: str,
+        forwarding: bool,
+        context: str,
+    ) -> None:
+        """A selected STAP forwards: tdo_oen pulses during shifts and the
+        host tms follows the live TMS, equal to the primary TMS at every
+        rising TCK edge of a window where it toggles. A deselected or gated
+        STAP never drives tdo_oen and parks its tms at the stored tms_hold,
+        high or low for the whole window."""
+        prefix = self.stap_signal_prefix(stap)
+        tdo_oen = counts[f"{prefix}_tdo_oen"]
+        tms = counts[f"{prefix}_tms"]
+        mismatches = counts[f"{prefix}_tms_mismatch"]
+        if forwarding:
+            self.family_check(
+                "CHK-SCAN-WIN",
+                f"{prefix}_tdo_oen forwarding",
+                int(tdo_oen > 0),
+                1,
+                context=f"{context} count={tdo_oen}/{edges}",
+            )
+            self.family_check(
+                "CHK-SCAN-WIN",
+                f"{prefix}_tms equals the primary TMS",
+                mismatches,
+                0,
+                context=f"{context} mismatches={mismatches}/{edges}",
+            )
+            self.family_check(
+                "CHK-SCAN-WIN",
+                f"{prefix}_tms follows live TMS",
+                int(0 < tms < edges),
+                1,
+                context=f"{context} count={tms}/{edges}",
+            )
+        else:
+            tms_hold = self.stap_model.staps[stap].tms_hold
+            self.family_check(
+                "CHK-SCAN-WIN", f"{prefix}_tdo_oen quiet", tdo_oen, 0, context=context
+            )
+            self.family_check(
+                "CHK-SCAN-WIN",
+                f"{prefix}_tms parked at tms_hold={tms_hold}",
+                tms,
+                edges * tms_hold,
+                context=f"{context} edges={edges}",
+            )
+
     async def apply_tlr(self) -> None:
-        """Five TMS=1 cycles into Test-Logic-Reset, then Run-Test/Idle."""
+        """Five TMS=1 cycles into Test-Logic-Reset, then Run-Test/Idle.
+
+        An attached checker records the walk as ``CHK-TAP-TLR-TMS5``.
+        """
         for _ in range(5):
-            await self.tms_step(1)
-        await self.tms_step(0)
+            item = await self.tms_step(1)
+        if self.tap_checker is not None:
+            self.tap_checker.check_tms_ones_to_tlr(5, item.result)
+        self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
+        item = await self.tms_step(0)
+        self.record_tap_state(item.result, DtpTapState.RUN_TEST_IDLE)
         self.stap_model.tlr()
         self.ijtag_model.reset()
 
@@ -650,6 +795,7 @@ class dtp_scan_base_test_seq(dtp_jtag_base_test_seq):
         """Pulse the active-low TRST pin, then step into Run-Test/Idle."""
         await self.assert_trst(cycles=5)
         await self.deassert_trst(cycles=2)
-        await self.tms_step(0)
+        item = await self.tms_step(0)
+        self.record_tap_state(item.result, DtpTapState.RUN_TEST_IDLE)
         self.stap_model.trst()
         self.ijtag_model.reset()

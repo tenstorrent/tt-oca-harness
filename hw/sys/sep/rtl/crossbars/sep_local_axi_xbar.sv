@@ -71,7 +71,7 @@ module sep_local_axi_xbar
 
   output axi_out_req_t  sep_system_peripherals_req_o,  // Request for sep_system_peripherals:
                                                        // scratch 0x1080_2000-0x1080_20FF, CSRs
-                                                       // 0x10A0_0000-0x10A5_FFFF, remap window
+                                                       // 0x10A0_0000-0x10A4_FFFF, remap window
                                                        // 0x1100_0000-0x11FF_FFFF, external chiplet
                                                        // 0x0000_0000-0x0FFF_FFFF, and SMU
                                                        // 0x4000_0000-0xBFFF_FFFF.
@@ -153,11 +153,11 @@ module sep_local_axi_xbar
           start_addr: 32'h10802000,
           end_addr: 33'h10802100
       },
-      // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a60000
+      // sep_system_peripherals.csr_region: 0x10a00000 - 0x10a50000
       '{
           idx: 6,
           start_addr: 32'h10a00000,
-          end_addr: 33'h10a60000
+          end_addr: 33'h10a50000
       },
       // sep_system_peripherals.remap_region: 0x11000000 - 0x12000000
       '{

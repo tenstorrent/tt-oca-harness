@@ -175,7 +175,8 @@ static inline int poll_reg_timeout(uintptr_t addr, uint32_t mask, uint32_t expec
 #define CHECK_REG_ADDR(addr) \
     do { \
         if ((addr) < 0x40000000 || (addr) >= 0x50000000) { \
-            /* Address out of expected OCH SEP range */ \
+            /* Address outside 0x4000_0000-0x4FFF_FFFF, part of the SMC \
+             * row of the SEP CPU logical map, not the SEP-local window */ \
             __builtin_trap(); \
         } \
     } while (0)

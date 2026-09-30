@@ -75,6 +75,9 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
+  # Generated SMC address map. tb_top sizes its SMC window checker from it; the
+  # `smc` Bender target that normally carries it is not in the SEP build.
+  "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   # FCOV covergroup sampler (VCS only; the module is `ifndef VERILATOR`).
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
@@ -726,6 +729,9 @@ incdirs = [
   "hw/sys/sep/dv/uvm/tests",
 ]
 sources = [
+  # Generated SMC address map. tb_top sizes its SMC window checker from it; the
+  # `smc` Bender target that normally carries it is not in the SEP build.
+  "hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   "hw/sys/sep/dv/tb/sep_tb_if.sv",

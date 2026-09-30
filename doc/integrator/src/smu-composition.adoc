@@ -20,13 +20,22 @@ PVT sensors, eFuse shims, memory macros, GPIO padrings, SPI controllers, and
 external TRNG -- are instantiated outside the core modules by the adopter. This
 separation keeps the OCAH deliverable technology-neutral.
 
+The figure below shows that boundary. `smu` exposes a technology integration
+interface for each of these components, and a reference integration module
+holds the shims, models and macros behind them. An adopter keeps the interfaces
+and replaces what lies below the boundary with its own technology IP.
+
+.SMU Technology Integration
+image::smu-technology-integration.svg[SMU Technology Integration,scaledwidth=100.0%]
+
 The repository provides reference wrappers that demonstrate how to bridge the
 gap between OCAH core interfaces and adopter-specific IP:
 
 * `smu_wrapper.sv` wraps `smu.sv` with pad-level signal handling for clocks,
   resets, GPIO, eFuse, and JTAG interfaces. It internally instantiates
-  `smc_ip_integration.sv` for SMC-related vendor IP and (when `SEP=1`)
-  `sep_ip_integration.sv` for SEP-related vendor IP.
+  `smc_ip_integration.sv` for SMC-related vendor IP and
+  `sep_ip_integration.sv` for SEP-related vendor IP. Each integration module
+  holds its own eFuse interface shim and eFuse bank.
 * `smc_wrapper.sv` provides an equivalent reference wrapping `smc.sv` alone,
   useful when integrating the SMC without the DTP/SEP subsystems.
 
@@ -41,7 +50,7 @@ The figure below illustrates the relationship between the OCAH core modules, the
 wrapper layer, and the IP integration modules.
 
 .SMU Integration Components
-image::smu_integration_components.png[SMU Integration Components,scaledwidth=90.0%]
+image::smu-integration-components.svg[SMU Integration Components,scaledwidth=100.0%]
 
 === IP Integration Modules
 
@@ -56,13 +65,14 @@ Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
 
 === Wrapper Clock Architecture
 
-The `smu_wrapper.sv` reference wrapper accepts pre-generated clocks directly:
-`clk_smu_i` (primary), `clk_ref_i` (reference), and `clk_periph_i`
-(peripheral). The `smc_wrapper.sv` uses `clk_smc_i` for the primary clock.
-Clock generation is entirely the adopter's responsibility. The `pll_wrap` model
-included in the DV environment only terminates the SMC's AXI-Lite PLL control
-interface; it does not generate functional clocks and must not be used as a
-synthesis model.
+The behavioral `pll_wrap` model is a DV/reference
+placeholder: it free-runs refclk, sys_clk, and periph_clk at 100 / 800 / 200 MHz
+(`+pll_sys_period_ns=10` runs sys_clk at 100 MHz; with `+pll_osc_bench` a bench
+toggles the oscillator nets itself), muxes sys and periph with ref
+through `prim_clock_mux2` then `prim_ag_clk_mux`, and terminates the AXI-Lite PLL
+control interface with OKAY. It is not a synthesis stand-in. An adopter who
+replaces `smc_ip_integration` supplies equivalent clocks internally; the
+bare cores still have the three clock inputs.
 
 == Clock and Reset Architecture
 

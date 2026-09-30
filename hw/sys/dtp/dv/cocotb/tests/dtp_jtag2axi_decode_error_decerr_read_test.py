@@ -30,8 +30,8 @@ class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
-        "CHK-J2A-ERR-RDATA",
     )
+    axi_checker_target_required_ids = ("CHK-J2A-ERR-RDATA",)
     axi_checker_stream_minimums = {"smc_axi": 2, "smc_otp": 2, "sep_otp": 2}
 
     async def run_scenario(self) -> None:

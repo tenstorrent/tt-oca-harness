@@ -16,11 +16,6 @@
 //-----------------------------------------------------------------------------
 
 module smc_wrapper (
-  // Clocks from PLLs
-  input  logic clk_smc_i,
-  input  logic clk_ref_i,
-  input  logic clk_periph_i,
-
   input  logic powergood_i,
   output logic powergood_stable_o,
 
@@ -191,6 +186,10 @@ module smc_wrapper (
   // Internal signals (smc <-> smc_ip_integration) //
   /////////////////////////////////////////////////
 
+  logic clk_sys;
+  logic clk_ref;
+  logic clk_periph;
+
   smc_pkg::smc_axil_32_32_req_t  smc_external_req;
   smc_pkg::smc_axil_32_32_resp_t smc_external_resp;
 
@@ -245,9 +244,9 @@ module smc_wrapper (
   /////////////////////
 
   smc u_smc (
-    .clk_smc_i,
-    .clk_ref_i,
-    .clk_periph_i,
+    .clk_smc_i    (clk_sys),
+    .clk_ref_i    (clk_ref),
+    .clk_periph_i (clk_periph),
     .powergood_i,
     .powergood_stable_o,
     .rst_cold_ni,
@@ -398,7 +397,9 @@ module smc_wrapper (
   /////////////////////////
 
   smc_ip_integration u_smc_ip_integration (
-    .clk_smc_i               (clk_smc_i),
+    .clk_ref_o    (clk_ref),
+    .clk_sys_o    (clk_sys),
+    .clk_periph_o (clk_periph),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
     .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),

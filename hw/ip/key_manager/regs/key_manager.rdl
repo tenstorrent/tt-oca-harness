@@ -234,7 +234,8 @@ addrmap key_manager {
     //
     // Direct Memory Access (ROM/SRAM):
     // - Accessed via PicoRV32 native memory interface (not AXI-Lite)
-    // - ROM: Read-only, returns SLVERR on write attempts
+    // - ROM: Read-only. A write completes with no error response, leaves the
+    //   ROM unchanged and sets KMCSR IRQ_STATUS.ROM_WRITE_ERR
     // - SRAM: Read/write with optional scrambling (controlled by KMCSR)
     // - Both include byte-wise parity checking
     //
@@ -245,7 +246,6 @@ addrmap key_manager {
     //
     // Address Decoding:
     // - Unmapped addresses return DECERR response
-    // - ROM write attempts return SLVERR response
     // - Mailbox overflow/underflow behavior configurable via CTRL register
     //
     //=========================================================================

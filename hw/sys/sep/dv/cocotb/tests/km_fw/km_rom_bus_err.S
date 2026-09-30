@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# KM ROM for the KM CPU bus-error leaves: sep_km_rom_write_slverr_test,
+# KM ROM for the KM CPU bus-error leaves: sep_km_rom_write_err_test,
 # sep_km_otp_shim_unreachable_test and sep_km_vrom_decerr_test. Not rom_main:
 # each access below is a KM CPU load or store, and no mailbox command issues
 # one.

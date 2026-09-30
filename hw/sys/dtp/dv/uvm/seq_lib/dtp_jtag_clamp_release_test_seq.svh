@@ -6,7 +6,10 @@
 // persistence, the persistence survives a BYPASS switch, and CLAMP_RELEASE
 // clears it; a repeated release keeps persistence clear. Like CLAMP_HOLD,
 // CLAMP_RELEASE scans the one-bit bypass register (CHK-BYPASS-DELAY); the
-// 2-bit register is TMP_STATUS. Mirrors the cocotb
+// 2-bit register is TMP_STATUS. The looped-back pattern is also the one-bit
+// bypass register's TDO, so SAMPLE/PRELOAD shows it selects the chain by the
+// chain's select, high across each DR scan before a hold and after the
+// release (CHK-BSR-SELECT). Mirrors the cocotb
 // dtp_jtag_clamp_release_test_seq.
 
 class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
@@ -18,7 +21,8 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
 
   task body();
     string required[$] = {"CHK-TAP-RESET-TLR", "CHK-IR-DECODE", "CHK-BSR-LOOPBACK",
-                              "CHK-BYPASS-DELAY", "CHK-TMP-PERSIST"};
+                              "CHK-BSR-SELECT", "CHK-BSR-SCAN-CTRL", "CHK-BYPASS-DELAY",
+                              "CHK-TMP-PERSIST"};
     bit [63:0] patterns[$];
     bit persistence, bypass_escape;
     seed_scenario_rng();
@@ -37,7 +41,7 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
           get_type_name(), $sformatf(
           "Iteration %0d/%0d: SAMPLE_PRELOAD pattern=0x%02h", p + 1, patterns.size(), patterns[p]),
           UVM_LOW)
-      check_loopback_scan(6'(SAMPLE_PRELOAD_INSTR), patterns[p], DtpBsrModelLen);
+      check_bsr_scan_ctrl(6'(SAMPLE_PRELOAD_INSTR), patterns[p], DtpBsrModelLen);
 
       load_ir(6'(CLAMP_HOLD_INSTR));
       read_tmp_status(persistence, bypass_escape);
@@ -62,7 +66,7 @@ class dtp_jtag_clamp_release_test_seq extends dtp_jtag_base_test_seq;
                  "repeated release");
     // SAMPLE/PRELOAD after the release selects the chain and loops the
     // pattern back.
-    check_loopback_scan(6'(SAMPLE_PRELOAD_INSTR), patterns[patterns.size()-1], DtpBsrModelLen);
+    check_bsr_scan_ctrl(6'(SAMPLE_PRELOAD_INSTR), patterns[patterns.size()-1], DtpBsrModelLen);
 
     finalize_family_checker();
   endtask

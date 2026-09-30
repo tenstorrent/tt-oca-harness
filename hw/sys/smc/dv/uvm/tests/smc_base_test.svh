@@ -9,11 +9,11 @@
 //   1. build smc_test_cfg: seed and random volume from the library
 //      accessors, the knob-derived controls, then the test's
 //      configure_test_cfg() hook (required scoreboard features);
-//      srandom(seed) + randomize() draws the three clock periods;
+//      srandom(seed) + randomize() seeds it once;
 //   2. derive smc_env_cfg from it and publish both through uvm_config_db;
 //      build smc_env;
 //   3. bring_up(): the cocotb smc_base_test._bring_up ladder through
-//      smc_tb_if in ref-clock cycles of the randomized period;
+//      smc_tb_if in ref-clock cycles;
 //      run_looped_scenario() (ocah_test) then starts create_scenario_seq()
 //      on m_env.m_vseqr once per pass with scenario_seed = seed + pass.
 //
@@ -45,9 +45,8 @@ class smc_base_test extends ocah_test;
     test_cfg.random_count = random_count();
     test_cfg.read_knobs();
     configure_test_cfg(test_cfg);
-    // The one draw before run_phase: the bench-level dimensions (the
-    // three clock periods) come from the runner seed through srandom(),
-    // so a run replays from the seed alone.
+    // The one draw before run_phase, seeded from the runner seed through
+    // srandom(), so a run replays from the seed alone.
     test_cfg.srandom(test_cfg.seed);
     if (!test_cfg.randomize()) `uvm_fatal(get_type_name(), "smc_test_cfg randomize() failed")
     `uvm_info(get_type_name(), {"test cfg: ", test_cfg.convert2string()}, UVM_LOW)
@@ -97,7 +96,7 @@ class smc_base_test extends ocah_test;
   // reset asserted with cool reset released while the clocks start, then
   // power-good, then cold-reset release, then the post-reset settle. The
   // ladder holds the only wall-clock waits in test code, derived from the
-  // randomized ref-clock period.
+  // ref-clock period.
   virtual task bring_up();
     m_env.tb_vif.powergood  <= 1'b0;
     m_env.tb_vif.rst_cold_n <= 1'b0;

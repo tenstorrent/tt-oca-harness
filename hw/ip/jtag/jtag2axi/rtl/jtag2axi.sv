@@ -1282,6 +1282,7 @@ module jtag2axi #(
   logic                  last_single_op_was_read_tclk_d;
   logic [1:0]            sticky_axi_status_tclk_d;
   logic                  sticky_axi_status_full_tclk_d;
+  logic                  series_status_takes_completion;
 
   logic [PIPELINE_DEPTH_FIELD_BITS-1:0] series_read_preload_count_tclk_d;
   logic [$clog2(FIFO_DEPTH+2)-1:0]      plain_reads_pending_tclk_d;
@@ -1539,9 +1540,18 @@ module jtag2axi #(
       end
     end
 
+    // The series status holds the first series error until
+    // AXI_SERIES_CTRL.reset, which the SERIES_CTRL update above has already
+    // applied to sticky_axi_status_tclk_d. SINGLE_OP completions report only
+    // through the SINGLE_OP status.
+    series_status_takes_completion = !current_tx_is_from_single_buffer_tclk &&
+                                     (sticky_axi_status_tclk_d == CAPTURE_STATUS_SUCCESS);
+
     // FSM completion status updates (write response path).
     if (fsm_updates_bresp_status_tclk_comb) begin
-      sticky_axi_status_tclk_d = next_status_tclk_comb;
+      if (series_status_takes_completion) begin
+        sticky_axi_status_tclk_d = next_status_tclk_comb;
+      end
       if (current_tx_is_from_single_buffer_tclk ||
                 current_is_series_data_with_error_status_op_tclk) begin
         last_single_op_status_tclk_d = next_status_tclk_comb;
@@ -1556,7 +1566,9 @@ module jtag2axi #(
 
     // FSM completion status updates (read response path).
     if (fsm_updates_rdata_status_tclk_comb) begin
-      sticky_axi_status_tclk_d = next_status_tclk_comb;
+      if (series_status_takes_completion) begin
+        sticky_axi_status_tclk_d = next_status_tclk_comb;
+      end
       if ((current_tx_is_from_single_buffer_tclk && !current_tx_is_series_read_tclk) ||
                 current_is_series_data_with_error_status_op_tclk) begin
         last_single_op_status_tclk_d = next_status_tclk_comb;
@@ -1728,7 +1740,7 @@ module jtag2axi #(
       automatic logic [$clog2(SHARED_SR_LEN+1)-1:0] mapped_data_bits_cap_local;
       automatic int num_bytes_to_copy;
       automatic logic[DATA_WIDTH-1:0] capture_value_data_local;
-      logic [1:0] captured_op_status_local;
+      automatic logic [1:0] captured_op_status_local;
 
       mapped_data_bits_cap_local = size_to_bits(3'(latched_series_size_for_len_tclk));
       if (mapped_data_bits_cap_local > DATA_WIDTH) mapped_data_bits_cap_local = DATA_WIDTH;

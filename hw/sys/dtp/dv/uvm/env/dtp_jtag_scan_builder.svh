@@ -21,6 +21,12 @@ class dtp_jtag_scan_builder extends ocah_jtag_scan_builder;
   // Shift state, so an episode is the scan length the DUT executed.
   int unsigned dut_ir_shift_lens[$];
   int unsigned dut_dr_shift_lens[$];
+  // Every closed episode of each kind and the length of the newest one,
+  // counted across the whole run whatever the queues above hold.
+  int unsigned dut_ir_episodes;
+  int unsigned dut_dr_episodes;
+  int unsigned dut_last_ir_len;
+  int unsigned dut_last_dr_len;
 
   protected logic [31:0] m_por_count = '0;
   protected int unsigned m_dut_shift_run;
@@ -59,10 +65,16 @@ class dtp_jtag_scan_builder extends ocah_jtag_scan_builder;
   protected function void track_dut_shift();
     bit in_ir = dtp_tap_state_is_shift(tb_vif.tap_state, 1'b1);
     bit in_dr = dtp_tap_state_is_shift(tb_vif.tap_state, 1'b0);
-    if (m_dut_in_shift_ir && !in_ir && dut_ir_shift_lens.size() < max_history)
-      dut_ir_shift_lens.push_back(m_dut_shift_run);
-    if (m_dut_in_shift_dr && !in_dr && dut_dr_shift_lens.size() < max_history)
-      dut_dr_shift_lens.push_back(m_dut_shift_run);
+    if (m_dut_in_shift_ir && !in_ir) begin
+      dut_ir_episodes++;
+      dut_last_ir_len = m_dut_shift_run;
+      if (dut_ir_shift_lens.size() < max_history) dut_ir_shift_lens.push_back(m_dut_shift_run);
+    end
+    if (m_dut_in_shift_dr && !in_dr) begin
+      dut_dr_episodes++;
+      dut_last_dr_len = m_dut_shift_run;
+      if (dut_dr_shift_lens.size() < max_history) dut_dr_shift_lens.push_back(m_dut_shift_run);
+    end
     if (in_ir || in_dr)
       m_dut_shift_run = ((in_ir == m_dut_in_shift_ir) && (in_dr == m_dut_in_shift_dr)) ?
           m_dut_shift_run + 1 : 1;

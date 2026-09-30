@@ -19,7 +19,7 @@ from env.dtp_dbg_disable import (
     validate_dbg_disable,
 )
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
-from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr, DtpTapState
+from env.dtp_types import DTP_IR_WIDTH, RESET_COUNT_CHECK_ID, DtpJtagInstr, DtpTapState
 from ocah_lib import OcahSequence
 
 
@@ -36,7 +36,9 @@ class dtp_base_test_seq(OcahSequence):
         super().__init__(name, scenario_seed=scenario_seed, random_count=random_count)
         # Assigned by the test (dtp_base_test.plumb_scenario_seq) before the sequence runs.
         self.cfg = None
+        # DUT-confirmed TAP states and (state, TMS) transitions of this pass.
         self.visited_tap_states: set[DtpTapState] = set()
+        self.visited_tap_arcs: set[tuple[DtpTapState, int]] = set()
         self.current_tap_state: DtpTapState | None = None
 
     # --- quality logging / checking -----------------------------------------
@@ -72,6 +74,21 @@ class dtp_base_test_seq(OcahSequence):
         """Log and assert one bit of a packed value."""
         self.assert_equal(f"{name}[{bit_pos}]", self.bit(value, bit_pos), expected)
 
+    def check_reset_counted(self, counter: str, before: int, after: int, context: str) -> None:
+        """``CHK-RESET-COUNT``: the tb_top assertion counter of a reset this
+        sequence drove advanced by exactly one across the pulse, so a reset
+        claim rests on a reset that happened.
+
+        Sequences that own an evidence checker override this to record the
+        comparison under that checker.
+        """
+        self.assert_equal(
+            RESET_COUNT_CHECK_ID,
+            after - before,
+            1,
+            context=f"{counter} before={before} after={after} {context}",
+        )
+
     # --- bit helpers ---------------------------------------------------------
     @staticmethod
     def bit(value: int, bit_pos: int) -> int:
@@ -98,9 +115,9 @@ class dtp_base_test_seq(OcahSequence):
         """Drive the TAP to Test-Logic-Reset."""
         return await self._send(op=DtpJtagOp.RESET_FSM)
 
-    async def tms_step(self, tms: int) -> DtpJtagItem:
+    async def tms_step(self, tms: int, *, tdi: int = 0) -> DtpJtagItem:
         """Drive one raw TMS cycle and return the observed DUT TAP state."""
-        return await self._send(op=DtpJtagOp.TMS_STEP, tms=tms)
+        return await self._send(op=DtpJtagOp.TMS_STEP, tms=tms, tdi=tdi)
 
     async def load_ir(
         self,
@@ -119,7 +136,6 @@ class dtp_base_test_seq(OcahSequence):
         )
         if back_to_rti:
             self.current_tap_state = DtpTapState.RUN_TEST_IDLE
-            self.visited_tap_states.add(DtpTapState.RUN_TEST_IDLE)
         return item
 
     async def shift_ir(
@@ -144,7 +160,6 @@ class dtp_base_test_seq(OcahSequence):
         )
         if back_to_rti:
             self.current_tap_state = DtpTapState.RUN_TEST_IDLE
-            self.visited_tap_states.add(DtpTapState.RUN_TEST_IDLE)
         return item
 
     async def shift_dr(
@@ -163,7 +178,6 @@ class dtp_base_test_seq(OcahSequence):
         )
         if back_to_rti:
             self.current_tap_state = DtpTapState.RUN_TEST_IDLE
-            self.visited_tap_states.add(DtpTapState.RUN_TEST_IDLE)
         return item
 
     async def sample_observables(self) -> DtpJtagItem:
@@ -180,7 +194,15 @@ class dtp_base_test_seq(OcahSequence):
 
     async def pulse_por(self, cycles: int = 5) -> DtpJtagItem:
         """Pulse power-on reset and sample the TAP state while reset is asserted."""
-        return await self._send(op=DtpJtagOp.PULSE_POR, cycles=cycles)
+        before = self.cfg.tb_if.sample("por_assert_count")
+        item = await self._send(op=DtpJtagOp.PULSE_POR, cycles=cycles)
+        self.check_reset_counted(
+            "por_assert_count",
+            before,
+            self.cfg.tb_if.sample("por_assert_count"),
+            f"pulse_por cycles={cycles}",
+        )
+        return item
 
     async def read_idcode(self) -> DtpJtagItem:
         """Read the 32-bit IDCODE TDR."""
@@ -243,10 +265,17 @@ class dtp_base_test_seq(OcahSequence):
 
     async def pulse_system_reset(self, cycles: int = 5) -> None:
         """Pulse rst_n_i without asserting POR/TRST, preserving TAP accessibility."""
+        before = self.cfg.tb_if.sample("sys_rst_assert_count")
         self.cfg.tb_if.sys_rst_n.value = 0
         await self.wait_sys_cycles(cycles)
         self.cfg.tb_if.sys_rst_n.value = 1
         await self.wait_sys_cycles(cycles)
+        self.check_reset_counted(
+            "sys_rst_assert_count",
+            before,
+            self.cfg.tb_if.sample("sys_rst_assert_count"),
+            f"pulse_system_reset cycles={cycles}",
+        )
 
     async def expect_signal(self, name: str, expected: int) -> None:
         """Sample a DTP observable by its flat name and compare it."""

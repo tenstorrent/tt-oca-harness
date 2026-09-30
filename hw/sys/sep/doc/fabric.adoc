@@ -72,7 +72,7 @@ after POR and configured by SEP firmware.
 
 [[sep-axi-connectivity]]
 .SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
-image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
+image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=920,pdfwidth=88%]
 
 [[sep-fabric-topology]]
 == Fabric Topology
@@ -83,39 +83,66 @@ resources, while the output fabric selects remapped or direct outbound paths.
 
 The input paths are shown in <<sep-input-fabric-diagram>>, the local resource
 connections in <<sep-local-fabric-diagram>>, and the outbound paths in
-<<sep-output-fabric-diagram>>.
-
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
+<<sep-output-fabric-diagram>>. The three figures share one notation. Crossbars
+are rectangles, muxes and demuxes are trapezoids with the wide side towards the
+many ports, address remaps are hexagons and traffic filters are octagons. Green
+boxes are converters: address-width, data-width, ID-width and protocol
+conversion, and register cuts. Thick lines are AXI4 and thin lines AXI-Lite or
+TL-UL; every AXI data path is 64 bits wide unless a converter narrows it. The
+labels give the address and ID widths where they change, and the port badges
+mark where a path crosses the module boundary.
 
 [[sep-input-fabric-diagram]]
 .SEP input fabric
-image::SEP_Input_Fabric_FIG005.svg[alt="SEP input fabric",width=100%,pdfwidth=100%]
+image::sep-input-fabric.svg[alt="Inbound path of sep_system_peripherals: inbound filter, global-to-local remap, peripheral crossbar with mailbox, system CSR and local-fabric legs",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
+<<sep-input-fabric-diagram>> follows a request from the system interconnect through
+`sep_system_peripherals`. The inbound filter checks it first; while SEP-scope
+debug is enabled, `SEP_DBG` bypasses the filter. The global-to-local remap then
+rebases the `SEP_REGION_SIZE` window at `SEP_GLOBAL_BASE_ADDR` to address 0 and
+passes every other address unchanged. The peripheral crossbar has a second
+initiator, the `SEP_LOCAL` port of the output fabric's route demux, so local
+masters reach the mailboxes and system CSRs through the same decode. Addresses
+outside the mailbox and system CSR windows but below `0x4000_0000` are truncated
+to 32 bits, their IDs reduced from 7 to 3 bits, and forwarded to the `ext`
+initiator of the local crossbar. The crossbar answers any other address with
+DECERR. The system CSRs program the inbound filter entries and the SEP aperture,
+as well as the output fabric's remaps and outbound filter.
 
 [[sep-local-fabric-diagram]]
 .SEP local fabric
-image::SEP_Local_Fabric_FIG006.svg[alt="SEP local fabric",width=100%,pdfwidth=100%]
+image::sep-local-fabric.svg[alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters in front of its ten targets",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
+<<sep-local-fabric-diagram>> shows the local crossbar with its initiators on the
+left and its targets on the right, in crossbar port order. Each CPU master and
+the secure DMA master pass a local alias remap before the crossbar; the remap
+rewrites the 768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU
+and LSU demuxes inside `sep_cpu` send boot ROM addresses to the boot ROM mux,
+which reaches the ROM macro without passing the crossbar, and the IFU demux
+answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
+each target row is the conversion the target needs: the secure DMA registers
+and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
+controller and entropy pool as AXI-Lite. The `sep_external` demux diverts the
+eFuse shim CSR window to the eFuse wrapper; every other address in the
+`0x2000_0000` to `0x3FFF_FFFF` aperture leaves SEP on the AXI extension port.
+xref:sep-axi-connectivity[xrefstyle=short] gives the initiator-to-target connections.
 
 [[sep-output-fabric-diagram]]
 .SEP output fabric
-image::SEP_Output_Fabric_FIG007.svg[alt="SEP output fabric",width=100%,pdfwidth=100%]
+image::sep-output-fabric.svg[alt="Outbound path of sep_system_peripherals: address expansion, alias remap, route demux, AP and STEE output remaps, outbound mux and outbound filter",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=portrait]
-<<<
-endif::backend-pdf[]
+<<sep-output-fabric-diagram>> follows local-master traffic that the local
+crossbar sends to `sep_system_peripherals`. The address is zero-extended from
+32 to 56 bits, passes the 16-region alias remap and a register cut, and reaches
+the route demux. The demux takes the first match in the order shown: the SMC
+aperture, supplied by the SMC, goes straight to the SMC without filtering; the
+SMU aperture from `SMU_GLOBAL_BASE_ADDR` and `SMU_REGION_SIZE`, and any address
+at or above `0x1_0000_0000`, goes to the outbound mux; the AP and STEE regions
+pass their output remaps, which replace the address with the programmed region
+offset and set the source ID to `OTHERS`, before the same mux; and every other
+address returns to the peripheral crossbar of the input fabric. The outbound mux
+widens the ID from 6 to 8 bits, and the outbound filter, which has no bypass,
+guards the path to the system interconnect.
 
 [[subsystem-external-interfaces]]
 == Subsystem External Interfaces
@@ -132,11 +159,16 @@ OTBN IMEM, OTBN DMEM
 
 [[sep-system-peripheral-traffic-management-figure]]
 .SEP system-peripheral traffic management
-image::SEP_System.png[SEP_System,scaledwidth=90.0%]
+image::sep-system-peripherals.svg[alt="Overview of sep_system_peripherals: the outbound path through the alias remap, route demux, AP and STEE remaps and outbound filter, and the inbound path through the inbound filter, global-to-local remap and peripheral crossbar to the mailboxes, system CSRs and local crossbar",width=100%,pdfwidth=100%]
 
 <<sep-system-peripheral-traffic-management-figure>> illustrates the AXI4 traffic management performed by
-the Systems Peripheral block. The AXI4 slave port is driven by one of
-the local masters from the SEP i.e. the CPU or the DMA controller.
+the system peripherals block. Its left edge faces the SEP local crossbar and
+its right edge the SMU; the upper lane is the outbound path and the lower lane
+the inbound path, drawn in the notation of <<sep-fabric-topology>>. The figure
+is an overview: <<sep-output-fabric-diagram>> and <<sep-input-fabric-diagram>>
+give every element with its instance name and address window. The AXI4
+subordinate port on the left is driven by the local masters that the local
+crossbar connects to it: the CPU LSU, the CPU debug master and the secure DMA.
 Traffic may be local to the SEP or outbound to external resources either
 within the SMU or beyond the SMU. Traffic beyond the SMU to the rest of
 the chiplet or remote chiplets will bridge to the system NOC also known
@@ -187,18 +219,22 @@ only STEE has access to the STEE address remapper.
 When SEP accesses external private memory or the system’s memory mapped
 IO, the SEP traffic is directly routed to SMN.
 
-SEP’s outbound traffic carries a source ID. Traffic destined to the SMN
-uses SEP’s unique source ID. Traffic that traverses through the AP
-controlled remapper uses the regular source ID termed ``others''.
-Traffic then traverses the outbound filter after traversing the
+SEP’s outbound traffic carries a source ID in AxUSER. Traffic that
+traverses the AP or STEE controlled remapper has its source ID replaced
+with the regular source ID termed ``others''. Other traffic keeps the
+source ID of its initiator: the CPU masters drive SEP’s unique source ID,
+while the secure DMA master path leaves AxUSER at zero, which is the
+``others'' encoding. The fabric passes AxPROT, and with it the NS bit,
+unchanged. Traffic then traverses the outbound filter after traversing the
 remapper. SEP works with M-mode software to program the outbound filters
 so that traffic with source ID ``others'' cannot access M-mode assets.
 The outbound filter enables filtering based on address, NS and source
 ID.
 
 The SEP’s inbound traffic filter is configured by default to block all
-traffic from entering the SEP. Only the SEP CPU can program these
-filters. Again, these filters enable filtering based on address, NS and
+traffic from entering the SEP. The filter entries sit in the system CSRs,
+which the local masters reach directly and external masters only through an
+inbound filter entry that SEP firmware enables. Again, these filters enable filtering based on address, NS and
 source ID.
 
 [[sep-traffic-filter-decode]]
@@ -281,7 +317,18 @@ mapped IO, SEP’s traffic directly goes to the system fabric.
 
 [[sep-mailbox-diagram]]
 .SEP host mailbox architecture and interrupt routing
-image::SEP_AXILmailbox_FIG008.png[alt="SEP host mailbox architecture and interrupt routing",width=100%,pdfwidth=100%]
+image::sep-host-mailbox.svg[alt="Mailbox unit with its AXI-Lite demux, mailboxes 0 and 7 with their outbound and inbound ports and FIFOs, and the interrupt routing to the SMC and the SEP CPU PIC",width=100%,pdfwidth=100%]
+
+The mailbox unit takes one AXI-Lite port from the peripheral crossbar, and its
+demux selects one of sixteen 2 kB port apertures from address bits 14 to 11.
+Mailbox _m_ occupies the 4 kB at `0x10A0_0000` + _m_ × `0x1000`, with its
+outbound port at offset `0x000` and its inbound port at offset `0x800`. The
+figure draws mailboxes 0 and 7; mailboxes 1 to 6 are identical. Each mailbox
+holds two FIFOs of eight 64-bit entries, and `WRITE_DATA` in one port pushes the
+FIFO that `READ_DATA` in the other port pops. Every port has its own
+level-sensitive, active-high interrupt. The eight inbound-port interrupts are
+SEP CPU PIC sources 1 to 8. The eight outbound-port interrupts leave SEP on
+`smc_mailbox_interrupt_o` and reach the SMC as its peripheral interrupts 7 to 0.
 
 SEP uses mailboxes to communicate with the rest of the system such as AP
 cores for example. Each different agent has its own private mailbox in
@@ -290,8 +337,7 @@ address space. Each mailbox is configured according to the inbound
 traffic filter and has an inbox and outbox pair. When the inbox is
 written, an interrupt is sent to the SEP CPU to notify it of an incoming
 service request. Similarly, when the outbox is written by the SEP, an
-interrupt is sent out of the SMU to the system’s interrupt controller
-(APLIC). The outbox is only used for communication with AP cores. For
+interrupt is sent to the SMC. The outbox is only used for communication with AP cores. For
 all other resources we only use inboxes on both ends of the transaction.
 
 The SEP mailboxes have 64-bit data registers while SEP is a 32-bit system.

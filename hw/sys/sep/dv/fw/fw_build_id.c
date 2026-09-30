@@ -10,8 +10,8 @@
 
 #include "fw_build_id.h"
 
-__attribute__((used, section(".fw_build_id_itcm")))
-const char sep_fw_build_id_itcm[] = "FW-BUILD-ID:" SEP_FW_SRC_DIGEST;
+__attribute__((used, section(".fw_build_id_itcm"))) const char sep_fw_build_id_itcm[] =
+    "FW-BUILD-ID:" SEP_FW_SRC_DIGEST;
 
-__attribute__((used, section(".fw_build_id_dtcm")))
-const char sep_fw_build_id_dtcm[] = "FW-BUILD-ID:" SEP_FW_SRC_DIGEST;
+__attribute__((used, section(".fw_build_id_dtcm"))) const char sep_fw_build_id_dtcm[] =
+    "FW-BUILD-ID:" SEP_FW_SRC_DIGEST;

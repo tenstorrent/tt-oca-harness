@@ -4,7 +4,9 @@
 
 Each block owns a memory-map window and populates only ``REG_MAP_SIZE``
 of it. An access past that allocated size owns no register and must be
-refused -- DECERR or SLVERR, the specification does not mandate which.
+refused -- DECERR or SLVERR. This walk grades refusal only; the past-extent
+code ``sep.rdl`` states per block (``ocah_resp``) is graded by
+``sep_unmapped_access_policy_test`` at the points that test probes.
 Truncating the address, wrapping it onto a live register and answering
 OKAY is what this sequence exists to catch.
 
@@ -364,8 +366,8 @@ class SepDeadspace:
     def __init__(self, test) -> None:
         self.test = test
         self.log = test.logger
-        # Refusals whose flavour is not the DECERR memory_map.adoc names.
-        # Reported for the design owner, not failed.
+        # Refusals whose flavour is not DECERR. Reported, not failed: this walk
+        # grades refusal only.
         self.flavour_findings: list[str] = []
         # Response of the last probe(); -1 when it timed out.
         self.last_resp: int = -1
@@ -570,11 +572,8 @@ class SepDeadspace:
             )
         elif resp != RESP_DECERR and not win.adopter:
             # The contract asserted here is that the access is REFUSED, and any
-            # error response satisfies it. `hw/sys/sep/doc/memory_map.adoc`
-            # says such an access is refused but names no flavour, so a
-            # refusal in any flavour is reported for the design owner
-            # rather than failed: which responses are permitted is a
-            # specification question, and the defect this walk exists to catch
+            # error response satisfies it. A refusal in another flavour is
+            # reported rather than failed: the defect this walk exists to catch
             # is OKAY plus aliasing.
             self.flavour_findings.append(
                 f"{win.name} {item.op} 0x{item.addr:08x} refused with "

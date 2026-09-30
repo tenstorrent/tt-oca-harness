@@ -5,11 +5,12 @@
 // recovery with named evidence (the SV port of the cocotb
 // dtp_jtag_trst_test_seq):
 //   * from four distinct start states (Run-Test/Idle, Shift-IR, Shift-DR,
-//     and a seeded Capture-IR/Capture-DR pick), drive TRST low and prove the
-//     TAP is in Test-Logic-Reset before any TCK edge (CHK-TAP-TRST-ASYNC),
-//     then hold it low for a seeded 2..8 TCK cycles with TMS low, which
-//     would leave Test-Logic-Reset were the reset not holding it
-//     (CHK-TAP-TRST-TLR);
+//     and a seeded Capture-IR/Capture-DR pick), each with a seeded
+//     instruction other than IDCODE loaded (BYPASS 0x00, BYPASS 0x3F, or
+//     SAMPLE/PRELOAD), drive TRST low and prove the TAP is in
+//     Test-Logic-Reset before any TCK edge (CHK-TAP-TRST-ASYNC), then hold
+//     it low for a seeded 2..8 TCK cycles with TMS low, which would leave
+//     Test-Logic-Reset were the reset not holding it (CHK-TAP-TRST-TLR);
 //   * release TRST for a seeded 1..3 cycles, step TLR -> RTI by TMS alone,
 //     and prove a DR scan with no IR load reads the device-identification
 //     register the reset selected (CHK-IDCODE-RAW);
@@ -31,7 +32,7 @@ class dtp_jtag_trst_test_seq extends dtp_jtag_base_test_seq;
   protected task reset_from(input ocah_jtag_tap_state_e state, output int unsigned assert_cycles,
                             output bit recovered);
     int unsigned release_cycles = $urandom_range(3, 1);
-    bit [IrWidth-1:0] instr = $urandom_range(1) ? IDCODE_INSTR : BYPASS_INSTR;
+    bit [IrWidth-1:0] instr = random_non_idcode_preload();
     bit [63:0] idcode;
     string ctx;
     assert_cycles = $urandom_range(8, 2);
