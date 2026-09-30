@@ -1006,11 +1006,22 @@ vp-py-deps:
 # The bootrom's named ot-toolchain-images target owns the BUILD_DIR/flag
 # mapping; it does NOT run oca-images (which needs uv + the tt-oca-manifest
 # submodule — the ELF the VP boots does not).
+#
+# It is not wrapped in fw_make. The bootrom runs key-digests on the host and
+# dispatches only the compile into the toolchain sandbox itself, and a sandbox
+# has no engine to dispatch to again. The bootrom builds natively only when
+# RISCV_TOOLCHAIN names a bin dir, so a picolibc toolchain found on PATH is
+# passed that way; otherwise RISCV_TOOLCHAIN is cleared so that a prefix given
+# to this Makefile does not reach the bootrom, which reads it as a bin dir.
 ## Build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf).
 boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."
 	$(FW_ENV)
-	$(call fw_make,-C $(BOOTCODE_DIR) ot-toolchain-images)
+	if echo 'int main(void){return 0;}' | riscv64-unknown-elf-gcc --specs=picolibc.specs -x c -c - -o /dev/null 2>/dev/null; then \
+	  $(MAKE) -C $(BOOTCODE_DIR) ot-toolchain-images RISCV_TOOLCHAIN="$$(dirname "$$(command -v riscv64-unknown-elf-gcc)")"; \
+	else \
+	  $(MAKE) -C $(BOOTCODE_DIR) ot-toolchain-images RISCV_TOOLCHAIN=; \
+	fi
 	echo "[VP] Built: $(BOOT_ELF)"
 
 # Build + run the boot ROM on sep-vp. Control via BOOT_ARGS, e.g.:

@@ -27,6 +27,7 @@ Fixtures:
 
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -167,6 +168,20 @@ def _make(config, *make_args, cwd, container_ok=True):
     return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True, text=True)
 
 
+def _bootrom_toolchain_arg(config):
+    """The RISCV_TOOLCHAIN assignment for a bootrom make.
+
+    The bootrom builds natively only when RISCV_TOOLCHAIN names a bin dir, and
+    otherwise dispatches its compile into the toolchain sandbox itself. A picolibc
+    toolchain found on PATH is therefore named explicitly; otherwise the variable
+    is cleared so the bootrom dispatches rather than reading a stray value."""
+    env = _fw_env(config)
+    if _native_fw_toolchain(env):
+        gcc = shutil.which("riscv64-unknown-elf-gcc", path=env["PATH"])
+        return f"RISCV_TOOLCHAIN={Path(gcc).parent}"
+    return "RISCV_TOOLCHAIN="
+
+
 @pytest.fixture(scope="session")
 def build_type(request):
     return request.config.getoption("--build-type")
@@ -191,6 +206,7 @@ def bootcode_elf(request):
             "-C",
             str(paths.BOOTCODE_DIR),
             "ot-toolchain-images",
+            _bootrom_toolchain_arg(request.config),
             cwd=paths.OCAH_ROOT,
             container_ok=False,
         )
