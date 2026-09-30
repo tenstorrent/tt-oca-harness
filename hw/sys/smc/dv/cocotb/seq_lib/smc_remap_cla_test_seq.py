@@ -17,8 +17,8 @@ Three surfaces, each with a fail-capable expectation:
   an OKAY response) and per-entry decode: every register of each table holds a
   distinct pattern while the rest of the table holds theirs, and reads it back
   before being restored, so an aliased pair or an OKAY-zero hole fails the
-  readback. The reset reads alone cannot make that distinction: the reset word
-  of every remap register is zero.
+  readback. The reset reads alone cannot make that distinction: every entry of
+  a table has the same reset word.
 * **SMC_CLA_REG** -- the Cluster Local Aggregator window: an allow leg on real
   CLA registers (RDL reset values + a scratch write/readback) paired with the
   in-window-hole leg. Unallocated offsets inside the map complete OKAY with
@@ -101,13 +101,13 @@ from smc_reg import (  # noqa: E402
 )
 
 # Per-entry ATTRS addresses from the generated map. Reset value comes from the
-# same generated map (output_remap.rdl offset[55:0] = 0x0), never hand-copied.
+# same generated map (output_remap.rdl), never hand-copied.
 XVISOR_REMAP_ENTRIES = 8
 # Distinct co-resident patterns, one per register of each table, all inside
 # the writable field of the register they are written to: alias_remap.rdl
 # START.start_addr / END.end_addr / ATTRS.offset are bits [55:12] (ATTRS.valid
 # and .cacheable stay 0, so no entry is enabled), output_remap.rdl ATTRS.offset
-# is bits [55:0]. No outbound traffic runs while a table holds them, and every
+# is bits [55:0] (ATTRS.valid stays 0). No outbound traffic runs while a table holds them, and every
 # register is restored to its reset before the landing leg below.
 _ALIAS_START_PATTERNS = tuple((0x100 + i) << 12 for i in range(8))
 _ALIAS_END_PATTERNS = tuple((0x200 + i) << 12 for i in range(8))
