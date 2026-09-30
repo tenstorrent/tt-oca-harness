@@ -159,20 +159,13 @@ runs:
     # local*/ holds SystemC and CCI compiled by a specific g++, and
     # VP_CONFIG_SIG invalidation only wipes build*/, never local*/. A local/
     # restored from a cache built by a different compiler would be reused
-    # as-is and could ODR-mismatch, so the compiler identity is part of the
-    # key: the nix inputs for the container leg, since they pin its compiler,
-    # and the runner's own g++ for the native one. Only the native leg uses
-    # the result -- see the cache step below.
+    # as-is and could ODR-mismatch, so the runner's g++ identity is part of
+    # the key. Only the native leg has a dependency cache -- see below.
     - name: Compute dependency cache key
       id: depkey
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       shell: bash
-      run: |
-        if [ "${{ inputs.mode }}" = "container" ]; then
-          cxx_id="nixinputs-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
-        else
-          cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
-        fi
-        echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
+      run: echo "cxx_id=$(g++ -dumpmachine)-$(g++ -dumpversion)" >> "$GITHUB_OUTPUT"
 
     # Only the native leg builds dependencies, so only it has anything to
     # cache. The container carries SystemC,

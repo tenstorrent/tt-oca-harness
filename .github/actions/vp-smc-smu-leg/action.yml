@@ -148,18 +148,13 @@ runs:
         echo "WHISPER_REV=$rev" >> "$GITHUB_STEP_SUMMARY"
 
     # As in the sep-vp job, but local*/ here also holds the Whisper archives:
-    # the compiler identity is part of the key because VP_CONFIG_SIG
+    # the runner's g++ identity is part of the key because VP_CONFIG_SIG
     # invalidation only wipes build*/, never local*/.
     - name: Compute dependency cache key
       id: depkey
+      if: env.HAVE_SUBMODULE_TOKEN == 'true' && inputs.mode == 'native'
       shell: bash
-      run: |
-        if [ "${{ inputs.mode }}" = "container" ]; then
-          cxx_id="nixinputs-${{ hashFiles('flake.nix', 'flake.lock', 'ocah_deps.nix', 'nix/**') }}"
-        else
-          cxx_id="$(g++ -dumpmachine)-$(g++ -dumpversion)"
-        fi
-        echo "cxx_id=$cxx_id" >> "$GITHUB_OUTPUT"
+      run: echo "cxx_id=$(g++ -dumpmachine)-$(g++ -dumpversion)" >> "$GITHUB_OUTPUT"
 
     # Its OWN key, not the sep-vp job's: local*/ here also holds the Whisper
     # tree, so a shared key would let whichever job saved first decide whether
