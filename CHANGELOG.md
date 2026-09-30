@@ -12,6 +12,7 @@ ports) may change between minor versions.
 First public release of the Open Chiplet Atlas Harness (OCAH).
 
 ### Added
+
 - RTL for the OCAH subsystems — `smc`, `sep`, `smu`, `dtp` — with the reusable IP
   blocks and shared primitives they build on (`hw/common/`, `hw/ip/`).
 - SystemRDL register descriptions and their generated collateral (SystemVerilog,
