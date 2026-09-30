@@ -516,7 +516,11 @@ endif::backend-pdf[]
 The output remap registers control privilege-controlled address
 remapping for outbound transactions. The fabric provides separate remap
 regions for Machine-mode (highest privilege) and Xvisor/Hypervisor
-(intermediate privilege) operations.
+(intermediate privilege) operations. Each region carries a
+`REGION_ATTRS.valid` bit (reset 0): when set, accesses selecting the
+region are remapped through its offset; when clear, they pass through
+with their address unchanged, so an unprogrammed entry acts as an
+identity mapping rather than forcing every access to offset 0.
 
 ifdef::backend-html5[]
 ++++
