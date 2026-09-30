@@ -1,34 +1,38 @@
 {
   "aggregate": {
     "flows": {
-      "failing": 0,
-      "pass_rate": 100.0,
-      "passing": 1,
+      "failing": 1,
+      "pass_rate": 0.0,
+      "passing": 0,
       "total": 1,
       "unknown": 0
     },
     "history": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/dashboard-data/history.json",
-    "history_points": 12,
+    "history_points": 13,
     "summary": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/dashboard-data/summary.json",
     "tests": {
-      "failing": 0,
+      "failing": 2,
       "incomplete_runs": 0,
-      "pass_rate": 100.0,
-      "passing": 120,
+      "pass_rate": 98.33,
+      "passing": 118,
       "skipped": 0,
       "total": 120,
       "unknown": 0
     }
   },
-  "errors": [],
-  "generated_at": "2026-09-29T11:36:39.100257+00:00",
+  "errors": [
+    "smu: runner rc=2",
+    "smu: native status=ERROR",
+    "smu: normalized status=FAIL"
+  ],
+  "generated_at": "2026-09-30T11:46:54.451379+00:00",
   "git": {
-    "commit": "9397efbd6aa6032f763017ba48f7cc5e1ba1b972",
-    "requested_ref": "9397efbd6aa6032f763017ba48f7cc5e1ba1b972"
+    "commit": "300894b58d6f8b76610b3046cd7d5b15d7b64e27",
+    "requested_ref": "300894b58d6f8b76610b3046cd7d5b15d7b64e27"
   },
   "jenkins": {
-    "build_number": "23",
-    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/cocotb/23/",
+    "build_number": "24",
+    "build_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/cocotb/24/",
     "job_name": "tt-oca-harness/smu/cocotb",
     "job_url": "http://jenkins_hw:8080/job/tt-oca-harness/job/smu/job/cocotb/"
   },
@@ -39,15 +43,15 @@
       "group": "all",
       "mode": "regression",
       "native_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/runs/result.json",
-      "native_status": "PASS",
+      "native_status": "ERROR",
       "normalized_result": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/dashboard-data/result.json",
-      "normalized_status": "PASS",
+      "normalized_status": "FAIL",
       "profile": "smu",
       "run_dir": "/proj_soc_scratch/regr/workspace/tt-oca-harness/smu/cocotb/vcs/smu_cocotb/runs",
-      "runner_rc": 0,
+      "runner_rc": 2,
       "tool": "vcs"
     }
   ],
   "schema_version": 1,
-  "status": "PASS"
+  "status": "FAIL"
 }
