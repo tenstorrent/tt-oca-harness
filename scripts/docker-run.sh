@@ -539,11 +539,14 @@ bwrap_run() {
   # sandbox runs its own interpreter, and a caller's values point at host trees
   # that are not bound here. A leaked PYTHONHOME makes python3 abort before it
   # can import 'encodings', which the firmware post-process steps run into.
+  # UV is dropped too: `uv run` exports its own host path there, and make's
+  # `UV ?= uv` then takes a binary the sandbox cannot see over the one on PATH.
   bwrap "${binds[@]}" --chdir "$workdir" \
     --setenv PATH "$sandbox_path" \
     --setenv HOME /tmp \
     --unsetenv PYTHONHOME \
     --unsetenv PYTHONPATH \
+    --unsetenv UV \
     "$@"
 }
 
