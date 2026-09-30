@@ -721,7 +721,10 @@ decodes that notation.</p>
 each unit, how a 32-bit access that no register or memory backs is answered.
 A cell reads <em>read response, read data / write response</em>, for example
 <code>DECERR, 0xBADCAB1E / SLVERR</code>. <code>OKAY</code>, <code>SLVERR</code> and <code>DECERR</code> are the AXI
-response codes returned on <code>RRESP</code> and <code>BRESP</code>.</p>
+response codes returned on <code>RRESP</code> and <code>BRESP</code>.
+The read data is the word a 32-bit read returns in either half of a 64-bit
+data bus. Where the two halves differ, a note on the cell gives the word
+returned when address bit 2 is set.</p>
 </div>
 <div class="ulist">
 <ul>
