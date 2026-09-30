@@ -20,8 +20,11 @@ class dtp_jtag2axi_smc_axi_series_write_read_incr_test(dtp_base_test):
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RDATA",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-STREAM-MIN",
+        "CHK-J2A-BUS-REQ",
+        "CHK-J2A-SERIES-ADDR",
     )
     axi_checker_stream_minimums = {"smc_axi": 2}
 

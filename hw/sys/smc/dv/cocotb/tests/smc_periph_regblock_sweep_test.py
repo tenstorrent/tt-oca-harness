@@ -32,10 +32,12 @@ from smc_base_test import smc_base_test
 #   1 full-width cycle for the DMA configuration, whose block refuses a
 #     sub-word write: the reset read, a write and a readback for each of the
 #     ones and zeros patterns, the restore write and its readback              7
-#   3 telemetry INTR_STATUS clears, 3 accesses each                           9
+#   3 telemetry interrupt legs, 9 accesses each -- the idle INTR_STATUS read,
+#     the INTR_TEST force write and readback, the release write and readback,
+#     the pulse write and readback, the INTR_STATUS clear write and readback  27
 #   the eFuse status leg: the idle read, the write of its three clears and
 #     the readback                                                            3
-PERIPH_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 475
+PERIPH_REGBLOCK_SWEEP_MIN_CSR_ACCESSES = 493
 
 
 @pyuvm.test()

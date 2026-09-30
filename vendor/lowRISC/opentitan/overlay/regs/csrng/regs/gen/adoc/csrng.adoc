@@ -44,10 +44,10 @@ Takes entropy bits to produce cryptographically secure random numbers for consum
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `CS_FATAL_ERR` | RW | 0x0 a| Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.
-| 2 | `CS_HW_INST_EXC` | RW | 0x0 a| Asserted when a hardware-attached CSRNG instance encounters a command exception
-| 1 | `CS_ENTROPY_REQ` | RW | 0x0 a| Asserted when a request for entropy has been made.
-| 0 | `CS_CMD_REQ_DONE` | RW | 0x0 a| Asserted when a command request is completed.
+| 3 | `CS_FATAL_ERR` | RW1C | 0x0 a| Asserted when a FIFO error or a fatal alert occurs. Check the !!ERR_CODE register to get more information.
+| 2 | `CS_HW_INST_EXC` | RW1C | 0x0 a| Asserted when a hardware-attached CSRNG instance encounters a command exception
+| 1 | `CS_ENTROPY_REQ` | RW1C | 0x0 a| Asserted when a request for entropy has been made.
+| 0 | `CS_CMD_REQ_DONE` | RW1C | 0x0 a| Asserted when a command request is completed.
 |===
 
 [#reg-{regmap-instance}-csrng-INTR_ENABLE]
@@ -94,7 +94,7 @@ Takes entropy bits to produce cryptographically secure random numbers for consum
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `REGWEN` | RW | 0x1 a| When true, all writeable registers can be modified.
+| 0 | `REGWEN` | RW0C | 0x1 a| When true, all writeable registers can be modified.
 When false, they become read-only.
 |===
 
@@ -245,7 +245,7 @@ In addition, the otp_en_csrng_sw_app_read input needs to be set to `kMultiBitBoo
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `INT_STATE_READ_ENABLE_REGWEN` | RW | 0x1 a| INT_STATE_READ_ENABLE register configuration enable bit.
+| 0 | `INT_STATE_READ_ENABLE_REGWEN` | RW0C | 0x1 a| INT_STATE_READ_ENABLE register configuration enable bit.
 If this is cleared to 0, the INT_STATE_READ_ENABLE register cannot be written anymore.
 |===
 
@@ -307,7 +307,7 @@ Note that for this to work, !!CTRL.FIPS_FORCE_ENABLE needs to be set to kMultiBi
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
-| 15:0 | `HW_EXC_STS` | RW | 0x0 a| Reading this register indicates whether one of the CSRNG HW instances has
+| 15:0 | `HW_EXC_STS` | RW0C | 0x0 a| Reading this register indicates whether one of the CSRNG HW instances has
 encountered an exception.  Each bit corresponds to a particular hardware
 instance, with bit 0 corresponding to instance HW0, bit 1 corresponding
 to instance HW1, and so forth. (To monitor the status of requests made
@@ -322,36 +322,36 @@ resets the status bits.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:16 | `Reserved` | - | - a| Reserved
-| 15 | `CMD_STAGE_RESEED_CNT_ALERT` | RW | 0x0 a| This bit is set when the maximum number of generate requests between reseeds is
+| 15 | `CMD_STAGE_RESEED_CNT_ALERT` | RW0C | 0x0 a| This bit is set when the maximum number of generate requests between reseeds is
 exceeded.
 The invalid generate command is ignored and CSRNG continues to operate.
 Writing a zero resets this status bit.
-| 14 | `CMD_STAGE_INVALID_CMD_SEQ_ALERT` | RW | 0x0 a| This bit is set when an out of order command is received by the main state machine.
+| 14 | `CMD_STAGE_INVALID_CMD_SEQ_ALERT` | RW0C | 0x0 a| This bit is set when an out of order command is received by the main state machine.
 This happens when an instantiate command is sent for a state that was already
 instantiated or when any command other than instantiate is sent for a state that
 wasn't instantiated yet.
 The invalid command is ignored and CSRNG continues to operate.
 Writing a zero resets this status bit.
-| 13 | `CMD_STAGE_INVALID_ACMD_ALERT` | RW | 0x0 a| This bit is set when an unsupported/illegal CSRNG command is received by the
+| 13 | `CMD_STAGE_INVALID_ACMD_ALERT` | RW0C | 0x0 a| This bit is set when an unsupported/illegal CSRNG command is received by the
 main state machine.
 The invalid command is ignored and CSRNG continues to operate.
 Writing a zero resets this status bit.
-| 12 | `CS_BUS_CMP_ALERT` | RW | 0x0 a| This bit is set when the software application port genbits bus value is equal
+| 12 | `CS_BUS_CMP_ALERT` | RW0C | 0x0 a| This bit is set when the software application port genbits bus value is equal
 to the prior valid value on the bus, indicating a possible attack.
 Writing a zero resets this status bit.
 | 11:5 | `Reserved` | - | - a| Reserved
-| 4 | `ACMD_FLAG0_FIELD_ALERT` | RW | 0x0 a| This bit is set when the FLAG0 field in the Application Command is set to
+| 4 | `ACMD_FLAG0_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the FLAG0 field in the Application Command is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 3 | `FIPS_FORCE_ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
+| 3 | `FIPS_FORCE_ENABLE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the FIPS_FORCE_ENABLE field in the !!CTRL register is set to a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 2 | `READ_INT_STATE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
+| 2 | `READ_INT_STATE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the READ_INT_STATE field in the !!CTRL register is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 1 | `SW_APP_ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
+| 1 | `SW_APP_ENABLE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the SW_APP_ENABLE field in the !!CTRL register is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 0 | `ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the ENABLE field in the !!CTRL register is set to
+| 0 | `ENABLE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the ENABLE field in the !!CTRL register is set to
 a value other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
 |===

@@ -53,6 +53,7 @@ from .smc_avsbus_protocol_utils import (
     RB_FIFO_OCCUPIED_BP,
     READ_CMD_DATA,
     READBACK_HAS_DATA_BM,
+    RESYNC_INTERVAL_BM,
     TOTAL_RETRIES_BM,
     TOTAL_RETRIES_BP,
     AvsFsmMonitor,
@@ -432,7 +433,11 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         """
         label = "OVERFLOW"
         cfg0 = await self.csr_read(f"{label}_CFG0", AVS_CFG_0)
-        await self._set_budget(label, cfg0, RETRY_BUDGET)
+        # A periodic slave resync that falls pending while the first subframe is on
+        # the wire closes the frame after it, and the pair goes out as two lone
+        # commands with no middle subframe to retry. The interval counts register
+        # clocks, so it is parked at its maximum for this leg and restored with cfg0.
+        await self._set_budget(label, cfg0 | RESYNC_INTERVAL_BM, RETRY_BUDGET)
         await self._clear_all_retry_flags(label)
         await self._settle_idle(label)
         prefill = RB_FIFO_DEPTH - 1

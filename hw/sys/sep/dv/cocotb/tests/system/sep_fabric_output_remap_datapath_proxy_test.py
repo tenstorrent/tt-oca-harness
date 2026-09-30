@@ -5,8 +5,9 @@
 RANDCFG. Programs one output-remap region so an AP or STEE window beat is
 rewritten to 0x8000_0000 (the outbound mailbox responder) and allow-lists
 only that remapped address in the outbound filter. A CPU-LSU access of the
-programmed window returns OKAY (translated beat). A second region, left at
-offset 0, returns DECERR (forbidden beat). The CSR-bank R/W test is not
+programmed window returns OKAY (translated beat). A second region, left
+invalid so its beat passes through untranslated, returns DECERR (forbidden
+beat). The CSR-bank R/W test is not
 re-run as the proof.
 
 no_cpu, +skip_fuse_sense: remap and the outbound filter do not depend on
@@ -78,7 +79,7 @@ class sep_fabric_output_remap_datapath_proxy_test(sep_base_test):
         await self.start_seq(bad)
         assert bad.resp_code == RESP_DECERR, (
             f"forbidden 0x{cfg.forbidden_addr:08x} resp={bad.resp_code}, "
-            f"expected DECERR (would remap to 0x{cfg.forbidden_expect:08x})"
+            f"expected DECERR (passes through as 0x{cfg.forbidden_expect:08x})"
         )
         self.logger.info(
             "CHK-FILTER-DROP PASS: %s r%d access 0x%08x -> DECERR "

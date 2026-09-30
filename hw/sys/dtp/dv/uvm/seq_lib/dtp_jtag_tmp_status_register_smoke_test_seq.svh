@@ -4,7 +4,7 @@
 // TMP_STATUS register smoke scenario: persistence (bit 1) must read 0
 // after TAP reset and across a shuffled 2-bit shift-value sweep (bit 1 is
 // read-only until CLAMP_HOLD), CLAMP_HOLD must drive Persistence-On, and a
-// final IDCODE read proves TMP_STATUS access did not disturb TAP routing.
+// final IDCODE read returns the configured IDCODE.
 // Mirrors the cocotb dtp_jtag_tmp_status_register_smoke_test_seq.
 
 class dtp_jtag_tmp_status_register_smoke_test_seq extends dtp_debug_tdr_base_test_seq;
@@ -49,9 +49,7 @@ class dtp_jtag_tmp_status_register_smoke_test_seq extends dtp_debug_tdr_base_tes
     family_check("CHK-TMP-PERSIST", "TMP_STATUS.persistence", 64'(persistence), 64'd1,
                  "after CLAMP_HOLD");
 
-    read_idcode(idcode);
-    family_check("CHK-DBG-TDR", "IDCODE.lsb", idcode & 64'h1, 64'd1, $sformatf(
-                 "idcode=0x%08h", idcode));
+    check_idcode_value(idcode, "after TMP_STATUS");
 
     finalize_family_checker();
   endtask

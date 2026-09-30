@@ -30,6 +30,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         self.status = DtpJtag2AxiStatus.SUCCESS
         self.operation_count = 0
 
+    def bus_ledger_target(self) -> str | None:
+        return None if "security_gating" in self.scenario else self.target
+
     def directed_cases(self) -> list[tuple[int, int, int, int]]:
         """Return deterministic AXI-Lite address, size, data, strobe cases."""
         cases = []
@@ -44,7 +47,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         rng = self.rng(f"{self.target}_directed_cases")
         for _ in range(self.random_count):
             size = rng.choice([0, 1, 2])
-            addr = self.random_target_aligned_addr(self.target, rng, size)
+            addr = self.random_upper_addr(self.target, rng) | self.random_target_aligned_addr(
+                self.target, rng, size
+            )
             data = rng.getrandbits(32) & self.data_mask(size)
             wstrb = rng.randint(1, self.target_full_wstrb(self.target, size))
             cases.append((addr, size, data, wstrb))
@@ -77,23 +82,14 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_single_write_data_verify(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Write With Readback")
         await self.reset_tap()
-        addr = DEFAULT_OTP_ADDR + 0x100
-        # Seeded per-pass payload: each loop verifies readback of different data.
-        data = self.rng(f"{self.target}_write_readback").getrandbits(32)
-        write_status, _ = await self.write_target_single_and_check(
+        # Seeded per-pass payloads: each loop verifies readback of different data.
+        self.status, rdata, _ = await self.write_neighbour_then_read(
             self.target,
-            addr,
-            data,
-            context="write_readback.write",
+            DEFAULT_OTP_ADDR + 0x100,
+            self.rng(f"{self.target}_write_readback"),
+            context="write_readback",
         )
-        read_status, rdata = await self.read_target_single_and_check(
-            self.target,
-            addr,
-            data,
-            context="write_readback.read",
-        )
-        self.status = read_status if read_status != DtpJtag2AxiStatus.SUCCESS else write_status
-        self.operation_count += 2
+        self.operation_count += 3
         self.log.info("write_readback target=%s rdata=0x%08x", self.target, rdata)
 
     async def run_series_write_incr(self) -> None:
@@ -104,7 +100,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         size = cfg.default_size
         stride = cfg.beat_bytes
         beats = max(2, min(self.random_count, 6))
-        base = self.random_target_aligned_addr(self.target, rng)
+        base = self.random_series_base(self.target, rng, span=beats * stride, straddle=True)
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, target=self.target)
         for idx in range(beats):
             addr = base + (idx * stride)
@@ -112,20 +108,22 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             self.log_iteration(
                 idx + 1, beats, "series incr write addr=0x%08x data=0x%x", addr, data
             )
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
-            await self.wait_for_target_activity(
+            await self.series_write_beat(
                 self.target,
-                before=before,
-                read=False,
-                context=f"series_incr.axi#{idx}",
+                data,
+                addr=addr,
+                size=size,
+                increment=True,
+                context=f"series_incr#{idx}",
             )
-            observed = self.read_target_mem_int(self.target, addr, size)
-            self.assert_equal(f"series_incr.mem#{idx}", observed, data, f"addr=0x{addr:x}")
             self.operation_count += 1
         _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
         self.assert_equal("series_incr.status", status, DtpJtag2AxiStatus.SUCCESS)
-        self.assert_equal("series_incr.addr_after", addr_after, base + (beats * stride))
+        self.assert_equal(
+            "series_incr.addr_after",
+            addr_after,
+            self.masked_addr(self.target, base + beats * stride),
+        )
         self.status = status
 
     async def run_series_write_no_incr(self) -> None:
@@ -135,30 +133,25 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         beats = max(2, min(self.random_count, 6))
-        addr = self.random_target_aligned_addr(self.target, rng)
+        addr = self.random_series_base(self.target, rng, span=cfg.beat_bytes)
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, addr, size=size, target=self.target)
-        last_data = 0
         for idx in range(beats):
-            last_data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
+            data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             self.log_iteration(
                 idx + 1,
                 beats,
                 "series no-incr write addr=0x%08x data=0x%x",
                 addr,
-                last_data,
+                data,
             )
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_no_incr(
-                last_data, size=size, target=self.target, back_to_rti=True
-            )
-            await self.wait_for_target_activity(
+            await self.series_write_beat(
                 self.target,
-                before=before,
-                read=False,
-                context=f"series_no_incr.axi#{idx}",
+                data,
+                addr=addr,
+                size=size,
+                increment=False,
+                context=f"series_no_incr#{idx}",
             )
-            observed = self.read_target_mem_int(self.target, addr, size)
-            self.assert_equal(f"series_no_incr.mem#{idx}", observed, last_data)
             self.operation_count += 1
         _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
         self.assert_equal("series_no_incr.status", status, DtpJtag2AxiStatus.SUCCESS)
@@ -204,7 +197,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         size = cfg.default_size
         image: dict[int, int] = {}
         for idx in range(1, self.random_count + 1):
-            addr = self.random_target_aligned_addr(self.target, rng)
+            addr = self.random_upper_addr(self.target, rng) | self.random_target_aligned_addr(
+                self.target, rng
+            )
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             # Any non-empty legal strobe pattern; the per-write check judges
             # the enabled lanes, the end-state image every lane.
@@ -226,7 +221,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 wstrb=wstrb,
                 context=f"random_write#{idx}",
             )
-            self.image_write(image, addr, data, wstrb, size)
+            self.image_write(self.target, image, addr, data, wstrb, size)
             self.status = status
             self.operation_count += 1
         self.check_memory_image(self.target, image, context="random_write")
@@ -249,16 +244,20 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         )
         # Two assert/release passes of the target's direct disable prove the
         # gate is repeatable, not a one-shot POR effect.
+        image_rng = self.rng(f"{self.target}_write_gate_image")
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
             self.log_step(
                 idx + 1, "Gate %s write with %s (pass %d)", self.target, cfg.dbg_disable_bit, idx
             )
+            gate_addr = addr + (idx * cfg.beat_bytes)
+            reference = await self.gate_image_reference(
+                self.target, image_rng, request_addr=gate_addr
+            )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
             # Preload a sentinel at the gated-attempt address: the blocked
             # write must leave memory untouched, both while gated and after
             # the disable is released (a delayed replay would overwrite it).
-            gate_addr = addr + (idx * cfg.beat_bytes)
             sentinel = 0x5EA1_0000 | idx
             self.write_target_mem_int(self.target, gate_addr, sentinel, size)
             # Snapshot BEFORE the gated attempt so a request pulse leaked at
@@ -274,7 +273,7 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 size=size,
                 target=cfg,
             )
-            await self.write_tdr(cfg.single_op_reg, raw)
+            gated = await self.read_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(self.target, 8, context=f"gate.{bit_name}.no_axi")
             if self.axi_scoreboard is not None:
                 gate_after = await self.target_activity_counts(self.target)
@@ -290,6 +289,15 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 f"gate.{bit_name}.sentinel",
                 self.read_target_mem_int(self.target, gate_addr, size),
                 sentinel,
+            )
+            post = await self.read_tdr(cfg.single_op_reg)
+            self.check_gated_tdr(
+                self.target,
+                reference,
+                raw,
+                request_capture=gated,
+                post_capture=post,
+                context=f"gate.{bit_name}",
             )
             # Hold the blocked window ACROSS disable release: a bridge that
             # queued the gated request and replays it once the gate re-opens
@@ -332,6 +340,22 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                 )
             self.status = status
             self.operation_count += 1
+        self.log_step(
+            4, "Gate %s write with series beats queued behind one on the bus", self.target
+        )
+        await self.run_queued_write_drop(
+            self.target,
+            self.rng(f"{self.target}_queued_drop"),
+            addr=addr + 0x100,
+            context="gate.queued_drop",
+        )
+        self.status = await self.verify_target_recovery(
+            self.target,
+            addr=addr + 0x140,
+            data=data ^ 0xA5A5,
+            read=False,
+            context="gate.queued_drop",
+        )
         if self.axi_scoreboard is not None:
             # CHK-AXI-NONVAC: the same counters that stayed flat while gated
             # demonstrably move for real traffic (baseline + both restores), so
@@ -348,25 +372,14 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_single_write_read(self) -> None:
         self.log_banner(f"{self.target} SINGLE_OP Single Write-Read")
         await self.reset_tap()
-        addr = DEFAULT_OTP_ADDR + 0x300
-        # Seeded per-pass payload: each loop writes and reads back different data.
-        data = self.rng(f"{self.target}_single_wr_rd").getrandbits(32) & self.data_mask(
-            self.target_cfg(self.target).default_size
-        )
-        write_status, _ = await self.write_target_single_and_check(
+        # Seeded per-pass payloads: each loop writes and reads back different data.
+        self.status, rdata, _ = await self.write_neighbour_then_read(
             self.target,
-            addr,
-            data,
-            context="single_wr_rd.write",
+            DEFAULT_OTP_ADDR + 0x300,
+            self.rng(f"{self.target}_single_wr_rd"),
+            context="single_wr_rd",
         )
-        read_status, rdata = await self.read_target_single_and_check(
-            self.target,
-            addr,
-            data,
-            context="single_wr_rd.read",
-        )
-        self.status = read_status if read_status != DtpJtag2AxiStatus.SUCCESS else write_status
-        self.operation_count += 2
+        self.operation_count += 3
         self.log.info("single_wr_rd target=%s rdata=0x%08x", self.target, rdata)
 
     async def _series_write_values(self, base: int, values: list[int], *, increment: bool) -> None:
@@ -374,18 +387,13 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         size = cfg.default_size
         await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.WRITE, base, size=size, target=self.target)
         for idx, data in enumerate(values):
-            before = await self.target_activity_counts(self.target)
-            if increment:
-                await self.series_data_incr(data, size=size, target=self.target, back_to_rti=True)
-            else:
-                await self.series_data_no_incr(
-                    data, size=size, target=self.target, back_to_rti=True
-                )
-            await self.wait_for_target_activity(
+            await self.series_write_beat(
                 self.target,
-                before=before,
-                read=False,
-                context=f"series_write_values.axi#{idx}",
+                data,
+                addr=base + idx * cfg.beat_bytes if increment else base,
+                size=size,
+                increment=increment,
+                context=f"series_write_values#{idx}",
             )
 
     async def run_series_write_read_incr(self) -> None:
@@ -396,22 +404,18 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         size = cfg.default_size
         stride = cfg.beat_bytes
         beats = max(2, min(self.random_count, 6))
-        base = self.random_target_aligned_addr(self.target, rng)
+        base = self.random_series_base(self.target, rng, span=beats * stride, straddle=True)
         values = [rng.getrandbits(cfg.data_width) & self.data_mask(size) for _ in range(beats)]
         await self._series_write_values(base, values, increment=True)
         for idx, exp in enumerate(values):
             addr = base + idx * stride
-            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size, target=self.target)
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_incr(0, size=size, target=self.target, back_to_rti=True)
-            await self.wait_for_target_activity(
+            obs = await self.series_read_beat(
                 self.target,
-                before=before,
-                read=True,
-                context=f"series_wr_rd_incr.read_axi#{idx}",
+                addr=addr,
+                size=size,
+                increment=True,
+                context=f"series_wr_rd_incr.read#{idx}",
             )
-            raw = await self.series_data_incr(0, size=size, target=self.target, back_to_rti=True)
-            obs, _ = self.unpack_series_value(raw, size)
             self.assert_equal(f"series_wr_rd_incr.rdata#{idx}", obs, exp, f"addr=0x{addr:x}")
             self.operation_count += 1
         # The last primed incrementing read advanced the series address by
@@ -427,27 +431,13 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         beats = max(2, min(self.random_count, 6))
-        addr = self.random_target_aligned_addr(self.target, rng)
+        addr = self.random_series_base(self.target, rng, span=cfg.beat_bytes)
         values = [rng.getrandbits(cfg.data_width) & self.data_mask(size) for _ in range(beats)]
         await self._series_write_values(addr, values, increment=False)
-        expected = values[-1]
-        for idx in range(1, beats + 1):
-            await self.jtag2axi_series_ctrl(DtpJtag2AxiOp.READ, addr, size=size, target=self.target)
-            before = await self.target_activity_counts(self.target)
-            await self.series_data_no_incr(0, size=size, target=self.target, back_to_rti=True)
-            await self.wait_for_target_activity(
-                self.target,
-                before=before,
-                read=True,
-                context=f"series_wr_rd_no_incr.read_axi#{idx}",
-            )
-            raw = await self.series_data_no_incr(0, size=size, target=self.target, back_to_rti=True)
-            obs, _ = self.unpack_series_value(raw, size)
-            self.assert_equal(f"series_wr_rd_no_incr.rdata#{idx}", obs, expected)
-            self.operation_count += 1
-        _, addr_after, _, _, status = await self.read_series_ctrl(size=size, target=self.target)
-        self.assert_equal("series_wr_rd_no_incr.addr_after", addr_after, addr)
-        self.status = status
+        self.status = await self.series_reread_fixed(
+            self.target, addr, values[-1], beats, rng, context="series_wr_rd_no_incr"
+        )
+        self.operation_count += beats
 
     async def run_series_write_read_incr_with_error(self) -> None:
         self.log_banner(f"{self.target} Series Write-Read With Error-Status Mode")
@@ -487,7 +477,9 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(self.target)
         size = cfg.default_size
         for idx in range(1, self.random_count + 1):
-            addr = self.random_target_aligned_addr(self.target, rng)
+            addr = self.random_upper_addr(self.target, rng) | self.random_target_aligned_addr(
+                self.target, rng
+            )
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             self.write_target_mem_int(self.target, addr, data, size)
             self.log_iteration(
@@ -528,10 +520,15 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
         self.status = status
         # Two assert/release passes of the target's direct disable prove the
         # gate is repeatable, not a one-shot POR effect.
+        image_rng = self.rng(f"{self.target}_read_gate_image")
         for idx in (1, 2):
             bit_name = f"{cfg.dbg_disable_bit}_pass{idx}"
             self.log_step(
                 idx + 1, "Gate %s read with %s (pass %d)", self.target, cfg.dbg_disable_bit, idx
+            )
+            gate_addr = addr + (idx * cfg.beat_bytes)
+            reference = await self.gate_image_reference(
+                self.target, image_rng, request_addr=gate_addr
             )
             await self.disable_debug_bits(cfg.dbg_disable_bit)
             # Snapshot BEFORE the gated attempt and hold a blocked window
@@ -539,10 +536,8 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
             # (CHK-AXI-BLOCKED).
             gate_before = await self.target_activity_counts(self.target)
             self.scoreboard_begin_blocked(self.target)
-            raw = pack_single_op(
-                DtpJtag2AxiOp.READ, addr + (idx * cfg.beat_bytes), size=size, target=cfg
-            )
-            await self.write_tdr(cfg.single_op_reg, raw)
+            raw = pack_single_op(DtpJtag2AxiOp.READ, gate_addr, size=size, target=cfg)
+            gated = await self.read_tdr(cfg.single_op_reg, raw)
             await self.expect_no_target_activity(
                 self.target, 8, context=f"read_gate.{bit_name}.no_axi"
             )
@@ -556,6 +551,15 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                         f"source=tb_pulse_counters window=gated_attempt+8cyc"
                     ),
                 )
+            post = await self.read_tdr(cfg.single_op_reg)
+            self.check_gated_tdr(
+                self.target,
+                reference,
+                raw,
+                request_capture=gated,
+                post_capture=post,
+                context=f"read_gate.{bit_name}",
+            )
             # Hold the blocked window ACROSS disable release: a queued gated
             # request replaying once the gate re-opens is the exact leak this
             # scenario must catch.
@@ -607,12 +611,6 @@ class dtp_jtag2axi_otp_axi_test_seq(dtp_jtag2axi_base_test_seq):
                     f"expected_ar>=3 (baseline+2 restores)"
                 ),
             )
-
-    @staticmethod
-    def unpack_series_value(raw: int, size: int) -> tuple[int, int]:
-        from env.dtp_types import unpack_series_data
-
-        return unpack_series_data(raw, size)
 
     async def body(self) -> None:
         await self.enable_all_debug()

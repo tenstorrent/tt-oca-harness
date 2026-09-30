@@ -15,11 +15,12 @@
 
 interface smu_tb_if;
 
-  // Clock periods the harness generators read, set by the env from
-  // smu_env_cfg (the test cfg randomizes them from the runner seed).
+  // Clock periods, set by the env from smu_env_cfg: the three pll_wrap
+  // periods for the sequences' cycle waits, and the SEP watchdog period the
+  // harness generator reads (the test cfg draws it from the runner seed).
   int unsigned ref_clk_period_ns     = 10;
   int unsigned smu_clk_period_ns     = 10;
-  int unsigned periph_clk_period_ns  = 20;
+  int unsigned periph_clk_period_ns  = 5;
   int unsigned sep_wdt_clk_period_ns = 100;
 
   // Clock mirrors for the monitors and the cycle-bounded waits.

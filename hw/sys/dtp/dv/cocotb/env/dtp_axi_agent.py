@@ -20,6 +20,8 @@ from ocah_axi_vip import (
 )
 from pyuvm import ConfigDB, uvm_agent
 
+from .dtp_axi_port_history import DtpAxiPortHistory
+
 
 class DtpAxiAgent(uvm_agent):
     def build_phase(self) -> None:
@@ -113,13 +115,16 @@ class DtpAxiAgent(uvm_agent):
                 name="dtp_sep_otp_watcher",
             ),
         }
+        histories = {target: DtpAxiPortHistory() for target in monitors}
         for target, monitor in monitors.items():
             scoreboard.attach_monitor(monitor, stream=target)
+            monitor.add_item_callback(histories[target].observe)
             await monitor.start()
         for watcher in watchers.values():
             await watcher.start()
         self.cfg.axi_monitors = monitors
         self.cfg.axi_watchers = watchers
+        self.cfg.axi_port_histories = histories
         self.logger.info("Shared AXI monitors/watchers attached to scoreboard")
 
     def backdoor_read64(self, addr: int) -> int:

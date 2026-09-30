@@ -18,9 +18,10 @@
 //     measures the chain latency;
 //   * STAP/3DCR access: PTAP 3DCR read/write, composed TAP_3DCR chain
 //     scans through the 3DCR model (compose/apply/expected-capture), the
-//     forwarding checks (tdo_oen pulses + tms follows live TMS vs parked at
-//     the stored tms_hold), the PTAP 3DCR readback over the TDR return
-//     path while its select is clear, and TLR/TRST model synchronization;
+//     forwarding checks (tdo_oen pulses + tms equal to the primary TMS vs
+//     parked at the stored tms_hold), the PTAP 3DCR readback over the TDR
+//     return path while its select is clear, the marker that locates the
+//     chain return, and TLR/TRST model synchronization;
 //   * downstream STAP TAPs: the shared ocah_jtag_vip slave devices the
 //     bench splices behind the STAP host ports (test-attached), reached only
 //     through composed chain scans (network-wide IR scans included) and
@@ -41,7 +42,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   localparam int unsigned Ptap3dcrWidth = 2;
   // Over-length composed scans: 64 bits holds the worst case (PTAP 3DCR +
   // a 32-bit downstream IDCODE + the I/O STAP splice + four open SIBs with
-  // their 3DCRs).
+  // their 3DCRs + the host segment).
   localparam int unsigned StapChainScanWidth = 64;
   localparam string StapDsTdrName = "DS_TDR";
 
@@ -52,9 +53,11 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   // scan model is seeded from and whether the port is attached (its host
   // TDI takes the device's TDO instead of the wire loopback), both plumbed
   // by the test; the slave sequence bound to each device comes from the
-  // virtual sequencer.
+  // virtual sequencer. The test also plumbs whether the host segment sits
+  // behind the extended STAP host scan interface.
   ocah_jtag_slave_config   stap_ds_cfg[DtpStapCount];
   bit                      stap_ds_attached[DtpStapCount];
+  bit                      stap_host_segment_attached;
   protected ocah_jtag_slave_sequence m_stap_ds_seq[DtpStapCount];
 
   function new(string name = "dtp_scan_base_test_seq");
@@ -110,12 +113,12 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endfunction
 
   // Stop the running window and apply the quiet/active checks in one step.
-  function void check_scan_window(string quiet[$], string active[$], string context_s);
+  task check_scan_window(string quiet[$], string active[$], string context_s);
     int unsigned edges;
     int unsigned counts[string];
     stop_scan_window(edges, counts);
     check_window_counts(edges, counts, quiet, active, context_s);
-  endfunction
+  endtask
 
   // --- iJTAG ------------------------------------------------------------------
   static function string ijtag_prefix(int unsigned sib);
@@ -170,6 +173,32 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     ijtag_scan(d, int'(pattern), no_inst, 0, '0, context_s, unused);
   endtask
 
+  // The select, shift, capture, and update controls of every SIB `d` gates.
+  function void ijtag_gated_controls(sep_lifecycle_ctrl_pkg::dbg_disable_t d,
+                                     ref string controls[$]);
+    bit gated[DtpIjtagSibCount];
+    dtp_ijtag_sib_model::gates(d, gated);
+    controls.delete();
+    for (int unsigned sib = 0; sib < DtpIjtagSibCount; sib++)
+    if (gated[sib]) begin
+      controls.push_back({ijtag_prefix(sib), "_select"});
+      controls.push_back({ijtag_prefix(sib), "_shift_en"});
+      controls.push_back({ijtag_prefix(sib), "_capture_en"});
+      controls.push_back({ijtag_prefix(sib), "_update_en"});
+    end
+  endfunction
+
+  // program_ijtag_sibs() inside a temporal window: every control in `quiet`
+  // stays low across the whole program scan (CHK-SCAN-WIN).
+  task program_ijtag_sibs_quiet(bit [DtpIjtagSibCount-1:0] pattern,
+                                sep_lifecycle_ctrl_pkg::dbg_disable_t d, string quiet[$],
+                                string context_s);
+    string none[$];
+    start_scan_window(quiet);
+    program_ijtag_sibs(pattern, d, context_s);
+    check_scan_window(quiet, none, {context_s, ".program_window"});
+  endtask
+
   // Index of the highest set bit (-1 for zero).
   static function int msb_index(bit [63:0] value);
     for (int b = 63; b >= 0; b--) if (value[b]) return b;
@@ -214,8 +243,9 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endfunction
 
   // Program a SIB pattern under a disable mask and prove the outcome:
-  // a composed program scan carrying seeded instrument values, then a
-  // marker scan under a temporal window, so the control windows, the
+  // a composed program scan carrying seeded instrument values (inside a
+  // window over every gated SIB's controls when the mask gates one), then
+  // a marker scan under a temporal window, so the control windows, the
   // measured chain latency, and the captured SIB states and instrument
   // registers must all match the model.
   task check_ijtag_pattern(bit [DtpIjtagSibCount-1:0] pattern,
@@ -224,7 +254,7 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     bit gated[DtpIjtagSibCount];
     bit effective[DtpIjtagSibCount];
     int unsigned chain_len;
-    string quiet[$], active[$];
+    string quiet[$], active[$], gated_controls[$], none[$];
     bit [63:0] new_inst[int];
     bit [63:0] no_inst[int];
     bit [63:0] marker, observed, unused;
@@ -237,7 +267,11 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
                   "%s SIB pattern=0b%03b requested=%p gated=%p effective=%p chain_len=%0d inst=%p",
                   context_s, pattern, requested, gated, effective, chain_len, new_inst), UVM_LOW)
     set_dbg_disable_full(d);
+    ijtag_gated_controls(d, gated_controls);
+    if (gated_controls.size() > 0) start_scan_window(gated_controls);
     ijtag_scan(d, int'(pattern), new_inst, 0, '0, {context_s, ".program"}, unused);
+    if (gated_controls.size() > 0)
+      check_scan_window(gated_controls, none, {context_s, ".program.program_window"});
     ijtag_window_signals(requested, gated, effective, quiet, active);
     start_scan_window({quiet, active});
     ijtag_scan(d, -1, no_inst, DtpIjtagObserveScanWidth, marker, {context_s, ".observe"}, observed);
@@ -258,6 +292,11 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- STAP / 3DCR -------------------------------------------------------------
+  // The extended STAP host scan controls on dtp_scan_if.
+  static function void stap_host_scan_controls(ref string signals[$]);
+    scan_ctrl_signals("jtag_stap_host", signals);
+  endfunction
+
   static function string stap_prefix(int unsigned stap);
     case (stap)
       int'(ST_IO):  return "jtag_stap_io";
@@ -276,6 +315,25 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     endcase
   endfunction
 
+  // Assertions of a STAP port's forwarded host TRST (dtp_scan_if counter).
+  function int unsigned stap_trst_assert_count(int unsigned stap);
+    case (stap)
+      int'(ST_IO):  return scan_vif.jtag_stap_io_trst_assert_count;
+      int'(ST_SMC): return scan_vif.jtag_stap_smc_trst_assert_count;
+      int'(ST_SEP): return scan_vif.jtag_stap_sep_trst_assert_count;
+      default:      return scan_vif.jtag_stap_extra0_trst_assert_count;
+    endcase
+  endfunction
+
+  // The PTAP instruction of each composed data-scan kind.
+  static function string chain_scan_name(dtp_scan_kind_e kind);
+    case (kind)
+      DTP_SCAN_ZLB:    return "ZERO_LENGTH_BYPASS";
+      DTP_SCAN_BYPASS: return "BYPASS";
+      default:         return "TAP_3DCR";
+    endcase
+  endfunction
+
   task write_ptap_3dcr(bit config_hold, bit stap_sel, string context_s);
     bit [63:0] value = dtp_stap_3dcr_model::ptap_3dcr_value(config_hold, stap_sel);
     `uvm_info(get_type_name(), $sformatf("%s PTAP_3DCR config_hold=%0d select=%0d raw=0x%0h",
@@ -291,11 +349,17 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
   endtask
 
   // --- downstream STAP TAPs --------------------------------------------------
-  // Seed the chain model with every attached downstream TAP and route
-  // their slave-sequence evidence into this pass's family checker. Call
-  // once per pass after attach_family_checker(); a pass on a bench with no
-  // attached ports is unaffected.
+  // Seed the chain model with every attached downstream TAP and the host
+  // segment, and route the downstream slave-sequence evidence into this
+  // pass's family checker. Call once per pass after attach_family_checker();
+  // a pass on a bench with no attached ports is unaffected.
   function void attach_downstream_taps();
+    if (stap_host_segment_attached) begin
+      stap_model.attach_host_segment();
+      `uvm_info(get_type_name(), $sformatf(
+                                     "host segment behind the extended STAP host scan: width=%0d",
+                                     DtpStapHostSegmentWidth), UVM_LOW)
+    end
     for (int unsigned s = 0; s < DtpStapCount; s++) begin
       m_stap_ds_seq[s] = p_sequencer.m_stap_ds_seq[s];
       if (!stap_ds_attached[s]) continue;
@@ -347,46 +411,58 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     stap_model.flush_scan(d);
   endtask
 
-  // One composed TAP_3DCR scan driving the full chain state. TAP_3DCR
-  // must already be loaded (stap_chain_flush). Negative ptap args and
-  // absent associative entries keep stored values, so a bare call is a
-  // maintain scan whose captured bits read back the pre-scan chain state;
-  // new_ds_values writes a spliced downstream TAP's selected (writable)
-  // register. `marker` rides in the leading bits that pass through the
-  // chain.
-  task stap_chain_write_ds(input sep_lifecycle_ctrl_pkg::dbg_disable_t d, input int new_ptap_select,
-                           input int new_ptap_config_hold, input int new_sib_en[int],
-                           input dtp_stap_3dcr_state_t new_payloads[int],
-                           input bit [63:0] new_ds_values[int], input string context_s,
-                           output bit [63:0] captured, input bit [63:0] marker = '0);
+  // One composed data scan driving the full chain state. The loaded PTAP
+  // instruction must match `kind`: TAP_3DCR (stap_chain_flush) for
+  // DTP_SCAN_DR, ZERO_LENGTH_BYPASS for DTP_SCAN_ZLB, or BYPASS for
+  // DTP_SCAN_BYPASS, the last two with the PTAP 3DCR select set, negative
+  // ptap args, and no PTAP 3DCR field in the scan. Negative ptap args, a
+  // negative new_host_segment, and absent associative entries keep stored
+  // values, so a bare call is a maintain scan whose captured bits read back
+  // the pre-scan chain state; new_ds_values writes a spliced downstream
+  // TAP's selected (writable) register and new_host_segment the host segment
+  // while it is in the chain. `marker` rides in the leading bits that pass
+  // through the chain.
+  task stap_chain_write_ds(
+      input sep_lifecycle_ctrl_pkg::dbg_disable_t d, input int new_ptap_select,
+      input int new_ptap_config_hold, input int new_sib_en[int],
+      input dtp_stap_3dcr_state_t new_payloads[int], input bit [63:0] new_ds_values[int],
+      input string context_s, output bit [63:0] captured, input bit [63:0] marker = '0,
+      input int new_host_segment = -1, input dtp_scan_kind_e kind = DTP_SCAN_DR);
     dtp_stap_3dcr_model::layout_entry_t layout[$];
-    bit [63:0] value = stap_model.compose_scan_ds(
+    bit [63:0] value;
+    if (kind != DTP_SCAN_DR && (new_ptap_select >= 0 || new_ptap_config_hold >= 0))
+      `uvm_fatal(get_type_name(), $sformatf("a %s scan does not reach the PTAP 3DCR", kind.name()))
+    value = stap_model.compose_scan_ds(
         StapChainScanWidth,
         d,
         new_ptap_select,
         new_ptap_config_hold,
         new_sib_en,
         new_payloads,
-        new_ds_values
+        new_ds_values,
+        new_host_segment,
+        kind
     );
-    stap_model.chain_layout(d, layout);
+    stap_model.chain_layout(d, layout, kind);
     if (marker >= (64'h1 << (StapChainScanWidth - layout.size())))
       `uvm_fatal(get_type_name(), $sformatf("marker 0x%0h overlaps the chain", marker))
     value |= marker;
-    `uvm_info(get_type_name(), $sformatf("%s TAP_3DCR chain scan value=0x%016h", context_s, value),
-              UVM_MEDIUM)
+    `uvm_info(get_type_name(),
+              $sformatf("%s %s chain scan value=0x%016h chain_len=%0d host_segment=%0d", context_s,
+                        chain_scan_name(kind), value, layout.size(), new_host_segment), UVM_MEDIUM)
     shift_dr(value, StapChainScanWidth, captured);
     stap_model.apply_scan_ds(d, new_ptap_select, new_ptap_config_hold, new_sib_en, new_payloads,
-                             new_ds_values);
+                             new_ds_values, new_host_segment);
   endtask
 
   task stap_chain_write(input sep_lifecycle_ctrl_pkg::dbg_disable_t d, input int new_ptap_select,
                         input int new_ptap_config_hold, input int new_sib_en[int],
                         input dtp_stap_3dcr_state_t new_payloads[int], input string context_s,
-                        output bit [63:0] captured, input bit [63:0] marker = '0);
+                        output bit [63:0] captured, input bit [63:0] marker = '0,
+                        input int new_host_segment = -1, input dtp_scan_kind_e kind = DTP_SCAN_DR);
     bit [63:0] no_ds[int];
     stap_chain_write_ds(d, new_ptap_select, new_ptap_config_hold, new_sib_en, new_payloads, no_ds,
-                        context_s, captured, marker);
+                        context_s, captured, marker, new_host_segment, kind);
   endtask
 
   // One composed instruction scan over the full network. With the PTAP
@@ -409,10 +485,11 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
 
   // State-preserving chain scan; the capture reads back stored state.
   task stap_chain_maintain(input sep_lifecycle_ctrl_pkg::dbg_disable_t d, input string context_s,
-                           output bit [63:0] captured, input bit [63:0] marker = '0);
+                           output bit [63:0] captured, input bit [63:0] marker = '0,
+                           input dtp_scan_kind_e kind = DTP_SCAN_DR);
     int no_sib[int];
     dtp_stap_3dcr_state_t no_pl[int];
-    stap_chain_write(d, -1, -1, no_sib, no_pl, context_s, captured, marker);
+    stap_chain_write(d, -1, -1, no_sib, no_pl, context_s, captured, marker, -1, kind);
   endtask
 
   // Compare a maintain scan's captured bits against the model state.
@@ -426,6 +503,19 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     stap_model.expected_capture(d, expected, care, chain_len, kind);
     family_check("CHK-SCAN-CHAIN", "stap_chain_readback", captured & care, expected & care,
                  $sformatf("%s len=%0d care=0x%0h", context_s, chain_len, care));
+  endfunction
+
+  // The marker a maintain scan shifts ahead of the chain image leaves TDO
+  // right behind the captured chain, so where it arrives is the length of
+  // the chain the scan returned through (CHK-SCAN-CHAIN). Valid while the
+  // PTAP 3DCR select was already 1 before the scan.
+  function void check_stap_chain_marker(bit [63:0] captured, bit [63:0] marker,
+                                        sep_lifecycle_ctrl_pkg::dbg_disable_t d, string context_s);
+    dtp_stap_3dcr_model::layout_entry_t layout[$];
+    stap_model.chain_layout(d, layout);
+    family_check("CHK-SCAN-CHAIN", "stap_chain_marker_passthrough",
+                 (captured >> layout.size()) & ocah_rng::bit_mask(DtpScanMarkerWidth), marker,
+                 $sformatf("%s len=%0d captured=0x%0h", context_s, layout.size(), captured));
   endfunction
 
   // PTAP 3DCR readback while its select is clear. With the select clear,
@@ -523,19 +613,38 @@ class dtp_scan_base_test_seq extends dtp_jtag_base_test_seq;
     stap_ds_readback(stap, "CHK-DS-IDCODE", d, context_s, unused);
   endtask
 
-  // A selected STAP forwards: tdo_oen pulses during shifts and tms follows
-  // the live TMS (mixed samples). A deselected or gated STAP never drives
+  // The host-port observables check_stap_forwarding() judges.
+  function void stap_forwarding_watch(int unsigned stap, ref string watch[$]);
+    string prefix = stap_prefix(stap);
+    watch.push_back({prefix, "_tdo_oen"});
+    watch.push_back({prefix, "_tms"});
+    watch.push_back({prefix, "_tms_mismatch"});
+  endfunction
+
+  // A selected STAP forwards: tdo_oen pulses during shifts and the host tms
+  // follows the live TMS, equal to the primary TMS at every rising TCK edge
+  // of a window where it toggles. A deselected or gated STAP never drives
   // tdo_oen and parks its tms at the stored tms_hold, high or low for the
-  // whole window.
+  // whole window. A window that missed a stap_forwarding_watch() observable
+  // is fatal.
   function void check_stap_forwarding(int unsigned edges, int unsigned counts[string],
                                       int unsigned stap, bit forwarding, string context_s);
     string prefix = stap_prefix(stap);
-    int unsigned tdo_oen = counts[{prefix, "_tdo_oen"}];
-    int unsigned tms     = counts[{prefix, "_tms"}];
+    string watch[$];
+    int unsigned tdo_oen, tms, mismatches;
     bit tms_hold = stap_model.staps[stap].tms_hold;
+    stap_forwarding_watch(stap, watch);
+    foreach (watch[i])
+    if (!counts.exists(watch[i]))
+      `uvm_fatal(get_type_name(), $sformatf("%s: the window did not watch %s", context_s, watch[i]))
+    tdo_oen    = counts[{prefix, "_tdo_oen"}];
+    tms        = counts[{prefix, "_tms"}];
+    mismatches = counts[{prefix, "_tms_mismatch"}];
     if (forwarding) begin
       family_check("CHK-SCAN-WIN", {prefix, "_tdo_oen forwarding"}, 64'(tdo_oen > 0), 64'd1,
                    $sformatf("%s count=%0d/%0d", context_s, tdo_oen, edges));
+      family_check("CHK-SCAN-WIN", {prefix, "_tms equals the primary TMS"}, 64'(mismatches), 64'd0,
+                   $sformatf("%s mismatches=%0d/%0d", context_s, mismatches, edges));
       family_check("CHK-SCAN-WIN", {prefix, "_tms follows live TMS"},
                    64'((tms > 0) && (tms < edges)), 64'd1, $sformatf(
                    "%s count=%0d/%0d", context_s, tms, edges));

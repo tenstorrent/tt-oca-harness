@@ -2,9 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // DEBUG_CONTROL JTAG clock stop: JTAG_CLOCK_STOP must assert and release
-// stop_clks (polled across the 2-flop synchronizer), leave the CLA enable
+// stop_clks (polled until the clk_i register settles), leave the CLA enable
 // and status untouched, and behave repeatably across seeded stop/release
-// toggles (no one-shot behavior). Mirrors the cocotb
+// toggles (no one-shot behavior). Across the pass no stop_clks change falls
+// off a clk_i rising edge (CHK-DBG-STOP-EDGE). Mirrors the cocotb
 // dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq.
 
 class dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq extends dtp_debug_tdr_base_test_seq;
@@ -15,11 +16,13 @@ class dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq extends dtp_debug_tdr_base_
   endfunction
 
   task body();
-    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN"};
+    string required[$] = {"CHK-TAP-RESET-TLR", "CHK-DBG-TDR", "CHK-DBG-PIN", "CHK-DBG-STOP-EDGE"};
     bit [63:0] control_value, clear_value, readback;
     int unsigned toggles;
+    int unsigned off_edge_start;
     seed_scenario_rng();
     attach_family_checker(required);
+    off_edge_start = stop_clks_off_edge_count();
 
     reset_to_tlr();
     set_clk_stop_requests('0);
@@ -56,6 +59,11 @@ class dtp_dbg_ctrl_clk_stop_jtag_clock_stop_test_seq extends dtp_debug_tdr_base_
     end
 
     read_debug_control(readback, clear_value);
+    check_debug_control_bit(readback, DbgJtagClockStopBit, 1'b0, "DEBUG_CONTROL.jtag_clock_stop",
+                            "after the toggles");
+    check_debug_control_bit(readback, DbgClaClockStopBit, 1'b0, "DEBUG_CONTROL.cla_clock_stop",
+                            "after the toggles");
+    check_stop_clks_off_edge(off_edge_start, "whole pass");
     finalize_family_checker();
   endtask
 

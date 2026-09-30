@@ -22,7 +22,7 @@ Per-filter access-control registers defining permitted address ranges and transa
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `locked` | RW | 0x0 a| Lock filter configurations. Write once register.
+| 63 | `locked` | RW1S | 0x0 a| Lock filter configurations. Write once register.
 Once set, this bit cannot be cleared, and every subsequent write to this
 filter entry's FILTER_CONFIG, START_ADDR and END_ADDR registers is steered
 to the AXI error subordinate and terminates with a DECERR response; reads
