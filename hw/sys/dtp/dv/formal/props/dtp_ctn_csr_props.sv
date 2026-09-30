@@ -46,11 +46,12 @@ module dtp_ctn_csr_props
 
   localparam logic [1:0] RESP_OKAY = 2'b00;
   localparam logic [1:0] RESP_DECERR = 2'b11;
+  localparam logic [31:0] CTM_END = 32'(CSR_ADDR_CTM_REG_SIZE);
   localparam logic [31:0] CTP_BASE = 32'h200;
   localparam logic [31:0] MAP_END = CTP_BASE + 32'(NUM_CTP) * 32'h10;
 
   function automatic logic mapped(input logic [31:0] addr);
-    return addr < MAP_END;
+    return addr < CTM_END || (addr >= CTP_BASE && addr < MAP_END);
   endfunction
 
   // Crossbar master port of a mapped address: the matrix at 0, port n at n + 1.
@@ -159,7 +160,7 @@ module dtp_ctn_csr_props
                                    resp_i.r.resp == (mapped(rd_addr_q) ? RESP_OKAY : RESP_DECERR)),
                   clk_i, rst_ni)
   `OCAH_FV_ASSERT(ast_csr_ctp_window, aw_routed_alone && ar_routed_alone, clk_i, rst_ni)
-  `OCAH_FV_ASSERT(ast_csr_ctm_aliases,
+  `OCAH_FV_ASSERT(ast_csr_ctm_readback,
                   `OCAH_FV_IMPLIES(ctm_req_i && !ctm_req_is_wr_i,
                                    ctm_rd_data_i == ctm_readback(ctm_addr_i)) &&
                   `OCAH_FV_IMPLIES(ctm_req_i && !ctm_req_is_wr_i && rd_pending_q,
@@ -215,8 +216,9 @@ module dtp_ctn_csr_props
                  r_hs && rd_pending_q && rd_addr_q == CTP_BASE && resp_i.r.data[0], clk_i, rst_ni)
   `OCAH_FV_COVER(cov_csr_ctm_read_after_write,
                  r_hs && rd_pending_q && rd_addr_q < CTP_BASE && resp_i.r.data != '0, clk_i, rst_ni)
-  `OCAH_FV_COVER(cov_csr_ctm_alias_read,
-                 r_hs && rd_pending_q && rd_addr_q[8] && rd_addr_q < CTP_BASE, clk_i, rst_ni)
+  `OCAH_FV_COVER(cov_csr_ctm_past_extent_decerr,
+                 r_hs && rd_pending_q && rd_addr_q >= CTM_END && rd_addr_q < CTP_BASE &&
+                 resp_i.r.resp == RESP_DECERR, clk_i, rst_ni)
   `OCAH_FV_COVER(cov_csr_masked_write,
                  $past(ctp0_stretch_write) && $past(ctp0_wr_biten_i[15:0]) != '1 &&
                  $past(ctp0_wr_biten_i[15:0]) != '0, clk_i, rst_ni)

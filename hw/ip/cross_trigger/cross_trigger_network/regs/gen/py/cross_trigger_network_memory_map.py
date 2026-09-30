@@ -27,8 +27,8 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("between sub-blocks", {"rresp": "OKAY", "rdata": 0x0, "bresp": "OKAY", "text": "OKAY, 0x0 / OKAY"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "ALIAS", "rdata": 0x0, "bresp": "ALIAS", "text": "Aliases registers"},
-                "past_note": "0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY.",
+                "past_response": {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"},
+                "past_note": "",
             },
             {
                 "key": "main:ctp",
