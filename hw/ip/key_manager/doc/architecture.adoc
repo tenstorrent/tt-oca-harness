@@ -85,7 +85,9 @@ scan reset in `u_reset_conditioner` and drives the test inputs of `u_xbar` and
 The Key Manager is configured through its ROM and SRAM sizes, the mailbox FIFO depth,
 the read-data behaviour of its memories, and the address of the eFuse controller.
 The main KM SRAM is 32 KB (8192 × 32-bit words), implemented with the scrambler macro
-`scrambler_8192x32`.
+`scrambler_8192x32`. The SRAM macro must return read data (`rvalid`) at least one cycle
+after the cycle in which it grants the read, because the SRAM interface descrambles and
+parity-checks each response with the address and byte strobes it captures at the grant.
 
 ifdef::backend-html5[]
 The parameters of `key_manager` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/key_manager/key_manager.adoc[key_manager].
@@ -110,7 +112,10 @@ defines them and their codes. The KM CPU does not see these responses: an error 
 
 The OTP/eFuse window is the exception: hardware preserves its lower 12 address
 bits and replaces the upper bits with the integration parameter
-`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP.
+`OTP_EFUSE_REMAP_BASE` before forwarding the transaction to SEP. Only the
+MAP, CTRL and MMR register maps are forwarded. The Key Manager answers any
+other offset in the window with SLVERR, so the KM CPU cannot reach the eFuse
+shim control registers.
 
 ifdef::backend-html5[]
 include::partial$key_manager/regs/gen/adoc/memory_map.adoc[]
@@ -898,11 +903,19 @@ because the SRAM base (`0x0000_8000`) is aligned to the SRAM size; it is the
 same slice `km_sram_interface` uses to check data writes, so the two views of a
 region can never disagree.
 
-* VROM (`0x1000_0000`) is a testbench-only virtual ROM used in the block TB.
-  It is treated as always executable in both modes so that firmware running
-  from VROM in simulation is not falsely faulted, and it is exempt from the ROM
-  lockout for the same reason.  VROM does not exist in production silicon and
-  so carries no security requirement.
+* VROM is the virtual ROM window, `0x1000_0000`–`0x1000_FFFF`. Only a
+  simulation build that defines `OCAH_KM_VROM` decodes it; there it is
+  executable in both modes and exempt from the ROM lockout, and it carries no
+  security requirement. Without the define the window is an unmapped address:
+  a load or store answers DECERR, and a fetch pulses `EXEC_VIOLATION`.
+
+For the define and the builds it is rejected in, see
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-pdf[]
 
 `SRAM_EXEC_MODE.enable` is set by the stack-less handover assembly
 (`rom_handover_jump.S`) immediately before the `jalr` to mutable firmware,

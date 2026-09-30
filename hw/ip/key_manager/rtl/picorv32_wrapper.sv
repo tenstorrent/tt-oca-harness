@@ -13,7 +13,10 @@
 //   enforcement).
 // - Peripherals: every other address, via picorv32_axi_adapter to an AXI4-Lite master.
 //
-// A virtual ROM region (testbench-only) is exposed for simulation.
+// With OCAH_KM_VROM defined, the virtual ROM window (VROM_BASE_ADDR to VROM_END_ADDR) is
+// decoded to the vrom_mem_* nets instead, which complete an access only when the simulation
+// drives vrom_mem_ready. The define is simulation-only: elaboration fails when SYNTHESIS or
+// EMULATION is also defined. Without it the window is a peripheral address.
 //
 // Three external IRQ sources connect to the PicoRV32 as non-latched level-sensitive
 // inputs:
@@ -29,10 +32,13 @@
 // (mem_instr). Allowed regions are selected by sram_exec_mode_i (from KMCSR
 // SRAM_EXEC_MODE.enable) and by the ROM lockout:
 //
-// - 0 (ROM mode): ROM and VROM only.
-// - 1 (SRAM mode): VROM and write-locked SRAM regions, plus the ROM until the lockout
-//   engages on the first fetch from a write-locked SRAM region. The lockout holds until
-//   rst_sync_ni; afterwards ROM fetches and data reads complete at once with zero data.
+// - 0 (ROM mode): ROM only.
+// - 1 (SRAM mode): write-locked SRAM regions, plus the ROM until the lockout engages on
+//   the first fetch from a write-locked SRAM region. The lockout holds until rst_sync_ni;
+//   afterwards ROM fetches and data reads complete at once with zero data.
+//
+// Under OCAH_KM_VROM, the virtual ROM window is executable in both modes and exempt from
+// the lockout.
 //
 // Any fetch outside the whitelist pulses exec_violation_o, except a blocked ROM access,
 // which pulses rom_access_violation_o instead.
@@ -305,14 +311,39 @@ module picorv32_wrapper
   logic is_rom_addr, is_sram_addr, is_vrom_addr, is_periph_addr;
   assign is_rom_addr   = (mem_addr >= ROM_BASE)   && (mem_addr <= ROM_END);
   assign is_sram_addr  = (mem_addr >= SRAM_BASE)  && (mem_addr <= SRAM_END);
-  assign is_vrom_addr  = (mem_addr >= VROM_BASE)  && (mem_addr <= VROM_END);
   assign is_periph_addr = !is_rom_addr && !is_sram_addr && !is_vrom_addr;
 
   // Look-ahead address qualification
   logic is_la_rom_addr, is_la_sram_addr, is_la_vrom_addr;
   assign is_la_rom_addr  = (mem_la_addr >= ROM_BASE)  && (mem_la_addr <= ROM_END);
   assign is_la_sram_addr = (mem_la_addr >= SRAM_BASE) && (mem_la_addr <= SRAM_END);
+
+  // The virtual ROM window completes an access only when the simulation drives
+  // vrom_mem_ready, so an implementation or emulation build must not decode it.
+`ifdef OCAH_KM_VROM
+`ifdef SYNTHESIS
+  if (1) begin : gen_km_vrom_requires_simulation_view
+    $error(
+        "OCAH_KM_VROM is set with SYNTHESIS: every KM CPU access to the virtual ROM ",
+        "window would stall, because nothing drives vrom_mem_ready outside simulation. ",
+        "Leave OCAH_KM_VROM undefined outside simulation."
+    );
+  end
+`elsif EMULATION
+  if (1) begin : gen_km_vrom_requires_simulation_view
+    $error(
+        "OCAH_KM_VROM is set with EMULATION: every KM CPU access to the virtual ROM ",
+        "window would stall, because nothing drives vrom_mem_ready outside simulation. ",
+        "Leave OCAH_KM_VROM undefined outside simulation."
+    );
+  end
+`endif
+  assign is_vrom_addr    = (mem_addr >= VROM_BASE) && (mem_addr <= VROM_END);
   assign is_la_vrom_addr = (mem_la_addr >= VROM_BASE) && (mem_la_addr <= VROM_END);
+`else
+  assign is_vrom_addr    = 1'b0;
+  assign is_la_vrom_addr = 1'b0;
+`endif
 
   //=========================================================================
   // Execute-Permission Whitelist Check
@@ -323,15 +354,14 @@ module picorv32_wrapper
   // the ROM lockout instead pulses rom_access_violation_o.
   //
   // Whitelist (controlled by SRAM_EXEC_MODE.enable from KMCSR):
-  //   enable == 0 (ROM mode): ROM and VROM only.
-  //   enable == 1 (SRAM mode): VROM and write-locked SRAM regions
+  //   enable == 0 (ROM mode): ROM only.
+  //   enable == 1 (SRAM mode): write-locked SRAM regions
   //                            (SRAM_LOCK.lock_bits[region] == 1), plus the ROM
   //                            until the lockout engages below.
   //
-  // VROM is the testbench virtual ROM (0x1000_0000); it is always executable
-  // because block-TB firmware runs .text from VROM (km_exec_from_vrom.ld).
-  // VROM does not exist in production silicon, so it carries no security
-  // requirement and is exempt from the ROM lockout as well.
+  // is_vrom_addr is constant 0 unless OCAH_KM_VROM is defined. Under the define
+  // the virtual ROM is executable in both modes and exempt from the lockout;
+  // it exists only in simulation, so it carries no security requirement.
   //
   // Region index: SRAM_LOCK_REGION_BYTES-sized regions within the SRAM.  The
   // SRAM base is naturally aligned to its own size, so the index is a plain
@@ -391,14 +421,12 @@ module picorv32_wrapper
   logic        sram_mem_ready;
   logic [31:0] sram_mem_rdata;
 
-  // Virtual ROM interface signals (testbench only)
-  // These signals are exposed for testbench to probe and drive directly
-  // Testbench will attach to mem_* signals when is_vrom_addr is true
+  // Virtual ROM response. Under OCAH_KM_VROM the simulation drives these nets;
+  // they are declared in every build so that its hierarchical references resolve.
   logic        vrom_mem_ready;
   logic [31:0] vrom_mem_rdata;
 
-  // Virtual ROM memory bus signals (exposed for testbench)
-  // Testbench can probe these to detect virtual ROM accesses and drive responses
+  // Virtual ROM request, qualified by is_vrom_addr
   logic        vrom_mem_valid;
   logic        vrom_mem_instr;
   logic [31:0] vrom_mem_addr;
@@ -423,7 +451,6 @@ module picorv32_wrapper
   assign axi_adapter_mem_wdata = mem_wdata;
   assign axi_adapter_mem_wstrb = mem_wstrb;
 
-  // Expose virtual ROM memory bus signals for testbench
   assign vrom_mem_valid = mem_valid && is_vrom_addr;
   assign vrom_mem_instr = mem_instr;
   assign vrom_mem_addr  = mem_addr;
@@ -563,11 +590,10 @@ module picorv32_wrapper
   );
 
   //=========================================================================
-  // Virtual ROM Interface (testbench only)
+  // Virtual ROM Interface
   //=========================================================================
-  // Virtual ROM memory bus is exposed directly to testbench
-  // Testbench will probe vrom_mem_* signals and drive vrom_mem_ready/vrom_mem_rdata
-  // Tie off to safe defaults - testbench will drive these via force
+  // An access to the window completes only when the simulation overrides
+  // vrom_mem_ready; is_vrom_addr keeps it out of every other build.
   assign vrom_mem_ready = 1'b0;
   assign vrom_mem_rdata = '0;
 

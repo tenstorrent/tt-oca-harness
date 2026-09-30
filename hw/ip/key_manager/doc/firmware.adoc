@@ -1395,9 +1395,16 @@ state, so mutable firmware cannot clear either and cannot re-enter the ROM by
 any sequence of writes. Only a warm or cold reset restores ROM access, and that
 restarts the ROM from its entry point rather than resuming it.
 
-The testbench virtual ROM (VROM, `0x1000_0000`) is exempt, because block-level
-firmware runs its `.text` from there. VROM does not exist in production silicon
-and carries no security requirement.
+The virtual ROM (VROM, `0x1000_0000`) is exempt only in a simulation build that
+defines `OCAH_KM_VROM`, and carries no security requirement. Without the define
+the window is an unmapped address, so a fetch from it pulses `EXEC_VIOLATION`
+like any other fetch outside the whitelist. See
+ifdef::backend-html5[]
+xref:ocah-integrator-guide:ROOT:defines.adoc#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+https://tenstorrent.github.io/tt-oca-harness/ocah-integrator-guide/latest/defines.html#sep-defines-km[Key manager defines in the Integrator Guide].
+endif::backend-pdf[]
 
 [[km-rom-stack-budget]]
 === ROM Stack Budget and the Static Load Ceiling

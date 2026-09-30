@@ -33,7 +33,7 @@ addrmap cross_trigger_port {
     };
 
     reg STATUS {
-        desc = "Cross Trigger Port Status";
+        desc = "Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.";
         field {
             sw = r;
             hw = w;
@@ -42,7 +42,7 @@ addrmap cross_trigger_port {
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current CT_Req_out signal value.";
+            desc = "Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.";
         } REQ_OUT[4:4] = 0x0;
         field {
             sw = r;
@@ -57,7 +57,7 @@ addrmap cross_trigger_port {
         field {
             sw = r;
             hw = w;
-            desc = "Readout of the current CT_Ack_out signal value.";
+            desc = "Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.";
         } ACK_OUT[7:7] = 0x0;
     };
 

@@ -106,7 +106,7 @@ this register to all-zero to disable that output.</ipxact:description>
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Cross Trigger Port Status</ipxact:description>
+            <ipxact:description>Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.</ipxact:description>
             <ipxact:addressOffset>'h4</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -124,7 +124,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>REQ_OUT</ipxact:name>
-              <ipxact:description>Readout of the current CT_Req_out signal value.</ipxact:description>
+              <ipxact:description>Readout of the current CT_Req_out signal value. Reads 0 in wire-OR mode.</ipxact:description>
               <ipxact:bitOffset>4</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -163,7 +163,7 @@ this register to all-zero to disable that output.</ipxact:description>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>ACK_OUT</ipxact:name>
-              <ipxact:description>Readout of the current CT_Ack_out signal value.</ipxact:description>
+              <ipxact:description>Readout of the current CT_Ack_out signal value. Reads 0 in wire-OR mode.</ipxact:description>
               <ipxact:bitOffset>7</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
