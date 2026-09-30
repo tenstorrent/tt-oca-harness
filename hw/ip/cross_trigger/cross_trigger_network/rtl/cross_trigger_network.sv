@@ -182,13 +182,13 @@ module cross_trigger_network
         // CTM is the first port (index 0, address 0x0000-0x01FF)
         assign addr_map[0].idx        = 0;
         assign addr_map[0].start_addr = 0;
-        assign addr_map[0].end_addr   = ADDR_CTM_SIZE - 1;
+        assign addr_map[0].end_addr   = ADDR_CTM_SIZE;
 
         // External CTPs follow (indices 1 to NUM_CTP, starting at 0x0200)
         for (genvar i = 0; i < NUM_CTP; i++) begin : gen_ctp_addr_map
             assign addr_map[i + 1].idx        = i + 1;
             assign addr_map[i + 1].start_addr = ADDR_CTM_SIZE + (i * ADDR_CTP_SIZE);
-            assign addr_map[i + 1].end_addr   = ADDR_CTM_SIZE + ((i + 1) * ADDR_CTP_SIZE) - 1;
+            assign addr_map[i + 1].end_addr   = ADDR_CTM_SIZE + ((i + 1) * ADDR_CTP_SIZE);
         end
     endgenerate
 
