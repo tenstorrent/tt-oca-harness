@@ -5223,7 +5223,7 @@ this entry does not write or grade them with the strap high.
 [arabic]
 . Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
 . W1S `sep_fuse_dbg` / `smc_fuse_dbg` and check PROD with both demotes set, so those bits close while Case 2 and Case 3 stay open.
-. W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
+. W1S a seed-pinned DIS pair and walk the four demote cells at PROD. Besides the fuse-dbg bits and `sep_debug`, the pair sets one seed-selected bit from DBG_1 `[23:1]` and one from DBG_2 `[47:24]` (`lifecycle_controller.adoc`), in both `SIP_DIS` and `SYS_DIS`.
 . Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
 . Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`.
 . Every cell's `sep_fuse_dft_disable` / `smc_fuse_dft_disable` ports match the compose of that same `FEAT_CTRL`.
