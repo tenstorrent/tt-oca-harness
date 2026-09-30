@@ -153,16 +153,19 @@ module sep_fcov (
   localparam logic [31:0] FiltEndOff = INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
   localparam logic [31:0] FiltEnMask = 32'(FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK);
 
-  // Adams Bridge exports no generated map symbol; the aperture is the
-  // sep_crypto_pkg localparam and the offsets are abr_reg_uvm.sv add_reg
-  // addresses -- the same two sources seq_lib/sep_abr_keygen_seq.py reads.
-  localparam logic [31:0] AbrBase = sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] AbrCtrl = AbrBase + 32'h10;
-  localparam logic [31:0] AbrStatus = AbrBase + 32'h14;
+  // Adams Bridge MLDSA_CTRL / MLDSA_STATUS addresses and field masks come from
+  // the generated sep_reg.svh. The command encodings are in the abr_reg.rdl
+  // CTRL field description, which the export does not carry.
+  localparam logic [31:0] AbrBase = ABR_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] AbrCtrl = ABR_MLDSA_CTRL_REG_ADDR;
+  localparam logic [31:0] AbrStatus = ABR_MLDSA_STATUS_REG_ADDR;
+  // MLDSA_CTRL.CTRL is [2:0]; bit 3 is ZEROIZE, so a command is compared on
+  // the CTRL field only and a command written with ZEROIZE still scores.
+  localparam logic [31:0] AbrCtrlCmdMask = ABR_REG_MLDSA_CTRL_CTRL_MASK;
   localparam logic [31:0] AbrCmdKeygen = 32'h1;  // MLDSA_CTRL.CTRL = KEYGEN
   localparam logic [31:0] AbrCmdSign = 32'h2;  // MLDSA_CTRL.CTRL = SIGNING
   localparam logic [31:0] AbrCmdVerify = 32'h3;  // MLDSA_CTRL.CTRL = VERIFYING
-  localparam logic [31:0] AbrStValid = 32'h2;  // MLDSA_STATUS.VALID
+  localparam logic [31:0] AbrStValid = ABR_REG_MLDSA_STATUS_VALID_MASK;
 
   // ML-KEM is a separate register block in the same aperture: its own CTRL and
   // STATUS, so a ML-DSA command can never score an ML-KEM cell. Offsets from
@@ -458,7 +461,8 @@ module sep_fcov (
   wire  otbn_done = otbn_err_zero && otbn_exec_q && otbn_idle_q;
 
   // --- Adams Bridge ------------------------------------------------------
-  wire abr_keygen = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdKeygen[3:0]);
+  wire abr_keygen = wr_ev && (aw_addr_q == AbrCtrl) &&
+      ((wr_data & AbrCtrlCmdMask) == AbrCmdKeygen);
   wire abr_status_valid = rd_ev && (ar_addr_q == AbrStatus) &&
       ((rd_data & AbrStValid) != 32'h0);
   logic abr_keygen_q;
@@ -466,8 +470,10 @@ module sep_fcov (
   // SIGNING and VERIFYING are separate MLDSA_CTRL.CTRL commands, so each gets
   // its own pending flag: a VALID read only scores the command that is still
   // outstanding, and a leaf that issued one command cannot fill the other bin.
-  wire abr_sign = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdSign[3:0]);
-  wire abr_verify = wr_ev && (aw_addr_q == AbrCtrl) && (wr_data[3:0] == AbrCmdVerify[3:0]);
+  wire abr_sign = wr_ev && (aw_addr_q == AbrCtrl) &&
+      ((wr_data & AbrCtrlCmdMask) == AbrCmdSign);
+  wire abr_verify = wr_ev && (aw_addr_q == AbrCtrl) &&
+      ((wr_data & AbrCtrlCmdMask) == AbrCmdVerify);
   // MLDSA_STATUS.VALID is sticky, so a pending flag plus a VALID read is not
   // enough on its own: a command written to a busy engine is dropped, and the
   // previous operation's VALID would then be credited to it. Arming on an

@@ -322,7 +322,7 @@ A `keyed_mac` hit fills `cp_kmac` as configuration only.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_op` |`MLDSA_CTRL` = KEYGEN
+|`cp_op` |`MLDSA_CTRL.CTRL` = KEYGEN. The command is compared on the `CTRL` field mask from `sep_reg.svh` only, so a write that also sets `ZEROIZE` (bit 3) still scores
 |`cp_done` |`MLDSA_STATUS.VALID` after that KEYGEN -- the bit the KAT polls, not "STATUS non-zero"
 |===
 
@@ -335,7 +335,7 @@ The public-key-equals-KAT claim stays on `sep_abr_mldsa_keygen_kat_test`.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_op` |`MLDSA_CTRL` = SIGNING, and `MLDSA_CTRL` = VERIFYING
+|`cp_op` |`MLDSA_CTRL.CTRL` = SIGNING, and `MLDSA_CTRL.CTRL` = VERIFYING, on the `CTRL` field mask only
 |`cp_sign_done` / `cp_verify_done` |`MLDSA_STATUS.VALID` after that command.
 Separate coverpoints, not one concatenated cell: the pending flags are
 independent, so a command that never completes would otherwise drop a later
