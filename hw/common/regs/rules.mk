@@ -32,7 +32,7 @@ ocah_reg_run_regblock = "$(OCAH_REG_PEAKRDL)" regblock $(call ocah_reg_incdirs,$
 # produces a linked summary table and per-register headings with field tables.
 # $(2) = input RDL, $(3) = output adoc, $(4) = log.
 ocah_reg_run_adoc     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdladoc.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
-ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --err-check-blocks "$(OCAH_REG_ERR_CHECK_BLOCKS)" --no-rtl-blocks "$(OCAH_REG_NO_RTL_BLOCKS)" --config "$(call ocah_reg_memory_map_config,$(1))" "$(call ocah_reg_rdl,$(1))" "$(call ocah_reg_memory_map_output,$(1))" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map.log"
+ocah_reg_run_memory_map = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlmap.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) --repo-root "$(OCAH_ROOT)" --err-check-blocks "$(OCAH_REG_ERR_CHECK_BLOCKS)" --no-rtl-blocks "$(OCAH_REG_NO_RTL_BLOCKS)" --config "$(call ocah_reg_memory_map_config,$(1))" --format $(2) "$(call ocah_reg_rdl,$(1))" "$(3)" 2>&1 | tee "$(call ocah_reg_build,$(1))/memory_map_$(2).log"
 ocah_reg_run_html     = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlhtml.py" -u "$(OCAH_REGBLOCK_UDP)" $(call ocah_reg_incdirs,$(1)) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 ocah_reg_run_svh      = "$(OCAH_REG_PYTHON)" "$(OCAH_ROOT)/tools/regs/rdlsvh.py" -u "$(OCAH_REGBLOCK_UDP)" $(subst -I ,-i ,$(call ocah_reg_incdirs,$(1))) $(call ocah_reg_rdl_params,$(1)) "$(2)" "$(3)" 2>&1 | tee "$(4)"
 # $(4) = bitfields policy (none|ltoh), $(5) = log.
@@ -182,7 +182,12 @@ define ocah_reg_memory_map_rule
 $(call ocah_reg_memory_map_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating memory-map documentation for $(1)"
-	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1))'
+	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1),adoc,$$@)'
+
+$(call ocah_reg_memory_map_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_memory_map_config,$(1)) $(call ocah_reg_memory_map_deps,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlmap.py $(OCAH_ROOT)/tools/regs/common/memorymap.py | $(OCAH_REG_UV_PREREQ)
+	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
+	@echo "Regenerating memory-map Python data for $(1)"
+	@$(ocah_sh) '$(call ocah_reg_run_memory_map,$(1),py,$$@)'
 endef
 
 # JSON register model for a whole top (composite or leaf), opt-in list only.
