@@ -5,17 +5,19 @@
 // analogue of the cocotb dtp_dbg_disable_jtag2axi_matrix_test_seq.
 // Deterministic one-hot rows, the all-clear and all-disabled boundary
 // masks, and seeded multi-hot masks. Every row proves, per bridge: an
-// allowed bridge completes a write+readback with real request activity; a
-// blocked bridge produces zero request activity and leaves a preloaded RAM
+// allowed bridge completes a write+readback with exactly that traffic; a
+// blocked bridge produces zero request activity, keeps the SINGLE_OP image
+// captured before the disable while gated, and leaves a preloaded RAM
 // sentinel untouched, both while gated and after the disable is released
-// (no delayed replay), and then recovers with a sanctioned operation.
+// (no delayed replay), and then recovers with exactly one sanctioned write
+// and read.
 //
 // The default 11 seeded multi-hot rows make 16 rows per pass (1 all_clear
-// + 3 one-hot + 11 multi-hot + 1 all_disabled), so one matrix pass meets
-// the 16-iteration floor with seeded rows; +DTP_DBG_DISABLE_MULTI_HOT_ROWS
-// overrides. Reuses the robustness sequence's per-target handle bundles
-// and select_target() swapping. The cocotb flow's Python DtpDbgDisableFcov
-// ledger is cocotb-only.
+// + 3 one-hot + 11 multi-hot + 1 all_disabled), and
+// +DTP_DBG_DISABLE_MULTI_HOT_ROWS overrides the multi-hot count. Reuses the
+// robustness sequence's per-target handle bundles and select_target()
+// swapping. The cocotb flow's Python DtpDbgDisableFcov ledger is
+// cocotb-only.
 
 class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_test_seq;
   `uvm_object_utils(dtp_dbg_disable_jtag2axi_matrix_test_seq)
@@ -23,6 +25,18 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
   localparam bit [63:0] MatrixBaseAddr = 64'h4800;
 
   int unsigned multi_hot_rows = 11;
+
+  // One gated write: its slot, the sentinel preloaded there, and the
+  // request counters and responder burst counts before it.
+  typedef struct {
+    bit [63:0]   addr;
+    bit [63:0]   sentinel;
+    int unsigned aw;
+    int unsigned w;
+    int unsigned ar;
+    int unsigned write_bursts;
+    int unsigned read_bursts;
+  } gated_attempt_t;
 
   function new(string name = "dtp_dbg_disable_jtag2axi_matrix_test_seq");
     super.new(name);
@@ -35,49 +49,89 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
   protected function sep_lifecycle_ctrl_pkg::dbg_disable_t bridge_mask_from_bits(
       bit [NumTargets-1:0] bits);
     sep_lifecycle_ctrl_pkg::dbg_disable_t d = '0;
-    for (int unsigned i = 0; i < NumTargets; i++) if (bits[i]) d |= targets[i].dbg_disable_mask;
+    for (int unsigned i = 0; i < NumTargets; i++)
+    if (bits[i]) dtp_dbg_path_set(d, targets[i].dbg_path);
     return d;
   endfunction
 
-  // Allowed bridge: write+readback with request-activity proof.
+  // CHK-AXI-GATE-EXACT: the responder behind `t` completed exactly the
+  // expected write and read bursts.
+  protected function void expect_exact_bursts(dtp_j2a_target_t t, int unsigned writes,
+                                              int unsigned reads, string context_s);
+    if (axi_evidence == null) return;
+    void'(axi_evidence.expect_equal(
+        "CHK-AXI-GATE-EXACT",
+        write_bursts_now(
+            t
+        ),
+        writes,
+        $sformatf(
+            "%s target=%s source=responder_burst_counts writes", context_s, t.name)
+    ));
+    void'(axi_evidence.expect_equal(
+        "CHK-AXI-GATE-EXACT",
+        read_bursts_now(
+            t
+        ),
+        reads,
+        $sformatf(
+            "%s target=%s source=responder_burst_counts reads", context_s, t.name)
+    ));
+  endfunction
+
+  // Allowed bridge: write+readback with request-activity proof, each
+  // completing exactly its own burst.
   protected task check_allowed(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
                                string context_s);
     dtp_j2a_status_e op_status;
     int unsigned aw0, w0, ar0;
     int unsigned size = t.default_size;
+    int unsigned wb0 = write_bursts_now(t);
+    int unsigned rb0 = read_bursts_now(t);
     sample_activity(t, aw0, w0, ar0);
     write_target_single_and_check(t, addr, data & data_mask(size), op_status, size, full_wstrb(size
                                   ), {context_s, ".write"});
     expect_activity(t, aw0, ar0, 1'b0, {context_s, ".write"});
+    expect_exact_bursts(t, wb0 + 1, rb0, {context_s, ".write"});
     sample_activity(t, aw0, w0, ar0);
     read_target_single_and_check(t, addr, data & data_mask(size), op_status, size, {
                                  context_s, ".read"});
     expect_activity(t, aw0, ar0, 1'b1, {context_s, ".read"});
+    expect_exact_bursts(t, wb0 + 1, rb0 + 1, {context_s, ".read"});
     operation_count++;
   endtask
 
-  // Blocked bridge: gated attempt produces no request activity and the
-  // RAM sentinel stays untouched.
+  // Blocked bridge: the gated attempt produces no request activity, the RAM
+  // sentinel stays untouched, and the SINGLE_OP captures while gated equal
+  // `reference`.
   protected task check_blocked(dtp_j2a_target_t t, bit [63:0] addr, bit [63:0] data,
-                               string context_s, output bit [63:0] sentinel);
-    int unsigned aw0, w0, ar0;
+                               bit reference[], string context_s, output gated_attempt_t attempt);
     int unsigned aw1, w1, ar1;
     int unsigned size = t.default_size;
     bit [63:0] observed;
-    sentinel = (64'h5EA1_0000 | (addr & 64'hFFFF)) & data_mask(size);
-    write_target_mem_int(t, addr, sentinel, size);
-    sample_activity(t, aw0, w0, ar0);
+    bit gated[], post[];
+    attempt.addr     = addr;
+    attempt.sentinel = (64'h5EA1_0000 | (addr & 64'hFFFF)) & data_mask(size);
+    write_target_mem_int(t, addr, attempt.sentinel, size);
+    sample_activity(t, attempt.aw, attempt.w, attempt.ar);
+    attempt.write_bursts = write_bursts_now(t);
+    attempt.read_bursts  = read_bursts_now(t);
     // Gated attempt: issue_single suppresses the scoreboard intents
     // while the target's disable is asserted (the write must never
     // reach the bus, so no credit may be armed for it).
     issue_single(t, DTP_J2A_OP_WRITE, addr, data & data_mask(size), full_wstrb(size), size, 1'b0);
+    last_single_capture(gated);
     wait_sys_cycles(8);
     sample_activity(t, aw1, w1, ar1);
-    expect_no_activity_evidence(t, aw0, w0, ar0, aw1, w1, ar1, {context_s, ".no_activity"});
+    expect_no_activity_evidence(t, attempt.aw, attempt.w, attempt.ar, aw1, w1, ar1, {
+                                context_s, ".no_activity"});
     observed = read_target_mem_int(t, addr, size);
-    if (observed !== sentinel)
-      `uvm_error("jtag2axi_data_chk", $sformatf(
-                 "%s.sentinel: memory 0x%0h != sentinel 0x%0h", context_s, observed, sentinel))
+    if (observed !== attempt.sentinel)
+      `uvm_error(
+          "jtag2axi_data_chk", $sformatf(
+          "%s.sentinel: memory 0x%0h != sentinel 0x%0h", context_s, observed, attempt.sentinel))
+    capture_single(t, post);
+    check_gated_tdr(t, reference, addr, full_wstrb(size), size, gated, post, context_s);
     operation_count++;
   endtask
 
@@ -111,8 +165,8 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
     row_labels.push_back("all_disabled");
 
     foreach (row_bits[r]) begin
-      bit [63:0] sentinels[int];
-      bit [63:0] sentinel_addrs[int];
+      gated_attempt_t gated[int];
+      bit references[NumTargets][];
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: row=%s mask=0b%03b",
                 r + 1,
@@ -121,6 +175,14 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
                 row_bits[r]
                 ), UVM_LOW)
       d = bridge_mask_from_bits(row_bits[r]);
+      // Each gated bridge's SINGLE_OP image, captured before the row's
+      // disables.
+      for (int unsigned i = 0; i < NumTargets; i++) begin
+        if (row_bits[r][i]) begin
+          dtp_j2a_target_t t = select_target(i);
+          gate_reference(t, references[i]);
+        end
+      end
       set_dbg_disable(d);
 
       for (int unsigned i = 0; i < NumTargets; i++) begin
@@ -128,35 +190,51 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_t
         bit [63:0] addr = row_addr(t, r);
         bit [63:0] data = 64'h0000_0000_C0DE_0000 | (64'(r) << 8);
         if (row_bits[r][i])
-          check_blocked(t, addr, data, $sformatf("%s.%s", row_labels[r], t.name), sentinels[i]);
+          check_blocked(t, addr, data, references[i], $sformatf("%s.%s", row_labels[r], t.name),
+                        gated[i]);
         else check_allowed(t, addr, data, $sformatf("%s.%s", row_labels[r], t.name));
-        if (row_bits[r][i]) sentinel_addrs[i] = addr;
       end
 
-      if (sentinels.size() > 0) begin
+      if (gated.size() > 0) begin
         // Release without reset: nothing queued may replay, then a
         // sanctioned operation recovers on every previously-gated
         // bridge.
         enable_all_debug();
         wait_sys_cycles(8);
-        foreach (sentinels[i]) begin
+        foreach (gated[i]) begin
           dtp_j2a_target_t t = select_target(i);
-          bit [63:0] observed =
-                        read_target_mem_int(t, sentinel_addrs[i], t.default_size);
-          if (observed !== sentinels[i])
+          string ctx = $sformatf("%s.%s", row_labels[r], t.name);
+          int unsigned now_aw, now_w, now_ar;
+          bit [63:0] observed = read_target_mem_int(t, gated[i].addr, t.default_size);
+          sample_activity(t, now_aw, now_w, now_ar);
+          expect_no_activity_evidence(t, gated[i].aw, gated[i].w, gated[i].ar, now_aw, now_w,
+                                      now_ar, {ctx, ".post_release"});
+          if (observed !== gated[i].sentinel)
             `uvm_error("jtag2axi_data_chk", $sformatf(
-                       "%s.%s.sentinel_post_release: memory 0x%0h != sentinel 0x%0h",
-                       row_labels[r],
-                       t.name,
+                       "%s.sentinel_post_release: memory 0x%0h != sentinel 0x%0h",
+                       ctx,
                        observed,
-                       sentinels[i]
+                       gated[i].sentinel
                        ))
         end
-        foreach (sentinels[i]) begin
+        foreach (gated[i]) begin
           dtp_j2a_target_t t = select_target(i);
-          check_allowed(t, sentinel_addrs[i] + 4 * t.beat_bytes,
-                        64'h0000_0000_FEED_0000 | (64'(r) << 4), $sformatf(
-                        "%s.%s.recovery", row_labels[r], t.name));
+          string ctx = $sformatf("%s.%s", row_labels[r], t.name);
+          bit [63:0] observed;
+          check_allowed(t, gated[i].addr + 4 * t.beat_bytes,
+                        64'h0000_0000_FEED_0000 | (64'(r) << 4), {ctx, ".recovery"});
+          // From the gated attempt through the recovery the bridge carries
+          // exactly the recovery write and read.
+          expect_exact_bursts(t, gated[i].write_bursts + 1, gated[i].read_bursts + 1, {
+                              ctx, ".recovery.from_gated_attempt"});
+          observed = read_target_mem_int(t, gated[i].addr, t.default_size);
+          if (observed !== gated[i].sentinel)
+            `uvm_error("jtag2axi_data_chk", $sformatf(
+                       "%s.sentinel_post_recovery: memory 0x%0h != sentinel 0x%0h",
+                       ctx,
+                       observed,
+                       gated[i].sentinel
+                       ))
         end
       end
     end

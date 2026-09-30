@@ -2,14 +2,9 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Secure Boot Test - Transfer and Validate Bootcode
- *
- * This test transfers a bootcode binary from the master BFM to the DUT
- * and then validates it using the OCCP VALIDATE_BOOT command.
- *
- * The test reads bootcode parameters from scratch registers (set by CocoTB),
- * transfers the bootcode in chunks, and then sends a validate and boot command
- * to signal the ROM to set the manifest address and ready bit.
+ * Transfers a bootcode image from the master BFM to the DUT with OCCP WRITE, then sends
+ * VALIDATE_BOOT at its entry point. Image parameters come from scratch registers 4-7, set by
+ * the harness.
  */
 
 #include "occp_test_common.h"
@@ -17,7 +12,6 @@
 #include "smc_test.h"
 #include <string.h>
 
-// Maximum transfer size per OCCP write command
 #define MAX_TRANSFER_CHUNK_SIZE 248
 
 static void run_secure_boot_test(test_context_t *ctx) {
@@ -26,13 +20,11 @@ static void run_secure_boot_test(test_context_t *ctx) {
     ctx->overall_result = true;
     int retval;
 
-    // Execute some random OCCP commands for system stability
     simputs("=== Random OCCP Commands (5 commands) ===\n");
     execute_random_commands(ctx, 5);
 
     simputs("=== Reading bootcode parameters ===\n");
 
-    // Read bootcode parameters from scratch registers (set by CocoTB)
     uint64_t entry_offset = read_scratch(4);
     uint64_t master_bootcode_addr = read_scratch(5);
     uint64_t bootcode_size = read_scratch(6);
@@ -45,7 +37,6 @@ static void run_secure_boot_test(test_context_t *ctx) {
 
     simputs("=== Starting bootcode transfer to DUT ===\n");
 
-    // Transfer bootcode in chunks
     uint64_t bytes_transferred = 0;
     uint64_t current_master_addr = master_bootcode_addr;
     uint64_t current_dut_addr = target_dut_addr;
@@ -60,7 +51,6 @@ static void run_secure_boot_test(test_context_t *ctx) {
         simputshex64(" to DUT addr: 0x", current_dut_addr);
         simputshex64(" size: 0x", chunk_size);
 
-        // Use OCCP WRITE command to transfer the chunk
         retval = occp_send_write_command(ctx, ctx->slave_addr, current_dut_addr,
                                          current_master_addr, chunk_size);
 
@@ -81,8 +71,7 @@ static void run_secure_boot_test(test_context_t *ctx) {
 
     simputs("=== Executing OCCP VALIDATE_BOOT command ===\n");
 
-    // The ROM republishes this address as the manifest offset and the harness uses it as the
-    // cores' reset vector, so it must be the payload's entry point rather than a fixed offset.
+    // The harness uses this address as the cores' reset vector, so it must be the entry point.
     uint64_t manifest_addr = target_dut_addr + entry_offset;
     retval = occp_send_validate_boot_command(ctx, ctx->slave_addr, manifest_addr);
     if (retval != OCCP_SUCCESS) {
@@ -98,8 +87,7 @@ static void run_secure_boot_test(test_context_t *ctx) {
 static void finalize_test_results(test_context_t *ctx) {
     if (ctx->overall_result) {
         simputs("OCCP SECURE BOOT TEST PASSED! Waiting for ROM to complete validation!\n");
-        // Don't call test_pass here since we're waiting for ROM completion
-        // The ROM will signal completion via its own test result
+        // No test_pass() here: the DUT side reports the verdict after the boot.
     } else {
         simputs("OCCP SECURE BOOT TEST FAILED!\n");
         test_fail(0);
@@ -116,7 +104,6 @@ int main(void) {
         return -1;
     }
 
-    // Set up test context
     test_ctx.test_base_addr = OCCP_TEST_BASE_ADDR;
     test_ctx.test_upper_addr_bound = OCCP_TEST_UPPER_ADDR;
     test_ctx.overall_result = true;
@@ -124,10 +111,8 @@ int main(void) {
     test_ctx.cmd_count = 0;
     test_ctx.exp_occp_last_error = 0;
 
-    // Run the test suite
     run_secure_boot_test(&test_ctx);
 
-    // Finalize and report results
     finalize_test_results(&test_ctx);
 
     simputs("Done, waiting for ROM to complete validation and boot\n");

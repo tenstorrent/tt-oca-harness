@@ -8,16 +8,17 @@
 //
 //   1. build dtp_test_cfg: seed and random volume from the library
 //      accessors, the knob-derived controls, the downstream STAP attach
-//      mask, then the test's configure_test_cfg() hook (required scoreboard
-//      features, evidence policy); srandom(seed) + randomize() draws the
-//      system-clock and TCK periods;
+//      mask and the host segment attach, then the test's
+//      configure_test_cfg() hook (required scoreboard features, evidence
+//      policy); srandom(seed) + randomize() draws the system-clock and TCK
+//      periods;
 //   2. derive dtp_env_cfg from it and publish both through uvm_config_db;
 //      build dtp_env;
-//   3. bring_up(): route the downstream STAP TAPs, then sequence power-on
-//      and system reset through dtp_tb_if in clock cycles of the randomized
-//      period; run_looped_scenario() (ocah_test) then starts
-//      create_scenario_seq() on m_env.m_vseqr once per pass with
-//      scenario_seed = seed + pass.
+//   3. bring_up(): route the downstream STAP TAPs and the host segment,
+//      then sequence power-on and system reset through dtp_tb_if in clock
+//      cycles of the randomized period; run_looped_scenario() (ocah_test)
+//      then starts create_scenario_seq() on m_env.m_vseqr once per pass
+//      with scenario_seed = seed + pass.
 //
 // Knobs (plusargs here, environment variables in the cocotb twin
 // tests/dtp_base_test.py): +<specific>=N per test, +<group>=N per group,
@@ -43,6 +44,7 @@ class dtp_base_test extends ocah_test;
     test_cfg.random_count = random_count();
     test_cfg.read_knobs();
     test_cfg.stap_ds_attach_mask = stap_ds_attach_mask();
+    test_cfg.stap_host_segment_attach = stap_host_segment_attach();
     configure_test_cfg(test_cfg);
     // The one draw before run_phase: the bench-level dimensions (clock
     // and TCK periods) come from the runner seed through srandom(), so a
@@ -69,9 +71,18 @@ class dtp_base_test extends ocah_test;
   // parity): bit i selects the STAP host port in dtp_stap_ds_name() order
   // (io, smc, sep, extra0) that gets the shared ocah_jtag_vip slave device
   // spliced behind it for this test. Default: every port keeps its wire
-  // loopback; the STAP-selection scenarios attach all four.
+  // loopback; the STAP-selection and zero-length-bypass scenarios attach all
+  // four.
   virtual function bit [DtpStapCount-1:0] stap_ds_attach_mask();
     return '0;
+  endfunction
+
+  // Extended STAP host segment (cocotb dtp_base_test.stap_host_segment
+  // parity): 1 places the tb_top host segment behind the extended STAP host
+  // scan interface for this test. Default: the host scan loopback; the
+  // extended-STAP scenario attaches it.
+  virtual function bit stap_host_segment_attach();
+    return 1'b0;
   endfunction
 
   virtual function string suite_loops_knob();
@@ -95,6 +106,7 @@ class dtp_base_test extends ocah_test;
   virtual function void plumb_scenario_seq(ocah_sequence seq);
     dtp_base_test_seq dtp_seq;
     dtp_scan_base_test_seq scan_seq;
+    dtp_jtag2axi_base_test_seq j2a_seq;
     if (!$cast(dtp_seq, seq))
       `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_base_test_seq")
     dtp_seq.tb_vif       = m_env.tb_vif;
@@ -106,16 +118,19 @@ class dtp_base_test extends ocah_test;
     dtp_seq.scan_builder = m_env.m_scan_builder;
     dtp_seq.scan_window  = m_env.m_scan_window;
     if ($cast(scan_seq, seq)) plumb_stap_ds(scan_seq);
+    if ($cast(j2a_seq, seq)) j2a_seq.axi_ports = m_env.m_axi_port_history;
   endfunction
 
   // Hand a scan sequence the downstream device configurations the scan
-  // reference model is seeded from and which ports are attached; the
-  // responder sequences come from the virtual sequencer.
+  // reference model is seeded from, which ports are attached, and whether
+  // the host segment is; the responder sequences come from the virtual
+  // sequencer.
   virtual function void plumb_stap_ds(dtp_scan_base_test_seq seq);
     for (int unsigned i = 0; i < DtpStapCount; i++) begin
       seq.stap_ds_cfg[i]      = m_env.m_stap_ds_cfg[i];
       seq.stap_ds_attached[i] = test_cfg.stap_ds_attach_mask[i];
     end
+    seq.stap_host_segment_attached = test_cfg.stap_host_segment_attach;
   endfunction
 
   // Fresh scan-reconstruction window per pass: the builder's bounded
@@ -125,6 +140,20 @@ class dtp_base_test extends ocah_test;
   virtual function void pre_scenario_pass(int unsigned idx);
     m_env.m_scan_builder.clear_scan_history();
   endfunction
+
+  // One scenario pass at the runner seed, for a scenario whose seeded
+  // iterations are the rows of that pass.
+  task run_single_pass();
+    ocah_sequence seq;
+    bring_up();
+    seq = create_scenario_seq();
+    seq.scenario_seed = base_seed();
+    seq.random_count  = random_count();
+    seq.loop_index    = 0;
+    pre_scenario_pass(0);
+    plumb_scenario_seq(seq);
+    seq.start(scenario_sequencer());
+  endtask
 
   // Clock/reset bring-up (cocotb bring_up parity): route the downstream
   // STAP TAPs, then sequence POR and system reset through dtp_tb_if with
@@ -144,18 +173,23 @@ class dtp_base_test extends ocah_test;
     wait_clk_cycles(dtp_base_test_seq::PostResetCycles);
   endtask
 
-  // Route each selected STAP host port to its downstream device (the
-  // dtp_scan_if enables feed the tb_top host-TDI muxes) before bring-up, so
-  // the attachment is static for the whole run.
+  // Route each selected STAP host port to its downstream device and the
+  // extended STAP host scan to the host segment (the dtp_scan_if enables
+  // feed the tb_top muxes) before bring-up, so the attachment is static for
+  // the whole run.
   protected function void attach_stap_ds();
     bit [DtpStapCount-1:0] mask = test_cfg.stap_ds_attach_mask;
     m_env.scan_vif.stap_io_ds_en     = mask[0];
     m_env.scan_vif.stap_smc_ds_en    = mask[1];
     m_env.scan_vif.stap_sep_ds_en    = mask[2];
     m_env.scan_vif.stap_extra0_ds_en = mask[3];
+    m_env.scan_vif.stap_host_seg_en  = test_cfg.stap_host_segment_attach;
     if (mask != '0)
       `uvm_info(get_type_name(), $sformatf(
                 "downstream STAP TAPs attached: mask=0b%04b (io,smc,sep,extra0)", mask), UVM_LOW)
+    if (test_cfg.stap_host_segment_attach)
+      `uvm_info(get_type_name(), "host segment attached behind the extended STAP host scan",
+                UVM_LOW)
   endfunction
 
   protected task wait_clk_cycles(int unsigned cycles);

@@ -5,6 +5,8 @@
 `define SMC_BASE_CONFIG_RDL_DEFINED
 
 addrmap smc_base_config {
+    name = "SMC Base Configuration Address Map";
+    desc = "Base-address, region-size, per-block clock-gating enable, and interrupt configuration registers.";
 
     reg GLOBAL_BASE {
         regwidth = 64;

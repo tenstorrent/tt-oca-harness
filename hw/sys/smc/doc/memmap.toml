@@ -85,4 +85,4 @@ name = "smc-components"
 title = "SMC Component Address Map"
 include_all = true
 base_mode = "relative"
-columns = ["range", "size", "occupied_size", "label", "instances", "stride", "description"]
+columns = ["range", "size", "occupied_size", "label", "instances", "stride", "description", "hole_resp", "past_resp"]

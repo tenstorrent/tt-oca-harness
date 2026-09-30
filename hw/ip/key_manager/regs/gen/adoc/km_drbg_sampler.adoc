@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-km_drbg_sampler]
-== Address Map: km_drbg_sampler
+== DRBG Sampler
+
+DRBG random data interface and configuration/status registers
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -44,8 +46,8 @@
 | 31:16 | `count_good` | RW | 0x0 a| Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 15:8 | `count_bad` | RW | 0x0 a| Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 7:4 | `rsvd` | R | 0x0 a| Reserved
-| 3 | `stream_err` | RW | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
-| 2 | `timeout_err` | RW | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.
+| 3 | `stream_err` | RW1C | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
+| 2 | `timeout_err` | RW1C | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.
 | 1 | `prefetched` | R | 0x0 a| Prefetched data available
 | 0 | `drbg_ready` | R | 0x0 a| TVALID asserted from DRBG
 |===

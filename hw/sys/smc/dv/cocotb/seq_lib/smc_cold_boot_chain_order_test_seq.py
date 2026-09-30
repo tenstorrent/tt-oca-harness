@@ -6,7 +6,7 @@
 power-on reset deasserts and eFuse sensing begins, ``smc_fuse_sense_done_o``
 triggers repair, MBIST follows, and "the CPU cluster reset releases after both
 repair and MBIST complete"; ``rom.adoc`` pins the cold-reset CPU vector at
-``0xC004_0000``; ``cpu.adoc`` (Cluster Boundary Isolation) states the boundary
+``0xC004_0000``; ``cpu.adoc`` (CPU AXI Isolation) states the boundary
 "self-isolates on cold boot, releasing only once SRAM initialization completes
 and the cores and uncore are out of reset".
 

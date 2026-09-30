@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_jtag2axi_sep_otp_axi_error_single_read_test — VPLAN 4.2: SLVERR and
-// DECERR single-read injections on the SEP OTP AXI-Lite port. Both injected
+// dtp_jtag2axi_sep_otp_axi_error_single_read_test — SLVERR and DECERR
+// single-read injections on the SEP OTP AXI-Lite port. Both injected
 // responses must be classified as EXPECTED (CHK-AXI-ERR-INJ), the errored
-// read's SINGLE_OP capture must return the RDATA of the errored beat and
-// not the preloaded word (CHK-J2A-ERR-RDATA), the recovery read must
-// return the preloaded reference data with OKAY (CHK-AXI-RDATA), and
-// completion must stay within the poll bound.
+// read's SINGLE_OP capture must return the RDATA of the errored beat and not
+// the preloaded word (CHK-J2A-ERR-RDATA), the recovery read must return the
+// preloaded reference data with OKAY (CHK-AXI-RDATA), and completion must
+// stay within the poll bound.
 
 class dtp_jtag2axi_sep_otp_axi_error_single_read_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_sep_otp_axi_error_single_read_test)
@@ -27,7 +27,9 @@ class dtp_jtag2axi_sep_otp_axi_error_single_read_test extends dtp_base_test;
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
-                            "CHK-J2A-ERR-RDATA"
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-ERR-RDATA",
+                            "CHK-J2A-FAULT-STATUS"
                         });
   endfunction
 
@@ -56,7 +58,6 @@ class dtp_jtag2axi_sep_otp_axi_error_single_read_test extends dtp_base_test;
     t_seq.axi_cfg       = m_env.m_sep_otp_axi_cfg;
     t_seq.axi_evidence  = m_env.m_sep_otp_axi_env.m_checker;
     t_seq.axi_ref_model = m_env.m_sep_otp_axi_env.m_ref_model;
-    t_seq.axi_reads     = m_env.m_axi_read_history["sep_otp"];
   endfunction
 
 endclass : dtp_jtag2axi_sep_otp_axi_error_single_read_test

@@ -9,7 +9,7 @@ scratch RAM. What smc_init_mem_done_o does with the sweep held off is recorded,
 not claimed: no specification states it.
 
 CCACHE_DISABLE=1 python3 tools/dv/run_dv.py --dut smu \\
-    --items smu_sram_auto_init_disabled_test --target compile_smu_chiplet_no_sep
+    --items smu_sram_auto_init_disabled_test
 """
 
 from __future__ import annotations

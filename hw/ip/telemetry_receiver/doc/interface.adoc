@@ -4,6 +4,13 @@
 [[telemetry-receiver-interface]]
 == Interface
 
+ifdef::backend-html5[]
+The parameters and ports of `telemetry_receiver` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/telemetry_receiver/telemetry_receiver.adoc[telemetry_receiver].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `telemetry_receiver` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
 === Configuration Parameters
 
 [[telemetry-receiver-configuration-parameters-table]]
@@ -25,7 +32,6 @@ The core register port has an 8-bit address and 32-bit data path.
 === Signals
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="signal-interfaces"></span>
 <span id="global-interface"></span>
@@ -59,7 +65,6 @@ message queue empty, assembly buffer full.
 === Subsystem Wrapper
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="clock-and-reset-specifications"></span>
 ++++

@@ -53,11 +53,14 @@ from .smc_avsbus_protocol_utils import (
     RB_FIFO_OCCUPIED_BP,
     READ_CMD_DATA,
     READBACK_HAS_DATA_BM,
+    RESYNC_INTERVAL_BM,
     TOTAL_RETRIES_BM,
     TOTAL_RETRIES_BP,
     AvsFsmMonitor,
+    AvsMdataMonitor,
     avs_field,
     build_avs_cmd,
+    expected_master_subframe,
     fifo_field,
     set_avs_sdata,
 )
@@ -67,6 +70,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 #: Two read commands, the same pair the other AVSBus leaves use.
 CMD_RAIL_VOLTAGE = build_avs_cmd(CMD_TYPE_READ, 0, 0x0, 0x3, READ_CMD_DATA)
 CMD_AVSBUS_STATUS = build_avs_cmd(CMD_TYPE_READ, 0, 0xE, 0x5, READ_CMD_DATA)
+CMD_RAIL_CURRENT = build_avs_cmd(CMD_TYPE_READ, 0, 0x2, 0x3, READ_CMD_DATA)
 
 #: Commands queued one at a time while the bus is already running, spaced so
 #: that one of them lands while a last subframe is on the wire.
@@ -107,6 +111,7 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         self.lone_retry: list[str] = []
         self.back_to_back: tuple[list[str], int] = ([], 0)
         self.suppressed_mid: tuple[int, list[str]] = (0, [])
+        self.suppressed_last: int = 0
         self.slave_clear: tuple[int, int] = (0, 0)
         self.overflow: tuple[int, int] = (0, 0)
         self.launch_gate: tuple[int, int] = (0, 0)
@@ -374,6 +379,42 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         await self._clear_all_retry_flags(f"{label}_END")
         await self.csr_write(f"{label}_CFG0_RESTORE", AVS_CFG_0, cfg0)
 
+    async def _suppressed_last_leg(self) -> None:
+        """Retries suppressed with two commands queued while a last subframe is on the wire.
+
+        The failing reply at the end of that subframe is kept, and the queued
+        commands go out after it, each once and in order.
+        """
+        label = "SUPPRESSED_LAST"
+        cfg0 = await self.csr_read(f"{label}_CFG0", AVS_CFG_0)
+        await self._set_budget(label, cfg0, 0)
+        await self._clear_all_retry_flags(label)
+        await self._settle_idle(label)
+        mdata = AvsMdataMonitor()
+        mdata.start()
+        set_avs_sdata(1)
+        commands = [CMD_RAIL_VOLTAGE, CMD_AVSBUS_STATUS, CMD_RAIL_CURRENT]
+        await self.csr_write(f"{label}_CMD0", AVS_CMD, commands[0])
+        await self._wait_state(label, "AVS_SHIFT_LAST_SUBFRAME")
+        await self.csr_write(f"{label}_CMD1", AVS_CMD, commands[1])
+        await self.csr_write(f"{label}_CMD2", AVS_CMD, commands[2])
+        occupied = await self._await_occupancy(label, len(commands))
+        await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES * 4)
+        mdata.stop()
+        sent = mdata.subframes()
+        want = [expected_master_subframe(c) for c in commands]
+        assert sent == want, (
+            f"{label}: with MAX_RETRIES at 0 and two commands queued behind a failing last "
+            f"subframe, the master sent {[hex(f) for f in sent]}, not {[hex(f) for f in want]}"
+        )
+        assert occupied == len(commands), (
+            f"{label}: {occupied} replies for {len(commands)} commands"
+        )
+        self.suppressed_last = occupied
+        await self._settle_idle(label)
+        await self._clear_all_retry_flags(f"{label}_END")
+        await self.csr_write(f"{label}_CFG0_RESTORE", AVS_CFG_0, cfg0)
+
     async def _overflow_leg(self) -> None:
         """The buffered reply of a retried pair, pushed into a FIFO already full.
 
@@ -392,7 +433,11 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         """
         label = "OVERFLOW"
         cfg0 = await self.csr_read(f"{label}_CFG0", AVS_CFG_0)
-        await self._set_budget(label, cfg0, RETRY_BUDGET)
+        # A periodic slave resync that falls pending while the first subframe is on
+        # the wire closes the frame after it, and the pair goes out as two lone
+        # commands with no middle subframe to retry. The interval counts register
+        # clocks, so it is parked at its maximum for this leg and restored with cfg0.
+        await self._set_budget(label, cfg0 | RESYNC_INTERVAL_BM, RETRY_BUDGET)
         await self._clear_all_retry_flags(label)
         await self._settle_idle(label)
         prefill = RB_FIFO_DEPTH - 1
@@ -555,6 +600,7 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
         await self._lone_retry_leg()
         await self._back_to_back_leg()
         await self._suppressed_mid_leg()
+        await self._suppressed_last_leg()
         await self._slave_interrupt_clear_leg()
         await self._overflow_leg()
         await self._launch_gate_leg()
@@ -577,6 +623,12 @@ class smc_avsbus_frame_sequencing_test_seq(SmcCsrSeq):
             "subframe with more commands waiting (%d replies in the readback FIFO)",
             SUPPRESSED_COMMANDS,
             self.suppressed_mid[0],
+        )
+        cocotb.log.info(
+            "CHK-AVS-SUPPRESSED-LAST: with MAX_RETRIES at 0 and two commands queued while a "
+            "last subframe was on the wire, its failing reply was kept and both commands went "
+            "out once each, in order (%d replies in the readback FIFO)",
+            self.suppressed_last,
         )
         cocotb.log.info(
             "CHK-AVS-SLAVE-INT-CLEAR: the slave-issued interrupt, cleared with sdata released "

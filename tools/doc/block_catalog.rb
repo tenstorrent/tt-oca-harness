@@ -57,6 +57,10 @@ module OCAH
       section = owner&.instance_variable_get(:@title) || 'Reference'
       ancestor = owner&.parent
       while ancestor && ancestor.context != :document
+        if ancestor.id&.match(/\Aregmap-\d+-(.+)\z/)
+          section = "#{Regexp.last_match(1)}.#{section}"
+          break
+        end
         title = ancestor.instance_variable_get(:@title)
         if title&.start_with?('Address Map: ')
           section = "#{title.delete_prefix('Address Map: ')}.#{section}"

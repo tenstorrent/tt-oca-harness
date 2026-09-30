@@ -282,7 +282,7 @@ module alias_remap_reg (
                     logic load_next;
                 } offset;
                 struct {
-                    logic next;
+                    logic [3:0] next;
                     logic load_next;
                 } cacheable;
                 struct {
@@ -311,7 +311,7 @@ module alias_remap_reg (
                     logic [43:0] value;
                 } offset;
                 struct {
-                    logic value;
+                    logic [3:0] value;
                 } cacheable;
                 struct {
                     logic value;
@@ -392,12 +392,12 @@ module alias_remap_reg (
     assign hwif_out.REGION.region_attrs.offset.value = field_storage.REGION.region_attrs.offset.value;
     // Field: alias_remap.REGION.region_attrs.cacheable
     always_comb begin
-        automatic logic [0:0] next_c;
+        automatic logic [3:0] next_c;
         automatic logic load_next_c;
         next_c = field_storage.REGION.region_attrs.cacheable.value;
         load_next_c = '0;
         if(decoded_reg_strb.REGION.region_attrs && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.REGION.region_attrs.cacheable.value & ~decoded_wr_biten[62:62]) | (decoded_wr_data[62:62] & decoded_wr_biten[62:62]);
+            next_c = (field_storage.REGION.region_attrs.cacheable.value & ~decoded_wr_biten[59:56]) | (decoded_wr_data[59:56] & decoded_wr_biten[59:56]);
             load_next_c = '1;
         end
         field_combo.REGION.region_attrs.cacheable.next = next_c;
@@ -405,7 +405,7 @@ module alias_remap_reg (
     end
     always_ff @(posedge clk or negedge arst_n) begin
         if(~arst_n) begin
-            field_storage.REGION.region_attrs.cacheable.value <= 1'h0;
+            field_storage.REGION.region_attrs.cacheable.value <= 4'h0;
         end else begin
             if(field_combo.REGION.region_attrs.cacheable.load_next) begin
                 field_storage.REGION.region_attrs.cacheable.value <= field_combo.REGION.region_attrs.cacheable.next;
@@ -465,7 +465,7 @@ module alias_remap_reg (
         end
         if(rd_mux_addr == 5'h10) begin
             readback_data_var[55:12] = field_storage.REGION.region_attrs.offset.value;
-            readback_data_var[62] = field_storage.REGION.region_attrs.cacheable.value;
+            readback_data_var[59:56] = field_storage.REGION.region_attrs.cacheable.value;
             readback_data_var[63] = field_storage.REGION.region_attrs.valid.value;
         end
         readback_data = readback_data_var;

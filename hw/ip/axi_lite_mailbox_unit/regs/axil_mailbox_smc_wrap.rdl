@@ -7,8 +7,13 @@
 `include "axil_mailbox.rdl"
 
 addrmap axil_mailbox_smc_wrap {
-    desc = "";
-
+    name = "SMC AXI-Lite Mailbox Wrapper Address Map";
+    desc = "SMC-side wrapper instantiating the AXI-Lite mailbox pairs.
+            Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one
+            bidirectional mailbox and shares a single pair of FIFOs: data written through
+            WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.
+            The outbound/inbound naming reflects intended use, not an access restriction.";
+    
     axil_mailbox     outbound_mailbox_0      @0x000_0000;
     axil_mailbox     inbound_mailbox_0       @0x000_0800;
     axil_mailbox     outbound_mailbox_1      @0x000_1000;
@@ -74,6 +79,9 @@ addrmap axil_mailbox_smc_wrap {
     axil_mailbox     outbound_mailbox_31     @0x001_F000;
     axil_mailbox     inbound_mailbox_31      @0x001_F800;
 
+`ifdef OCAH_DOC_MEMORY_MAP
+    ocah_gap_resp = ocah_resp'{rresp: ocah_resp_e::SLVERR, rdata: 0x0, bresp: ocah_resp_e::SLVERR};
+`endif
 };
 
 `endif

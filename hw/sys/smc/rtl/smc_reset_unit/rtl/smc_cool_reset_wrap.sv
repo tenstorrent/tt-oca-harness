@@ -1,29 +1,71 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
-// SMC Cool Reset Wrap (FLR)
+// Generate the FLR cool reset and the subsystem isolation requests.
 //
-//-------------------------------------------------
+// On a rising edge of cfg_flr_pf_active_i, counts down ISOLATE_REQ_FLR_COUNTER_VALUE
+// reference clock cycles, then holds rst_cool_no low while counting down
+// ISOLATE_REQ_FLR_RESET_COUNTER_VALUE cycles; no sequence starts while the reset count is
+// zero. Implements the ISOLATE_REQ_* registers on the SMC clock, reset only by the cold
+// reset so they survive the cool reset.
 
 module smc_cool_reset_wrap (
-  input  logic                                   clk_ref_i,
-  input  logic                                   rst_cold_ref_ni,             // cold reset, reference clock domain
+  input  logic                                   clk_ref_i,  // Reference clock for the FLR counters
+                                                             // and rst_cool_no.
+  input  logic                                   rst_cold_ref_ni,  // Stable cold reset, active-low,
+                                                                   // synchronized to clk_ref_i;
+                                                                   // resets the FLR counters and
+                                                                   // releases rst_cool_no.
 
-  input  logic                                   clk_smc_i,
-  input  logic                                   rst_cold_smc_ni,             // cold reset, SMC clock domain
+  input  logic                                   clk_smc_i,  // SMC core clock for the ISOLATE_REQ_*
+                                                             // registers and input synchronizers.
+  input  logic                                   rst_cold_smc_ni,  // Stable cold reset, active-low,
+                                                                   // synchronized to clk_smc_i;
+                                                                   // resets the ISOLATE_REQ_*
+                                                                   // registers.
 
-  // Register Interface
-  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out,
-  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in,
+  input  reset_unit_reg_pkg::reset_unit__out_t   hwif_out_i,  // Reset-unit register outputs: the
+                                                              // access strobes and write data of
+                                                              // the external ISOLATE_REQ_*
+                                                              // registers.
+  output reset_unit_reg_pkg::reset_unit__in_t    hwif_in_o,  // Reset-unit register inputs for
+                                                             // ISOLATE_REQ_VIS and the external
+                                                             // ISOLATE_REQ_* registers; every other
+                                                             // field is zero.
 
-  // FLR Resets
-  input  logic                                   isolate_req_pin_i,           // Set which subsystems are isolated from cool reset from external pin
-  input  logic                                   cfg_flr_pf_active_i,         // Indicates that FLR is requested from PCIe
-  input  logic                                   rst_cool_ni,                 // Incoming cool reset request from primary chiplet to place in internal register for visibility
-  output logic [31:0]                            isolate_req_o,               // Controls isolation of subsystems like PCIe and/or ETH during FLR
-  output logic                                   skip_mem_repair_o,           // Signal to skip memory repair & MBIST during FLR
-  output logic                                   rst_cool_no                  // Cool reset from primary chiplet to other chiplets
+  input  logic                                   isolate_req_pin_i,  // Isolation request pin,
+                                                                     // active-high, synchronized to
+                                                                     // clk_smc_i; raises the
+                                                                     // isolate_req_o bits enabled in
+                                                                     // ISOLATE_REQ_PINEN_REG and
+                                                                     // preserves that register across
+                                                                     // cold reset while high.
+  input  logic                                   cfg_flr_pf_active_i,  // PCIe function-level reset
+                                                                       // request, active-high; its
+                                                                       // synchronized rising edge sets
+                                                                       // ISOLATE_REQ_SMC and starts
+                                                                       // the FLR counters.
+  input  logic                                   rst_cool_ni,  // Incoming cool reset
+                                                               // request from primary
+                                                               // chiplet to place in
+                                                               // internal register for
+                                                               // visibility.
+  output logic [31:0]                            isolate_req_o,  // Controls isolation of
+                                                                 // subsystems like PCIe
+                                                                 // and/or ETH during FLR:
+                                                                 // ISOLATE_REQ_REG, OR the
+                                                                 // pin-enabled bits while the
+                                                                 // pin is high, OR the
+                                                                 // SMCEN-enabled bits while
+                                                                 // ISOLATE_REQ_SMC is set.
+  output logic                                   skip_mem_repair_o,  // Signal to skip
+                                                                     // memory repair &
+                                                                     // MBIST during FLR; high
+                                                                     // while the pin or
+                                                                     // ISOLATE_REQ_SMC is set.
+  output logic                                   rst_cool_no  // FLR cool reset, active-low, on
+                                                              // clk_ref_i; also visible in
+                                                              // ISOLATE_REQ_VIS.
 );
 
   /////////////////////////
@@ -77,71 +119,71 @@ module smc_cool_reset_wrap (
   ////////////////////////
 
   always_comb begin
-    hwif_in = '{default: '0};
+    hwif_in_o = '{default: '0};
 
     // ISOLATE_REQ_VIS
-    hwif_in.ISOLATE_REQ_VIS.isolate_req_pin.next                     = isolate_req_pin_sync_smc;
-    hwif_in.ISOLATE_REQ_VIS.cool_reset_n_i.next                      = rst_cool_ni_sync_smc;
-    hwif_in.ISOLATE_REQ_VIS.cool_reset_n_o.next                      = rst_cool_no_sync_smc;
+    hwif_in_o.ISOLATE_REQ_VIS.isolate_req_pin.next                   = isolate_req_pin_sync_smc;
+    hwif_in_o.ISOLATE_REQ_VIS.cool_reset_n_i.next                    = rst_cool_ni_sync_smc;
+    hwif_in_o.ISOLATE_REQ_VIS.cool_reset_n_o.next                    = rst_cool_no_sync_smc;
 
     // ISOLATE_REQ_REG
-    hwif_in.ISOLATE_REQ_REG.rd_ack                                    = hwif_out.ISOLATE_REQ_REG.req && !hwif_out.ISOLATE_REQ_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_REG.rd_data                                   = isolate_req_reg;
-    hwif_in.ISOLATE_REQ_REG.wr_ack                                    = isolate_req_reg_wr_en;
+    hwif_in_o.ISOLATE_REQ_REG.rd_ack                                  = hwif_out_i.ISOLATE_REQ_REG.req && !hwif_out_i.ISOLATE_REQ_REG.req_is_wr;
+    hwif_in_o.ISOLATE_REQ_REG.rd_data                                 = isolate_req_reg;
+    hwif_in_o.ISOLATE_REQ_REG.wr_ack                                  = isolate_req_reg_wr_en;
 
     // ISOLATE_REQ_PINEN_REG
-    hwif_in.ISOLATE_REQ_PINEN_REG.rd_ack                              = hwif_out.ISOLATE_REQ_PINEN_REG.req && !hwif_out.ISOLATE_REQ_PINEN_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_PINEN_REG.rd_data                             = isolate_req_pinen_reg;
-    hwif_in.ISOLATE_REQ_PINEN_REG.wr_ack                              = isolate_req_pinen_reg_wr_en;
+    hwif_in_o.ISOLATE_REQ_PINEN_REG.rd_ack                            = hwif_out_i.ISOLATE_REQ_PINEN_REG.req && !hwif_out_i.ISOLATE_REQ_PINEN_REG.req_is_wr;
+    hwif_in_o.ISOLATE_REQ_PINEN_REG.rd_data                           = isolate_req_pinen_reg;
+    hwif_in_o.ISOLATE_REQ_PINEN_REG.wr_ack                            = isolate_req_pinen_reg_wr_en;
 
     // ISOLATE_REQ_SMC_REG
-    hwif_in.ISOLATE_REQ_SMC_REG.rd_ack                                = hwif_out.ISOLATE_REQ_SMC_REG.req && !hwif_out.ISOLATE_REQ_SMC_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_SMC_REG.rd_data                               = {31'b0, isolate_req_smc_reg};
-    hwif_in.ISOLATE_REQ_SMC_REG.wr_ack                                = isolate_req_smc_reg_wr_en;
+    hwif_in_o.ISOLATE_REQ_SMC_REG.rd_ack                              = hwif_out_i.ISOLATE_REQ_SMC_REG.req && !hwif_out_i.ISOLATE_REQ_SMC_REG.req_is_wr;
+    hwif_in_o.ISOLATE_REQ_SMC_REG.rd_data                             = {31'b0, isolate_req_smc_reg};
+    hwif_in_o.ISOLATE_REQ_SMC_REG.wr_ack                              = isolate_req_smc_reg_wr_en;
 
     // ISOLATE_REQ_SMCEN_REG
-    hwif_in.ISOLATE_REQ_SMCEN_REG.rd_ack                              = hwif_out.ISOLATE_REQ_SMCEN_REG.req && !hwif_out.ISOLATE_REQ_SMCEN_REG.req_is_wr;
-    hwif_in.ISOLATE_REQ_SMCEN_REG.rd_data                             = isolate_req_smcen_reg;
-    hwif_in.ISOLATE_REQ_SMCEN_REG.wr_ack                              = isolate_req_smcen_wr_en;
+    hwif_in_o.ISOLATE_REQ_SMCEN_REG.rd_ack                            = hwif_out_i.ISOLATE_REQ_SMCEN_REG.req && !hwif_out_i.ISOLATE_REQ_SMCEN_REG.req_is_wr;
+    hwif_in_o.ISOLATE_REQ_SMCEN_REG.rd_data                           = isolate_req_smcen_reg;
+    hwif_in_o.ISOLATE_REQ_SMCEN_REG.wr_ack                            = isolate_req_smcen_wr_en;
 
     // ISOLATE_REQ_FLR_COUNTER_VALUE
-    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_ack                      = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req && !hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req_is_wr;
-    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_data                     = flr_set_cnt;
-    hwif_in.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_ack                      = flr_set_cnt_wr_en;
+    hwif_in_o.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_ack                    = hwif_out_i.ISOLATE_REQ_FLR_COUNTER_VALUE.req && !hwif_out_i.ISOLATE_REQ_FLR_COUNTER_VALUE.req_is_wr;
+    hwif_in_o.ISOLATE_REQ_FLR_COUNTER_VALUE.rd_data                   = flr_set_cnt;
+    hwif_in_o.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_ack                    = flr_set_cnt_wr_en;
 
     // ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
-    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_ack                = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req && !hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req_is_wr;
-    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_data               = flr_reset_set_cnt;
-    hwif_in.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_ack                = flr_reset_set_cnt_wr_en;
+    hwif_in_o.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_ack              = hwif_out_i.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req && !hwif_out_i.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req_is_wr;
+    hwif_in_o.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.rd_data             = flr_reset_set_cnt;
+    hwif_in_o.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_ack              = flr_reset_set_cnt_wr_en;
   end
 
   // ISOLATE_REQ_REG
-  assign isolate_req_reg_wr_data                                           = hwif_out.ISOLATE_REQ_REG.wr_data;
-  assign isolate_req_reg_wr_mask                                           = hwif_out.ISOLATE_REQ_REG.wr_biten;
-  assign isolate_req_reg_wr_en                                             = hwif_out.ISOLATE_REQ_REG.req && hwif_out.ISOLATE_REQ_REG.req_is_wr;
+  assign isolate_req_reg_wr_data                                           = hwif_out_i.ISOLATE_REQ_REG.wr_data;
+  assign isolate_req_reg_wr_mask                                           = hwif_out_i.ISOLATE_REQ_REG.wr_biten;
+  assign isolate_req_reg_wr_en                                             = hwif_out_i.ISOLATE_REQ_REG.req && hwif_out_i.ISOLATE_REQ_REG.req_is_wr;
 
   // ISOLATE_REQ_PINEN_REG
-  assign isolate_req_pinen_reg_wr_data                                     = hwif_out.ISOLATE_REQ_PINEN_REG.wr_data;
-  assign isolate_req_pinen_reg_wr_mask                                     = hwif_out.ISOLATE_REQ_PINEN_REG.wr_biten;
-  assign isolate_req_pinen_reg_wr_en                                       = hwif_out.ISOLATE_REQ_PINEN_REG.req && hwif_out.ISOLATE_REQ_PINEN_REG.req_is_wr;
+  assign isolate_req_pinen_reg_wr_data                                     = hwif_out_i.ISOLATE_REQ_PINEN_REG.wr_data;
+  assign isolate_req_pinen_reg_wr_mask                                     = hwif_out_i.ISOLATE_REQ_PINEN_REG.wr_biten;
+  assign isolate_req_pinen_reg_wr_en                                       = hwif_out_i.ISOLATE_REQ_PINEN_REG.req && hwif_out_i.ISOLATE_REQ_PINEN_REG.req_is_wr;
 
   // ISOLATE_REQ_SMC_REG
-  assign isolate_req_smc_reg_wr_en                                         = hwif_out.ISOLATE_REQ_SMC_REG.req && hwif_out.ISOLATE_REQ_SMC_REG.req_is_wr;
+  assign isolate_req_smc_reg_wr_en                                         = hwif_out_i.ISOLATE_REQ_SMC_REG.req && hwif_out_i.ISOLATE_REQ_SMC_REG.req_is_wr;
 
   // ISOLATE_REQ_SMCEN_REG
-  assign isolate_req_smcen_reg_wr_data                                     = hwif_out.ISOLATE_REQ_SMCEN_REG.wr_data;
-  assign isolate_req_smcen_reg_wr_mask                                     = hwif_out.ISOLATE_REQ_SMCEN_REG.wr_biten;
-  assign isolate_req_smcen_wr_en                                           = hwif_out.ISOLATE_REQ_SMCEN_REG.req && hwif_out.ISOLATE_REQ_SMCEN_REG.req_is_wr;
+  assign isolate_req_smcen_reg_wr_data                                     = hwif_out_i.ISOLATE_REQ_SMCEN_REG.wr_data;
+  assign isolate_req_smcen_reg_wr_mask                                     = hwif_out_i.ISOLATE_REQ_SMCEN_REG.wr_biten;
+  assign isolate_req_smcen_wr_en                                           = hwif_out_i.ISOLATE_REQ_SMCEN_REG.req && hwif_out_i.ISOLATE_REQ_SMCEN_REG.req_is_wr;
 
   // ISOLATE_REQ_FLR_COUNTER_VALUE
-  assign flr_set_cnt_wr_data                                               = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_data;
-  assign flr_set_cnt_wr_mask                                               = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_biten;
-  assign flr_set_cnt_wr_en                                                 = hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req && hwif_out.ISOLATE_REQ_FLR_COUNTER_VALUE.req_is_wr;
+  assign flr_set_cnt_wr_data                                               = hwif_out_i.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_data;
+  assign flr_set_cnt_wr_mask                                               = hwif_out_i.ISOLATE_REQ_FLR_COUNTER_VALUE.wr_biten;
+  assign flr_set_cnt_wr_en                                                 = hwif_out_i.ISOLATE_REQ_FLR_COUNTER_VALUE.req && hwif_out_i.ISOLATE_REQ_FLR_COUNTER_VALUE.req_is_wr;
 
   // ISOLATE_REQ_FLR_RESET_COUNTER_VALUE
-  assign flr_reset_set_cnt_wr_data                                         = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_data;
-  assign flr_reset_set_cnt_wr_mask                                         = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_biten;
-  assign flr_reset_set_cnt_wr_en                                           = hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req && hwif_out.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req_is_wr;
+  assign flr_reset_set_cnt_wr_data                                         = hwif_out_i.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_data;
+  assign flr_reset_set_cnt_wr_mask                                         = hwif_out_i.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.wr_biten;
+  assign flr_reset_set_cnt_wr_en                                           = hwif_out_i.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req && hwif_out_i.ISOLATE_REQ_FLR_RESET_COUNTER_VALUE.req_is_wr;
 
   ////////////////////////
   // Sync input signals //
@@ -271,7 +313,7 @@ module smc_cool_reset_wrap (
     end else begin
       if (cfg_flr_pf_active_sync_smc_posedge) begin
         isolate_req_smc_reg <= 1'b1; // Asserts isolate_req_smc_reg once cfg_flr_pf_active is asserted
-      end else if (isolate_req_smc_reg_wr_en && (|hwif_out.ISOLATE_REQ_SMC_REG.wr_biten)) begin
+      end else if (isolate_req_smc_reg_wr_en && (|hwif_out_i.ISOLATE_REQ_SMC_REG.wr_biten)) begin
         isolate_req_smc_reg <= 1'b0;  // De-assertion of isolate_req_smc_reg depends on SMC SW
       end
     end

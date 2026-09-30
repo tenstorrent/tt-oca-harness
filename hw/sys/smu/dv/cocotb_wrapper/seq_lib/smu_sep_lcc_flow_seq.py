@@ -51,7 +51,12 @@ import cocotb
 from cocotb.triggers import Event, RisingEdge
 from cocotb.utils import get_sim_time
 
-from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
+from seq_lib.sep_fw_common import (
+    addr_of,
+    format_pc_profile,
+    load_syms,
+    sep_boot_order_from_hw,
+)
 from seq_lib.smu_addr_map import c_header_u32
 from seq_lib.smu_lifecycle_table import LC_STATE_PRESENSE, lc_state_name, posture
 
@@ -90,8 +95,8 @@ def lc_raw_from_efuse_image(path: str) -> int:
     comes from the generated SEP address map.
     """
     lc_idx = (
-        c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
-        - c_header_u32(_SEP_ADDR_H, "OCH_SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
+        c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR")
+        - c_header_u32(_SEP_ADDR_H, "SEP_TOP_SEP_EFUSE_MAP_BASE_ADDR")
     ) // 4
     words: dict[int, int] = {}
     idx = 0
@@ -313,10 +318,11 @@ class SmuSepLccFlowSeq:
 
         # The firmware watcher runs from here so no retirement is missed while
         # the sense is awaited.
+        _, hw_boot_rom, hw_iccm = sep_boot_order_from_hw(self.dut, self._rd)
         watch: dict[str, object] = {
             "verdict": None,
-            "boot_rom_seen": False,
-            "iccm_seen": False,
+            "boot_rom_seen": hw_boot_rom,
+            "iccm_seen": hw_iccm,
             "traces": 0,
             "pc_hist": Counter(),
         }

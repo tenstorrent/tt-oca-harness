@@ -49,10 +49,9 @@ endif::backend-pdf[]
 to select the delivered key; while that bit is 0 the engine uses its software
 key registers. Unlike AES and HMAC, software does not declare a key length for
 a delivered key: the engine applies the delivered key's length automatically
-and ignores its key-length register for that operation. KMAC is also the only
-accelerator that fails loudly on a missing key -- beginning a keyed operation
-that uses the delivered key while `KEY_CTRL.KEY_VALID` is 0 raises an error
-instead of producing a digest.
+and ignores its key-length register for that operation. Beginning a keyed
+operation that uses the delivered key while `KEY_CTRL.KEY_VALID` is 0 raises an
+error instead of producing a digest; OTBN also reports an invalid key error.
 
 Consult the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC

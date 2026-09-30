@@ -25,9 +25,10 @@ class smc_sep_in_axi_shape_test(smc_base_test):
         "CHK-SEP-IN-BURST-INCR",
         "CHK-SEP-IN-BURST-LONG",
         "CHK-SEP-IN-BURST-UNSUPPORTED",
+        "CHK-SEP-IN-DECERR-WRITE",
         "CHK-SEP-IN-NARROW-STROBES",
     )
-    min_evidence = 4
+    min_evidence = 5
 
     async def run_scenario(self) -> None:
         seq = smc_sep_in_axi_shape_test_seq("sep_in_axi_shape_seq")

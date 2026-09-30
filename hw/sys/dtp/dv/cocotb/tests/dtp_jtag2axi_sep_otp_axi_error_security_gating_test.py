@@ -18,11 +18,15 @@ class dtp_jtag2axi_sep_otp_axi_error_security_gating_test(dtp_base_test):
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
         "CHK-AXI-RESP-EXPECTED",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-NOACT",
         "CHK-AXI-COMPLETION",
         "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
         "CHK-AXI-NONVAC",
+        "CHK-J2A-FAULT-STATUS",
+        "CHK-J2A-GATE-TDR",
     )
     axi_checker_stream_minimums = {"sep_otp": 2}
 

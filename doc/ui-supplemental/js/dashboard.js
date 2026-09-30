@@ -27,9 +27,6 @@
   // link colour and has to be given one.
   var LINK_COLOUR = '#1565c0';
 
-  // Where a cell's CI run is published.
-  var RUN_URL = 'https://github.com/tenstorrent/tt-oca-harness/actions/runs/';
-
   // Per-test outcomes, in legend order.
   var HISTORY_STATES = ['passed', 'flaky', 'failed', 'did not run'];
   var HISTORY_COLOURS = {
@@ -891,16 +888,7 @@
    */
   function runCell(run) {
     var td = document.createElement('td');
-    // Anything but a run identifier leaves the date as plain text.
-    if (!/^[0-9]+$/.test(run.id || '')) {
-      td.textContent = run.date;
-      return td;
-    }
-    var link = document.createElement('a');
-    link.href = RUN_URL + encodeURIComponent(run.id);
-    link.textContent = run.date;
-    link.rel = 'noreferrer';
-    td.appendChild(link);
+    td.textContent = run.date;
     return td;
   }
 

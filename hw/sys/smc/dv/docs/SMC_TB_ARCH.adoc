@@ -263,8 +263,9 @@ takes over (see <<sv-uvm-realization>>).
 |GPIO |DV-only `tb_gpio_ext_drive_en/value`
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
-|Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i`, power-good, `rst_cold_ni`;
-the UVM harness generates the clocks and sequences the resets through `smc_tb_if`
+|Clocks / resets |cocotb drives `clk_ref_i`, `clk_smc_i`, `clk_periph_i` into the `pll_wrap`
+oscillators (`+pll_osc_bench`), plus power-good and `rst_cold_ni`; under SV-UVM the model
+free-runs and the harness sequences the resets through `smc_tb_if`
 |Scan / test |Ties `test_mode_i` to `1'b0` and `scan_rst_n_i` to `1'b1`
 |===
 
@@ -297,7 +298,8 @@ A *multi-item-type dispatcher* (`write()` branches on item class), unlike SEP's
 single-item value scoreboard. Per type:
 
 * *SAMPLE items* (i2c/reset/clk/irq/gpio/axil): assert `resolvable` (no X/Z) and
-the type's idle invariants; emit `FUNC_COV_VALUE` coverage bins. (GPIO
+the type's idle invariants; emit `FUNC_COV_VALUE` log lines, a stimulus
+record and not a coverage metric (`SMC_FCOV.adoc`). (GPIO
 aggregates are checked for resolvability only — their level is a bus-aggregate
 artifact, not GPIO-diagnostic; isolated per-pad drive is proven by
 `smc_gpio_output_driveback_test`.)
@@ -387,16 +389,16 @@ Replicate this skeleton for every new agent + scoreboard hook.
 [cols=",,",options="header",]
 |===
 |Clock / Reset |Source |Notes
-|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` |`smc_base_test._bring_up()` |Three SMC clock domains
+|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` |`smc_base_test._bring_up()` |100 / 800 / 200 MHz into the `pll_wrap` oscillators; `+pll_sys_period_ns=10` runs the smc clock at 100 MHz. `_bring_up()` measures the model's `clk_*_o` outputs after reset release and holds them to `SmcEnvCfg`
 |power-good |`_bring_up()` |Asserted before cold-reset release
 |`rst_cold_ni` |`_bring_up()` |Released after power-good; pad defaults driven first
 |post-reset settle |`SmcEnvCfg.post_reset_settle_cycles` |500 cycles; the reset stretcher is 255
 |JTAG TCK / TRST |`SmcJtagTap` / `cocotbext.jtag` |CPU TAP domain
 |AXI completion bound |`SmcEnvCfg.axi_timeout_ns` |50,000 ns default
-|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` (SV-UVM) |`tb_top.sv` harness `always` blocks, periods from `smc_tb_if` |`smc_test_cfg` draws the three periods from the runner seed over the cocotb choice sets
+|`clk_ref_i` / `clk_smc_i` / `clk_periph_i` (SV-UVM) |`pll_wrap` free-runs inside the DUT |`smc_test_cfg` carries the same periods for the sequences' wait-math and publishes them on `smc_tb_if`
 |power-good / `rst_cold_ni` / `rst_cool_ni` (SV-UVM) |`smc_base_test.bring_up()` through `smc_tb_if` |Same ladder as `_bring_up()`; the pad defaults are harness tie-offs
 |post-reset settle (SV-UVM) |`smc_test_cfg.post_reset_settle_cycles` |500 ref cycles
-|AXI completion bound (SV-UVM) |`smc_test_cfg.axi_timeout_cycles` |10,000 smc-clock cycles per handshake, the SEP_IN master driver's watchdog
+|AXI completion bound (SV-UVM) |`smc_test_cfg.axi_timeout_cycles` |40,000 smc-clock cycles per handshake, the SEP_IN master driver's watchdog
 |===
 
 `_bring_up()` is the power-good plus cold-reset sequence: it drives idle-safe
@@ -450,12 +452,13 @@ stimulus in `run_scenario()`; do not re-implement `run_phase`.
 [[2-base-test--cocotbtestssmc_base_testpy]]
 ===== 2. Base test — `cocotb/tests/smc_base_test.py`
 
-* `build_phase()` builds `SmcEnvCfg`, randomizes timing from the seed, publishes
-cfg to `ConfigDB`, builds `SmcEnv`.
+* `build_phase()` builds `SmcEnvCfg`, resolves the smc-clock period from
+`+pll_sys_period_ns`, publishes cfg to `ConfigDB`, builds `SmcEnv`.
 * `_bring_up()` — the *power-good + cold-reset* sequence: drives all idle-safe
 pad defaults (i2c/i3c/jtag/spi/telemetry/avsbus/octs), starts the three clocks
 (`clk_ref_i / clk_smc_i / clk_periph_i`), asserts power-good, releases
-`rst_cold_ni`, settles, then sets `cfg.reset_done`. (SEP contrast: SEP gates on
+`rst_cold_ni`, settles, measures the `pll_wrap` clocks against the cfg periods,
+then sets `cfg.reset_done`. (SEP contrast: SEP gates on
 `sep_fuse_sense_done_o` and has no-cpu / cpu-boot / firmware-boot variants.)
 * `start_seq(seq, sequencer=None)` — runs a sequence, injecting `seq.cfg`/
 `seq.env`; defaults to the `i2c_agent` sequencer, so *pass the sequencer you
@@ -487,8 +490,8 @@ class smc_register_sanity_test_seq(SmcCsrSeq):
 Key `SmcCsrSeq` helpers: `csr_read(expected=)`, `csr_write`,
 `csr_write_readback`, `csr_read_many`, `csr_read_err_signature` /
 `csr_read_decerr_zero` / `csr_read_expect_error` (strict negative),
-`csr_read_allow_error` (tolerant), `csr_read_bounded` (tolerates DECERR *and*
-timeout), `assert_all_reachable` / `assert_reachable_or_gated`.
+`csr_read_bounded` (tolerates timeout, and DECERR unless `allow_error=False`),
+`assert_all_reachable` / `assert_reachable_or_gated`.
 
 `smc_base_test_seq` is the minimal, agent-agnostic base for non-CSR sequences
 (gpio/clk/reset/irq item types), dispatched via `_OneShot` (below).
@@ -614,9 +617,9 @@ assertion coverage, and code coverage. See `SMC_FCOV.adoc`.
 
 Bender supplies the product SMC RTL to the simulator flows. Verilator and the
 commercial simulators therefore compile the same subsystem source graph, with
-one difference: `tb/verilator_stubs/` replaces the `och_prim` `prim_sync2` /
-`prim_sync3` cells with behavioural stand-ins on Verilator and Xcelium, and the
-runner drops those stubs on VCS only, where the product cells elaborate. What
+one difference: `tb/verilator_stubs/` replaces the `ocah_prim` `prim_sync3`
+cell with a behavioural stand-in on Verilator and Xcelium, and the runner drops
+that stub on VCS only, where the product cell elaborates. What
 that directory may hold is stated in its own `tb/verilator_stubs/README.md`.
 
 PeakRDL nested hwif structs stay compilable with `disable_public_flat_rw` plus
@@ -661,9 +664,9 @@ declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
 testlist; `build/uvm/` build tree), and `--dut smc --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 carry both implementations in their testlist `module` binding map
-(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
-entry error at selection unless `--skip-unimplemented` is passed. The
-framework conventions and the bring-up walkthrough this realization follows
+(`module = { cocotb = "<name>", uvm = "<name>" }`); group selections skip
+those without a `uvm` entry, and naming one errors. The framework
+conventions and the bring-up walkthrough this realization follows
 are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
 reference bench is DTP.
 
@@ -671,8 +674,8 @@ There is exactly ONE testbench top module: `smc_uvm_top` in `tb/tb_top.sv`,
 shared between both realizations. The bare `+define+UVM` (set by the native
 profile's `[frameworks.uvm]` overlay) switches its shape: without it the
 module exposes the cocotb pin port list; with it the ports become internal TB
-signals and an in-module harness adds the three clocks (periods from
-`smc_tb_if`), the shared AXI VIP interface instances on the SEP_IN ingress,
+signals, the `pll_wrap` clocks free-run, and an in-module harness adds the
+shared AXI VIP interface instances on the SEP_IN ingress,
 the protocol SVA, quiescent tie-offs for every other cocotb-driven pin at the
 idle value `smc_base_test._bring_up` uses, the `uvm_config_db` publication of
 every virtual interface, and `run_test()`. The class library mirrors the
@@ -689,7 +692,7 @@ on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
   collateral. The SEP_IN AXI4 ingress is the first driven interface: the
   active `ocah_axi_master_env` issues the traffic and a monitor-only passive
   `ocah_axi_env` feeds the SMC scoreboard.
-. `tb/smc_tb_if.sv` — the SMC-local TB interface: harness clock periods,
+. `tb/smc_tb_if.sv` — the SMC-local TB interface: the wait-math clock periods,
   power-good and the cold/cool reset pins, the reset-unit outputs, the
   fuse-sense / warm-domain release observables, the cold-reset assertion
   counter, the SVA enable.

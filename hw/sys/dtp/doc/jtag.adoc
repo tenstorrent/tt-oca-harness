@@ -18,8 +18,8 @@ entry point for the chiplet. The JIU connects to:
 * The five external JTAG pins (TCK, TDI, TDO, TMS, TRST_n).
 * The Cross Trigger Network, for the `jtag_clock_stop` bit in the DEBUG_CONTROL
   instruction and for the `cla_clock_stop` readback status.
-* The SMC AXI fabric via JTAG2AXI (instruction `J2A_SMC_FABRIC`).
-* The SMC and SEP OTP controllers via JTAG2AXIL.
+* The SMC AXI fabric via a JTAG2AXI bridge.
+* The SMC and SEP OTP controllers via AXI4-Lite JTAG2AXI bridges.
 * The SMC and SEP CPU debug TAPs via STAPs.
 
 <<dtp-jtag-scan-chain-figure>> shows the PTAP, secondary scan path, and iJTAG instrument
@@ -27,7 +27,26 @@ network.
 
 [[dtp-jtag-scan-chain-figure]]
 .DTP JTAG scan chain
-image::dtp_jtag_scan_chain.svg[DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network,scaledwidth=90.0%]
+image::dtp-jtag-scan-chain.svg[alt="DTP JTAG scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux",width=100%,pdfwidth=100%]
+
+Read <<dtp-jtag-scan-chain-figure>> along the arrows from TDI to TDO. TDI reaches
+every register and external chain at once; the IR and TDR mux returns the
+instruction register in Shift-IR and, in Shift-DR, the register the current
+instruction selects. Italic labels beside a mux name the instructions or the
+select bit that choose its input, and 0 or 1 at a mux input is the select value
+that picks it. The PTAP output then enters the STAP chain, which is scanned only
+while the `TAP_3DCR` STAP-select bit is set: the bit gates the chain's scan strobes
+and selects its return onto TDO. Otherwise TDO takes the PTAP output directly. TDO is retimed on the falling edge of TCK except during a
+`ZERO_LENGTH_BYPASS` DR scan, when the last mux takes the TDO mux output ahead of
+the retimer and TDI reaches TDO combinationally. The figure counts the extra STAPs
+by the `jtag_intf_unit` parameter `NUM_EXTRA_STAPS`, which `dtp` sets from
+`JTAG_NUM_EXTRA_STAPS`. Each STAP and SIB carries, in italics, the
+`dbg_disable_i` field that closes it. Dashed blocks exist only when their enable
+parameter is set, as the list below gives for the STAPs; the JTAG2AXI bridges
+follow `JTAG_SMC_DBG_ENABLE` and `JTAG_SEP_DBG_ENABLE`. Each STAP adds one SIB bit
+to the chain; opening the SIB inserts the STAP's 3-bit 3DCR, and setting the 3DCR
+STAP-select bit splices in its secondary TAP. Each iJTAG SIB inserts its external
+segment after its SIB bit while that bit is set.
 
 == STAP Secondary Scan Path
 
@@ -41,7 +60,46 @@ The PTAP secondary scan path connects the STAPs in this fixed order:
 . Return to PTAP
 
 When a STAP is disabled by parameter, the DTP bypasses it in the secondary
-scan chain and drives its internal host outputs low.
+scan chain and drives its host outputs low, apart from TCK, which still follows
+the PTAP.
+
+[[dtp-jtag2axi-bridges]]
+== JTAG2AXI Bridges
+
+The PTAP contains three JTAG2AXI bridges, each selected by its own group of six
+instructions (<<dtp-jtag2axi-bridges-table>>). The request and response type
+parameters of a bridge set its bus type, address width and data width. Its read
+and write pipeline-depth parameters set how many transactions it queues, where
+0 allows a single outstanding transaction. The table lists the DTP defaults.
+Each bridge reports its configuration in its `*_JTAG2AXI_CAPS` register.
+
+[[dtp-jtag2axi-bridges-table]]
+[cols="<11%,<15%,<11%,<12%,<24%,<27%",options="header"]
+.DTP JTAG2AXI bridges
+|===
+|Bridge |Instructions |Bus |Address / data width (bits) |Type parameters |Pipeline-depth parameters (default 3)
+
+|SMC fabric
+|0x27–0x2C (`SMC_*`)
+|AXI4
+|56 / 64
+|`smc_jtag_axi_req_t`, `smc_jtag_axi_resp_t`
+|`SMC_RD_PL_DEPTH`, `SMC_WR_PL_DEPTH`
+
+|SMC OTP
+|0x1B–0x20 (`SMC_OTP_*`)
+|AXI4-Lite
+|32 / 32
+|`smc_otp_axil_req_t`, `smc_otp_axil_resp_t`
+|`SMC_OTP_RD_PL_DEPTH`, `SMC_OTP_WR_PL_DEPTH`
+
+|SEP OTP
+|0x21–0x26 (`SEP_OTP_*`)
+|AXI4-Lite
+|32 / 32
+|`sep_otp_axil_req_t`, `sep_otp_axil_resp_t`
+|`SEP_OTP_RD_PL_DEPTH`, `SEP_OTP_WR_PL_DEPTH`
+|===
 
 ifdef::backend-html5[]
 [[clock-domains]]

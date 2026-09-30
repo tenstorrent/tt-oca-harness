@@ -13,8 +13,10 @@ from env.dtp_types import (
     FAULT_STATUS_CHECK_ID,
     STALL_BUSY_CHECK_ID,
     STALL_FSM_CHECK_ID,
+    STALL_HOLD_CHECK_ID,
     DtpJtag2AxiOp,
     DtpJtag2AxiStatus,
+    DtpJtagInstr,
     unpack_single_op,
 )
 
@@ -38,6 +40,9 @@ ABORT_HOLD_CYCLES = 100_000
 # Run-Test/Idle.
 ABORT_MIDFLIGHT_TCK = 64
 ABORT_SETTLE_TCK = 128
+# SINGLE_OP captures within which the status leaves BUSY_OR_FULL after the
+# reset; one capture is one Capture-DR from Run-Test/Idle, the instruction
+# loaded once and no idle TCK after it.
 ABORT_RECOVERY_POLLS = 8
 # TCK cycles after a reset pulse for the CDC controller to run its TCK-side
 # isolate-and-clear on an idle bridge.
@@ -90,6 +95,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(target)
         idle = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
         self._record_abort_check(
+            target,
             STALL_FSM_CHECK_ID,
             f"{context}.stall_fsm",
             self.cfg.tb_if.bridge_fsm_on_path(target, read=read),
@@ -98,12 +104,52 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         )
         first, _ = unpack_single_op(await self.read_tdr(cfg.single_op_reg), target=cfg)
         self._record_abort_check(
+            target,
             STALL_BUSY_CHECK_ID,
             f"{context}.stall_busy",
             int(first),
             int(DtpJtag2AxiStatus.BUSY_OR_FULL),
             "first status poll under the READY stall",
         )
+
+    def _judge_stall_hold(
+        self,
+        target: str,
+        before: dict[str, int],
+        after: dict[str, int],
+        *,
+        op_channels: tuple[str, ...],
+        stalled: tuple[str, ...],
+        context: str,
+    ) -> None:
+        """The READY stall seen on the port across one operation (CHK-J2A-STALL-HOLD).
+
+        Each channel in ``stalled`` held its VALID against a low READY for at
+        least one cycle; every other channel of the operation was accepted on
+        its first VALID cycle. The tb_top stall counters advance only while
+        ``axi_sva_en`` is set, so a counted cycle is one the port's
+        ``ocah_axi_sva`` stability rules evaluated.
+        """
+        for channel in op_channels:
+            delta = after[channel] - before[channel]
+            if channel in stalled:
+                self._record_abort_check(
+                    target,
+                    STALL_HOLD_CHECK_ID,
+                    f"{context}.{channel}_stall_hold",
+                    int(delta > 0),
+                    1,
+                    f"{channel}_stall_delta={delta}",
+                )
+            else:
+                self._record_abort_check(
+                    target,
+                    STALL_HOLD_CHECK_ID,
+                    f"{context}.{channel}_accepted_unstalled",
+                    delta,
+                    0,
+                    f"{channel}_stall_delta={delta}",
+                )
 
     async def _write_with_backpressure(
         self,
@@ -117,7 +163,9 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
 
         The READY stall outlasts the first status poll, so the bridge is
         observed on the stalled path before the write settles at SUCCESS with
-        the memory matching the stimulus intent and the request on the bus.
+        the memory matching the stimulus intent and the request on the bus;
+        the port's stall counters show the stall on exactly the write channels
+        in ``channels``.
         """
         cfg = self.target_cfg(target)
         size = cfg.default_size
@@ -127,6 +175,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self.configure_target_backpressure(target, channels=channels, stall_cycles=stall_cycles)
         try:
             before = await self.target_activity_counts(target)
+            stalls_before = await self.target_stall_counts(target)
             self.log_target_jtag2axi_op(
                 target, context, addr=addr, data=data, size=size, wstrb=wstrb
             )
@@ -134,10 +183,20 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 target, DtpJtag2AxiOp.WRITE, addr, data=data, wstrb=wstrb, size=size
             )
             await self._observe_stall(target, read=False, context=context)
-            await self.finish_target_single_write(
+            status, _ = await self.finish_target_single_write(
                 target, addr, data, size=size, wstrb=wstrb, context=context
             )
+            self.check_target_word(target, addr, data, size=size, context=context)
+            self.status = DtpJtag2AxiStatus(status)
             await self.expect_target_activity(target, before=before, read=False, context=context)
+            self._judge_stall_hold(
+                target,
+                stalls_before,
+                await self.target_stall_counts(target),
+                op_channels=("aw", "w"),
+                stalled=channels,
+                context=context,
+            )
         finally:
             self.clear_target_backpressure(target)
         self.operation_count += 1
@@ -158,11 +217,23 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self.configure_target_backpressure(target, channels=channels, stall_cycles=stall_cycles)
         try:
             before = await self.target_activity_counts(target)
+            stalls_before = await self.target_stall_counts(target)
             self.log_target_jtag2axi_op(target, context, addr=addr, size=size)
             await self.write_target_single_raw(target, DtpJtag2AxiOp.READ, addr, size=size)
             await self._observe_stall(target, read=True, context=context)
-            await self.finish_target_single_read(target, addr, data, size=size, context=context)
+            status, _ = await self.finish_target_single_read(
+                target, addr, data, size=size, context=context
+            )
+            self.status = DtpJtag2AxiStatus(status)
             await self.expect_target_activity(target, before=before, read=True, context=context)
+            self._judge_stall_hold(
+                target,
+                stalls_before,
+                await self.target_stall_counts(target),
+                op_channels=("ar",),
+                stalled=channels,
+                context=context,
+            )
         finally:
             self.clear_target_backpressure(target)
         self.operation_count += 1
@@ -223,27 +294,35 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             )
             boundary_addr = 0x1_0000 - self.size_bytes(size)
             boundary_data = rng.getrandbits(32) & self.data_mask(size)
-            await self.write_target_single_and_check(
+            status, _ = await self.write_target_single_and_check(
                 target,
                 boundary_addr,
                 boundary_data,
                 size=size,
                 context=f"long_stall.boundary.{target}",
             )
+            self.status = DtpJtag2AxiStatus(status)
 
     def _record_abort_check(
-        self, check_id: str, name: str, observed: int, expected: int, context: str = ""
+        self,
+        target: str,
+        check_id: str,
+        name: str,
+        observed: int,
+        expected: int,
+        context: str = "",
     ) -> bool:
-        """Log and record one judgement on the AXI scoreboard without raising."""
+        """Log and record one judgement of ``target`` without raising, so every
+        bridge leaves evidence; without a scoreboard, assert it."""
+        scoreboard = self.target_evidence(target)
+        if scoreboard is None:
+            self.assert_equal(name, int(observed), int(expected), context)
+            return True
         suffix = f" ({context})" if context else ""
         self.log.info(
             "CHECK %-36s expected=0x%x observed=0x%x%s", name, int(expected), int(observed), suffix
         )
-        scoreboard = self.axi_scoreboard
-        if scoreboard is not None:
-            scoreboard.expect_equal(
-                check_id, int(observed), int(expected), context=f"{name}{suffix}"
-            )
+        scoreboard.expect_equal(check_id, int(observed), int(expected), context=f"{name}{suffix}")
         return int(observed) == int(expected)
 
     async def _wait_bridge_fsm(self, target: str, *, idle: bool, tck_cycles: int) -> int:
@@ -257,20 +336,34 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             is_idle = self.cfg.tb_if.bridge_fsm_idle(target)
         return int(is_idle)
 
-    async def _poll_status_bounded(self, target: str, polls: int) -> int:
+    async def _poll_status_bounded(self, target: str, polls: int) -> tuple[int, int]:
+        """Capture SINGLE_OP from Run-Test/Idle up to ``polls`` times, the instruction
+        loaded once, until the status leaves BUSY_OR_FULL; returns (status, captures)."""
+        cfg = self.target_cfg(target)
+        await self.load_ir(DtpJtagInstr[cfg.single_op_reg])
         status = int(DtpJtag2AxiStatus.BUSY_OR_FULL)
-        for _ in range(polls):
-            status, _ = await self.poll_target_single_status(target)
+        captures = 0
+        while captures < polls:
+            item = await self.shift_dr(0, cfg.single_op_len)
+            captures += 1
+            status, _ = unpack_single_op(item.result, target=cfg)
             if status != DtpJtag2AxiStatus.BUSY_OR_FULL:
                 break
-        return status
+        self.log.info(
+            "%s SINGLE_OP status=%s captures=%d/%d",
+            target,
+            DtpJtag2AxiStatus(status).name,
+            captures,
+            polls,
+        )
+        return status, captures
 
     async def _reset_abort_mid_flight(
         self,
         target: str,
         rng,
         *,
-        channel: str,
+        channels: tuple[str, ...],
         reset_cycles: int,
         addr_idx: int,
         recovery_xor: int,
@@ -278,9 +371,10 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     ) -> bool:
         """System reset while the bridge is observed mid-flight on a held write.
 
-        Every judgement is recorded rather than raised so all three bridges
-        leave evidence; returns True when the bridge's status settled to
-        SUCCESS afterwards and the recovery write ran.
+        With the AXI scoreboard attached every judgement is recorded rather
+        than raised, so all three bridges leave evidence; without it the
+        first failing judgement raises. Returns True when the bridge's status
+        left BUSY_OR_FULL afterwards and the recovery write ran.
         """
         tb_if = self.cfg.tb_if
         size = self.target_cfg(target).default_size
@@ -288,8 +382,10 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         data = rng.getrandbits(64) & self.data_mask(size)
         before = self.read_target_mem_int(target, addr, size)
         self.configure_target_backpressure(
-            target, channels=(channel,), stall_cycles=ABORT_HOLD_CYCLES
+            target, channels=channels, stall_cycles=ABORT_HOLD_CYCLES
         )
+        # The reset aborts this write, so it arms no strobe credit;
+        # CHK-J2A-ABORT-ESCAPE judges its slot.
         await self.write_target_single_raw(
             target,
             DtpJtag2AxiOp.WRITE,
@@ -297,10 +393,12 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             data=data,
             wstrb=self.target_full_wstrb(target, size),
             size=size,
+            arm_strobes=False,
         )
         idle = await self._wait_bridge_fsm(target, idle=False, tck_cycles=ABORT_MIDFLIGHT_TCK)
         mid_flight = not idle and tb_if.bridge_op_pending(target) == 1
         self._record_abort_check(
+            target,
             ABORT_MIDFLIGHT_CHECK_ID,
             f"{context}.mid_flight",
             int(mid_flight),
@@ -314,8 +412,19 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self.clear_target_backpressure(target)
         recovered = await self._judge_abort_aftermath(target, addr, before, context=context)
         if recovered:
-            await self.verify_target_recovery(
+            self.status = await self.verify_target_recovery(
                 target, addr=addr + 0x200, data=data ^ recovery_xor, read=False, context=context
+            )
+            # A write the bridge holds across the reset lands only once it is
+            # issued, which can follow the first sample, so the slot is
+            # judged again.
+            self._record_abort_check(
+                target,
+                ABORT_ESCAPE_CHECK_ID,
+                f"{context}.no_escape_after_recovery",
+                self.read_target_mem_int(target, addr, size),
+                before,
+                f"addr=0x{addr:x}",
             )
         self.operation_count += 1
         return recovered
@@ -328,6 +437,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         size = self.target_cfg(target).default_size
         idle = await self._wait_bridge_fsm(target, idle=True, tck_cycles=ABORT_SETTLE_TCK)
         self._record_abort_check(
+            target,
             ABORT_FSM_CHECK_ID,
             f"{context}.fsm_idle",
             idle,
@@ -335,29 +445,40 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             "after the mid-flight reset",
         )
         self._record_abort_check(
-            CDC_CLEAR_CHECK_ID, f"{context}.cdc_clear", tb_if.cdc_clear_seen(target), 1
+            target, CDC_CLEAR_CHECK_ID, f"{context}.cdc_clear", tb_if.cdc_clear_seen(target), 1
         )
         self._record_abort_check(
+            target,
             ABORT_ESCAPE_CHECK_ID,
             f"{context}.no_escape",
             self.read_target_mem_int(target, addr, size),
             before,
             f"addr=0x{addr:x}",
         )
-        status = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
-        self.scoreboard_expect_completion(target, status, context=f"{context}.recovery")
+        status, captures = await self._poll_status_bounded(target, ABORT_RECOVERY_POLLS)
+        self.scoreboard_expect_completion(
+            target, status, context=f"{context}.recovery", polls=ABORT_RECOVERY_POLLS
+        )
         recovered = self._record_abort_check(
+            target,
             ABORT_RECOVERY_CHECK_ID,
             f"{context}.recovery_status",
-            status,
-            DtpJtag2AxiStatus.SUCCESS,
-            f"polls={ABORT_RECOVERY_POLLS} after the mid-flight reset",
+            int(status != DtpJtag2AxiStatus.BUSY_OR_FULL),
+            1,
+            f"status={DtpJtag2AxiStatus(status).name} "
+            f"captures={captures}/{ABORT_RECOVERY_POLLS} after the mid-flight reset",
         )
         self.status = DtpJtag2AxiStatus(status)
         return recovered
 
     async def _run_reset_abort(
-        self, label: str, *, channel: str, reset_cycles_hi: int, recovery_xor: int, addr_offset: int
+        self,
+        label: str,
+        *,
+        channels: tuple[str, ...],
+        reset_cycles_hi: int,
+        recovery_xor: int,
+        addr_offset: int,
     ) -> None:
         """Abort a held write on every bridge, then judge the pass on the collected evidence."""
         await self.reset_tap()
@@ -365,12 +486,16 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         stuck = []
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             self.log_iteration(
-                idx, len(ROBUST_TARGETS), "target=%s system reset while %s is held", target, channel
+                idx,
+                len(ROBUST_TARGETS),
+                "target=%s system reset while %s is held",
+                target,
+                "+".join(channels),
             )
             recovered = await self._reset_abort_mid_flight(
                 target,
                 rng,
-                channel=channel,
+                channels=channels,
                 reset_cycles=rng.randint(1, reset_cycles_hi),
                 addr_idx=idx + addr_offset,
                 recovery_xor=recovery_xor,
@@ -386,15 +511,21 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
     async def run_backpressure_abort_at_data_w(self) -> None:
         self.log_banner("JTAG2AXI system reset while a write is held on the W channel")
         await self._run_reset_abort(
-            "abort_w", channel="w", reset_cycles_hi=3, recovery_xor=0x1111, addr_offset=0
+            "abort_w", channels=("w",), reset_cycles_hi=3, recovery_xor=0x1111, addr_offset=0
         )
 
     async def run_cdc_clear_abort_narrow_reset_mid_xaction(self) -> None:
         self.log_banner(
             "JTAG2AXI single-cycle system reset while a write is held on the AW channel"
         )
+        # The responder accepts W independently of AW, so W is held with AW:
+        # neither channel completes a handshake before the reset.
         await self._run_reset_abort(
-            "narrow_reset", channel="aw", reset_cycles_hi=1, recovery_xor=0x2222, addr_offset=8
+            "narrow_reset",
+            channels=("aw", "w"),
+            reset_cycles_hi=1,
+            recovery_xor=0x2222,
+            addr_offset=8,
         )
 
     async def run_cdc_clear_abort_back_to_back_reset(self) -> None:
@@ -417,6 +548,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             for _ in range(ABORT_CDC_CLEAR_TCK):
                 await self.tms_step(0)
             self._record_abort_check(
+                target,
                 CDC_CLEAR_CHECK_ID,
                 f"back_to_back_reset.{target}.cdc_clear",
                 tb_if.cdc_clear_seen(target),
@@ -430,7 +562,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 read=False,
                 context=f"back_to_back_reset.{target}",
             )
-            await self.verify_target_recovery(
+            self.status = await self.verify_target_recovery(
                 target,
                 addr=addr,
                 data=data,
@@ -464,7 +596,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 before,
                 f"addr=0x{addr:x}",
             )
-            await self.verify_target_recovery(
+            self.status = await self.verify_target_recovery(
                 target,
                 addr=addr + 0x200,
                 # Seeded per-pass recovery payload.
@@ -482,11 +614,14 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         for idx, target in enumerate(ROBUST_TARGETS, start=1):
             addr = self._target_addr(target, idx + 32)
             cfg = self.target_cfg(target)
-            # A nonzero preload keeps the slot's word distinguishable from the
-            # errored beat's RDATA.
             preload = rng.randrange(1, 1 << cfg.data_width)
+            # The errored beat's word differs from zero and from the preload,
+            # so neither a zeroed capture nor the slot's word can pass for it.
+            errored = self.random_distinct_word(rng, target, preload)
             self.write_target_mem_int(target, addr, preload, cfg.default_size)
-            expected = self.configure_target_error(target, addr, AXI_DECERR, read=True, write=False)
+            expected = self.configure_target_error(
+                target, addr, AXI_DECERR, read=True, write=False, err_rdata=errored
+            )
             status, rdata = await self.read_target_single_expect_status(
                 target,
                 addr,
@@ -500,10 +635,11 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 rdata,
                 resp=AXI_DECERR,
                 preload=preload,
+                errored=errored,
                 size=cfg.default_size,
                 context=f"decerr_read.{target}",
             )
-            await self.verify_target_recovery(
+            self.status = await self.verify_target_recovery(
                 target,
                 addr=addr + 0x200,
                 # Seeded per-pass recovery payload.
@@ -553,12 +689,20 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
                 expected,
                 context=f"mixed.bad_read.{target}",
             )
-            await self.read_target_single_and_check(
+            await self.write_target_single_expect_status(
+                target,
+                bad_addr,
+                rng.getrandbits(self.target_cfg(target).data_width),
+                expected,
+                context=f"mixed.bad_write.{target}",
+            )
+            status, _ = await self.read_target_single_and_check(
                 target,
                 good_addr,
                 good_data,
                 context=f"mixed.good_read.{target}",
             )
+            self.status = DtpJtag2AxiStatus(status)
             self.operation_count += 1
         self._emit_decode_error_nonvacuity("mixed")
 
@@ -571,7 +715,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self, target: str, observed: int, expected: DtpJtag2AxiStatus, *, context: str
     ) -> None:
         """CHK-J2A-FAULT-STATUS on a SERIES_CTRL capture, recorded and asserted."""
-        scoreboard = self.axi_scoreboard
+        scoreboard = self.target_evidence(target)
         if scoreboard is not None:
             scoreboard.expect_equal(
                 FAULT_STATUS_CHECK_ID,
@@ -585,12 +729,15 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
         self, target: str, addr: int, data: int, *, size: int, increment: int, context: str
     ) -> None:
         """Land one write beat of a programmed series and compare the word it wrote."""
+        completed = self.port_history(target).count(read=False)
         before = await self.target_activity_counts(target)
         if increment:
             await self.series_data_incr(data, size=size, target=target, back_to_rti=True)
         else:
             await self.series_data_no_incr(data, size=size, target=target, back_to_rti=True)
         await self.wait_for_target_activity(target, before=before, read=False, context=context)
+        if not await self.wait_port_completion(target, read=False, above=completed):
+            raise AssertionError(f"{context}.commit: {target} write did not complete")
         self.assert_equal(
             f"{context}.mem", self.read_target_mem_int(target, addr, size), data, f"addr=0x{addr:x}"
         )
@@ -661,9 +808,12 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             addr = base + beat * cfg.beat_bytes
             data = rng.getrandbits(cfg.data_width) & self.data_mask(size)
             context = f"series_corner.sticky.{target}.{beat}"
+            completed = self.port_history(target).count(read=False)
             before = await self.target_activity_counts(target)
             await self.series_data_incr(data, size=size, target=target, back_to_rti=True)
             await self.wait_for_target_activity(target, before=before, read=False, context=context)
+            if not await self.wait_port_completion(target, read=False, above=completed):
+                raise AssertionError(f"{context}.commit: {target} write did not complete")
             observed = self.read_target_mem_int(target, addr, size)
             if beat == fault_beat:
                 self.assert_equal(

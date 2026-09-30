@@ -36,12 +36,6 @@ SPI_RX_JEDEC_WORD = 0x0018BA20
 STATUS_ACTIVE = SPI_CONTROLLER.field_mask("STATUS", "active")
 STATUS_READY = SPI_CONTROLLER.field_mask("STATUS", "ready")
 
-# COMMAND packing (OpenTitan spi_host): CSAAT[0], SPEED[2:1], DIRECTION[4:3],
-# LEN[24:5]. LEN is the segment length in bytes minus one.
-CMD_CSAAT = 1 << 0
-CMD_SPEED_SHIFT = 1
-CMD_DIRECTION_SHIFT = 3
-CMD_LEN_SHIFT = 5
 CMD_DIR_DUMMY = 0
 CMD_DIR_RDONLY = 1
 CMD_DIR_WRONLY = 2
@@ -49,16 +43,40 @@ CMD_DIR_BIDIR = 3
 CMD_SPEED_STANDARD = 0
 
 
+def _field(reg: str, field: str, value: int) -> int:
+    """Place ``value`` in one generated SPI_CONTROLLER field; reject overflow."""
+    mask = SPI_CONTROLLER.field_mask(reg, field)
+    word = value << SPI_CONTROLLER.field_lsb(reg, field)
+    if word & ~mask:
+        raise ValueError(f"{reg}.{field}={value:#x} does not fit mask {mask:#x}")
+    return word
+
+
 def spi_command(
     direction: int, nbytes: int, *, csaat: bool = False, speed: int = CMD_SPEED_STANDARD
 ) -> int:
-    """Pack one COMMAND word for a ``nbytes``-byte segment."""
+    """Pack one COMMAND word for a ``nbytes``-byte segment (LEN is bytes - 1)."""
     return (
-        ((nbytes - 1) << CMD_LEN_SHIFT)
-        | (direction << CMD_DIRECTION_SHIFT)
-        | (speed << CMD_SPEED_SHIFT)
-        | (CMD_CSAAT if csaat else 0)
+        _field("COMMAND", "len", nbytes - 1)
+        | _field("COMMAND", "direction", direction)
+        | _field("COMMAND", "speed", speed)
+        | _field("COMMAND", "csaat", int(csaat))
     )
+
+
+# Host enabled with its outputs driven, RX watermark 0x7F, TX watermark 0.
+SPI_CONTROL_ENABLE = (
+    SPI_CONTROLLER.field_mask("CONTROL", "spien")
+    | SPI_CONTROLLER.field_mask("CONTROL", "output_en")
+    | _field("CONTROL", "rx_watermark", 0x7F)
+)
+# Mode 0 (CPOL = CPHA = 0), CLKDIV 9, two-cycle CS# lead / trail / idle.
+SPI_CONFIGOPTS_MODE0 = (
+    _field("CONFIGOPTS", "clkdiv", 9)
+    | _field("CONFIGOPTS", "csnidle", 2)
+    | _field("CONFIGOPTS", "csntrail", 2)
+    | _field("CONFIGOPTS", "csnlead", 2)
+)
 
 
 class sep_spi_flash_jedec_seq(uvm_sequence):
@@ -102,8 +120,8 @@ class sep_spi_flash_jedec_seq(uvm_sequence):
         raise AssertionError("SPI controller did not become idle")
 
     async def body(self) -> None:
-        await self._write(SPI_CONTROLLER_CONTROL, 0xA000_007F)
-        await self._write(SPI_CONTROLLER_CONFIGOPTS, 0x0222_0009)
+        await self._write(SPI_CONTROLLER_CONTROL, SPI_CONTROL_ENABLE)
+        await self._write(SPI_CONTROLLER_CONFIGOPTS, SPI_CONFIGOPTS_MODE0)
         await self._write(SPI_CONTROLLER_CSID, 0)
         await self._write(SPI_CONTROLLER_ERROR_STATUS, 0xFFFF_FFFF)
 

@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-cpu_ctrl]
-== Address Map: cpu_ctrl
+== CPU Control Address Map
+
+Per-core reset control and status, reset timing, chip configuration, mailbox, and boot-ROM stub registers for the SMC CPU cluster.
 
 [NOTE]
 ======
@@ -138,10 +140,10 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:4 | `Reserved` | - | - a| Reserved
-| 3 | `reset_cycle_count_3` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
-| 2 | `reset_cycle_count_2` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
-| 1 | `reset_cycle_count_1` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
-| 0 | `reset_cycle_count_0` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 3 | `reset_cycle_count_3` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 2 | `reset_cycle_count_2` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 1 | `reset_cycle_count_1` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
+| 0 | `reset_cycle_count_0` | RW 1P | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
 |===
 
 [#reg-{regmap-instance}-cpu_ctrl-TEST_CTRL]

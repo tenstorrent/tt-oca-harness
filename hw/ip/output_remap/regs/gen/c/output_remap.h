@@ -18,10 +18,15 @@ extern "C" {
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bp 0
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_bw 56
 #define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__OFFSET_reset 0x0
+#define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm 0x8000000000000000
+#define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bp 63
+#define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bw 1
+#define OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_reset 0x0
 typedef union {
     struct __attribute__ ((__packed__)) {
         uint64_t offset :56;
-        uint64_t :8;
+        uint64_t :7;
+        uint64_t valid :1;
     } f;
     uint64_t w;
 } output_remap__output_remap_region__REGION_ATTRS_t;

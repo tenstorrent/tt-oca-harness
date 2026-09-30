@@ -1,21 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Accesses to the unmapped tail of three block windows.
+"""Accesses to the unmapped tail of three block apertures.
 
-The peripheral crossbar hands the miscellaneous block the 2 KB from
-0xC000_2800 and the GPIO padring the 4 KB from 0xC000_3000, and the local
-crossbar hands the data accelerator the 4 KB from 0xC003_8000. The generated
-map fills only the start of each: the miscellaneous registers end with
-`NDM_RESET` at 0xC000_2A0C, the 65 GPIO interfaces at 0xC000_3410, and the
-zeroer registers after the DMA's at 0xC003_8218. Each block decodes its own
-window again, and no enrolled leaf reaches the part beyond the last mapped
-register, where each of those decodes chooses its default.
+The generated memory map gives the miscellaneous block a 2 KiB aperture, the
+GPIO interfaces 4 KiB and the DMA controller 512 B, and each a smaller decoded
+extent: misc_wrap's ``SIZE``, ``GPIO_INTF_TOTAL_SIZE`` and the DMA's ``SIZE``.
+The crossbars decode each block to that extent, so an address in the tail
+between the extent and the end of the aperture reaches no block and the
+fabric's error slave answers it (``memmap.adoc``: the fabric refuses an address
+past a unit's decoded extent).
 
-For each window the leaf seeds a live register near the start of the block,
-writes and reads an address in the unmapped tail, and requires the live
-register to still hold its seed and the unmapped read not to return it. The
-responses to the unmapped accesses are recorded, not asserted: no document
-fixes which error, if any, an unmapped offset inside a block window returns.
+For each aperture the leaf seeds a live register near the start of the block,
+writes and reads the word halfway through the unmapped tail, and requires the
+read to answer DECERR and the write to be refused with an error response, the
+live register to still hold its seed and the unmapped read not to return it.
 """
 
 from __future__ import annotations
@@ -25,78 +23,93 @@ from dataclasses import dataclass
 import cocotb
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
-from .smc_addr_map import smc_addr, smc_indexed_addr
+from .smc_addr_map import (
+    LOCAL_BASE_RESET,
+    generated_decoded_extent,
+    generated_unit_at,
+    generated_window,
+    smc_addr,
+    smc_indexed_addr,
+)
 from .smc_csr_seq_utils import SmcCsrSeq
 
 AXI_RESP_OKAY = 0
+AXI_RESP_SLVERR = 2
+AXI_RESP_DECERR = 3
+# The write refusal the crossbars give: DECERR from the local crossbar, SLVERR
+# from the AXI-Lite peripheral and internal crossbars.
+_REFUSED = (AXI_RESP_SLVERR, AXI_RESP_DECERR)
 _RESP_NAME = {0: "OKAY", 1: "EXOKAY", 2: "SLVERR", 3: "DECERR"}
-
-
-#: The data accelerator sends every address outside its zeroer registers to
-#: the DMA, whose register port keeps nine address bits, so a tail address
-#: reaches the DMA at its offset modulo 0x200. This one lands at 0x138, past
-#: the DMA's last register, rather than on a live DMA register (issue #585
-#: covers the aliasing).
-DATA_ACCEL_HOLE_OFFSET = 0x338
 
 
 @dataclass(frozen=True)
 class Hole:
-    """An unmapped address inside a block window and a live register below it."""
+    """An unmapped word in a block aperture's tail and a live register below it."""
 
     name: str
     live_addr: int
     seed: int
-    dead_addr: int
     mapped_end: int
-    window_end: int
+    aperture_end: int
     #: Bits of the live register software owns; status fields driven by
     #: hardware are left out of the compares.
     mask: int = 0xFFFF_FFFF
 
+    @property
+    def dead_addr(self) -> int:
+        """The word halfway through ``[mapped_end, aperture_end)``."""
+        return (self.mapped_end + (self.aperture_end - self.mapped_end) // 2) & ~0x3
+
     def check(self) -> None:
-        assert self.live_addr < self.mapped_end <= self.dead_addr < self.window_end, (
+        assert self.live_addr < self.mapped_end <= self.dead_addr < self.aperture_end, (
             f"{self.name}: live 0x{self.live_addr:08x}, mapped end 0x{self.mapped_end:08x}, "
-            f"dead 0x{self.dead_addr:08x}, window end 0x{self.window_end:08x} are out of order; "
-            f"the probe definition is wrong, not the DUT"
+            f"dead 0x{self.dead_addr:08x}, aperture end 0x{self.aperture_end:08x} are out of "
+            f"order; the probe definition is wrong, not the DUT"
         )
+        assert generated_unit_at(self.dead_addr - LOCAL_BASE_RESET) is None, (
+            f"{self.name}: 0x{self.dead_addr:08x} lies inside a unit's decoded extent in the "
+            f"generated memory map; the probe definition is wrong, not the DUT"
+        )
+
+
+def _aperture_end(unit: str) -> int:
+    return LOCAL_BASE_RESET + generated_window(unit)[1] + 1
 
 
 def _holes() -> tuple[Hole, ...]:
     misc_base = smc_addr("SMC_TOP_SMC_MISC_WRAP_BASE_ADDR")
     gpio_base = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0)
     dma_base = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR")
+    assert generated_decoded_extent("smc_misc_wrap") == smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE")
+    assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
     return (
         Hole(
             "MISC",
             smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 0),
             0x5A5A_5A5A,
-            misc_base + 0x400,
             misc_base + smc_addr("SMC_TOP_SMC_MISC_WRAP_SIZE"),
-            misc_base + 0x800,
+            _aperture_end("smc_misc_wrap"),
         ),
         Hole(
             "GPIO",
             smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 64),
             0x1,
-            gpio_base + 0x800,
             gpio_base + smc_addr("SMC_TOP_GPIO_INTF_TOTAL_SIZE"),
-            gpio_base + 0x1000,
+            _aperture_end("gpio_intf"),
             mask=0x1,
         ),
         Hole(
             "DATA_ACCEL",
             smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR"),
             0x5A5A_5A58,
-            dma_base + DATA_ACCEL_HOLE_OFFSET,
-            smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR") + smc_addr("SMC_TOP_ZEROER_CTRL_SIZE"),
-            dma_base + 0x1000,
+            dma_base + smc_addr("SMC_TOP_DMA_CTRL_SIZE"),
+            _aperture_end("dma_ctrl"),
         ),
     )
 
 
 class smc_decode_hole_test_seq(SmcCsrSeq):
-    """Write and read the unmapped tail of three block windows."""
+    """Write and read the unmapped tail of three block apertures."""
 
     def __init__(self, name: str = "smc_decode_hole_test_seq") -> None:
         super().__init__(name)
@@ -139,13 +152,21 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
         after = await self._okay(f"{label}_LIVE_AFTER", SmcSysAxiOp.READ, hole.live_addr)
         after &= hole.mask
         dead_data = dead_rd.rdata & 0xFFFF_FFFF
+        assert dead_rd.resp_code == AXI_RESP_DECERR and dead_wr.resp_code in _REFUSED, (
+            f"{label}: unmapped 0x{hole.dead_addr:08x}, past the decoded extent ending "
+            f"0x{hole.mapped_end:08x}, answered write "
+            f"{_RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code)} and read "
+            f"{_RESP_NAME.get(dead_rd.resp_code, dead_rd.resp_code)}; the fabric decodes no "
+            f"block there, so the read has to be DECERR and the write refused"
+        )
         assert after == seeded, (
             f"{label}: a write of 0x{payload:08x} to unmapped 0x{hole.dead_addr:08x} changed live "
             f"0x{hole.live_addr:08x} from 0x{seeded:08x} to 0x{after:08x}"
         )
-        assert not (dead_rd.resp_code == AXI_RESP_OKAY and dead_data & hole.mask == seeded), (
-            f"{label}: unmapped 0x{hole.dead_addr:08x} read back live 0x{hole.live_addr:08x}'s "
-            f"seed 0x{seeded:08x}"
+        assert dead_data & hole.mask != seeded, (
+            f"{label}: the DECERR read of unmapped 0x{hole.dead_addr:08x} returned "
+            f"0x{dead_data:08x}, live 0x{hole.live_addr:08x}'s seed; the error slave's word "
+            f"must not be the live register's value"
         )
         await self._okay(f"{label}_RESTORE", SmcSysAxiOp.WRITE, hole.live_addr, original)
         self.results.append(
@@ -155,19 +176,19 @@ class smc_decode_hole_test_seq(SmcCsrSeq):
             f"live=0x{hole.live_addr:08x} held 0x{after:08x}"
         )
         cocotb.log.info(
-            "CHK-DECODE-HOLE-%s: an unmapped write and read at 0x%08x, past the last mapped "
-            "register at 0x%08x and inside the block window ending 0x%08x, left live "
-            "0x%08x holding its seed 0x%08x and did not read it back (write %s, read %s "
-            "0x%08x)",
+            "CHK-DECODE-HOLE-%s: an unmapped write and read at 0x%08x, past the decoded "
+            "extent ending 0x%08x and inside the aperture ending 0x%08x, were refused "
+            "(write %s, read %s returning 0x%08x, not the seed) and left live 0x%08x holding "
+            "its seed 0x%08x",
             label,
             hole.dead_addr,
             hole.mapped_end,
-            hole.window_end,
-            hole.live_addr,
-            after,
+            hole.aperture_end,
             _RESP_NAME.get(dead_wr.resp_code, dead_wr.resp_code),
             _RESP_NAME.get(dead_rd.resp_code, dead_rd.resp_code),
             dead_data,
+            hole.live_addr,
+            after,
         )
 
     async def body(self) -> None:

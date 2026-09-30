@@ -4,12 +4,14 @@
 
 Deterministic one-hot rows, the all-clear and all-disabled boundary masks,
 and seeded multi-hot masks. Every row proves, per target: an allowed bridge
-completes a write+readback with real bus activity; a blocked bridge produces
-zero request activity from a counter snapshot taken before the gated TDR
-write, inside a scoreboard blocked window held across the disable release,
-and leaves a preloaded RAM sentinel untouched both while gated and after the
-release (no delayed replay), and then recovers with a sanctioned operation.
-Coverage cells are sampled only after the checks pass.
+completes a write+readback with exactly that request activity; a blocked
+bridge produces zero request activity from a counter snapshot taken before
+the gated TDR write, inside a scoreboard blocked window held across the
+disable release, keeps the SINGLE_OP image captured before the disable while
+gated, and leaves a preloaded RAM sentinel untouched both while gated and
+after the release (no delayed replay), and then recovers with exactly one
+sanctioned write and read. Coverage cells are sampled only after the checks
+pass.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from dataclasses import dataclass
 
 from env.dtp_dbg_disable import full_dbg_disable
 from env.dtp_fcov import ALLOWED, BLOCKED, DtpDbgDisableFcov
-from env.dtp_types import DtpJtag2AxiOp
+from env.dtp_types import DtpJtag2AxiOp, pack_single_op
 
 from .dtp_jtag2axi_base_test_seq import BLOCKED_CHECK_ID, dtp_jtag2axi_base_test_seq
 
@@ -35,6 +37,11 @@ class _GatedAttempt:
     addr: int
     sentinel: int
     before: dict[str, int]
+
+
+# Request-activity delta of one allowed single write and one single read.
+WRITE_DELTA = {"aw": 1, "w": 1, "ar": 0}
+READ_DELTA = {"aw": 0, "w": 0, "ar": 1}
 
 
 class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
@@ -69,21 +76,42 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(target)
         return MATRIX_BASE_ADDR + row_idx * 8 * cfg.beat_bytes
 
+    async def expect_exact_activity(
+        self, target: str, before: dict[str, int], delta: dict[str, int], *, context: str
+    ) -> None:
+        """CHK-AXI-NOACT: the request counters moved by exactly ``delta`` since ``before``.
+
+        The matrix configures no backpressure, so each request holds VALID for
+        one cycle and a replayed or extra request moves a counter past it.
+        """
+        after = await self.target_activity_counts(target)
+        expected = {key: before[key] + delta[key] for key in ("aw", "w", "ar")}
+        self.log.info("%s %s activity before=%s after=%s", context, target, before, after)
+        scoreboard = self.axi_scoreboard
+        if scoreboard is not None:
+            sanctioned = ",".join(f"{key}+{count}" for key, count in delta.items() if count)
+            scoreboard.expect_no_activity(
+                before=expected,
+                after=after,
+                context=(
+                    f"{context} target={target} source=tb_pulse_counters "
+                    f"window=exact_delta sanctioned={sanctioned}"
+                ),
+            )
+        for key in ("aw", "w", "ar"):
+            self.assert_equal(f"{context}.{key}_count", after[key], expected[key])
+
     async def check_allowed(
         self, target: str, addr: int, data: int, *, mask: dict[str, int], context: str
     ) -> None:
-        """Allowed bridge: write+readback complete with request activity on both."""
+        """Allowed bridge: write+readback complete, each with exactly its own request activity."""
         cfg = self.target_cfg(target)
         before = await self.target_activity_counts(target)
         await self.write_target_single_and_check(target, addr, data, context=f"{context}.write")
-        await self.expect_target_activity(
-            target, before=before, read=False, context=f"{context}.write"
-        )
+        await self.expect_exact_activity(target, before, WRITE_DELTA, context=f"{context}.write")
         before = await self.target_activity_counts(target)
         await self.read_target_single_and_check(target, addr, data, context=f"{context}.read")
-        await self.expect_target_activity(
-            target, before=before, read=True, context=f"{context}.read"
-        )
+        await self.expect_exact_activity(target, before, READ_DELTA, context=f"{context}.read")
         self.fcov.sample_cell(
             cfg.dbg_disable_bit,
             0,
@@ -94,9 +122,17 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         )
 
     async def check_blocked(
-        self, target: str, addr: int, data: int, *, mask: dict[str, int], context: str
+        self,
+        target: str,
+        addr: int,
+        data: int,
+        *,
+        reference: int,
+        mask: dict[str, int],
+        context: str,
     ) -> _GatedAttempt:
-        """Gated attempt: counters flat since before the TDR write, RAM sentinel untouched.
+        """Gated attempt: counters flat since before the TDR write, RAM sentinel untouched,
+        and the SINGLE_OP captures while gated equal ``reference``.
 
         The blocked window opened here stays open until ``check_released``
         closes it after the row's release, so a request the bridge queues while
@@ -108,17 +144,16 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         self.write_target_mem_int(target, addr, sentinel, size)
         before = await self.target_activity_counts(target)
         self.scoreboard_begin_blocked(target)
-        await self.write_target_single_raw(
-            target,
+        # The gated write never reaches the bus, so it arms no strobe credit.
+        raw = pack_single_op(
             DtpJtag2AxiOp.WRITE,
             addr,
-            data=data,
+            data,
             wstrb=self.target_full_wstrb(target, size),
             size=size,
-            # Gated attempt: the write must never reach the bus, so no strobe
-            # credit may be armed for it.
-            arm_strobes=False,
+            target=cfg,
         )
+        gated = await self.read_tdr(cfg.single_op_reg, raw)
         await self.wait_sys_cycles(GATE_WINDOW_CYCLES)
         await self.scoreboard_expect_no_activity_since(
             target, before, context=f"{context}.no_activity"
@@ -127,6 +162,10 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
             f"{context}.sentinel",
             self.read_target_mem_int(target, addr, size),
             sentinel,
+        )
+        post = await self.read_tdr(cfg.single_op_reg)
+        self.check_gated_tdr(
+            target, reference, raw, request_capture=gated, post_capture=post, context=context
         )
         self.fcov.sample_cell(
             cfg.dbg_disable_bit,
@@ -173,6 +212,19 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
                 mask=full_dbg_disable({}),
                 context=f"{label}.{target}.recovery",
             )
+            # From the pre-attempt snapshot through the recovery the bridge
+            # carries exactly the recovery write and read.
+            await self.expect_exact_activity(
+                target,
+                attempt.before,
+                {key: WRITE_DELTA[key] + READ_DELTA[key] for key in WRITE_DELTA},
+                context=f"{label}.{target}.recovery.from_gated_attempt",
+            )
+            self.assert_equal(
+                f"{label}.{target}.sentinel_post_recovery",
+                self.read_target_mem_int(target, attempt.addr, cfg.default_size),
+                attempt.sentinel,
+            )
         self.fcov.sample_aux("recovery", context=label)
 
     async def body(self) -> None:
@@ -189,6 +241,13 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
                     for t in MATRIX_TARGETS
                 }
             )
+            # Each gated bridge's SINGLE_OP image, captured before the row's
+            # disables.
+            references = {
+                target: await self.gate_reference(target)
+                for target in MATRIX_TARGETS
+                if full[self.target_cfg(target).dbg_disable_bit]
+            }
             await self.set_dbg_disable_vector(mask)
 
             gated: dict[str, _GatedAttempt] = {}
@@ -199,7 +258,12 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
                 data = (0xC0DE_0000 | (row_idx << 8)) & self.data_mask(cfg.default_size)
                 if full[cfg.dbg_disable_bit]:
                     gated[target] = await self.check_blocked(
-                        target, addr, data, mask=full, context=f"{label}.{target}"
+                        target,
+                        addr,
+                        data,
+                        reference=references[target],
+                        mask=full,
+                        context=f"{label}.{target}",
                     )
                 else:
                     allowed_any = True

@@ -336,7 +336,7 @@ int main(void) {
     simputs("  Initializing I2C_0 Target (addr=0x10)...\n");
 
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

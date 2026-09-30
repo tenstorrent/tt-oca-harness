@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: output_remap</h2>
+<h2 id="regmap-output_remap">Output Remap Address Map</h2>
+<p>Address-translation registers that remap outbound transactions and tag their attributes.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -16,7 +17,8 @@
 <h3 id="region_attrs">region_attrs</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>63</td><td>valid</td><td>RW</td><td>0x0</td><td>If set, accesses to this region are remapped by offset; if clear, they pass through with their address unchanged</td></tr>
+<tr><td>62:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>55:0</td><td>offset</td><td>RW</td><td>0x0</td><td>Address translation for remap region. RTL will use the number of bits appropriate for region granulaity.<br>e.g. SMC: 8 * 1MB regions --&gt; 20 bits of address space per region, 36 MSBs from this register used<br>SEP: 16 * 512KB regions --&gt; 19 bits of address space per region, 37 MSBs from this register used</td></tr>
 </table>
 </div>

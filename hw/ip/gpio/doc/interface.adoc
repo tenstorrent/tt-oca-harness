@@ -13,8 +13,13 @@ unbonded pads (`smc_pkg::NUM_BONDED_GPIO` and `NUM_UNBONDED_GPIO`).
 These are subsystem constants, not `NUM_GPIO` or `BUS_PROTOCOL` parameters
 of the per-pad controller. Address and data widths are both 32 bits.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
+ifdef::backend-html5[]
+The parameters and ports of `gpio` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/gpio/gpio.adoc[gpio].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `gpio` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
 ifdef::backend-html5[]
 ++++
 <span id="configuration-parameters"></span>
@@ -30,16 +35,12 @@ endif::backend-html5[]
 |`INPUT_BY_DEFAULT` |1 |Enable RX when cold reset or the default path owns the pad.
 |`GPIO_INTF_REG_MAP_SIZE` |0 |Integration must supply the aperture size;
 its logarithm sets the register-address slice width.
-|`GPIO_INTF_REG_MAP_BASE_ADDR` |0 |Declared integration parameter; unused by the current controller.
-|`ADDRESS_MAP_SIZE_PER_GPIO` |0 |Declared integration parameter; unused by the current controller.
 |===
 
 `gpio_pkg` defines 32-bit addresses and data. The shim has three parameters:
 `INPUT_BY_DEFAULT = 1`, `ENABLE_PULL = 0`, and `USE_PULL_UP = 0`.
 These select strap capture and the default electrical settings.
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="signal-interface-definitions"></span>
@@ -60,8 +61,6 @@ endif::backend-html5[]
 controller and shim each have a separate pair.
 |===
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="lsio-interface"></span>
@@ -80,8 +79,6 @@ endif::backend-html5[]
 |`lsio_pad2core_data_o` |Output |Unsynchronized input returned under the conditions in Input Readback.
 |===
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="gpio-pad-interface"></span>
@@ -99,8 +96,6 @@ endif::backend-html5[]
 |`pad2core_en_o` |Output |Active-high RX enable; connects to shim `pad2core_en_i`.
 |===
 
-// Compatibility anchors preserve bookmarks and inbound links to headings
-// renamed or consolidated by this rewrite; these spans add no visible content.
 ifdef::backend-html5[]
 ++++
 <span id="interrupt-interface"></span>

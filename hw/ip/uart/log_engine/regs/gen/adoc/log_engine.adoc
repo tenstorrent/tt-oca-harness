@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-log_engine]
-== Address Map: log_engine
+== Log Engine Address Map
+
+Configuration and status registers for the UART log engine, including the log region and write pointers.
 
 [NOTE]
 ======
@@ -79,10 +81,10 @@ A requested LOG_LEN above that capacity is clamped to the capacity.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `LOG_WRITE_ERR` | RW | 0x0 a| Log Write Error Interrupt. Asserted when the bus for writing log data returns
+| 4 | `LOG_WRITE_ERR` | RW1C | 0x0 a| Log Write Error Interrupt. Asserted when the bus for writing log data returns
 an error.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `LOG_FETCH_ERR` | RW | 0x0 a| Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
+| 0 | `LOG_FETCH_ERR` | RW1C | 0x0 a| Log Fetch Error Interrupt. Asserted when the bus for fetching log data returns
 an error.
 |===
 
@@ -105,9 +107,9 @@ an error.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:5 | `Reserved` | - | - a| Reserved
-| 4 | `LOG_WRITE_ERR` | W | 0x0 a| Log Write Error Interrupt Test. Writing `1` forces the interrupt.
+| 4 | `LOG_WRITE_ERR` | W 1P | 0x0 a| Log Write Error Interrupt Test. Writing `1` forces the interrupt.
 | 3:1 | `Reserved` | - | - a| Reserved
-| 0 | `LOG_FETCH_ERR` | W | 0x0 a| Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
+| 0 | `LOG_FETCH_ERR` | W 1P | 0x0 a| Log Fetch Error Interrupt Test. Writing `1` forces the interrupt.
 |===
 
 [#reg-{regmap-instance}-log_engine-LOG_CTRL-0-]

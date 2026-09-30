@@ -1,0 +1,132 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[dtp-integration]]
+= Debug & Test Ports (DTP) Integration
+
+== Configuration
+
+The SMU `smu_cfg_t` fields `XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and
+`XTRIG_NUM_CLK_STOP_REQ` size the SMU-exposed cross-trigger ports and are
+passed through to the DTP (with the SMC-reserved lanes added to the internal-CT
+and clock-stop counts). The generated Cross Trigger Matrix register map must
+have one `CT_Src` and one `CT_Dst` for every DTP port
+(`XTRIG_NUM_CTP + XTRIG_NUM_INT_CT` at the DTP, which is the SMU-exposed
+internal-CT count plus `smu_pkg::XTRIG_SMC_INT_CT_LANES`). Resizing is two
+steps: set the `Cfg` counts, and regenerate the CTM with matching PeakRDL
+overrides:
+
+[source,make]
+----
+make ocah-regen-regs TARGET=cross_trigger_matrix \
+    OCAH_REG_RDL_PARAMS_cross_trigger_matrix="NUM_CT_SRC=<n> NUM_CT_DST=<n>"
+----
+
+`<n>` is the DTP total (`Cfg.XTRIG_NUM_CTP + Cfg.XTRIG_NUM_INT_CT +
+smu_pkg::XTRIG_SMC_INT_CT_LANES`). `cross_trigger_network` fails elaboration if
+the parameterized total disagrees with the generated map. Defaults remain 16
+external CTPs, 10 internal CTs (8 exposed), and 9 clock-stop requests (8
+exposed). `XTRIG_INT_CT_MODE` and every `JTAG_*` enable are set at the
+instantiation as shown below.
+
+Include the DTP in your build using Bender target `dtp`, which pulls in the DTP
+RTL together with the JTAG and cross-trigger IPs it instantiates. The legacy
+filelist `hw/sys/dtp/rtl/config/dtp.f` covers only the JTAG portion of the
+hierarchy and is not a complete DTP recipe.
+
+== Instantiation
+
+[source,systemverilog]
+----
+dtp #(
+    // JTAG Configuration
+    .JTAG_BSR_ENABLE          (1'b1),
+    .JTAG_TMP_ENABLE          (1'b1),
+    .JTAG_SMC_DBG_ENABLE      (1'b1),
+    .JTAG_SEP_DBG_ENABLE      (1'b1),
+    .JTAG_IDCODE_MFR_ID       (11'h15A),
+    .JTAG_IDCODE_PART_NUM     (16'h1234),
+    .JTAG_IDCODE_SI_REV       (4'h1),
+    // Cross Trigger Configuration
+    .XTRIG_NUM_CTP            (16),
+    .XTRIG_NUM_INT_CT         (10),
+    .XTRIG_NUM_CLK_STOP_REQ   (9),
+    .XTRIG_INT_CT_MODE        (10'b0000000000)
+) u_dtp (
+    .clk_i                    (clk),
+    .rst_n_i                  (rst_n),
+    .pwr_on_rst_ni            (pwr_on_rst_n),
+    // JTAG, Boundary Scan, Cross Trigger interfaces...
+);
+----
+
+== Clock and Reset
+
+* *TCK Domain*: JTAG logic operates on external Test Clock
+* *System Clock* (`clk_i`): Cross trigger logic and JTAG2AXI bridges
+* *System Reset* (`rst_n_i`): Resets cross trigger and AXI; does not affect TAP controller
+* *Power-On Reset* (`pwr_on_rst_ni`): Asynchronous reset for JTAG state machine
+
+== Constraints
+
+* JTAG interface: 10-50 MHz TCK frequency
+* Cross trigger signals synchronized to system clock
+* DTP remains active during clock stop for debug access
+* External CTP signals require pad ring integration with ESD protection
+
+[[stap-scan-chain-topology]]
+== STAP Scan Chain Topology
+
+The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
+string. The fixed order on this string is: PTAP, I/O STAP (if
+`JTAG_STAP_IO_ENABLE=1`), SMC debug STAP (if `JTAG_SMC_DBG_ENABLE=1`), SEP
+debug STAP (if `SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
+
+The string carries scans only while the PTAP 3DCR select bit is set. While the
+bit is clear, the scan-control strobes to every STAP stay low, so the STAP SIBs,
+3DCRs and any downstream TAPs hold their state through every PTAP scan. The
+select bit updates at Update-DR, so it is set in a TAP_3DCR scan of its own
+before a scan that opens STAP SIBs or writes STAP 3DCRs.
+
+Both the SMC and SEP debug STAP host interfaces are internal to the SMU and are
+not exported on the SMU boundary. The SMU wires the SMC debug STAP host outputs
+to the SMC CPU/system JTAG ports (`smc_cpu_jtag_*`) when
+`JTAG_SMC_DBG_ENABLE=1`; when disabled, the DTP bypasses this STAP in the
+secondary scan chain and drives the internal host outputs low. The SEP debug
+STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
+ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
+
+Each STAP host interface is gated by a field of `dbg_disable_i`, synchronized to
+TCK inside the DTP. Each field is active-high (1 = path disabled).
+
+[cols="<25%,<75%",options="header"]
+|===
+|STAP |Disable Field
+|I/O STAP |`dbg_disable_i.stap_io`
+|SMC debug STAP |`dbg_disable_i.stap_smc`
+|SEP debug STAP |`dbg_disable_i.stap_sep`
+|Extra STAPs |`dbg_disable_i.stap_extra`
+|External STAP return path |`dbg_disable_i.stap_host`
+|===
+
+The full set of debug-disable-gated paths, including the iJTAG chains and the
+JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.
+
+== DTP Port Interface
+
+The DTP exposes interfaces for JTAG TAP control, boundary scan, multiple STAP
+host ports, iJTAG scan chains, AXI debug bridges, cross trigger networks, and
+CTP GPIO pads. The following table defines all DTP top-level ports. Refer to
+the dedicated DTP documentation in `hw/sys/dtp/doc/` for internal design details.
+
+ifdef::backend-html5[]
+The generated module and port pages are in the TRM under RTL Modules Reference.
+This table keeps each port's connection and tie-off default.
+
+include::partial$hw/dtp/doc/port_table.adoc[]
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../hw/sys/dtp/doc/port_table.adoc[]
+endif::backend-pdf[]
+

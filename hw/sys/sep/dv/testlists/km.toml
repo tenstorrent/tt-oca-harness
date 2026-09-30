@@ -9,6 +9,7 @@ schema_version = 1
 [[tests]]
 name = "sep_km_mem_smoke_test"
 module = "km.sep_km_mem_smoke_test"
+firmware = { name = "km_rom", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "km", "memory"]
@@ -25,7 +26,7 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]
 # default out/sep_efuse.hex; +km_rom_hex boots the KM contender firmware.
 name = "sep_efuse_km_axil_cpu_mux_coexist_test"
 module = "km.sep_efuse_km_axil_cpu_mux_coexist_test"
-firmware = "km_efuse_coexist"
+firmware = { name = "km_efuse_coexist", mode = "el2_km_rom_coexist" }
 seed = 1
 timeout_sec = 5400
 tags = ["km", "efuse", "subsystem", "cpu"]
@@ -126,6 +127,7 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 # vehicle on the command set. no_cpu; +skip_fuse_sense.
 name = "sep_km_key_policy_vault_test"
 module = "km.sep_km_key_policy_vault_test"
+firmware = { name = "km_rom_vault", mode = "km_rom_blob" }
 seed = 1
 # Randomized stimulus: walk more than one seed in a regression.
 reseed = 3
@@ -138,6 +140,7 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
 [[tests]]
 name = "sep_km_isolate_termination_test"
 module = "km.sep_km_isolate_termination_test"
+firmware = { name = "km_rom_iso", mode = "km_rom_blob" }
 seed = 1
 timeout_sec = 1800
 tags = ["km", "isolate", "reset", "subsystem"]
@@ -252,6 +255,7 @@ args = ["+skip_fuse_sense"]
 # every golden and cross-check lives in the host test. no_cpu; +skip_fuse_sense.
 name = "sep_km_crc_pcpi_kat_test"
 module = "km.sep_km_crc_pcpi_kat_test"
+firmware = { name = "km_rom_crc", mode = "km_rom_blob" }
 seed = 1
 # Randomized stimulus: walk more than one seed in a regression.
 reseed = 3
@@ -270,6 +274,7 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_crc.parhex"]
 # +skip_fuse_sense.
 name = "sep_km_kpv_scrambler_test"
 module = "km.sep_km_kpv_scrambler_test"
+firmware = { name = "km_rom_kpv_scrambler", mode = "km_rom_blob" }
 seed = 1
 # Randomized stimulus: walk more than one seed in a regression.
 reseed = 3
@@ -278,3 +283,67 @@ tags = ["km", "kpv", "scrambler", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_kpv_scrambler.parhex"]
+
+[[tests]]
+# KM CPU store to KM ROM: the ROM word is unchanged, IRQ_STATUS.ROM_WRITE_ERR
+# sets, and IRQ_STATUS.AXI_SLVERR / AXI_DECERR stay clear, as key_manager.rdl
+# states for a ROM write attempt. Dedicated KM ROM shared with the two leaves
+# below; the host holds every verdict. no_cpu; +skip_fuse_sense.
+name = "sep_km_rom_write_err_test"
+module = "km.sep_km_rom_write_err_test"
+firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["km", "rom", "bus_error", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
+
+[[tests]]
+# KM CPU load and store past the OTP_EFUSE_MMR aperture must be refused and must
+# not reach the eFuse shim register, which key_manager.rdl excludes from the KM
+# path. The host programs and reads the shim register on its SEP-side window.
+# RANDCFG: the host shim value from the run seed. no_cpu; +skip_fuse_sense.
+name = "sep_km_otp_shim_unreachable_test"
+module = "km.sep_km_otp_shim_unreachable_test"
+firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
+seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
+timeout_sec = 1800
+tags = ["km", "otp", "efuse", "bus_error", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
+
+[[tests]]
+# KM CPU load from the VROM base must complete with DECERR: the key_manager.rdl
+# memory-map summary does not list VROM and maps every other address to DECERR.
+# The KM CPU wrapper routes the range to a testbench-only port with ready tied
+# to 0. The image marks the point before the load, so a load that never
+# completes is graded against a live image. no_cpu; +skip_fuse_sense.
+name = "sep_km_vrom_decerr_test"
+module = "km.sep_km_vrom_decerr_test"
+firmware = { name = "km_rom_bus_err", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["km", "vrom", "bus_error", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_bus_err.parhex"]
+
+[[tests]]
+# IC_RESET km_jtag_rst_n override (stage, apply, release) while the KM runs the
+# smoke image. The Key Manager ROM request must stay known after the release:
+# prim_rom noXOnCsI grades it. Verilator is two-state with no assertions, so
+# the entry is pinned to VCS. no_cpu; +skip_fuse_sense.
+name = "sep_km_ic_reset_release_test"
+module = "km.sep_km_ic_reset_release_test"
+firmware = { name = "km_rom", mode = "km_rom_blob" }
+seed = 1
+timeout_sec = 1800
+tags = ["km", "reset", "jtag", "subsystem"]
+tools = ["vcs"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom.parhex"]

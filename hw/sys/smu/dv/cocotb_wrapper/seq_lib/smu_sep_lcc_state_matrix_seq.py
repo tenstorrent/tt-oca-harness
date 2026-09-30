@@ -44,7 +44,12 @@ from collections import Counter
 import cocotb
 from cocotb.triggers import RisingEdge
 
-from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
+from seq_lib.sep_fw_common import (
+    addr_of,
+    format_pc_profile,
+    load_syms,
+    sep_boot_order_from_hw,
+)
 from seq_lib.smu_lifecycle_table import lc_raw_from_shadow_preload, lc_state_name, posture
 
 SEP_BOOT_ROM_BASE = 0x1004_0000
@@ -140,8 +145,7 @@ class SmuSepLccStateMatrixSeq:
         )
 
         verdict = None
-        boot_rom_seen = False
-        iccm_seen = False
+        _, boot_rom_seen, iccm_seen = sep_boot_order_from_hw(self.dut, self._rd)
         traces = 0
         pc_hist: Counter[int] = Counter()
 

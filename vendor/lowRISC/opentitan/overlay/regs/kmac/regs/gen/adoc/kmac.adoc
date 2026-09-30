@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-kmac]
-== Address Map: kmac
+== KMAC Accelerator
+
+Accelerator for Keccak-based keyed hash message authentication code and SHA-3 hash functions; with SCA and FI countermeasures
 
 [NOTE]
 ======
@@ -44,7 +46,7 @@
 |===
 | Bits | Field | Access | Reset | Description
 | 31:3 | `Reserved` | - | - a| Reserved
-| 2 | `kmac_err` | RW | 0x0 a| KMAC/SHA3 error occurred. ERR_CODE register shows the details
+| 2 | `kmac_err` | RW1C | 0x0 a| KMAC/SHA3 error occurred. ERR_CODE register shows the details
 | 1 | `fifo_empty` | R | 0x0 a| The message FIFO is empty.
 This interrupt is raised only if the message FIFO is actually writable by software, i.e., if all of the following conditions are met:
 i) The KMAC block is not exercised by a hardware application interface.
@@ -52,7 +54,7 @@ ii) The SHA3 block is in the Absorb state.
 iii) Software has not yet written the Process command to finish the absorption process.
 For the interrupt to be raised, the message FIFO must also have been full previously.
 Otherwise, the hardware empties the FIFO faster than software can fill it and there is no point in interrupting the software to inform it about the message FIFO being empty.
-| 0 | `kmac_done` | RW | 0x0 a| KMAC/SHA3 absorbing has been completed
+| 0 | `kmac_done` | RW1C | 0x0 a| KMAC/SHA3 absorbing has been completed
 |===
 
 [#reg-{regmap-instance}-kmac-INTR_ENABLE]
@@ -190,16 +192,16 @@ If this bit is 1, the KMAC mode is active and the secret key is prepended to the
 |===
 | Bits | Field | Access | Reset | Description
 | 31:11 | `Reserved` | - | - a| Reserved
-| 10 | `err_processed` | W | - a| When error occurs and one of the state machine stays at
+| 10 | `err_processed` | W1C | - a| When error occurs and one of the state machine stays at
 Error handling state, SW may process the error based on
 ERR_CODE, then let FSM back to the reset state
-| 9 | `hash_cnt_clr` | W | - a| Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.
-| 8 | `entropy_req` | W | - a| Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.
+| 9 | `hash_cnt_clr` | W1C | - a| Software can set this bit to 1 to manually clear !!ENTROPY_REFRESH_HASH_CNT.
+| 8 | `entropy_req` | W1C | - a| Software can set this bit to 1 to manually trigger the reseeding of the internal PRNG when running in EDN mode.
 This will also clear !!ENTROPY_REFRESH_HASH_CNT.
 
 Note that the hardware may miss the trigger pulse if the module is not idle, or if the module is currently performing a reseed operation.
 | 7:6 | `Reserved` | - | - a| Reserved
-| 5:0 | `cmd` | W | - a| Issue a command to the KMAC/SHA3 IP. The command is sparse
+| 5:0 | `cmd` | W1C | - a| Issue a command to the KMAC/SHA3 IP. The command is sparse
 encoded. To prevent sw from writing multiple commands at once,
 the field is defined as enum.
 |===

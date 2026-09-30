@@ -79,8 +79,8 @@ class REMAP_REGION_REGION_ATTRS_reg_t(Structure):
     _fields_ = [
         ('rsvd_0', c_uint64, 12),
         ('offset', c_uint64, 44),
-        ('rsvd_1', c_uint64, 6),
-        ('cacheable', c_uint64, 1),
+        ('cacheable', c_uint64, 4),
+        ('rsvd_1', c_uint64, 3),
         ('valid', c_uint64, 1),
     ]
 

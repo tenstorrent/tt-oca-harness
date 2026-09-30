@@ -30,7 +30,7 @@
 // ---------------------------------------------------------------------------
 
 uint32_t lc_read_state(void) {
-    uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
     // The eFuse field is 8 bits, differentially encoded by the RTL; the low
     // nibble carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
@@ -81,9 +81,9 @@ bool lc_state_is_rma(uint32_t lc_state) {
 uint32_t lc_read_feat_ctrl(uint32_t *hi) {
     // FEAT_CTRL is a 64-bit read-only register.
     // Read low 32 bits, then high 32 bits.
-    uint32_t lo = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
+    uint32_t lo = mmio_read32(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR);
     if (hi) {
-        *hi = mmio_read32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
+        *hi = mmio_read32(SEP_TOP_SEP_LIFECYCLE_CTRL_FEAT_CTRL_BASE_ADDR + 4u);
     }
     return lo;
 }
@@ -92,14 +92,14 @@ void lc_write_demotion(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
     if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_1_BASE_ADDR, val);
 }
 
 void lc_write_demotion_2(bool demote, bool lock) {
     uint32_t val = 0;
     if (demote) val |= SEP_LIFECYCLE_CTRL__DEMOTE__DEMOTE_bm;
     if (lock) val |= SEP_LIFECYCLE_CTRL__DEMOTE__LOCK_bm;
-    mmio_write32(OCH_SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
+    mmio_write32(SEP_TOP_SEP_LIFECYCLE_CTRL_DEMOTE_2_BASE_ADDR, val);
 }
 
 // ---------------------------------------------------------------------------
@@ -177,4 +177,40 @@ uint32_t rom_lifecycle_policy(void) {
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_LIFECYCLE_VALID);
     return lc_state;
+}
+
+// ---------------------------------------------------------------------------
+// Secure-boot chicken bit ([S18])
+// ---------------------------------------------------------------------------
+
+// Error code for a SBOOT_DIS reserved-bit fault.
+#define ROM_ERR_SBOOT_DIS_RSVD_SET 0x0000F008u
+
+// Latched by rom_sboot_dis_policy(). Zero-initialised, and zero reports "not
+// disabled", so a caller that runs before [S18] enforces secure boot.
+static bool g_sboot_dis;
+
+bool sboot_dis_disabled(void) {
+    return g_sboot_dis;
+}
+
+void rom_sboot_dis_policy(void) {
+    uint32_t reg = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
+
+    // rsvd[31:1] is hw=rw in the RDL: driven from the fuse array rather than
+    // tied off, so it can read non-zero on a real part. On a healthy one it
+    // reads zero, and anything else means the array is not what the ROM thinks
+    // it is -- a state to stop in, not to interpret.
+    if ((reg & SEP_EFUSE_MAP__SBOOT_DIS__RSVD_bm) != 0u) {
+        simputshex32("SBOOT_DIS_RSVD=", reg);
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_FUSE_SBOOT_DIS_RSVD);
+        rom_err_fail_ext(ROM_ERR_SBOOT_DIS_RSVD_SET);
+    }
+
+    g_sboot_dis = (reg & SEP_EFUSE_MAP__SBOOT_DIS__DISABLE_SECURE_BOOT_bm) != 0u;
+    get_bl0_state()->sboot_dis = g_sboot_dis;
+
+    simputsdec24("FUSE: SBOOT_DIS: ", g_sboot_dis);
+    report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SBOOT_DIS);
+    report_status(STATUS_TYPE_INFO_EXT, g_sboot_dis);
 }

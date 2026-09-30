@@ -29,13 +29,11 @@ tests = ["sep_axi_smoke_test"]
 
 [[groups]]
 # Every test this VPLAN grades. `cpu_stub` (CPU-stub target) and `cpu`
-# (full-CPU target) are disjoint and together hold 109 of the 110. The
-# remaining leaf, sep_periph_bus_err_misaligned_test, is in `all` and
-# in neither class group. Its checker contract is the VPLAN card. `rom_fw`
+# (full-CPU target) are disjoint and together hold all 121. `rom_fw`
 # is not a member: a different owner, a third RTL target, and firmware rather
-# than hardware contracts. `all` is the coverage set. expected_count is 110.
+# than hardware contracts. `all` is the coverage set. expected_count is 121.
 name = "all"
-expected_count = 110
+expected_count = 121
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -55,6 +53,7 @@ tests = [
     "sep_lcc_lc_state_w1s_rma_sip_test",
     "sep_lcc_lc_state_w1s_rma_chiplet_test",
     "sep_lcc_lc_state_w1s_prod_end_test",
+    "sep_lcc_lc_state_w1s_prod_end_rma_test",
     "sep_lcc_lc_state_w1s_transient_test",
     "sep_dma_hash_test",
     "sep_mailbox_plic_test",
@@ -113,6 +112,7 @@ tests = [
     "sep_efuse_digest_latch_fault_test",
     "sep_efuse_illegal_state_fail_closed_test",
     "sep_sec_dis_override_test",
+    "sep_sec_dis_reset_reach_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
     "sep_km_key_policy_vault_test",
@@ -138,6 +138,7 @@ tests = [
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
     "sep_locked_field_access_irq_path_test",
+    "sep_efuse_km_public_id_test",
     "sep_efuse_secure_tm_write_lock_test",
     "sep_abr_mldsa_keygen_kat_test",
     "sep_abr_mldsa_sign_verify_kat_test",
@@ -147,6 +148,14 @@ tests = [
     "sep_abr_pipelined_read_matrix_test",
     "sep_abr_access_size_test",
     "sep_abr_concurrent_rw_test",
+    "sep_unmapped_access_policy_test",
+    "sep_fabric_burst_wrap_test",
+    "sep_sram_burst_type_test",
+    "sep_km_rom_write_err_test",
+    "sep_km_otp_shim_unreachable_test",
+    "sep_km_vrom_decerr_test",
+    "sep_km_ic_reset_release_test",
+    "sep_abr_absent_decerr_test",
 ]
 
 [[groups]]
@@ -195,6 +204,7 @@ tests = [
     "sep_lcc_lc_state_w1s_rma_sip_test",
     "sep_lcc_lc_state_w1s_rma_chiplet_test",
     "sep_lcc_lc_state_w1s_prod_end_test",
+    "sep_lcc_lc_state_w1s_prod_end_rma_test",
     "sep_lcc_lc_state_w1s_transient_test",
     "sep_clock_uvm_wdt_rst_input_reset_path_test",
     "sep_esrc_e2e_smoke_test",
@@ -203,6 +213,7 @@ tests = [
     "sep_esrc_alert_delivery_test",
     "sep_drbg_gen_segmentation_test",
     "sep_irq_ip_to_aggregator_test",
+    "sep_periph_bus_err_misaligned_test",
     "sep_drbg_real_sink_multi_km_aes_test",
 
     "sep_km_otbn_sideload_kat_test",
@@ -236,6 +247,7 @@ tests = [
     "sep_efuse_digest_latch_fault_test",
     "sep_efuse_illegal_state_fail_closed_test",
     "sep_sec_dis_override_test",
+    "sep_sec_dis_reset_reach_test",
     "sep_fabric_output_remap_datapath_proxy_test",
     "sep_fabric_local_alias_datapath_test",
     "sep_km_key_policy_vault_test",
@@ -261,6 +273,7 @@ tests = [
     "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
     "sep_locked_field_access_irq_path_test",
+    "sep_efuse_km_public_id_test",
     "sep_efuse_secure_tm_write_lock_test",
     "sep_abr_mldsa_keygen_kat_test",
     "sep_abr_mldsa_sign_verify_kat_test",
@@ -270,6 +283,14 @@ tests = [
     "sep_abr_pipelined_read_matrix_test",
     "sep_abr_access_size_test",
     "sep_abr_concurrent_rw_test",
+    "sep_unmapped_access_policy_test",
+    "sep_fabric_burst_wrap_test",
+    "sep_sram_burst_type_test",
+    "sep_km_rom_write_err_test",
+    "sep_km_otp_shim_unreachable_test",
+    "sep_km_vrom_decerr_test",
+    "sep_km_ic_reset_release_test",
+    "sep_abr_absent_decerr_test",
 ]
 
 [[groups]]
@@ -292,6 +313,9 @@ tests = [
     "sep_firmware_mbist_fail_test",
     "sep_scratch_7_test",
     "sep_firmware_device_cntl_non_secure_boot_flow_test",
+    # The other half of SBOOT_DIS: a RESERVED bit set, which must be a
+    # fuse-integrity fault rather than a second chicken bit (SEP-ROM-SB-041).
+    "sep_firmware_sboot_dis_rsvd_terminal_test",
     "sep_firmware_enforced_secure_boot_flow_test",
     "sep_firmware_cntl_secure_boot_flow_test",
     "sep_firmware_backup_invalid_signature_test",
@@ -305,8 +329,8 @@ tests = [
     # clears SMC SRAM, so a green run here says nothing about that half. Slower
     # than most of this group, mostly for an inherited reason: the clear it
     # asserts is 65536 CPU stores, which the entry above pays as well. Compare in
-    # CYCLES: sys_clk_period is randomised per run, so simulated-time and
-    # wall-second figures are not comparable between runs.
+    # clk_i is fixed at 1.25 ns, so simulated time tracks the cycle count.
+    # Wall seconds still depend on the host.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_mbist_pass_test",

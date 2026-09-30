@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP XTRIG register constants and lightweight reference helpers.
 
-Register offsets, strides, windows, and field masks come from the generated
-SystemRDL Python headers of the cross-trigger IP, ``cross_trigger_network_reg``,
-``cross_trigger_matrix_reg`` and ``cross_trigger_port_reg`` under
-``hw/ip/cross_trigger/*/regs/gen/py`` (on the import path through the DTP sim
-config ``python_paths``). The port counts are the bench configuration's
-(``dtp_dv_cfg``, which reads them from the network map) and are checked against
-the generated select-field width at import.
+Register offsets, strides, windows, field masks, and reset values come from the
+generated SystemRDL Python headers of the cross-trigger IP,
+``cross_trigger_network_reg``, ``cross_trigger_matrix_reg`` and
+``cross_trigger_port_reg`` under ``hw/ip/cross_trigger/*/regs/gen/py`` (on the
+import path through the DTP sim config ``python_paths``). The port counts are
+the bench configuration's (``dtp_dv_cfg``, which reads them from the network
+map) and are checked against the generated select-field width at import.
 """
 
 from __future__ import annotations
@@ -80,10 +80,6 @@ XTRIG_CTP_STRIDE = _ctn_reg.CTP_1__REG_MAP_BASE_ADDR - _ctn_reg.CTP_0__REG_MAP_B
 XTRIG_CSR_END = XTRIG_CTP_BASE + (XTRIG_NUM_CTP * XTRIG_CTP_STRIDE)
 XTRIG_UNMAPPED_BASE = XTRIG_CSR_END
 
-# Read data the crossbar's error subordinate returns alongside DECERR on an
-# unmapped XTRIG address (the low word of the pulp axi_err_slv response word).
-XTRIG_DECERR_DATA = 0xBADC_AB1E
-
 XTRIG_CTP_CONFIG_OFFSET = _ctp_reg.CONFIG_REG_OFFSET
 XTRIG_CTP_STATUS_OFFSET = _ctp_reg.STATUS_REG_OFFSET
 XTRIG_CTP_STRETCH_MULT_OFFSET = _ctp_reg.STRETCH_MULT_REG_OFFSET
@@ -109,6 +105,12 @@ XTRIG_CTP_STATUS_REQ_OUT = _CTP_STATUS["req_out"]
 XTRIG_CTP_STATUS_ACK_IN = _CTP_STATUS["ack_in"]
 XTRIG_CTP_STATUS_REQ_IN = _CTP_STATUS["req_in"]
 XTRIG_CTP_STATUS_ACK_OUT = _CTP_STATUS["ack_out"]
+
+# Register reset values.
+XTRIG_CTP_CONFIG_DEFAULT = _ctp_reg.CROSS_TRIGGER_PORT_CONFIG_REG_DEFAULT
+XTRIG_CTP_STATUS_DEFAULT = _ctp_reg.CROSS_TRIGGER_PORT_STATUS_REG_DEFAULT
+XTRIG_CTP_STRETCH_DEFAULT = _ctp_reg.CROSS_TRIGGER_PORT_STRETCH_MULT_REG_DEFAULT
+XTRIG_CTM_SELECT_DEFAULT = _ctm_reg.CT_SRC_CONFIG_0_REG_DEFAULT
 
 
 def ctm_config_addr(output_port: int) -> int:

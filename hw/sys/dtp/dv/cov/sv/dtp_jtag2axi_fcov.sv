@@ -153,7 +153,9 @@ module dtp_jtag2axi_fcov (
 
   // ------------------------------------------------------------------
   // Per-target TCK-domain section: completed responses, statuses, polls,
-  // series modes, debug-gating, and error/reset recovery.
+  // series modes, debug-gating, and error/reset recovery. The launched wstrb
+  // is the bus WSTRB of the beat holding the address, so the strobe bins
+  // count the lanes of the transfer from the address's lane on.
   // ------------------------------------------------------------------
   `define DTP_J2A_TCK_FCOV(__t, __dis, __single, __sincr, __snoincr, __sstat)               \
     wire __t``_tdr_sel = |(inst_decoded_i & (__single));                              \
@@ -208,7 +210,8 @@ module dtp_jtag2axi_fcov (
     wire __t``_recovery_reset_abort_e =                                               \
         __t``_success_e && (__t``_rst_seen_q != rst_events_q);                              \
     wire [3:0] __t``_lanes =                                                          \
-        4'($countones(__t``_wstrb_i & ((1 << (1 << __t``_size_i)) - 1)));                   \
+        4'($countones((__t``_wstrb_i >> (__t``_addr_i % $bits(__t``_wstrb_i)))              \
+                      & ((1 << (1 << __t``_size_i)) - 1)));                                 \
     wire __t``_wstrb_none_e = __t``_op_write_e && (__t``_lanes == 4'd0);              \
     wire __t``_wstrb_single_e = __t``_op_write_e && (__t``_lanes == 4'd1);            \
     wire __t``_wstrb_all_e =                                                          \

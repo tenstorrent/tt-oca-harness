@@ -4,6 +4,13 @@
 [[uart-16550-interface]]
 == Interface
 
+ifdef::backend-html5[]
+The parameters and ports of `uart_16550` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/uart_16550/uart_16550.adoc[uart_16550].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `uart_16550` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
 === Configuration Parameters
 
 [[uart-module-parameters-table]]
@@ -18,7 +25,6 @@
 === Ports and Clocking
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="clock-domain-considerations"></span>
 <span id="signal-interface"></span>
@@ -59,7 +65,6 @@ protocols and half-duplex direction policy belong to software/integration.
 === DMA Service Indications
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="dma-interface"></span>
 ++++

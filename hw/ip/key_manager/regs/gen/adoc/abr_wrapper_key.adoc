@@ -4,7 +4,10 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-abr_wrapper_key]
-== Address Map: abr_wrapper_key
+== Adams Bridge Key Sideload Registers
+
+Single AXI4-Lite window for all KM sideload interfaces to Adams Bridge.
+Contains four dual-share secret-seed inputs and one shared-key output.
 
 [NOTE]
 ======
@@ -196,7 +199,7 @@ hardware clears to 0 on key-consume event (KEY_VALID cleared).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `key_valid` | RW | 0x0 a| 1 = shared key is valid and ready for firmware consumption.
+| 0 | `key_valid` | RW0C | 0x0 a| 1 = shared key is valid and ready for firmware consumption.
 Hardware sets this bit on key-ready event. Write 0 to clear;
 write 1 has no effect (software cannot set this bit).
 |===
@@ -208,7 +211,7 @@ write 1 has no effect (software cannot set this bit).
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `key_valid` | RW | 0x0 a| ML-KEM shared key valid. Sticky, write 1 to clear.
+| 0 | `key_valid` | RW1C | 0x0 a| ML-KEM shared key valid. Sticky, write 1 to clear.
 |===
 
 [#reg-{regmap-instance}-abr_wrapper_key-MLKEM_SHARED_KEY-IRQ_ENABLE]

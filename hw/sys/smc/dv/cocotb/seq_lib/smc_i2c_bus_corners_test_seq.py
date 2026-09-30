@@ -37,7 +37,7 @@ the bench controller (`SmcI2cMasterVip`) on the pads:
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, Timer
+from cocotb.triggers import RisingEdge, Timer
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import I2C_CG_EN, smc_addr, smc_indexed_addr
@@ -108,8 +108,11 @@ TX_BYTES = bytes((0x5C, 0xA3))
 FILL_BYTES = bytes((0x40 + i) & 0xFF for i in range(72))
 #: `TIMING4.T_BUF` for the bus-free leg, in controller clocks.
 LONG_T_BUF = 3000
-SETTLE_CYCLES = 200
-POLL_CYCLES = 50
+#: Waits in time rather than core clocks: the traffic they wait for runs at the
+#: controller's SCL rate and the target's peripheral clock, neither of which
+#: follows the core clock.
+SETTLE_NS = 1_000
+POLL_INTERVAL_NS = 250
 POLL_LIMIT = 4000
 
 
@@ -138,7 +141,7 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
         )
         await self.csr_write(f"{label}_INTR_CLR", I2C0_INTR_STATE, 0xFFFF_FFFF)
         await self.csr_write(f"{label}_CTRL", I2C0_CTRL, I2C_CTRL_ENABLETARGET)
-        await ClockCycles(cocotb.top.clk_smc_i, 20)
+        await Timer(100, unit="ns")
 
     async def _read_then_stop(self, label: str, disable_first: bool) -> int:
         """Read one byte from the target and send a STOP in its acknowledge slot."""
@@ -158,7 +161,7 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
         # releases SCL and then SDA, so the target is not driving the line when it
         # sees the STOP and has not been NACKed.
         await master.send_stop()
-        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+        await Timer(SETTLE_NS, unit="ns")
 
         assert got == TX_BYTES[0], f"{label}: read 0x{got:02x}, not 0x{TX_BYTES[0]:02x}"
         return await self.csr_read(f"{label}_INTR", I2C0_INTR_STATE)
@@ -182,6 +185,14 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
             "INTR_STATE.UNEXP_STOP, and the same STOP with the target disabled first did not"
         )
 
+    async def _await_target_stretch(self, label: str) -> None:
+        dut = cocotb.top
+        for _ in range(POLL_LIMIT):
+            await RisingEdge(dut.clk_periph_i)
+            if int(dut.tb_i2c0_scl_dut_low.value):
+                return
+        raise AssertionError(f"{label}: the target never held SCL low with its ACQ FIFO full")
+
     async def _nack_ignored_leg(self) -> None:
         master = self.master
         assert master is not None
@@ -192,10 +203,13 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
             status = await self.csr_read("NACK_IGNORED_STATUS", I2C0_STATUS)
             if status & I2C_STATUS_ACQFULL:
                 break
-            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+            await Timer(POLL_INTERVAL_NS, unit="ns")
         else:
             raise AssertionError(f"NACK_IGNORED: the ACQ FIFO never filled (0x{status:08x})")
-        await ClockCycles(cocotb.top.clk_smc_i, SETTLE_CYCLES)
+        # A full FIFO is reported while the byte after it is still arriving; the
+        # target stretches only once that byte reaches its acknowledge slot, so
+        # the NACK is written once the target holds SCL low.
+        await self._await_target_stretch("NACK_IGNORED")
         await self.csr_write("NACK_IGNORED_NACK", I2C0_TARGET_ACK_CTRL, ACK_CTRL_NACK)
         received = bytearray()
         for _ in range(POLL_LIMIT):
@@ -207,7 +221,7 @@ class smc_i2c_bus_corners_test_seq(SmcCsrSeq):
                 continue
             if writer.done():
                 break
-            await ClockCycles(cocotb.top.clk_smc_i, POLL_CYCLES)
+            await Timer(POLL_INTERVAL_NS, unit="ns")
         await writer
         assert bytes(received) == FILL_BYTES, (
             f"NACK_IGNORED: {len(received)} of {len(FILL_BYTES)} bytes came out of the ACQ "

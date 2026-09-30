@@ -77,8 +77,9 @@ FLOW_INTEGRATION_NAME ?= $(FLOW_DESIGN)
 OCAH_INTEGRATION_FILELIST_DIR ?= $(OCAH_ROOT)/integration/filelists
 OCAH_INTEGRATION_SIM_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).sim.f
 OCAH_INTEGRATION_SYNTH_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).synth.f
+OCAH_INTEGRATION_EMUL_FLIST := $(OCAH_INTEGRATION_FILELIST_DIR)/$(FLOW_INTEGRATION_NAME).emul.f
 
-## Generate portable simulation and synthesis filelists for integrators.
+## Generate portable simulation, synthesis, and emulation filelists for integrators.
 .PHONY: ocah-integration-filelists
 ocah-integration-filelists:
 	@mkdir -p "$(OCAH_INTEGRATION_FILELIST_DIR)"
@@ -91,6 +92,9 @@ endif
 	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth,$(FLOW_BENDER_TARGETS)) \
 		> "$(OCAH_INTEGRATION_SYNTH_FLIST)"
 	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_SYNTH_FLIST)"
+	@cd "$(OCAH_ROOT)" && $(call ocah_bender_flist,-t synth -D EMULATION=1,$(FLOW_BENDER_TARGETS)) \
+		> "$(OCAH_INTEGRATION_EMUL_FLIST)"
+	@sed -i 's|$(OCAH_ROOT)/||g' "$(OCAH_INTEGRATION_EMUL_FLIST)"
 
 endif
 

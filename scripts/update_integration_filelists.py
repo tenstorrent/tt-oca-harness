@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-"""Generate portable simulation and synthesis filelists for integrators."""
+"""Generate portable simulation, synthesis, and emulation filelists for integrators."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ FILELIST_NAMES = (
     *(f"{system}.{tool}.sim.f" for system in DV_SYSTEMS for tool in DV_TOOLS),
     "aou.sim.f",
     *(f"{system}.synth.f" for system in SYSTEMS),
+    *(f"{system}.emul.f" for system in SYSTEMS),
 )
 
 

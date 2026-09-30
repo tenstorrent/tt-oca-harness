@@ -36,7 +36,14 @@ endif::backend-pdf[]
 
 The KM CPU addresses its internal peripherals through a flat 32-bit address space. The AXI4-Lite crossbar decodes the address and routes transactions to the corresponding slave port.
 
-Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. An address between two windows is routed nowhere and returns a decode error; an unmapped offset inside a window reaches its register block and returns a slave error.
+Every window except OTP/eFuse spans exactly the address bits its register block decodes, so no register is reachable from a second address. The last two columns of the map state how the crossbar and the register blocks answer an access that no register or memory backs, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes. The KM CPU does not see these responses: an error sets `AXI_SLVERR` or `AXI_DECERR` in the KMCSR `IRQ_STATUS` register.
 
 The OTP/eFuse window is the exception: hardware preserves its lower 12 address
 bits and replaces the upper bits with the integration parameter

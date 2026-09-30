@@ -4,6 +4,13 @@
 [[mailbox-unit-architecture]]
 == Architecture
 
+ifdef::backend-html5[]
+The parameters and ports of `axi_lite_mailbox_unit` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/axi_lite_mailbox_unit/axi_lite_mailbox_unit.adoc[axi_lite_mailbox_unit].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `axi_lite_mailbox_unit` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
 === Configuration Parameters
 
 [[mailbox-configuration-parameters-table]]
@@ -15,14 +22,13 @@
 |`MAILBOX_DEPTH` |8 |Entries in each FIFO; selected at elaboration.
 |`MAX_TRANS` |32 |Transaction limit passed to the AXI4-Lite demultiplexer.
 |`MAILBOX_BASE_ADDR` |0 |Base subtracted for aperture selection.
-|`MAILBOX_SIZE` |`0x800` |Bytes per aperture; register decode uses its low address bits.
+|`MAILBOX_SIZE` |`0x800` |Bytes per aperture; the address bits above `$clog2(MAILBOX_SIZE)` select the aperture.
 |`ADDR_WIDTH` / `DATA_WIDTH` |32 / 64 |Slave address and data widths.
 |===
 
 === Paired FIFOs
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="internal-structure"></span>
 <span id="bidirectional-communication"></span>
@@ -44,7 +50,6 @@ waiting for FIFO space or data. The error responses are described below.
 === Interrupts
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="interrupt-architecture"></span>
 <span id="interrupt-outputs"></span>
@@ -81,7 +86,6 @@ but does not acknowledge the shared `IRQS` error bit.
 === Clock and Reset
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="mailbox-clock-and-reset-table"></span>
 <span id="control-signals"></span>

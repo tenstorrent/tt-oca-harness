@@ -107,7 +107,7 @@ python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
 ### Nightly `all` group
 
 The nightly command for the `all` group (every test the VPLAN grades:
-`hosted` + `fw` + `dual`; `testlists/all.toml` defines the set), one
+`hosted` + `fw` + `sanity`; `testlists/all.toml` defines the set), one
 fresh seed per leaf:
 
 ```bash
@@ -116,8 +116,9 @@ fresh seed per leaf:
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress --sim-jobs 6
 ```
 
-`all` includes the fourteen `fw` leaves and the three dual-target leaves, so a
-picolibc-enabled RISC-V GCC (or `scripts/docker-run.sh`) must be available: the
+`all` includes the fifteen `fw` leaves, the three dual-target leaves and the two
+MMIO isolate-flush leaves, so a picolibc-enabled RISC-V GCC (or
+`scripts/docker-run.sh`) must be available: the
 `c_compile` stage builds the images with it (see
 [Prerequisites](#prerequisites)), in the toolchain container when
 `RISCV_TOOLCHAIN` is unset. To build the images ahead of the run:
@@ -135,16 +136,20 @@ with picolibc works too: set `RISCV_TOOLCHAIN` to its directory and no
 container or rootfs is needed.
 
 Hosted GitHub nightly and weekly (`.github/workflows/regress.yml`) run
-`--items hosted` with three seeds per leaf instead, because those runners have
-no RISC-V toolchain. `hosted` is `all` without those seventeen leaves;
-`testlists/holdout.toml` defines every leaf outside `all` and `docs/SMC_VPLAN.adoc` (Known Limitations)
-records each with the reason, its owner and its closing condition.
+`--items hosted` with one seed per leaf (`reseed: 1`) instead, because those
+runners have no RISC-V toolchain. `hosted` is `all` without twenty leaves: the
+fifteen `fw` leaves, the three dual-target leaves, and
+`smc_cpu_mmio_read_wedge_test` and `smc_cpu_mmio_write_wedge_test`.
+`testlists/holdout.toml` defines the non-ROM leaves outside `all`;
+`testlists/smc_rom.toml` defines the ROM/OCCP cases selected through
+`occp_rom`. `docs/SMC_VPLAN.adoc` records the sign-off holdouts and their
+closing conditions.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
+python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 1
 ```
 
-One seed per leaf (`--reseed 1`) is the quick local form of the hosted run.
+`--reseed N` runs N random seeds per leaf when more stimulus variety is wanted.
 
 ### One named test
 
@@ -214,14 +219,15 @@ The dual path has fewer escapes than the `smc_base_test` one: no
 `min_evidence` floor and no `NO_OWN_EVIDENCE` exemption, so a dual leaf that
 emits no `CHK-*` line of its own always fails. The one `target = "dual"` leaf
 outside `all` is `smc_occp_dual_unsecure_boot_test`, held out on runtime and
-run as `occp_dual`; it still builds the harness directly, so it prints no
+run as part of `occp_rom`; it still builds the harness directly, so it prints no
 `EVIDENCE_SUMMARY`.
 
 ## Code coverage
 
 `--cov` collects native coverage. VCS grades the SV covergroups under
 `cov/sv/` (`cov/config/vcs/`); on Verilator, `cov/config/verilator/coverage_policy.toml`
-grades the Python-side functional points the scoreboard records. Neither
+grades the `cov/sv` cover properties in the `user` family together with line,
+branch and expression. Neither
 scheduled tier collects coverage (`.github/workflows/regress.yml`): the coverage
 regression runs on the licensed flow outside hosted CI. Coverage intent, the
 VPLAN-to-FCOV traceability and the closure policy (public versus commercial
@@ -229,7 +235,12 @@ evidence, structural OUT versus waiver holes, waiver fields) are in
 `docs/SMC_FCOV.adoc`.
 
 ```bash
-python3 tools/dv/run_dv.py --dut smc --items all --tool vcs --regress --cov
+# Coverage merge accepts one elaboration. `hosted` and `fw` build the default
+# model. `--target` over `all` would run the three `sanity` leaves on that model.
+python3 tools/dv/run_dv.py --dut smc --items hosted fw --tool vcs --regress --cov
+
+# SMC_DUAL is a separate pass and collects no coverage.
+python3 tools/dv/run_dv.py --dut smc --items sanity --tool vcs --regress --target dual
 ```
 
 ## Run modes, targets, and groups
@@ -241,15 +252,22 @@ leaf set. Use `--dut smc --items all --list` for the catalog.
 | Group | Role |
 |---|---|
 | `smoke` | CI gate (`sim.yml`): `smc_canonical_smoke_test`, `smc_cold_reset_test`, `smc_register_sanity_test` |
-| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `dual`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `dual` elaborates a second build target the coverage merge cannot combine with `default` |
-| `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (three seeds) |
-| `fw` | firmware class: the fourteen CPU-boot leaves whose image `c_compile` builds |
-| `dual` | SMC_DUAL class: the three `target = "dual"` leaves, each loading a ROM or firmware image |
+| `all` | every test the VPLAN grades: `hosted` ∪ `fw` ∪ `sanity`; `expected_count` is the membership gate. The coverage set is `hosted fw`: `sanity` elaborates a second build target the coverage merge cannot combine with `default` |
+| `hosted` | toolchain-free class, single-instance model; the nightly and weekly tiers (one seed) |
+| `fw` | firmware class: the fifteen CPU-boot leaves whose image `c_compile` builds |
+| `sanity` | SMC_DUAL class: the three `target = "dual"` leaves enrolled in `all`, each loading a ROM or firmware image |
 | `axil`, `clock`, `combined`, `gpio`, `i2c`, `irq`, `reset`, `uart` | feature subsets of `all` for a local run of one area |
-| `occp_boot`, `occp_dual`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
+| `occp_rom` | all 34 BL0/SMC ROM cases; includes the hours-long `smc_occp_dual_unsecure_boot_test` and is run on demand |
+| `occp_boot`, `held_out` | on-demand hold-outs (runtime, or waiting on an RTL fix); not in `all` |
 
-Every leaf outside `all` is defined in `testlists/holdout.toml`, which states
-why, and has its card under Known Limitations in `docs/SMC_VPLAN.adoc`.
+Non-ROM leaves outside `all` are defined in `testlists/holdout.toml`, which
+states why. ROM/OCCP leaves outside `all` are defined in
+`testlists/smc_rom.toml` and selected together with `--items occp_rom`.
+That group runs all 34 ROM cases, including the hours-long unsecure-boot leaf:
+
+```bash
+python3 tools/dv/run_dv.py --dut smc --items occp_rom --tool verilator --regress
+```
 
 | Run mode / target | Meaning |
 |---|---|
@@ -283,7 +301,7 @@ Two pieces of DV-owned RTL answer in place of something else on this bench:
 
 | Stand-in | Where | Reaches |
 |----------|-------|---------|
-| `tb/verilator_stubs/prim_sync2.sv`, `prim_sync3.sv` | `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist | Verilator and Xcelium compile them; on VCS only, the runner drops a stub whose basename the Bender graph supplies, so VCS elaborates the product `och_prim` cells |
+| `tb/verilator_stubs/prim_sync3.sv` | `smc_sim_cfg.toml` `[build].stubs`, emitted ahead of the Bender filelist | Verilator and Xcelium compile it; on VCS only, the runner drops a stub whose basename the Bender graph supplies, so VCS elaborates the product `ocah_prim` cell |
 | `models/axil_okay_slv.sv` behind `models/pll_wrap.sv` / `pvt_wrap.sv` | Bender `smc_wrapper` target, inside `smc_ip_integration` | every tool |
 
 Which product cell each stand-in replaces, which enrolled leaves read a signal
@@ -312,11 +330,11 @@ Bender RTL recipe), and `--dut smc --framework uvm` selects it. A testlist
 scenario carries both implementations in its `module` binding map
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
-the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
-errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-VCS only: Verilator has no SV-UVM support. The bench architecture is in
-`docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
-conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+the `uvm` entry (`+UVM_TESTNAME`). A group runs its UVM-implemented subset;
+naming a scenario with no `uvm` entry errors. VCS only: Verilator has no
+SV-UVM support. The bench architecture is in `docs/SMC_TB_ARCH.adoc`
+("SystemVerilog UVM Realization"); the framework conventions it follows are
+in `hw/common/dv/docs/uvm-framework.adoc`.
 
 The first bound scenario is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
@@ -328,16 +346,15 @@ through the scoreboard's `expected=` compares on each read and emits no
 `CHK-*` line of its own.
 
 ```bash
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# without it the runner selects the cocotb-only scenarios and stops before compiling.
-python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
+# SV-UVM build only (VCS)
+python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut smc --items smc_register_sanity_test --tool verilator
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test --seed 1
 
 # Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke
 
 # Scoreboard negative validation: a corrupted scratch readback prediction
 # must FAIL the run
@@ -348,7 +365,7 @@ python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity
 # every looped test runs at least 16 seeded passes by default
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test \
   --plusarg +SMC_REGISTER_SANITY_TEST_LOOPS=4
-python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented \
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke \
   --plusarg +SMC_TEST_LOOPS=1
 ```
 
@@ -424,7 +441,8 @@ hw/sys/smc/dv/
 │                           #   smc_public_scope.vlt, verilator_stubs/
 ├── testlists/              # native TOML testlists: all.toml owns the groups
 │                           #   and includes the per-feature leaf files;
-│                           #   holdout.toml defines every leaf outside `all`
+│                           #   smc_rom.toml owns ROM/OCCP leaves and groups;
+│                           #   holdout.toml owns the other leaves outside `all`
 ├── smc_sim_cfg.toml        # sole launch config: build/filelist manifest, run
 │                           #   modes, tool knobs, [frameworks.cocotb] +
 │                           #   [frameworks.uvm]

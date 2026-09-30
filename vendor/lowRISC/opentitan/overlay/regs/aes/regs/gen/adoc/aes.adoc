@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-aes]
-== Address Map: aes
+== AES Accelerator
+
+AES encryption and decryption engine with SCA and FI countermeasures
 
 [NOTE]
 ======
@@ -136,7 +138,7 @@ Only applicable if both the Masking parameter and the SecAllowForcingMasks param
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `CTRL_AUX_REGWEN` | RW | 0x1 a| Auxiliary Control Register configuration enable bit.
+| 0 | `CTRL_AUX_REGWEN` | RW0C | 0x1 a| Auxiliary Control Register configuration enable bit.
 If this is cleared to 0, the Auxiliary Control Register cannot be written anymore.
 |===
 

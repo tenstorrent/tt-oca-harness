@@ -76,7 +76,7 @@ The CI process deploys to the published site on all pushes to `main` (see `.gith
 
 Documentation may also be built locally for development. Follow the instructions xref:setup.adoc#package-dependencies[here] to install Asciidoctor and Antora.
 
-Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#containers[here].
+Alternatively, to avoid the need to install local tools, the toolchain is available as container images - install `podman` or `docker` as described xref:setup.adoc#container-engine-setup[here].
 
 The two commands below may be executed from the root of the checked out repository.
 They generate the built material in subfolders under each book.

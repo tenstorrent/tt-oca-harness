@@ -68,8 +68,8 @@ class smc_clock_domain_connectivity_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
-        periph_ps = self.cfg.periph_clk_period_ns * 1000
-        smc_ps = self.cfg.smc_clk_period_ns * 1000
+        periph_ps = int(round(self.cfg.periph_clk_period_ns * 1000))
+        smc_ps = int(round(self.cfg.smc_clk_period_ns * 1000))
         assert periph_ps != smc_ps, "the run's clock periods must differ for the domain compare"
         bit_ps = TICKS_PER_BIT * (UART_DIVISOR + 1) * periph_ps
         self.expected_ps = LOW_BITS * bit_ps

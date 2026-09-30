@@ -28,7 +28,7 @@ for _path in (
         sys.path.insert(0, _path_text)
 
 from env.smu_env import SmuEnv  # noqa: E402
-from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
+from env.smu_env_cfg import SmuEnvCfg, check_pll_clock_periods  # noqa: E402
 from env.smu_evidence_map import TEST_EVIDENCE  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
 from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
@@ -94,20 +94,18 @@ class smu_base_test(uvm_test):
     required_evidence: tuple[str, ...] = ()
 
     #: Minimum jtag_period_ns / smu_clk_period_ns this leaf will run at, or
-    #: None to take whatever randomize_timing drew.
+    #: None to take whatever randomize_timing drew for the JTAG period.
     #:
     #: Only the SMC-fabric SERIES-write leaves set it: an SMC JTAG2AXI SERIES
-    #: write returns zeros or parks in BUSY whenever that ratio is under 4, and
-    #: randomize_timing draws three such pairs out of nine -- (smu 10, jtag 32),
-    #: (12, 32), (12, 40). The clamp is per leaf; randomize_timing itself is not
-    #: clamped.
+    #: write returns zeros or parks in BUSY whenever that ratio is under 4. The
+    #: clamp is per leaf; randomize_timing itself is not clamped.
     min_jtag_smu_ratio: float | None = None
 
     #: Set by a leaf whose checks compare clk_ref_i against clk_smu_i at the
-    #: boundary. randomize_timing can hand both domains the same period, and an
-    #: equality observation cannot then tell one clock from the other, so such a
-    #: leaf reports "cannot prove separation" on a correct design. The leaf asks
-    #: for distinct periods; randomize_timing itself is not clamped.
+    #: boundary. With +pll_sys_period_ns=10 both domains run at the reference
+    #: period, and an equality observation cannot then tell one clock from the
+    #: other, so such a leaf cannot prove separation on a correct design and
+    #: refuses that period instead of reporting a false failure.
     require_distinct_ref_smu: bool = False
 
     @staticmethod
@@ -160,6 +158,7 @@ class smu_base_test(uvm_test):
         self._evidence.install()
         self._declared_evidence: list[str] = []
         self.cfg = SmuEnvCfg("cfg")
+        self.cfg.resolve_pll_timing()
         self.cfg.randomize_timing(self.random_seed())
         if self.min_jtag_smu_ratio is not None:
             needed = self.min_jtag_smu_ratio * self.cfg.smu_clk_period_ns
@@ -167,7 +166,7 @@ class smu_base_test(uvm_test):
                 raised = int(-(-needed // 1))  # ceil, keeping an integer period
                 # WARNING, not INFO: the clamp is visible in every affected run's log.
                 self.logger.warning(
-                    "jtag_period_ns %d -> %d to hold jtag/smu >= %s "
+                    "jtag_period_ns %s -> %d to hold jtag/smu >= %s "
                     "(SMC JTAG2AXI SERIES-write clamp)",
                     self.cfg.jtag_period_ns,
                     raised,
@@ -177,16 +176,11 @@ class smu_base_test(uvm_test):
         if self.require_distinct_ref_smu and self.cfg.ref_clk_period_ns == (
             self.cfg.smu_clk_period_ns
         ):
-            for candidate in (10, 12, 16):
-                if candidate != self.cfg.smu_clk_period_ns:
-                    self.logger.warning(
-                        "ref_clk_period_ns %d -> %d so clk_ref_i and clk_smu_i are "
-                        "distinguishable at the boundary",
-                        self.cfg.ref_clk_period_ns,
-                        candidate,
-                    )
-                    self.cfg.ref_clk_period_ns = candidate
-                    break
+            raise AssertionError(
+                f"{type(self).__name__} compares clk_ref_i against clk_smu_i and needs "
+                f"distinct periods; +pll_sys_period_ns={self.cfg.smu_clk_period_ns} runs "
+                f"both at {self.cfg.ref_clk_period_ns} ns"
+            )
         ConfigDB().set(None, "*", "cfg", self.cfg)
         # Built ahead of any scoreboard so the ConfigDB entry exists when a
         # concrete test's build_phase looks it up; idles unless +sep_itcm_hex
@@ -201,7 +195,7 @@ class smu_base_test(uvm_test):
         if self.use_shared_env:
             self.env = SmuEnv("env", self)
         self.logger.info(
-            "SMU seed=%d clocks(ref/smu/periph/wdt)=%d/%d/%d/%dns "
+            "SMU seed=%d clocks(ref/smu/periph/wdt)=%s/%s/%s/%sns "
             "reset(powergood/hold/post)=%d/%d/%d cycles",
             self.random_seed(),
             self.cfg.ref_clk_period_ns,
@@ -280,6 +274,7 @@ class smu_base_test(uvm_test):
         "tb_chiplet_secondary",
         "tb_cool_reset_pin",
         "tb_secure_tm_req",
+        "tb_smc_sram_auto_init_restore",
         "tb_gpio0_drive_en",
         "tb_gpio0_drive_val",
         "tb_gpio_drive_en",
@@ -452,10 +447,8 @@ class smu_base_test(uvm_test):
             name="rst_primary_smc_clk_n_o",
         )
         # The peripheral domain is a third primary reset and has to be waited
-        # on for the same reason as the other two. Whether it is already
-        # released depends on the seed: randomize_timing draws clk_periph at
-        # 16/20/24 ns against clk_ref's 10/12/16, so on a slow-periph draw its
-        # deglitch chain is still running when the other two have finished.
+        # on for the same reason as the other two: its deglitch chain runs on
+        # its own clock and finishes on its own schedule.
         periph_cycles = await self.wait_signal_high(
             dut.rst_primary_periph_clk_no,
             dut.clk_periph_i,
@@ -469,6 +462,14 @@ class smu_base_test(uvm_test):
             cold_cycles,
             smc_cycles,
             periph_cycles,
+        )
+        await check_pll_clock_periods(
+            self.logger,
+            {
+                "clk_ref_o": (dut.clk_ref_o, self.cfg.ref_clk_period_ns),
+                "clk_smu_o": (dut.clk_smu_o, self.cfg.smu_clk_period_ns),
+                "clk_periph_o": (dut.clk_periph_o, self.cfg.periph_clk_period_ns),
+            },
         )
         self.cfg.reset_done.set()
 

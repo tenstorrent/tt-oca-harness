@@ -2,8 +2,11 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag_idcode_test scenario sequence: one IDCODE read through the
-// reset-loaded instruction (a DR scan with no IR load after TAP reset), then
-// looped IDCODE reads under seeded random TAP preconditioning. Every read
+// reset-loaded instruction (a DR scan with no IR load after TAP reset), one
+// through the instruction a power-on reset loads (a seeded instruction other
+// than IDCODE loaded, then power-on reset with TRST_N high and TCK idle, then
+// a DR scan with no IR load: CHK-IDCODE-RECOVERY), then looped IDCODE reads
+// under seeded random TAP preconditioning. Every read
 // must return the exact default device-identification value
 // (CHK-IDCODE-RAW) regardless of the TAP context established before it —
 // TAP reset, TLR walk plus random TMS stress, a safe IR load, or a BYPASS
@@ -68,10 +71,15 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
 
   task body();
     localparam bit [31:0] ExpectedIdcode = DtpDefaultIdcode;
+    bit [IrWidth-1:0] por_preload;
+    int unsigned por_cycles;
+    bit [15:0] state_under_por;
+    bit trst_n_under_por;
     bit [63:0] observed;
     bit [31:0] reads[$];
     bit        seen_values[bit [31:0]];
     string     values_s = "";
+    string     por_ctx;
 
     seed_scenario_rng();
     read_loops = test_cfg.idcode_reads_per_loop;
@@ -85,6 +93,7 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
                           "CHK-IDCODE-VERSION",
                           "CHK-IDCODE-PART-NUMBER",
                           "CHK-IDCODE-MANUFACTURER",
+                          "CHK-IDCODE-RECOVERY",
                           "CHK-TAP-RESET-TLR",
                           "CHK-TAP-STATE",
                           "CHK-NONVAC"
@@ -100,6 +109,29 @@ class dtp_jtag_idcode_test_seq extends dtp_jtag_base_test_seq;
     values_s = $sformatf("0x%08h", observed[31:0]);
     family_check("CHK-IDCODE-RAW", "IDCODE read without IR load", observed[31:0], ExpectedIdcode,
                  "precondition=tap_reset no_ir_load");
+
+    // Power-on reset alone reloads IDCODE over the instruction loaded
+    // before it: TRST_N stays high and TCK idles across the pulse.
+    por_preload = random_non_idcode_preload();
+    por_cycles  = $urandom_range(8, 2);
+    por_ctx     = $sformatf("preload=0x%02h por_cycles=%0d", por_preload, por_cycles);
+    load_ir(por_preload);
+    pulse_por(por_cycles, state_under_por, trst_n_under_por);
+    if (state_under_por !== TEST_LOGIC_RESET || trst_n_under_por !== 1'b1)
+      `uvm_error("jtag_idcode_chk", $sformatf(
+                 "power-on reset: TAP state 0x%04h TRST_N %0b, expected Test-Logic-Reset with TRST_N high (%s)",
+                 state_under_por,
+                 trst_n_under_por,
+                 por_ctx
+                 ))
+    step(1'b0);
+    check_state(RUN_TEST_IDLE, "jtag_idcode_chk", "after TLR->RTI step");
+    shift_dr(64'h0, 32, observed);
+    reads.push_back(observed[31:0]);
+    seen_values[observed[31:0]] = 1'b1;
+    values_s = {values_s, $sformatf(",0x%08h", observed[31:0])};
+    family_check("CHK-IDCODE-RECOVERY", "IDCODE DR scan after POR, no IR load, TRST high",
+                 observed[31:0], ExpectedIdcode, por_ctx);
 
     for (int unsigned loop_idx = 0; loop_idx < read_loops; loop_idx++) begin
       random_precondition(loop_idx);

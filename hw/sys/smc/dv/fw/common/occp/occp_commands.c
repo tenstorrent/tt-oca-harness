@@ -1,11 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-/*
- * OCCP Commands Implementation
- *
- * Implementation of OCCP protocol commands for test suite
- */
+/* OCCP request builders, response checks and random command drivers for SMC OCCP tests. */
 
 #include "occp_test_common.h"
 #include "sep_ring_buffer_model.h"
@@ -27,7 +23,7 @@ static void flip_n_random_bits(uint8_t *buf, size_t len, int n) {
 
     /* Select n distinct bit indices without replacement */
     size_t selected_count = 0;
-    /* VLA for uniqueness tracking; n is small in our usages */
+    /* Stack VLA: every call site keeps n at or below 32. */
     size_t selected_indices[n];
 
     while (selected_count < (size_t)n) {
@@ -43,23 +39,22 @@ static void flip_n_random_bits(uint8_t *buf, size_t len, int n) {
         selected_indices[selected_count++] = bit_index;
     }
 
-    /* Flip exactly those bits */
     for (size_t i = 0; i < selected_count; i++) {
         size_t bit_index = selected_indices[i];
-        size_t byte_index = bit_index >> 3; /* /8 */
+        size_t byte_index = bit_index >> 3;
         uint8_t bit_mask = (uint8_t)(1u << (bit_index & 7u));
         buf[byte_index] ^= bit_mask;
     }
 }
 
 static int choose_num_flips_crc8(bool detectable) {
-    if (detectable) return 1 + (get_random_int() % 4); /* 1..4 */
-    return 5 + (get_random_int() % 4);                 /* 5..8 */
+    if (detectable) return 1 + (get_random_int() % 4);
+    return 5 + (get_random_int() % 4);
 }
 
 static int choose_num_flips_crc32(bool detectable) {
-    if (detectable) return 1 + (get_random_int() % 6); /* 1..6 */
-    return 7 + (get_random_int() % 10);                /* 7..16 */
+    if (detectable) return 1 + (get_random_int() % 6);
+    return 7 + (get_random_int() % 10);
 }
 
 static void inject_header_errors_if_enabled(test_context_t *ctx, uint8_t *hdr_bytes,
@@ -73,7 +68,7 @@ static void inject_header_errors_if_enabled(test_context_t *ctx, uint8_t *hdr_by
         return;
     }
 
-    /* Exclude the CRC byte at index 0 to cause a CRC mismatch while preserving fields */
+    /* Flip bits after the CRC byte so the stored header CRC no longer matches. */
     if (hdr_len <= 1) return;
     uint8_t *fields = hdr_bytes + 1;
     size_t fields_len = hdr_len - 1;
@@ -96,7 +91,7 @@ static void inject_body_errors_if_enabled(test_context_t *ctx, uint8_t *body_byt
     simputshex16("OCCP: Injected body bit flips: ", (uint16_t)flips);
 }
 
-/* Send only a partial OCCP header (undersize), then expect a timeout (treated as success). */
+/* Send a truncated header and expect an OCCP_INCOMPLETE_MSG error response. */
 static int send_undersize_header_only(test_context_t *ctx, uint64_t i3c_addr, const uint8_t *hdr,
                                       size_t hdr_len) {
     ctx->exp_response_code = OCCP_INCOMPLETE_MSG;
@@ -126,15 +121,14 @@ static int verify_resp_header_crc(const occp_resp_header_t *resp_hdr) {
     if (calc != resp_hdr->header_crc) {
         simputshex16("OCCP: Response header CRC mismatch calc:", calc);
         simputshex16("OCCP: Response header CRC mismatch recv:", resp_hdr->header_crc);
-        /* If test expects to allow any response (undetectable injection), do not hard fail here. */
         return -1;
     }
     return 0;
 }
 
 /*
- * Read body of size 'header_len' and then read/verify CRC (not included in length).
- * On success, copies body (without CRC) into out_buf and sets *out_len.
+ * Read header_len body bytes and, when present, the trailing CRC that the length excludes.
+ * On success, copies the body without CRC into out_buf and sets *out_len.
  */
 static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool body_crc_present,
                                     uint16_t header_len, uint8_t *out_buf, uint16_t out_buf_size,
@@ -178,7 +172,7 @@ static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool
     if (body_size > OCCP_MAX_PACKET_SIZE) return OCCP_READ_UNDERFLOW;
 
     simputshex16("OCCP: Reading body size ", body_size);
-    // Read exactly 'header_len' bytes first
+    // Body and CRC arrive in one read.
     if (body_size) {
         if (ctx->type == DRIVER_TYPE_I3C) {
             int status;
@@ -200,7 +194,7 @@ static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool
         }
     }
 
-    // CRC comes separately after 'length' bytes
+    // The CRC follows the header_len body bytes.
     uint8_t crc_tail[4] = {0};
     memcpy(crc_tail, temp_buf + header_len, expected_crc_size);
 
@@ -219,7 +213,6 @@ static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool
         simputs("OCCP: Body CRC mismatch\n");
         return OCCP_ERR;
     }
-    // strip CRC and return body
     if ((body_size - expected_crc_size) > out_buf_size) return OCCP_READ_UNDERFLOW;
     memcpy(out_buf, temp_buf, body_size - expected_crc_size);
     *out_len = body_size - expected_crc_size;
@@ -228,7 +221,6 @@ static int read_body_and_verify_crc(test_context_t *ctx, uint64_t i3c_addr, bool
 
 int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
                              /*out*/ occp_resp_header_t *resp_hdr) {
-    /* Read header */
     bool timeout_enabled = ctx->timeout != 0;
     int count = timeout_enabled ? ctx->timeout : 1;
     uint8_t *resp_hdr_ptr = (uint8_t *)resp_hdr;
@@ -265,7 +257,6 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
         return OCCP_ERR;
     }
 
-    // Verify response header CRC
     if (verify_resp_header_crc(resp_hdr) != 0) {
         return OCCP_ERR;
     }
@@ -291,7 +282,7 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
             return OCCP_ERR;
         }
 
-        /* Under length injection, accept Invalid_msg_len as success */
+        /* Under length injection, OCCP_INVALID_REQ_LEN is the expected outcome. */
         if (ctx->invalid_len_err_inject_enable && error_code == OCCP_INVALID_REQ_LEN) {
             simputs("OCCP: Expected invalid length error under injection\n");
             return OCCP_SUCCESS;
@@ -324,8 +315,6 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
             return OCCP_ERR;
         }
     } else {
-        /* Under length injection, a non-error response to an invalid-length request is a test
-         * failure */
         if (ctx->invalid_len_err_inject_enable) {
             simputs("OCCP: Non-error response under invalid length injection (FAIL)\n");
             ctx->overall_result = false;
@@ -360,7 +349,6 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
     uint8_t msg_id;
     static uint8_t buff[8 + 2048 + 4] = {0};
 
-    /* Decide invalid fields per ctx */
     switch (ctx->invalid_header_inject_mode) {
     case OCCP_INVALID_HDR_INVALID_MSGID: {
         app_id = (uint8_t)(get_random_int() % 2); /* valid app: 0 or 1 */
@@ -382,7 +370,7 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
         break;
     }
     default: {
-        /* If NONE, default to invalid msg_id to exercise path */
+        /* With no mode set, send an invalid msg_id. */
         app_id = (uint8_t)(get_random_int() % 2);
         msg_id = (uint8_t)((app_id == 0) ? (4 + (get_random_int() % 252))
                                          : (3 + (get_random_int() % 253)));
@@ -391,7 +379,7 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
     }
 
     uint16_t body_len = choose_random_body_len_like_rw();
-    bool has_body_crc = (get_random_int() % 2) == 0; /* random presence */
+    bool has_body_crc = (get_random_int() % 2) == 0;
 
     occp_req_header_word_t hdr_word;
     hdr_word.app_id = app_id;
@@ -408,8 +396,7 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
         return send_undersize_header_only(ctx, i3c_addr, (const uint8_t *)&hdr, sizeof(hdr));
     }
 
-    /* Transmit header */
-    /* Build and send body: random bytes with optional CRC (size depends on length) */
+    /* Frame: header, random body, optional body CRC (CRC-32 above 14 bytes). */
     for (int i = 0; i < sizeof(hdr); i++) {
         buff[i] = ((uint8_t *)&hdr)[i];
     }
@@ -453,7 +440,6 @@ int occp_send_invalid_header_command(test_context_t *ctx, uint64_t i3c_addr) {
         break;
     }
 
-    /* Read and verify error response */
     occp_resp_header_t resp_hdr;
     int retval = occp_get_response_header(ctx, i3c_addr, &resp_hdr);
     if (retval != OCCP_ERROR_NONE) return retval;
@@ -474,14 +460,13 @@ int occp_send_write_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t add
                             ? true
                             : ((get_random_int() % 2) != 0);
 
-    /* Determine body length with independent injections */
     uint16_t body_len = (uint16_t)body_length;
     if (ctx->invalid_message_length_zero_inject_enable) {
         /* Keep header body length to metadata size (12); data omitted */
         body_len = (uint16_t)(sizeof(occp_write_header_t) - sizeof(occp_req_header_t));
         simputs("OCCP: WRITE inject: body=12, internal write_length=0\n");
     } else if (ctx->invalid_len_err_inject_enable) {
-        body_len = (uint16_t)(get_random_int() % 12); /* [0,11] */
+        body_len = (uint16_t)(get_random_int() % 12);
         if (body_len == 0) {
             has_body_crc = false; /* header-only: do not advertise body CRC */
         }
@@ -497,7 +482,6 @@ int occp_send_write_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t add
     write_hdr.addr = addr;
     write_hdr.write_length = byte_length;
     if (ctx->invalid_message_length_zero_inject_enable) {
-        /* Force the request's internal message length to zero */
         write_hdr.write_length = 0;
     }
     write_hdr.rwrite_attr = 0;
@@ -534,7 +518,6 @@ int occp_send_write_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t add
         curr_off += remaining;
     }
 
-    /* Append CRC if requested by header flag */
     if (has_body_crc && body_len > 0) {
         const uint8_t *body_ptr = tx_buf + header_size;
         if (crc_size == 4) {
@@ -555,13 +538,13 @@ int occp_send_write_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t add
     }
     total_bytes = header_size + body_len + ((has_body_crc && body_len > 0) ? crc_size : 0);
 
-    /* Undersize body injection: just shorten total_bytes to header + short_len (no CRC) */
+    /* Undersize body injection: truncate the frame inside the body or CRC. */
     if (ctx->inject_undersize_body_err && body_len > 0) {
         uint16_t short_len = get_random_int() % (total_bytes - header_size);
         total_bytes = header_size + short_len;
     }
 
-    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    /* Oversize body injection: append 1..OCCP_OVERSIZE_PAD_MAX random bytes. */
     if (ctx->inject_oversize_body_err) {
         uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
         for (uint16_t i = 0; i < extra_len; i++) {
@@ -609,15 +592,14 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
                             : ((get_random_int() % 2) == 0);
     uint16_t body_len = (uint16_t)(sizeof(occp_read_header_t) - sizeof(occp_req_header_t));
 
-    /* Determine injected body length with independent injections */
     uint16_t injected_len = body_len;
     if (ctx->invalid_len_err_inject_enable) {
         uint16_t lower;
         if (body_len > 1) {
             uint16_t max_lower = (uint16_t)(body_len - 1);
-            lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+            lower = (uint16_t)(1 + (get_random_int() % max_lower));
         } else {
-            lower = 1; /* fallback within bounds */
+            lower = 1;
         }
         uint16_t upper_min = (uint16_t)(body_len + 1);
         uint16_t upper_max = 0x100;
@@ -634,7 +616,6 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
     read_hdr.addr = addr;
     read_hdr.read_length = byte_length;
     if (ctx->invalid_message_length_zero_inject_enable) {
-        /* Force the request's internal message length to zero */
         read_hdr.read_length = 0;
     }
     read_hdr.read_attr = 0;
@@ -648,7 +629,7 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
     if (ctx->invalid_len_err_inject_enable) {
         read_hdr.header.header_word.length = injected_len & 0x7FF;
         /* Do not force body CRC presence based on length; honor header flag */
-        /* Recalc CRC again after length change */
+        /* Recalculate the header CRC over the new length. */
         read_hdr.header.header_crc =
             calculate_crc8(((uint8_t *)&read_hdr.header) + 1, sizeof(read_hdr.header) - 1);
         body_len = injected_len;
@@ -661,7 +642,6 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
     size_t available_body = sizeof(read_hdr) - header_size;
     size_t copy_len = (body_len <= available_body) ? body_len : available_body;
 
-    /* Build header */
     memcpy(tx_buf, &read_hdr.header, header_size);
 
     /* Build body (truncate to available bytes) */
@@ -678,7 +658,6 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         }
     }
 
-    /* Append CRC if requested by header flag */
     if (has_body_crc && body_len > 0) {
         const uint8_t *body_start = tx_buf + header_size;
         if (body_len > 14) {
@@ -700,7 +679,7 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         }
     }
 
-    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    /* Oversize body injection: append 1..OCCP_OVERSIZE_PAD_MAX random bytes. */
     if (ctx->inject_oversize_body_err) {
         size_t base_len = header_size + body_len + crc_size;
         uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
@@ -715,7 +694,6 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         tx_len = header_size + body_len + crc_size;
     }
 
-    /* Optional error injections */
     inject_header_errors_if_enabled(ctx, tx_buf, header_size);
     if (has_body_crc && body_len > 0) {
         bool use_crc32 = (crc_size == 4);
@@ -741,9 +719,7 @@ int occp_send_read_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
     if (retval != OCCP_ERROR_NONE) {
         return retval;
     }
-    /* If we injected an unsupported status ID, an error response is expected and
-     * already validated inside occp_get_response_header() using ctx->exp_response_code.
-     * Treat that as success and reset expectation. */
+    /* occp_get_response_header already checked the expected unsupported-status-ID error. */
     if (ctx->unsupported_status_id_inject_enable && resp_hdr.error) {
         ctx->exp_response_code = OCCP_ERROR_NONE;
         return OCCP_SUCCESS;
@@ -803,26 +779,25 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
         return OCCP_INVALID_CMD;
     }
 
-    /* Randomize body CRC presence for GET_* commands (except version) */
+    /* Version commands have no body; the others carry a 2-byte status ID. */
     uint16_t body_len = (cmd == OCCP_GET_VERSION || cmd == OCCP_GET_VERSION_BOOT) ? 0 : 2;
     bool has_body_crc = (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)
                             ? (body_len > 0)
                             : (((get_random_int() % 2) == 0) && (body_len > 0));
 
-    /* Apply randomized invalid length injection if enabled */
     uint16_t injected_len = body_len;
     bool inject_len_err = ctx->invalid_len_err_inject_enable;
     if (inject_len_err) {
         if (body_len == 0) {
-            /* Expected 0 for GET_VERSION/GET_VERSION_BOOT; choose 1..0x100 */
+            /* Version commands expect length 0, so any non-zero length is invalid. */
             injected_len = (uint16_t)(1 + (get_random_int() % 0x100));
         } else {
             uint16_t lower;
             if (body_len > 1) {
                 uint16_t max_lower = (uint16_t)(body_len - 1);
-                lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+                lower = (uint16_t)(1 + (get_random_int() % max_lower));
             } else {
-                lower = 1; /* fallback within bounds */
+                lower = 1;
             }
             uint16_t upper_min = (uint16_t)(body_len + 1);
             uint16_t upper_max = 0x7FF;
@@ -850,7 +825,6 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
         header_word.header_crc =
             calculate_crc8(((uint8_t *)&header_word) + 1, sizeof(header_word) - 1);
         /* Do not force body CRC presence based on length; honor header flag */
-        /* Recalc CRC again after length change */
         header_word.header_crc =
             calculate_crc8(((uint8_t *)&header_word) + 1, sizeof(header_word) - 1);
         body_len = injected_len;
@@ -888,9 +862,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             break;
         }
 
-        /* Override with unsupported status ID if injection is enabled */
         if (ctx->unsupported_status_id_inject_enable) {
-            /* Pick a random invalid status_id not in {0,1,2,3,0x8000,0x8001} */
             uint16_t candidate;
             do {
                 candidate = (uint16_t)(get_random_int() & 0xFFFF);
@@ -900,7 +872,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             simputshex16("OCCP: Injecting unsupported status_id 0x", status_id);
         }
 
-        /* Unified body path for GET_* (non-version) with random padding */
+        /* Status ID body, padded with random bytes when the injected length is longer. */
         memset(tx_buf + sizeof(header_word), 0, body_len + 4);
         size_t copy_size = (body_len < sizeof(status_id)) ? body_len : sizeof(status_id);
         if (copy_size > 0) memcpy(tx_buf + sizeof(header_word), &status_id, copy_size);
@@ -936,7 +908,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
         size_t total = body_len + crc_size;
 
         if (ctx->inject_oversize_body_err) {
-            /* Oversize body injection: append up to 64 random bytes to tx_buf */
+            /* Oversize body injection: append 1..OCCP_OVERSIZE_PAD_MAX random bytes. */
             uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
             for (uint16_t i = 0; i < extra_len; i++) {
                 tx_buf[sizeof(header_word) + total + i] = (uint8_t)(get_random_int() & 0xFF);
@@ -954,9 +926,8 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, tx_buf,
                                                         sizeof(header_word) + total, ctx->timeout);
         }
-        /* No additional send here; packet was already transmitted above. */
     } else if (inject_len_err && body_len > 0) {
-        /* Unified body path for GET_VERSION with injected non-zero length + random padding */
+        /* Version command with an injected non-zero length: random body bytes. */
         for (uint16_t i = 0; i < body_len; i++)
             tx_buf[sizeof(header_word) + i] = (uint8_t)(get_random_int() & 0xFF);
         int crc_size = 0;
@@ -992,8 +963,7 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
                                                         sizeof(header_word) + total, ctx->timeout);
         }
     } else {
-        // get version path
-        /* Oversize body injection on GET_VERSION: append dummy bytes and send once */
+        /* Version command: header only, plus random bytes under oversize injection. */
         if (ctx->inject_oversize_body_err) {
             size_t base_len = sizeof(header_word);
             uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
@@ -1009,7 +979,6 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
             }
         } else {
             if (ctx->type == DRIVER_TYPE_I3C) {
-                /* Optional header injection for GET* header */
                 ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr,
                                                       (uint8_t *)&header_word, sizeof(header_word));
             } else {
@@ -1113,7 +1082,7 @@ int occp_send_get_status_command(test_context_t *ctx, uint64_t i3c_addr, uint32_
     if (!status_disabled) {
         increment_cmd_count(ctx);
     }
-    // send command count last to avoid incrementing the command count after the command is sent
+    // Read the command count last so it includes the three status commands above.
     retval =
         occp_send_generic_get_command(ctx, i3c_addr, OCCP_GET_OCCP_COMMAND_COUNT, &command_count);
     if (retval != OCCP_SUCCESS) {
@@ -1262,16 +1231,15 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
                             : ((get_random_int() % 2) == 0);
     uint16_t body_len = (uint16_t)(sizeof(occp_exec_header_t) - sizeof(occp_req_header_t));
 
-    /* Apply randomized invalid length injection if enabled */
     uint16_t injected_len = body_len;
     bool inject_len_err = ctx->invalid_len_err_inject_enable;
     if (inject_len_err) {
         uint16_t lower;
         if (body_len > 1) {
             uint16_t max_lower = (uint16_t)(body_len - 1);
-            lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+            lower = (uint16_t)(1 + (get_random_int() % max_lower));
         } else {
-            lower = 1; /* fallback within bounds */
+            lower = 1;
         }
         uint16_t upper_min = (uint16_t)(body_len + 1);
         uint16_t upper_max = 0x100;
@@ -1302,7 +1270,6 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         exec_hdr.header.header_crc =
             calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
         /* Do not force body CRC presence based on length; honor header flag */
-        /* Recalc CRC again after length change */
         exec_hdr.header.header_crc =
             calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
         body_len = injected_len;
@@ -1315,7 +1282,6 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
     size_t available_body = sizeof(exec_hdr) - header_size;
     size_t copy_len = (body_len <= available_body) ? body_len : available_body;
 
-    /* Build header */
     memcpy(tx_buf, &exec_hdr.header, header_size);
 
     /* Build body (truncate to available bytes) */
@@ -1332,7 +1298,6 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         }
     }
 
-    /* Append CRC if requested by header flag */
     if (has_body_crc && body_len > 0) {
         const uint8_t *body_start = tx_buf + header_size;
         if (body_len > 14) {
@@ -1354,8 +1319,6 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         }
     }
 
-    /* Undersize body injection: just shorten tx_len to header + short_len (no CRC) */
-    /* Optional error injections */
     inject_header_errors_if_enabled(ctx, tx_buf, header_size);
     if (has_body_crc && body_len > 0) {
         bool use_crc32 = (crc_size == 4);
@@ -1369,7 +1332,7 @@ int occp_send_jump_command(test_context_t *ctx, uint64_t i3c_addr, uint64_t addr
         tx_len = header_size + body_len + crc_size;
     }
 
-    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    /* Oversize body injection: append 1..OCCP_OVERSIZE_PAD_MAX random bytes. */
     if (ctx->inject_oversize_body_err) {
         uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
         for (uint16_t i = 0; i < extra_len; i++) {
@@ -1399,16 +1362,15 @@ int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint
                             : ((get_random_int() % 2) == 0);
     uint16_t body_len = (uint16_t)(sizeof(occp_exec_header_t) - sizeof(occp_req_header_t));
 
-    /* Apply randomized invalid length injection if enabled */
     uint16_t injected_len = body_len;
     bool inject_len_err = ctx->invalid_len_err_inject_enable;
     if (inject_len_err) {
         uint16_t lower;
         if (body_len > 1) {
             uint16_t max_lower = (uint16_t)(body_len - 1);
-            lower = (uint16_t)(1 + (get_random_int() % max_lower)); /* [1, body_len-1] */
+            lower = (uint16_t)(1 + (get_random_int() % max_lower));
         } else {
-            lower = 1; /* fallback within bounds */
+            lower = 1;
         }
         uint16_t upper_min = (uint16_t)(body_len + 1);
         uint16_t upper_max = 0x100;
@@ -1439,7 +1401,6 @@ int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint
         exec_hdr.header.header_crc =
             calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
         /* Do not force body CRC presence based on length; honor header flag */
-        /* Recalc CRC again after length change */
         exec_hdr.header.header_crc =
             calculate_crc8(((uint8_t *)&exec_hdr.header) + 1, sizeof(exec_hdr.header) - 1);
         body_len = injected_len;
@@ -1452,7 +1413,6 @@ int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint
     size_t available_body = sizeof(exec_hdr) - header_size;
     size_t copy_len = (body_len <= available_body) ? body_len : available_body;
 
-    /* Build header */
     memcpy(tx_buf, &exec_hdr.header, header_size);
 
     /* Build body (truncate to available bytes) */
@@ -1469,7 +1429,6 @@ int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint
         }
     }
 
-    /* Append CRC if requested by header flag */
     if (has_body_crc && body_len > 0) {
         const uint8_t *body_start = tx_buf + header_size;
         if (body_len > 14) {
@@ -1491,14 +1450,13 @@ int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint
         }
     }
 
-    /* Optional error injections */
     inject_header_errors_if_enabled(ctx, tx_buf, header_size);
     if (has_body_crc && body_len > 0) {
         bool use_crc32 = (crc_size == 4);
         inject_body_errors_if_enabled(ctx, tx_buf + header_size, body_len, use_crc32);
     }
 
-    /* Undersize body injection: just shorten tx_len to header + short_len (no CRC) */
+    /* Undersize body injection: truncate the frame inside the body or CRC. */
     if (ctx->inject_undersize_body_err && body_len > 0) {
         uint16_t short_len = get_random_int() % (body_len + crc_size);
         tx_len = header_size + short_len;
@@ -1506,7 +1464,7 @@ int occp_send_validate_boot_command(test_context_t *ctx, uint64_t i3c_addr, uint
         tx_len = header_size + body_len + crc_size;
     }
 
-    /* Oversize body injection: append up to 64 random bytes to tx_buf */
+    /* Oversize body injection: append 1..OCCP_OVERSIZE_PAD_MAX random bytes. */
     if (ctx->inject_oversize_body_err) {
         uint16_t extra_len = (uint16_t)(1 + (get_random_int() % OCCP_OVERSIZE_PAD_MAX));
         for (uint16_t i = 0; i < extra_len; i++) {
@@ -1541,7 +1499,7 @@ void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_i
         return;
     }
 
-    /* Avoid snprintf to reduce printf pulls in ROM. Use targeted simputs logging. */
+    /* simputs instead of snprintf keeps printf out of the ROM image. */
     uint16_t actual_error = (status_data >> 16) & 0xFF;
     int has_error = 0;
     simputshex32("Status Data: ", status_data);
@@ -1580,10 +1538,9 @@ uint16_t get_random_occp_write_size(void) {
         // Range: 33 to 255
         return (get_random_int() % (256 - 1 - 33 + 1)) + 33;
     } else if (p < 98) { // 3% chance
-        // Range: 256 to 2034
+        // Range: 256 to 2033
         return (get_random_int() % (2034 - 1 - 256 + 1)) + 256;
     } else { // 2% chance
-        // 2035
         return MAX_OCCP_WRITE_SIZE;
     }
 }
@@ -1599,10 +1556,9 @@ uint16_t get_random_occp_read_size(void) {
         // Range: 33 to 255
         return (get_random_int() % (256 - 1 - 33 + 1)) + 33;
     } else if (p < 98) { // 3% chance
-        // Range: 256 to 2034
+        // Range: 256 to 2045
         return (get_random_int() % (2046 - 1 - 256 + 1)) + 256;
     } else { // 2% chance
-        // 2035
         return MAX_OCCP_READ_SIZE;
     }
 }
@@ -1625,7 +1581,6 @@ void send_random_occp_write(test_context_t *ctx, uint64_t addr_range) {
     int retval = occp_send_write_command(ctx, ctx->slave_addr, random_addr, write_data, len);
     if (retval == OCCP_SUCCESS) {
         simputs("WRITE command succeeded\n");
-        // Store write transaction details in the scoreboard
         bool store_in_scoreboard = (ctx->sram_scoreboard_idx < MAX_WRITES) &&
                                    (ctx->header_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) &&
                                    (ctx->body_crc_err_inject_mode == OCCP_CRC_INJECT_NONE) &&
@@ -1649,17 +1604,14 @@ void send_random_occp_write(test_context_t *ctx, uint64_t addr_range) {
 }
 
 void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
-    // Decide whether to read from a scoreboard entry or a new random address
     bool read_from_scoreboard = (ctx->sram_scoreboard_idx > 0) && ((get_random_int() % 2) == 0);
     int retval;
 
     if (read_from_scoreboard) {
-        // Select a random entry from the scoreboard to read and verify
         int entry_idx = get_random_int() % ctx->sram_scoreboard_idx;
         scoreboard_entry_t *entry = &ctx->sram_scoreboard[entry_idx];
 
-        // Pick a random offset and length within the bounds of the scoreboard entry
-        // ensure the read offset is 4 byte aligned
+        // Pick a 4-byte-aligned offset and a length inside the entry.
         uint8_t read_offset =
             (entry->len > 1) ? ((get_random_int() % (entry->len - 1)) & 0xfffffffffffffffc) : 0;
         uint8_t max_read_len = entry->len - read_offset;
@@ -1750,7 +1702,6 @@ void send_random_occp_read(test_context_t *ctx, uint64_t addr_range) {
 void execute_random_commands(test_context_t *ctx, int num_commands) {
 
     uint64_t addr_range = ctx->test_upper_addr_bound - ctx->test_base_addr;
-
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
     int exp_occp_version_major = 1;
@@ -1760,8 +1711,6 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
         exp_occp_version_major | exp_occp_version_minor << 8 | exp_occp_version_patch << 16;
 
     for (int i = 0; i < num_commands; i++) {
-        /* If invalid header injection is enabled, send an invalid header instead of a normal
-         * command */
         if (ctx->invalid_header_inject_mode != OCCP_INVALID_HDR_INJECT_NONE) {
             int rc_invalid = occp_send_invalid_header_command(ctx, ctx->slave_addr);
             if (rc_invalid != OCCP_SUCCESS) {
@@ -1771,7 +1720,7 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
             increment_cmd_count(ctx);
             continue;
         }
-        // weight towards reads and writes (similar to occp_random_test)
+        // 30% status commands, 70% reads and writes.
         uint8_t is_status_cmd = get_random_int() % 10 < 3 ? 1 : 0;
         int retval;
         uint32_t status_data = 0;
@@ -1786,13 +1735,13 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                                               ? (get_random_int() % 8)
                                               : ((get_random_int() % 2) ? OCCP_READ : OCCP_WRITE);
 
-        // re-balance probabilities for status_reporting_disabled, a 6% overall chance of injecting
-        // unsupported status command should get coverage without the risk of accidental unlatch
+        // With status reporting disabled, 6% of picks are GET_VERSION* and 24% are rejected
+        // status IDs.
         if (ctx->status_reporting_disabled && is_status_cmd)
             command_selected = ((get_random_int() % 10) < 2) ? (get_random_int() % 2)
                                                              : ((get_random_int() % 6) + 2);
 
-        // need to avoid get_version commands for body corruption and undersize body injection
+        // Version commands have no body to corrupt or truncate.
         if (((ctx->inject_undersize_body_err) ||
              (ctx->body_crc_err_inject_mode != OCCP_CRC_INJECT_NONE)) &&
             is_status_cmd) {
@@ -1993,7 +1942,6 @@ void send_max_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
     int retval = occp_send_write_command(ctx, ctx->slave_addr, random_addr, write_data, len);
     if (retval == OCCP_SUCCESS) {
         simputs("WRITE command succeeded\n");
-        // Store write transaction details in the scoreboard
         if (ctx->sram_scoreboard_idx < MAX_WRITES) {
             ctx->sram_scoreboard[ctx->sram_scoreboard_idx].address = random_addr;
             ctx->sram_scoreboard[ctx->sram_scoreboard_idx].len = len;
@@ -2007,12 +1955,10 @@ void send_max_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
 }
 
 void send_max_size_occp_read(test_context_t *ctx, uint64_t addr_range) {
-    // Decide whether to read from a scoreboard entry or a new random address
     bool read_from_scoreboard = (ctx->sram_scoreboard_idx > 0) && ((get_random_int() % 2) == 0);
     int retval;
 
     if (read_from_scoreboard) {
-        // Select a random entry from the scoreboard to read and verify
         int entry_idx = get_random_int() % ctx->sram_scoreboard_idx;
         scoreboard_entry_t *entry = &ctx->sram_scoreboard[entry_idx];
 
@@ -2107,7 +2053,6 @@ void send_min_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
     int retval = occp_send_write_command(ctx, ctx->slave_addr, random_addr, write_data, len);
     if (retval == OCCP_SUCCESS) {
         simputs("WRITE command succeeded\n");
-        // Store write transaction details in the scoreboard
         if (ctx->sram_scoreboard_idx < MAX_WRITES) {
             ctx->sram_scoreboard[ctx->sram_scoreboard_idx].address = random_addr;
             ctx->sram_scoreboard[ctx->sram_scoreboard_idx].len = len;
@@ -2121,12 +2066,10 @@ void send_min_size_occp_write(test_context_t *ctx, uint64_t addr_range) {
 }
 
 void send_min_size_occp_read(test_context_t *ctx, uint64_t addr_range) {
-    // Decide whether to read from a scoreboard entry or a new random address
     bool read_from_scoreboard = (ctx->sram_scoreboard_idx > 0) && ((get_random_int() % 2) == 0);
     int retval;
 
     if (read_from_scoreboard) {
-        // Select a random entry from the scoreboard to read and verify
         int entry_idx = get_random_int() % ctx->sram_scoreboard_idx;
         scoreboard_entry_t *entry = &ctx->sram_scoreboard[entry_idx];
 
@@ -2196,14 +2139,7 @@ void execute_min_size_rw_commands(test_context_t *ctx, int num_commands) {
     }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Validate a GET_*_STATUS 32-bit value against expected fields.               */
-/* The 32-bit value layout follows the specification's GET_STATUS response     */
-/* body: [31:24]=msg_type, [23:16]=fw_id, [15:0]=status_value.                 */
-/* For SMC BL0 error messages with match_full_status_data false, compare only  */
-/* the per-code mask (see the switch below).                                   */
-/* Returns true on match, false otherwise.                                     */
-/* -------------------------------------------------------------------------- */
+/* Match a GET_*_STATUS word: [31:24] msg_type, [23:16] fw_id, [15:0] status_value. */
 bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_fw_id,
                                   occp_status_msg_type_t expected_msg_type,
                                   uint16_t expected_status_data, bool match_full_status_data) {
@@ -2214,12 +2150,7 @@ bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_f
     if (actual_msg_type != (uint8_t)expected_msg_type) return false;
     if (actual_fw_id != (uint8_t)expected_fw_id) return false;
 
-    /* For SMC BL0 error messages, apply the spec-defined matching granularity:
-     * - ACCESS_DENIED codes carry data in the upper nibble (mask 0x1FF)
-     * - CMD_FAILED carries data in the lower nibble (mask 0xFF0)
-     * - CMD_UNKNOWN carries data in the middle byte (mask 0xF01)
-     * - Others match the full 16-bit value
-     */
+    /* Unless match_full_status_data is set, SMC BL0 error codes mask out their detail bits. */
     if (expected_fw_id == OCCP_FW_ID_SMC_BL0 && expected_msg_type == OCCP_STATUS_MSG_ERROR &&
         !match_full_status_data) {
         switch (expected_status_data) {

@@ -10,6 +10,13 @@ receives its step from `CTRL.STEP`; `timer_cnt_step_i` is a core input,
 not an external wrapper port.
 
 ifdef::backend-html5[]
+The parameters and ports of `system_timer_octs` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/system_timer_octs/system_timer_octs.adoc[system_timer_octs].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `system_timer_octs` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+ifdef::backend-html5[]
 ++++
 <span id="configuration-parameters"></span>
 ++++

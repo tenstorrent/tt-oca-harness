@@ -7,7 +7,6 @@
 === External Interface
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="axi4-lite-interface"></span>
 <span id="mailbox-interface-characteristics-table"></span>
@@ -37,7 +36,6 @@ and status state.
 === Access Results
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="error-handling"></span>
 ++++
@@ -54,8 +52,14 @@ flag and `IRQS[2]`.
 flag and `IRQS[2]`.
 |Read write-only `WRITE_DATA` |`OKAY`, data `0xFEEDC0DE`; no FIFO access or error flag.
 |Write `READ_DATA`, `STATUS`, `ERROR_FLAGS` or `IRQP` |Ignored with `SLVERR`.
-|Unmapped register offset in an aperture |`SLVERR`; reads return zero, writes ignored.
-For the 64-bit map, offsets `0x50` and above are unmapped.
+|Access to an unmapped offset inside an aperture (`0x50` and above) |Stated in the
+ifdef::backend-html5[]
+xref:smc:memmap.adoc#smc-memory-map[SMC] and
+xref:sep:memory_map.adoc#sep-memory-map[SEP] memory maps
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<smc-memory-map,SMC>> and <<sep-memory-map,SEP>> memory maps
+endif::backend-pdf[]
 |Read `ERROR_FLAGS` |Returns and clears both detailed error flags. A new error
 in the same cycle is retained.
 |Write `CTRL` flush bits |Pulses the selected FIFO flush; the bits are not stored
@@ -65,7 +69,6 @@ configuration and read back as zero.
 === Sending and Receiving
 
 ifdef::backend-html5[]
-// Preserve incoming links to the consolidated sections.
 ++++
 <span id="integration-requirements"></span>
 <span id="mailbox-integration-requirements-table"></span>

@@ -1,8 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// SMU AXI crossbar types, configuration, and connectivity.
-// Runtime address rules are defined by smu_axi_xbar.
+// Hold SMU AXI crossbar types, fabric widths, configuration, and connectivity matrix.
+//
+// Declare the 56/64 slave and expanded-ID master channel types used by smu_axi_xbar, the
+// address rule type whose end address is one bit wider than the address, the axi_xbar
+// configuration, and the input-to-output connectivity matrix. The runtime address rule
+// values live in the crossbar module itself.
 
 package smu_axi_xbar_pkg;
 

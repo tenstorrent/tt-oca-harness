@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-smc_efuse_map]
-== Address Map: smc_efuse_map
+== Efuse address map of physical efuse macro
+
+Address map for efuse shadow registers providing access to various chip configuration and ID fields
 
 [NOTE]
 ======
@@ -37,70 +39,70 @@ RTL is frozen. Each element has its own write/read lock pair in LOCKS.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 63 | `spare27_read_lock` | RW | 0x0 a| Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.
-| 62 | `spare27_write_lock` | RW | 0x0 a| Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.
-| 61 | `spare26_read_lock` | RW | 0x0 a| Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.
-| 60 | `spare26_write_lock` | RW | 0x0 a| Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.
-| 59 | `spare25_read_lock` | RW | 0x0 a| Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.
-| 58 | `spare25_write_lock` | RW | 0x0 a| Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.
-| 57 | `spare24_read_lock` | RW | 0x0 a| Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.
-| 56 | `spare24_write_lock` | RW | 0x0 a| Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.
-| 55 | `spare23_read_lock` | RW | 0x0 a| Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.
-| 54 | `spare23_write_lock` | RW | 0x0 a| Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.
-| 53 | `spare22_read_lock` | RW | 0x0 a| Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.
-| 52 | `spare22_write_lock` | RW | 0x0 a| Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.
-| 51 | `spare21_read_lock` | RW | 0x0 a| Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.
-| 50 | `spare21_write_lock` | RW | 0x0 a| Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.
-| 49 | `spare20_read_lock` | RW | 0x0 a| Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.
-| 48 | `spare20_write_lock` | RW | 0x0 a| Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.
-| 47 | `spare19_read_lock` | RW | 0x0 a| Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.
-| 46 | `spare19_write_lock` | RW | 0x0 a| Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.
-| 45 | `spare18_read_lock` | RW | 0x0 a| Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.
-| 44 | `spare18_write_lock` | RW | 0x0 a| Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.
-| 43 | `spare17_read_lock` | RW | 0x0 a| Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.
-| 42 | `spare17_write_lock` | RW | 0x0 a| Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.
-| 41 | `spare16_read_lock` | RW | 0x0 a| Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.
-| 40 | `spare16_write_lock` | RW | 0x0 a| Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.
-| 39 | `spare15_read_lock` | RW | 0x0 a| Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.
-| 38 | `spare15_write_lock` | RW | 0x0 a| Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.
-| 37 | `spare14_read_lock` | RW | 0x0 a| Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.
-| 36 | `spare14_write_lock` | RW | 0x0 a| Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.
-| 35 | `spare13_read_lock` | RW | 0x0 a| Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.
-| 34 | `spare13_write_lock` | RW | 0x0 a| Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.
-| 33 | `spare12_read_lock` | RW | 0x0 a| Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.
-| 32 | `spare12_write_lock` | RW | 0x0 a| Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.
-| 31 | `spare11_read_lock` | RW | 0x0 a| Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.
-| 30 | `spare11_write_lock` | RW | 0x0 a| Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.
-| 29 | `spare10_read_lock` | RW | 0x0 a| Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.
-| 28 | `spare10_write_lock` | RW | 0x0 a| Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.
-| 27 | `spare9_read_lock` | RW | 0x0 a| Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.
-| 26 | `spare9_write_lock` | RW | 0x0 a| Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.
-| 25 | `spare8_read_lock` | RW | 0x0 a| Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.
-| 24 | `spare8_write_lock` | RW | 0x0 a| Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.
-| 23 | `spare7_read_lock` | RW | 0x0 a| Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.
-| 22 | `spare7_write_lock` | RW | 0x0 a| Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.
-| 21 | `spare6_read_lock` | RW | 0x0 a| Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.
-| 20 | `spare6_write_lock` | RW | 0x0 a| Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.
-| 19 | `spare5_read_lock` | RW | 0x0 a| Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.
-| 18 | `spare5_write_lock` | RW | 0x0 a| Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.
-| 17 | `spare4_read_lock` | RW | 0x0 a| Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.
-| 16 | `spare4_write_lock` | RW | 0x0 a| Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.
-| 15 | `spare3_read_lock` | RW | 0x0 a| Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.
-| 14 | `spare3_write_lock` | RW | 0x0 a| Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.
-| 13 | `spare2_read_lock` | RW | 0x0 a| Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.
-| 12 | `spare2_write_lock` | RW | 0x0 a| Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.
-| 11 | `spare1_read_lock` | RW | 0x0 a| Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.
-| 10 | `spare1_write_lock` | RW | 0x0 a| Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.
-| 9 | `spare0_read_lock` | RW | 0x0 a| Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.
-| 8 | `spare0_write_lock` | RW | 0x0 a| Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.
-| 7 | `occp_transport_timeout_read_lock` | RW | 0x0 a| OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.
-| 6 | `occp_transport_timeout_write_lock` | RW | 0x0 a| OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.
-| 5 | `smc_config_read_lock` | RW | 0x0 a| SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.
-| 4 | `smc_config_write_lock` | RW | 0x0 a| SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.
-| 3 | `i2c_i3c_id_read_lock` | RW | 0x0 a| I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.
-| 2 | `i2c_i3c_id_write_lock` | RW | 0x0 a| I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.
-| 1 | `jtag_public_identity_read_lock` | RW | 0x0 a| JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.
-| 0 | `jtag_public_identity_write_lock` | RW | 0x0 a| JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.
+| 63 | `spare27_read_lock` | RW1S | 0x0 a| Spare 27 read lock (slot 31). When set, SPARE[27] is not readable.
+| 62 | `spare27_write_lock` | RW1S | 0x0 a| Spare 27 write lock (slot 31). When set, SPARE[27] is not writable.
+| 61 | `spare26_read_lock` | RW1S | 0x0 a| Spare 26 read lock (slot 30). When set, SPARE[26] is not readable.
+| 60 | `spare26_write_lock` | RW1S | 0x0 a| Spare 26 write lock (slot 30). When set, SPARE[26] is not writable.
+| 59 | `spare25_read_lock` | RW1S | 0x0 a| Spare 25 read lock (slot 29). When set, SPARE[25] is not readable.
+| 58 | `spare25_write_lock` | RW1S | 0x0 a| Spare 25 write lock (slot 29). When set, SPARE[25] is not writable.
+| 57 | `spare24_read_lock` | RW1S | 0x0 a| Spare 24 read lock (slot 28). When set, SPARE[24] is not readable.
+| 56 | `spare24_write_lock` | RW1S | 0x0 a| Spare 24 write lock (slot 28). When set, SPARE[24] is not writable.
+| 55 | `spare23_read_lock` | RW1S | 0x0 a| Spare 23 read lock (slot 27). When set, SPARE[23] is not readable.
+| 54 | `spare23_write_lock` | RW1S | 0x0 a| Spare 23 write lock (slot 27). When set, SPARE[23] is not writable.
+| 53 | `spare22_read_lock` | RW1S | 0x0 a| Spare 22 read lock (slot 26). When set, SPARE[22] is not readable.
+| 52 | `spare22_write_lock` | RW1S | 0x0 a| Spare 22 write lock (slot 26). When set, SPARE[22] is not writable.
+| 51 | `spare21_read_lock` | RW1S | 0x0 a| Spare 21 read lock (slot 25). When set, SPARE[21] is not readable.
+| 50 | `spare21_write_lock` | RW1S | 0x0 a| Spare 21 write lock (slot 25). When set, SPARE[21] is not writable.
+| 49 | `spare20_read_lock` | RW1S | 0x0 a| Spare 20 read lock (slot 24). When set, SPARE[20] is not readable.
+| 48 | `spare20_write_lock` | RW1S | 0x0 a| Spare 20 write lock (slot 24). When set, SPARE[20] is not writable.
+| 47 | `spare19_read_lock` | RW1S | 0x0 a| Spare 19 read lock (slot 23). When set, SPARE[19] is not readable.
+| 46 | `spare19_write_lock` | RW1S | 0x0 a| Spare 19 write lock (slot 23). When set, SPARE[19] is not writable.
+| 45 | `spare18_read_lock` | RW1S | 0x0 a| Spare 18 read lock (slot 22). When set, SPARE[18] is not readable.
+| 44 | `spare18_write_lock` | RW1S | 0x0 a| Spare 18 write lock (slot 22). When set, SPARE[18] is not writable.
+| 43 | `spare17_read_lock` | RW1S | 0x0 a| Spare 17 read lock (slot 21). When set, SPARE[17] is not readable.
+| 42 | `spare17_write_lock` | RW1S | 0x0 a| Spare 17 write lock (slot 21). When set, SPARE[17] is not writable.
+| 41 | `spare16_read_lock` | RW1S | 0x0 a| Spare 16 read lock (slot 20). When set, SPARE[16] is not readable.
+| 40 | `spare16_write_lock` | RW1S | 0x0 a| Spare 16 write lock (slot 20). When set, SPARE[16] is not writable.
+| 39 | `spare15_read_lock` | RW1S | 0x0 a| Spare 15 read lock (slot 19). When set, SPARE[15] is not readable.
+| 38 | `spare15_write_lock` | RW1S | 0x0 a| Spare 15 write lock (slot 19). When set, SPARE[15] is not writable.
+| 37 | `spare14_read_lock` | RW1S | 0x0 a| Spare 14 read lock (slot 18). When set, SPARE[14] is not readable.
+| 36 | `spare14_write_lock` | RW1S | 0x0 a| Spare 14 write lock (slot 18). When set, SPARE[14] is not writable.
+| 35 | `spare13_read_lock` | RW1S | 0x0 a| Spare 13 read lock (slot 17). When set, SPARE[13] is not readable.
+| 34 | `spare13_write_lock` | RW1S | 0x0 a| Spare 13 write lock (slot 17). When set, SPARE[13] is not writable.
+| 33 | `spare12_read_lock` | RW1S | 0x0 a| Spare 12 read lock (slot 16). When set, SPARE[12] is not readable.
+| 32 | `spare12_write_lock` | RW1S | 0x0 a| Spare 12 write lock (slot 16). When set, SPARE[12] is not writable.
+| 31 | `spare11_read_lock` | RW1S | 0x0 a| Spare 11 read lock (slot 15). When set, SPARE[11] is not readable.
+| 30 | `spare11_write_lock` | RW1S | 0x0 a| Spare 11 write lock (slot 15). When set, SPARE[11] is not writable.
+| 29 | `spare10_read_lock` | RW1S | 0x0 a| Spare 10 read lock (slot 14). When set, SPARE[10] is not readable.
+| 28 | `spare10_write_lock` | RW1S | 0x0 a| Spare 10 write lock (slot 14). When set, SPARE[10] is not writable.
+| 27 | `spare9_read_lock` | RW1S | 0x0 a| Spare 9 read lock (slot 13). When set, SPARE[9] is not readable.
+| 26 | `spare9_write_lock` | RW1S | 0x0 a| Spare 9 write lock (slot 13). When set, SPARE[9] is not writable.
+| 25 | `spare8_read_lock` | RW1S | 0x0 a| Spare 8 read lock (slot 12). When set, SPARE[8] is not readable.
+| 24 | `spare8_write_lock` | RW1S | 0x0 a| Spare 8 write lock (slot 12). When set, SPARE[8] is not writable.
+| 23 | `spare7_read_lock` | RW1S | 0x0 a| Spare 7 read lock (slot 11). When set, SPARE[7] is not readable.
+| 22 | `spare7_write_lock` | RW1S | 0x0 a| Spare 7 write lock (slot 11). When set, SPARE[7] is not writable.
+| 21 | `spare6_read_lock` | RW1S | 0x0 a| Spare 6 read lock (slot 10). When set, SPARE[6] is not readable.
+| 20 | `spare6_write_lock` | RW1S | 0x0 a| Spare 6 write lock (slot 10). When set, SPARE[6] is not writable.
+| 19 | `spare5_read_lock` | RW1S | 0x0 a| Spare 5 read lock (slot 9). When set, SPARE[5] is not readable.
+| 18 | `spare5_write_lock` | RW1S | 0x0 a| Spare 5 write lock (slot 9). When set, SPARE[5] is not writable.
+| 17 | `spare4_read_lock` | RW1S | 0x0 a| Spare 4 read lock (slot 8). When set, SPARE[4] is not readable.
+| 16 | `spare4_write_lock` | RW1S | 0x0 a| Spare 4 write lock (slot 8). When set, SPARE[4] is not writable.
+| 15 | `spare3_read_lock` | RW1S | 0x0 a| Spare 3 read lock (slot 7). When set, SPARE[3] is not readable.
+| 14 | `spare3_write_lock` | RW1S | 0x0 a| Spare 3 write lock (slot 7). When set, SPARE[3] is not writable.
+| 13 | `spare2_read_lock` | RW1S | 0x0 a| Spare 2 read lock (slot 6). When set, SPARE[2] is not readable.
+| 12 | `spare2_write_lock` | RW1S | 0x0 a| Spare 2 write lock (slot 6). When set, SPARE[2] is not writable.
+| 11 | `spare1_read_lock` | RW1S | 0x0 a| Spare 1 read lock (slot 5). When set, SPARE[1] is not readable.
+| 10 | `spare1_write_lock` | RW1S | 0x0 a| Spare 1 write lock (slot 5). When set, SPARE[1] is not writable.
+| 9 | `spare0_read_lock` | RW1S | 0x0 a| Spare 0 read lock (slot 4). When set, SPARE[0] is not readable.
+| 8 | `spare0_write_lock` | RW1S | 0x0 a| Spare 0 write lock (slot 4). When set, SPARE[0] is not writable.
+| 7 | `occp_transport_timeout_read_lock` | RW1S | 0x0 a| OCCP transport timeout read lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not readable.
+| 6 | `occp_transport_timeout_write_lock` | RW1S | 0x0 a| OCCP transport timeout write lock (slot 3). When set, OCCP_TRANSPORT_TIMEOUT is not writable.
+| 5 | `smc_config_read_lock` | RW1S | 0x0 a| SMC config read lock (slot 2). When set, SMC_CONFIG is not readable.
+| 4 | `smc_config_write_lock` | RW1S | 0x0 a| SMC config write lock (slot 2). When set, SMC_CONFIG is not writable.
+| 3 | `i2c_i3c_id_read_lock` | RW1S | 0x0 a| I2C/I3C ID read lock (slot 1). When set, no I2C_I3C_ID element is readable.
+| 2 | `i2c_i3c_id_write_lock` | RW1S | 0x0 a| I2C/I3C ID write lock (slot 1). When set, no I2C_I3C_ID element is writable.
+| 1 | `jtag_public_identity_read_lock` | RW1S | 0x0 a| JTAG public identity read lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not readable.
+| 0 | `jtag_public_identity_write_lock` | RW1S | 0x0 a| JTAG public identity write lock (slot 0). When set, JTAG_PUBLIC_IDENTITY is not writable.
 |===
 
 [#reg-{regmap-instance}-smc_efuse_map-JTAG_PUBLIC_IDENTITY]

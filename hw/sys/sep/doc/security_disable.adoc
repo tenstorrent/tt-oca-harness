@@ -4,6 +4,13 @@
 = Security Disable (SEC_DIS)
 :description: SEP emergency security-disable behavior and integration requirements.
 
+ifdef::backend-html5[]
+:dtp-ic-reset-overrides-ref: xref:dtp:jtag.adoc#dtp-ic-reset-overrides[IC_RESET Overrides]
+endif::backend-html5[]
+ifndef::backend-html5[]
+:dtp-ic-reset-overrides-ref: <<dtp-ic-reset-overrides>>
+endif::backend-html5[]
+
 [[security-disable-sec_dis]]
 
 Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
@@ -28,8 +35,15 @@ into the SEP via the JTAG port, hashed, and redundantly compared against an
 embedded hash constant. On a match, i.e. hash(SEC_DIS_TOKEN_I) ==
 SEP_SEC_DISABLE_TOKEN_DIGEST, the life-cycle control is overridden to open
 debug access, and the feature-control output follows the SEC_DIS rules in the
-Life Cycle Controller chapter. Once SEC_DIS is active,
-the SEP can boot even if the fuse sense logic never completes.
+Life Cycle Controller chapter.
+
+A match does not release the SEP reset, which stays held until fuse sensing
+completes. To boot a part whose fuse sensing does not complete, override
+`sep_reset_n` through the SEP slice of the IC_RESET TDR (see
+{dtp-ic-reset-overrides-ref} in the DTP chapter). The override and the token
+match are independent JTAG steps: the override alone releases the reset but
+leaves the life-cycle control closed, so recovering such a part for debug
+takes both.
 
 == Silicon Revision Scope
 

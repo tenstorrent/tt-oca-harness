@@ -5,6 +5,13 @@
 == Interface
 
 ifdef::backend-html5[]
+The parameters and ports of `log_engine` are listed in xref:ocah-docs:ROOT:rtl-modules-reference/ip/log_engine/log_engine.adoc[log_engine].
+endif::backend-html5[]
+ifndef::backend-html5[]
+The parameters and ports of `log_engine` are listed in the HTML edition of this manual, under RTL Modules Reference.
+endif::backend-html5[]
+
+ifdef::backend-html5[]
 ++++
 <span id="configuration-parameters"></span>
 ++++

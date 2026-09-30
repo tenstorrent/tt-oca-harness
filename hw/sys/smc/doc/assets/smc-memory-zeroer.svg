@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="710" viewBox="0 0 1040 710" role="img" aria-labelledby="title desc">
+<title id="title">SMC memory zeroer</title>
+<desc id="desc">u_zeroer takes its control port from u_axi_demux (AXI4, 5-bit address, 64-bit data, 8-bit ID) and converts it to AXI-Lite for the u_zeroer_reg registers DEST_ADDR, SIZE and CTRL_STATUS, which run on reg_clk from the u_zeroer_cg bus snoop. The clear state machine runs on axi_clk from u_axi_clk_gater, which is enabled while the zeroer is busy. Reset enters ST_IDLE (3'b001). A write to CTRL_STATUS with SIZE non-zero latches DEST_ADDR and SIZE and moves to ST_ISSUE_ADDR (3'b010), which drives AWVALID with an aligned address and a burst length of up to 256 beats that never crosses a 4 KiB boundary. AWREADY moves to ST_ISSUE_DATA (3'b100), which drives zero data with byte strobes for every beat. When the last beat is accepted the machine returns to ST_ISSUE_ADDR if bytes remain and to ST_IDLE if none do. Any illegal state encoding enters ST_ERROR (3'b000), which holds the zeroer busy with no interrupt until reset. The AW and W channels leave on the master port to u_axi_mux (AXI4, 56-bit address, 64-bit data, 3-bit ID); the B channel is always ready and its response code is not checked, and the AR and R channels are tied off. outstanding_reqs counts accepted addresses up and write responses down. zeroer_busy_o is high outside ST_IDLE, on a start and while the count is non-zero; zeroer_intp_o pulses when busy falls while INT_EN is set.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="710" fill="#ffffff"/>
+<rect class="smu" x="150" y="20" width="720" height="580" rx="6"/>
+<text class="b" x="164" y="590" text-anchor="start">u_zeroer</text>
+<path class="axi" d="M14,92 L170,92"/>
+<text class="t" x="14" y="70" text-anchor="start">from u_axi_demux</text>
+<text class="s" x="14" y="114" text-anchor="start">AXI4, address 5,</text>
+<text class="s" x="14" y="130" text-anchor="start">data 64, ID 8</text>
+<rect class="network" x="170" y="68" width="76" height="48" rx="4"/>
+<text class="s" x="208" y="89.5" text-anchor="middle">AXI4 to</text>
+<text class="s" x="208" y="104.5" text-anchor="middle">AXI-Lite</text>
+<path class="axil" d="M246,92 L275,92"/>
+<rect class="core" x="275" y="56" width="200" height="72" rx="6"/>
+<text class="bs" x="375" y="79" text-anchor="middle">u_zeroer_reg</text>
+<text class="s" x="375" y="97" text-anchor="middle">DEST_ADDR, SIZE</text>
+<text class="s" x="375" y="115" text-anchor="middle">CTRL_STATUS</text>
+<rect class="core" x="500" y="56" width="150" height="72" rx="6"/>
+<text class="bs" x="575" y="79" text-anchor="middle">u_axi_clk_gater</text>
+<text class="s" x="575" y="97" text-anchor="middle">prim_clock_gating</text>
+<text class="s" x="575" y="115" text-anchor="middle">on while busy</text>
+<rect class="core" x="690" y="56" width="150" height="72" rx="6"/>
+<text class="bs" x="765" y="79" text-anchor="middle">u_zeroer_cg</text>
+<text class="s" x="765" y="97" text-anchor="middle">axi_cg_snoop</text>
+<text class="s" x="765" y="115" text-anchor="middle">on bus activity</text>
+<path class="sigo" d="M765,56 L765,38 L440,38 L440,56"/>
+<text class="s" x="600" y="33" text-anchor="middle">reg_clk</text>
+<rect class="core" x="170" y="150" width="495" height="330" rx="6"/>
+<text class="bs" x="182" y="170" text-anchor="start">Clear FSM</text>
+<path class="sigo" d="M575,128 L575,150"/>
+<text class="s" x="583" y="144" text-anchor="start">axi_clk</text>
+<rect class="core" x="190" y="211" width="160" height="58" rx="14"/>
+<text class="bs" x="270" y="237" text-anchor="middle">ST_IDLE</text>
+<text class="s" x="270" y="255" text-anchor="middle">3'b001</text>
+<rect class="core" x="480" y="211" width="160" height="58" rx="14"/>
+<text class="bs" x="560" y="232" text-anchor="middle">ST_ISSUE_ADDR</text>
+<text class="s" x="560" y="248" text-anchor="middle">3'b010</text>
+<text class="si" x="560" y="263" text-anchor="middle">AWVALID</text>
+<rect class="core" x="480" y="363" width="160" height="58" rx="14"/>
+<text class="bs" x="560" y="384" text-anchor="middle">ST_ISSUE_DATA</text>
+<text class="s" x="560" y="400" text-anchor="middle">3'b100</text>
+<text class="si" x="560" y="415" text-anchor="middle">WVALID</text>
+<rect class="core" x="190" y="412" width="128" height="58" rx="14"/>
+<text class="bs" x="254" y="430" text-anchor="middle">ST_ERROR</text>
+<text class="s" x="254" y="446" text-anchor="middle">3'b000</text>
+<text class="si" x="254" y="462" text-anchor="middle">busy held, no IRQ</text>
+<path class="sigo" d="M225,188 L225,206.0"/>
+<text class="s" x="217" y="196" text-anchor="end">reset</text>
+<path class="sigo" d="M315,128 L315,206.0"/>
+<text class="s" x="323" y="178" text-anchor="start">start, DEST_ADDR, SIZE</text>
+<path class="sigo" d="M350.0,240 L475.0,240"/>
+<text class="s" x="415" y="213.5" text-anchor="middle">CTRL_STATUS</text>
+<text class="s" x="415" y="228.5" text-anchor="middle">write, SIZE != 0</text>
+<text class="s" x="415" y="259.5" text-anchor="middle">latch DEST_ADDR</text>
+<text class="s" x="415" y="274.5" text-anchor="middle">and SIZE</text>
+<path class="sigo" d="M600,269.0 L600,358.0"/>
+<text class="s" x="560" y="320" text-anchor="middle">AWREADY</text>
+<path class="sigo" d="M520,363.0 L520,274.0"/>
+<text class="s" x="512" y="312" text-anchor="end">last beat,</text>
+<text class="s" x="512" y="328" text-anchor="end">bytes remain</text>
+<path class="sigo" d="M480.0,400 L340,400 L340,274.0"/>
+<text class="s" x="410" y="420" text-anchor="middle">last beat,</text>
+<text class="s" x="410" y="436" text-anchor="middle">no bytes remain</text>
+<path class="sigo" d="M254.0,372 L254.0,407"/>
+<text class="s" x="254" y="350" text-anchor="middle">illegal</text>
+<text class="s" x="254" y="366" text-anchor="middle">encoding</text>
+<rect class="core" x="690" y="186" width="150" height="108" rx="6"/>
+<text class="bs" x="765" y="211" text-anchor="middle">AW</text>
+<text class="s" x="765" y="228" text-anchor="middle">aligned address</text>
+<text class="s" x="765" y="245" text-anchor="middle">up to 256 beats</text>
+<text class="s" x="765" y="262" text-anchor="middle">no 4 KiB crossing</text>
+<text class="s" x="765" y="279" text-anchor="middle">8-byte INCR, ID 0</text>
+<path class="sigo" d="M640.0,240 L685,240"/>
+<rect class="core" x="690" y="354" width="150" height="76" rx="6"/>
+<text class="bs" x="765" y="380" text-anchor="middle">W</text>
+<text class="s" x="765" y="397" text-anchor="middle">data 0, strobes</text>
+<text class="s" x="765" y="414" text-anchor="middle">WLAST, final beat</text>
+<path class="sigo" d="M640.0,392 L685,392"/>
+<rect class="core" x="690" y="448" width="150" height="58" rx="6"/>
+<text class="bs" x="765" y="466" text-anchor="middle">B</text>
+<text class="s" x="765" y="482" text-anchor="middle">BREADY = 1</text>
+<text class="s" x="765" y="498" text-anchor="middle">BRESP not checked</text>
+<rect class="core opt" x="690" y="522" width="150" height="40" rx="6"/>
+<text class="t" x="765" y="547" text-anchor="middle">AR, R tied off</text>
+<path class="axin" d="M858,240 L858,477"/>
+<path class="sigo" d="M840,240 L854,240"/>
+<path class="sigo" d="M840,392 L854,392"/>
+<path class="sigo" d="M858,477 L845,477"/>
+<path class="axi" d="M858,320 L1000,320"/>
+<text class="t" x="884" y="278" text-anchor="start">to u_axi_mux</text>
+<text class="s" x="884" y="344" text-anchor="start">AXI4, address 56,</text>
+<text class="s" x="884" y="360" text-anchor="start">data 64, ID 3</text>
+<rect class="core" x="440" y="512" width="200" height="56" rx="6"/>
+<text class="bs" x="540" y="536" text-anchor="middle">outstanding_reqs</text>
+<text class="s" x="540" y="554" text-anchor="middle">+1 per AW, -1 per B</text>
+<path class="sigo" d="M690,495 L600,495 L600,507"/>
+<rect class="core" x="170" y="512" width="240" height="56" rx="6"/>
+<text class="s" x="290" y="529" text-anchor="middle">busy: not ST_IDLE, start,</text>
+<text class="s" x="290" y="545" text-anchor="middle">or outstanding_reqs != 0</text>
+<text class="s" x="290" y="561" text-anchor="middle">IRQ: busy falls, INT_EN</text>
+<path class="sigo" d="M440,540 L415,540"/>
+<path class="sigo" d="M290,568 L290,630"/>
+<text class="s" x="298" y="626" text-anchor="start">zeroer_busy_o, zeroer_intp_o</text>
+<rect class="network" x="14" y="655" width="36" height="18" rx="3"/>
+<text class="s" x="58" y="668.5" text-anchor="start">Converter</text>
+<rect class="core" x="146.1" y="655" width="36" height="18" rx="4"/>
+<text class="s" x="190.1" y="668.5" text-anchor="start">RTL block, FSM state</text>
+<text class="s" x="384.1" y="668.5" text-anchor="start">Subordinate port</text>
+<text class="s" x="550.5" y="668.5" text-anchor="start">Manager port</text>
+<path class="axi" d="M662.3,664 L704.3,664"/>
+<text class="s" x="715.3" y="668.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M771.9,664 L813.9,664"/>
+<text class="s" x="824.9" y="668.5" text-anchor="start">AXI-Lite</text>
+<path class="sigo" d="M17,692 L59,692"/>
+<text class="s" x="70" y="696.5" text-anchor="start">Transition, channel, clock, signal</text>
+<rect class="core opt" x="330.6" y="683" width="36" height="18" rx="4"/>
+<text class="s" x="374.6" y="696.5" text-anchor="start">Tied off</text>
+<rect class="ps" x="139.0" y="83.0" width="22" height="18" rx="4"/>
+<text class="pst" x="150" y="96.5" text-anchor="middle">S</text>
+<rect class="pm" x="859.0" y="311.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="870" y="324.5" text-anchor="middle">M</text>
+<rect class="ps" x="354.1" y="655.0" width="22" height="18" rx="4"/>
+<text class="pst" x="365.1" y="668.5" text-anchor="middle">S</text>
+<rect class="pm" x="520.5" y="655.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="531.5" y="668.5" text-anchor="middle">M</text>
+</svg>

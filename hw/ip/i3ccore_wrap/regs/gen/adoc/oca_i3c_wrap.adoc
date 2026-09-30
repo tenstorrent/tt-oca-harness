@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-oca_i3c_wrap]
-== Address Map: oca_i3c_wrap
+== OCA I3C Controller Wrapper Address Map
+
+Wrapper address map instantiating the per-controller I3C CSR blocks.
 
 [NOTE]
 ======
@@ -1113,7 +1115,7 @@ reaches termination value.
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `BUS_ENABLE` | RW | 0x0 a| Host Controller Bus Enable
-| 30 | `RESUME` | RW | 0x0 a| Host Controller Resume:
+| 30 | `RESUME` | RW1C | 0x0 a| Host Controller Resume:
 
 0 - Controller is running
 
@@ -1290,11 +1292,11 @@ all other reserved.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
-| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW | 0x0 a| Scheduled commands could be executed due to controller being busy.
-| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW | 0x0 a| Command timeout after prolonged stall.
-| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW | 0x0 a| Clock stalled due to lack of commands.
-| 11 | `HC_SEQ_CANCEL_STAT` | RW | 0x0 a| Controller had to cancel command sequence.
-| 10 | `HC_INTERNAL_ERR_STAT` | RW | 0x0 a| Controller internal unrecoverable error.
+| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW1C | 0x0 a| Scheduled commands could be executed due to controller being busy.
+| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW1C | 0x0 a| Command timeout after prolonged stall.
+| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW1C | 0x0 a| Clock stalled due to lack of commands.
+| 11 | `HC_SEQ_CANCEL_STAT` | RW1C | 0x0 a| Controller had to cancel command sequence.
+| 10 | `HC_INTERNAL_ERR_STAT` | RW1C | 0x0 a| Controller internal unrecoverable error.
 | 9:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -1620,9 +1622,9 @@ ALT_RESP_QUEUE_SIZE contains response queue size
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9 | `TRANSFER_ERR_STAT` | RW | 0x0 a| Transfer error
+| 9 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| Transfer error
 | 8:6 | `Reserved` | - | - a| Reserved
-| 5 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| Transfer aborted
+| 5 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| Transfer aborted
 | 4 | `RESP_READY_STAT` | R | 0x0 a| Response queue fulfils RESP_BUF_THLD
 | 3 | `CMD_QUEUE_READY_STAT` | R | 0x0 a| Command queue fulfils CMD_EMPTY_BUF_THLD
 | 2 | `IBI_STATUS_THLD_STAT` | R | 0x0 a| IBI queue fulfils IBI_STATUS_THLD
@@ -1909,7 +1911,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0x13-0x7F: Reserved
 
 * 0x80-0xFF: Vendor Unique Boot Failure Codes
-| 15:8 | `PROT_ERROR` | RW | 0x0 a| * 0x0: No Protocol Error
+| 15:8 | `PROT_ERROR` | RW RC | 0x0 a| * 0x0: No Protocol Error
 
 * 0x1: Unsupported/Write Command - command is not support or a write to a RO command
 
@@ -1973,7 +1975,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0xF: Enter recovery mode on next platform reset
 
 * 0x10-FF: Reserved
-| 7:0 | `RESET_CTRL` | RW | 0x0 a| * 0x0: No reset
+| 7:0 | `RESET_CTRL` | RW1C | 0x0 a| * 0x0: No reset
 
 * 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)
 
@@ -1989,7 +1991,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:16 | `ACTIVATE_REC_IMG` | RW | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
+| 23:16 | `ACTIVATE_REC_IMG` | RW1C | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
 
 * 0xF: Activate recovery image
 
@@ -2233,7 +2235,7 @@ The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also 
 | 7:6 | `Reserved` | - | - a| Reserved
 | 5 | `CR_REQUEST_SEND` | W | 0x0 a| Write of 1'b1 to this field shall instruct the Secondary Controller Logic
 to attempt to send a Controller Role Request to the I3C Bus.
-| 4 | `HANDOFF_DEEP_SLEEP` | RW | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
+| 4 | `HANDOFF_DEEP_SLEEP` | RW WS | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
 report a return from Deep Sleep state to the Active Controller.
 Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
 after accepting the Controller Role and transitioning to Active Controller mode.
@@ -2653,7 +2655,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `IBI_RETRY_CTR_RST` | W | 0x0 a| TTI IBI Retry Counter Software Reset
+| 6 | `IBI_RETRY_CTR_RST` | W 1P | 0x0 a| TTI IBI Retry Counter Software Reset
 | 5 | `IBI_QUEUE_RST` | RW | 0x0 a| TTI IBI Queue Buffer Software Reset
 | 4 | `RX_DATA_RST` | RW | 0x0 a| TTI RX Data Queue Buffer Software Reset
 | 3 | `TX_DATA_RST` | RW | 0x0 a| TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.
@@ -2719,25 +2721,25 @@ of the next GETSTATUS command.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `TRANSFER_ERR_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 31 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 30:27 | `Reserved` | - | - a| Reserved
-| 26 | `TX_DESC_COMPLETE` | RW | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 25 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 26 | `TX_DESC_COMPLETE` | RW1C | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 25 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 24:21 | `Reserved` | - | - a| Reserved
 | 20 | `PENDING_IBI` | R | 0x0 a| At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).
 | 19:16 | `PENDING_INTERRUPT` | RW | 0x0 a| Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.
 | 15:14 | `Reserved` | - | - a| Reserved
-| 13 | `IBI_DONE` | RW | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 12 | `IBI_THLD_STAT` | RW | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 11 | `RX_DESC_THLD_STAT` | RW | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 10 | `TX_DESC_THLD_STAT` | RW | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 9 | `RX_DATA_THLD_STAT` | RW | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 8 | `TX_DATA_THLD_STAT` | RW | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 13 | `IBI_DONE` | RW1C | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 12 | `IBI_THLD_STAT` | RW1C | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 11 | `RX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 10 | `TX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 9 | `RX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 8 | `TX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 7:4 | `Reserved` | - | - a| Reserved
-| 3 | `TX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 2 | `RX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 1 | `TX_DESC_STAT` | RW | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
-| 0 | `RX_DESC_STAT` | RW | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 3 | `TX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 2 | `RX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 1 | `TX_DESC_STAT` | RW1C | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
+| 0 | `RX_DESC_STAT` | RW1C | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-0-I3C_EC-TTI-INTERRUPT_ENABLE]
@@ -2817,19 +2819,19 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
-| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface RX FIFO overflow error detected
-| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW | 0x0 a| Recovery Interface unsupported command error detected
-| 10 | `RI_READONLY_ERR_STAT` | RW | 0x0 a| Recovery Interface write-to-read-only error detected
-| 9 | `RI_LENGTH_ERR_STAT` | RW | 0x0 a| Recovery Interface length mismatch error detected
-| 8 | `RI_PEC_ERR_STAT` | RW | 0x0 a| Recovery Interface PEC/CRC error detected
-| 7 | `FRAMING_ERR_STAT` | RW | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
-| 6 | `TE5_ERR_STAT` | RW | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
-| 5 | `TE4_ERR_STAT` | RW | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
-| 4 | `TE3_ERR_STAT` | RW | 0x0 a| TE3: ENTDAA PID mismatch
-| 3 | `TE2_ERR_STAT` | RW | 0x0 a| TE2: CCC or Private Write data parity error
-| 2 | `TE1_ERR_STAT` | RW | 0x0 a| TE1: CCC command parity error
-| 1 | `TE0_ERR_STAT` | RW | 0x0 a| TE0: Invalid reserved address + RnW combination
+| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
+| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface RX FIFO overflow error detected
+| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW1C | 0x0 a| Recovery Interface unsupported command error detected
+| 10 | `RI_READONLY_ERR_STAT` | RW1C | 0x0 a| Recovery Interface write-to-read-only error detected
+| 9 | `RI_LENGTH_ERR_STAT` | RW1C | 0x0 a| Recovery Interface length mismatch error detected
+| 8 | `RI_PEC_ERR_STAT` | RW1C | 0x0 a| Recovery Interface PEC/CRC error detected
+| 7 | `FRAMING_ERR_STAT` | RW1C | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
+| 6 | `TE5_ERR_STAT` | RW1C | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
+| 5 | `TE4_ERR_STAT` | RW1C | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
+| 4 | `TE3_ERR_STAT` | RW1C | 0x0 a| TE3: ENTDAA PID mismatch
+| 3 | `TE2_ERR_STAT` | RW1C | 0x0 a| TE2: CCC or Private Write data parity error
+| 2 | `TE1_ERR_STAT` | RW1C | 0x0 a| TE1: CCC command parity error
+| 1 | `TE0_ERR_STAT` | RW1C | 0x0 a| TE0: Invalid reserved address + RnW combination
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -3621,7 +3623,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `BUS_ENABLE` | RW | 0x0 a| Host Controller Bus Enable
-| 30 | `RESUME` | RW | 0x0 a| Host Controller Resume:
+| 30 | `RESUME` | RW1C | 0x0 a| Host Controller Resume:
 
 0 - Controller is running
 
@@ -3798,11 +3800,11 @@ all other reserved.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
-| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW | 0x0 a| Scheduled commands could be executed due to controller being busy.
-| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW | 0x0 a| Command timeout after prolonged stall.
-| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW | 0x0 a| Clock stalled due to lack of commands.
-| 11 | `HC_SEQ_CANCEL_STAT` | RW | 0x0 a| Controller had to cancel command sequence.
-| 10 | `HC_INTERNAL_ERR_STAT` | RW | 0x0 a| Controller internal unrecoverable error.
+| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW1C | 0x0 a| Scheduled commands could be executed due to controller being busy.
+| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW1C | 0x0 a| Command timeout after prolonged stall.
+| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW1C | 0x0 a| Clock stalled due to lack of commands.
+| 11 | `HC_SEQ_CANCEL_STAT` | RW1C | 0x0 a| Controller had to cancel command sequence.
+| 10 | `HC_INTERNAL_ERR_STAT` | RW1C | 0x0 a| Controller internal unrecoverable error.
 | 9:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -4128,9 +4130,9 @@ ALT_RESP_QUEUE_SIZE contains response queue size
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9 | `TRANSFER_ERR_STAT` | RW | 0x0 a| Transfer error
+| 9 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| Transfer error
 | 8:6 | `Reserved` | - | - a| Reserved
-| 5 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| Transfer aborted
+| 5 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| Transfer aborted
 | 4 | `RESP_READY_STAT` | R | 0x0 a| Response queue fulfils RESP_BUF_THLD
 | 3 | `CMD_QUEUE_READY_STAT` | R | 0x0 a| Command queue fulfils CMD_EMPTY_BUF_THLD
 | 2 | `IBI_STATUS_THLD_STAT` | R | 0x0 a| IBI queue fulfils IBI_STATUS_THLD
@@ -4417,7 +4419,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0x13-0x7F: Reserved
 
 * 0x80-0xFF: Vendor Unique Boot Failure Codes
-| 15:8 | `PROT_ERROR` | RW | 0x0 a| * 0x0: No Protocol Error
+| 15:8 | `PROT_ERROR` | RW RC | 0x0 a| * 0x0: No Protocol Error
 
 * 0x1: Unsupported/Write Command - command is not support or a write to a RO command
 
@@ -4481,7 +4483,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0xF: Enter recovery mode on next platform reset
 
 * 0x10-FF: Reserved
-| 7:0 | `RESET_CTRL` | RW | 0x0 a| * 0x0: No reset
+| 7:0 | `RESET_CTRL` | RW1C | 0x0 a| * 0x0: No reset
 
 * 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)
 
@@ -4497,7 +4499,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:16 | `ACTIVATE_REC_IMG` | RW | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
+| 23:16 | `ACTIVATE_REC_IMG` | RW1C | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
 
 * 0xF: Activate recovery image
 
@@ -4741,7 +4743,7 @@ The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also 
 | 7:6 | `Reserved` | - | - a| Reserved
 | 5 | `CR_REQUEST_SEND` | W | 0x0 a| Write of 1'b1 to this field shall instruct the Secondary Controller Logic
 to attempt to send a Controller Role Request to the I3C Bus.
-| 4 | `HANDOFF_DEEP_SLEEP` | RW | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
+| 4 | `HANDOFF_DEEP_SLEEP` | RW WS | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
 report a return from Deep Sleep state to the Active Controller.
 Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
 after accepting the Controller Role and transitioning to Active Controller mode.
@@ -5161,7 +5163,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `IBI_RETRY_CTR_RST` | W | 0x0 a| TTI IBI Retry Counter Software Reset
+| 6 | `IBI_RETRY_CTR_RST` | W 1P | 0x0 a| TTI IBI Retry Counter Software Reset
 | 5 | `IBI_QUEUE_RST` | RW | 0x0 a| TTI IBI Queue Buffer Software Reset
 | 4 | `RX_DATA_RST` | RW | 0x0 a| TTI RX Data Queue Buffer Software Reset
 | 3 | `TX_DATA_RST` | RW | 0x0 a| TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.
@@ -5227,25 +5229,25 @@ of the next GETSTATUS command.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `TRANSFER_ERR_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 31 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 30:27 | `Reserved` | - | - a| Reserved
-| 26 | `TX_DESC_COMPLETE` | RW | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 25 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 26 | `TX_DESC_COMPLETE` | RW1C | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 25 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 24:21 | `Reserved` | - | - a| Reserved
 | 20 | `PENDING_IBI` | R | 0x0 a| At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).
 | 19:16 | `PENDING_INTERRUPT` | RW | 0x0 a| Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.
 | 15:14 | `Reserved` | - | - a| Reserved
-| 13 | `IBI_DONE` | RW | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 12 | `IBI_THLD_STAT` | RW | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 11 | `RX_DESC_THLD_STAT` | RW | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 10 | `TX_DESC_THLD_STAT` | RW | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 9 | `RX_DATA_THLD_STAT` | RW | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 8 | `TX_DATA_THLD_STAT` | RW | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 13 | `IBI_DONE` | RW1C | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 12 | `IBI_THLD_STAT` | RW1C | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 11 | `RX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 10 | `TX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 9 | `RX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 8 | `TX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 7:4 | `Reserved` | - | - a| Reserved
-| 3 | `TX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 2 | `RX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 1 | `TX_DESC_STAT` | RW | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
-| 0 | `RX_DESC_STAT` | RW | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 3 | `TX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 2 | `RX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 1 | `TX_DESC_STAT` | RW1C | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
+| 0 | `RX_DESC_STAT` | RW1C | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-1-I3C_EC-TTI-INTERRUPT_ENABLE]
@@ -5325,19 +5327,19 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
-| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface RX FIFO overflow error detected
-| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW | 0x0 a| Recovery Interface unsupported command error detected
-| 10 | `RI_READONLY_ERR_STAT` | RW | 0x0 a| Recovery Interface write-to-read-only error detected
-| 9 | `RI_LENGTH_ERR_STAT` | RW | 0x0 a| Recovery Interface length mismatch error detected
-| 8 | `RI_PEC_ERR_STAT` | RW | 0x0 a| Recovery Interface PEC/CRC error detected
-| 7 | `FRAMING_ERR_STAT` | RW | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
-| 6 | `TE5_ERR_STAT` | RW | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
-| 5 | `TE4_ERR_STAT` | RW | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
-| 4 | `TE3_ERR_STAT` | RW | 0x0 a| TE3: ENTDAA PID mismatch
-| 3 | `TE2_ERR_STAT` | RW | 0x0 a| TE2: CCC or Private Write data parity error
-| 2 | `TE1_ERR_STAT` | RW | 0x0 a| TE1: CCC command parity error
-| 1 | `TE0_ERR_STAT` | RW | 0x0 a| TE0: Invalid reserved address + RnW combination
+| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
+| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface RX FIFO overflow error detected
+| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW1C | 0x0 a| Recovery Interface unsupported command error detected
+| 10 | `RI_READONLY_ERR_STAT` | RW1C | 0x0 a| Recovery Interface write-to-read-only error detected
+| 9 | `RI_LENGTH_ERR_STAT` | RW1C | 0x0 a| Recovery Interface length mismatch error detected
+| 8 | `RI_PEC_ERR_STAT` | RW1C | 0x0 a| Recovery Interface PEC/CRC error detected
+| 7 | `FRAMING_ERR_STAT` | RW1C | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
+| 6 | `TE5_ERR_STAT` | RW1C | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
+| 5 | `TE4_ERR_STAT` | RW1C | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
+| 4 | `TE3_ERR_STAT` | RW1C | 0x0 a| TE3: ENTDAA PID mismatch
+| 3 | `TE2_ERR_STAT` | RW1C | 0x0 a| TE2: CCC or Private Write data parity error
+| 2 | `TE1_ERR_STAT` | RW1C | 0x0 a| TE1: CCC command parity error
+| 1 | `TE0_ERR_STAT` | RW1C | 0x0 a| TE0: Invalid reserved address + RnW combination
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -6129,7 +6131,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `BUS_ENABLE` | RW | 0x0 a| Host Controller Bus Enable
-| 30 | `RESUME` | RW | 0x0 a| Host Controller Resume:
+| 30 | `RESUME` | RW1C | 0x0 a| Host Controller Resume:
 
 0 - Controller is running
 
@@ -6306,11 +6308,11 @@ all other reserved.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
-| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW | 0x0 a| Scheduled commands could be executed due to controller being busy.
-| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW | 0x0 a| Command timeout after prolonged stall.
-| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW | 0x0 a| Clock stalled due to lack of commands.
-| 11 | `HC_SEQ_CANCEL_STAT` | RW | 0x0 a| Controller had to cancel command sequence.
-| 10 | `HC_INTERNAL_ERR_STAT` | RW | 0x0 a| Controller internal unrecoverable error.
+| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW1C | 0x0 a| Scheduled commands could be executed due to controller being busy.
+| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW1C | 0x0 a| Command timeout after prolonged stall.
+| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW1C | 0x0 a| Clock stalled due to lack of commands.
+| 11 | `HC_SEQ_CANCEL_STAT` | RW1C | 0x0 a| Controller had to cancel command sequence.
+| 10 | `HC_INTERNAL_ERR_STAT` | RW1C | 0x0 a| Controller internal unrecoverable error.
 | 9:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -6636,9 +6638,9 @@ ALT_RESP_QUEUE_SIZE contains response queue size
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9 | `TRANSFER_ERR_STAT` | RW | 0x0 a| Transfer error
+| 9 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| Transfer error
 | 8:6 | `Reserved` | - | - a| Reserved
-| 5 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| Transfer aborted
+| 5 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| Transfer aborted
 | 4 | `RESP_READY_STAT` | R | 0x0 a| Response queue fulfils RESP_BUF_THLD
 | 3 | `CMD_QUEUE_READY_STAT` | R | 0x0 a| Command queue fulfils CMD_EMPTY_BUF_THLD
 | 2 | `IBI_STATUS_THLD_STAT` | R | 0x0 a| IBI queue fulfils IBI_STATUS_THLD
@@ -6925,7 +6927,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0x13-0x7F: Reserved
 
 * 0x80-0xFF: Vendor Unique Boot Failure Codes
-| 15:8 | `PROT_ERROR` | RW | 0x0 a| * 0x0: No Protocol Error
+| 15:8 | `PROT_ERROR` | RW RC | 0x0 a| * 0x0: No Protocol Error
 
 * 0x1: Unsupported/Write Command - command is not support or a write to a RO command
 
@@ -6989,7 +6991,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0xF: Enter recovery mode on next platform reset
 
 * 0x10-FF: Reserved
-| 7:0 | `RESET_CTRL` | RW | 0x0 a| * 0x0: No reset
+| 7:0 | `RESET_CTRL` | RW1C | 0x0 a| * 0x0: No reset
 
 * 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)
 
@@ -7005,7 +7007,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:16 | `ACTIVATE_REC_IMG` | RW | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
+| 23:16 | `ACTIVATE_REC_IMG` | RW1C | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
 
 * 0xF: Activate recovery image
 
@@ -7249,7 +7251,7 @@ The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also 
 | 7:6 | `Reserved` | - | - a| Reserved
 | 5 | `CR_REQUEST_SEND` | W | 0x0 a| Write of 1'b1 to this field shall instruct the Secondary Controller Logic
 to attempt to send a Controller Role Request to the I3C Bus.
-| 4 | `HANDOFF_DEEP_SLEEP` | RW | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
+| 4 | `HANDOFF_DEEP_SLEEP` | RW WS | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
 report a return from Deep Sleep state to the Active Controller.
 Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
 after accepting the Controller Role and transitioning to Active Controller mode.
@@ -7669,7 +7671,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `IBI_RETRY_CTR_RST` | W | 0x0 a| TTI IBI Retry Counter Software Reset
+| 6 | `IBI_RETRY_CTR_RST` | W 1P | 0x0 a| TTI IBI Retry Counter Software Reset
 | 5 | `IBI_QUEUE_RST` | RW | 0x0 a| TTI IBI Queue Buffer Software Reset
 | 4 | `RX_DATA_RST` | RW | 0x0 a| TTI RX Data Queue Buffer Software Reset
 | 3 | `TX_DATA_RST` | RW | 0x0 a| TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.
@@ -7735,25 +7737,25 @@ of the next GETSTATUS command.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `TRANSFER_ERR_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 31 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 30:27 | `Reserved` | - | - a| Reserved
-| 26 | `TX_DESC_COMPLETE` | RW | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 25 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 26 | `TX_DESC_COMPLETE` | RW1C | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 25 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 24:21 | `Reserved` | - | - a| Reserved
 | 20 | `PENDING_IBI` | R | 0x0 a| At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).
 | 19:16 | `PENDING_INTERRUPT` | RW | 0x0 a| Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.
 | 15:14 | `Reserved` | - | - a| Reserved
-| 13 | `IBI_DONE` | RW | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 12 | `IBI_THLD_STAT` | RW | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 11 | `RX_DESC_THLD_STAT` | RW | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 10 | `TX_DESC_THLD_STAT` | RW | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 9 | `RX_DATA_THLD_STAT` | RW | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 8 | `TX_DATA_THLD_STAT` | RW | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 13 | `IBI_DONE` | RW1C | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 12 | `IBI_THLD_STAT` | RW1C | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 11 | `RX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 10 | `TX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 9 | `RX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 8 | `TX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 7:4 | `Reserved` | - | - a| Reserved
-| 3 | `TX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 2 | `RX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 1 | `TX_DESC_STAT` | RW | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
-| 0 | `RX_DESC_STAT` | RW | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 3 | `TX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 2 | `RX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 1 | `TX_DESC_STAT` | RW1C | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
+| 0 | `RX_DESC_STAT` | RW1C | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-2-I3C_EC-TTI-INTERRUPT_ENABLE]
@@ -7833,19 +7835,19 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
-| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface RX FIFO overflow error detected
-| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW | 0x0 a| Recovery Interface unsupported command error detected
-| 10 | `RI_READONLY_ERR_STAT` | RW | 0x0 a| Recovery Interface write-to-read-only error detected
-| 9 | `RI_LENGTH_ERR_STAT` | RW | 0x0 a| Recovery Interface length mismatch error detected
-| 8 | `RI_PEC_ERR_STAT` | RW | 0x0 a| Recovery Interface PEC/CRC error detected
-| 7 | `FRAMING_ERR_STAT` | RW | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
-| 6 | `TE5_ERR_STAT` | RW | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
-| 5 | `TE4_ERR_STAT` | RW | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
-| 4 | `TE3_ERR_STAT` | RW | 0x0 a| TE3: ENTDAA PID mismatch
-| 3 | `TE2_ERR_STAT` | RW | 0x0 a| TE2: CCC or Private Write data parity error
-| 2 | `TE1_ERR_STAT` | RW | 0x0 a| TE1: CCC command parity error
-| 1 | `TE0_ERR_STAT` | RW | 0x0 a| TE0: Invalid reserved address + RnW combination
+| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
+| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface RX FIFO overflow error detected
+| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW1C | 0x0 a| Recovery Interface unsupported command error detected
+| 10 | `RI_READONLY_ERR_STAT` | RW1C | 0x0 a| Recovery Interface write-to-read-only error detected
+| 9 | `RI_LENGTH_ERR_STAT` | RW1C | 0x0 a| Recovery Interface length mismatch error detected
+| 8 | `RI_PEC_ERR_STAT` | RW1C | 0x0 a| Recovery Interface PEC/CRC error detected
+| 7 | `FRAMING_ERR_STAT` | RW1C | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
+| 6 | `TE5_ERR_STAT` | RW1C | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
+| 5 | `TE4_ERR_STAT` | RW1C | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
+| 4 | `TE3_ERR_STAT` | RW1C | 0x0 a| TE3: ENTDAA PID mismatch
+| 3 | `TE2_ERR_STAT` | RW1C | 0x0 a| TE2: CCC or Private Write data parity error
+| 2 | `TE1_ERR_STAT` | RW1C | 0x0 a| TE1: CCC command parity error
+| 1 | `TE0_ERR_STAT` | RW1C | 0x0 a| TE0: Invalid reserved address + RnW combination
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -8637,7 +8639,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `BUS_ENABLE` | RW | 0x0 a| Host Controller Bus Enable
-| 30 | `RESUME` | RW | 0x0 a| Host Controller Resume:
+| 30 | `RESUME` | RW1C | 0x0 a| Host Controller Resume:
 
 0 - Controller is running
 
@@ -8814,11 +8816,11 @@ all other reserved.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
-| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW | 0x0 a| Scheduled commands could be executed due to controller being busy.
-| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW | 0x0 a| Command timeout after prolonged stall.
-| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW | 0x0 a| Clock stalled due to lack of commands.
-| 11 | `HC_SEQ_CANCEL_STAT` | RW | 0x0 a| Controller had to cancel command sequence.
-| 10 | `HC_INTERNAL_ERR_STAT` | RW | 0x0 a| Controller internal unrecoverable error.
+| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW1C | 0x0 a| Scheduled commands could be executed due to controller being busy.
+| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW1C | 0x0 a| Command timeout after prolonged stall.
+| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW1C | 0x0 a| Clock stalled due to lack of commands.
+| 11 | `HC_SEQ_CANCEL_STAT` | RW1C | 0x0 a| Controller had to cancel command sequence.
+| 10 | `HC_INTERNAL_ERR_STAT` | RW1C | 0x0 a| Controller internal unrecoverable error.
 | 9:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -9144,9 +9146,9 @@ ALT_RESP_QUEUE_SIZE contains response queue size
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9 | `TRANSFER_ERR_STAT` | RW | 0x0 a| Transfer error
+| 9 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| Transfer error
 | 8:6 | `Reserved` | - | - a| Reserved
-| 5 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| Transfer aborted
+| 5 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| Transfer aborted
 | 4 | `RESP_READY_STAT` | R | 0x0 a| Response queue fulfils RESP_BUF_THLD
 | 3 | `CMD_QUEUE_READY_STAT` | R | 0x0 a| Command queue fulfils CMD_EMPTY_BUF_THLD
 | 2 | `IBI_STATUS_THLD_STAT` | R | 0x0 a| IBI queue fulfils IBI_STATUS_THLD
@@ -9433,7 +9435,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0x13-0x7F: Reserved
 
 * 0x80-0xFF: Vendor Unique Boot Failure Codes
-| 15:8 | `PROT_ERROR` | RW | 0x0 a| * 0x0: No Protocol Error
+| 15:8 | `PROT_ERROR` | RW RC | 0x0 a| * 0x0: No Protocol Error
 
 * 0x1: Unsupported/Write Command - command is not support or a write to a RO command
 
@@ -9497,7 +9499,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0xF: Enter recovery mode on next platform reset
 
 * 0x10-FF: Reserved
-| 7:0 | `RESET_CTRL` | RW | 0x0 a| * 0x0: No reset
+| 7:0 | `RESET_CTRL` | RW1C | 0x0 a| * 0x0: No reset
 
 * 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)
 
@@ -9513,7 +9515,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:16 | `ACTIVATE_REC_IMG` | RW | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
+| 23:16 | `ACTIVATE_REC_IMG` | RW1C | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
 
 * 0xF: Activate recovery image
 
@@ -9757,7 +9759,7 @@ The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also 
 | 7:6 | `Reserved` | - | - a| Reserved
 | 5 | `CR_REQUEST_SEND` | W | 0x0 a| Write of 1'b1 to this field shall instruct the Secondary Controller Logic
 to attempt to send a Controller Role Request to the I3C Bus.
-| 4 | `HANDOFF_DEEP_SLEEP` | RW | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
+| 4 | `HANDOFF_DEEP_SLEEP` | RW WS | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
 report a return from Deep Sleep state to the Active Controller.
 Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
 after accepting the Controller Role and transitioning to Active Controller mode.
@@ -10177,7 +10179,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `IBI_RETRY_CTR_RST` | W | 0x0 a| TTI IBI Retry Counter Software Reset
+| 6 | `IBI_RETRY_CTR_RST` | W 1P | 0x0 a| TTI IBI Retry Counter Software Reset
 | 5 | `IBI_QUEUE_RST` | RW | 0x0 a| TTI IBI Queue Buffer Software Reset
 | 4 | `RX_DATA_RST` | RW | 0x0 a| TTI RX Data Queue Buffer Software Reset
 | 3 | `TX_DATA_RST` | RW | 0x0 a| TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.
@@ -10243,25 +10245,25 @@ of the next GETSTATUS command.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `TRANSFER_ERR_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 31 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 30:27 | `Reserved` | - | - a| Reserved
-| 26 | `TX_DESC_COMPLETE` | RW | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 25 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 26 | `TX_DESC_COMPLETE` | RW1C | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 25 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 24:21 | `Reserved` | - | - a| Reserved
 | 20 | `PENDING_IBI` | R | 0x0 a| At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).
 | 19:16 | `PENDING_INTERRUPT` | RW | 0x0 a| Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.
 | 15:14 | `Reserved` | - | - a| Reserved
-| 13 | `IBI_DONE` | RW | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 12 | `IBI_THLD_STAT` | RW | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 11 | `RX_DESC_THLD_STAT` | RW | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 10 | `TX_DESC_THLD_STAT` | RW | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 9 | `RX_DATA_THLD_STAT` | RW | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 8 | `TX_DATA_THLD_STAT` | RW | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 13 | `IBI_DONE` | RW1C | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 12 | `IBI_THLD_STAT` | RW1C | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 11 | `RX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 10 | `TX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 9 | `RX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 8 | `TX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 7:4 | `Reserved` | - | - a| Reserved
-| 3 | `TX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 2 | `RX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 1 | `TX_DESC_STAT` | RW | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
-| 0 | `RX_DESC_STAT` | RW | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 3 | `TX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 2 | `RX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 1 | `TX_DESC_STAT` | RW1C | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
+| 0 | `RX_DESC_STAT` | RW1C | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-3-I3C_EC-TTI-INTERRUPT_ENABLE]
@@ -10341,19 +10343,19 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
-| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface RX FIFO overflow error detected
-| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW | 0x0 a| Recovery Interface unsupported command error detected
-| 10 | `RI_READONLY_ERR_STAT` | RW | 0x0 a| Recovery Interface write-to-read-only error detected
-| 9 | `RI_LENGTH_ERR_STAT` | RW | 0x0 a| Recovery Interface length mismatch error detected
-| 8 | `RI_PEC_ERR_STAT` | RW | 0x0 a| Recovery Interface PEC/CRC error detected
-| 7 | `FRAMING_ERR_STAT` | RW | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
-| 6 | `TE5_ERR_STAT` | RW | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
-| 5 | `TE4_ERR_STAT` | RW | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
-| 4 | `TE3_ERR_STAT` | RW | 0x0 a| TE3: ENTDAA PID mismatch
-| 3 | `TE2_ERR_STAT` | RW | 0x0 a| TE2: CCC or Private Write data parity error
-| 2 | `TE1_ERR_STAT` | RW | 0x0 a| TE1: CCC command parity error
-| 1 | `TE0_ERR_STAT` | RW | 0x0 a| TE0: Invalid reserved address + RnW combination
+| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
+| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface RX FIFO overflow error detected
+| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW1C | 0x0 a| Recovery Interface unsupported command error detected
+| 10 | `RI_READONLY_ERR_STAT` | RW1C | 0x0 a| Recovery Interface write-to-read-only error detected
+| 9 | `RI_LENGTH_ERR_STAT` | RW1C | 0x0 a| Recovery Interface length mismatch error detected
+| 8 | `RI_PEC_ERR_STAT` | RW1C | 0x0 a| Recovery Interface PEC/CRC error detected
+| 7 | `FRAMING_ERR_STAT` | RW1C | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
+| 6 | `TE5_ERR_STAT` | RW1C | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
+| 5 | `TE4_ERR_STAT` | RW1C | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
+| 4 | `TE3_ERR_STAT` | RW1C | 0x0 a| TE3: ENTDAA PID mismatch
+| 3 | `TE2_ERR_STAT` | RW1C | 0x0 a| TE2: CCC or Private Write data parity error
+| 2 | `TE1_ERR_STAT` | RW1C | 0x0 a| TE1: CCC command parity error
+| 1 | `TE0_ERR_STAT` | RW1C | 0x0 a| TE0: Invalid reserved address + RnW combination
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -11145,7 +11147,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `BUS_ENABLE` | RW | 0x0 a| Host Controller Bus Enable
-| 30 | `RESUME` | RW | 0x0 a| Host Controller Resume:
+| 30 | `RESUME` | RW1C | 0x0 a| Host Controller Resume:
 
 0 - Controller is running
 
@@ -11322,11 +11324,11 @@ all other reserved.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
-| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW | 0x0 a| Scheduled commands could be executed due to controller being busy.
-| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW | 0x0 a| Command timeout after prolonged stall.
-| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW | 0x0 a| Clock stalled due to lack of commands.
-| 11 | `HC_SEQ_CANCEL_STAT` | RW | 0x0 a| Controller had to cancel command sequence.
-| 10 | `HC_INTERNAL_ERR_STAT` | RW | 0x0 a| Controller internal unrecoverable error.
+| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW1C | 0x0 a| Scheduled commands could be executed due to controller being busy.
+| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW1C | 0x0 a| Command timeout after prolonged stall.
+| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW1C | 0x0 a| Clock stalled due to lack of commands.
+| 11 | `HC_SEQ_CANCEL_STAT` | RW1C | 0x0 a| Controller had to cancel command sequence.
+| 10 | `HC_INTERNAL_ERR_STAT` | RW1C | 0x0 a| Controller internal unrecoverable error.
 | 9:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -11652,9 +11654,9 @@ ALT_RESP_QUEUE_SIZE contains response queue size
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9 | `TRANSFER_ERR_STAT` | RW | 0x0 a| Transfer error
+| 9 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| Transfer error
 | 8:6 | `Reserved` | - | - a| Reserved
-| 5 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| Transfer aborted
+| 5 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| Transfer aborted
 | 4 | `RESP_READY_STAT` | R | 0x0 a| Response queue fulfils RESP_BUF_THLD
 | 3 | `CMD_QUEUE_READY_STAT` | R | 0x0 a| Command queue fulfils CMD_EMPTY_BUF_THLD
 | 2 | `IBI_STATUS_THLD_STAT` | R | 0x0 a| IBI queue fulfils IBI_STATUS_THLD
@@ -11941,7 +11943,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0x13-0x7F: Reserved
 
 * 0x80-0xFF: Vendor Unique Boot Failure Codes
-| 15:8 | `PROT_ERROR` | RW | 0x0 a| * 0x0: No Protocol Error
+| 15:8 | `PROT_ERROR` | RW RC | 0x0 a| * 0x0: No Protocol Error
 
 * 0x1: Unsupported/Write Command - command is not support or a write to a RO command
 
@@ -12005,7 +12007,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0xF: Enter recovery mode on next platform reset
 
 * 0x10-FF: Reserved
-| 7:0 | `RESET_CTRL` | RW | 0x0 a| * 0x0: No reset
+| 7:0 | `RESET_CTRL` | RW1C | 0x0 a| * 0x0: No reset
 
 * 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)
 
@@ -12021,7 +12023,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:16 | `ACTIVATE_REC_IMG` | RW | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
+| 23:16 | `ACTIVATE_REC_IMG` | RW1C | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
 
 * 0xF: Activate recovery image
 
@@ -12265,7 +12267,7 @@ The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also 
 | 7:6 | `Reserved` | - | - a| Reserved
 | 5 | `CR_REQUEST_SEND` | W | 0x0 a| Write of 1'b1 to this field shall instruct the Secondary Controller Logic
 to attempt to send a Controller Role Request to the I3C Bus.
-| 4 | `HANDOFF_DEEP_SLEEP` | RW | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
+| 4 | `HANDOFF_DEEP_SLEEP` | RW WS | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
 report a return from Deep Sleep state to the Active Controller.
 Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
 after accepting the Controller Role and transitioning to Active Controller mode.
@@ -12685,7 +12687,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `IBI_RETRY_CTR_RST` | W | 0x0 a| TTI IBI Retry Counter Software Reset
+| 6 | `IBI_RETRY_CTR_RST` | W 1P | 0x0 a| TTI IBI Retry Counter Software Reset
 | 5 | `IBI_QUEUE_RST` | RW | 0x0 a| TTI IBI Queue Buffer Software Reset
 | 4 | `RX_DATA_RST` | RW | 0x0 a| TTI RX Data Queue Buffer Software Reset
 | 3 | `TX_DATA_RST` | RW | 0x0 a| TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.
@@ -12751,25 +12753,25 @@ of the next GETSTATUS command.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `TRANSFER_ERR_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 31 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 30:27 | `Reserved` | - | - a| Reserved
-| 26 | `TX_DESC_COMPLETE` | RW | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 25 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 26 | `TX_DESC_COMPLETE` | RW1C | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 25 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 24:21 | `Reserved` | - | - a| Reserved
 | 20 | `PENDING_IBI` | R | 0x0 a| At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).
 | 19:16 | `PENDING_INTERRUPT` | RW | 0x0 a| Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.
 | 15:14 | `Reserved` | - | - a| Reserved
-| 13 | `IBI_DONE` | RW | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 12 | `IBI_THLD_STAT` | RW | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 11 | `RX_DESC_THLD_STAT` | RW | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 10 | `TX_DESC_THLD_STAT` | RW | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 9 | `RX_DATA_THLD_STAT` | RW | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 8 | `TX_DATA_THLD_STAT` | RW | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 13 | `IBI_DONE` | RW1C | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 12 | `IBI_THLD_STAT` | RW1C | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 11 | `RX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 10 | `TX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 9 | `RX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 8 | `TX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 7:4 | `Reserved` | - | - a| Reserved
-| 3 | `TX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 2 | `RX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 1 | `TX_DESC_STAT` | RW | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
-| 0 | `RX_DESC_STAT` | RW | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 3 | `TX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 2 | `RX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 1 | `TX_DESC_STAT` | RW1C | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
+| 0 | `RX_DESC_STAT` | RW1C | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-4-I3C_EC-TTI-INTERRUPT_ENABLE]
@@ -12849,19 +12851,19 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
-| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface RX FIFO overflow error detected
-| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW | 0x0 a| Recovery Interface unsupported command error detected
-| 10 | `RI_READONLY_ERR_STAT` | RW | 0x0 a| Recovery Interface write-to-read-only error detected
-| 9 | `RI_LENGTH_ERR_STAT` | RW | 0x0 a| Recovery Interface length mismatch error detected
-| 8 | `RI_PEC_ERR_STAT` | RW | 0x0 a| Recovery Interface PEC/CRC error detected
-| 7 | `FRAMING_ERR_STAT` | RW | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
-| 6 | `TE5_ERR_STAT` | RW | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
-| 5 | `TE4_ERR_STAT` | RW | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
-| 4 | `TE3_ERR_STAT` | RW | 0x0 a| TE3: ENTDAA PID mismatch
-| 3 | `TE2_ERR_STAT` | RW | 0x0 a| TE2: CCC or Private Write data parity error
-| 2 | `TE1_ERR_STAT` | RW | 0x0 a| TE1: CCC command parity error
-| 1 | `TE0_ERR_STAT` | RW | 0x0 a| TE0: Invalid reserved address + RnW combination
+| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
+| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface RX FIFO overflow error detected
+| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW1C | 0x0 a| Recovery Interface unsupported command error detected
+| 10 | `RI_READONLY_ERR_STAT` | RW1C | 0x0 a| Recovery Interface write-to-read-only error detected
+| 9 | `RI_LENGTH_ERR_STAT` | RW1C | 0x0 a| Recovery Interface length mismatch error detected
+| 8 | `RI_PEC_ERR_STAT` | RW1C | 0x0 a| Recovery Interface PEC/CRC error detected
+| 7 | `FRAMING_ERR_STAT` | RW1C | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
+| 6 | `TE5_ERR_STAT` | RW1C | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
+| 5 | `TE4_ERR_STAT` | RW1C | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
+| 4 | `TE3_ERR_STAT` | RW1C | 0x0 a| TE3: ENTDAA PID mismatch
+| 3 | `TE2_ERR_STAT` | RW1C | 0x0 a| TE2: CCC or Private Write data parity error
+| 2 | `TE1_ERR_STAT` | RW1C | 0x0 a| TE1: CCC command parity error
+| 1 | `TE0_ERR_STAT` | RW1C | 0x0 a| TE0: Invalid reserved address + RnW combination
 | 0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -13653,7 +13655,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31 | `BUS_ENABLE` | RW | 0x0 a| Host Controller Bus Enable
-| 30 | `RESUME` | RW | 0x0 a| Host Controller Resume:
+| 30 | `RESUME` | RW1C | 0x0 a| Host Controller Resume:
 
 0 - Controller is running
 
@@ -13830,11 +13832,11 @@ all other reserved.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:15 | `Reserved` | - | - a| Reserved
-| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW | 0x0 a| Scheduled commands could be executed due to controller being busy.
-| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW | 0x0 a| Command timeout after prolonged stall.
-| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW | 0x0 a| Clock stalled due to lack of commands.
-| 11 | `HC_SEQ_CANCEL_STAT` | RW | 0x0 a| Controller had to cancel command sequence.
-| 10 | `HC_INTERNAL_ERR_STAT` | RW | 0x0 a| Controller internal unrecoverable error.
+| 14 | `SCHED_CMD_MISSED_TICK_STAT` | RW1C | 0x0 a| Scheduled commands could be executed due to controller being busy.
+| 13 | `HC_ERR_CMD_SEQ_TIMEOUT_STAT` | RW1C | 0x0 a| Command timeout after prolonged stall.
+| 12 | `HC_WARN_CMD_SEQ_STALL_STAT` | RW1C | 0x0 a| Clock stalled due to lack of commands.
+| 11 | `HC_SEQ_CANCEL_STAT` | RW1C | 0x0 a| Controller had to cancel command sequence.
+| 10 | `HC_INTERNAL_ERR_STAT` | RW1C | 0x0 a| Controller internal unrecoverable error.
 | 9:0 | `Reserved` | - | - a| Reserved
 |===
 
@@ -14160,9 +14162,9 @@ ALT_RESP_QUEUE_SIZE contains response queue size
 |===
 | Bits | Field | Access | Reset | Description
 | 31:10 | `Reserved` | - | - a| Reserved
-| 9 | `TRANSFER_ERR_STAT` | RW | 0x0 a| Transfer error
+| 9 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| Transfer error
 | 8:6 | `Reserved` | - | - a| Reserved
-| 5 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| Transfer aborted
+| 5 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| Transfer aborted
 | 4 | `RESP_READY_STAT` | R | 0x0 a| Response queue fulfils RESP_BUF_THLD
 | 3 | `CMD_QUEUE_READY_STAT` | R | 0x0 a| Command queue fulfils CMD_EMPTY_BUF_THLD
 | 2 | `IBI_STATUS_THLD_STAT` | R | 0x0 a| IBI queue fulfils IBI_STATUS_THLD
@@ -14449,7 +14451,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0x13-0x7F: Reserved
 
 * 0x80-0xFF: Vendor Unique Boot Failure Codes
-| 15:8 | `PROT_ERROR` | RW | 0x0 a| * 0x0: No Protocol Error
+| 15:8 | `PROT_ERROR` | RW RC | 0x0 a| * 0x0: No Protocol Error
 
 * 0x1: Unsupported/Write Command - command is not support or a write to a RO command
 
@@ -14513,7 +14515,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 * 0xF: Enter recovery mode on next platform reset
 
 * 0x10-FF: Reserved
-| 7:0 | `RESET_CTRL` | RW | 0x0 a| * 0x0: No reset
+| 7:0 | `RESET_CTRL` | RW1C | 0x0 a| * 0x0: No reset
 
 * 0x1: Reset Device (PCIe Fundamental Reset or equivalent. This is likely bus disruptive)
 
@@ -14529,7 +14531,7 @@ When set to 0, it holds execution of enqueued commands and runs current command 
 |===
 | Bits | Field | Access | Reset | Description
 | 31:24 | `Reserved` | - | - a| Reserved
-| 23:16 | `ACTIVATE_REC_IMG` | RW | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
+| 23:16 | `ACTIVATE_REC_IMG` | RW1C | 0x0 a| * 0x0: do not activate recovery image - after activation device will report this code.
 
 * 0xF: Activate recovery image
 
@@ -14773,7 +14775,7 @@ The Ring Bundle must be configured and enabled, and its IBI Ring Pair must also 
 | 7:6 | `Reserved` | - | - a| Reserved
 | 5 | `CR_REQUEST_SEND` | W | 0x0 a| Write of 1'b1 to this field shall instruct the Secondary Controller Logic
 to attempt to send a Controller Role Request to the I3C Bus.
-| 4 | `HANDOFF_DEEP_SLEEP` | RW | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
+| 4 | `HANDOFF_DEEP_SLEEP` | RW WS | 0x0 a| If this field has a value of 1'b1, then the Secondary Controller Logic shall
 report a return from Deep Sleep state to the Active Controller.
 Writing 1'b1 to this bit is sticky. This field shall automatically clear to 1'b0
 after accepting the Controller Role and transitioning to Active Controller mode.
@@ -15193,7 +15195,7 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:7 | `Reserved` | - | - a| Reserved
-| 6 | `IBI_RETRY_CTR_RST` | W | 0x0 a| TTI IBI Retry Counter Software Reset
+| 6 | `IBI_RETRY_CTR_RST` | W 1P | 0x0 a| TTI IBI Retry Counter Software Reset
 | 5 | `IBI_QUEUE_RST` | RW | 0x0 a| TTI IBI Queue Buffer Software Reset
 | 4 | `RX_DATA_RST` | RW | 0x0 a| TTI RX Data Queue Buffer Software Reset
 | 3 | `TX_DATA_RST` | RW | 0x0 a| TTI TX Data Queue Buffer Software Reset. Also resets the tti_conv_Nto8 since first dword is immediately loaded into the converter and can't be cleared otherwise.
@@ -15259,25 +15261,25 @@ of the next GETSTATUS command.
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31 | `TRANSFER_ERR_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 31 | `TRANSFER_ERR_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus error occurred. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 30:27 | `Reserved` | - | - a| Reserved
-| 26 | `TX_DESC_COMPLETE` | RW | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 25 | `TRANSFER_ABORT_STAT` | RW | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 26 | `TX_DESC_COMPLETE` | RW1C | 0x0 a| Read Transaction on the I3C Bus completed. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 25 | `TRANSFER_ABORT_STAT` | RW1C | 0x0 a| NOT IMPLEMENTED. Bus aborted transaction. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 24:21 | `Reserved` | - | - a| Reserved
 | 20 | `PENDING_IBI` | R | 0x0 a| At least one IBI is pending. Read-only, hardware-driven level status: it tracks the live IBI-pending condition and cannot be cleared by software (clears automatically when no IBI is pending).
 | 19:16 | `PENDING_INTERRUPT` | RW | 0x0 a| Contains the interrupt number of any pending interrupt, or 0 if no interrupts are pending. This encoding allows for up to 15 numbered interrupts. If more than one interrupt is set, then the highest priority interrupt shall be returned. Read-only, hardware-driven level status: it cannot be cleared by software and updates as pending conditions change.
 | 15:14 | `Reserved` | - | - a| Reserved
-| 13 | `IBI_DONE` | RW | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 12 | `IBI_THLD_STAT` | RW | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 11 | `RX_DESC_THLD_STAT` | RW | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 10 | `TX_DESC_THLD_STAT` | RW | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 9 | `RX_DATA_THLD_STAT` | RW | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
-| 8 | `TX_DATA_THLD_STAT` | RW | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 13 | `IBI_DONE` | RW1C | 0x0 a| IBI is done, check LAST_IBI_STATUS for result. Clear: auto-cleared by hardware when software reads STATUS.LAST_IBI_STATUS; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 12 | `IBI_THLD_STAT` | RW1C | 0x0 a| TTI IBI Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI IBI Queue is >= the value defined in `TTI_IBI_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 11 | `RX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI RX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI RX Descriptor Queue is >= the value defined in `TTI_RX_DESC_THLD`. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 10 | `TX_DESC_THLD_STAT` | RW1C | 0x0 a| TTI TX Descriptor Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Descriptor Queue is >= the value defined in `TTI_TX_DESC_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 9 | `RX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI RX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of entries in the TTI RX Data Queue is >= the value defined in `TTI_RX_DATA_THLD`. Clear: auto-cleared by hardware when software reads the RX Data Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 8 | `TX_DATA_THLD_STAT` | RW1C | 0x0 a| TTI TX Data Buffer Threshold Status, the Target Controller shall set this bit to 1 when the number of available entries in the TTI TX Data Queue is >= the value defined in `TTI_TX_DATA_THLD`. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
 | 7:4 | `Reserved` | - | - a| Reserved
-| 3 | `TX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 2 | `RX_DESC_TIMEOUT` | RW | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
-| 1 | `TX_DESC_STAT` | RW | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
-| 0 | `RX_DESC_STAT` | RW | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
+| 3 | `TX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Read was NACK’ed, because the `TX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 2 | `RX_DESC_TIMEOUT` | RW1C | 0x0 a| NOT IMPLEMENTED. Pending Write was NACK’ed, because the `RX_DESC_STAT` event was not handled in time. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear).
+| 1 | `TX_DESC_STAT` | RW1C | 0x0 a| There is a pending Read Transaction on the I3C Bus. Software should write data to the TX Descriptor Queue and the TX Data Queue. Clear: write 1 to this bit in INTERRUPT_STATUS (no hardware auto-clear — writing to the TX queues does not clear it).
+| 0 | `RX_DESC_STAT` | RW1C | 0x0 a| There is a pending Write Transaction. Software should read data from the RX Descriptor Queue and the RX Data Queue. Clear: auto-cleared by hardware when software reads the RX Descriptor Queue; writing 1 to this bit in INTERRUPT_STATUS also clears it.
 |===
 
 [#reg-{regmap-instance}-oca_i3c_wrap-i3c_csr-5-I3C_EC-TTI-INTERRUPT_ENABLE]
@@ -15357,19 +15359,19 @@ of the next GETSTATUS command.
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
-| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW | 0x0 a| Recovery Interface RX FIFO overflow error detected
-| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW | 0x0 a| Recovery Interface unsupported command error detected
-| 10 | `RI_READONLY_ERR_STAT` | RW | 0x0 a| Recovery Interface write-to-read-only error detected
-| 9 | `RI_LENGTH_ERR_STAT` | RW | 0x0 a| Recovery Interface length mismatch error detected
-| 8 | `RI_PEC_ERR_STAT` | RW | 0x0 a| Recovery Interface PEC/CRC error detected
-| 7 | `FRAMING_ERR_STAT` | RW | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
-| 6 | `TE5_ERR_STAT` | RW | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
-| 5 | `TE4_ERR_STAT` | RW | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
-| 4 | `TE3_ERR_STAT` | RW | 0x0 a| TE3: ENTDAA PID mismatch
-| 3 | `TE2_ERR_STAT` | RW | 0x0 a| TE2: CCC or Private Write data parity error
-| 2 | `TE1_ERR_STAT` | RW | 0x0 a| TE1: CCC command parity error
-| 1 | `TE0_ERR_STAT` | RW | 0x0 a| TE0: Invalid reserved address + RnW combination
+| 13 | `RI_INDIRECT_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface INDIRECT FIFO overflow error detected
+| 12 | `RI_RX_FIFO_OVERFLOW_ERR_STAT` | RW1C | 0x0 a| Recovery Interface RX FIFO overflow error detected
+| 11 | `RI_UNSUPPORTED_ERR_STAT` | RW1C | 0x0 a| Recovery Interface unsupported command error detected
+| 10 | `RI_READONLY_ERR_STAT` | RW1C | 0x0 a| Recovery Interface write-to-read-only error detected
+| 9 | `RI_LENGTH_ERR_STAT` | RW1C | 0x0 a| Recovery Interface length mismatch error detected
+| 8 | `RI_PEC_ERR_STAT` | RW1C | 0x0 a| Recovery Interface PEC/CRC error detected
+| 7 | `FRAMING_ERR_STAT` | RW1C | 0x0 a| DA padding error (Bit[0] != 0 in SETDASA/SETNEWDA)
+| 6 | `TE5_ERR_STAT` | RW1C | 0x0 a| TE5: Broadcast/Direct CCC wrong R/W direction
+| 5 | `TE4_ERR_STAT` | RW1C | 0x0 a| TE4: ENTDAA BCR/DCR mismatch
+| 4 | `TE3_ERR_STAT` | RW1C | 0x0 a| TE3: ENTDAA PID mismatch
+| 3 | `TE2_ERR_STAT` | RW1C | 0x0 a| TE2: CCC or Private Write data parity error
+| 2 | `TE1_ERR_STAT` | RW1C | 0x0 a| TE1: CCC command parity error
+| 1 | `TE0_ERR_STAT` | RW1C | 0x0 a| TE0: Invalid reserved address + RnW combination
 | 0 | `Reserved` | - | - a| Reserved
 |===
 

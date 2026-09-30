@@ -1,65 +1,162 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-//-------------------------------------------------
-// SMC Reset Unit
+// Generate SMC cold, warm, cool, and domain resets.
 //
-//-------------------------------------------------
+// Combines powergood, the external cold reset, the cool-reset pin, the FLR cool reset, the
+// watchdogs and the fuse reset into primary, warm and watchdog resets synchronized to the
+// SMC, reference and peripheral clocks. Exposes FLR isolation, memory-repair skip, and the
+// cool reset distributed to other chiplets.
+// Drives the per-subsystem reset controls and the sync IRQ from the reset-unit registers.
+// JTAG overrides the fuse, cold, cool, warm and per-subsystem resets; test_en_i
+// substitutes scan_rst_ni for the synchronized resets.
 
 module smc_reset_unit (
 
-  input  logic                                   clk_ref_i,
-  input  logic                                   clk_smc_i,
-  input  logic                                   clk_periph_i,
+  input  logic                                   clk_ref_i,  // Reference clock for the powergood
+                                                             // stretcher, reset de-glitchers and
+                                                             // FLR counters.
+  input  logic                                   clk_smc_i,  // SMC core clock for the reset-unit
+                                                             // registers and FLR isolation logic.
+  input  logic                                   clk_periph_i,  // Peripheral clock; only the
+                                                                // peripheral-clock primary reset
+                                                                // synchronizer uses it.
 
-  input  logic                                   powergood_i,
-  output logic                                   powergood_stable_o,          // Stable powergood signal
+  input  logic                                   powergood_i,  // Power-good from the pad,
+                                                               // active-high; holds the cold,
+                                                               // primary and warm resets asserted
+                                                               // while low, and its release is
+                                                               // stretched 32 reference clock
+                                                               // cycles to form powergood_stable_o.
+  output logic                                   powergood_stable_o,  // Powergood after the stretcher: falls
+                                                                      // asynchronously with powergood_i and rises
+                                                                      // 32 reference clock cycles after it.
 
-  input  logic                                   rst_cold_ni,                 // cold reset
+  input  logic                                   rst_cold_ni,  // External cold reset, active-low,
+                                                               // before the JTAG override;
+                                                               // de-glitched over 32 reference
+                                                               // clock cycles and its release
+                                                               // extended by 255 cycles.
 
-  input  logic                                   fuse_reset_ni,
+  input  logic                                   fuse_reset_ni,  // Active-low reset that the eFuse
+                                                                 // controller releases once fuse
+                                                                 // sensing completes; holds the
+                                                                 // warm reset asserted, subject to
+                                                                 // the JTAG override.
 
-  // Stable cold reset for GPIO
-  output logic                                   rst_cold_stable_ref_clk_no,
-  output logic                                   rst_cold_stable_smc_clk_no,
+  output logic                                   rst_cold_stable_ref_clk_no,  // De-glitched and extended cold
+                                                                              // reset, active-low, with
+                                                                              // deassertion synchronized to the
+                                                                              // reference clock; also resets the
+                                                                              // FLR counters.
+  output logic                                   rst_cold_stable_smc_clk_no,  // De-glitched and extended cold
+                                                                              // reset, active-low, with
+                                                                              // deassertion synchronized to the
+                                                                              // SMC core clock; also resets the
+                                                                              // FLR isolation registers.
 
-  input  smc_pkg::jtag_smc_reset_ctrl_t          jtag_reset_ctrl_i,
+  input  smc_pkg::jtag_smc_reset_ctrl_t          jtag_reset_ctrl_i,  // JTAG reset overrides in the TCK domain: an
+                                                                     // override select and value for the fuse,
+                                                                     // cold, cool, and warm resets and for each
+                                                                     // subsystem's cold and warm reset.
 
-  // AXI-Lite Register Interface
-  input  smc_pkg::smc_axil_32_32_req_t           reg_axi_lite_req_i,
-  output smc_pkg::smc_axil_32_32_resp_t          reg_axi_lite_resp_o,
+  input  smc_pkg::smc_axil_32_32_req_t           reg_axi_lite_req_i,  // AXI-Lite Register
+                                                                      // Interface request.
+  output smc_pkg::smc_axil_32_32_resp_t          reg_axi_lite_resp_o,  // AXI-Lite Register
+                                                                       // Interface response.
 
-  // Reset Control Signals
-  input  logic                                   rst_ext_wdt_ni,              // other watchdog timers
-  input  logic                                   smc_wdt_first_timeout_i,
-  input  logic                                   smc_wdt_second_timeout_i,
+  input  logic                                   rst_ext_wdt_ni,  // External watchdog reset,
+                                                                  // active-low and asynchronous;
+                                                                  // asserts the WDT reset and,
+                                                                  // through it, the warm reset.
+  input  logic                                   smc_wdt_first_timeout_i,  // SMC CPU watchdog first-timeout indication,
+                                                                           // the OR of the per-core watchdog timeouts;
+                                                                           // not used by the reset logic.
+  input  logic                                   smc_wdt_second_timeout_i,  // SMC CPU watchdog second-timeout
+                                                                            // indication, active-high; asserts the WDT
+                                                                            // reset and, through it, the warm reset.
 
-  // FLR Signals
-  input  logic                                   isolate_req_pin_i,           // Set which subsystems are isolated from cool reset from external pin
-  input  logic                                   cfg_flr_pf_active_i,         // Indicates that FLR is requested from PCIe
-  input  logic                                   rst_cool_ni,                 // Incoming cool reset request from primary chiplet to place in internal register for visibility
-  output logic [31:0]                            isolate_req_o,               // Controls isolation of subsystems like PCIe and/or ETH during FLR
-  output logic                                   skip_mem_repair_o,           // Signal to skip memory repair & MBIST during FLR
-  output logic                                   rst_cool_no,                 // Cool reset from primary chiplet to other chiplets
+  input  logic                                   isolate_req_pin_i,  // Isolation request from the
+                                                                     // external pin, active-high,
+                                                                     // synchronized to the SMC core
+                                                                     // clock; raises the isolate_req_o
+                                                                     // bits enabled in
+                                                                     // ISOLATE_REQ_PINEN_REG and
+                                                                     // skip_mem_repair_o.
+  input  logic                                   cfg_flr_pf_active_i,  // PCIe function-level reset
+                                                                       // request, active-high; its
+                                                                       // rising edge sets ISOLATE_REQ_SMC
+                                                                       // and starts the FLR cool-reset
+                                                                       // counters.
+  input  logic                                   rst_cool_ni,  // Cool reset from the pin,
+                                                               // active-low; de-glitched over 32
+                                                               // reference clock cycles into the
+                                                               // primary reset, and visible in
+                                                               // ISOLATE_REQ_VIS.
+  output logic [31:0]                            isolate_req_o,  // Per-subsystem isolation requests
+                                                                 // on the SMC core clock:
+                                                                 // ISOLATE_REQ_REG, OR the
+                                                                 // pin-enabled bits while the pin
+                                                                 // is high, OR the SMCEN-enabled
+                                                                 // bits while ISOLATE_REQ_SMC is
+                                                                 // set.
+  output logic                                   skip_mem_repair_o,  // High while the isolate pin
+                                                                     // or ISOLATE_REQ_SMC is set,
+                                                                     // to skip memory repair and
+                                                                     // MBIST during FLR.
+  output logic                                   rst_cool_no,  // FLR cool reset after the JTAG
+                                                               // override, active-low, on the
+                                                               // reference clock; also asserts
+                                                               // the primary reset and is sent
+                                                               // to other chiplets.
 
-  // Subsystem Reset Signals
-  input  logic [31:0]                            ss_reset_complete_i,
-  output logic [31:0]                            ss_config_o,
-  output smc_reset_unit_pkg::reset_ctrl_t        ss_reset_ctrl_o[31:0],
+  input  logic [31:0]                            ss_reset_complete_i,  // Reset-complete indication from each
+                                                                       // subsystem, one bit per subsystem;
+                                                                       // synchronized to the SMC core clock and
+                                                                       // reported in the SS_RESET_COMPLETE
+                                                                       // register.
+  output logic [31:0]                            ss_config_o,  // Per-subsystem configuration bits
+                                                               // from the SS_CONFIG register,
+                                                               // lockable per bit through
+                                                               // SS_CONFIG_LOCK; cleared by the
+                                                               // primary reset.
+  output smc_reset_unit_pkg::reset_ctrl_t        ss_reset_ctrl_o[31:0],  // Per-subsystem reset controls from the
+                                                                         // reset-unit registers: cold and warm resets
+                                                                         // after the JTAG override, the hold
+                                                                         // qualifiers, and force-to-reference-clock.
+                                                                         // The resets leave unsynchronized; each
+                                                                         // subsystem synchronizes them.
 
-  // Reset Sync Signals
-  output logic                                   rst_primary_ref_clk_no,
-  output logic                                   rst_primary_smc_clk_no,
-  output logic                                   rst_warm_smc_clk_no,
-  output logic                                   rst_wdt_smc_clk_no,
-  output logic                                   rst_primary_periph_clk_no,
+  output logic                                   rst_primary_ref_clk_no,  // Primary reset, active-low, with
+                                                                          // deassertion synchronized to the reference
+                                                                          // clock.
+  output logic                                   rst_primary_smc_clk_no,  // Primary reset, active-low, with
+                                                                          // deassertion synchronized to the SMC core
+                                                                          // clock.
+  output logic                                   rst_warm_smc_clk_no,  // Warm reset, active-low, with deassertion
+                                                                       // synchronized to the SMC core clock; also
+                                                                       // asserted by the primary, watchdog, and
+                                                                       // fuse resets.
+  output logic                                   rst_wdt_smc_clk_no,  // Watchdog reset, active-low, asserted by
+                                                                      // the external watchdog reset or the SMC
+                                                                      // watchdog second timeout; deassertion
+                                                                      // synchronized to the SMC core clock.
+  output logic                                   rst_primary_periph_clk_no,  // Primary reset, active-low, with
+                                                                             // deassertion synchronized to the peripheral
+                                                                             // clock.
 
-  // Sync IRQ Signals
-  output logic                                   sync_irq_o,
+  output logic                                   sync_irq_o,  // Global sync bit, driven directly by
+                                                              // the SYNC_REG register.
 
-  // Test mode signals
-  input  logic                                   test_en_i,
-  input  logic                                   scan_rst_ni
+  input  logic                                   test_en_i,  // Scan test mode enable, active-high;
+                                                             // selects scan_rst_ni in place of the
+                                                             // stretched powergood and the
+                                                             // synchronized cold, primary, warm and
+                                                             // WDT resets.
+  input  logic                                   scan_rst_ni  // Scan reset, active-low, that
+                                                              // replaces the stretched powergood
+                                                              // and the synchronized resets while
+                                                              // test_en_i is high.
 
 );
 
@@ -154,8 +251,8 @@ module smc_reset_unit (
     .clk_i                           (clk_smc_i),
     .rst_primary_ni                  (rst_primary_smc_clk_no),
 
-    .hwif_in                         (hwif_in_subsys),
-    .hwif_out                        (hwif_out),
+    .hwif_in_o                       (hwif_in_subsys),
+    .hwif_out_i                      (hwif_out),
 
     .ss_reset_complete_i             (ss_reset_complete_i),
     .ss_config_o                     (ss_config_o),
@@ -172,8 +269,8 @@ module smc_reset_unit (
     .clk_smc_i              (clk_smc_i),
     .rst_cold_smc_ni        (rst_cold_smc_n),
 
-    .hwif_in                (hwif_in_cool),
-    .hwif_out               (hwif_out),
+    .hwif_in_o              (hwif_in_cool),
+    .hwif_out_i             (hwif_out),
 
     .isolate_req_pin_i      (isolate_req_pin_i),
     .cfg_flr_pf_active_i    (cfg_flr_pf_active_i),

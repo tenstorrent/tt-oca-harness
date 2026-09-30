@@ -153,7 +153,7 @@ SEC_DIS has a separate bypass output qualified by the revision enable.
 
 [[sep-token-processing-figure]]
 .SEP token processing
-image::SEP_Token_Processing.png[SEP_Token_Processing,scaledwidth=90.0%]
+image::sep-token-processing.svg[alt="efuse_token_processing: three token lanes, each with its token array, SHA-256 engine and triple-redundant comparator, followed by the match flops, the sticky fault bits, the security-disable logic and the shadow map gate",width=100%,pdfwidth=100%]
 
 [[post-token-matching-handling]]
 == Post Token Matching Handling

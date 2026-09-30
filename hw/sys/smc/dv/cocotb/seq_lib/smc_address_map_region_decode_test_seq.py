@@ -31,13 +31,17 @@ import cocotb
 from .smc_addr_map import (
     _REPO,
     DFX_STATUS_IDLE,
+    LOCAL_BASE_RESET,
     SPM_MEMORY_BASE,
     SPM_MEMORY_SIZE,
+    generated_decoded_extent,
+    generated_unit_at,
+    generated_window,
     smc_addr,
     smc_bootrom_addr,
     smc_indexed_addr,
 )
-from .smc_decode_probe_utils import SmcDecodeProbeSeq
+from .smc_decode_probe_utils import AXI_RESP_DECERR, SmcDecodeProbeSeq
 from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WINDOW
 from .smc_i3c_to_fabric_test_seq import HCI_VERSION_OFFSET, I3C_HCI_VERSION_RESET
 
@@ -92,19 +96,25 @@ GPIO_LAST_ACCESS_FILTER = smc_indexed_addr(
     "SMC_TOP_GPIO_INTF_ACCESS_FILTER_BASE_ADDR", GPIO_NUM - 1
 )
 
-# --- Words inside a crossbar window but past its last generated block ----------------------
-# Each target's own demux sends these to its error slave. The windows are the
-# generated block extents: GPIO_INTF instances end at GPIO_INTF_TOTAL_SIZE,
-# misc_wrap at its SIZE, and the zeroer control block at its SIZE.
+# --- Words past a generated block's extent -------------------------------------------------
+# The crossbars decode each block to its generated SIZE / TOTAL_SIZE, so these
+# go to the error slave: past the GPIO_INTF instances (TOTAL_SIZE), past
+# misc_wrap (SIZE), and, in the data-accelerator range, past the DMA block
+# (the gap below the zeroer) and past the zeroer block.
 GPIO_PAST_LAST = smc_indexed_addr("SMC_TOP_GPIO_INTF_BASE_ADDR", 0) + smc_addr(
     "SMC_TOP_GPIO_INTF_TOTAL_SIZE"
 )
 MISC_PAST_LAST = MISC_WRAP_BASE + MISC_WRAP_SIZE + 4
 DMA_DESC_FIRST = smc_addr("SMC_TOP_DMA_CTRL_DST_ADDRESS_LO_BASE_ADDR")
 DMA_DESC_WORDS = 12
-ZEROER_PAST_LAST = (
-    smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR") + smc_addr("SMC_TOP_ZEROER_CTRL_SIZE") + 0x100
-)
+DMA_PAST_LAST = smc_addr("SMC_TOP_DMA_CTRL_BASE_ADDR") + smc_addr("SMC_TOP_DMA_CTRL_SIZE")
+ZEROER_BASE = smc_addr("SMC_TOP_ZEROER_CTRL_BASE_ADDR")
+ZEROER_PAST_LAST = ZEROER_BASE + smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
+assert DMA_PAST_LAST < ZEROER_BASE, "the DMA and zeroer blocks abut; no gap left to probe"
+assert generated_decoded_extent("dma_ctrl") == smc_addr("SMC_TOP_DMA_CTRL_SIZE")
+assert generated_decoded_extent("zeroer_ctrl") == smc_addr("SMC_TOP_ZEROER_CTRL_SIZE")
+assert generated_unit_at(DMA_PAST_LAST - LOCAL_BASE_RESET) is None
+assert generated_unit_at(ZEROER_PAST_LAST - LOCAL_BASE_RESET) is None
 
 # --- I3C: six CSR windows -----------------------------------------------------------------
 I3C_NUM = smc_addr("SMC_TOP_OCA_I3C_WRAP_I3C_CSR_NUM")
@@ -133,9 +143,10 @@ OCTS_CTRL = smc_addr("SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR")
 DFX_STATUS_SMU = smc_addr("SMC_TOP_DFX_CTRL_STATUS_SMU_BASE_ADDR")
 DFX_DEBUG_BUS_MUX = smc_addr("SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR")
 # The DFX block is the last one the generated map declares below the fabric
-# control registers at 0xC001_0000. Its 2 KiB crossbar window ends 0x800
-# above its base; the address right after it belongs to no block.
-DFX_REGION_BEYOND = smc_addr("SMC_TOP_DFX_CTRL_BASE_ADDR") + 0x800
+# control registers at 0xC001_0000. The first address past its 2 KiB aperture
+# in the generated memory map belongs to no block.
+DFX_REGION_BEYOND = LOCAL_BASE_RESET + generated_window("dfx_ctrl")[1] + 1
+assert generated_unit_at(DFX_REGION_BEYOND - LOCAL_BASE_RESET) is None
 assert DFX_REGION_BEYOND < smc_addr("SMC_TOP_SMC_BASE_CONFIG_BASE_ADDR")
 
 # --- fabric control ----------------------------------------------------------------------------
@@ -292,7 +303,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         self.close_cell(
             "gpio-region",
             f"GPIO_INTF[0] and GPIO_INTF[{GPIO_NUM - 1}] ACCESS_FILTER both read "
-            f"0x{GPIO_INTF_ACCESS_FILTER_REG_DEFAULT:x} (bits above 16 set: a 32-bit APB4 data path)",
+            f"0x{GPIO_INTF_ACCESS_FILTER_REG_DEFAULT:x} (bits above 16 set: a 32-bit data path)",
         )
 
     async def _region_i3c(self) -> None:
@@ -431,7 +442,7 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         )
 
     async def _past_last_block(self) -> None:
-        """Words inside a crossbar window past its last block are refused, with no side effect."""
+        """Words past a block's generated extent are refused, with no side effect."""
         corners = (
             ("GPIO_PAST_LAST", GPIO_PAST_LAST, GPIO_LAST_ACCESS_FILTER, True),
             ("MISC_PAST_LAST", MISC_PAST_LAST, MISC_LAST, False),
@@ -442,16 +453,25 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
                 await self.csr_read_expect_error(f"{label}_RD", addr)
             await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
             await self.csr_read(f"{label}_NEIGHBOUR_AFTER", neighbour, expected=before)
-        # Past the zeroer control block the data-accelerator demux defaults to the
-        # DMA block, which answers OKAY and takes the write at the aliased offset
-        # (card 179, design observation). A write of 0 there is taken where every
-        # aliased DMA descriptor register already holds 0, so nothing may change.
+        # Both data-accelerator probes take an all-ones write: every DMA
+        # descriptor register and the zeroer DEST_ADDR hold 0, so a write that
+        # reached either block at any offset shows in the readback.
         snapshot = [
             await self.csr_read(f"DMA_DESC_BEFORE_{i}", DMA_DESC_FIRST + 4 * i)
             for i in range(DMA_DESC_WORDS)
         ]
         assert not any(snapshot), f"DMA descriptor registers not idle: {snapshot}"
-        await self.csr_write("ZEROER_PAST_LAST_WR", ZEROER_PAST_LAST, 0)
+        await self.csr_read("ZEROER_DEST_BEFORE", ZEROER_DEST_ADDR, expected=0)
+        for label, addr in (
+            ("DMA_PAST_LAST", DMA_PAST_LAST),
+            ("ZEROER_PAST_LAST", ZEROER_PAST_LAST),
+        ):
+            await self.read_decerr(f"{label}_RD", addr)
+            resp = await self.csr_write_expect_error(f"{label}_WR", addr, 0xFFFF_FFFF)
+            assert resp == AXI_RESP_DECERR, (
+                f"{label} @ 0x{addr:08x}: write answered resp={resp}, expected DECERR from the "
+                f"error slave"
+            )
         for i in range(DMA_DESC_WORDS):
             await self.csr_read(f"DMA_DESC_AFTER_{i}", DMA_DESC_FIRST + 4 * i, expected=0)
         await self.csr_read("ZEROER_DEST_AFTER", ZEROER_DEST_ADDR, expected=0)
@@ -459,9 +479,9 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             "past-last-block-refused",
             f"0x{GPIO_PAST_LAST:08x} (past GPIO_INTF[{GPIO_NUM - 1}], read and write) and "
             f"0x{MISC_PAST_LAST:08x} (past misc_wrap) were refused with an error response, "
-            f"the last register before each unchanged; a write of 0 at "
-            f"0x{ZEROER_PAST_LAST:08x} (past the zeroer control block) left the DMA "
-            f"descriptor and zeroer registers at 0",
+            f"the last register before each unchanged; 0x{DMA_PAST_LAST:08x} (past dma_ctrl) and "
+            f"0x{ZEROER_PAST_LAST:08x} (past zeroer_ctrl) answered DECERR to a read and an "
+            f"all-ones write, the DMA descriptor and zeroer registers still 0",
         )
 
     async def _region_external(self) -> None:
@@ -520,10 +540,12 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
         sb = self.env.scoreboard
         value_checks_before = sb.sys_axi_value_checks_seen
         # The SEP_IN monitor flags any DECERR it was not told to expect; these
-        # five are the intended error-slave probes. Two are in the adopter
-        # window and answered by its terminator: the supplementary base, since
-        # this bench attaches no supplementary device, and the first word past
-        # the straps block.
+        # nine are the intended error-slave probes: three past the WDT, DFX and
+        # fabric-control windows; two in the adopter window, answered by its
+        # terminator (the supplementary base, since this bench attaches no
+        # supplementary device, and the first word past the straps block); and
+        # four past the generated extents of the GPIO, misc-wrap, DMA and
+        # zeroer blocks.
         self.env.axi_monitor.expected_decerr_addrs.update(
             {
                 WDT_REGION_BEYOND,
@@ -533,6 +555,8 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
                 STRAPS_BEYOND,
                 GPIO_PAST_LAST,
                 MISC_PAST_LAST,
+                DMA_PAST_LAST,
+                ZEROER_PAST_LAST,
             }
         )
 
@@ -568,13 +592,13 @@ class smc_address_map_region_decode_test_seq(SmcDecodeProbeSeq):
             f"(no generated-map block, no crossbar rule) each answered DECERR",
         )
         self.close_cell(
-            "apb4-32bit-address",
-            "APB4-fronted blocks (GPIO, AVSBus, OCTS, telemetry, eFuse interface) decoded at their "
-            "32-bit generated-map addresses",
+            "periph-32bit-address",
+            "32-bit peripheral CSR blocks behind the AXI-Lite peripheral crossbar (GPIO, AVSBus, "
+            "OCTS, telemetry, eFuse interface) decoded at their generated-map addresses",
         )
         self.close_cell(
-            "apb4-32bit-data",
-            f"32-bit APB4 reads returned values with bits above 16 set "
+            "periph-32bit-data",
+            f"32-bit reads returned values with bits above 16 set "
             f"(GPIO ACCESS_FILTER 0x{GPIO_INTF_ACCESS_FILTER_REG_DEFAULT:x}, AVS_CFG_0 "
             f"0x{AVSBUS_CONTROLLER_AVS_CFG_0_REG_DEFAULT:x}, eFuse READ_REQ_TIMEOUT "
             f"0x{EFUSE_INTERFACE_CTRL_EFUSE_READ_REQ_TIMEOUT_REG_DEFAULT:x})",

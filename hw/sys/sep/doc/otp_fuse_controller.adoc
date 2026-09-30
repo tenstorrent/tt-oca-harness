@@ -14,18 +14,57 @@ updating its shadow are separate operations.
 
 [[sep-otp-fuse-bank-diagram]]
 .SEP OTP fuse bank
-image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
+image::sep-otp-fuse-map.svg[alt="SEP fuse map: 256 32-bit words drawn eight per row with each field at its offset, coloured by storage class, and the nine spare fields compressed into one band",width=100%,pdfwidth=100%]
+
+Each row of <<sep-otp-fuse-bank-diagram>> is 32 bytes, eight 32-bit words, at
+the offset given on the left from the base of the MAP window; a field that
+crosses a row boundary continues at the start of the next row. The shading
+gives the storage class of each field's shadow register. The lock field, the
+lifecycle state, the two disable vectors and the two RMA token digests are held
+in non-scannable storage. CLASS_KEY, CHIPLET_UID, SIP_UID and SYS_UID are
+non-scannable as well and read as zero downstream while SECURE_TM is 1. The
+nine spare fields fill the last nine rows and are drawn as one band.
 
 <<sep-efuse-interface-diagram>> shows the controller boundary and the
 technology-specific fuse interface.
 
 [[sep-efuse-interface-diagram]]
 .eFuse controller and technology-specific interface shim
-image::SEP_eFuse_Interface_Block_Diagram_FIG023.png[alt="eFuse controller and technology-specific interface shim",width=100%,pdfwidth=100%]
+image::sep-efuse-interface.svg[alt="eFuse wrapper front end, efuse_interface_controller with its register windows, command path and guard, and the interface shim in front of the fuse bank, with the SEP-only logic outlined dashed",width=100%,pdfwidth=100%]
 
-The SMC reuses the eFuse interface with `HAS_LC_STATE=0` and no secret-shadow
-ranges. It has no local lifecycle controller; its wrapper receives lifecycle
-state and security-disable policy from SEP.
+The figure reads from the bus ports on the left to the fuse bank at the
+bottom. Thick arrows are AXI4, AXI-Lite or APB, and thin double-headed arrows
+carry a fuse command and its response. The dashed line separates the OCAH
+controller from the interface shim, which an adopter replaces with one for its
+fuse technology.
+
+Both wrappers pass the OTP JTAG port through a lifecycle filter that answers a
+blocked access with an error response. Inside the controller, an AXI-Lite
+multiplexer merges the functional and JTAG ports. Addresses from the MAP window
+to the end of the last register window go through the AXI-Lite to APB bridge,
+and all others go to the shim's bank control registers. The APB decode answers
+any address in that span outside the register windows with SLVERR. The command
+multiplexer gives automatic sensing priority until it completes, then gives
+programming priority over reading, and `efuse_guard` filters every command
+before it reaches the shim.
+
+The SMC reuses the controller in `smc_efuse_wrapper` with `HAS_LC_STATE=0`, so
+the logic with a dashed outline is absent there:
+
+* The MMR window and `efuse_token_processing`: the SMC address map has no MMR
+window, and `security_disable_o` and `token_match_fault_o` are tied low.
+* The LC_STATE handling in `efuse_shadow_regs`: the held INVALID output before
+sensing, the token-gated LC_STATE writes and the secret masking in secure test
+mode. The SMC has no secret-shadow ranges and ties `secure_tm_i` low.
+* The RMA token-bit gate in `efuse_guard`.
+* The width converter and the Key Manager port of `sep_efuse_wrapper`: the SMC
+functional port is a 32-bit AXI-Lite port connected to the controller
+directly.
+
+The SMC has no local lifecycle controller. Its JTAG lifecycle filter decodes
+the lifecycle state received from SEP, and its `security_disable_i` input takes
+the SEP security-disable status, which skips fuse sensing and opens the shadow
+registers to software.
 
 == Fuse Sensing and Boot Sequencing
 
@@ -50,7 +89,18 @@ enabled and fetches its first instruction from the SEP ROM.
 
 [[sep-efuse-sense-diagram]]
 .eFuse sensing state machine and shadow-register timing
-image::SEP_eFuse_Sense_FSM_FIG029.png[alt="eFuse sensing state machine and shadow-register timing",width=100%,pdfwidth=100%]
+image::sep-efuse-sensing.svg[alt="Sensing FSM states StIdle, StRead, StWait and StFinished, above a timing diagram of the response strobes, the word counter and the shadow words they fill",width=100%,pdfwidth=100%]
+
+The upper part of <<sep-efuse-sense-diagram>> shows the four states of the
+sensing FSM in `efuse_shadow_regs`, and the lower part shows one sensing run
+cycle by cycle. StRead issues a single READ command for all 256 shadow words.
+The shim then returns one `fuse_command_resp.valid` strobe per word, and
+strobes may arrive on consecutive cycles. Each strobe stores its data in the
+shadow word indexed by `words_received_q` and increments the counter; a strobe
+with its status bit set still advances the counter but leaves that word
+unwritten. The strobe that arrives while the counter is 255 stores the last
+word and moves the FSM to StFinished, and `fuse_sense_done_o` rises one cycle
+later. Until then, APB accesses to the MAP window return SLVERR.
 
 == Shadow Register and JTAG Access Control
 

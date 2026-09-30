@@ -35,11 +35,11 @@
 void lock_fuse_secrets(void) {
     // LOCKS register is SET_ONLY: writing 1 bits sets them, 0 bits are ignored.
     // No need to read-modify-write — just write the bits we want to set.
-    mmio_write32(OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR, FUSE_SECRET_READ_LOCK_MASK);
+    mmio_write32(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR, FUSE_SECRET_READ_LOCK_MASK);
 }
 
 bool check_fuse_secrets_locked(void) {
-    uint32_t locks_lo = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
+    uint32_t locks_lo = mmio_read32(SEP_TOP_SEP_EFUSE_MAP_LOCKS_BASE_ADDR);
     bool locked = (locks_lo & FUSE_SECRET_READ_LOCK_MASK) == FUSE_SECRET_READ_LOCK_MASK;
 
     if (locked) {

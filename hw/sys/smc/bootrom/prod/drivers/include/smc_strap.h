@@ -30,7 +30,6 @@ typedef struct {
     uint8_t bl0_pllclk;             /* 1 = Use reference clock (default is PLL generated clock) */
     uint8_t rotate_update;          /* 1 = Swaps primary and backup image in SEP BL0 ROM */
     uint8_t status_rpt_disable;     /* 1 = Disable BL0 status reporting */
-    uint8_t boot_stall;             /* 1 = Stall after fuse sensing */
     uint8_t chip_id;                /* Chip ID bits [3:0] - I2C/I3C static address strap */
 
     /* Additional parsed fields can be added here as needed */

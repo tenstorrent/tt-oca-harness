@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-spi_controller]
-== Address Map: spi_controller
+== SPI Host
+
+Serial peripheral interface for host mode, suitable for interfacing external serial NOR flash devices
 
 [cols="1,4,1,6", options="header"]
 |===
@@ -32,7 +34,7 @@
 | 31:2 | `Reserved` | - | - a| Reserved
 | 1 | `SPI_EVENT` | R | 0x0 a| Event-related interrupts, see !!EVENT_ENABLE register for more
 information.
-| 0 | `ERROR` | RW | 0x0 a| Error-related interrupts, see !!ERROR_ENABLE register for more
+| 0 | `ERROR` | RW1C | 0x0 a| Error-related interrupts, see !!ERROR_ENABLE register for more
 information.
 |===
 
@@ -248,16 +250,16 @@ when !!STATUS.READY is not asserted.)
 |===
 | Bits | Field | Access | Reset | Description
 | 31:6 | `Reserved` | - | - a| Reserved
-| 5 | `ACCESSINVAL` | RW | 0x0 a| Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
+| 5 | `ACCESSINVAL` | RW1C | 0x0 a| Indicates that TLUL attempted to write to TXDATA with no bytes enabled. Such
 'zero byte' writes are not supported.
-| 4 | `CSIDINVAL` | RW | 0x0 a| Indicates a command was attempted with an invalid value for !!CSID.
-| 3 | `CMDINVAL` | RW | 0x0 a| Indicates an invalid command segment, meaning either an invalid value of
+| 4 | `CSIDINVAL` | RW1C | 0x0 a| Indicates a command was attempted with an invalid value for !!CSID.
+| 3 | `CMDINVAL` | RW1C | 0x0 a| Indicates an invalid command segment, meaning either an invalid value of
 !!COMMAND.SPEED or a request for bidirectional data transfer at dual or quad
 speed
-| 2 | `UNDERFLOW` | RW | 0x0 a| Indicates that firmware has attempted to read from
+| 2 | `UNDERFLOW` | RW1C | 0x0 a| Indicates that firmware has attempted to read from
 !!RXDATA when the RX FIFO is empty.
-| 1 | `OVERFLOW` | RW | 0x0 a| Indicates that firmware has overflowed the TX FIFO
-| 0 | `CMDBUSY` | RW | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
+| 1 | `OVERFLOW` | RW1C | 0x0 a| Indicates that firmware has overflowed the TX FIFO
+| 0 | `CMDBUSY` | RW1C | 0x0 a| Indicates a write to !!COMMAND when !!STATUS.READY = 0.
 |===
 
 [#reg-{regmap-instance}-spi_controller-EVENT_ENABLE]

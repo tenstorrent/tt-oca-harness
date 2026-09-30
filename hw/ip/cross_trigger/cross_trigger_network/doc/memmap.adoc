@@ -20,6 +20,17 @@ The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
 onto the CTM and CTP blocks it instantiates. The composite SystemRDL top is the
 common source for these addresses and for the generated RTL constants.
 
+The last two columns state how the network answers a 32-bit access that no
+register backs, as seen at its AXI-Lite CSR port, and
+ifdef::backend-html5[]
+xref:ocah-docs:ROOT:memory_map.adoc#ocah-decode-response-codes[Decode Response Codes]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ocah-decode-response-codes,Decode Response Codes>>
+endif::backend-pdf[]
+defines them and their codes. An address above `0x2FF` matches no block and
+answers `DECERR`, with read data `0xBADCAB1E`.
+
 === Detailed Register Map
 
 ==== Cross Trigger Matrix Registers

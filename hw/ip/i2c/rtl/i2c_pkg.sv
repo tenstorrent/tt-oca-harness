@@ -1,14 +1,11 @@
-//-----------------------------------------------------------------------------
-// I2C Package
-//
-//-----------------------------------------------------------------------------
-
 // Copyright lowRISC contributors (OpenTitan project).
 // Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
+
+// Hold I2C shared parameters, FIFO widths, and AXI-Lite typedefs.
 //
-// i2c package
-//
+// Defines controller and target FIFO data widths, the ACQ FIFO entry identifiers, timeout
+// mode, read/write and ACK/NACK encodings, and the axil_req_t / axil_resp_t used by i2c.
 
 package i2c_pkg;
 

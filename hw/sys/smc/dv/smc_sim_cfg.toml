@@ -66,8 +66,6 @@ filelist = "hw/sys/smc/dv/build/smc_dut_compile.f"
 bender_filelist = "hw/sys/smc/dv/build/smc_bender.f"
 work_dir = "hw/sys/smc/dv/build"
 common_bender_targets = [
-  "tech_cells_generic_exclude_deprecated",
-  "tech_cells_generic_exclude_tc_sram",
   "axi_rtl",
   "apb_rtl",
   "common_cells_rtl",
@@ -90,14 +88,13 @@ exclude_files = [
   "hw/oss-example/meta/registers/rtl/och_sep_spi_mux_ctrl_ot_reg.sv",
 ]
 stubs = [
-  # Stand-ins for the och_prim synchroniser cells, emitted ahead of the Bender
-  # filelist so -Wno-MODDUP first-definition-wins picks them on Verilator. On
+  # Stand-in for the ocah_prim prim_sync3 cell, emitted ahead of the Bender
+  # filelist so -Wno-MODDUP first-definition-wins picks it on Verilator. On
   # VCS only, the runner drops any stub whose basename the Bender graph
-  # supplies, so the product prim_sync2 / prim_sync3 elaborate there; Xcelium
+  # supplies, so the product prim_sync3 elaborates there; Xcelium
   # receives both files like Verilator does. The leaves that read a
   # signal behind one, and the VCS control that keeps those claims honest, are
   # in docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
-  "hw/sys/smc/dv/tb/verilator_stubs/prim_sync2.sv",
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
@@ -106,7 +103,7 @@ sources = [
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
-  #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
+  #   prim_fifo_async <- hw/common/ocah_prim/rtl/prim_refclk_count_w_cdc.sv:79
   #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
   #   prim_rst_sync   <- hw/ip/efuse/rtl/efuse_interface_controller.sv:159
   #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))
@@ -202,6 +199,10 @@ build_jobs = 8
 # assertions. It is a Limited Customer Availability feature, so VCS refuses the
 # compile without `-lca` -- an opt-in switch, not a separate licence.
 #
+# `-cm_noconst` and `-cm_seqnoconst` leave nets a constant drives, directly or
+# through sequential logic, out of the toggle population, as the DTP and SMU
+# scopes do.
+#
 # The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
 # (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
 # list is a deprecated duplicate and the runner refuses the config.
@@ -210,6 +211,8 @@ compile_args = [
   "line+cond+tgl+fsm+branch+assert",
   "-cm_dir",
   "{build_cov_dir}",
+  "-cm_noconst",
+  "-cm_seqnoconst",
   "-cm_hier",
   "{repo_root}/hw/sys/smc/dv/cov/config/vcs/smc_cov_scope.hier",
   "-lca",
@@ -252,12 +255,23 @@ python_paths = [
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 
+# The bench toggles the pll_wrap oscillators itself (tb_top.sv); the model's
+# own generators stay off.
+[frameworks.cocotb.sim]
+args = ["+pll_osc_bench"]
+
 [c_build.default]
 # Build the selected SMC C test and declare every time-zero preload consumed by
 # the firmware boot test. run_dv stages these basenames into the simulator cwd.
 #
 # The DV test images need a picolibc-enabled RISC-V toolchain. Use an explicit
 # $RISCV_TOOLCHAIN, else scripts/docker-run.sh run-here. No site or PATH probe.
+# The container image carries no uv. bin_to_verilog.py and
+# update_smc_hex_to_preload_addr.py are stdlib, so the container invocation
+# passes PYTHON=python3, as [c_build.km_rom_main] does. A command-line PYTHON
+# wins over preamble.mk, which would otherwise expand $(UV) to the host uv
+# path `uv run` exported. The host toolchain branch leaves PYTHON unset and
+# keeps the locked uv default.
 # Same contract as [c_build.bootrom], [c_build.dual_occp] and
 # [c_build.occp_sanity] below. Without it, every `firmware = "<name>"` test
 # fails at c_compile on any host that does not carry the toolchain.
@@ -269,7 +283,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf-; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
 ]
 outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
@@ -282,7 +296,7 @@ outputs = [
 # Build the real SMC production boot ROM (hw/sys/smc/bootrom/prod) instead of a
 # DV C test. Selected by `firmware = { name = "prod_rom", mode = "bootrom" }`.
 #
-# I3C_CORE=swap defines I3C_USE_HCI_CORE, which is what
+# I3C_CORE=chipsalliance defines I3C_USE_HCI_CORE, which is what
 # selects drivers/src/i3c_hci_driver.c -- the target-side driver for the OCA
 # i3c-core this tree actually instantiates -- over the ROM's default I3C driver.
 #
@@ -312,7 +326,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=chipsalliance ENABLE_RELEASE_PRINTS=1",
 ]
 # prod_rom.bin64 is exactly 16384 64-bit lines, matching the CPU ROM array
 # (prim_rom Width=64 Depth=16384 in OCAH4CORECluster_rom_ext), so it loads via
@@ -320,9 +334,9 @@ argv = [
 # alongside it for inspection.
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.preload.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.preload.hex",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
 ]
 
 [c_build.dual_occp]
@@ -345,21 +359,50 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=chipsalliance ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3 && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
   "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.hex",
   "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.sym",
   "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
   "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.sym",
 ]
 
-[c_build.occp_sanity]
-# Two images for the rom-only OCCP family: the production boot ROM for the
-# target, and one rom-mode DV controller image. No payload -- these tests never
+[c_build.occp_payload]
+# [c_build.occp_rom_only] plus the payload the target ends up running: the
+# production boot ROM for the target, one rom-mode DV controller image named by
+# the test's `firmware = { name = ... }`, and hello_world as an ordinary
+# sram-mode image. This is the shape the reference expresses as
+# +ROM_FW_TEST=hello_world.
+#
+# Separate from [c_build.dual_occp], which hardcodes occp_unsecure_boot_test as
+# the controller; here the controller varies per test.
+#
+# Same host-toolchain-vs-container split as [c_build.bootrom] above; see there
+# for why it exists and for the no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=chipsalliance ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP payload images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3 && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.sym",
+]
+
+[c_build.occp_rom_only]
+# Two images for the rom-only OCCP family and the SEP ring-buffer family: the
+# production boot ROM for the target, and one rom-mode DV controller image named
+# by the test's `firmware = { name = ... }`. No payload -- these tests never
 # transfer one, which is what separates them from [c_build.dual_occp].
 #
 # Same host-toolchain-vs-container split as [c_build.default] above; see there
@@ -368,14 +411,14 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP sanity image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=chipsalliance ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP rom-only image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf- PYTHON=python3; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
-  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.sym",
-  "hw/sys/smc/dv/fw/build/tests/occp_sanity/occp_sanity.rom.hex",
-  "hw/sys/smc/dv/fw/build/tests/occp_sanity/occp_sanity.rom.sym",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release_hci/hex/prod_rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.rom.sym",
 ]
 
 [run_modes.smoke]

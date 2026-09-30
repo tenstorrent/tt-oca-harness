@@ -4,8 +4,9 @@
 // DTP control-domain TB interface, shared by the cocotb and SV-UVM flows:
 // the system clock and its period, the test-sequenced resets and their
 // assertion counters, the lifecycle debug disables, the TAP-state and
-// debug-TDR observables the checkers read, the request-activity pulse
-// counters tb_top derives from the bus pins, and the SVA enables.
+// debug-TDR observables the checkers read, the stop_clks change counters,
+// the request-activity pulse counters and READY-stall counters tb_top
+// derives from the bus pins, and the SVA enables.
 // The scan-network observables live in dtp_scan_if and the cross-trigger
 // pins in dtp_xtrig_if; the primary TAP pins are on the shared ocah_jtag_if.
 //
@@ -118,10 +119,32 @@ interface dtp_tb_if;
   logic [31:0] xtrig_axil_awvalid_count;
   logic [31:0] xtrig_axil_wvalid_count;
   logic [31:0] xtrig_axil_arvalid_count;
-  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID
-  // and ARVALID held while the crossbar keeps the matching READY low.
+  // XTRIG CSR port stall counters (driven by tb_top): cycles with AWVALID,
+  // ARVALID, and WVALID held while the crossbar keeps the matching READY low.
   logic [31:0] xtrig_axil_aw_stall_count;
   logic [31:0] xtrig_axil_ar_stall_count;
+  logic [31:0] xtrig_axil_w_stall_count;
+  // XTRIG CSR port occupancy counters (driven by tb_top): AW stall cycles and
+  // AW acceptances while an earlier accepted AW awaits its W beat, and AR
+  // stall cycles and AR acceptances while an earlier accepted AR awaits its R
+  // beat. An acceptance in the cycle whose beat retires the last open request
+  // does not count.
+  logic [31:0] xtrig_axil_aw_open_stall_count;
+  logic [31:0] xtrig_axil_aw_open_accept_count;
+  logic [31:0] xtrig_axil_ar_open_stall_count;
+  logic [31:0] xtrig_axil_ar_open_accept_count;
+  // JTAG2AXI bridge-port stall counters (driven by tb_top): cycles with a
+  // request VALID held while the responder keeps the matching READY low and
+  // axi_sva_en is set.
+  logic [31:0] smc_axi_aw_stall_count;
+  logic [31:0] smc_axi_w_stall_count;
+  logic [31:0] smc_axi_ar_stall_count;
+  logic [31:0] smc_otp_axil_aw_stall_count;
+  logic [31:0] smc_otp_axil_w_stall_count;
+  logic [31:0] smc_otp_axil_ar_stall_count;
+  logic [31:0] sep_otp_axil_aw_stall_count;
+  logic [31:0] sep_otp_axil_w_stall_count;
+  logic [31:0] sep_otp_axil_ar_stall_count;
 
   // XTRIG crossbar demux state behind the CSR port (driven by tb_top from
   // the AXI-Lite demux of the cross-trigger network): the AW lock flag,
@@ -159,6 +182,13 @@ interface dtp_tb_if;
   logic sep_otp_cdc_clear_seen;
   logic cdc_clear_seen_clear = 1'b0;
 
+  // Errored-beat read word per JTAG2AXI bridge port (driven by the JTAG2AXI
+  // sequences): tb_top drives it onto the DUT-facing RDATA of every R beat
+  // the port's responder answers with SLVERR or DECERR.
+  logic [dtp_dv_cfg_pkg::SmcAxiDataWidth-1:0]  smc_axi_err_rdata = '0;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] smc_otp_axil_err_rdata = '0;
+  logic [dtp_dv_cfg_pkg::OtpAxilDataWidth-1:0] sep_otp_axil_err_rdata = '0;
+
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.
   logic stop_clks;
@@ -171,6 +201,11 @@ interface dtp_tb_if;
   logic jtag_ic_reset_sep_ctrl_n;
   logic jtag_ic_reset_ext_ovrd;
   logic jtag_ic_reset_ext_ctrl_n;
+
+  // stop_clks change counters (driven by tb_top) while rst_n_i is high:
+  // every change, and the changes outside a clk_i rising edge.
+  logic [31:0] stop_clks_change_count;
+  logic [31:0] stop_clks_off_edge_count;
 
   // CLA clock-stop request vector (driven by debug-TDR sequences; init
   // quiescent so unrelated tests see no requests).
@@ -191,5 +226,15 @@ interface dtp_tb_if;
   logic [7:0]  cfg_wire_or_pull     = 8'(dtp_dv_cfg_pkg::WireOrPull);
   logic [7:0]  cfg_wire_or_assert   = 8'(dtp_dv_cfg_pkg::WireOrAssert);
   logic [7:0]  cfg_ct_dst_latency   = 8'(dtp_dv_cfg_pkg::CtDstLatency);
+  logic [7:0]  cfg_smc_axi_addr_width  = 8'(dtp_dv_cfg_pkg::SmcAxiAddrWidth);
+  logic [7:0]  cfg_smc_axi_data_width  = 8'(dtp_dv_cfg_pkg::SmcAxiDataWidth);
+  logic [7:0]  cfg_otp_axil_addr_width = 8'(dtp_dv_cfg_pkg::OtpAxilAddrWidth);
+  logic [7:0]  cfg_otp_axil_data_width = 8'(dtp_dv_cfg_pkg::OtpAxilDataWidth);
+  logic [7:0]  cfg_smc_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpRdPlDepth);
+  logic [7:0]  cfg_smc_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SmcOtpWrPlDepth);
+  logic [7:0]  cfg_sep_otp_rd_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpRdPlDepth);
+  logic [7:0]  cfg_sep_otp_wr_pl_depth = 8'(dtp_dv_cfg_pkg::SepOtpWrPlDepth);
+  logic [7:0]  cfg_smc_rd_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcRdPlDepth);
+  logic [7:0]  cfg_smc_wr_pl_depth     = 8'(dtp_dv_cfg_pkg::SmcWrPlDepth);
 
 endinterface : dtp_tb_if

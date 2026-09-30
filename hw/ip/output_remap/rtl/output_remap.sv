@@ -1,34 +1,47 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// System Management Controller Output Remap
+// Remap AXI transactions onto target addresses selected by a per-region offset table.
+//
+// remap_ctrl_i carries per-region PeakRDL outs. RegionBase is subtracted from every AW and AR
+// address, and bits [IdxStart +: RemapIndexW] of the result select a region. If that region is
+// valid, the address becomes its offset bits [55:IdxStart] above the base-relative bits below
+// IdxStart; otherwise the original address passes through unchanged. The module is
+// combinational.
+// When UserOverrideEn is set, UserOverrideVal replaces the AW, AR and W user fields of every
+// transaction.
 
 module output_remap #(
-  parameter type          axi_req_t        = logic,
-  parameter type          axi_resp_t       = logic,
-  parameter type          remap_addr_t     = logic,
-  parameter type          user_ovrd_t      = logic,
-  parameter int unsigned  NumRegions       = 8,
-  parameter int unsigned  RegionBase       = 0,
-  parameter int unsigned  IdxStart         = 20,
-  parameter bit           UserOverrideEn   = 1'b1,
-  parameter user_ovrd_t   UserOverrideVal  = '0,
+  parameter type          axi_req_t        = logic,         // AXI request type.
+  parameter type          axi_resp_t       = logic,         // AXI response type.
+  parameter type          remap_addr_t     = logic,         // Remapped address type, built from the
+                                                            // 56-bit offset field.
+  parameter type          user_ovrd_t      = logic,         // AxUSER override type.
+  parameter int unsigned  NumRegions       = 8,             // Number of remap regions.
+  parameter int unsigned  RegionBase       = 0,             // Byte address subtracted from AW and
+                                                            // AR addresses before indexing.
+  parameter int unsigned  IdxStart         = 20,            // Address bit where the region index
+                                                            // begins; each region spans 2**IdxStart
+                                                            // bytes.
+  parameter bit           UserOverrideEn   = 1'b1,          // Replace the AW, AR and W user fields
+                                                            // on every transaction.
+  parameter user_ovrd_t   UserOverrideVal  = '0,            // AxUSER value when overriding.
 
-  localparam int unsigned RemapIndexW      = $clog2(NumRegions)
+  localparam int unsigned RemapIndexW      = $clog2(NumRegions) // Region-index width.
 ) (
-  input  logic                                       clk_i,
-  input  logic                                       rst_ni,
-  input  logic                                       test_en_i,
+  input  logic                                       clk_i, // System clock; unused.
+  input  logic                                       rst_ni, // Async reset, active-low; unused.
+  input  logic                                       test_en_i, // DFT test enable; unused.
 
-  // CSR structs for remap configuration
-  input  output_remap_reg_pkg::output_remap__out_t   remap_ctrl_i [NumRegions-1:0],
+  input  output_remap_reg_pkg::output_remap__out_t   remap_ctrl_i [NumRegions-1:0], // Per-region PeakRDL configuration; only
+                                                                                    // REGION.region_attrs.offset and
+                                                                                    // .valid are used.
 
-  // Main data AXI interface
-  input  axi_req_t           axi_req_i,
-  output axi_resp_t          axi_resp_o,
+  input  axi_req_t           axi_req_i,                     // Pre-remap AXI request.
+  output axi_resp_t          axi_resp_o,                    // Pre-remap AXI response.
 
-  output axi_req_t           axi_remapped_req_o,
-  input  axi_resp_t          axi_remapped_resp_i
+  output axi_req_t           axi_remapped_req_o,            // Post-remap AXI request.
+  input  axi_resp_t          axi_remapped_resp_i            // Post-remap AXI response.
 );
 
   /////////////////////////
@@ -43,12 +56,16 @@ module output_remap #(
   // Convert struct to array
   /////
 
-  typedef struct packed {logic [55:0] offset;} remap_attrs_t;
+  typedef struct packed {
+    logic        valid;
+    logic [55:0] offset;
+  } remap_attrs_t;
   remap_attrs_t remap_table[NumRegions];
 
 
   // Connect register outputs to remap_table array
   for (genvar i = 0; i < NumRegions; i++) begin : gen_remap_table
+    assign remap_table[i].valid  = remap_ctrl_i[i].REGION.region_attrs.valid.value;
     assign remap_table[i].offset = remap_ctrl_i[i].REGION.region_attrs.offset.value;
   end
 
@@ -65,13 +82,19 @@ module output_remap #(
     remap_ar_idx = adjusted_ar_addr[IdxStart+:RemapIndexW];
 
     // Remap address: replace upper bits with table offset, preserve lower bits
-    remapped_aw_addr = {
-            remap_table[remap_aw_idx].offset[55:IdxStart], adjusted_aw_addr[IdxStart-1:0]
-        };
+    remapped_aw_addr = axi_req_i.aw.addr;
+    if (remap_table[remap_aw_idx].valid) begin
+      remapped_aw_addr = {
+        remap_table[remap_aw_idx].offset[55:IdxStart], adjusted_aw_addr[IdxStart-1:0]
+      };
+    end
 
-    remapped_ar_addr = {
-            remap_table[remap_ar_idx].offset[55:IdxStart], adjusted_ar_addr[IdxStart-1:0]
-        };
+    remapped_ar_addr = axi_req_i.ar.addr;
+    if (remap_table[remap_ar_idx].valid) begin
+      remapped_ar_addr = {
+        remap_table[remap_ar_idx].offset[55:IdxStart], adjusted_ar_addr[IdxStart-1:0]
+      };
+    end
   end
 
   /////////////////////

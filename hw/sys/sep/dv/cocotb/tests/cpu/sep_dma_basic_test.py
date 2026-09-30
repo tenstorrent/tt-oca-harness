@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP Secure-DMA basic-breadth firmware-boot test (PyUVM).
 
-OSS rep DMA basic breadth. reference provenance: the uvm_tests/dma reg_rw / reg_reset /
+Reference provenance: the uvm_tests/dma reg_rw / reg_reset /
 cfg_regwen / range_regwen / addr_fixed / addr_wrap / addr_combo / mem_copy
 (width sweep) / err_opcode family. Boots the VeeR EL2 core and runs the
 dma_basic firmware, which drives the Secure DMA over the CPU LSU and proves the
@@ -64,6 +64,7 @@ _BANNER = "SEP DMA basic test"
 _PARAM_MAGIC = 0xDA0A11C0
 _BUSY_LEN = 0x100
 _PIC_POLL = 200_000
+_DMA_PATH_BITS = (1 << IRQ_DMA_HOST_PATH) | (1 << IRQ_DMA_REG_PATH)
 
 
 @dataclass(frozen=True)
@@ -93,20 +94,6 @@ class SepDmaBasicCfg:
 
     def param_words(self) -> list[int]:
         return [_PARAM_MAGIC, self.src_off, self.dst_off, self.nbytes, self.fill_seed]
-
-
-def _probe_bit_raw(sig, bit: int) -> str:
-    """One bit of a probe as its raw character: '0', '1', or 'x'/'z'.
-
-    The shared rd() helper resolves unknowns to zero per bit, which is right
-    where a zero is the failing direction and wrong where it is the passing
-    one. Two cocotb versions are in use: 1.x exposes BinaryValue.binstr, 2.x a
-    LogicArray that str()s to the same characters.
-    """
-    v = sig.value
-    text = getattr(v, "binstr", None) or str(v)
-    # binstr is most-significant-first, so index from the right.
-    return text[len(text) - 1 - bit].lower()
 
 
 @pyuvm.test()
@@ -169,10 +156,13 @@ class sep_dma_basic_test(sep_base_test):
         # still low means the injected command did not set host_path_err.
         for _ in range(_MAX_RUN_CYCLES):
             await RisingEdge(dut.clk_i)
-            vec = self.rd(dut.sep_internal_interrupts_probe_o)
+            # Both bits must be known 0/1: rd() raises on X/Z, so an unknown
+            # register-path bit cannot read as "stays clear".
+            vec = self.rd(dut.sep_internal_interrupts_probe_o, mask=_DMA_PATH_BITS)
             if (vec >> IRQ_DMA_HOST_PATH) & 1:
-                assert ((vec >> IRQ_DMA_REG_PATH) & 1) == 0, (
-                    f"register-path [40] set on host-path inject (vec=0x{vec:x})"
+                reg_bit = (vec >> IRQ_DMA_REG_PATH) & 1
+                assert reg_bit == 0, (
+                    f"register-path [40] is {reg_bit}, not 0, on host-path inject (vec=0x{vec:x})"
                 )
                 self.logger.info(
                     "CHK-HOSTINTG-PIC PASS: sep_internal_interrupts[41]=1 exclusive (vec=0x%x)",
@@ -198,13 +188,15 @@ class sep_dma_basic_test(sep_base_test):
         dut.dma_host_intg_inject_i.value = 0
         self.logger.info("STEP host-intg: dma_host_intg_inject_i=0")
 
-        # self.rd() resolves an unknown bit to 0, which is the safe direction for
-        # the assert leg above but the wrong one here: an X would read as a
-        # cleared bit and pass. Require a RESOLVED zero instead.
+        # rd() raises on X/Z, so only a known 0 counts as a cleared bit.
+        bit = None
         for _ in range(_PIC_POLL):
             await RisingEdge(dut.clk_i)
-            bit = _probe_bit_raw(dut.sep_internal_interrupts_probe_o, IRQ_DMA_HOST_PATH)
-            if bit == "0":
+            bit = (
+                self.rd(dut.sep_internal_interrupts_probe_o, mask=1 << IRQ_DMA_HOST_PATH)
+                >> IRQ_DMA_HOST_PATH
+            )
+            if bit == 0:
                 self.logger.info(
                     "CHK-HOSTINTG-CLR PASS: sep_internal_interrupts[41] resolved 0 "
                     "after DMA_BUS_ERR_CLEAR"
@@ -212,7 +204,7 @@ class sep_dma_basic_test(sep_base_test):
                 return
         raise AssertionError(
             f"sep_internal_interrupts[41] not a resolved 0 after DMA_BUS_ERR_CLEAR "
-            f"(last raw value {bit!r}); an X here is not a cleared bit"
+            f"(last value {bit!r})"
         )
 
     async def _check_host_fabric_pin(self) -> None:

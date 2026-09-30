@@ -12,6 +12,8 @@
       <ipxact:name>csrng_mmap</ipxact:name>
       <ipxact:addressBlock>
         <ipxact:name>csrng</ipxact:name>
+        <ipxact:displayName>Cryptographically Secure Random Number Generator</ipxact:displayName>
+        <ipxact:description>Takes entropy bits to produce cryptographically secure random numbers for consumption by hardware blocks and by software</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h60</ipxact:range>
         <ipxact:width>32</ipxact:width>

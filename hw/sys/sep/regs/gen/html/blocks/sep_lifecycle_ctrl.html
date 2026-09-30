@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: sep_lifecycle_ctrl</h2>
+<h2 id="regmap-sep_lifecycle_ctrl">SEP Lifecycle Control Address Map</h2>
+<p>Lifecycle feature-control and demotion registers with their associated locks.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -23,15 +24,15 @@
 <h3 id="DEMOTE_1">DEMOTE_1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:2</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
-<tr><td>0</td><td>demote</td><td>RW</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
+<tr><td>63:2</td><td>rsvd</td><td>RW1S</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>1</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
+<tr><td>0</td><td>demote</td><td>RW1S</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
 </table>
 <h3 id="DEMOTE_2">DEMOTE_2</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:2</td><td>rsvd</td><td>RW</td><td>0x0</td><td>Not used</td></tr>
-<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
-<tr><td>0</td><td>demote</td><td>RW</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
+<tr><td>63:2</td><td>rsvd</td><td>RW1S</td><td>0x0</td><td>Not used</td></tr>
+<tr><td>1</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Demote lock bit. Once locked, demote can no longer be changed</td></tr>
+<tr><td>0</td><td>demote</td><td>RW1S</td><td>0x0</td><td>Demote bit to enter PROD_DBG state</td></tr>
 </table>
 </div>

@@ -429,9 +429,10 @@ python3 tools/dv/run_dv.py --help
 `hw/comp/<name>/dv`, `hw/periph/<name>/dv`, and
 `hw/common/prim/<name>/dv`.
 
-Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
-the `[duts.<name>].formal_cfg` pointer of the site layer
-(<<runner-site-layer>>), else the registry's `formal_cfg` override, else
+Each mode loads the first config named by the site layer's `[duts.<name>]`
+pointer (<<runner-site-layer>>), the registry's override of the same name, or
+the naming convention. Simulation mode, the default, reads `sim_cfg` and then
+`<name>_sim_cfg.toml`; formal mode reads `formal_cfg` and then
 `<name>_formal_cfg.toml` beside the sim config:
 
 [source,bash]
@@ -445,10 +446,13 @@ shows it as a `fv` row and `--validate-configs` validates it as
 unavailable in both listings and is an error only when selected; a registry
 `formal_cfg` that is absent fails validation. A DV root that carries a formal
 config and no sim config is not a DUT. <<runner-formal>> is the contributor's
-route through formal mode.
+route through formal mode. A site-named simulation config that is absent
+leaves the DUT's simulation view unavailable the same way, and selecting the
+DUT in simulation mode is the error.
 
 `--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
-present in the flow's `tools` allowlist and in `simulators.toml`.
+present in the flow's `tools` allowlist, which the site layer can extend, and
+in the tool registry merged with the site layer.
 
 The shared cocotb profile allows these simulation backends:
 
@@ -508,22 +512,25 @@ cocotb-only DUT — is the SystemVerilog UVM Framework section of
 than one (a DUT implements a framework by declaring a `[frameworks.<name>]`
 table in its sim config); without the flag the DUT's `default_framework` runs.
 In this model each testlist entry is a _scenario_: a framework-neutral test
-name that maps to a concrete implementation per framework. Error messages and
-`--skip-unimplemented` say "scenario" with exactly this meaning; `--items`
-takes the same names it always has. A scenario binds its per-framework entry
-points through `module` — a bare string binds the DUT's default framework
-only, a map (`module = { cocotb = "...", uvm = "..." }`) binds each framework
-explicitly. A map value of `false` (`module = { cocotb = "...", uvm = false }`)
-declares the scenario out of scope for that framework: group and tag
-selection skips it with no flag, and the skipped names are printed and
-recorded in `result.json` under `selection.skipped_excluded`. Selecting a
-scenario whose map has no entry at all for the chosen framework is an error;
-`--skip-unimplemented` skips group/tag-derived scenarios of that kind instead
-(printed, and recorded under `selection.skipped_unimplemented`), which is the
-bring-up aid while a framework port is incomplete. An explicitly named
-`--items` test errors in both cases. `--list` reports the three counts per
-framework (`uvm 151/153 (2 excluded)`); a nonzero `missing` count names
-scenarios that have neither a binding nor a `false` for that framework.
+name that maps to a concrete implementation per framework. Error messages
+say "scenario" with exactly this meaning; `--items` takes the same names it
+always has. A scenario binds its per-framework entry points through `module`
+— a bare string binds the DUT's default framework only, a map
+(`module = { cocotb = "...", uvm = "..." }`) binds each framework explicitly,
+and a scenario need not exist in every framework: a framework view runs the
+scenarios bound to it. Group and tag selection under a framework skips a
+scenario whose map has no entry for it, printed on the `selection` line and
+recorded in `result.json` under `selection.skipped_unimplemented`. A map
+value of `false` (`module = { cocotb = "...", uvm = false }`) says the
+scenario is out of scope for that framework by decision; selection skips it
+the same way and records it apart, under `selection.skipped_excluded`. An
+explicitly named `--items` test errors in both cases, since the caller asked
+for a scenario that cannot run there, and a group with no member bound to
+the selected framework is an error rather than a passing run of nothing.
+`--list` reports the three counts per framework (`uvm 151/153 (2 excluded)`,
+`uvm 6/302 (296 missing)`), so how much of a catalog a view covers stays
+visible; `missing` counts scenarios that have neither a binding nor a `false`
+for that framework.
 
 === Tests, groups, and tags
 
@@ -532,7 +539,8 @@ Groups expand in definition order. Overlapping selections are de-duplicated in
 first-seen order unless `--allow-duplicates` is present.
 
 If `--items` is omitted, the runner selects the `smoke` group when it exists;
-otherwise it selects the first test in the catalog.
+otherwise it selects the first test in the catalog that the selected
+framework implements.
 
 `--tag` is repeatable and uses OR semantics across tags:
 
@@ -578,10 +586,20 @@ policy has classified the log:
   their status.
 
 The parser's `FAIL` says only that the leaf failed, not why. The leaf record
-therefore carries `observed_failures`: the message of every failure/error node
-in the leaf's `results/results.xml` (cocotb's `error_msg`, JUnit's `message`,
-or the node text), so a reader can compare what failed with the recorded
-reason. To make that comparison part of the grade, add `expect_fail_match`:
+therefore carries `observed_failures`, so a reader can compare what failed
+with the recorded reason. The messages come from the source the leaf's parser
+policy grades by:
+
+* a policy with structured results, such as `cocotb-default`, gives the
+  first line of every failure/error node's message in those files (cocotb's
+  `error_msg`, JUnit's `message`, or the node text);
+* any other policy, such as `uvm-log`, gives every log line that holds a
+  `fail_patterns` match no `ignore_patterns` entry covers, with the flow's and
+  the simulator's extensions, in log order.
+
+The parser's own reason, such as `process exited 1` or a missing required
+pattern, is not a failure message and stays in `observed_reason`. To make that
+comparison part of the grade, add `expect_fail_match`:
 
 [source,toml]
 ----
@@ -590,22 +608,25 @@ expect_fail_match = "wrap_to_live=[1-9]"
 ----
 
 With it, an observed `FAIL` grades `PASS` only when some observed failure
-message matches the regex (`re.search`); otherwise the leaf failed for a
-different reason than the one recorded and grades `FAIL` in the
-`expected_fail_mismatch` bucket, naming the first observed message. A leaf
-that recorded no failure message is a mismatch too. The key requires
+message matches the regex (`re.search`, on each message whole); otherwise the
+leaf failed for a different reason than the one recorded and grades `FAIL` in
+the `expected_fail_mismatch` bucket, naming the first observed message. A leaf
+that recorded no failure message is a mismatch too, such as a `uvm-log` leaf
+whose simulator stopped before it reported an error. The key requires
 `expect_fail` and must compile as a Python regex.
 
 The leaf record carries `expected_fail` (`reason`, `observed_status`,
 `observed_reason`, `observed_failures`, `observed_buckets` -- the parser's
-failure bucket kinds and signatures -- and `match` when set) in its metadata
-and in the regression leaf summary, and the run-level `tests` summary counts
-graded leaves under `expected_failing`.
-The framework's own `results/results.xml` still records the observed
-failure; `result.json` is the graded, authoritative result. Keep such tests
-in a group of their own (for example `rtl_issue`) so they never feed a
-coverage regression as passes, and so the flip is visible as that group
-going red.
+failure bucket kinds and signatures -- `match` when set, and
+`matched_failure`, the first message it matched, when one did) in its
+metadata and in the regression leaf summary, and the run-level `tests`
+summary counts graded leaves under `expected_failing`. The record keeps the
+first eight observed messages, each cut to 400 characters.
+A framework-written `results/results.xml` records the observed failure, and
+a synthesized one the graded result; `result.json` is the graded,
+authoritative result. Keep such tests in a group of their own (for example
+`rtl_issue`) so they never feed a coverage regression as passes, and so the
+flip is visible as that group going red.
 
 === Targets and run modes
 
@@ -776,13 +797,14 @@ the file and the table or entry:
   every `{placeholder}` in a value is one the consuming stage defines.
 . `[testlist].path` is relative, resolves inside the DUT DV root, and exists.
 . Each `[coverage.<tool>]` table is well formed and each coverage policy
-  file loads; a lapsed waiver is a warning, not a failure.
+  file loads.
 . The scheduler's default and allowed executors are registered.
 . No key from the rejected-key table is present (<<runner-rejected-keys>>).
 . The test catalog loads after include expansion: each test's `run_modes`
   and `tools` name declared entries, each scenario binds or excludes every
   framework the DUT implements, `firmware` is a string or a table,
-  `expect_fail` carries a reason, every group member names a test, and each
+  `expect_fail` carries a reason and any `expect_fail_match` beside it
+  compiles as a regex, every group member names a test, and each
   `expected_count` matches its list.
 . The flow's parser policy extensions are registered.
 
@@ -957,7 +979,7 @@ its item-status meaning, and `coverage` keeps its simulation meaning.
 `--overlay <path>` (or the `OCAH_DV_OVERLAY` environment variable; the flag
 wins) applies one adopter-owned TOML file on top of the merged DUT view. It
 is the runner-side equivalent of `ocah.mk`'s adopter include hooks
-(`-include nonfree/nonfree.mk`, `OCAH_ADOPTER_OVERLAY_MK`): an adopter — for
+(the companion checkout's makefile and `OCAH_ADOPTER_OVERLAY_MK`): an adopter — for
 example a commercial-VIP integration living outside this tree — extends a
 build without editing checked-in configs. The layer is *never*
 auto-activated: the presence of an adopter checkout changes nothing until a
@@ -1142,10 +1164,30 @@ companion-owned formal view is reached without editing `duts.toml`. The DUT
 must be selectable; the path is repo-relative or absolute. An absent file
 leaves the view `unavailable` in `--list` and `--validate-configs` and is an
 error only when the DUT is selected with `--mode formal`.
+
+|`[duts.<dut>]` `sim_cfg = "path"`
+|replaces
+|The simulation config `--mode sim` loads for that DUT, ahead of the
+registry's `sim_cfg` and the `<name>_sim_cfg.toml` convention: how a
+companion-owned simulation view, such as an SV-UVM view with a commercial
+VIP, is reached without editing `duts.toml`. The path, the validation, and
+the `unavailable` state follow `formal_cfg`; an absent file is an error only
+when the DUT is selected in simulation mode.
+
+|`[duts.<dut>]` `tools = ["<tool>", ...]`
+|appends
+|Simulation tools added to that DUT's `tools` allowlist. Each joins the views
+whose framework it serves, after the DUT's own tools, and `default_tool` is
+unchanged. Each name must be a simulation tool of the merged registry, and
+the stages drive `verilator`, `vcs` and `xcelium` only: a tool under another
+name is selectable but fails at `hdl_compile`, so the list adds one of those
+three to a view that lists fewer. `--list` marks a licensed one `(licensed)`
+from its `license_env`. A formal view takes its tools from its formal config.
 |===
 
-Any other key fails validation, as does a checked-in registry that carries
-`launcher`, `extra_env`, or `setup_hook`. Inside one command the stage's own
+Any other key fails validation, as does a `[duts.<dut>]` table that sets none
+of the three, or a checked-in registry that carries `launcher`, `extra_env`,
+or `setup_hook`. Inside one command the stage's own
 variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
 their values; below them the `setup_hook` exports win over `extra_env`,
 which wins over the ambient environment. The stage's `env/` snapshot records
@@ -1775,6 +1817,25 @@ each run records the site file under `site` in its `result.json`.
 `hw/common/dv/configs/site.local.example.toml` is the template for the site
 file.
 
+A licensed simulation flow for an open DUT uses the same site file. The
+simulator's table, overridden above with its launch details, makes it
+launchable here; the DUT's entry then either adds it to the open views with
+`tools`, or replaces the simulation view with a companion-owned config
+through `sim_cfg`:
+
+[source,toml]
+----
+[duts.dtp]
+tools = ["xcelium"]
+
+[duts.smc]
+sim_cfg = "companion/hw/sys/smc/dv/smc_sim_cfg.toml"
+----
+
+Without a site file every open view, its default tool, and its runs are
+unchanged. A run on a site-named or site-extended view records the site file
+under `site` in its `result.json`, as the formal runs do.
+
 == Stage planning
 
 The canonical logical stage names are:
@@ -2137,16 +2198,16 @@ disposition and no GitHub issue, a duplicate id, a `minimum_percent` outside
 0 to 100, an `expected_matches` below 1, an entry without a
 `pass:[[[holes.native]]]` selector, a `pass:[[[native_files]]]` entry with a key
 outside its grammar or a `sha256` other than its file's, and a category,
-disposition, status, population, date, or selector key outside the grammar. A policy that
+disposition, status, population, hole key, or selector key outside the grammar. A policy that
 contradicts the report is refused by `cov_report` after the report command
 ran: a `pass:[[[holes]]]` entry that matches a number of points other than
 `expected_matches`, an accepted waiver or exclusion that matches a covered
 point, or two entries that claim one point. That record is `ERROR` with a
 `config_error` bucket, the run status is `ERROR`, and
-`coverage-details.raw.json` is the only report file written. An accepted
-waiver past its `expires` date grades its points as open and adds a warning
-to `policy-application.json`, so a lapsed waiver lowers the effective figure
-instead of hiding a hole.
+`coverage-details.raw.json` is the only report file written. The grade is
+a function of the design build and the policy file alone: an accepted waiver
+stays accepted until the policy changes, and the checks above refuse it as
+soon as the RTL, the bench or a test moves the points it names.
 
 In scheduler mode (a group, `--regress`, `--reseed`, `--retry`,
 `--max-failures`, or more than one item), the leaf stage never stops the
@@ -2171,8 +2232,10 @@ A hole reviewed after a regression is closed in the DUT's
   category, and status.
 . Add or edit a `pass:[[[holes]]]` entry. A waiver is an entry with
   `disposition = "waive"` (or `"exclude_scope"`), `status = "accepted"`,
-  `confidence` of `medium` or `high`, a `rationale`, `owner`, `reviewer`, and
-  `date`, plus one or more `pass:[[[holes.native]]]` selectors. `expected_matches`
+  `confidence` of `medium` or `high`, a `rationale`, an `owner` and a
+  `reviewer`, plus one or more `pass:[[[holes.native]]]` selectors. An entry
+  accepts no other keys besides `id`, `title`, `category`, `issues` and
+  `expected_matches`; git records when it was written. `expected_matches`
   is an exact count. An accepted waiver that matches a covered point, a
   low-confidence waiver, and a `dut` that differs from the run's are rejected.
 . Re-grade the finished run against the policy:
@@ -2234,14 +2297,6 @@ Carried values: the tool version and supported metrics come from the run's
 recorded, so a `--fail-under` the original run used has to be passed again.
 The compatibility threshold grades the tool's raw overall figure, so a waiver
 changes the verdict only through a `pass:[[[thresholds]]]` rule.
-
-An accepted waiver may carry `expires` (`YYYY-MM-DD`). Past that date the
-waiver is lapsed at grade time for its own DUT: the hole keeps its `policy_id`
-and disposition, its `status` becomes `open`, it counts as an open hole and no
-longer shrinks the effective denominator, and `warnings` in
-`coverage-details.json` and `policy-application.json` carry
-`<rule id> expired on <date>; treated as open`. `--validate-configs` reports
-the expiry as a warning and stays `OK`; extending the date restores the waiver.
 
 `pass:[[[native_files]]]` entries act inside the merge and report commands, which the
 re-grade does not run. When the policy's native files differ from the digests
@@ -2451,7 +2506,8 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 default tool; tools that need a license, and frameworks that no open-source
 tool serves, are marked `(licensed)`. A DUT with a formal config adds a `fv`
 row with the formal tool set; a site-named formal config that is absent
-shows as `unavailable`. An `alias_of` name from `duts.toml` gets one
+shows as `unavailable`, and a site-named simulation config that is absent
+gives its DUT one `unavailable` row. An `alias_of` name from `duts.toml` gets one
 `alias of <dut>` row. The per-DUT detail view adds the `license` and
 `runnability` fields from the merged config; `--mode formal` selects the
 formal view.
@@ -2459,8 +2515,8 @@ formal view.
 |`--validate-configs`
 |Validate registries (with the site layer merged in when one is active),
 every selectable DUT's simulation views, and every discovered formal view.
-Exit `2` if any fail; a site-named formal config that is absent is reported
-`UNAVAILABLE` without failing the set. With `--overlay`, every view is
+Exit `2` if any fail; a site-named simulation or formal config that is
+absent is reported `UNAVAILABLE` without failing the set. With `--overlay`, every view is
 additionally validated with the overlay applied (guard-excluded views fall
 back to base validation).
 
@@ -2984,8 +3040,7 @@ policy applied.
 |`cov/report/policy-application.json`
 |none
 |The policy path and SHA-256, the native policy files applied, every
-`matched` entry with the observation ids it claimed, and the warnings, one
-per lapsed waiver.
+`matched` entry with the observation ids it claimed, and `warnings`.
 |===
 
 Three fingerprints decide whether two grades are comparable.
@@ -3020,10 +3075,11 @@ and the attempt. Either way the path is recorded as `artifacts.results_xml`
 on the leaf.
 
 A synthesized file is a reporting artifact, written after grading, atomically,
-and never read back as evidence. Its suite carries a `producer` property
-with the value `run_dv.py junit-fallback`, and only a file carrying that
-marker is ever removed or replaced; a file without it is left alone even
-when it sits where the runner would write.
+and never read back as evidence; before a leaf runs, the runner removes one
+that an earlier invocation into the same directory left. Its suite carries a
+`producer` property with the value `run_dv.py junit-fallback`, and only a
+file carrying that marker is ever removed or replaced; a file without it is
+left alone even when it sits where the runner would write.
 
 Two run-level files follow the same rule. A handled interruption writes
 `<run>/results/results.xml` with one errored testcase of type `interruption`
@@ -3198,17 +3254,17 @@ on a single-node Slurm it installs (<<runner-cluster-dispatch>>).
 Hosted invocations omit `--framework`, so every DUT runs its default
 framework (cocotb) — adding a second framework to a DUT changes
 nothing for existing jobs. The canonical invocation for a licensed SV-UVM
-job selects a group under the UVM view. A group whose cocotb-only members
-declare `uvm = false` runs its UVM-implemented subset with no flag; a DUT
-whose scenarios lack a `uvm` entry rides `--skip-unimplemented`:
+job selects a group under the UVM view, and the group runs whatever subset
+of its members is bound to `uvm`, whether the rest declare `uvm = false` or
+carry no `uvm` entry:
 
 [source,bash]
 ----
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi
 python3 tools/dv/run_dv.py --dut ocah_axi_vip --framework uvm --items smoke
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
@@ -3218,9 +3274,11 @@ entry per view with its tool set, default tool, and license need, so
 a licensed UVM job selects `.duts[] | select(.framework == "uvm")` and a DUT
 joins that matrix by declaring `[frameworks.uvm]` and adding module bindings
 — no CI edit. Every entry carries `mode` (`sim` or `formal`) and
-`available`; a formal view whose site-named config is absent is listed with
-`available: false`, its `path`, and a `reason`, so a formal job selects
-`.duts[] | select(.mode == "formal" and .available)`. An `alias_of` name
+`available`; a simulation or formal view whose site-named config is absent
+is listed with `available: false`, its `path`, and a `reason`, so a formal
+job selects `.duts[] | select(.mode == "formal" and .available)`. An
+unavailable simulation entry carries no `kind`, `framework`, or tools,
+because those live in the absent file. An `alias_of` name
 adds no entry, so a matrix never selects one DUT twice; each entry lists
 the names that select its DUT under `aliases`. `--list --dut <dut>
 --json` additionally carries the per-scenario binding matrix

@@ -10,8 +10,9 @@
 // every bridge-register DR scan and every observed bridge completion
 // (axi_export) to a dtp_jtag2axi_model, and publishes one
 // dtp_jtag2axi_status_item per scan item so the scoreboard pairs the two
-// streams in lockstep; scans that are not a bridge capture, and captures
-// inside the CDC settle window after a completion, carry no contract.
+// streams in lockstep; scans that are not a bridge capture, captures inside
+// the CDC settle window after a completion, and the captures
+// dtp_jtag2axi_model exempts carry no contract.
 // Series-data captures (the pipelined read FIFO) are not predicted. No
 // comparison, no reporting. The cocotb realization has no twin
 // (DTP_TB_ARCH).
@@ -82,7 +83,7 @@ class dtp_jtag2axi_status_ref_model
         m_bridge.predict_capture(target, kind, t.start_time, exp);
         exp.context_s = $sformatf("%s %s bits=%0d", target.name, kind.name(), t.bit_count);
       end
-      if ((tb_vif.dbg_disable & target.dbg_disable_mask) != '0) m_bridge.gated(target.name);
+      if (dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path)) m_bridge.gated(target.name);
       else void'(m_bridge.update(target, req, t.end_time, unused));
     end
     expected_ap.write(exp);
@@ -95,9 +96,11 @@ class dtp_jtag2axi_status_ref_model
   endfunction
 
   function void write_dtp_j2a_status_axi(ocah_axi_item t);
+    dtp_j2a_target_t target;
     if (!m_target_by_source.exists(t.source))
       `uvm_fatal(get_type_name(), $sformatf("AXI item from unbound port `%s`", t.source))
-    m_bridge.complete(m_target_by_source[t.source], t);
+    target = dtp_j2a_target_by_name(m_target_by_source[t.source]);
+    m_bridge.complete(target.name, t, dtp_dbg_path_disabled(tb_vif.dbg_disable, target.dbg_path));
   endfunction
 
   protected function void sync_reset();

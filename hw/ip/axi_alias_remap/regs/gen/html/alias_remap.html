@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: alias_remap</h2>
+<h2 id="regmap-alias_remap">AXI Alias Remap Address Map</h2>
+<p>TLB Registers for address remapping and attribute tagging</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -33,8 +34,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63</td><td>valid</td><td>RW</td><td>0x0</td><td>If set, this remap will be active</td></tr>
-<tr><td>62</td><td>cacheable</td><td>RW</td><td>0x0</td><td>If set, top two bits of a*cache will be tied high</td></tr>
-<tr><td>61:56</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>62:60</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>59:56</td><td>cacheable</td><td>RW</td><td>0x0</td><td>Set to change the value of the axcache field of the transaction. This field will override all existing axcache bits.</td></tr>
 <tr><td>55:12</td><td>offset</td><td>RW</td><td>0x0</td><td>The value of this field is added to bits [55:12] of the input address when it falls within the remap region. The lower 12 bits of the address are preserved unchanged.</td></tr>
 <tr><td>11:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>

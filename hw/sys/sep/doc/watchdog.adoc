@@ -10,8 +10,9 @@ The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
 CPU must periodically visit the WDT and reset its counter, proving that
 the CPU is still alive and well i.e. not hanging. If the WDT timer
-reaches zero in its countdown, it fires an external interrupt indicating
-that its timeout has expired and there is a problem within the SEP.
+counts up to its bark threshold it fires an external interrupt, and if it
+counts up to its bite threshold it requests a reset, both indicating a
+timeout has expired and there is a problem within the SEP.
 
 == Bus Interface
 

@@ -23,12 +23,13 @@ Single-beat reads only (`ARLEN = 0`): the crypto demux routes any `AxLEN != 0`
 to its error slave (`sep_crypto_axi_interconnect.sv:111-112`, `:175`, `:205`),
 which `hw/sys/sep/doc/crypto.adoc` states to software.
 
-The comparand is `MLDSA_VERSION1`, a plain read-only register with unconditional
-combinational readback, so it holds one value and zero is not that value.
+The comparand is `MLDSA_VERSION1`, a read-only register. `abr_reg.rdl` gives
+it no reset and no SEP document gives its value, so the control read alone is
+the golden for the sweep.
 
 Checkers:
-  CHK-ABR-CONTROL  the control read answers OKAY and returns the generated
-                   golden. It is the comparand for everything below, so a
+  CHK-ABR-CONTROL  the control read answers OKAY with a known, nonzero
+                   value. It is the comparand for everything below, so a
                    control of zero would let every pipelined read compare
                    equal and turn the sweep vacuous
   CHK-ABR-PIPELINED-READ  every read, at every depth, returns that same value
@@ -44,15 +45,13 @@ from cocotb.triggers import with_timeout
 from env.sep_axi_agent import SepAxiOp
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
-from seq_lib.sep_abr_keygen_seq import ABR_BASE, ABR_VERSION1, VER1_EXP
+from seq_lib.sep_abr_keygen_seq import ABR_BASE, ABR_VERSION1
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_inbound_filter_rule_seq import SepInboundFilter, SepInboundFilterCfg
 
 SIZE_4B = 2
 RESP_OKAY = 0
-# Address and expected word both come from the generated map via
-# sep_abr_keygen_seq, never a literal. The control read is held against
-# VER1_EXP so the golden for the sweep cannot silently become zero.
+# The address comes from the RDL via sep_abr_keygen_seq, never a literal.
 A_VERSION1 = ABR_VERSION1
 DEPTHS = (1, 2, 3, 4, 8)
 READ_TIMEOUT_NS = 20_000
@@ -106,21 +105,22 @@ class sep_abr_pipelined_read_test(sep_base_test):
         # The control read is the golden, so it has to be worth comparing
         # against. A control that answered zero, or answered at all with an
         # error, would let every pipelined read compare equal to it and this
-        # leaf would be green over a dead aperture.
+        # leaf would be green over a dead aperture. The m_axi bus monitor fails
+        # an OKAY beat that carries X/Z in the lanes read, so an OKAY control
+        # is a known value.
         assert seq.resp_code == RESP_OKAY, (
             f"CHK-ABR-CONTROL FAIL: the control read of 0x{A_VERSION1:08x} "
             f"returned resp={seq.resp_code}, expected OKAY. The aperture is not "
             "readable, so nothing below would mean anything."
         )
-        assert alone == VER1_EXP, (
+        assert alone != 0, (
             f"CHK-ABR-CONTROL FAIL: the control read of 0x{A_VERSION1:08x} "
-            f"returned 0x{alone:08x}, expected 0x{VER1_EXP:08x}. This is the "
-            "golden every pipelined read is compared against; a zero or wrong "
-            "control would make that comparison vacuous."
+            "returned zero. This is the golden every pipelined read is compared "
+            "against; a zero control would make that comparison vacuous."
         )
         self.logger.info(
-            "CHK-ABR-CONTROL PASS: 0x%08x reads 0x%08x alone, OKAY -- a non-zero "
-            "golden for the depth sweep",
+            "CHK-ABR-CONTROL PASS: 0x%08x reads 0x%08x alone, OKAY, known and nonzero "
+            "-- the golden for the depth sweep",
             A_VERSION1,
             alone,
         )

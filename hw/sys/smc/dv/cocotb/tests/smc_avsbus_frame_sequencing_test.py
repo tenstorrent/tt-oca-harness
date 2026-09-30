@@ -26,9 +26,10 @@ class smc_avsbus_frame_sequencing_test(smc_base_test):
         "CHK-AVS-READBACK-OVERFLOW",
         "CHK-AVS-SINGLE-COMMAND",
         "CHK-AVS-SLAVE-INT-CLEAR",
+        "CHK-AVS-SUPPRESSED-LAST",
         "CHK-AVS-SUPPRESSED-MID",
     )
-    min_evidence = 9
+    min_evidence = 10
 
     auto_protocol_vip = False
 

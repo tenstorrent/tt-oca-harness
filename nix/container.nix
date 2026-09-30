@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 {
   self,
   inputs,
@@ -56,6 +58,10 @@
             inherit PS1;
             TMPDIR = "/tmp";
           }));
+        Labels = {
+          "org.opencontainers.image.source" = "https://github.com/tenstorrent/tt-oca-harness";
+          "org.opencontainers.image.licenses" = "Apache-2.0";
+        };
         WorkingDir = workDir;
       };
     }

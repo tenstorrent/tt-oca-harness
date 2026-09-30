@@ -90,7 +90,7 @@ network (EDN).
 
 [[sep-axi-connectivity]]
 .SEP AXI4 connectivity. Filled circles indicate connections; dashes indicate no connection.
-image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=720]
+image::sep_axi_connectivity.svg[SEP AXI4 connectivity matrix with five initiators and ten crossbar targets plus a separate Boot ROM path,width=920,pdfwidth=88%]
 
 [[sep-fabric-topology]]
 === Fabric Topology
@@ -108,39 +108,66 @@ rejected requests to an AXI error responder.
 
 The input paths are shown in <<sep-input-fabric-diagram>>, the local resource
 connections in <<sep-local-fabric-diagram>>, and the outbound paths in
-<<sep-output-fabric-diagram>>.
-
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
+<<sep-output-fabric-diagram>>. The three figures share one notation. Crossbars
+are rectangles, muxes and demuxes are trapezoids with the wide side towards the
+many ports, address remaps are hexagons and traffic filters are octagons. Green
+boxes are converters: address-width, data-width, ID-width and protocol
+conversion, and register cuts. Thick lines are AXI4 and thin lines AXI-Lite or
+TL-UL; every AXI data path is 64 bits wide unless a converter narrows it. The
+labels give the address and ID widths where they change, and the port badges
+mark where a path crosses the module boundary.
 
 [[sep-input-fabric-diagram]]
 .SEP input fabric
-image::SEP_Input_Fabric_FIG005.svg[alt="SEP input fabric",width=100%,pdfwidth=100%]
+image::sep-input-fabric.svg[alt="Inbound path of sep_system_peripherals: inbound filter, global-to-local remap, peripheral crossbar with mailbox, system CSR and local-fabric legs",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
+<<sep-input-fabric-diagram>> follows a request from the system interconnect through
+`sep_system_peripherals`. The inbound filter checks it first; while SEP-scope
+debug is enabled, `SEP_DBG` bypasses the filter. The global-to-local remap then
+rebases the `SEP_REGION_SIZE` window at `SEP_GLOBAL_BASE_ADDR` to address 0 and
+passes every other address unchanged. The peripheral crossbar has a second
+initiator, the `SEP_LOCAL` port of the output fabric's route demux, so local
+masters reach the mailboxes and system CSRs through the same decode. Addresses
+outside the mailbox and system CSR windows but below `0x4000_0000` are truncated
+to 32 bits, their IDs reduced from 7 to 3 bits, and forwarded to the `ext`
+initiator of the local crossbar. The crossbar answers any other address with
+DECERR. The system CSRs program the inbound filter entries and the SEP aperture,
+as well as the output fabric's remaps and outbound filter.
 
 [[sep-local-fabric-diagram]]
 .SEP local fabric
-image::SEP_Local_Fabric_FIG006.svg[alt="SEP local fabric",width=100%,pdfwidth=100%]
+image::sep-local-fabric.svg[alt="SEP local crossbar with its five initiators, their alias remaps and demuxes, the boot ROM path and the converters in front of its ten targets",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=landscape]
-<<<
-endif::backend-pdf[]
+<<sep-local-fabric-diagram>> shows the local crossbar with its initiators on the
+left and its targets on the right, in crossbar port order. Each CPU master and
+the secure DMA master pass a local alias remap before the crossbar; the remap
+rewrites the 768 MiB window at `SEP_LOCAL_BASE_ADDR` to `0x1000_0000`. The IFU
+and LSU demuxes inside `sep_cpu` send boot ROM addresses to the boot ROM mux,
+which reaches the ROM macro without passing the crossbar, and the IFU demux
+answers addresses outside the boot ROM and SEP SRAM with DECERR. The chain on
+each target row is the conversion the target needs: the secure DMA registers
+and the watchdog are reached as 32-bit TL-UL, and the IO block, reset
+controller and entropy pool as AXI-Lite. The `sep_external` demux diverts the
+eFuse shim CSR window to the eFuse wrapper; every other address in the
+`0x2000_0000` to `0x3FFF_FFFF` aperture leaves SEP on the AXI extension port.
+xref:sep-axi-connectivity[xrefstyle=short] gives the initiator-to-target connections.
 
 [[sep-output-fabric-diagram]]
 .SEP output fabric
-image::SEP_Output_Fabric_FIG007.svg[alt="SEP output fabric",width=100%,pdfwidth=100%]
+image::sep-output-fabric.svg[alt="Outbound path of sep_system_peripherals: address expansion, alias remap, route demux, AP and STEE output remaps, outbound mux and outbound filter",width=100%,pdfwidth=100%]
 
-ifdef::backend-pdf[]
-[page-layout=portrait]
-<<<
-endif::backend-pdf[]
+<<sep-output-fabric-diagram>> follows local-master traffic that the local
+crossbar sends to `sep_system_peripherals`. The address is zero-extended from
+32 to 56 bits, passes the 16-region alias remap and a register cut, and reaches
+the route demux. The demux takes the first match in the order shown: the SMC
+aperture, supplied by the SMC, goes straight to the SMC without filtering; the
+SMU aperture from `SMU_GLOBAL_BASE_ADDR` and `SMU_REGION_SIZE`, and any address
+at or above `0x1_0000_0000`, goes to the outbound mux; the AP and STEE regions
+pass their output remaps, which replace the address with the programmed region
+offset and set the source ID to `OTHERS`, before the same mux; and every other
+address returns to the peripheral crossbar of the input fabric. The outbound mux
+widens the ID from 6 to 8 bits, and the outbound filter, which has no bypass,
+guards the path to the system interconnect.
 
 [[subsystem-external-interfaces]]
 == Interfaces
@@ -160,7 +187,7 @@ remapper. Remappers define the following attributes:
 
 * Input address range
 * Remapped output address offset
-* Cacheable flag
+* AxCACHE value, which replaces the transaction's own on a hit
 
 The programmable remap regions accomplish several jobs. First, they
 expand local 32-bit addresses to the global 56-bit address space.
@@ -214,7 +241,7 @@ documented once with the IP in {axi-traffic-filter-ref}.
 
 [[sep-system-peripheral-traffic-management-figure]]
 .SEP system-peripheral traffic management
-image::SEP_System.png[SEP_System,scaledwidth=90.0%]
+image::sep-system-peripherals.svg[alt="Overview of sep_system_peripherals: the outbound path through the alias remap, route demux, AP and STEE remaps and outbound filter, and the inbound path through the inbound filter, global-to-local remap and peripheral crossbar to the mailboxes, system CSRs and local crossbar",width=100%,pdfwidth=100%]
 
 <<sep-system-peripheral-traffic-management-figure>> illustrates the AXI4 traffic management performed by
 the Systems Peripheral block. The AXI4 slave port is driven by one of

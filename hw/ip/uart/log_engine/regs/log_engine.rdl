@@ -7,9 +7,10 @@
 addrmap log_engine #(
     longint unsigned NUM_LOG_ENTRIES = 16
 ) {
+    name = "Log Engine Address Map";
+    desc = "Configuration and status registers for the UART log engine, including the log region and write pointers.";
 
-    desc = "Log Engine";
-
+    
     //////////////////////////
     // Register Definitions //
     //////////////////////////

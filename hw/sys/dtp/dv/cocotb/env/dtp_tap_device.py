@@ -49,8 +49,6 @@ __all__ = [
     "DTP_IC_RESET_LEN",
     "DTP_IC_RESET_PORTS",
     "DTP_JTAG2AXI_CAPS_LEN",
-    "DTP_JTAG2AXI_RD_PL_DEPTH",
-    "DTP_JTAG2AXI_WR_PL_DEPTH",
     "DTP_JTAG_CAPS_LEN",
     "DTP_TMP_STATUS_LEN",
     "DtpTapDevice",
@@ -76,11 +74,6 @@ DTP_JTAG2AXI_CAPS_LEN = 14
 # SELECT_IJTAG: one bit per SIB of the DTP iJTAG network
 # (dtp_scan_ref_model.IJTAG_SIB_ORDER).
 DTP_SELECT_IJTAG_MIN_LEN = 3
-# Read and write pipeline depth every JTAG2AXI bridge publishes in the
-# rd_pl_depth and wr_pl_depth fields of its *_JTAG2AXI_CAPS TDR; the CAPS
-# scenarios compare them.
-DTP_JTAG2AXI_RD_PL_DEPTH = 3
-DTP_JTAG2AXI_WR_PL_DEPTH = 3
 # The OSS TB uses a compact local scan model for boundary-scan scenarios.
 DTP_BSR_MODEL_LEN = 8
 
@@ -121,8 +114,8 @@ def pack_jtag2axi_caps(
     bus_type: int,
     addr_width: int,
     data_width: int,
-    rd_pl_depth: int = DTP_JTAG2AXI_RD_PL_DEPTH,
-    wr_pl_depth: int = DTP_JTAG2AXI_WR_PL_DEPTH,
+    rd_pl_depth: int,
+    wr_pl_depth: int,
 ) -> int:
     """Pack a *_JTAG2AXI_CAPS value ("*_JTAG2AXI_CAPS" table, bits 13:0)."""
     return (
@@ -149,7 +142,11 @@ DTP_EXPECTED_JTAG_CAPS = pack_jtag_caps()
 # Expected *_JTAG2AXI_CAPS value per CAPS register name, from the geometry table.
 DTP_EXPECTED_JTAG2AXI_CAPS: dict[str, int] = {
     cfg.caps_reg: pack_jtag2axi_caps(
-        bus_type=cfg.bus_type, addr_width=cfg.addr_width, data_width=cfg.data_width
+        bus_type=cfg.bus_type,
+        addr_width=cfg.addr_width,
+        data_width=cfg.data_width,
+        rd_pl_depth=cfg.rd_pl_depth,
+        wr_pl_depth=cfg.wr_pl_depth,
     )
     for cfg in JTAG2AXI_TARGETS.values()
 }

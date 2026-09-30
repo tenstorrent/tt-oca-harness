@@ -39,7 +39,7 @@ frequencies and timing constraints belong to the platform integration.
 
 [[sep-clock-tree]]
 .SEP clock tree and clock domains
-image::SEP_CLOCKING_FIG002.svg[alt="SEP clock tree and clock domains",width=100%,pdfwidth=100%]
+image::sep-clock-domains.svg[alt="SEP clock tree and clock domains",width=100%,pdfwidth=100%]
 
 == Reset Architecture
 

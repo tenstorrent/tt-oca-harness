@@ -6,7 +6,8 @@
 .ocah-reg-html th,.ocah-reg-html td{border:1px solid #333;padding:4px;font-family:Arial,Helvetica,sans-serif}
 .ocah-reg-html th{background:#81BCE5;text-align:left}
 </style>
-<h2>Address Map: axil_mailbox_sep_wrap</h2>
+<h2 id="regmap-axil_mailbox_sep_wrap">SEP AXI-Lite Mailbox Wrapper Address Map</h2>
+<p>SEP-side wrapper instantiating the AXI-Lite mailbox pairs.<br>Each outbound_mailbox_N / inbound_mailbox_N pair is the two apertures of one<br>bidirectional mailbox and shares a single pair of FIFOs: data written through<br>WRITE_DATA in one aperture is what READ_DATA in the other aperture returns.<br>The outbound/inbound naming reflects intended use, not an access restriction.</p>
 <p><strong>Register List:</strong></p>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
@@ -175,12 +176,12 @@
 <h3 id="outbound_mailbox_0.WRITE_DATA">outbound_mailbox_0.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_0.READ_DATA">outbound_mailbox_0.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_0.STATUS">outbound_mailbox_0.STATUS</h3>
 <table>
@@ -195,8 +196,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_0.WIRQT">outbound_mailbox_0.WIRQT</h3>
 <table>
@@ -214,9 +215,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_0.IRQEN">outbound_mailbox_0.IRQEN</h3>
 <table>
@@ -238,18 +239,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_0.WRITE_DATA">inbound_mailbox_0.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_0.READ_DATA">inbound_mailbox_0.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_0.STATUS">inbound_mailbox_0.STATUS</h3>
 <table>
@@ -264,8 +265,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_0.WIRQT">inbound_mailbox_0.WIRQT</h3>
 <table>
@@ -283,9 +284,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_0.IRQEN">inbound_mailbox_0.IRQEN</h3>
 <table>
@@ -307,18 +308,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_1.WRITE_DATA">outbound_mailbox_1.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_1.READ_DATA">outbound_mailbox_1.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_1.STATUS">outbound_mailbox_1.STATUS</h3>
 <table>
@@ -333,8 +334,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_1.WIRQT">outbound_mailbox_1.WIRQT</h3>
 <table>
@@ -352,9 +353,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_1.IRQEN">outbound_mailbox_1.IRQEN</h3>
 <table>
@@ -376,18 +377,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_1.WRITE_DATA">inbound_mailbox_1.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_1.READ_DATA">inbound_mailbox_1.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_1.STATUS">inbound_mailbox_1.STATUS</h3>
 <table>
@@ -402,8 +403,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_1.WIRQT">inbound_mailbox_1.WIRQT</h3>
 <table>
@@ -421,9 +422,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_1.IRQEN">inbound_mailbox_1.IRQEN</h3>
 <table>
@@ -445,18 +446,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_2.WRITE_DATA">outbound_mailbox_2.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_2.READ_DATA">outbound_mailbox_2.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_2.STATUS">outbound_mailbox_2.STATUS</h3>
 <table>
@@ -471,8 +472,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_2.WIRQT">outbound_mailbox_2.WIRQT</h3>
 <table>
@@ -490,9 +491,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_2.IRQEN">outbound_mailbox_2.IRQEN</h3>
 <table>
@@ -514,18 +515,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_2.WRITE_DATA">inbound_mailbox_2.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_2.READ_DATA">inbound_mailbox_2.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_2.STATUS">inbound_mailbox_2.STATUS</h3>
 <table>
@@ -540,8 +541,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_2.WIRQT">inbound_mailbox_2.WIRQT</h3>
 <table>
@@ -559,9 +560,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_2.IRQEN">inbound_mailbox_2.IRQEN</h3>
 <table>
@@ -583,18 +584,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_3.WRITE_DATA">outbound_mailbox_3.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_3.READ_DATA">outbound_mailbox_3.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_3.STATUS">outbound_mailbox_3.STATUS</h3>
 <table>
@@ -609,8 +610,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_3.WIRQT">outbound_mailbox_3.WIRQT</h3>
 <table>
@@ -628,9 +629,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_3.IRQEN">outbound_mailbox_3.IRQEN</h3>
 <table>
@@ -652,18 +653,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_3.WRITE_DATA">inbound_mailbox_3.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_3.READ_DATA">inbound_mailbox_3.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_3.STATUS">inbound_mailbox_3.STATUS</h3>
 <table>
@@ -678,8 +679,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_3.WIRQT">inbound_mailbox_3.WIRQT</h3>
 <table>
@@ -697,9 +698,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_3.IRQEN">inbound_mailbox_3.IRQEN</h3>
 <table>
@@ -721,18 +722,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_4.WRITE_DATA">outbound_mailbox_4.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_4.READ_DATA">outbound_mailbox_4.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_4.STATUS">outbound_mailbox_4.STATUS</h3>
 <table>
@@ -747,8 +748,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_4.WIRQT">outbound_mailbox_4.WIRQT</h3>
 <table>
@@ -766,9 +767,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_4.IRQEN">outbound_mailbox_4.IRQEN</h3>
 <table>
@@ -790,18 +791,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_4.WRITE_DATA">inbound_mailbox_4.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_4.READ_DATA">inbound_mailbox_4.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_4.STATUS">inbound_mailbox_4.STATUS</h3>
 <table>
@@ -816,8 +817,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_4.WIRQT">inbound_mailbox_4.WIRQT</h3>
 <table>
@@ -835,9 +836,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_4.IRQEN">inbound_mailbox_4.IRQEN</h3>
 <table>
@@ -859,18 +860,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_5.WRITE_DATA">outbound_mailbox_5.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_5.READ_DATA">outbound_mailbox_5.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_5.STATUS">outbound_mailbox_5.STATUS</h3>
 <table>
@@ -885,8 +886,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_5.WIRQT">outbound_mailbox_5.WIRQT</h3>
 <table>
@@ -904,9 +905,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_5.IRQEN">outbound_mailbox_5.IRQEN</h3>
 <table>
@@ -928,18 +929,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_5.WRITE_DATA">inbound_mailbox_5.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_5.READ_DATA">inbound_mailbox_5.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_5.STATUS">inbound_mailbox_5.STATUS</h3>
 <table>
@@ -954,8 +955,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_5.WIRQT">inbound_mailbox_5.WIRQT</h3>
 <table>
@@ -973,9 +974,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_5.IRQEN">inbound_mailbox_5.IRQEN</h3>
 <table>
@@ -997,18 +998,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_6.WRITE_DATA">outbound_mailbox_6.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_6.READ_DATA">outbound_mailbox_6.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_6.STATUS">outbound_mailbox_6.STATUS</h3>
 <table>
@@ -1023,8 +1024,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_6.WIRQT">outbound_mailbox_6.WIRQT</h3>
 <table>
@@ -1042,9 +1043,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_6.IRQEN">outbound_mailbox_6.IRQEN</h3>
 <table>
@@ -1066,18 +1067,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_6.WRITE_DATA">inbound_mailbox_6.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_6.READ_DATA">inbound_mailbox_6.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_6.STATUS">inbound_mailbox_6.STATUS</h3>
 <table>
@@ -1092,8 +1093,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_6.WIRQT">inbound_mailbox_6.WIRQT</h3>
 <table>
@@ -1111,9 +1112,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_6.IRQEN">inbound_mailbox_6.IRQEN</h3>
 <table>
@@ -1135,18 +1136,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="outbound_mailbox_7.WRITE_DATA">outbound_mailbox_7.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_7.READ_DATA">outbound_mailbox_7.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="outbound_mailbox_7.STATUS">outbound_mailbox_7.STATUS</h3>
 <table>
@@ -1161,8 +1162,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="outbound_mailbox_7.WIRQT">outbound_mailbox_7.WIRQT</h3>
 <table>
@@ -1180,9 +1181,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="outbound_mailbox_7.IRQEN">outbound_mailbox_7.IRQEN</h3>
 <table>
@@ -1204,18 +1205,18 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 <h3 id="inbound_mailbox_7.WRITE_DATA">inbound_mailbox_7.WRITE_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>write_data</td><td>W</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
+<tr><td>63:0</td><td>write_data</td><td>W WMOD</td><td>0x0</td><td>Write data to mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_7.READ_DATA">inbound_mailbox_7.READ_DATA</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:0</td><td>read_data</td><td>R</td><td>-</td><td>Read data from mailbox fifo</td></tr>
+<tr><td>63:0</td><td>read_data</td><td>R RMOD</td><td>-</td><td>Read data from mailbox fifo</td></tr>
 </table>
 <h3 id="inbound_mailbox_7.STATUS">inbound_mailbox_7.STATUS</h3>
 <table>
@@ -1230,8 +1231,8 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>write_error</td><td>R</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
-<tr><td>0</td><td>read_error</td><td>R</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
+<tr><td>1</td><td>write_error</td><td>R RC</td><td>0x0</td><td>Attempted write to a full mailbox</td></tr>
+<tr><td>0</td><td>read_error</td><td>R RC</td><td>0x0</td><td>Attempted read from an empty mailbox</td></tr>
 </table>
 <h3 id="inbound_mailbox_7.WIRQT">inbound_mailbox_7.WIRQT</h3>
 <table>
@@ -1249,9 +1250,9 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:3</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>2</td><td>eirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>1</td><td>rtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
-<tr><td>0</td><td>wtirq</td><td>RW</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>2</td><td>eirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Error on mailbox access<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>1</td><td>rtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in read mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
+<tr><td>0</td><td>wtirq</td><td>RW1C</td><td>0x0</td><td>On read:<br>[0]: No interrupt request<br>[1]: Usage level threshold in write mailbox exceeded<br>On write:<br>[0]: No acknowledge<br>[1]: Acknowledge and clear interrupt request</td></tr>
 </table>
 <h3 id="inbound_mailbox_7.IRQEN">inbound_mailbox_7.IRQEN</h3>
 <table>
@@ -1273,7 +1274,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>1</td><td>rflush</td><td>W</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
-<tr><td>0</td><td>wflush</td><td>W</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
+<tr><td>1</td><td>rflush</td><td>W WMOD</td><td>0x0</td><td>Flush the read FIFO for this port</td></tr>
+<tr><td>0</td><td>wflush</td><td>W WMOD</td><td>0x0</td><td>Flush the write FIFO for this port</td></tr>
 </table>
 </div>

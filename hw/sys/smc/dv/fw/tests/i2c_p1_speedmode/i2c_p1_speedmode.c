@@ -108,7 +108,7 @@ static int test_speed_mode(uint8_t speed_mode, const char *mode_name) {
 
     // Compute timing parameters for this speed mode
     i2c_timing_physical_t physical_params = {.speed = speed_mode,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};
@@ -198,7 +198,7 @@ int main(void) {
 
     // Initialize with Standard mode timing first
     i2c_timing_physical_t physical_params = {.speed = I2C_SPEED_STANDARD,
-                                             .clock_period_nanos = 10,
+                                             .clock_period_nanos = 5,
                                              .sda_rise_nanos = 300,
                                              .sda_fall_nanos = 100,
                                              .scl_period_nanos = 0};

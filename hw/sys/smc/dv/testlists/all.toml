@@ -14,12 +14,11 @@ schema_version = 1
 #           weekly tiers on the hosted GitHub runners (three seeds)
 #   fw      firmware images built in the c_compile stage (RISC-V GCC with
 #           picolibc, or scripts/docker-run.sh)
-#   dual    the SMC_DUAL elaboration, loading a ROM or firmware image
+#   sanity  the SMC_DUAL elaboration, loading a ROM or firmware image
 #
-# Every leaf outside `all` is in holdout.toml, with the reason: the
-# `rtl_issue` reproducers the weekly tier grades as expected failures, the two
-# runtime hold-outs (`occp_boot`, `occp_dual`), and `held_out`, the leaves
-# waiting on an RTL fix. docs/SMC_VPLAN.adoc (Known Limitations) records each.
+# Leaves outside `all` are either in holdout.toml, with the reason recorded
+# there, or in the `occp_rom` group selected explicitly from smc_rom.toml.
+# docs/SMC_VPLAN.adoc (Known Limitations) records the hold-outs.
 #
 # python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 # python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
@@ -29,7 +28,6 @@ includes = [
     "combined.toml",
     "cpu.toml",
     "dma.toml",
-    "dual.toml",
     "efuse.toml",
     "fabric.toml",
     "fw.toml",
@@ -42,17 +40,19 @@ includes = [
     "power.toml",
     "register.toml",
     "reset.toml",
+    "smc_rom.toml",
     "spi.toml",
     "uart.toml",
 ]
 
 [[groups]]
-# The package regression: hosted + fw + dual. It is not every test the package
-# defines -- holdout.toml holds the rest. Guarded by expected_count, as dtp and
-# sep are: the loader errors when this list and the count diverge, so a leaf
-# cannot be added to a feature testlist and silently miss the regression.
+# The package regression: hosted + fw + sanity. It is not every test the package
+# defines -- holdout.toml and the on-demand `occp_rom` group hold the rest.
+# Guarded by expected_count, as dtp and sep are: the loader errors when this
+# list and the count diverge, so a leaf cannot be added to a feature testlist
+# and silently miss the regression.
 name = "all"
-expected_count = 294
+expected_count = 299
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -83,6 +83,8 @@ tests = [
     "smc_cg_test_mode_bypass_test",
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_multi_window_test",
+    "smc_clk_smc_slower_than_ref_test",
+    "smc_clk_smc_equal_ref_test",
     "smc_clk_running_test",
     "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
@@ -121,6 +123,7 @@ tests = [
     "smc_dfd_cla_live_bus_test",
     "smc_dfd_trace_flush_corner_test",
     "smc_dfd_trace_reset_test",
+    "smc_dfd_trace_writeout_phase_test",
     "smc_dfd_sanity_test",
     "smc_dfd_sink_mmr_sweep_test",
     "smc_dfd_trace_accumulator_fill_test",
@@ -217,6 +220,7 @@ tests = [
     "smc_i2c_controller_stretch_test",
     "smc_i2c_error_fifo_depth_test",
     "smc_i2c_event_retain_test",
+    "smc_i2c_window_landing_test",
     "smc_i2c_bus_corners_test",
     "smc_i2c_fifo_full_test",
     "smc_i2c_fifo_reset_pulse_test",
@@ -328,6 +332,7 @@ tests = [
     "smc_uart_core_mode_select_test",
     "smc_uart_error_conditions_test",
     "smc_uart_extremes_misc_test",
+    "smc_uart_window_landing_test",
     "smc_uart_thr_paths_test",
     "smc_log_engine_fetch_error_test",
     "smc_uart_fifo_basic_trigger_reset_test",
@@ -352,12 +357,12 @@ tests = [
 
 [[groups]]
 name = "hosted"
-# The toolchain-free class of `all`: `all` minus the fw and dual classes.
+# The toolchain-free class of `all`: `all` minus the fw and sanity classes.
 # Nightly and weekly schedule this group on the hosted runners, which have no
 # RISC-V toolchain; the per-PR gate stays on the 3-leaf `smoke`. Guarded by
 # expected_count so a leaf cannot join `all` and silently miss the hosted set.
 # The two MMIO isolate-flush leaves stay out: they build mmio_wedge.
-expected_count = 274
+expected_count = 279
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -388,6 +393,8 @@ tests = [
     "smc_cg_test_mode_bypass_test",
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_multi_window_test",
+    "smc_clk_smc_slower_than_ref_test",
+    "smc_clk_smc_equal_ref_test",
     "smc_clk_running_test",
     "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
@@ -424,6 +431,7 @@ tests = [
     "smc_dfd_cla_live_bus_test",
     "smc_dfd_trace_flush_corner_test",
     "smc_dfd_trace_reset_test",
+    "smc_dfd_trace_writeout_phase_test",
     "smc_dfd_sanity_test",
     "smc_dfd_sink_mmr_sweep_test",
     "smc_dfd_trace_accumulator_fill_test",
@@ -503,6 +511,7 @@ tests = [
     "smc_i2c_controller_stretch_test",
     "smc_i2c_error_fifo_depth_test",
     "smc_i2c_event_retain_test",
+    "smc_i2c_window_landing_test",
     "smc_i2c_bus_corners_test",
     "smc_i2c_fifo_full_test",
     "smc_i2c_fifo_reset_pulse_test",
@@ -613,6 +622,7 @@ tests = [
     "smc_uart_core_mode_select_test",
     "smc_uart_error_conditions_test",
     "smc_uart_extremes_misc_test",
+    "smc_uart_window_landing_test",
     "smc_uart_thr_paths_test",
     "smc_log_engine_fetch_error_test",
     "smc_uart_fifo_basic_trigger_reset_test",

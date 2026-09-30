@@ -14,9 +14,8 @@ filesets:
   files_dv:
     files:
       - tb/tb_top.sv
-      # Stand-ins for the och_prim prim_sync2 / prim_sync3 cells; recorded in
+      # Stand-in for the ocah_prim prim_sync3 cell; recorded in
       # docs/SMC_VPLAN.adoc, Known Limitations (Bench stand-ins).
-      - tb/verilator_stubs/prim_sync2.sv
       - tb/verilator_stubs/prim_sync3.sv
     file_type: systemVerilogSource
 

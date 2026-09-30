@@ -4,7 +4,9 @@
 :regmap-instance: {counter:regmap-number}
 
 [#regmap-{regmap-instance}-uart_16550_dl]
-== Address Map: uart_16550_dl
+== UART 16550 Divisor Latch Address Map
+
+Contains the registers accessible only when `LCR.DLAB = 1`.
 
 [cols="1,4,1,6", options="header"]
 |===
