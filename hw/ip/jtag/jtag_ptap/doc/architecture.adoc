@@ -44,12 +44,13 @@ select registered on the falling TCK edge.
 `pwr_on_rst_ni` is ANDed with the client TRST in `u_trst_n_and`. The result,
 `jtag_trst_n`, resets the TAP controller and the retimer, and the controller
 forwards it with TCK and TMS on `host_tap_ctrl_o`. The controller also drives the
-IR and DR scan controls, ORed together, on `stap_host_scan_ctrl_o`. The TMP
-controller takes the decoded CLAMP_HOLD, CLAMP_RELEASE and BYPASS instructions and
-the TMP_STATUS `bypass_escape_bit`, and returns `persistence_mode` to the TAP
-controller. The AXI side of each JTAG2AXI bridge runs on `clk_i` and `rst_n_i`,
-which the figure omits, and each bridge has its own `*_security_disable_i` input
-(<<ptap-debug-disable-inputs-table>>).
+IR and DR scan controls, ORed together and gated by `stap_select`, on
+`stap_host_scan_ctrl_o`, so the STAP chain holds its state while the bit is clear.
+The TMP controller takes the decoded CLAMP_HOLD, CLAMP_RELEASE and BYPASS
+instructions and the TMP_STATUS `bypass_escape_bit`, and returns `persistence_mode`
+to the TAP controller. The AXI side of each JTAG2AXI bridge runs on `clk_i` and
+`rst_n_i`, which the figure omits, and each bridge has its own
+`*_security_disable_i` input (<<ptap-debug-disable-inputs-table>>).
 
 === Module Hierarchy
 
