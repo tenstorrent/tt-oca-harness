@@ -630,27 +630,28 @@ on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`
 and Capture-DR returns the payload from those lanes.
 
 The data field is drawn as the payload bytes it holds, with bit 0 aligned across the
-four sizes. The incrementing payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3 are
-shown in <<jtag2axi-incrementing-data-layout-for-size-0-figure>>,
+four sizes. The incrementing payload layouts for effective sizes `E` of 0, 1, 2, and 3
+are shown in <<jtag2axi-incrementing-data-layout-for-size-0-figure>>,
 <<jtag2axi-incrementing-data-layout-for-size-1-figure>>,
 <<jtag2axi-incrementing-data-layout-for-size-2-figure>>,
 <<jtag2axi-incrementing-data-layout-for-size-3-figure>>, respectively.
+Effective size 3 needs a 64-bit data bus, which the last figure assumes.
 
 [[jtag2axi-incrementing-data-layout-for-size-0-figure]]
-.JTAG2AXI incrementing data layout for size 0
-image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 0: data 7:0",width=100%,pdfwidth=100%]
+.JTAG2AXI incrementing data layout for effective size 0
+image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 0: data 7:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-incrementing-data-layout-for-size-1-figure]]
-.JTAG2AXI incrementing data layout for size 1
-image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 1: data 15:0",width=100%,pdfwidth=100%]
+.JTAG2AXI incrementing data layout for effective size 1
+image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 1: data 15:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-incrementing-data-layout-for-size-2-figure]]
-.JTAG2AXI incrementing data layout for size 2
-image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 2: data 31:0",width=100%,pdfwidth=100%]
+.JTAG2AXI incrementing data layout for effective size 2
+image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 2: data 31:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-incrementing-data-layout-for-size-3-figure]]
-.JTAG2AXI incrementing data layout for size 3
-image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_INCR register layout when AXI_SERIES_CTRL.size is 3: data 63:0",width=100%,pdfwidth=100%]
+.JTAG2AXI incrementing data layout for effective size 3
+image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_INCR register layout for effective size 3 on a 64-bit data bus: data 63:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-incrementing-data-fields-table>> defines the payload shifted through the
 incrementing data instruction.
@@ -681,27 +682,27 @@ on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`
 and Capture-DR returns the payload from those lanes.
 
 The non-incrementing data register has the same layout as the incrementing one, so
-the same figures apply. The non-incrementing payload layouts for `AXI_SERIES_CTRL.size`
-values 0, 1, 2, and 3 are shown in <<jtag2axi-non-incrementing-data-layout-for-size-0-figure>>,
+the same figures apply. The non-incrementing payload layouts for effective sizes `E`
+of 0, 1, 2, and 3 are shown in <<jtag2axi-non-incrementing-data-layout-for-size-0-figure>>,
 <<jtag2axi-non-incrementing-data-layout-for-size-1-figure>>,
 <<jtag2axi-non-incrementing-data-layout-for-size-2-figure>>,
 <<jtag2axi-non-incrementing-data-layout-for-size-3-figure>>, respectively.
 
 [[jtag2axi-non-incrementing-data-layout-for-size-0-figure]]
-.JTAG2AXI non-incrementing data layout for size 0
-image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 0: data 7:0",width=100%,pdfwidth=100%]
+.JTAG2AXI non-incrementing data layout for effective size 0
+image::jtag2axi-series-data-size0.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 0: data 7:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-non-incrementing-data-layout-for-size-1-figure]]
-.JTAG2AXI non-incrementing data layout for size 1
-image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 1: data 15:0",width=100%,pdfwidth=100%]
+.JTAG2AXI non-incrementing data layout for effective size 1
+image::jtag2axi-series-data-size1.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 1: data 15:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-non-incrementing-data-layout-for-size-2-figure]]
-.JTAG2AXI non-incrementing data layout for size 2
-image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 2: data 31:0",width=100%,pdfwidth=100%]
+.JTAG2AXI non-incrementing data layout for effective size 2
+image::jtag2axi-series-data-size2.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 2: data 31:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-non-incrementing-data-layout-for-size-3-figure]]
-.JTAG2AXI non-incrementing data layout for size 3
-image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_NO_INCR register layout when AXI_SERIES_CTRL.size is 3: data 63:0",width=100%,pdfwidth=100%]
+.JTAG2AXI non-incrementing data layout for effective size 3
+image::jtag2axi-series-data-size3.svg[alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 3 on a 64-bit data bus: data 63:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-non-incrementing-data-fields-table>> defines the payload shifted through the
 non-incrementing data instruction.
@@ -731,27 +732,28 @@ The data field is the logical transfer payload. The bridge places that payload
 on the AXI byte lanes selected by the current address and `AXI_SERIES_CTRL.size`,
 and Capture-DR returns the payload from those lanes.
 
-The error-status payload layouts for `AXI_SERIES_CTRL.size` values 0, 1, 2, and 3 are
+The error-status payload layouts for effective sizes `E` of 0, 1, 2, and 3 are
 shown in <<jtag2axi-error-status-data-layout-for-size-0-figure>>,
 <<jtag2axi-error-status-data-layout-for-size-1-figure>>,
 <<jtag2axi-error-status-data-layout-for-size-2-figure>>,
 <<jtag2axi-error-status-data-layout-for-size-3-figure>>, respectively.
+Effective size 3 needs a 64-bit data bus, which the last figure assumes.
 
 [[jtag2axi-error-status-data-layout-for-size-0-figure]]
-.JTAG2AXI error-status data layout for size 0
-image::jtag2axi-series-data-error-status-size0.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 0: increment/status 8, data 7:0",width=100%,pdfwidth=100%]
+.JTAG2AXI error-status data layout for effective size 0
+image::jtag2axi-series-data-error-status-size0.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 0: increment/status 8, data 7:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-error-status-data-layout-for-size-1-figure]]
-.JTAG2AXI error-status data layout for size 1
-image::jtag2axi-series-data-error-status-size1.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 1: increment/status 16, data 15:0",width=100%,pdfwidth=100%]
+.JTAG2AXI error-status data layout for effective size 1
+image::jtag2axi-series-data-error-status-size1.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 1: increment/status 16, data 15:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-error-status-data-layout-for-size-2-figure]]
-.JTAG2AXI error-status data layout for size 2
-image::jtag2axi-series-data-error-status-size2.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 2: increment/status 32, data 31:0",width=100%,pdfwidth=100%]
+.JTAG2AXI error-status data layout for effective size 2
+image::jtag2axi-series-data-error-status-size2.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 2: increment/status 32, data 31:0",width=100%,pdfwidth=100%]
 
 [[jtag2axi-error-status-data-layout-for-size-3-figure]]
-.JTAG2AXI error-status data layout for size 3
-image::jtag2axi-series-data-error-status-size3.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout when AXI_SERIES_CTRL.size is 3: increment/status 64, data 63:0",width=100%,pdfwidth=100%]
+.JTAG2AXI error-status data layout for effective size 3
+image::jtag2axi-series-data-error-status-size3.svg[alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 3 on a 64-bit data bus: increment/status 64, data 63:0",width=100%,pdfwidth=100%]
 
 <<jtag2axi-data-and-error-status-fields-table>> defines the data payload and the shared
 increment-control and error-status bit.

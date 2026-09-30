@@ -2,8 +2,8 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" width="1040" height="170" viewBox="0 0 1040 170" role="img" aria-labelledby="title desc">
-<title id="title">JTAG2AXI error-status data layout for size 0</title>
-<desc id="desc">The AXI_SERIES_DATA_WITH_ERROR_STATUS test data register when AXI_SERIES_CTRL.size is 0: 9 bits. Bit 8, nearest TDI, is the increment control when shifted in and the error status of the previous transaction when shifted out. Below it, the data field of n = 8 bits is drawn as 1 payload byte (byte 0 in bits 7:0); bit 0 shifts out to TDO first.</desc>
+<title id="title">JTAG2AXI error-status data layout for effective size 0</title>
+<desc id="desc">The AXI_SERIES_DATA_WITH_ERROR_STATUS test data register when the effective size E is 0: 9 bits. Bit 8, nearest TDI, is the increment control when shifted in and the error status of the previous transaction when shifted out. Below it, the data field of n = 8 bits is drawn as 1 payload byte (byte 0 in bits 7:0); bit 0 shifts out to TDO first.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
