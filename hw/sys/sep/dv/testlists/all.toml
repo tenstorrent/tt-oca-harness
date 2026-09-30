@@ -308,6 +308,7 @@ name = "rom_fw"
 tests = [
     "sep_rom_non_secure_boot_test",
     "sep_rom_ot_dma_boot_test",
+    "sep_manifest_magic_survives_handoff_test",
     "sep_rom_ot_pio_boot_test",
     "sep_rom_ot_secure_boot_test",
     "sep_firmware_mbist_fail_test",
