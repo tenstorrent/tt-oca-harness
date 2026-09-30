@@ -67,14 +67,14 @@
 |0x10950000 |0x1095FFFF |64 KiB |24 B |SEP Entropy Pool |Read-only entropy pool FIFO; DATA reads drain conditioned entropy supplied by the native EDN, and writes return SLVERR. |- |SLVERR, 0x0 / SLVERR^<<sep-components-note-5,[5]>>^
 |0x10960000 |0x109FFFFF |640 KiB |640 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / DECERR^<<sep-components-note-2,[2]>>^ |-
 |0x10A00000 |0x10A0FFFF |64 KiB |30800 B |SEP AXI-Lite Mailbox Wrapper Address Map |Eight bidirectional mailbox pairs. |SLVERR, 0x0 / SLVERR |SLVERR, 0x0 / SLVERR
-|0x10A10000 |0x10A101FF |512 B |504 B |AXI Alias Remap Address Map |TLB Registers for address remapping and attribute tagging |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / SLVERR
+|0x10A10000 |0x10A101FF |512 B |512 B |AXI Alias Remap Address Map |TLB Registers for address remapping and attribute tagging |OKAY, 0x0 / OKAY |-
 |0x10A10200 |0x10A1027F |128 B |128 B |Output Remap Address Map |Address-translation registers that remap outbound transactions and tag their attributes. |- |-
 |0x10A10280 |0x10A102FF |128 B |128 B |Reserved |Reserved |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / DECERR^<<sep-components-note-2,[2]>>^ |-
 |0x10A10300 |0x10A1037F |128 B |128 B |Output Remap Address Map |Address-translation registers that remap outbound transactions and tag their attributes. |- |-
 |0x10A10380 |0x10A1FFFF |64640 B |64640 B |Reserved |Reserved |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / DECERR^<<sep-components-note-2,[2]>>^ |-
-|0x10A20000 |0x10A203FF |1 KiB |1016 B |AXI Filter Control Address Map |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / SLVERR
+|0x10A20000 |0x10A203FF |1 KiB |1 KiB |AXI Filter Control Address Map |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |-
 |0x10A20400 |0x10A20FFF |3 KiB |3 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / DECERR^<<sep-components-note-2,[2]>>^ |-
-|0x10A21000 |0x10A211FF |512 B |504 B |AXI Filter Control Address Map |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / SLVERR
+|0x10A21000 |0x10A211FF |512 B |512 B |AXI Filter Control Address Map |Per-filter access-control registers defining permitted address ranges and transaction attributes. |OKAY, 0x0 / OKAY |-
 |0x10A21200 |0x10A2FFFF |60928 B |60928 B |Reserved |Reserved |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / DECERR^<<sep-components-note-2,[2]>>^ |-
 |0x10A30000 |0x10A31FFF |8 KiB |4104 B |SEP CPU Control Address Map |SEP CPU control and interrupt registers. |OKAY, 0x0 / OKAY |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / SLVERR
 |0x10A32000 |0x10AFFFFF |824 KiB |824 KiB |Reserved |Reserved |DECERR, 0xBADCAB1E^<<sep-components-note-1,[1]>>^ / DECERR^<<sep-components-note-2,[2]>>^ |-
