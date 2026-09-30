@@ -258,12 +258,47 @@ and the
 </div>
 <div id="i2c-wrapper-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SMC_I2C_FIG023.png" alt="OCAH I2C wrapper and generated register interface" width="100%">
+<img src="../../_images/i2c-wrapper.svg" alt="i2c_wrap: an AXI-Lite demux in front of NUM_I2CS I2C instances, each a PeakRDL register block driving the OpenTitan I2C core, plus the shared i2c_ctrl registers and an error subordinate" width="100%">
 </div>
 <div class="title">Figure 2. OCAH I2C wrapper and generated register interface</div>
 </div>
 <div class="paragraph">
-<p><a href="#i2c-wrapper-diagram">OCAH I2C wrapper and generated register interface</a> shows the OCAH wrapper around that core.</p>
+<p><a href="#i2c-wrapper-diagram">OCAH I2C wrapper and generated register interface</a> shows the OCAH wrapper around that core. <code>i2c_wrap</code>
+has one AXI4-Lite slave port, with 32-bit address and data, and runs on a
+single clock, <code>clk_i</code>; in the SMC that is the gated peripheral clock, and the
+bus reaches it through <code>smc_peripherals_cdc</code>. Parentheses after an
+instance name give its module or, for a block taken from another project,
+that project. The demux
+<code>u_axi_lite_demux</code>, a PULP <code>axi_lite_demux</code>, compares the address against
+the base and size of each register map and selects one of <code>NUM_I2CS</code> + 2
+ports: one per instance, the shared control map, and an error slave that
+answers DECERR with read data <code>0xBADCAB1E</code>. The SMC sets <code>NUM_I2CS</code> to 3.</p>
+</div>
+<div class="paragraph">
+<p>Each instance, <code>gen_i2cs[i].u_i2c</code>, is the OpenTitan core <code>u_i2c_core</code> with
+its register bank replaced by <code>u_i2c_reg</code>, an AXI4-Lite register block that
+PeakRDL generates from <code>i2c.rdl</code>. The register block drives the core through
+<code>hwif_out</code> and takes status back through <code>hwif_in</code>. The core keeps the
+OpenTitan controller and target FSMs, bus monitor and FMT, RX, TX and ACQ
+FIFOs, sized by the <code>*_FIFO_DEPTH</code> parameters, and synchronizes the SCL,
+SDA, SMBus SUS and SMBus ALERT inputs to <code>clk_i</code> with two-flop synchronizers;
+the synchronizer badge on the edge of <code>u_i2c_core</code> marks them. The wrapper
+adds no synchronizers of its own.</p>
+</div>
+<div class="paragraph">
+<p>The shared block <code>u_i2c_ctrl_reg</code>, generated from <code>i2c_ctrl.rdl</code>, holds one
+<code>I2C_CTRL</code> register per instance. Its <code>SMBUS_EN</code> field drives that instance&#8217;s
+<code>smbus_en</code> input, which masks <code>smbalert_ni</code> while low. Its <code>I2C_EN</code> and
+<code>I2C_CONTROLLER_MODE_EN</code> fields leave the wrapper on <code>i2c_en_o</code> and
+<code>i2c_controller_mode_en_o</code> without reaching the instance.</p>
+</div>
+<div class="paragraph">
+<p>Every per-instance port of <code>i2c_wrap</code> is a vector with one bit, or for
+<code>i2c_debug_o</code> one nibble, per instance. The figure labels the slice that
+instance 0 drives. The DMA ready outputs are <code>controller_tx_ready_o</code>,
+<code>controller_rx_ready_o</code>, <code>target_tx_ready_o</code> and <code>target_rx_ready_o</code>; the SMC
+leaves them unconnected. It routes <code>i2c_irq_o</code> to peripheral interrupts 23 to
+25.</p>
 </div>
 </div>
 </div>

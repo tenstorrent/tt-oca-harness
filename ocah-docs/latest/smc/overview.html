@@ -697,9 +697,50 @@ development and troubleshooting.</p>
 </div>
 <div id="smc-top-level-block-diagram-figure" class="imageblock">
 <div class="content">
-<img src="_images/smc_top.png" alt="SMC Top-Level Block Diagram">
+<img src="_images/smc-top-level.svg" alt="SMC top-level microarchitecture: the CPU cluster, smc_base with the input, local and output fabrics, internal registers, DFD and data accelerator, and smc_peripherals with the peripheral crossbar and its targets" width="100%">
 </div>
-<div class="title">Figure 1. SMC Top-Level Block Diagram</div>
+<div class="title">Figure 1. SMC top-level microarchitecture</div>
+</div>
+<div class="paragraph">
+<p>The <code>smc</code> module holds three blocks: the CPU cluster <code>smc_cpu_wrapper</code>,
+<code>smc_base</code> and <code>smc_peripherals</code>. The CPU cluster is drawn as a single block;
+the CPU and memory system section describes its contents. Every AXI4 and
+AXI-Lite link carries a manager port (M) at the initiating end and a
+subordinate port (S) at the other.</p>
+</div>
+<div class="paragraph">
+<p>The input fabric takes six initiators: the system inbound port, the SEP
+inbound port, the JTAG debug port from the DTP, the CPU MMIO port, the UART
+log-engine fetch port and the data accelerator. Traffic inside the SMC
+window reaches the local fabric on three paths. System traffic passes the
+inbound filter first, and SEP traffic is not filtered. The CPU MMIO, JTAG,
+log and data accelerator traffic is alias-remapped and shares the third
+path. The input fabric forwards other addresses from those four initiators
+to the output fabric. The output fabric applies the M-mode and Xvisor
+remaps and the outbound filter, then drives the system outbound port.
+System and SEP requests outside the SMC window receive a decode error.</p>
+</div>
+<div class="paragraph">
+<p>The local fabric, <code>smc_local_xbar</code>, serves five targets: the CPU front port,
+the data accelerator control port, the internal CSRs, the DFD registers and
+the peripheral port. Its internal AXI-Lite crossbar splits the internal CSRs
+into eight blocks in <code>smc_internal_regs</code>: base configuration, the alias,
+M-mode and Xvisor remaps, the inbound and outbound filters, the mailboxes
+and the DFX CSRs. <code>smc_base</code> also builds the CPU interrupt vector from the
+external, peripheral, mailbox and internal sources. Its three AXI hang
+detectors, marked HD on the links they watch, observe the system inbound,
+SEP inbound and data accelerator AXI links without sitting in the data
+path; their combined interrupt reaches the PLIC through <code>smc_peripherals</code>.</p>
+</div>
+<div class="paragraph">
+<p>The peripheral crossbar, <code>smc_periph_axi_lite_xbar</code>, has twelve targets.
+Ten of them are inside <code>smc_peripherals</code>. The UART, I2C, I3C and AVSBus
+register paths, and the log-engine fetch path, cross between the SMC clock
+and the peripheral clock (CDC). The remaining two targets leave the SMC:
+the DTP control registers and the <code>smc_external</code> window. In the reference
+top <code>smc_wrapper</code>, <code>smc_ip_integration</code> supplies the grey blocks: the CPU
+memory macros, the trace RAMs, the eFuse shim and bank model, the GPIO pad
+shims, and the PLL, PVT and strap register models behind <code>smc_external</code>.</p>
 </div>
 <div class="paragraph">
 <p>The rest of this documentation describes architectural requirements and

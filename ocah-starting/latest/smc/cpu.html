@@ -248,9 +248,28 @@ management workloads</p>
 </div>
 <div id="smc-cpu-cluster-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SMC_CPUCluster_FIG010.png" alt="SMC CPU cluster and TileLink-to-AXI integration" width="100%">
+<img src="_images/smc-cpu-cluster.svg" alt="SMC CPU cluster: four Rocket tiles on the TileLink system bus, the control, front and memory buses, and the AXI4 bridges and isolation at the cluster boundary, with the scratchpad SRAM and boot ROM macros outside the SMC" width="100%">
 </div>
 <div class="title">Figure 1. SMC CPU cluster and TileLink-to-AXI integration</div>
+</div>
+<div class="paragraph">
+<p>The figure shows three nested boundaries: <code>u_digital_top</code>, the Chipyard-generated
+cluster; <code>u_smc_cpu</code>, which adds the boundary isolation, reset sequencing and scratch
+RAM zero-fill; and <code>u_smc_cpu_wrapper</code>, which adds the front-port demux, the <code>cpu_ctrl</code>
+registers and the boot ROM bridge. Thick lines are AXI4 and thin dark lines are
+TileLink, except for the AXI-Lite link to <code>cpu_ctrl</code>. Each tile has one manager port
+on the system bus (<code>sbus</code>) and one subordinate port, from the control bus (<code>cbus</code>),
+that reaches its Bus Error Unit (BEU). Debug-module system bus accesses (SBA) and
+the L2 frontend port enter the system bus through the front bus (<code>fbus</code>). The
+coherence manager (<code>coh_wrapper</code>, a TileLink broadcast hub) leads to the memory bus
+(<code>mbus</code>), which serves the scratchpad and the boot ROM port. The scratchpad block is
+logic only: 32 TLRAM banks with their SECDED ECC encode and decode. The
+technology-dependent SRAM macros that hold the scratchpad data, drawn in grey, sit
+outside the SMC, as do the boot ROM macro and the L1 cache tag and data arrays.
+<code>u_smc_cpu_wrapper</code> reaches them through memory interface ports, one 72-bit port per
+scratchpad bank, that <code>smc</code> carries to its own boundary. Interrupts from
+the four watchdog timers and the four BEUs reach the PLIC inside the cluster, which
+the figure does not draw.</p>
 </div>
 </div>
 </div>
@@ -362,7 +381,7 @@ management.</p>
 </div>
 <div class="paragraph">
 <p>Internally, the CPU cluster uses a TileLink bus to connect cores to the scratchpad, Boot ROM, PLIC, CLINT, and Bus Error Units.
-At the cluster boundary, TileLink is protocol-bridged to AXI4 and AXI4-Lite for integration with the SMC fabric (see
+At the cluster boundary, TileLink is bridged to AXI4 for the MMIO manager port, and AXI4 is bridged to TileLink for the L2 frontend port. The only AXI4-Lite link is the one in <code>smc_cpu_wrapper</code> from the front-port demux to the <code>cpu_ctrl</code> registers. Both AXI4 ports connect to the SMC fabric (see
 <a href="fabric.html#fabric" class="xref page">Fabric</a>
 ).</p>
 </div>
@@ -483,8 +502,8 @@ cluster interfaces.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">MMIO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">56b addressing, low-latency</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Manager port to the SMC fabric; 56-bit address, 64-bit data, 3-bit ID</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">L2 Frontend</p></td>
@@ -493,8 +512,9 @@ cluster interfaces.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Debug</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">APB, JTAG</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Non-intrusive, per-core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">JTAG debug transport module into the debug module on the control bus;
+system bus access through the front bus</p></td>
 </tr>
 </tbody>
 </table>
@@ -709,7 +729,8 @@ coordination.</p>
 <h2 id="debug"><a class="anchor" href="#debug"></a><a class="link" href="#debug">10. Debug</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Debugging is facilitated by a dedicated APB interface and JTAG, enabling
+<p>Debugging is facilitated by JTAG, through the cluster&#8217;s debug transport module and
+debug module, enabling
 per-core access to registers, memory, and both hardware and software
 breakpoints. These debug capabilities function independently of
 functional resets and allow override of reset vectors to support

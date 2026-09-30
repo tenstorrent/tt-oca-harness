@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="606" viewBox="0 0 1040 606" role="img" aria-labelledby="title desc">
+<title id="title">AVSBus controller</title>
+<desc id="desc">The avsbus_controller receives AXI-Lite register accesses, which u_axi_lite_to_apb converts to APB for the register file. Interrupt logic in the register domain drives interrupt_o. Writes to AVS_CMD enter the command FIFO, an avsbus_async_fifo of COMMAND_FIFO_DEPTH entries, which crosses from the clk_reg_i domain to the avs_clk domain; the protocol FSM pops commands, serializes each master subframe onto avs_mdata_o with a CRC-3 from the generate instance, deserializes the reply from avs_sdata_i, checks it with the check instance and pushes it into the readback FIFO, which crosses back to the register domain for AVS_READBACK. Configuration and status bits cross between the domains through prim_sync3 and handshake synchronizers. The AVS clock generation selects and divides clk_reg_i or clk_ref_i, or passes clk_test_i in test mode, to make avs_clk, which clocks the AVS domain and passes through the clock gate u_avs_bus_clkgate, enabled by the FSM, to avs_clock_o.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="606" fill="#ffffff"/>
+<rect class="smu" x="130" y="20" width="780" height="500" rx="6"/>
+<text class="b" x="142" y="508" text-anchor="start">avsbus_controller</text>
+<rect class="smu" x="150" y="40" width="350" height="280" rx="6"/>
+<text class="bs" x="162" y="308" text-anchor="start">clk_reg_i domain</text>
+<rect class="smu" x="540" y="40" width="350" height="280" rx="6"/>
+<text class="bs" x="552" y="308" text-anchor="start">avs_clk domain</text>
+<path class="axil" d="M10,100 L166,100"/>
+<text class="s" x="14" y="92" text-anchor="start">AXI-Lite</text>
+<rect class="network" x="166" y="76" width="90" height="48" rx="4"/>
+<text class="s" x="211" y="97.5" text-anchor="middle">AXI-Lite</text>
+<text class="s" x="211" y="112.5" text-anchor="middle">to APB</text>
+<path class="axiln" d="M256,100 L270,100"/>
+<rect class="core" x="270" y="64" width="160" height="142" rx="6"/>
+<text class="t" x="350" y="131" text-anchor="middle">Register file</text>
+<text class="s" x="350" y="149" text-anchor="middle">avsbus_controller_reg</text>
+<rect class="core" x="166" y="226" width="150" height="44" rx="6"/>
+<text class="t" x="241" y="245" text-anchor="middle">Interrupts</text>
+<text class="s" x="241" y="261" text-anchor="middle">mask, clear</text>
+<path class="sigo" d="M290,206 L290,222"/>
+<path class="sigo" d="M166,248 L10,248"/>
+<text class="s" x="14" y="240" text-anchor="start">interrupt_o</text>
+<path class="sigo" d="M350,206 L350,290 L10,290"/>
+<text class="s" x="14" y="282" text-anchor="start">avs_gpio_enable_o</text>
+<rect class="core" x="460" y="64" width="130" height="56" rx="6"/>
+<text class="t" x="525" y="89" text-anchor="middle">Command FIFO</text>
+<text class="s" x="525" y="105" text-anchor="middle">avsbus_async_fifo</text>
+<rect class="core" x="460" y="150" width="130" height="56" rx="6"/>
+<text class="t" x="525" y="175" text-anchor="middle">Readback FIFO</text>
+<text class="s" x="525" y="191" text-anchor="middle">avsbus_async_fifo</text>
+<rect class="core" x="460" y="236" width="130" height="56" rx="6"/>
+<text class="t" x="525" y="261" text-anchor="middle">Synchronizers</text>
+<text class="s" x="525" y="277" text-anchor="middle">prim_sync3, autohs</text>
+<path class="sigo" d="M430,88 L456,88"/>
+<path class="sigo" d="M460,178 L434,178"/>
+<path class="sig" d="M410,210 L410,264 L456,264"/>
+<path class="sig" d="M594,264 L660,264 L660,188"/>
+<rect class="core" x="640" y="64" width="230" height="120" rx="6"/>
+<text class="t" x="755" y="111" text-anchor="middle">Protocol FSM</text>
+<text class="s" x="755" y="129" text-anchor="middle">17 states, retry, resync</text>
+<text class="s" x="755" y="147" text-anchor="middle">subframe shift registers</text>
+<path class="sigo" d="M590,88 L636,88"/>
+<path class="sigo" d="M640,178 L594,178"/>
+<rect class="core" x="730" y="236" width="140" height="44" rx="6"/>
+<text class="t" x="800" y="255" text-anchor="middle">CRC-3</text>
+<text class="s" x="800" y="271" text-anchor="middle">generate, check</text>
+<path class="sig" d="M800,188 L800,232"/>
+<path class="sigo" d="M870,100 L1030,100"/>
+<text class="s" x="1030" y="92" text-anchor="end">avs_mdata_o</text>
+<path class="sigo" d="M1030,140 L874,140"/>
+<text class="s" x="1030" y="132" text-anchor="end">avs_sdata_i</text>
+<rect class="core" x="166" y="380" width="300" height="70" rx="6"/>
+<text class="t" x="316" y="403" text-anchor="middle">AVS clock generation</text>
+<text class="s" x="316" y="420" text-anchor="middle">gates, anti-glitch mux, test mux,</text>
+<text class="s" x="316" y="437" text-anchor="middle">u_clk_div</text>
+<path class="sigo" d="M10,392 L162,392"/>
+<text class="s" x="14" y="387" text-anchor="start">clk_reg_i</text>
+<path class="sigo" d="M10,414 L162,414"/>
+<text class="s" x="14" y="409" text-anchor="start">clk_ref_i</text>
+<path class="sigo" d="M10,436 L162,436"/>
+<text class="s" x="14" y="431" text-anchor="start">clk_test_i</text>
+<path class="sigo" d="M390,206 L390,376"/>
+<text class="s" x="398" y="356" text-anchor="start">AVS_CFG_1</text>
+<path class="n-tel" d="M466,415 L600,415"/>
+<path class="a-tel" d="M600,415 L600,324"/>
+<circle cx="600" cy="415" r="3.5" fill="#664488"/>
+<text class="s" x="474" y="407" text-anchor="start">avs_clk</text>
+<path class="a-tel" d="M600,415 L666,415"/>
+<rect class="core" x="670" y="390" width="150" height="50" rx="6"/>
+<text class="t" x="745" y="412" text-anchor="middle">u_avs_bus_clkgate</text>
+<text class="s" x="745" y="428" text-anchor="middle">prim_clock_gating</text>
+<path class="sigo" d="M710,184 L710,386"/>
+<text class="s" x="718" y="356" text-anchor="start">enable</text>
+<path class="a-tel" d="M820,415 L1030,415"/>
+<text class="s" x="1030" y="407" text-anchor="end">avs_clock_o</text>
+<rect class="core" x="14" y="551" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="564.5" text-anchor="start">RTL block</text>
+<rect class="network" x="146.1" y="551" width="36" height="18" rx="3"/>
+<text class="s" x="190.1" y="564.5" text-anchor="start">Protocol converter</text>
+<rect class="smu" x="340.3" y="551" width="36" height="18" rx="4"/>
+<text class="s" x="384.3" y="564.5" text-anchor="start">Module or clock domain</text>
+<path class="axil" d="M17,588 L59,588"/>
+<text class="s" x="70" y="592.5" text-anchor="start">AXI-Lite</text>
+<path class="sigo" d="M154.2,588 L196.2,588"/>
+<text class="s" x="207.2" y="592.5" text-anchor="start">Signal</text>
+<path class="sig" d="M277.6,588 L319.6,588"/>
+<text class="s" x="330.6" y="592.5" text-anchor="start">Bidirectional signals</text>
+<path class="a-tel" d="M560,588 L600,588"/>
+<text class="s" x="610" y="592.5" text-anchor="start">AVS clock</text>
+<text class="s" x="746" y="592.5" text-anchor="start">Clock-domain crossing</text>
+<rect class="pc" x="504.6" y="111.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="520" y="124.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="504.6" y="197.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="520" y="210.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="504.6" y="283.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="520" y="296.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="704.6" y="579.0" width="30.8" height="18" rx="4"/>
+<text class="pct" x="720" y="592.5" text-anchor="middle">CDC</text>
+</svg>

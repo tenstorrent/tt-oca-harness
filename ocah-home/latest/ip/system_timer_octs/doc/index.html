@@ -246,14 +246,33 @@ continuous maintenance that adapts to varying system loads and
 communication delays.</p>
 </div>
 <div class="paragraph">
-<p><a href="#system-timer-octs-diagram">System Timer OCTS primary and secondary synchronization</a> shows how primary and secondary timers exchange
-synchronization information.</p>
+<p><a href="#system-timer-octs-diagram">System Timer OCTS primary/secondary synchronization and credit CDC</a> shows how primary and secondary timers exchange
+synchronization information. The dashed groups hold the logic that acts in only one mode,
+as <code>is_primary_i</code> selects it; the enable and the 64-bit count serve both. The inbound
+sync-load and credit pulses cross into <code>clk_i</code> through a flop and a <code>prim_edge_detector</code>,
+which synchronizes them with two flops and turns each rising edge into a one-cycle pulse;
+an AND gate with <code>is_primary_i</code> on its inverted input masks each pulse in PRIMARY mode.
+The enable flop is sticky: an OR gate holds it set once <code>TIMER_START.START</code> or a
+sync-load pulse has set it. In SECONDARY mode, the sync-load pulse loads the preset, a
+credit pulse moves the count to the expected count plus CREDIT_VAL, and between pulses
+the count advances by <code>CTRL.STEP</code>, which drives the core&#8217;s <code>timer_cnt_step_i</code>, while
+credits are left. The credit tracking block holds the <code>cur_credits</code> accumulator, which
+adds STEP each cycle while it is below CREDIT_VAL (<code>credits_left</code>); the expected count,
+which <code>u_adder_expected_credit</code> advances by CREDIT_VAL on each credit pulse; and the
+<code>credit_expired_o</code> counter of cycles spent without credits. Both inbound pulses reset
+<code>cur_credits</code> and <code>credit_expired_o</code>. In PRIMARY mode, the count advances by one, and the
+credit counter and pulse state machine drive the outbound pulses. The wrapper keeps the
+longest credit-starved run reported by the core in a flop that loads the larger of its
+own value and <code>credit_expired_o</code>, and reads it back as <code>CREDIT_EXPIRED</code>; a write to
+<code>CREDIT_EXPIRED</code> clears both. In the
+SMC, the timer pulses use GPIO pads 55 and 56, which drive them on the primary chiplet and
+sample them on a secondary one.</p>
 </div>
 <div id="system-timer-octs-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SMC_SystemTimerOCTS_FIG022.png" alt="System Timer OCTS primary and secondary synchronization" width="100%">
+<img src="../../_images/system-timer-octs.svg" alt="System Timer OCTS with synchronized sync-load and credit inputs masked in primary mode, secondary credit tracking, the sticky enable flop and 64-bit count, primary credit counter and pulse state machine, the CREDIT_EXPIRED maximum-hold flop, and the AXI-Lite register block" width="100%">
 </div>
-<div class="title">Figure 1. System Timer OCTS primary and secondary synchronization</div>
+<div class="title">Figure 1. System Timer OCTS primary/secondary synchronization and credit CDC</div>
 </div>
 <div class="sect2">
 <h3 id="timer-core-processing"><a class="anchor" href="#timer-core-processing"></a><a class="link" href="#timer-core-processing">Timer Core Processing</a></h3>

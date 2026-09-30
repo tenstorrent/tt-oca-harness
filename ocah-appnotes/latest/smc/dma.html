@@ -226,14 +226,26 @@ integration.</p>
 <h2 id="architecture-overview"><a class="anchor" href="#architecture-overview"></a><a class="link" href="#architecture-overview">1. Architecture Overview</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#smc-dma-zeroer-diagram">SMC DMA and memory-zeroer architecture and shared fabric path</a> shows the DMA and zeroer connections to their shared fabric
-path.</p>
+<p><a href="#smc-dma-zeroer-diagram">SMC DMA frontend, backend and shared fabric path</a> shows the DMA frontend and backend and the fabric path the
+DMA shares with the memory zeroer.</p>
 </div>
 <div id="smc-dma-zeroer-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SMC_DMA_ZEROER_FIG013_FIG014.png" alt="SMC DMA and memory-zeroer architecture and shared fabric path" width="100%">
+<img src="_images/smc-dma.svg" alt="SMC DMA frontend, request manager and backend inside the data-accelerator wrapper, with the control demux and master mux shared with the memory zeroer" width="100%">
 </div>
-<div class="title">Figure 1. SMC DMA and memory-zeroer architecture and shared fabric path</div>
+<div class="title">Figure 1. SMC DMA frontend, backend and shared fabric path</div>
+</div>
+<div class="paragraph">
+<p>The DMA and the zeroer share <code>smc_data_accelerator_wrap</code>. Its control demux sends the
+zeroer register window to the zeroer and every other address to the DMA, and each
+control path narrows the address to its own register window. Its master mux merges the
+two master ports onto the port to the input fabric and adds one ID bit to tell their
+responses apart. In the figure, thick lines are AXI4, thin dark lines are the register
+bus, and grey lines are iDMA requests and responses, gated clocks and status outputs.
+The dashed box is the manager-to-backend FIFO, which is absent because SMC sets
+<code>M2B_FIFO_DEPTH</code> to 0. With one control interface and one master interface, the
+request manager is a passthrough, so the arbitration described under
+<a href="#smc-dma-request-arbitration">Request Arbitration</a> is not instantiated.</p>
 </div>
 <div class="paragraph">
 <p>The DMA controller implements a frontend-backend architecture with the
@@ -438,7 +450,7 @@ operates as a passthrough with no arbitration overhead.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="request-arbitration"><a class="anchor" href="#request-arbitration"></a><a class="link" href="#request-arbitration">3.6. Request Arbitration</a></h3>
+<h3 id="smc-dma-request-arbitration"><a class="anchor" href="#smc-dma-request-arbitration"></a><a class="link" href="#smc-dma-request-arbitration">3.6. Request Arbitration</a></h3>
 <div class="paragraph">
 <p>When multiple control or master interfaces are present, the request
 manager employs round-robin arbitration to fairly distribute requests.

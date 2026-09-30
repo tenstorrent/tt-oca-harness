@@ -247,14 +247,22 @@ interface, all while maintaining strict access governance and flexible
 interrupt handling throughout.</p>
 </div>
 <div class="paragraph">
-<p><a href="#gpio-interface-diagram">GPIO controller and technology-specific interface shim</a> shows the controller, LSIO selection, and technology-specific
-pad interface.</p>
+<p><a href="#gpio-interface-diagram">GPIO controller, interface shim, LSIO mux and strap-capture path</a> shows the two blocks that serve one pad: the <code>gpio</code> controller
+in the SMC pad ring, and the <code>gpio_shim</code> that the adopter&#8217;s pad integration places in front
+of the technology pad macro. Each block receives its own AXI-Lite register slot. In <code>gpio</code>,
+the LSIO mux chooses the pad data and enables from the LSIO plane or from <code>DATA_CTRL</code>, and
+the synchronized pad input feeds both the <code>DATA_CTRL.pad2core</code> readback and the interrupt
+detector. In <code>gpio_shim</code>, the 2nd-HW override mux can replace the primary plane, the
+electrical mux chooses the drive, pull and glitch-filter settings, and the strap latch
+captures the pad input at the end of cold reset. Trapezoids are muxes and demuxes, with
+their inputs on the wide side; the dashed strap latch is present only when
+<code>INPUT_BY_DEFAULT</code> is set.</p>
 </div>
 <div id="gpio-interface-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SMC_GPIO_FIG021.jpeg" alt="GPIO controller and technology-specific interface shim" width="100%">
+<img src="../../_images/gpio-interface-and-shim.svg" alt="GPIO controller with access filter, interface registers, LSIO mux, input synchronizer and interrupt detector, above the gpio_shim with its control registers, strap latch, electrical mux and 2nd-HW override mux in front of the pad macro" width="100%">
 </div>
-<div class="title">Figure 1. GPIO controller and technology-specific interface shim</div>
+<div class="title">Figure 1. GPIO controller, interface shim, LSIO mux and strap-capture path</div>
 </div>
 <div class="sect2">
 <h3 id="functional-blocks"><a class="anchor" href="#functional-blocks"></a><a class="link" href="#functional-blocks">Functional Blocks</a></h3>
@@ -305,6 +313,32 @@ physical pad behavior live. It offers programmable drive strengths,
 pull-up and pull-down configuration, signal conditioning to guard
 against glitches, and fully independent TX/RX enables, making true
 bidirectional I/O possible.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="smc-pad-ring"><a class="anchor" href="#smc-pad-ring"></a><a class="link" href="#smc-pad-ring">SMC Pad Ring</a></h3>
+<div class="paragraph">
+<p>The SMC instantiates one <code>gpio</code> controller per pad in <code>u_smc_padring</code>, 65 in all.
+<a href="#gpio-padring-diagram">SMC pad ring GPIO interfaces and adopter pad shims</a> shows how the controllers are reached and where the shims sit.
+The peripheral crossbar sends the GPIO interface window to <code>u_gpio_intf_demux</code>, which
+decodes one 16-byte slot per pad and answers any other address with DECERR. The LSIO pad
+map assigns the SPI, UART, I3C, I2C, AVSBus, system-timer, isolate-request, boot-stall and
+cool-reset functions to fixed pads, and drives the LSIO plane of each controller. The
+controllers' pad wires leave the SMC; outside it, the adopter&#8217;s pad integration places a
+<code>gpio_shim</code> and a pad macro on each pad, and decodes the <code>smc_external</code> window to give
+each shim its <code>gpio_ctrl</code> slot. The figure draws pads 0, 1 and 64; the ellipses stand for
+the pads between them.</p>
+</div>
+<div id="gpio-padring-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/gpio-padring.svg" alt="Peripheral crossbar feeding u_smc_padring, whose demux reaches 65 gpio controllers and a DECERR responder, with the LSIO pad map on a shared bus; the controllers' pad wires reach per-pad gpio_shim and pad macro instances in the adopter pad integration, which decodes the smc_external window" width="100%">
+</div>
+<div class="title">Figure 2. SMC pad ring GPIO interfaces and adopter pad shims</div>
+</div>
+<div class="paragraph">
+<p>The open reference integration, <code>smc_ip_integration</code>, stands in for the adopter side
+with one <code>prim_pad_shim</code> per pad at fixed electrical settings, and answers the <code>gpio_ctrl</code>
+range of the <code>smc_external</code> window with DECERR.</p>
 </div>
 </div>
 <div class="sect2">

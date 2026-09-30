@@ -706,13 +706,16 @@ transmit and receive, and the AVS clock generation logic.</p>
 </div>
 <div class="paragraph">
 <p><a href="#avsbus-controller-diagram">Figure 1</a> shows the FIFO, protocol-engine, and clock-generation
-paths.</p>
+paths. The two clock-domain boxes hold the logic clocked by <code>clk_reg_i</code> and by the
+generated <code>avs_clk</code>; the FIFOs and synchronizers that straddle the gap between them carry
+every crossing. The clock generation is drawn in full in <a href="#avsbus-clock-select-diagram">Figure 3</a>,
+and the protocol FSM in <a href="#avsbus-protocol-fsm-diagram">Figure 2</a>.</p>
 </div>
 <div id="avsbus-controller-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SMC_AVSBusV1p3_FIG026.png" alt="AVSBus controller and protocol state machine" width="100%">
+<img src="../../_images/avsbus-controller.svg" alt="AVSBus controller with the AXI-Lite to APB bridge, register file and interrupts in the register clock domain, command and readback FIFOs and synchronizers crossing to the AVS clock domain, the protocol FSM and CRC-3 engines, and the AVS clock generation and output clock gate" width="100%">
 </div>
-<div class="title">Figure 1. AVSBus controller and protocol state machine</div>
+<div class="title">Figure 1. AVSBus controller block diagram</div>
 </div>
 <p class="block-references">Figures and tables: <a href="#avsbus-controller-diagram">Figure 1</a>.</p>
 <div class="sect2">
@@ -1055,7 +1058,28 @@ variants</p></td>
 arrives during the subframe that carries the next command, which is why the
 mid-subframe states do both at once.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#avsbus-protocol-state-encodings-table">Table 3</a>.</p>
+<div class="paragraph">
+<p><a href="#avsbus-protocol-fsm-diagram">Figure 2</a> shows the transitions between these states, grouping
+the 17 states into 11 boxes. Each subframe box stands for a SHIFT state, which holds for
+the 32 bits of a subframe, and the END state that follows it, where the transition is
+decided; the three retry boxes pair the six <code>AVS_RETRY_*</code> states the same way. The
+figure omits the self-loops of states that wait: idle, the resync and each SHIFT state.
+Resync done means that the resync counter has reached 34. RDY means that a command is
+waiting, the readback FIFO has room and no resync is due. Stop on idle is
+<code>AVS_CFG_1.STOP_AVS_CLOCK_ON_IDLE</code>: with it set, a command waiting in idle restarts the
+AVS clock through a resync instead of launching directly. A retry transition is taken when the received
+subframe has a bad CRC, a resource-unavailable or bad-CRC acknowledgment, or no response,
+and <code>MAX_RETRIES</code> is above zero; with <code>MAX_RETRIES</code> at zero the RDY and not-RDY transitions
+apply instead. A reply that arrives during a retry of the preceding command is held and
+processed after the retries finish. Every retry sequence ends with a slave resync.</p>
+</div>
+<div id="avsbus-protocol-fsm-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/avsbus-protocol-fsm.svg" alt="AVSBus protocol state machine from reset through slave resync, idle and the first, middle and last subframes, with the retry transmit, transmit-and-receive and receive states and the held-reply processing state returning to the slave resync" width="100%">
+</div>
+<div class="title">Figure 2. AVSBus protocol state machine</div>
+</div>
+<p class="block-references">Figures and tables: <a href="#avsbus-protocol-state-encodings-table">Table 3</a>; <a href="#avsbus-protocol-fsm-diagram">Figure 2</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="error-handling-and-diagnostics"><a class="anchor" href="#error-handling-and-diagnostics"></a><a class="link" href="#error-handling-and-diagnostics">3.9. Error Handling and Diagnostics</a></h3>
@@ -1368,11 +1392,71 @@ bit 0 picks the divider (0 = bypass, 1 = divided). The reset value is <code>2&#8
 so the controller comes up on a divided <code>clk_ref_i</code>.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avs-clock-configuration-fields-table">Table 8</a> defines the source-selection and divider
+<p><a href="#avsbus-clock-select-diagram">Figure 3</a> shows the clock path. Each source passes a clock gate that
+<code>TURN_OFF_ALL_PREMUX_CLOCKS</code> closes, then the anti-glitch mux <code>u_refclk_apbclk_mux</code>
+selects one of them, choosing <code>clk_ref_i</code> while in reset. The test mux substitutes
+<code>clk_test_i</code> in test mode. Inside <code>u_clk_div</code>, the glitch-free post-divider mux selects
+either the undivided clock or the divider output. The result, <code>avs_clk</code>, clocks the AVS
+domain and reaches <code>avs_clock_o</code> through <code>u_avs_bus_clkgate</code>, which the protocol FSM closes
+while the bus is idle if <code>STOP_AVS_CLOCK_ON_IDLE</code> is set. Each mux passes its input 0 when
+its select is 0. <a href="#avs-clock-select-table">Table 8</a> lists the four settings.</p>
+</div>
+<div id="avsbus-clock-select-diagram" class="imageblock">
+<div class="content">
+<img src="../../_images/avsbus-clock-select.svg" alt="clk_reg_i and clk_ref_i through their clock gates into the anti-glitch source mux, the test mux for clk_test_i, the programmable divider with its bypass and post-divider mux, and the AVS clock gate driving avs_clock_o" width="100%">
+</div>
+<div class="title">Figure 3. AVSBus clock selection</div>
+</div>
+<table id="avs-clock-select-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. AVS_CLOCK_SELECT settings</caption>
+<colgroup>
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 20%;">
+<col style="width: 40%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">AVS_CLOCK_SELECT</th>
+<th class="tableblock halign-left valign-top">Source mux</th>
+<th class="tableblock halign-left valign-top">Post-divider mux</th>
+<th class="tableblock halign-left valign-top">AVS clock</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;b00</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0, bypass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_reg_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;b01</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1, divided</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_reg_i</code> divided by <code>CLK_DIVIDER_VALUE</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;b10</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0, bypass</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2&#8217;b11 (reset)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1, divided</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>clk_ref_i</code> divided by <code>CLK_DIVIDER_VALUE</code>, by 4 until
+software writes a non-zero value</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><a href="#avs-clock-configuration-fields-table">Table 9</a> defines the source-selection and divider
 configuration fields.</p>
 </div>
 <table id="avs-clock-configuration-fields-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. AVS Clock Configuration Fields</caption>
+<caption class="title">Table 9. AVS Clock Configuration Fields</caption>
 <colgroup>
 <col style="width: 45%;">
 <col style="width: 15%;">
@@ -1429,15 +1513,15 @@ source mux</p></td>
 <p>While <code>test_en_i</code> is high the source and divider-bypass muxes ignore
 <code>AVS_CLOCK_SELECT</code>, and <code>clk_test_i</code> drives the AVS clock directly.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#avs-clock-configuration-fields-table">Table 8</a>.</p>
+<p class="block-references">Figures and tables: <a href="#avsbus-clock-select-diagram">Figure 3</a>; <a href="#avs-clock-select-table">Table 8</a>; <a href="#avs-clock-configuration-fields-table">Table 9</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="reset-architecture"><a class="anchor" href="#reset-architecture"></a><a class="link" href="#reset-architecture">4.3. Reset Architecture</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-reset-domains-table">Table 9</a> identifies the logic reset by each AVSBus reset input.</p>
+<p><a href="#avsbus-reset-domains-table">Table 10</a> identifies the logic reset by each AVSBus reset input.</p>
 </div>
 <table id="avsbus-reset-domains-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. AVSBus Reset Domains</caption>
+<caption class="title">Table 10. AVSBus Reset Domains</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -1469,7 +1553,7 @@ for the register, pre-divider and AVS clock domains</p></td>
 producing a clock before the logic it feeds leaves reset, otherwise the AVS
 clock domain never starts.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#avsbus-reset-domains-table">Table 9</a>.</p>
+<p class="block-references">Figures and tables: <a href="#avsbus-reset-domains-table">Table 10</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="interrupt-interface"><a class="anchor" href="#interrupt-interface"></a><a class="link" href="#interrupt-interface">4.4. Interrupt Interface</a></h3>
@@ -1478,10 +1562,10 @@ clock domain never starts.</p>
 and its corresponding <code>AVS_INTERRUPT_MASK</code> bit is clear.</p>
 </div>
 <div class="paragraph">
-<p><a href="#avsbus-interrupt-sources-table">Table 10</a> maps AVS_INTERRUPT bits to the events that set them.</p>
+<p><a href="#avsbus-interrupt-sources-table">Table 11</a> maps AVS_INTERRUPT bits to the events that set them.</p>
 </div>
 <table id="avsbus-interrupt-sources-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. AVSBus Interrupt Sources</caption>
+<caption class="title">Table 11. AVSBus Interrupt Sources</caption>
 <colgroup>
 <col style="width: 10%;">
 <col style="width: 35%;">
@@ -1553,7 +1637,7 @@ sources are masked after reset and software must clear a bit to enable that
 source. Interrupt bits are cleared by writing 1 to the matching bit of
 <code>AVS_INTERRUPT_CLEAR</code>; those bits self-clear.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#avsbus-interrupt-sources-table">Table 10</a>.</p>
+<p class="block-references">Figures and tables: <a href="#avsbus-interrupt-sources-table">Table 11</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="avsbus-controller-gpio-enable"><a class="anchor" href="#avsbus-controller-gpio-enable"></a><a class="link" href="#avsbus-controller-gpio-enable">4.5. Pad Enable Interface</a></h3>
@@ -1567,10 +1651,10 @@ because the protocol FSM begins running as soon as reset is deasserted.</p>
 <div class="sect2">
 <h3 id="timing"><a class="anchor" href="#timing"></a><a class="link" href="#timing">4.6. Timing</a></h3>
 <div class="paragraph">
-<p><a href="#avsbus-protocol-timing-table">Table 11</a> summarises the subframe and clock timing.</p>
+<p><a href="#avsbus-protocol-timing-table">Table 12</a> summarises the subframe and clock timing.</p>
 </div>
 <table id="avsbus-protocol-timing-table" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. AVSBus Protocol Timing</caption>
+<caption class="title">Table 12. AVSBus Protocol Timing</caption>
 <colgroup>
 <col style="width: 40%;">
 <col style="width: 60%;">
@@ -1605,7 +1689,7 @@ because the protocol FSM begins running as soon as reset is deasserted.</p>
 <p>Pin-level setup, hold and propagation figures are a function of the
 implementation and are not specified by this IP.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#avsbus-protocol-timing-table">Table 11</a>.</p>
+<p class="block-references">Figures and tables: <a href="#avsbus-protocol-timing-table">Table 12</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="integration-example"><a class="anchor" href="#integration-example"></a><a class="link" href="#integration-example">4.7. Integration Example</a></h3>
@@ -1717,8 +1801,8 @@ register to poll.</p>
 <h2 id="regmap-avsbus_controller">AVSBus Controller Address Map</h2>
 <p>Command, readback, status, and interrupt registers for the AVSBus (V1.3.1) controller.</p>
 <p><strong>Register List:</strong></p>
-<table id="trm-table-12">
-<caption class="title"><a href="#trm-table-12">Table 12</a>. AVSBus Controller Address Map register list</caption>
+<table id="trm-table-13">
+<caption class="title"><a href="#trm-table-13">Table 13</a>. AVSBus Controller Address Map register list</caption>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
 <tr><td>0x0</td><td><a href="#AVS_CMD">AVS_CMD</a></td><td>W</td><td>The command+data to be transferred to the AVS bus</td></tr>
 <tr><td>0x4</td><td><a href="#AVS_READBACK">AVS_READBACK</a></td><td>R</td><td>Response data from AVS slave device (updated in response to both AVS read and write commands). Reading<br>this register causes the AVS response readback fifo pointer to advance.</td></tr>
@@ -1736,8 +1820,8 @@ register to poll.</p>
 </table>
 <p><strong>Register Details:</strong></p>
 <h3 id="AVS_CMD">AVS_CMD</h3>
-<table id="trm-table-13">
-<caption class="title"><a href="#trm-table-13">Table 13</a>. avsbus_controller.AVS_CMD fields</caption>
+<table id="trm-table-14">
+<caption class="title"><a href="#trm-table-14">Table 14</a>. avsbus_controller.AVS_CMD fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:30</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>29:28</td><td>R_OR_W</td><td>W</td><td>0x0</td><td>Read or write type: [list]<br>[*]0x0 - Commit Write<br>[*]0x1 - Hold Write<br>[*]0x2 - Read<br>[/list]</td></tr>
@@ -1748,8 +1832,8 @@ register to poll.</p>
 <tr><td>2:0</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 </table>
 <h3 id="AVS_READBACK">AVS_READBACK</h3>
-<table id="trm-table-14">
-<caption class="title"><a href="#trm-table-14">Table 14</a>. avsbus_controller.AVS_READBACK fields</caption>
+<table id="trm-table-15">
+<caption class="title"><a href="#trm-table-15">Table 15</a>. avsbus_controller.AVS_READBACK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:30</td><td>SLAVE_ACK</td><td>R RMOD</td><td>0x0</td><td>Indicates whether command executed or not - codes 0x1 and 0x2 trigger automatic retries by hardware:  [list]<br>[*]0x0: Action Performed<br>[*]0x1: Good CRC received but resource unavailable - hardware will retry<br>[*]0x2: Bad CRC received - hardware will retry<br>[*]0x3: Good CRC received but bad data, data type or selector - no hardware retry<br>[/list]</td></tr>
 <tr><td>29</td><td>CONST0</td><td>R RMOD</td><td>0x0</td><td>Always 0</td></tr>
@@ -1759,20 +1843,20 @@ register to poll.</p>
 <tr><td>2:0</td><td>CRC</td><td>R RMOD</td><td>0x0</td><td>The CRC-3 code received from slave</td></tr>
 </table>
 <h3 id="AVS_DEBUG_READBACK">AVS_DEBUG_READBACK</h3>
-<table id="trm-table-15">
-<caption class="title"><a href="#trm-table-15">Table 15</a>. avsbus_controller.AVS_DEBUG_READBACK fields</caption>
+<table id="trm-table-16">
+<caption class="title"><a href="#trm-table-16">Table 16</a>. avsbus_controller.AVS_DEBUG_READBACK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>AVS_SLAVE_SUBFRAME</td><td>R</td><td>0xFFFFFFFF</td><td>The current top-of-fifo AVS slave response sub-frame in the readback fifo</td></tr>
 </table>
 <h3 id="AVS_LATEST_SLAVE_SUBFRAME">AVS_LATEST_SLAVE_SUBFRAME</h3>
-<table id="trm-table-16">
-<caption class="title"><a href="#trm-table-16">Table 16</a>. avsbus_controller.AVS_LATEST_SLAVE_SUBFRAME fields</caption>
+<table id="trm-table-17">
+<caption class="title"><a href="#trm-table-17">Table 17</a>. avsbus_controller.AVS_LATEST_SLAVE_SUBFRAME fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>AVS_SLAVE_SUBFRAME</td><td>R</td><td>0xFFFF</td><td>The most recently received AVS slave response sub-frame</td></tr>
 </table>
 <h3 id="AVS_NORMAL_STATUS">AVS_NORMAL_STATUS</h3>
-<table id="trm-table-17">
-<caption class="title"><a href="#trm-table-17">Table 17</a>. avsbus_controller.AVS_NORMAL_STATUS fields</caption>
+<table id="trm-table-18">
+<caption class="title"><a href="#trm-table-18">Table 18</a>. avsbus_controller.AVS_NORMAL_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:23</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>22</td><td>AVS_SLAVE_IS_IN_RESYNC</td><td>R</td><td>0x0</td><td>Indicates that the AVS master is issuing a slave resync operation (34 clock cycles of holding mdata high)</td></tr>
@@ -1785,8 +1869,8 @@ register to poll.</p>
 <tr><td>15:0</td><td>TOTAL_RETRIES</td><td>R</td><td>0x0</td><td>Total number of retries attempted by the AVS Master</td></tr>
 </table>
 <h3 id="AVS_SLAVE_STATUS">AVS_SLAVE_STATUS</h3>
-<table id="trm-table-18">
-<caption class="title"><a href="#trm-table-18">Table 18</a>. avsbus_controller.AVS_SLAVE_STATUS fields</caption>
+<table id="trm-table-19">
+<caption class="title"><a href="#trm-table-19">Table 19</a>. avsbus_controller.AVS_SLAVE_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:18</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>17:16</td><td>AVS_SLAVE_ACK</td><td>R</td><td>0x0</td><td>The SlaveAck bits of the most recent slave subframe received: [list]<br>[*]00: Action Performed<br>[*]01:Good CRC received by resource unavailable. No action performed (triggers retry)<br>[*]10: Bad CRC received (triggers retry)<br>[*]11: Good CRC received bit bad data, data type, or selector. No action performed<br>[/list]</td></tr>
@@ -1794,8 +1878,8 @@ register to poll.</p>
 <tr><td>4:0</td><td>AVS_SLAVE_STATUS_RESPONSE</td><td>R</td><td>0x0</td><td>The 5-bit Slave StatusResponse of the most recent slave subframe received, indicating the<br>general condition of the slave, per AVS spec StatusReponse field: [list]<br>[*]bit 4: VDone - AND of all VDone bits of active rails<br>[*]bit 3: StatusAlert - Indicates potential status issue, requiring AVSBus Status read cmd for details<br>[*]bit 2: AVS_Control - 1 if ABSBus is controlling at least 1 device output, 0 otherwise.<br>[*]bit 1: MfrSpcfc_Stts1 - Manufacturer-specific<br>[*]bit 0: MfrSpcfc_Stts2 - Manufacturer-specific<br>[/list]</td></tr>
 </table>
 <h3 id="AVS_FIFOS_STATUS">AVS_FIFOS_STATUS</h3>
-<table id="trm-table-19">
-<caption class="title"><a href="#trm-table-19">Table 19</a>. avsbus_controller.AVS_FIFOS_STATUS fields</caption>
+<table id="trm-table-20">
+<caption class="title"><a href="#trm-table-20">Table 20</a>. avsbus_controller.AVS_FIFOS_STATUS fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:28</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>27:24</td><td>READBACK_FIFO_VACANT_SLOTS</td><td>R</td><td>0x8</td><td>Number of vacant slots in the readback FIFO</td></tr>
@@ -1807,8 +1891,8 @@ register to poll.</p>
 <tr><td>3:0</td><td>CMD_FIFO_OCCUPIED_SLOTS</td><td>R</td><td>0x0</td><td>Number of occupied slots in the command FIFO</td></tr>
 </table>
 <h3 id="AVS_INTERRUPT">AVS_INTERRUPT</h3>
-<table id="trm-table-20">
-<caption class="title"><a href="#trm-table-20">Table 20</a>. avsbus_controller.AVS_INTERRUPT fields</caption>
+<table id="trm-table-21">
+<caption class="title"><a href="#trm-table-21">Table 21</a>. avsbus_controller.AVS_INTERRUPT fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>READBACK_OVERFLOW_INT</td><td>R</td><td>0x0</td><td>Indicates that the response from AVS slave could not be written to readback FIFO due to it being<br>full =&gt; response was dropped</td></tr>
@@ -1822,8 +1906,8 @@ register to poll.</p>
 <tr><td>0</td><td>AVS_SLAVE_ISSUED_INTERRUPT</td><td>R</td><td>0x0</td><td>Indicates the AVS slave has signaled an interrupt</td></tr>
 </table>
 <h3 id="AVS_INTERRUPT_MASK">AVS_INTERRUPT_MASK</h3>
-<table id="trm-table-21">
-<caption class="title"><a href="#trm-table-21">Table 21</a>. avsbus_controller.AVS_INTERRUPT_MASK fields</caption>
+<table id="trm-table-22">
+<caption class="title"><a href="#trm-table-22">Table 22</a>. avsbus_controller.AVS_INTERRUPT_MASK fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>DISABLE_READBACK_OVERFLOW_INT</td><td>RW</td><td>0x1</td><td>Disable readback_overflow interrupt</td></tr>
@@ -1837,8 +1921,8 @@ register to poll.</p>
 <tr><td>0</td><td>DISABLE_AVS_SLAVE_ISSUED_INTERRUPT</td><td>RW</td><td>0x1</td><td>Disable notification of AVS slave interrupt</td></tr>
 </table>
 <h3 id="AVS_INTERRUPT_CLEAR">AVS_INTERRUPT_CLEAR</h3>
-<table id="trm-table-22">
-<caption class="title"><a href="#trm-table-22">Table 22</a>. avsbus_controller.AVS_INTERRUPT_CLEAR fields</caption>
+<table id="trm-table-23">
+<caption class="title"><a href="#trm-table-23">Table 23</a>. avsbus_controller.AVS_INTERRUPT_CLEAR fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:9</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>8</td><td>CLEAR_READBACK_OVERFLOW_INT</td><td>W 1P</td><td>0x0</td><td>Clear readback_overflow interrupt</td></tr>
@@ -1852,16 +1936,16 @@ register to poll.</p>
 <tr><td>0</td><td>CLEAR_AVS_SLAVE_ISSUED_INTERRUPT</td><td>W 1P</td><td>0x0</td><td>Clear avs_slave_issued_interrupt</td></tr>
 </table>
 <h3 id="AVS_CFG_0">AVS_CFG_0</h3>
-<table id="trm-table-23">
-<caption class="title"><a href="#trm-table-23">Table 23</a>. avsbus_controller.AVS_CFG_0 fields</caption>
+<table id="trm-table-24">
+<caption class="title"><a href="#trm-table-24">Table 24</a>. avsbus_controller.AVS_CFG_0 fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>23:16</td><td>MAX_RETRIES</td><td>RW</td><td>0x5</td><td>Maximum number of times to attempt a retry if an AVS command returns a fail<br>status (either due to targeted resource being busy or CRC failure)</td></tr>
 <tr><td>15:0</td><td>RESYNC_INTERVAL</td><td>RW</td><td>0x1000</td><td>Max interval to issue slave resync operation on AVS bus, expressed in number of APB clock cycles. NOTE: there is a 3 cycle delay for the resync flag to be seen by the avs controller due to synchronization.</td></tr>
 </table>
 <h3 id="AVS_CFG_1">AVS_CFG_1</h3>
-<table id="trm-table-24">
-<caption class="title"><a href="#trm-table-24">Table 24</a>. avsbus_controller.AVS_CFG_1 fields</caption>
+<table id="trm-table-25">
+<caption class="title"><a href="#trm-table-25">Table 25</a>. avsbus_controller.AVS_CFG_1 fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:24</td><td>CLK_DIVIDER_DUTY_CYCLE_NUMERATOR</td><td>RW</td><td>0x0</td><td>Determines the desired duty cycle of the divided clock (when avs_clock_select is set to select the divided APB clock or refclk clock).<br>This value will be divided by 256 to determine the high-pulse percentage of the divided clock period. Depending on the clk_divider_value,<br>it may not be possible to precisely achieve the desired duty cycle - in that case, the closest possible fit is used. If this is set to 0,<br>a value of 1 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings (numerator=0x80)<br>by matching the FF default in the resynced version of the signal.</td></tr>
 <tr><td>23:16</td><td>CLK_DIVIDER_VALUE</td><td>RW</td><td>0x0</td><td>Determines the divisor value used to generate the AVS clock (when avs_clock_select is set to select the divided APB clock or divided refclk clock).<br>The duty cycle of the divided clock depends both on the clk_divider_value together with the clk_divider_duty_cycle_numerator value. A 50%<br>duty cycle is only possible on even clk_divider_values with clk_divider_duty_cycle_numerator set to 128. This field requires a minimum value of<br>2 - for lower values, 2 will be assumed. This is set to 0 by default to trick the clock divider into maintaining the HW-default settings<br>(divider=0x4) by matching the FF default in the resynced version of the signal.</td></tr>
@@ -1873,8 +1957,8 @@ register to poll.</p>
 <tr><td>1:0</td><td>AVS_CLOCK_SELECT</td><td>RW</td><td>0x3</td><td>Selects which clock to use for AVS Clock: [list]<br>[*] 00: Use the APB clock directly as the AVS clock<br>[*] 01: Use a divided version of APB clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[*] 10: Use the refclk clock directly as the AVS clock<br>[*] 11: Use a divided version of refclk clock as the AVS Clock. The clock divider settings are determined by AVS_CFG_1:clk_divider_value and AVS_CFG_1:clk_divider_duty_cycle_numerator<br>[/list]</td></tr>
 </table>
 <h3 id="AVS_CONFIG">AVS_CONFIG</h3>
-<table id="trm-table-25">
-<caption class="title"><a href="#trm-table-25">Table 25</a>. avsbus_controller.AVS_CONFIG fields</caption>
+<table id="trm-table-26">
+<caption class="title"><a href="#trm-table-26">Table 26</a>. avsbus_controller.AVS_CONFIG fields</caption>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>AVS_GPIO_ENABLE</td><td>RW</td><td>0x1</td><td>Enable AVSBus connection to GPIOs. The effective sets OE of the GPIOs dedicated to<br>avs_clock and avs_cdata to 1, sets IE of GPIO dedicated to avs_tdata to 1. By default,<br>this is enabled as the AVSBus state machine immediately starts after reset deassertion.</td></tr>

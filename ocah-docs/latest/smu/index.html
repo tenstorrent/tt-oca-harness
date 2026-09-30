@@ -668,7 +668,7 @@ Platform-wide clock, power and reset behaviour is described in the
 </div>
 <div id="smu-composition-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SMU_TopLevel_FIG001.drawio.png" alt="SMU composition with the optional SEP subsystem" width="100%">
+<img src="_images/smu-composition.svg" alt="SMU composition with the optional SEP subsystem" width="100%">
 </div>
 <div class="title">Figure 1. SMU composition with the optional SEP subsystem</div>
 </div>
@@ -676,7 +676,8 @@ Platform-wide clock, power and reset behaviour is described in the
 <p>The SMU composition is shown in <a href="#smu-composition-diagram">Figure 1</a>.
 The dashed SEP boundary denotes the optional subsystem controlled by the
 <code>SEP</code> integration parameter. Memory capacities in the diagram describe the
-illustrated configuration.</p>
+illustrated configuration. Hatched blocks are future: the safety bus and the
+safety monitor, whose connections to the SEP and SMC are drawn dashed.</p>
 </div>
 <p class="block-references">Figures and tables: <a href="#smu-composition-diagram">Figure 1</a>.</p>
 </div>
@@ -693,7 +694,7 @@ but never its own inbound port.</p>
 </div>
 <div id="smu-crossbar-connectivity-diagram" class="imageblock">
 <div class="content">
-<img src="_images/SMU_AxiXbar_Connectivity_FIG002.1.drawio.png" alt="SMU AXI crossbar connectivity" width="100%">
+<img src="_images/smu-crossbar-connectivity.svg" alt="SMU AXI crossbar connectivity" width="640">
 </div>
 <div class="title">Figure 2. SMU AXI crossbar connectivity</div>
 </div>
@@ -768,7 +769,8 @@ firmware programming order.</p>
 <p><a href="#smu-crossbar-decode-diagram">Figure 3</a> shows the independent SEP and SMC address
 comparisons for each read or write request. Each aperture includes its base
 address and excludes <code>base + size</code>; the addition uses 57 bits to preserve
-carry from the 56-bit address.</p>
+carry from the 56-bit address, and the address is zero-extended to 57 bits for
+the comparison. The SEP and SMC ranges must not overlap.</p>
 </div>
 <div class="paragraph">
 <p>The decoded aperture and the connectivity in
@@ -842,10 +844,19 @@ subordinate.</p>
 <div class="paragraph">
 <p><a href="#smu-clock-distribution">Figure 4</a> and <a href="#smu-reset-distribution">Figure 5</a> show the clock and
 reset distribution from the SMU boundary to DTP, SEP, SMC, and the shared
-AXI infrastructure. Each row identifies a source and its consumers; repeated
-instance names denote the same RTL instance. Boundary ports use blue boxes,
-SMU instances use grey boxes, and generated signals use green boxes.
-Arrows show signal direction. A comma-separated consumer list denotes fan-out.</p>
+AXI infrastructure. Boundary inputs enter on the left and boundary outputs
+leave on the right; nets generated inside the SMU run in the channel to the
+right of the instances. A dot marks fan-out, and a gap in a line marks a
+crossing without a connection. Labels at an instance&#8217;s right edge name the
+net it drives or the port that receives a generated net. Instance names match
+the SMU RTL hierarchy, and paths to the SEP exist only when the <code>SEP</code>
+parameter is non-zero.</p>
+</div>
+<div class="paragraph">
+<p>Active-low resets use the <code>_ni</code>, <code>_no</code> or <code>trst_n</code> suffixes; the SMC CPU JTAG
+reset is active-high, so <code>dtp_smc_stap_tap_ctrl.trst_n</code> passes through an
+inverter. <a href="#smu-reset-distribution">Figure 5</a> shows reset distribution within the SMU,
+not the reset logic inside each subsystem.</p>
 </div>
 <div id="smu-clock-distribution" class="imageblock">
 <div class="content">
@@ -876,12 +887,59 @@ and the management functions in SMC, as shown in
 </div>
 <div class="title">Figure 6. SEP lifecycle and feature-control propagation to SMC and DTP</div>
 </div>
+<div class="paragraph">
+<p>In <a href="#smu-lifecycle-propagation-diagram">Figure 6</a>, the OTP shadow registers, the
+demotion CSRs and the security-disable token feed the Life Cycle Controller,
+and each named output runs to the block that consumes it; a slashed line
+carries its bus width. <a href="#smu-lifecycle-effects-table">Table 3</a> gives the effect of
+each control on its consumer. The demotion CSRs clear on SEP cold reset, and security disable
+overrides the normal feature restrictions.</p>
+</div>
+<table id="smu-lifecycle-effects-table" class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 3. SEP lifecycle and feature-control effects</caption>
+<colgroup>
+<col style="width: 32%;">
+<col style="width: 68%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Control</th>
+<th class="tableblock halign-left valign-top">Consumer and effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP: disables selected STAPs, SIBs and SMC-fabric JTAG2AXI access</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC: eFuse JTAG access policy and the <code>LC_STATE</code> CSR. Also an SMU boundary output.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>security_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC <code>sep_security_disable_i</code>: security-disable override for the eFuse wrapper</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_fuse_dft_disable_o</code>, <code>smc_fuse_dft_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMU boundary outputs for adopter DFT insertion; each gates its DFT OTP access paths</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl.sep_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP inbound AXI filter: <code>1</code> bypasses the filter; <code>0</code> filters external traffic</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>LC_STATE</code>, <code>lcc_demote_state_1/2</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager: lifecycle and demotion context. The demotion state also reaches the SMU boundary.</p></td>
+</tr>
+</tbody>
+</table>
 <div id="child-subsystems" class="paragraph">
 <p><a id="smu-child-subsystems"></a>The subsystem chapters (SEP, SMC, DTP) follow
 immediately; see the <a href="#smu-composition">Composition</a> section above for roles
 and cross-references.</p>
 </div>
-<p class="block-references">Figures and tables: <a href="#smu-lifecycle-propagation-diagram">Figure 6</a>.</p>
+<p class="block-references">Figures and tables: <a href="#smu-lifecycle-propagation-diagram">Figure 6</a>; <a href="#smu-lifecycle-effects-table">Table 3</a>.</p>
 </div>
 </div>
 <nav class="pagination">

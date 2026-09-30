@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="746" viewBox="0 0 1040 746" role="img" aria-labelledby="title desc">
+<title id="title">OCAH I3C wrapper</title>
+<desc id="desc">i3ccore_wrapper has one AXI-Lite subordinate port, 32-bit address and 32-bit data, on its single clock clk_i. The PULP axi_lite_demux u_axil_demux, with every channel registered and up to eight transactions outstanding, selects instance i when the address minus BASE_ADDR lies in the i-th 0x1000 window, and instance 0 when it lies in none. Each generated instance subtracts i times 0x1000 from the address and passes a 12-bit offset to its i3c_wrapper. Inside i3c_wrapper the AXI-Lite port reaches the CHIPS Alliance i3c-core u_i3c, drawn as a black box, as single-beat AXI4 with length 0, WLAST 1 and ID and user zero. SCL and SDA inputs pass straight to the core. The wrapper ties scl_o low and drives scl_oe_o with the inverse of the core's SCL level. sda_o is the core's SDA level, and sda_oe_o is sel_od_pp_o OR the inverse of sda_o. sel_od_pp_o, irq_o, the recovery signals and the DAT, DCT and RLT memory ports pass through to per-instance vectors on the i3ccore_wrapper boundary. Instances 1 to N-1 are identical to instance 0.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="746" fill="#ffffff"/>
+<rect class="smu" x="40" y="92" width="960" height="470" rx="6"/>
+<text class="b" x="54" y="550" text-anchor="start">i3ccore_wrapper</text>
+<text class="t" x="532" y="24" text-anchor="start">from smc_peripherals_cdc</text>
+<text class="s" x="532" y="42" text-anchor="start">AXI-Lite, addr 32, data 32</text>
+<text class="s" x="532" y="59" text-anchor="start">clk_i: gated peripheral clock</text>
+<path class="axil" d="M520,14 L520,112"/>
+<path class="fabric" d="M344,112 L696,112 L960,172 L80,172 Z"/>
+<text class="bs" x="520" y="138" text-anchor="middle">u_axil_demux (PULP)</text>
+<text class="s" x="520" y="156" text-anchor="middle">axi_lite_demux, 1 to NUM_I3C, 0x1000 windows, no match to instance 0</text>
+<rect class="network" x="95" y="194" width="190" height="36" rx="4"/>
+<text class="s" x="190" y="217" text-anchor="middle">addr - i × 0x1000, 12 bits</text>
+<path class="axil" d="M190,172 L190,194"/>
+<rect class="network" x="880" y="194" width="110" height="36" rx="4"/>
+<text class="s" x="935" y="209.5" text-anchor="middle">addr - i ×</text>
+<text class="s" x="935" y="224.5" text-anchor="middle">0x1000</text>
+<path class="axil" d="M935.0,172 L935.0,194"/>
+<rect class="core" x="60" y="252" width="790" height="280" rx="6"/>
+<text class="bs" x="204" y="272" text-anchor="start">gen_i3c_inst[0].u_i3c_wrapper (i3c_wrapper)</text>
+<path class="axil" d="M190,230 L190,288"/>
+<rect class="network" x="80" y="288" width="220" height="44" rx="4"/>
+<text class="s" x="190" y="306.5" text-anchor="middle">AXI-Lite to AXI4, single beat</text>
+<text class="s" x="190" y="323.5" text-anchor="middle">len 0, last 1, ID 0, user 0</text>
+<path class="axi" d="M190,332 L190,352"/>
+<rect class="core" x="80" y="352" width="750" height="72" rx="6"/>
+<text class="bs" x="470" y="374" text-anchor="middle">u_i3c (CHIPS Alliance)</text>
+<text class="si" x="470" y="392" text-anchor="middle">i3c-core, drawn as a black box</text>
+<text class="s" x="220" y="414" text-anchor="middle">i3c_scl_i</text>
+<text class="s" x="285" y="414" text-anchor="middle">i3c_sda_i</text>
+<text class="s" x="415" y="414" text-anchor="middle">i3c_scl_o</text>
+<text class="s" x="480" y="414" text-anchor="middle">i3c_sda_o</text>
+<text class="s" x="640" y="414" text-anchor="middle">sel_od_pp_o</text>
+<text class="s" x="705" y="414" text-anchor="middle">irq_o</text>
+<path class="sigo" d="M220,592 L220,425"/>
+<path class="sigo" d="M285,630 L285,425"/>
+<text class="s" x="350" y="462" text-anchor="middle">1'b0</text>
+<path class="sigo" d="M350,468 L350,592"/>
+<path class="sigplain" d="M415,424 L415,450"/>
+<path class="fabric" d="M405,450 L425,450 L415,467 Z"/>
+<circle class="fabric" cx="415" cy="471" r="4"/>
+<path class="sigo" d="M415,475 L415,630"/>
+<path class="sigo" d="M480,424 L480,592"/>
+<circle cx="480" cy="438" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M480,438 L548,438 L548,450"/>
+<path class="fabric" d="M538,450 L558,450 L548,467 Z"/>
+<circle class="fabric" cx="548" cy="471" r="4"/>
+<path class="sigo" d="M548,475 L548,489.91735537190084"/>
+<path class="sigo" d="M640,424 L640,592"/>
+<circle cx="640" cy="438" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M640,438 L572,438 L572,489.91735537190084"/>
+<path class="fabric" d="M538,486 Q560,500 582,486 Q582,505.2 560,518 Q538,505.2 538,486 Z"/>
+<path class="sigo" d="M560,518 L560,630"/>
+<path class="sigo" d="M705,424 L705,630"/>
+<path class="sig" d="M765,425 L765,592"/>
+<path class="sig" d="M825,425 L825,630"/>
+<text class="s" x="220" y="608" text-anchor="middle">scl_i</text>
+<text class="s" x="285" y="646" text-anchor="middle">sda_i</text>
+<text class="s" x="350" y="608" text-anchor="middle">scl_o</text>
+<text class="s" x="415" y="646" text-anchor="middle">scl_oe_o</text>
+<text class="s" x="480" y="608" text-anchor="middle">sda_o</text>
+<text class="s" x="560" y="646" text-anchor="middle">sda_oe_o</text>
+<text class="s" x="640" y="608" text-anchor="middle">sel_od_pp_o</text>
+<text class="s" x="705" y="646" text-anchor="middle">irq_o</text>
+<text class="s" x="765" y="608" text-anchor="middle">recovery</text>
+<text class="s" x="765" y="624" text-anchor="middle">(4 out, 1 in)</text>
+<text class="s" x="825" y="646" text-anchor="middle">DAT, DCT, RLT</text>
+<text class="s" x="825" y="662" text-anchor="middle">memory ports</text>
+<text class="t" x="865" y="397" text-anchor="middle">...</text>
+<path class="axil" d="M935.0,230 L935.0,252"/>
+<rect class="core" x="880" y="252" width="110" height="280" rx="6"/>
+<text class="bs" x="935" y="379" text-anchor="middle">gen_i3c_inst</text>
+<text class="bs" x="935" y="397" text-anchor="middle">[N-1]</text>
+<text class="si" x="935" y="415" text-anchor="middle">as [0]</text>
+<path class="sigo" d="M910.0,592 L910.0,533"/>
+<path class="sig" d="M935.0,533 L935.0,592"/>
+<path class="sigo" d="M960.0,532 L960.0,592"/>
+<text class="s" x="935" y="608" text-anchor="middle">slice [N-1]</text>
+<path class="fabric" d="M14,691 L36,686 L36,706 L14,701 Z"/>
+<text class="s" x="44" y="700.5" text-anchor="start">Demux</text>
+<rect class="network" x="98.5" y="687" width="36" height="18" rx="3"/>
+<text class="s" x="142.5" y="700.5" text-anchor="start">Converter</text>
+<rect class="core" x="224.6" y="687" width="36" height="18" rx="4"/>
+<text class="s" x="268.6" y="700.5" text-anchor="start">RTL block</text>
+<path class="fabric" d="M350.7,688 L365.7,696 L350.7,704 Z"/>
+<circle class="fabric" cx="369.7" cy="696" r="4"/>
+<text class="s" x="382.7" y="700.5" text-anchor="start">NOT</text>
+<path class="fabric" d="M423.4,687 Q433.4,696 423.4,705 Q440.2,705 451.4,696 Q440.2,687 423.4,687 Z"/>
+<text class="s" x="459.4" y="700.5" text-anchor="start">OR</text>
+<text class="s" x="523.2" y="700.5" text-anchor="start">Subordinate port</text>
+<path class="axil" d="M656.6,696 L698.6,696"/>
+<text class="s" x="709.6" y="700.5" text-anchor="start">AXI-Lite</text>
+<path class="axi" d="M787.8,696 L829.8,696"/>
+<text class="s" x="840.8" y="700.5" text-anchor="start">AXI4</text>
+<path class="sigo" d="M17,724 L59,724"/>
+<text class="s" x="70" y="728.5" text-anchor="start">Signal</text>
+<path class="sig" d="M134.4,724 L176.4,724"/>
+<text class="s" x="187.4" y="728.5" text-anchor="start">Signal group, both directions</text>
+<path class="sigplain" d="M407.5,724 L437.5,724 M422.5,724 L422.5,733"/>
+<circle cx="422.5" cy="724" r="3.5" fill="#5b6670"/>
+<text class="s" x="445.5" y="728.5" text-anchor="start">Junction</text>
+<rect class="ps" x="509.0" y="83.0" width="22" height="18" rx="4"/>
+<text class="pst" x="520" y="96.5" text-anchor="middle">S</text>
+<rect class="ps" x="493.2" y="687.0" width="22" height="18" rx="4"/>
+<text class="pst" x="504.2" y="700.5" text-anchor="middle">S</text>
+</svg>

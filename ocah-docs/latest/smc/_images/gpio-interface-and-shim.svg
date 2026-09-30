@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="976" viewBox="0 0 1040 976" role="img" aria-labelledby="title desc">
+<title id="title">GPIO controller and interface shim</title>
+<desc id="desc">One GPIO pad is served by two blocks. The gpio controller, instantiated once per pad in smc_padring as u_gpio_interface, receives its gpio_intf AXI-Lite slot from u_gpio_intf_demux. The access filter u_gpio_access_filter checks AxPROT against the ACCESS_FILTER requirements held in u_gpio_intf_reg and answers failing accesses with DECERR. The LSIO mux chooses core-to-pad data, output enable and input enable from the LSIO plane of smc_padring or from the DATA_CTRL registers. The pad input is synchronized by u_pad2core_sync (prim_sync3r) for the DATA_CTRL.pad2core readback and the level or edge interrupt detector, which drives interrupt_o. Below it, the adopter's gpio_shim receives its gpio_ctrl AXI-Lite slot from the smc_external window; u_shim_axil_demux sends it to u_gpio_ctrl_reg or, above the CONTROL aperture, to the DECERR responder u_axil_err_slv. The 2nd-HW override mux replaces the primary plane with the *_ovrd signals while CONTROL.hw2_ovrd is set and force_primary_i is low. The electrical-control mux chooses drive strength, pull and glitch-filter settings from the external ext_* controls or CONTROL. The optional strap latch u_strap_latch follows the pad input while cold reset is asserted and reports the held value as CONTROL.strap_value. The technology pad macro drives GPIO_PAD.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<marker id="m-smu" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#103525"/></marker>
+<marker id="m-ref" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#2f7f79"/></marker>
+<marker id="m-per" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#937027"/></marker>
+<marker id="m-tel" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#664488"/></marker>
+<marker id="m-wdt" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#77736b"/></marker>
+<marker id="m-rosc" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<marker id="m-jtag" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="m-spi" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-slate" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="m-pg" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#336633"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.n-smu { fill: none; stroke: #103525; stroke-width: 2.5; }
+.a-smu { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#m-smu); }
+.n-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; }
+.a-ref { fill: none; stroke: #2f7f79; stroke-width: 1.8; marker-end: url(#m-ref); }
+.n-per { fill: none; stroke: #937027; stroke-width: 1.8; }
+.a-per { fill: none; stroke: #937027; stroke-width: 1.8; marker-end: url(#m-per); }
+.n-tel { fill: none; stroke: #664488; stroke-width: 1.8; }
+.a-tel { fill: none; stroke: #664488; stroke-width: 1.8; marker-end: url(#m-tel); }
+.n-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; }
+.a-wdt { fill: none; stroke: #77736b; stroke-width: 1.8; marker-end: url(#m-wdt); }
+.n-rosc { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-rosc { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-rosc); }
+.n-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; }
+.a-jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#m-jtag); }
+.n-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-spi { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-spi); }
+.n-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; }
+.a-slate { fill: none; stroke: #5b6670; stroke-width: 1.8; marker-end: url(#m-slate); }
+.n-pg { fill: none; stroke: #336633; stroke-width: 1.8; }
+.a-pg { fill: none; stroke: #336633; stroke-width: 1.8; marker-end: url(#m-pg); }
+.axil { fill: none; stroke: #103525; stroke-width: 1.5; marker-start: url(#as); marker-end: url(#ae); }
+.sigd { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-end: url(#ge); }
+.axin { fill: none; stroke: #103525; stroke-width: 2.5; }
+.axis { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); }
+.axie { fill: none; stroke: #103525; stroke-width: 2.5; marker-end: url(#ae); }
+.axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
+</style>
+</defs>
+<rect width="1040" height="976" fill="#ffffff"/>
+<rect class="smu" x="40" y="80" width="960" height="320" rx="6"/>
+<text class="b" x="52" y="388" text-anchor="start">gpio</text>
+<text class="s" x="100" y="387" text-anchor="start">u_gpio_interface, one per pad in smc_padring</text>
+<rect class="smu" x="40" y="450" width="960" height="320" rx="6"/>
+<text class="b" x="52" y="758" text-anchor="start">gpio_shim</text>
+<path class="axil" d="M200,30 L200,110"/>
+<text class="s" x="210" y="44" text-anchor="start">gpio_intf AXI-Lite slot from u_gpio_intf_demux</text>
+<path class="fabric" d="M112,110 L288,110 L300,122 L300,154 L288,166 L112,166 L100,154 L100,122 Z"/>
+<text class="t" x="200" y="134" text-anchor="middle">u_gpio_access_filter</text>
+<text class="s" x="200" y="152" text-anchor="middle">AxPROT check, DECERR</text>
+<path class="axil" d="M200,166 L200,210"/>
+<rect class="core" x="100" y="210" width="200" height="60" rx="6"/>
+<text class="t" x="200" y="236" text-anchor="middle">u_gpio_intf_reg</text>
+<text class="s" x="200" y="254" text-anchor="middle">ACCESS_FILTER, DATA_CTRL</text>
+<path class="sigo" d="M100,250 L70,250 L70,138 L96,138"/>
+<rect class="core" x="440" y="110" width="200" height="50" rx="6"/>
+<text class="t" x="540" y="131.5" text-anchor="middle">Interrupt detect</text>
+<text class="s" x="540" y="148.5" text-anchor="middle">level or edge</text>
+<rect class="core" x="440" y="210" width="200" height="50" rx="6"/>
+<text class="t" x="540" y="231.5" text-anchor="middle">u_pad2core_sync</text>
+<text class="s" x="540" y="248.5" text-anchor="middle">prim_sync3r</text>
+<path class="sigo" d="M540,210 L540,164"/>
+<path class="sigo" d="M600,110 L600,30"/>
+<text class="s" x="610" y="44" text-anchor="start">interrupt_o</text>
+<path class="sigo" d="M440,226 L304,226"/>
+<text class="s" x="372" y="220" text-anchor="middle">pad2core</text>
+<path class="fabric" d="M700,316 L920,316 L884.8,366 L735.2,366 Z"/>
+<text class="t" x="810" y="346" text-anchor="middle">LSIO mux</text>
+<path class="sigo" d="M200,270 L200,292 L533,292 M547,292 L760,292 L760,312"/>
+<text class="s" x="270" y="286" text-anchor="start">core2pad, enable_rx_tx</text>
+<path class="sig" d="M860,30 L860,312"/>
+<text class="s" x="870" y="37" text-anchor="start">LSIO plane from</text>
+<text class="s" x="870" y="53" text-anchor="start">smc_padring</text>
+<path class="sigo" d="M810,366 L810,420 L760,420 L760,646"/>
+<text class="s" x="820" y="425" text-anchor="start">core2pad, core2pad_en,</text>
+<text class="s" x="820" y="441" text-anchor="start">pad2core_en</text>
+<path class="sigo" d="M540,800 L540,264"/>
+<text class="s" x="532" y="426" text-anchor="end">pad2core</text>
+<path class="axil" d="M20,30 L20,515 L66,515"/>
+<text class="s" x="14" y="18" text-anchor="start">gpio_ctrl AXI-Lite slot from the smc_external window</text>
+<path class="fabric" d="M66,488 L96,470 L96,560 L66,542 Z"/>
+<path class="axil" d="M96,488 L150,488"/>
+<rect class="external" x="150" y="472" width="180" height="32" rx="4"/>
+<text class="s" x="240" y="493" text-anchor="middle">u_axil_err_slv DECERR</text>
+<path class="axil" d="M96,545 L150,545"/>
+<rect class="core" x="150" y="520" width="180" height="50" rx="6"/>
+<text class="t" x="240" y="541.5" text-anchor="middle">u_gpio_ctrl_reg</text>
+<text class="s" x="240" y="558.5" text-anchor="middle">CONTROL</text>
+<text class="s" x="48" y="590" text-anchor="start">u_shim_axil_demux</text>
+<rect class="core opt" x="380" y="520" width="130" height="52" rx="6"/>
+<text class="t" x="445" y="542.5" text-anchor="middle">u_strap_latch</text>
+<text class="s" x="445" y="559.5" text-anchor="middle">prim_latch_n</text>
+<path class="sigo" d="M540,546 L514,546"/>
+<circle cx="540" cy="546" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M380,546 L334,546"/>
+<text class="s" x="445" y="590" text-anchor="middle">gate: rst_cold_ni</text>
+<text class="s" x="357" y="538" text-anchor="middle">strap</text>
+<path class="fabric" d="M110,650 L330,650 L294.8,700 L145.2,700 Z"/>
+<text class="t" x="220" y="680" text-anchor="middle">Electrical mux</text>
+<path class="sigo" d="M290,570 L290,646"/>
+<text class="s" x="298" y="608" text-anchor="start">CONTROL</text>
+<path class="sigo" d="M4,626 L170,626 L170,646"/>
+<text class="s" x="48" y="618" text-anchor="start">ext_* from the adopter</text>
+<path class="sigo" d="M220,700 L220,796"/>
+<text class="s" x="228" y="786" text-anchor="start">gpio_ctrl_o</text>
+<path class="fabric" d="M700,650 L920,650 L884.8,700 L735.2,700 Z"/>
+<text class="t" x="810" y="680" text-anchor="middle">2nd-HW override mux</text>
+<path class="sigo" d="M960,880 L960,620 L860,620 L860,646"/>
+<text class="s" x="950" y="612" text-anchor="end">*_ovrd</text>
+<path class="sigo" d="M810,700 L810,796"/>
+<text class="s" x="800" y="727" text-anchor="end">select: CONTROL.hw2_ovrd,</text>
+<text class="s" x="800" y="743" text-anchor="end">force_primary_i</text>
+<text class="s" x="818" y="733" text-anchor="start">gpio_out_o</text>
+<text class="s" x="818" y="749" text-anchor="start">gpio_out_en_o</text>
+<text class="s" x="818" y="765" text-anchor="start">gpio_in_en_o</text>
+<rect class="external" x="200" y="800" width="700" height="44" rx="4"/>
+<text class="t" x="550" y="827" text-anchor="middle">Technology pad macro</text>
+<path class="sig" d="M450,844 L450,880"/>
+<text class="s" x="460" y="872" text-anchor="start">GPIO_PAD</text>
+<text class="s" x="548" y="790" text-anchor="start">gpio_in</text>
+<text class="s" x="1010" y="896" text-anchor="end">2nd HW function</text>
+<rect class="core" x="14" y="921" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="934.5" text-anchor="start">RTL block</text>
+<path class="fabric" d="M146.1,925 L168.1,920 L168.1,940 L146.1,935 Z"/>
+<text class="s" x="176.1" y="934.5" text-anchor="start">Mux or demux</text>
+<path class="fabric" d="M289.9,921 L315.9,921 L320.9,926 L320.9,934 L315.9,939 L289.9,939 L284.9,934 L284.9,926 Z"/>
+<text class="s" x="328.9" y="934.5" text-anchor="start">Access filter</text>
+<rect class="external" x="444.6" y="921" width="36" height="18" rx="4"/>
+<text class="s" x="488.6" y="934.5" text-anchor="start">Pad, DECERR</text>
+<rect class="smu" x="590.5" y="921" width="36" height="18" rx="4"/>
+<text class="s" x="634.5" y="934.5" text-anchor="start">Module boundary</text>
+<rect class="core opt" x="764" y="921" width="36" height="18" rx="4"/>
+<text class="s" x="808" y="934.5" text-anchor="start">Optional (INPUT_BY_DEFAULT)</text>
+<path class="axil" d="M17,958 L59,958"/>
+<text class="s" x="70" y="962.5" text-anchor="start">AXI-Lite</text>
+<path class="sigo" d="M154.2,958 L196.2,958"/>
+<text class="s" x="207.2" y="962.5" text-anchor="start">Signal</text>
+<path class="sig" d="M277.6,958 L319.6,958"/>
+<text class="s" x="330.6" y="962.5" text-anchor="start">Bidirectional signals</text>
+<path class="sigplain" d="M501.5,958 L531.5,958 M516.5,958 L516.5,967"/>
+<circle cx="516.5" cy="958" r="3.5" fill="#5b6670"/>
+<text class="s" x="539.5" y="962.5" text-anchor="start">Fan-out</text>
+</svg>

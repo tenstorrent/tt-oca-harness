@@ -245,6 +245,18 @@ external TRNG&#8201;&#8212;&#8201;are instantiated outside the core modules by t
 separation keeps the OCAH deliverable technology-neutral.</p>
 </div>
 <div class="paragraph">
+<p>The figure below shows that boundary. <code>smu</code> exposes a technology integration
+interface for each of these components, and a reference integration module
+holds the shims, models and macros behind them. An adopter keeps the interfaces
+and replaces what lies below the boundary with its own technology IP.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="_images/smu-technology-integration.svg" alt="SMU Technology Integration">
+</div>
+<div class="title">Figure 1. SMU Technology Integration</div>
+</div>
+<div class="paragraph">
 <p>The repository provides reference wrappers that demonstrate how to bridge the
 gap between OCAH core interfaces and adopter-specific IP:</p>
 </div>
@@ -253,8 +265,9 @@ gap between OCAH core interfaces and adopter-specific IP:</p>
 <li>
 <p><code>smu_wrapper.sv</code> wraps <code>smu.sv</code> with pad-level signal handling for clocks,
 resets, GPIO, eFuse, and JTAG interfaces. It internally instantiates
-<code>smc_ip_integration.sv</code> for SMC-related vendor IP and (when <code>SEP=1</code>)
-<code>sep_ip_integration.sv</code> for SEP-related vendor IP.</p>
+<code>smc_ip_integration.sv</code> for SMC-related vendor IP and
+<code>sep_ip_integration.sv</code> for SEP-related vendor IP. Each integration module
+holds its own eFuse interface shim and eFuse bank.</p>
 </li>
 <li>
 <p><code>smc_wrapper.sv</code> provides an equivalent reference wrapping <code>smc.sv</code> alone,
@@ -276,9 +289,9 @@ wrapper layer, and the IP integration modules.</p>
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="_images/smu_integration_components.png" alt="SMU Integration Components">
+<img src="_images/smu-integration-components.svg" alt="SMU Integration Components">
 </div>
-<div class="title">Figure 1. SMU Integration Components</div>
+<div class="title">Figure 2. SMU Integration Components</div>
 </div>
 <div class="sect2">
 <h3 id="ip-integration-modules"><a class="anchor" href="#ip-integration-modules"></a><a class="link" href="#ip-integration-modules">1.1. IP Integration Modules</a></h3>

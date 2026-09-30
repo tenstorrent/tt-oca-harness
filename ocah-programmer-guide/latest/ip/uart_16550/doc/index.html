@@ -245,12 +245,36 @@ change detection and interrupt; flow control is performed by software</p>
 </div>
 <div id="uart-wrapper-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/UART_Wrap_FIG025-1.png" alt="SMC UART wrapper" width="100%">
+<img src="../../_images/uart-wrapper.svg" alt="uart_wrap: an AXI-Lite demux in front of NUM_UARTS uart_log_engine_wrap instances and an error subordinate, and an AXI-Lite mux that merges the instances' log-fetch ports" width="100%">
 </div>
 <div class="title">Figure 1. SMC UART wrapper</div>
 </div>
 <div class="paragraph">
-<p><a href="#uart-wrapper-diagram">SMC UART wrapper</a> shows the SMC wrapper around the UART 16550.</p>
+<p><a href="#uart-wrapper-diagram">SMC UART wrapper</a> shows the SMC wrapper around the UART 16550.
+<code>uart_wrap</code> runs on one clock, <code>clk_i</code>, which in the SMC is the gated
+peripheral clock; both of its AXI4-Lite ports cross to the SMC clock in
+<code>smc_peripherals_cdc</code>. The register port has 32-bit address and data. The
+demux <code>u_csr_axi_lite_demux</code> and the mux <code>u_log_fetch_axi_lite_mux</code> are PULP
+blocks, marked by the project name in parentheses. The demux selects the
+instance whose window, 0x400 bytes apart, contains the address, and sends
+every other address to an error slave that answers DECERR with read data
+<code>0xBADCAB1E</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each instance, <code>gen_uart_log_engine_wraps[i].u_uart_log_engine_wrap</code>, holds
+one UART 16550 and, when bit <code>i</code> of <code>GEN_LOG_ENGINES</code> is set, a log engine;
+<a href="#log-engine-wrapper-diagram">[log-engine-wrapper-diagram]</a> shows its contents. The mux
+<code>u_log_fetch_axi_lite_mux</code> merges the instances' log-fetch manager ports
+onto the single log-fetch port, with 56-bit address and 64-bit data. The SMC
+instantiates four UARTs, each with a log engine and 32-entry TX and RX FIFOs.</p>
+</div>
+<div class="paragraph">
+<p>Every per-instance port is a vector with one bit per instance, and the figure
+labels the slice that instance 0 drives. In the SMC, <code>uart_dsr_ni</code>,
+<code>uart_ri_ni</code> and <code>uart_dcd_ni</code> are tied high, and <code>uart_dtr_no</code>,
+<code>uart_out1_no</code>, <code>uart_out2_no</code>, <code>uart_rxrdy_o</code> and <code>uart_txrdy_o</code> are
+unconnected. <code>uart_irq_o</code>, <code>uart_err_o</code> and <code>log_engine_irq_o</code> of each
+instance are ORed into one interrupt, peripheral interrupts 18 to 21.</p>
 </div>
 </div>
 </div>

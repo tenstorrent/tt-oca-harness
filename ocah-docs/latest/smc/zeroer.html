@@ -664,7 +664,8 @@ fabric integration.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Control Interface</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4 (5-bit address, 64-bit data, 8-bit ID), converted internally to
+AXI4-Lite for the registers</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Interface</p></td>
@@ -711,12 +712,13 @@ sequences</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p>The DMA and zeroer share the data-accelerator fabric path shown in
-<a href="dma.html#smc-dma-zeroer-diagram" class="xref page">SMC DMA and memory-zeroer architecture</a>.</p>
+<a href="dma.html#smc-dma-zeroer-diagram" class="xref page">SMC DMA frontend, backend and shared fabric path</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="state-machine"><a class="anchor" href="#state-machine"></a><a class="link" href="#state-machine">2.1. State Machine</a></h3>
 <div class="paragraph">
-<p>The zeroer implements a three-state operation model (<a href="#smc-zeroer-state-machine-table">Table 2</a>).</p>
+<p>The zeroer state machine has three operating states and an error state
+(<a href="#smc-zeroer-state-machine-table">Table 2</a>).</p>
 </div>
 <table id="smc-zeroer-state-machine-table" class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 2. SMC zeroer state machine</caption>
@@ -743,9 +745,32 @@ sequences</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ST_ISSUE_DATA (3&#8217;b100)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data phase - streaming zero data for all beats</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">ST_ERROR (3&#8217;b000)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Entered from any illegal state encoding; holds the zeroer busy, with
+no interrupt, until reset</p></td>
+</tr>
 </tbody>
 </table>
-<p class="block-references">Figures and tables: <a href="#smc-zeroer-state-machine-table">Table 2</a>.</p>
+<div class="paragraph">
+<p><a href="#smc-memory-zeroer-diagram">Figure 1</a> shows the state machine and its AXI write flow.</p>
+</div>
+<div id="smc-memory-zeroer-diagram" class="imageblock">
+<div class="content">
+<img src="_images/smc-memory-zeroer.svg" alt="SMC memory zeroer: register path, clear state machine with its four states, and the AW, W and B channels of its AXI4 master port" width="100%">
+</div>
+<div class="title">Figure 1. SMC memory zeroer state machine and AXI write flow</div>
+</div>
+<div class="paragraph">
+<p>Rounded boxes are the states of the clear state machine, with their encodings; grey
+arrows are transitions, labelled with their conditions. A write to <code>CTRL_STATUS</code> while
+<code>SIZE</code> is non-zero leaves <code>ST_IDLE</code>. Each pass through <code>ST_ISSUE_ADDR</code> and
+<code>ST_ISSUE_DATA</code> issues one write burst of zeros, and the machine returns to <code>ST_IDLE</code>
+once no bytes remain. <code>ST_ERROR</code> is entered only from an illegal state encoding and
+is left only by reset. The write-response channel is always ready and its response code
+is not checked; the outstanding-request count decides when the zeroer stops being busy.</p>
+</div>
+<p class="block-references">Figures and tables: <a href="#smc-zeroer-state-machine-table">Table 2</a>; <a href="#smc-memory-zeroer-diagram">Figure 1</a>.</p>
 </div>
 <div class="sect2">
 <h3 id="operation-flow"><a class="anchor" href="#operation-flow"></a><a class="link" href="#operation-flow">2.2. Operation Flow</a></h3>

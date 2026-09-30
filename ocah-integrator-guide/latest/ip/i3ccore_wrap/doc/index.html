@@ -262,12 +262,36 @@ reverse-lookup memories, one interrupt, and the recovery pins.</p>
 </div>
 <div id="i3c-wrapper-diagram" class="imageblock">
 <div class="content">
-<img src="../../_images/SMC_I3C_FIG024.png" alt="OCAH I3C wrapper" width="100%">
+<img src="../../_images/i3c-wrapper.svg" alt="i3ccore_wrapper: an AXI-Lite demux in front of NUM_I3C i3c_wrapper instances, each passing a 12-bit offset as single-beat AXI4 to the CHIPS Alliance i3c-core and deriving open-drain pad enables" width="100%">
 </div>
 <div class="title">Figure 2. OCAH I3C wrapper</div>
 </div>
 <div class="paragraph">
-<p><a href="#i3c-wrapper-diagram">OCAH I3C wrapper</a> shows that wrapper around the CHIPS Alliance core.</p>
+<p><a href="#i3c-wrapper-diagram">OCAH I3C wrapper</a> shows that wrapper around the CHIPS Alliance core,
+which it draws as a black box. Parentheses after an instance name give its
+module or, for a block taken from another project, that project; the demux
+is a PULP <code>axi_lite_demux</code>. <code>i3ccore_wrapper</code> runs on one clock, <code>clk_i</code>;
+in the SMC that is the gated peripheral clock, and its AXI4-Lite port, with
+32-bit address and data, arrives through <code>smc_peripherals_cdc</code>. The demux
+<code>u_axil_demux</code> registers every channel and allows eight outstanding
+transactions. It has no error slave: an address outside every instance
+window reaches instance 0. Each generate block subtracts its index times
+<code>0x1000</code> from the address before <code>i3c_wrapper</code> sees it.</p>
+</div>
+<div class="paragraph">
+<p>Inside <code>i3c_wrapper</code>, the converter tie-offs are <code>awlen</code>/<code>arlen</code> 0, <code>wlast</code> 1,
+and zero ID and user. The gates below the core are the pad-enable
+logic: <code>scl_o</code> is tied low and <code>scl_oe_o</code> is the inverse of the core&#8217;s SCL
+level, so the pad only pulls SCL low; <code>sda_o</code> is the core&#8217;s SDA level and
+<code>sda_oe_o</code> is <code>sel_od_pp_o</code> OR the inverse of <code>sda_o</code>. The core&#8217;s own SDA
+output enable, which it drives only in target mode, is not used.</p>
+</div>
+<div class="paragraph">
+<p><code>irq_o</code>, the five recovery signals and the DAT, DCT and reverse-lookup
+memory ports pass straight through to per-instance vectors on the
+<code>i3ccore_wrapper</code> boundary. In the SMC the recovery outputs are unconnected,
+<code>peripheral_reset_done_i</code> is tied low and the interrupts reach peripheral
+interrupts 12 to 17.</p>
 </div>
 <div class="paragraph">
 <p>Consult the <a href="https://github.com/chipsalliance/i3c-core">i3c-core documentation</a>
