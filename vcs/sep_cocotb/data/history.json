@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-29T12:21:06+00:00",
+  "generated_at": "2026-09-30T12:33:46+00:00",
   "points": [
     {
       "failed_tests": 0,
@@ -789,6 +789,55 @@
         }
       ],
       "test_pass_rate": 100.0
+    },
+    {
+      "failed_tests": 15,
+      "flaky_tests": 6,
+      "flow_pass_rate": 0.0,
+      "generated_at": "2026-09-30T12:33:46+00:00",
+      "id": "40cf3dd2bf467c5b",
+      "per_dut": [
+        {
+          "comparison_key": "COVCMP-392599411014b183",
+          "coverage_status": "PASS",
+          "effective_metrics": {
+            "branch": 82.58,
+            "condition": 64.07,
+            "fsm_state": 63.96,
+            "functional": 97.23,
+            "line": 90.49,
+            "toggle": 63.18
+          },
+          "flow": "sep",
+          "framework": "cocotb",
+          "holes_summary": {
+            "accepted": 0,
+            "by_category": {},
+            "by_disposition": {},
+            "by_metric": {},
+            "by_status": {},
+            "details_available": true,
+            "hole_group_count": 0,
+            "native_point_count": 0,
+            "observations_complete": false,
+            "open": 0,
+            "unclassified": 0
+          },
+          "raw_metrics": {
+            "branch": 82.58,
+            "condition": 64.07,
+            "fsm_state": 63.96,
+            "functional": 97.23,
+            "line": 90.49,
+            "toggle": 63.08
+          },
+          "status": "FAIL",
+          "target": "default",
+          "threshold_met": true,
+          "tool": "vcs"
+        }
+      ],
+      "test_pass_rate": 92.15
     }
   ],
   "schema_version": "0.2"
