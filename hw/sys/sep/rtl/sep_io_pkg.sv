@@ -51,4 +51,49 @@ package sep_io_pkg;
     logic [3:0] sd;
   } sep_io_spi_rsp_t;
 
+  //=========================================================================
+  // Pad-facing SPI signals
+  // smu.sv and the SEP standalone bench both map sep_io_spi_req_t onto these
+  // same signals, the bench without smu.sv in the hierarchy, so the mapping
+  // lives here rather than in either of them.
+  //=========================================================================
+
+  typedef struct packed {
+    logic       enable;
+    logic       clk;
+    logic [7:0] txd;
+    logic       cs_n;
+    logic       cs_oe_n;
+    logic       cs_ie_n;
+    logic       clk_oe_n;
+    logic       clk_ie_n;
+    logic       dqs_oe_n;
+    logic       dqs_ie_n;
+    logic [7:0] dq_oe_n;
+    logic [7:0] dq_ie_n;
+    logic       mem_rebar_oepad;
+    logic       mem_rebar_opad;
+    logic       mem_rebar_iepad;
+  } sep_io_spi_pads_t;
+
+  function automatic sep_io_spi_pads_t ot_spi_pad_map(input sep_io_spi_req_t req);
+    ot_spi_pad_map = '{
+        enable          : 1'b1,
+        clk             : req.sck,
+        txd             : {4'b0, req.sd},
+        cs_n            : req.cs_n,
+        cs_oe_n         : ~req.cs_oe,
+        cs_ie_n         : req.cs_oe,
+        clk_oe_n        : ~req.sck_oe,
+        clk_ie_n        : req.sck_oe,
+        dqs_oe_n        : 1'b1,
+        dqs_ie_n        : 1'b1,
+        dq_oe_n         : {4'hF, ~req.sd_oe},
+        dq_ie_n         : {4'hF, req.sd_oe},
+        mem_rebar_oepad : 1'b0,
+        mem_rebar_opad  : 1'b0,
+        mem_rebar_iepad : 1'b0
+    };
+  endfunction
+
 endpackage
