@@ -336,7 +336,13 @@
     <a class="nav-link" href="../../../ip/jtag_stap/doc/index.html">JTAG STAP</a>
   </li>
   <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="../../../ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="../../../ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="../../../ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -628,14 +634,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">cross_trigger_port_core</h1>
-<p>Implement wire-OR and point-to-point cross-trigger pad protocols without a register block.</p><p>mode_wire_or_i is 1 for wire-OR and 0 for point-to-point; invert_i inverts the pad data levels; stretch_mult_i sets wire-OR stretch; handshake_reset_i recovers P2P deadlock. Synchronizes pad inputs, stretches or handshakes ct_src_i, and reports busy plus REQ/ACK status for CSR readback. ct_dst_o, busy_o, and the pad controls are registered and reset low.</p>
+<p>Implement wire-OR and point-to-point cross-trigger pad protocols without a register block.</p><p>mode_wire_or_i is 1 for wire-OR and 0 for point-to-point; invert_i inverts the pad data levels; stretch_mult_i sets wire-OR stretch; handshake_reset_i recovers P2P deadlock. Synchronizes pad inputs, stretches or handshakes ct_src_i, and reports busy plus REQ/ACK status for CSR readback. The handshake runs only in point-to-point mode and ignores the point-to-point pad inputs until their synchronizers carry pad data. ct_dst_o, busy_o, and the pad controls are registered and reset low.</p>
 <div class="ocah-reg-html">
 <h2>Ports</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock for the port logic.</td></tr>
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low asynchronous system reset.</td></tr>
-<tr><td><code>mode_wire_or_i</code></td><td>input</td><td><code>logic</code></td><td>Pad protocol select: 1&#x27;b1 = wire-OR, 1&#x27;b0 = point-to-point.</td></tr>
+<tr><td><code>mode_wire_or_i</code></td><td>input</td><td><code>logic</code></td><td>Pad protocol select: 1&#x27;b1 = wire-OR, 1&#x27;b0 = point-to-point. Wire-OR holds the point-to-point handshake idle with its request low.</td></tr>
 <tr><td><code>invert_i</code></td><td>input</td><td><code>logic</code></td><td>Inverts the synchronized pad inputs and the driven pad data outputs; pad enables are not inverted.</td></tr>
 <tr><td><code>handshake_reset_i</code></td><td>input</td><td><code>logic</code></td><td>Resets the outgoing point-to-point handshake state machine.</td></tr>
 <tr><td><code>stretch_mult_i</code></td><td>input</td><td><code>logic [15:0]</code></td><td>Wire-OR pulse stretch: each outgoing pulse lasts stretch_mult_i+1 clk_i cycles.</td></tr>

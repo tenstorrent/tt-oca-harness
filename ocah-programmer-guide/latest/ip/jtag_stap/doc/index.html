@@ -319,24 +319,37 @@ specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.</p>
 </div>
 <div class="paragraph">
-<p><a href="#stap-scan-and-control-paths-figure">STAP scan and control paths</a> separates the serial scan path, host TDO path, and
-combinational control logic. Repeated signal names refer to the same signal;
-in particular, <code>stap_scan_in</code> feeds both the scan-in mux and the TDO lockup flop.
-The SIB inserts or bypasses the 3DCR while remaining in the client scan path.
-Optional input pipeline stages are not shown: SCAN_IN_PIPE on
-<code>client_scan_in_i</code> defaults to disabled for all DTP instances; TDI_LOCKUP on
-<code>host_tdi_i</code> defaults to disabled but is enabled for the I/O STAP
-(<code>gen_stap_io</code>) to provide timing margin for the die boundary crossing. The
-security gate masks <code>stap_sel</code>, <code>host_tdo_o</code>, and <code>update_en</code> when
-<code>security_disable_i</code> is asserted. <code>host_tdo_oen_o</code> and <code>host_tap_ctrl_o</code> are
-independent combinational outputs derived from <code>stap_sel</code> and TAP control
-signals, not outputs of the security gate.</p>
+<p><a href="#stap-scan-and-control-paths-figure">STAP scan and control paths</a> shows the scan path, the host TDO path and the
+gating logic of one STAP. Blue lines carry scan data and grey lines carry control. A
+small circle marks an inverted gate input, and a name at the tail of a short arrow
+(<code>stap_sel</code>, <code>security_disable_i</code> and <code>client_scan_ctrl_i.shift_en</code>) is the same
+signal drawn elsewhere in the figure. <code>stap_scan_in</code> feeds both the scan-in mux and
+the TDO lockup flop, whose output leaves on <code>host_tdo_o</code> toward the secondary TAP.
+While <code>stap_sel</code> is set, the scan-in mux passes the secondary TAP&#8217;s return on
+<code>host_tdi_i</code>, which splices that TAP into the chain; otherwise it passes
+<code>stap_scan_in</code>. The SIB inserts the 3DCR into the client scan path or bypasses it,
+and its one-bit register drives <code>client_scan_out_o</code>. The dashed input stages are
+optional: SCAN_IN_PIPE on <code>client_scan_in_i</code> defaults to disabled for all DTP
+instances, and TDI_LOCKUP on <code>host_tdi_i</code> defaults to disabled but is enabled for
+the I/O STAP (<code>gen_stap_io</code>) to provide timing margin for the die boundary crossing.</p>
 </div>
 <div id="stap-scan-and-control-paths-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/stap_module_diagram.svg" alt="STAP scan-in mux and SIB with a 3DCR scan loop, separate falling-edge host TDO path, and security-masked control relationships">
+<img src="../../_images/stap-architecture.svg" alt="STAP with the optional input pipeline, the TDO lockup flop and security mask to host_tdo_o, the optional TDI lockup on host_tdi_i, the scan-in mux into the SIB and 3DCR, the security-gated stap_sel and 3DCR update enable, the 3DCR reset, the host TMS mux that switches only client TMS while TCK and TRST bypass it, and the TDO output enable" width="100%">
 </div>
 <div class="title">Figure 1. STAP scan and control paths</div>
+</div>
+<div class="paragraph">
+<p><code>security_disable_i</code> gates three signals through AND gates with an inverted input:
+<code>stap_sel</code>, from the 3DCR <code>stap_sel_int</code> bit; the 3DCR update enable, from the SIB&#8217;s
+<code>update_en</code>; and <code>host_tdo_o</code>. Because the TMS mux and the TDO output enable take
+the gated <code>stap_sel</code>, a disabled STAP also parks the host TMS at <code>tms_hold</code> and holds
+<code>host_tdo_oen_o</code> low. <code>host_tap_ctrl_o</code> carries TCK and TRST from
+<code>client_tap_ctrl_i</code> unchanged; only its TMS passes through the mux. Where the TCK
+and TRST line crosses the shift-enable input, the gap in the shift-enable line marks
+that the two do not connect. The SIB itself is
+not gated. The 3DCR reset combines the client TRST, <code>config_hold_sticky</code> and the scan
+reset as <a href="#stap-3dcr-fields-table">STAP 3DCR fields</a> describes.</p>
 </div>
 </div>
 <div class="sect2">

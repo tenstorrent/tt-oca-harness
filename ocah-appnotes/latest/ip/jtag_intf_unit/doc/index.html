@@ -231,15 +231,19 @@ and the JTAG2AXI pipeline depths.</p>
 a unified debug access point.</p>
 </div>
 <div class="paragraph">
-<p>Shown below is an abstract diagram of the JTAG scan chain.</p>
-</div>
-<div class="paragraph">
 <p><a href="#jtag-interface-unit-scan-chain-figure">JTAG Interface Unit scan chain</a> shows the PTAP, STAP chain, and iJTAG network
-at the debug access point.</p>
+at the debug access point. Follow the arrows from TDI to TDO: italic labels beside
+a mux name the instructions or select bit that choose its input, 0 or 1 at a mux
+input is the select value that picks it, and italic labels in the STAPs and SIBs
+name the <code>dbg_disable_i</code> field that closes each one. Dashed blocks exist only when
+their enable parameter is set; <code>NUM_EXTRA_STAPS</code> sets the number of <code>u_stap_extra</code>
+instances. TDO is retimed on the falling edge of TCK except during a
+<code>ZERO_LENGTH_BYPASS</code> DR scan, when the last mux takes the TDO mux output ahead of
+the retimer and TDI reaches TDO combinationally.</p>
 </div>
 <div id="jtag-interface-unit-scan-chain-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag_scan_chain.svg" alt="JTAG Interface Unit scan chain diagram showing PTAP, STAP chain and iJTAG SIB network">
+<img src="../../_images/dtp-jtag-scan-chain.svg" alt="JTAG Interface Unit scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux" width="100%">
 </div>
 <div class="title">Figure 1. JTAG Interface Unit scan chain</div>
 </div>

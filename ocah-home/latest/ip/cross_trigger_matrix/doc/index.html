@@ -276,8 +276,13 @@ section. This page covers the crossbar architecture and signal interface only.</
 <h2 id="architecture"><a class="anchor" href="#architecture"></a><a class="link" href="#architecture">Architecture</a></h2>
 <div class="sectionbody">
 <div id="ctm-architecture" class="paragraph">
-<p>The Cross Trigger Matrix in this tree is configured for 26 source ports and 26
-destination ports, matching the DTP cross-trigger topology. The matrix
+<p>The Cross Trigger Matrix has N source ports and N destination ports, one of
+each per CTM port of the Cross Trigger Network, so
+N = <code>XTRIG_NUM_CTP</code> + <code>XTRIG_NUM_INT_CT</code>. The <code>dtp_pkg</code> defaults of 16 external
+CTPs and 10 internal CTPs give N = 26. <code>cross_trigger_matrix_pkg</code> takes
+<code>NUM_CT_SRC</code> and <code>NUM_CT_DST</code> from the register map, and the CTN asserts at
+elaboration that both equal <code>NUM_CTP</code> + <code>NUM_INT_CT</code>, so resizing the matrix
+means regenerating <code>regs/cross_trigger_matrix.rdl</code> to match. The matrix
 implements a combinatorial AND-OR crossbar with registered outputs to route
 cross-trigger pulses between CTPs and internal cross-trigger sources.</p>
 </div>
@@ -287,9 +292,17 @@ registered destination.</p>
 </div>
 <div id="ctm-routing-structure-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/ctm_module_diagram.png" alt="Cross Trigger Matrix Module Diagram">
+<img src="../../_images/ctm-routing-structure.svg" alt="Cross Trigger Matrix: the ct_dst_i bus and a CT_DST_SELECT field from u_reg feed the AND gates of each u_src_selector, whose OR-reduced result is registered as ct_src_o" width="720">
 </div>
 <div class="title">Figure 1. CTM routing structure</div>
+</div>
+<div class="paragraph">
+<p>The figure draws two of the N selectors, for <code>ct_src_o[0]</code> and <code>ct_src_o[N-1]</code>,
+and in each the AND gates for inputs 0, 1 and N-1; the dots stand for the rest.
+The thick lines are buses whose taps carry the bit index: the <code>ct_dst_i</code> bus
+fans out to every selector, and each selector reads its own
+<code>CT_SRC[j].CONFIG_0.CT_DST_SELECT</code> field from <code>u_reg</code>, the matrix CSR block
+reached over AXI-Lite.</p>
 </div>
 <div class="paragraph">
 <p>The CTM is programmed at runtime via firmware or debug transactions. Proper
@@ -300,7 +313,7 @@ prevent loops in the SiP cross trigger network.</p>
 <h3 id="routing-logic"><a class="anchor" href="#routing-logic"></a><a class="link" href="#routing-logic">Routing Logic</a></h3>
 <div class="paragraph">
 <p>The CTM routing implements a two-stage combinatorial path followed by output
-registration. Each of the 26 CT_Src output ports is driven by a dedicated
+registration. Each of the N CT_Src output ports is driven by a dedicated
 <code>ctm_src_selector</code> module that performs the following operation:</p>
 </div>
 <div class="paragraph">
@@ -364,17 +377,18 @@ clock-stop connections.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0 to N-1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0 to NUM_CTP-1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External CTPs (NUM_CTP)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N to N+M-1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">NUM_CTP to N-1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Internal CTPs (NUM_INT_CT)</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Where N = NUM_CTP and M = NUM_INT_CT. This indexing is used for CTM ct_dst_i and
+<p>NUM_CTP and NUM_INT_CT are the CTN parameters that <code>XTRIG_NUM_CTP</code> and
+<code>XTRIG_NUM_INT_CT</code> set. This indexing is used for CTM ct_dst_i and
 ct_src_o port assignment and CTM routing configuration registers.</p>
 </div>
 </div>

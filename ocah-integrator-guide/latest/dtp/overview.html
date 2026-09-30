@@ -226,21 +226,42 @@
 <div id="dtp-overview" class="paragraph">
 <p>The DTP contains two major functional blocks — the JTAG Interface Unit (JIU) and
 the Cross Trigger Network (CTN) — plus the DTP top-level wiring that connects
-them to each other, to the SMU AXI crossbar, and to the external JTAG and
+them to each other, to the SMC and SEP, and to the external JTAG and
 cross-trigger pads.</p>
 </div>
 <div id="dtp-internal-structure-figure" class="imageblock">
 <div class="content">
-<img src="_images/dtp_arch_overview.svg" alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface">
+<img src="_images/dtp-top-level.svg" alt="DTP top-level block diagram: the JTAG interface unit with the primary TAP, JTAG2AXI bridges, STAP chain, iJTAG SIBs and debug-disable synchroniser, and the cross-trigger network with its CSR crossbar, matrix, external and internal cross-trigger ports and clock-stop control" width="100%">
 </div>
 <div class="title">Figure 1. DTP internal structure</div>
 </div>
 <div class="paragraph">
-<p><a href="#dtp-internal-structure-figure">DTP internal structure</a> uses blue borders and connectors for JTAG/JIU paths (including
-instruction decode and selection signals), red for CTN paths, grey for pad I/O,
-and gold-dashed for the <code>jtag_clock_stop</code> control signal from PTAP to the
-clock-stop aggregator. Arrowheads indicate direction; solid arrows show primary
-paths and dashed arrows show return, selection, or control paths.</p>
+<p><a href="#dtp-internal-structure-figure">DTP internal structure</a> draws each RTL instance under its instance name
+inside the <code>u_jtag_intf_unit</code> and <code>u_cross_trigger_network</code> hierarchy boundaries.
+Labels at the figure edges name what each DTP port connects to in the SMU. Blue
+lines carry JTAG and scan data, dark lines AXI4 and AXI-Lite, and grey lines other
+signals. Dashed blocks exist only when their enable parameter is set: the three
+JTAG2AXI bridges follow <code>JTAG_SMC_DBG_ENABLE</code> and <code>JTAG_SEP_DBG_ENABLE</code>, and the
+STAPs follow <code>JTAG_STAP_IO_ENABLE</code>, <code>JTAG_SMC_DBG_ENABLE</code>, <code>JTAG_SEP_DBG_ENABLE</code>
+and <code>JTAG_NUM_EXTRA_STAPS</code>. The grey fan-out from the debug-disable synchroniser
+reaches every STAP, SIB and bridge. The
+<a href="jtag.html#dtp-jtag-scan-chain-figure" class="xref page">DTP JTAG scan chain</a> figure gives the
+serial order of the scan paths.</p>
+</div>
+<div class="paragraph">
+<p>The figure names each count by its <code>dtp</code> parameter. <code>XTRIG_NUM_CTP</code> external CTPs,
+<code>XTRIG_NUM_INT_CT</code> internal lanes and <code>XTRIG_NUM_CLK_STOP_REQ</code> clock-stop requests
+default to the <code>dtp_pkg</code> values 16, 10 and 9. The CTM is N × N, where N is
+<code>XTRIG_NUM_CTP</code> + <code>XTRIG_NUM_INT_CT</code> (26 by default); its generated register
+geometry must equal that sum, which elaboration checks. <code>u_axil_xbar</code> has one
+manager port for the CTM and one for each external CTP, 17 by default.
+<code>JTAG_NUM_EXTRA_STAPS</code> sets the number of <code>u_stap_extra</code> instances, 1 by default.
+In the cross-trigger network, <code>u_axil_xbar</code> decodes the DTP CSR window, which the
+SMC peripheral crossbar rebases to 0, onto the CTM at offset 0x000 and one 16-byte
+window for each external CTP from 0x200. The internal cross-trigger lanes are
+<code>u_int_ctp_core</code> instances without CSRs, whose protocol <code>XTRIG_INT_CT_MODE</code> fixes.
+In the SMU the first two lanes connect to the SMC DFD CLA, one clock-stop request
+comes from the CLA, and the remaining lanes and requests leave the SMU.</p>
 </div>
 </div>
 </div>
@@ -289,8 +310,8 @@ I/O pads (CT_Req_out, CT_Ack_in, CT_Req_in, CT_Ack_out) and supporting both
 wire-OR and point-to-point signalling.</p>
 </li>
 <li>
-<p><strong>Cross Trigger Matrix (CTM)</strong> — a 26×26 AND-OR crossbar that statically routes
-trigger pulses under AXI-Lite CSR control.</p>
+<p><strong>Cross Trigger Matrix (CTM)</strong> — an N × N AND-OR crossbar (26 × 26 by default)
+that statically routes trigger pulses under AXI-Lite CSR control.</p>
 </li>
 <li>
 <p><strong>Clock stop aggregation</strong> — the CTN OR-reduces all <code>xtrig_clk_stop_req_i</code>
@@ -326,6 +347,13 @@ running on the SMC reaches the CTN CSRs through its own register map
 (<code>dtp_ctrl_reg</code> in <code>smc.rdl</code>). An external debugger using the PTAP JTAG2AXI
 bridge reaches the same window through the SMC fabric AXI port.
 See the CTN Memory Map section for the CTN-internal address layout.</p>
+</div>
+<div class="paragraph">
+<p>Firmware and an external debugger share this window. Whichever of them
+programs cross triggers configures every CTP before it opens any CTM route,
+following the sequence in the
+CTN Programming
+section.</p>
 </div>
 </div>
 </div>

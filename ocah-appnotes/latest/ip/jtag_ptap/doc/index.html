@@ -246,22 +246,48 @@ through the PTAP.</p>
 </div>
 <div id="ptap-module-architecture-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/ptap_module_diagram.svg" alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select">
+<img src="../../_images/ptap-architecture.svg" alt="PTAP module diagram showing the TRST and power-on reset AND gate, the TAP controller, TMP controller, the instruction register and test data registers with the IR opcodes that select each one, the JTAG2AXI bridges, the TDR multiplexer that takes every register output, and the zero-length-bypass, STAP and retimer-bypass multiplexers on the TDO path with their selects" width="100%">
 </div>
 <div class="title">Figure 1. PTAP module architecture</div>
 </div>
 <div class="paragraph">
-<p>Blue arrows show TAP Controller control signals (Capture/Shift/Update) and
-decoded instruction/selection signals from the Instruction Decoder.
-Grey arrows show scan-data paths: solid grey carries PTAP_TDI scan-in (fanning
-out directly to IR, all TDR scan-in inputs, <code>BSR_SI</code>, and <code>IJTAG_SI</code>); dashed
-grey carries scan-out returns — the selected IR or TDR scan-out is chosen by the
-Scan Path Mux and forwarded to PTAP_TDO (retimed on falling TCK edge; zero-length
-bypass uses the ZLB path, which bypasses the retimer).
-The TDR Bank registers (<code>BYPASS</code>, <code>IDCODE</code>, <code>DBG_CTRL</code>, and others) are listed in
-<a href="#ptap-module-hierarchy-table">PTAP module hierarchy</a>.
-<code>BSR_SI</code>/<code>IJTAG_SI</code> scan-in arrives directly from PTAP_TDI fan-out;
-<code>BSR_SO</code>/<code>IJTAG_SO</code> scan-out returns are selected by the Scan Path Mux.</p>
+<p>Blue lines carry scan data and grey lines carry control. <code>client_tdi_i</code> feeds the
+instruction register and every register in the scan-register group, whose last
+column gives the IR opcodes, in hex, that select each register for a DR scan. The
+6-bit instruction register captures <code>6&#8217;b000001</code>, resets to IDCODE and decodes its
+opcode one-hot onto <code>inst_decoded_o[63:0]</code>. An opcode with no register of its own,
+or one whose enable parameter is 0, selects BYPASS. Dashed registers and bridges
+are present only when their parameter enables them
+(<a href="#ptap-module-hierarchy-table">PTAP module hierarchy</a>). The boundary-scan chain and the iJTAG network
+lie outside the PTAP: <code>client_tdi_i</code> is forwarded to them, and their returns enter
+the TDR multiplexer.</p>
+</div>
+<div class="paragraph">
+<p><code>tdr_mux</code> takes the output of every register in the group and the boundary-scan
+and iJTAG returns. It selects the instruction register while <code>ir_scan_ctrl.select</code>
+is set, and otherwise the register that <code>inst_decoded_o</code> selects. The numbers on
+the inputs of each 2:1 multiplexer are the select values that pass them.
+<code>u_zlb_tdr_mux</code> passes <code>client_tdi_i</code> instead of <code>tdr_mux</code> during a
+ZERO_LENGTH_BYPASS DR scan, and its output also leaves on <code>stap_host_scan_out_o</code>
+toward the STAP chain. <code>u_tdo_mux</code> passes the chain return <code>stap_host_scan_in_i</code>
+while <code>stap_select</code>, the TAP_3DCR select bit, is set. The retimer registers the
+result on the falling TCK edge, and <code>u_tdo_bypass_mux</code> bypasses the retimer during
+a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
+select from <code>inst_decoded_o[3D]</code> ANDed with <code>dr_scan_select_reg</code>, the DR scan
+select registered on the falling TCK edge.</p>
+</div>
+<div class="paragraph">
+<p><code>pwr_on_rst_ni</code> is ANDed with the client TRST in <code>u_trst_n_and</code>. The result,
+<code>jtag_trst_n</code>, resets the TAP controller and the retimer, and the controller
+forwards it with TCK and TMS on <code>host_tap_ctrl_o</code>. The controller also drives the
+IR and DR scan controls, ORed together and gated by <code>stap_select</code>, on
+<code>stap_host_scan_ctrl_o</code>, so the STAP chain holds its state while the bit is clear.
+The TMP controller takes the decoded CLAMP_HOLD, CLAMP_RELEASE and BYPASS
+instructions and the TMP_STATUS <code>bypass_escape_bit</code>, and returns <code>persistence_mode</code>
+to the TAP controller. The AXI side of each JTAG2AXI bridge runs on <code>clk_i</code> and
+<code>rst_n_i</code> and takes the DFT test-mode enable <code>test_en_i</code>; the figure omits all
+three. Each bridge has its own <code>*_security_disable_i</code> input
+(<a href="#ptap-debug-disable-inputs-table">PTAP debug-disable inputs</a>).</p>
 </div>
 <div class="sect2">
 <h3 id="module-hierarchy"><a class="anchor" href="#module-hierarchy"></a><a class="link" href="#module-hierarchy">3.1. Module Hierarchy</a></h3>
@@ -533,7 +559,7 @@ survive TEST_LOGIC_RESET state transitions while in persistence mode.</p>
 <div class="sect2">
 <h3 id="tdr-multiplexer"><a class="anchor" href="#tdr-multiplexer"></a><a class="link" href="#tdr-multiplexer">3.4. TDR Multiplexer</a></h3>
 <div class="paragraph">
-<p>The PTAP implements a 41-case instruction-dependent data register multiplexer.
+<p>The PTAP implements an instruction-dependent data register multiplexer.
 During IR scan operations, the instruction register connects to the scan path.
 During DR scan operations, the appropriate data register is selected based on
 the currently decoded instruction. Each test data register has dedicated scan
@@ -1279,11 +1305,14 @@ For <code>D=64</code> and <code>A=51</code>, it has 127 bits.</p>
 </div>
 <div class="paragraph">
 <p><a href="#jtag2axi-single-operation-layout-figure">JTAG2AXI single-operation layout</a> shows the single-operation TDR for a 64-bit
-data bus and a 51-bit address bus.</p>
+data bus and a 51-bit address bus. In this and the following layout figures the most
+significant bit is on the left, nearest TDI, and bit 0 on the right shifts out to TDO
+first. The bit range of each field is above it and its width below it; field widths
+are not drawn to scale.</p>
 </div>
 <div id="jtag2axi-single-operation-layout-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_single_op.svg" alt="AXI Single OP Instruction layout with size==3 and addr_size==51">
+<img src="../../_images/jtag2axi-single-op.svg" alt="AXI_SINGLE_OP register layout for 64-bit data and 51-bit addresses: address 126:76, data 75:12, wstrb 11:4, size 3:2, op 1:0" width="100%">
 </div>
 <div class="title">Figure 2. JTAG2AXI single-operation layout</div>
 </div>
@@ -1380,7 +1409,7 @@ For <code>D=64</code>, <code>A=51</code>, and <code>FIFO_DEPTH=3</code>, the len
 </div>
 <div id="jtag2axi-series-control-layout-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_ctrl.svg" alt="AXI Series Control Instruction layout with addr_size==51">
+<img src="../../_images/jtag2axi-series-ctrl.svg" alt="AXI_SERIES_CTRL register layout for 64-bit data, 51-bit addresses and FIFO_DEPTH=3: reset 57, address 56:6, pl_depth 5:4, size 3:2, op 1:0" width="100%">
 </div>
 <div class="title">Figure 3. JTAG2AXI series-control layout</div>
 </div>
@@ -1440,7 +1469,7 @@ manage a series of AXI accesses.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">op</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">RW</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don&#8217;t do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous operations completed successfully and returned an OKAY status. 1: At least one previous operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">When the debugger writes this field, it has the following meaning: 0: Ignore data and address (nop). Don&#8217;t do anything on Update-DR for AXI_SERIES_DATA. 1: Read from address (read). Update-DR for AXI_SERIES_DATA causes an AXI read to be performed. 2: Write data to address (write). Update-DR for AXI_SERIES_DATA causes an AXI write to be performed. 3: Reserved When the debugger reads this field, it means the following: 0: All previous series operations completed successfully and returned an OKAY status. 1: At least one previous series operation completed but failed and returned a SLVERR status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. 2: At least one previous series operation completed but failed and returned a DECERR or other error status. This status is sticky until cleared by AXI_SERIES_CTRL.reset. Codes 1 and 2 report the first failed series operation since the last AXI_SERIES_CTRL.reset; a later failure does not replace it. The completion status of an AXI_SINGLE_OP operation is reported only through AXI_SINGLE_OP.op and does not change codes 0 to 2. 3: At least one operation was attempted before the previous operation completed. The operations attempted when there was a pending operation in progress were ignored. If a debugger sees this status, it needs to give the target more TCK edges between Update-DR and Capture-DR. The simplest way to do that is to add extra transitions in Run-Test/Idle. This status is sticky until cleared by AXI_SERIES_CTRL.reset.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1471,35 +1500,37 @@ on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.
 and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
-<p>The incrementing payload layouts for <code>AXI_SERIES_CTRL.size</code> values 0, 1, 2, and 3 are
-shown in <a href="#jtag2axi-incrementing-data-layout-for-size-0-figure">JTAG2AXI incrementing data layout for size 0</a>,
-<a href="#jtag2axi-incrementing-data-layout-for-size-1-figure">JTAG2AXI incrementing data layout for size 1</a>,
-<a href="#jtag2axi-incrementing-data-layout-for-size-2-figure">JTAG2AXI incrementing data layout for size 2</a>,
-<a href="#jtag2axi-incrementing-data-layout-for-size-3-figure">JTAG2AXI incrementing data layout for size 3</a>, respectively.</p>
+<p>The data field is drawn as the payload bytes it holds, with bit 0 aligned across the
+four sizes. The incrementing payload layouts for effective sizes <code>E</code> of 0, 1, 2, and 3
+are shown in <a href="#jtag2axi-incrementing-data-layout-for-size-0-figure">JTAG2AXI incrementing data layout for effective size 0</a>,
+<a href="#jtag2axi-incrementing-data-layout-for-size-1-figure">JTAG2AXI incrementing data layout for effective size 1</a>,
+<a href="#jtag2axi-incrementing-data-layout-for-size-2-figure">JTAG2AXI incrementing data layout for effective size 2</a>,
+<a href="#jtag2axi-incrementing-data-layout-for-size-3-figure">JTAG2AXI incrementing data layout for effective size 3</a>, respectively.
+Effective size 3 needs a 64-bit data bus, which the last figure assumes.</p>
 </div>
 <div id="jtag2axi-incrementing-data-layout-for-size-0-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr0.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==0">
+<img src="../../_images/jtag2axi-series-data-size0.svg" alt="AXI_SERIES_DATA_INCR register layout for effective size 0: data 7:0" width="100%">
 </div>
-<div class="title">Figure 4. JTAG2AXI incrementing data layout for size 0</div>
+<div class="title">Figure 4. JTAG2AXI incrementing data layout for effective size 0</div>
 </div>
 <div id="jtag2axi-incrementing-data-layout-for-size-1-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr1.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==1">
+<img src="../../_images/jtag2axi-series-data-size1.svg" alt="AXI_SERIES_DATA_INCR register layout for effective size 1: data 15:0" width="100%">
 </div>
-<div class="title">Figure 5. JTAG2AXI incrementing data layout for size 1</div>
+<div class="title">Figure 5. JTAG2AXI incrementing data layout for effective size 1</div>
 </div>
 <div id="jtag2axi-incrementing-data-layout-for-size-2-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr2.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==2">
+<img src="../../_images/jtag2axi-series-data-size2.svg" alt="AXI_SERIES_DATA_INCR register layout for effective size 2: data 31:0" width="100%">
 </div>
-<div class="title">Figure 6. JTAG2AXI incrementing data layout for size 2</div>
+<div class="title">Figure 6. JTAG2AXI incrementing data layout for effective size 2</div>
 </div>
 <div id="jtag2axi-incrementing-data-layout-for-size-3-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr3.svg" alt=".AXISeriesDataIncr when AXISeriesCtrl.size==3">
+<img src="../../_images/jtag2axi-series-data-size3.svg" alt="AXI_SERIES_DATA_INCR register layout for effective size 3 on a 64-bit data bus: data 63:0" width="100%">
 </div>
-<div class="title">Figure 7. JTAG2AXI incrementing data layout for size 3</div>
+<div class="title">Figure 7. JTAG2AXI incrementing data layout for effective size 3</div>
 </div>
 <div class="paragraph">
 <p><a href="#jtag2axi-incrementing-data-fields-table">JTAG2AXI incrementing data fields</a> defines the payload shifted through the
@@ -1556,35 +1587,36 @@ on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.
 and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
-<p>The non-incrementing payload layouts for <code>AXI_SERIES_CTRL.size</code> values 0, 1, 2, and 3
-are shown in <a href="#jtag2axi-non-incrementing-data-layout-for-size-0-figure">JTAG2AXI non-incrementing data layout for size 0</a>,
-<a href="#jtag2axi-non-incrementing-data-layout-for-size-1-figure">JTAG2AXI non-incrementing data layout for size 1</a>,
-<a href="#jtag2axi-non-incrementing-data-layout-for-size-2-figure">JTAG2AXI non-incrementing data layout for size 2</a>,
-<a href="#jtag2axi-non-incrementing-data-layout-for-size-3-figure">JTAG2AXI non-incrementing data layout for size 3</a>, respectively.</p>
+<p>The non-incrementing data register has the same layout as the incrementing one, so
+the same figures apply. The non-incrementing payload layouts for effective sizes <code>E</code>
+of 0, 1, 2, and 3 are shown in <a href="#jtag2axi-non-incrementing-data-layout-for-size-0-figure">JTAG2AXI non-incrementing data layout for effective size 0</a>,
+<a href="#jtag2axi-non-incrementing-data-layout-for-size-1-figure">JTAG2AXI non-incrementing data layout for effective size 1</a>,
+<a href="#jtag2axi-non-incrementing-data-layout-for-size-2-figure">JTAG2AXI non-incrementing data layout for effective size 2</a>,
+<a href="#jtag2axi-non-incrementing-data-layout-for-size-3-figure">JTAG2AXI non-incrementing data layout for effective size 3</a>, respectively.</p>
 </div>
 <div id="jtag2axi-non-incrementing-data-layout-for-size-0-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr0.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==0">
+<img src="../../_images/jtag2axi-series-data-size0.svg" alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 0: data 7:0" width="100%">
 </div>
-<div class="title">Figure 8. JTAG2AXI non-incrementing data layout for size 0</div>
+<div class="title">Figure 8. JTAG2AXI non-incrementing data layout for effective size 0</div>
 </div>
 <div id="jtag2axi-non-incrementing-data-layout-for-size-1-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr1.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==1">
+<img src="../../_images/jtag2axi-series-data-size1.svg" alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 1: data 15:0" width="100%">
 </div>
-<div class="title">Figure 9. JTAG2AXI non-incrementing data layout for size 1</div>
+<div class="title">Figure 9. JTAG2AXI non-incrementing data layout for effective size 1</div>
 </div>
 <div id="jtag2axi-non-incrementing-data-layout-for-size-2-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr2.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==2">
+<img src="../../_images/jtag2axi-series-data-size2.svg" alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 2: data 31:0" width="100%">
 </div>
-<div class="title">Figure 10. JTAG2AXI non-incrementing data layout for size 2</div>
+<div class="title">Figure 10. JTAG2AXI non-incrementing data layout for effective size 2</div>
 </div>
 <div id="jtag2axi-non-incrementing-data-layout-for-size-3-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_incr3.svg" alt=".AXISeriesDataNoIncr when AXISeriesCtrl.size==3">
+<img src="../../_images/jtag2axi-series-data-size3.svg" alt="AXI_SERIES_DATA_NO_INCR register layout for effective size 3 on a 64-bit data bus: data 63:0" width="100%">
 </div>
-<div class="title">Figure 11. JTAG2AXI non-incrementing data layout for size 3</div>
+<div class="title">Figure 11. JTAG2AXI non-incrementing data layout for effective size 3</div>
 </div>
 <div class="paragraph">
 <p><a href="#jtag2axi-non-incrementing-data-fields-table">JTAG2AXI non-incrementing data fields</a> defines the payload shifted through the
@@ -1603,9 +1635,9 @@ non-incrementing data instruction.</p>
 <tr>
 <th class="tableblock halign-left valign-top">Bits</th>
 <th class="tableblock halign-left valign-top">Field</th>
-<th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">Access</th>
 <th class="tableblock halign-left valign-top">Reset</th>
+<th class="tableblock halign-left valign-top">Description</th>
 </tr>
 </thead>
 <tbody>
@@ -1641,35 +1673,36 @@ on the AXI byte lanes selected by the current address and <code>AXI_SERIES_CTRL.
 and Capture-DR returns the payload from those lanes.</p>
 </div>
 <div class="paragraph">
-<p>The error-status payload layouts for <code>AXI_SERIES_CTRL.size</code> values 0, 1, 2, and 3 are
-shown in <a href="#jtag2axi-error-status-data-layout-for-size-0-figure">JTAG2AXI error-status data layout for size 0</a>,
-<a href="#jtag2axi-error-status-data-layout-for-size-1-figure">JTAG2AXI error-status data layout for size 1</a>,
-<a href="#jtag2axi-error-status-data-layout-for-size-2-figure">JTAG2AXI error-status data layout for size 2</a>,
-<a href="#jtag2axi-error-status-data-layout-for-size-3-figure">JTAG2AXI error-status data layout for size 3</a>, respectively.</p>
+<p>The error-status payload layouts for effective sizes <code>E</code> of 0, 1, 2, and 3 are
+shown in <a href="#jtag2axi-error-status-data-layout-for-size-0-figure">JTAG2AXI error-status data layout for effective size 0</a>,
+<a href="#jtag2axi-error-status-data-layout-for-size-1-figure">JTAG2AXI error-status data layout for effective size 1</a>,
+<a href="#jtag2axi-error-status-data-layout-for-size-2-figure">JTAG2AXI error-status data layout for effective size 2</a>,
+<a href="#jtag2axi-error-status-data-layout-for-size-3-figure">JTAG2AXI error-status data layout for effective size 3</a>, respectively.
+Effective size 3 needs a 64-bit data bus, which the last figure assumes.</p>
 </div>
 <div id="jtag2axi-error-status-data-layout-for-size-0-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_error0.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==0">
+<img src="../../_images/jtag2axi-series-data-error-status-size0.svg" alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 0: increment/status 8, data 7:0" width="100%">
 </div>
-<div class="title">Figure 12. JTAG2AXI error-status data layout for size 0</div>
+<div class="title">Figure 12. JTAG2AXI error-status data layout for effective size 0</div>
 </div>
 <div id="jtag2axi-error-status-data-layout-for-size-1-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_error1.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==1">
+<img src="../../_images/jtag2axi-series-data-error-status-size1.svg" alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 1: increment/status 16, data 15:0" width="100%">
 </div>
-<div class="title">Figure 13. JTAG2AXI error-status data layout for size 1</div>
+<div class="title">Figure 13. JTAG2AXI error-status data layout for effective size 1</div>
 </div>
 <div id="jtag2axi-error-status-data-layout-for-size-2-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_error2.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==2">
+<img src="../../_images/jtag2axi-series-data-error-status-size2.svg" alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 2: increment/status 32, data 31:0" width="100%">
 </div>
-<div class="title">Figure 14. JTAG2AXI error-status data layout for size 2</div>
+<div class="title">Figure 14. JTAG2AXI error-status data layout for effective size 2</div>
 </div>
 <div id="jtag2axi-error-status-data-layout-for-size-3-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/jtag2axi_series_data_error3.svg" alt=".AXISeriesDataWithErrorStatus when AXISeriesCtrl.size==3">
+<img src="../../_images/jtag2axi-series-data-error-status-size3.svg" alt="AXI_SERIES_DATA_WITH_ERROR_STATUS register layout for effective size 3 on a 64-bit data bus: increment/status 64, data 63:0" width="100%">
 </div>
-<div class="title">Figure 15. JTAG2AXI error-status data layout for size 3</div>
+<div class="title">Figure 15. JTAG2AXI error-status data layout for effective size 3</div>
 </div>
 <div class="paragraph">
 <p><a href="#jtag2axi-data-and-error-status-fields-table">JTAG2AXI data and error-status fields</a> defines the data payload and the shared

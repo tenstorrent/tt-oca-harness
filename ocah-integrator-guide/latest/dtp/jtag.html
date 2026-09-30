@@ -264,9 +264,29 @@ network.</p>
 </div>
 <div id="dtp-jtag-scan-chain-figure" class="imageblock">
 <div class="content">
-<img src="_images/dtp_jtag_scan_chain.svg" alt="DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network">
+<img src="_images/dtp-jtag-scan-chain.svg" alt="DTP JTAG scan chain: TDI fans out to the PTAP instruction and data registers, the boundary-scan chain and the three iJTAG SIBs; the PTAP output passes through the STAP chain and an external STAP chain back to the TDO mux" width="100%">
 </div>
 <div class="title">Figure 1. DTP JTAG scan chain</div>
+</div>
+<div class="paragraph">
+<p>Read <a href="#dtp-jtag-scan-chain-figure">DTP JTAG scan chain</a> along the arrows from TDI to TDO. TDI reaches
+every register and external chain at once; the IR and TDR mux returns the
+instruction register in Shift-IR and, in Shift-DR, the register the current
+instruction selects. Italic labels beside a mux name the instructions or the
+select bit that choose its input, and 0 or 1 at a mux input is the select value
+that picks it. The PTAP output then enters the STAP chain, which is scanned only
+while the <code>TAP_3DCR</code> STAP-select bit is set: the bit gates the chain&#8217;s scan strobes
+and selects its return onto TDO. Otherwise TDO takes the PTAP output directly. TDO is retimed on the falling edge of TCK except during a
+<code>ZERO_LENGTH_BYPASS</code> DR scan, when the last mux takes the TDO mux output ahead of
+the retimer and TDI reaches TDO combinationally. The figure counts the extra STAPs
+by the <code>jtag_intf_unit</code> parameter <code>NUM_EXTRA_STAPS</code>, which <code>dtp</code> sets from
+<code>JTAG_NUM_EXTRA_STAPS</code>. Each STAP and SIB carries, in italics, the
+<code>dbg_disable_i</code> field that closes it. Dashed blocks exist only when their enable
+parameter is set, as the list below gives for the STAPs; the JTAG2AXI bridges
+follow <code>JTAG_SMC_DBG_ENABLE</code> and <code>JTAG_SEP_DBG_ENABLE</code>. Each STAP adds one SIB bit
+to the chain; opening the SIB inserts the STAP&#8217;s 3-bit 3DCR, and setting the 3DCR
+STAP-select bit splices in its secondary TAP. Each iJTAG SIB inserts its external
+segment after its SIB bit while that bit is set.</p>
 </div>
 </div>
 </div>
@@ -300,7 +320,8 @@ network.</p>
 </div>
 <div class="paragraph">
 <p>When a STAP is disabled by parameter, the DTP bypasses it in the secondary
-scan chain and drives its internal host outputs low.</p>
+scan chain and drives its host outputs low, apart from TCK, which still follows
+the PTAP.</p>
 </div>
 </div>
 </div>

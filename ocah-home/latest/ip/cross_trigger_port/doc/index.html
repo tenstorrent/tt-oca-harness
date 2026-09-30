@@ -287,6 +287,12 @@ for the full CTP register layout and field descriptions. The CTN decodes the
 AXI-Lite CSR window and presents each CTP&#8217;s registers at a 16-byte stride
 starting at offset 0x0200.</p>
 </div>
+<div class="paragraph">
+<p>Program <code>MODE</code> and <code>INVERT</code> once per boot, in a single write, before any CTM
+route selects or targets the port. The
+<a href="../../cross_trigger_network/doc/index.html#ctn-programming" class="xref page">CTN Programming</a>
+section gives the full sequence, reconfiguration, and deadlock recovery.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -305,9 +311,21 @@ interfaces.</p>
 </div>
 <div id="ctp-module-structure-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/ctp_module_diagram.png" alt="CTP Module Diagram">
+<img src="../../_images/ctp-module-structure.svg" alt="Gate-level structure of the Cross Trigger Port: the u_reg CSR block and the u_core pulse stretcher, handshake controller, synchronisers and pad-control muxes and registers" width="100%">
 </div>
 <div class="title">Figure 1. CTP module structure</div>
+</div>
+<div class="paragraph">
+<p>The figure is read from the core side on the left to the four GPIO pads on the
+right. Every 2:1 mux is selected by <code>mode_wire_or_i</code>, and the numbers inside
+it mark which input each select value takes. Input 1, drawn upper, passes in
+wire-OR mode, when <code>mode_wire_or_i</code> is high because <code>CONFIG.MODE</code> is 0; input 0,
+drawn lower, passes in point-to-point mode. Italic names are nets driven by
+<code>u_reg</code> from the named CSR fields. Every pad control and both core-side outputs, <code>ct_dst_o</code> and <code>busy_o</code>,
+leave the port through a register on <code>clk_i</code>. Each pad input passes through two
+synchroniser registers and an XOR with <code>invert_i</code> and, on the handshake inputs, an
+AND with <code>p2p_din_valid</code> before any logic uses it. The
+<code>STATUS</code> read-back from the core to <code>u_reg</code> is not drawn.</p>
 </div>
 <div class="sect2">
 <h3 id="submodule-hierarchy"><a class="anchor" href="#submodule-hierarchy"></a><a class="link" href="#submodule-hierarchy">Submodule Hierarchy</a></h3>
@@ -343,7 +361,7 @@ cross-trigger operation.</p>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ctp_edge_detector</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Detects positive edges on synchronized ct_req_in signal for Point-to-Point mode receiver operation</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Detects positive edges on the synchronized ct_req_in signal; its output is not connected, because the receiver state machine works on the ct_req_in level</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ctp_handshake_ctrl</code></p></td>
@@ -396,21 +414,31 @@ pad, and the output data signal of the I/O pin should be driven statically low.<
 </div>
 <div class="paragraph">
 <p><a href="#ctp-wire-or-behavior-figure">CTP wire-OR behavior</a> shows the open-drain request path and pulse-stretching
-logic used in wire-OR mode.</p>
+logic used in wire-OR mode. It is <a href="#ctp-module-structure-figure">CTP module structure</a> with every mux
+resolved to its wire-OR input. The CT_Req_out pad drives the constant
+<code>invert_i</code>, so its output enable, the stretched pulse, decides when the pad pulls
+the wire. The CTP receives a cross trigger on the falling edge of the
+synchronised wire: the register marked <em>prev</em> holds the previous level and the
+AND gate fires when the previous level is high and the current one low. The
+CTP disables the buffers of the other three pads in this mode, so they are not
+drawn.</p>
 </div>
 <div id="ctp-wire-or-behavior-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/ctp_wireor_diagram.png" alt="CTP Wire-OR Mode Diagram">
+<img src="../../_images/ctp-wire-or-mode.svg" alt="Cross Trigger Port in wire-OR mode: pulse stretcher driving the CT_Req_out pad output enable and a falling-edge detector on the pad input" width="100%">
 </div>
 <div class="title">Figure 2. CTP wire-OR behavior</div>
 </div>
 <div class="paragraph">
 <p>Any number of chiplets may have their <em>CT_Req_out</em> pads interconnected as shown
-in <a href="#ctp-wire-or-chiplet-connections-figure">CTP wire-OR chiplet connections</a>:</p>
+in <a href="#ctp-wire-or-chiplet-connections-figure">CTP wire-OR chiplet connections</a>. In each chiplet the CLAs reach the
+CTM through the internal CTPs of the Cross Trigger Network, and the CTM reaches
+the external CTP through its <em>CT_Src</em> and <em>CT_Dst</em> signals. The shared wire also
+reaches a package pin.</p>
 </div>
 <div id="ctp-wire-or-chiplet-connections-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/sip_wireor_diagram.png" alt="SiP Wire-OR Cross Trigger Diagram">
+<img src="../../_images/ctp-sip-wire-or.svg" alt="Three chiplets whose wire-OR CTPs share one open-drain CT_Req_out wire that also reaches a package pin" width="100%">
 </div>
 <div class="title">Figure 3. CTP wire-OR chiplet connections</div>
 </div>
@@ -428,21 +456,28 @@ All output pads are configured for push-pull operation.</p>
 </div>
 <div class="paragraph">
 <p><a href="#ctp-point-to-point-behavior-figure">CTP point-to-point behavior</a> shows the request and acknowledge paths used for
-point-to-point handshaking.</p>
+point-to-point handshaking. It is <a href="#ctp-module-structure-figure">CTP module structure</a> with every mux
+resolved to its point-to-point input. The output enables of CT_Req_out and
+CT_Ack_out and the input enables of CT_Ack_in and CT_Req_in are registered 1s.
+The input enable of the CT_Req_out pad is 0 in this mode, so only its output
+buffer is drawn, and the pulse stretcher and falling-edge detector are unused.</p>
 </div>
 <div id="ctp-point-to-point-behavior-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/ctp_p2p_diagram.png" alt="CTP Point-to-Point Mode Diagram">
+<img src="../../_images/ctp-point-to-point-mode.svg" alt="Cross Trigger Port in point-to-point mode: handshake controller driving CT_Req_out and CT_Ack_out and reading the synchronised CT_Ack_in and CT_Req_in pads" width="100%">
 </div>
 <div class="title">Figure 4. CTP point-to-point behavior</div>
 </div>
 <div class="paragraph">
 <p>Any two chiplets may have their four cross trigger pads cross-coupled as shown
-in <a href="#ctp-point-to-point-chiplet-connections-figure">CTP point-to-point chiplet connections</a>:</p>
+in <a href="#ctp-point-to-point-chiplet-connections-figure">CTP point-to-point chiplet connections</a>. Each CTP lists its pads on
+the side that faces its partner, in the order that keeps every wire straight, so
+each request output meets a request input and each acknowledge output an
+acknowledge input.</p>
 </div>
 <div id="ctp-point-to-point-chiplet-connections-figure" class="imageblock">
 <div class="content">
-<img src="../../_images/sip_p2p_diagram.png" alt="SiP Point-to-Point Cross Trigger Diagram">
+<img src="../../_images/ctp-sip-point-to-point.svg" alt="Two chiplets whose point-to-point CTPs are cross-coupled by request and acknowledge wires in both directions" width="100%">
 </div>
 <div class="title">Figure 5. CTP point-to-point chiplet connections</div>
 </div>
@@ -530,6 +565,17 @@ machine handles incoming requests. Both state machines operate synchronously in
 the system clock domain on synchronized GPIO inputs.</p>
 </div>
 <div class="paragraph">
+<p>The state machines run only in point-to-point mode. While wire-OR mode is
+selected, <code>cross_trigger_port_core</code> holds the sender in SENDER_IDLE with
+<code>ct_req_out=0</code> and blocks <code>ct_src_i</code> from reaching it. The <code>CT_Req_in</code> and
+<code>CT_Ack_in</code> pad inputs are disabled in wire-OR mode, and after point-to-point
+mode is selected their synchronizers hold the disabled pad level for two
+cycles. The core presents both synchronized inputs to the state machines as
+deasserted until the delayed input enable shows the synchronizers carry pad
+data. Neither a trigger raised in wire-OR mode nor the level of a disabled pad
+reaches the point-to-point pads when the mode changes.</p>
+</div>
+<div class="paragraph">
 <p><strong>Sender State Machine:</strong></p>
 </div>
 <div class="paragraph">
@@ -575,6 +621,12 @@ conditions, and output actions.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Any state</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>reset_i</code> asserted</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_IDLE</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Force <code>ct_req_out=0</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Any state</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Wire-OR mode selected</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SENDER_IDLE</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Force <code>ct_req_out=0</code></p></td>
 </tr>

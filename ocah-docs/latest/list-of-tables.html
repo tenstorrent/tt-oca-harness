@@ -338,7 +338,13 @@
     <a class="nav-link" href="ip/jtag_stap/doc/index.html">JTAG STAP</a>
   </li>
   <li class="nav-item" data-depth="4">
+    <button class="nav-item-toggle"></button>
     <a class="nav-link" href="ip/cross_trigger_network/doc/index.html">Cross-Trigger Network</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="5">
+    <a class="nav-link" href="ip/cross_trigger_network/doc/index.html#ctn-programming">Programming</a>
+  </li>
+</ul>
   </li>
   <li class="nav-item" data-depth="4">
     <a class="nav-link" href="ip/cross_trigger_port/doc/index.html">Cross-Trigger Port</a>
@@ -1514,68 +1520,69 @@ register lists, bit layouts, and field tables are included.</p>
 <div class="sect1"><h2 id="catalog-topic-14">Cross-Trigger Matrix</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_matrix/doc/index.html#ctm-configuration-constants-table">Table 1. CTM configuration constants</a></li>
 <li><a href="ip/cross_trigger_matrix/doc/index.html#ctm-routing-stages-table">Table 2. CTM routing stages</a></li>
 <li><a href="ip/cross_trigger_matrix/doc/index.html#ctm-port-indices-table">Table 3. CTM port indices</a></li></ul></div></div>
-<div class="sect1"><h2 id="catalog-topic-15">Cross-Trigger Network</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_network/doc/index.html#ctn-address-allocation-table">Table 1. CTN address allocation</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#external-and-internal-ctp-comparison-table">Table 2. External and internal CTP comparison</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#internal-ctp-wire-or-connections-table">Table 3. Internal CTP wire-OR connections</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#internal-ctp-point-to-point-connections-table">Table 4. Internal CTP point-to-point connections</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#ctn-matrix-port-indices-table">Table 5. CTN matrix port indices</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-6">Table 6. Cross Trigger Network Address Map</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-7">Table 7. Cross Trigger Matrix Address Map register list</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-8">Table 8. cross_trigger_matrix.CT_SRC[26].CONFIG_0 fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-9">Table 9. Cross Trigger Port Address Map register list</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-10">Table 10. cross_trigger_port.CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-11">Table 11. cross_trigger_port.STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-12">Table 12. cross_trigger_port.STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-13">Table 13. Cross Trigger Network Address Map register list</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-14">Table 14. cross_trigger_network.CT_SRC[26].CONFIG_0 fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-15">Table 15. cross_trigger_network.ctp[0].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-16">Table 16. cross_trigger_network.ctp[0].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-17">Table 17. cross_trigger_network.ctp[0].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-18">Table 18. cross_trigger_network.ctp[1].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-19">Table 19. cross_trigger_network.ctp[1].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-20">Table 20. cross_trigger_network.ctp[1].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-21">Table 21. cross_trigger_network.ctp[2].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-22">Table 22. cross_trigger_network.ctp[2].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-23">Table 23. cross_trigger_network.ctp[2].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-24">Table 24. cross_trigger_network.ctp[3].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-25">Table 25. cross_trigger_network.ctp[3].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-26">Table 26. cross_trigger_network.ctp[3].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-27">Table 27. cross_trigger_network.ctp[4].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-28">Table 28. cross_trigger_network.ctp[4].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-29">Table 29. cross_trigger_network.ctp[4].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-30">Table 30. cross_trigger_network.ctp[5].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-31">Table 31. cross_trigger_network.ctp[5].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-32">Table 32. cross_trigger_network.ctp[5].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-33">Table 33. cross_trigger_network.ctp[6].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-34">Table 34. cross_trigger_network.ctp[6].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-35">Table 35. cross_trigger_network.ctp[6].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-36">Table 36. cross_trigger_network.ctp[7].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-37">Table 37. cross_trigger_network.ctp[7].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-38">Table 38. cross_trigger_network.ctp[7].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-39">Table 39. cross_trigger_network.ctp[8].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-40">Table 40. cross_trigger_network.ctp[8].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-41">Table 41. cross_trigger_network.ctp[8].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-42">Table 42. cross_trigger_network.ctp[9].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-43">Table 43. cross_trigger_network.ctp[9].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-44">Table 44. cross_trigger_network.ctp[9].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-45">Table 45. cross_trigger_network.ctp[10].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-46">Table 46. cross_trigger_network.ctp[10].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-47">Table 47. cross_trigger_network.ctp[10].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-48">Table 48. cross_trigger_network.ctp[11].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-49">Table 49. cross_trigger_network.ctp[11].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-50">Table 50. cross_trigger_network.ctp[11].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-51">Table 51. cross_trigger_network.ctp[12].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-52">Table 52. cross_trigger_network.ctp[12].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-53">Table 53. cross_trigger_network.ctp[12].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-54">Table 54. cross_trigger_network.ctp[13].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-55">Table 55. cross_trigger_network.ctp[13].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-56">Table 56. cross_trigger_network.ctp[13].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-57">Table 57. cross_trigger_network.ctp[14].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-58">Table 58. cross_trigger_network.ctp[14].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-59">Table 59. cross_trigger_network.ctp[14].STRETCH_MULT fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-60">Table 60. cross_trigger_network.ctp[15].CONFIG fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-61">Table 61. cross_trigger_network.ctp[15].STATUS fields</a></li>
-<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-62">Table 62. cross_trigger_network.ctp[15].STRETCH_MULT fields</a></li></ul></div></div>
+<div class="sect1"><h2 id="catalog-topic-15">Cross-Trigger Network</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_network/doc/index.html#sip-cross-trigger-ctm-programming-table">Table 1. CTM programming for the example SiP</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#ctn-address-allocation-table">Table 2. CTN address allocation</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#external-and-internal-ctp-comparison-table">Table 3. External and internal CTP comparison</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#internal-ctp-wire-or-connections-table">Table 4. Internal CTP wire-OR connections</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#internal-ctp-point-to-point-connections-table">Table 5. Internal CTP point-to-point connections</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#ctn-matrix-port-indices-table">Table 6. CTN matrix port indices</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-7">Table 7. Cross Trigger Network Address Map</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-8">Table 8. Cross Trigger Matrix Address Map register list</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-9">Table 9. cross_trigger_matrix.CT_SRC[26].CONFIG_0 fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-10">Table 10. Cross Trigger Port Address Map register list</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-11">Table 11. cross_trigger_port.CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-12">Table 12. cross_trigger_port.STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-13">Table 13. cross_trigger_port.STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-14">Table 14. Cross Trigger Network Address Map register list</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-15">Table 15. cross_trigger_network.CT_SRC[26].CONFIG_0 fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-16">Table 16. cross_trigger_network.ctp[0].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-17">Table 17. cross_trigger_network.ctp[0].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-18">Table 18. cross_trigger_network.ctp[0].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-19">Table 19. cross_trigger_network.ctp[1].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-20">Table 20. cross_trigger_network.ctp[1].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-21">Table 21. cross_trigger_network.ctp[1].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-22">Table 22. cross_trigger_network.ctp[2].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-23">Table 23. cross_trigger_network.ctp[2].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-24">Table 24. cross_trigger_network.ctp[2].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-25">Table 25. cross_trigger_network.ctp[3].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-26">Table 26. cross_trigger_network.ctp[3].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-27">Table 27. cross_trigger_network.ctp[3].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-28">Table 28. cross_trigger_network.ctp[4].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-29">Table 29. cross_trigger_network.ctp[4].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-30">Table 30. cross_trigger_network.ctp[4].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-31">Table 31. cross_trigger_network.ctp[5].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-32">Table 32. cross_trigger_network.ctp[5].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-33">Table 33. cross_trigger_network.ctp[5].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-34">Table 34. cross_trigger_network.ctp[6].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-35">Table 35. cross_trigger_network.ctp[6].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-36">Table 36. cross_trigger_network.ctp[6].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-37">Table 37. cross_trigger_network.ctp[7].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-38">Table 38. cross_trigger_network.ctp[7].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-39">Table 39. cross_trigger_network.ctp[7].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-40">Table 40. cross_trigger_network.ctp[8].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-41">Table 41. cross_trigger_network.ctp[8].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-42">Table 42. cross_trigger_network.ctp[8].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-43">Table 43. cross_trigger_network.ctp[9].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-44">Table 44. cross_trigger_network.ctp[9].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-45">Table 45. cross_trigger_network.ctp[9].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-46">Table 46. cross_trigger_network.ctp[10].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-47">Table 47. cross_trigger_network.ctp[10].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-48">Table 48. cross_trigger_network.ctp[10].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-49">Table 49. cross_trigger_network.ctp[11].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-50">Table 50. cross_trigger_network.ctp[11].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-51">Table 51. cross_trigger_network.ctp[11].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-52">Table 52. cross_trigger_network.ctp[12].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-53">Table 53. cross_trigger_network.ctp[12].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-54">Table 54. cross_trigger_network.ctp[12].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-55">Table 55. cross_trigger_network.ctp[13].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-56">Table 56. cross_trigger_network.ctp[13].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-57">Table 57. cross_trigger_network.ctp[13].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-58">Table 58. cross_trigger_network.ctp[14].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-59">Table 59. cross_trigger_network.ctp[14].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-60">Table 60. cross_trigger_network.ctp[14].STRETCH_MULT fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-61">Table 61. cross_trigger_network.ctp[15].CONFIG fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-62">Table 62. cross_trigger_network.ctp[15].STATUS fields</a></li>
+<li><a href="ip/cross_trigger_network/doc/index.html#trm-table-63">Table 63. cross_trigger_network.ctp[15].STRETCH_MULT fields</a></li></ul></div></div>
 <div class="sect1"><h2 id="catalog-topic-16">Cross-Trigger Port</h2><div class="sectionbody"><ul><li><a href="ip/cross_trigger_port/doc/index.html#ctp-configuration-registers-table">Table 1. CTP configuration registers</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-submodules-table">Table 2. CTP submodules</a></li>
 <li><a href="ip/cross_trigger_port/doc/index.html#ctp-signal-synchronization-table">Table 3. CTP signal synchronization</a></li>

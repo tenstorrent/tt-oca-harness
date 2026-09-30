@@ -235,11 +235,16 @@ for debugger readback.</p>
 <div class="sectionbody">
 <div class="paragraph">
 <p><a href="#dtp-clock-stop-diagram">DTP JTAG and CLA clock-stop aggregation</a> shows how JTAG and CLA requests contribute to the chiplet
-halt path.</p>
+halt path, with the DTP as the SMU instantiates it. The DEBUG_CONTROL TDR is drawn
+as its five bits, with bit 0 nearest TDO. The grey box below the DTP is the part of
+the SMC DFD block (<code>smc_dfd_wrap</code>) that produces the SMC&#8217;s clock-stop request and
+exchanges cross-triggers with the DTP. Gate and flop symbols draw the logic of the
+path, and CDC badges mark the two-flop synchronizers where a signal enters the TCK or
+<code>clk_i</code> domain.</p>
 </div>
 <div id="dtp-clock-stop-diagram" class="imageblock">
 <div class="content">
-<img src="_images/DTP_ClockStopAggregration_FIG010.png" alt="DTP JTAG and CLA clock-stop aggregation" width="100%">
+<img src="_images/dtp-clock-stop.svg" alt="DTP clock-stop path: the DEBUG_CONTROL TDR in the primary TAP, the clock-stop controller in the cross-trigger network, and the SMC DFD lane that drives xtrig_clk_stop_req_i[0] under cla_clock_stop_en_o" width="100%">
 </div>
 <div class="title">Figure 1. DTP JTAG and CLA clock-stop aggregation</div>
 </div>
@@ -248,22 +253,26 @@ halt path.</p>
 </div>
 <div class="dlist">
 <dl>
-<dt class="hdlist1"><strong><code>jtag_clock_stop</code></strong> (JTAG DEBUG_CONTROL bit)</dt>
+<dt class="hdlist1"><strong><code>jtag_clock_stop</code></strong> (JTAG DEBUG_CONTROL bit 3)</dt>
 <dd>
-<p>Captured by the JTAG Interface Unit in the TCK domain and routed to the CTN
-clock-stop controller. OR-combined with CLA requests to form the registered
-<code>stop_clks_o</code> output that connects to chiplet functional clock gating.</p>
+<p>Written through the DEBUG_CONTROL TDR (IR 0x18) in the primary TAP and routed to
+the CTN clock-stop controller. OR-combined with CLA requests to form the registered
+<code>stop_clks_o</code> output that connects to chiplet functional clock gating. The bit
+resets on TRST, on power-on reset and whenever the TAP enters Test-Logic-Reset.</p>
 </dd>
-<dt class="hdlist1"><strong><code>cla_clock_stop_en</code></strong> (JTAG DEBUG_CONTROL bit)</dt>
+<dt class="hdlist1"><strong><code>cla_clock_stop_en</code></strong> (JTAG DEBUG_CONTROL bit 2)</dt>
 <dd>
-<p>Exported at the DTP top level for downstream use (for example SMC/CLA debug
-policy). Not included in the <code>stop_clks_o</code> aggregation inside the CTN.</p>
+<p>Exported at the DTP top level as <code>cla_clock_stop_en_o</code>. It is not part of the
+<code>stop_clks_o</code> aggregation inside the CTN. In the SMU it drives the SMC DFD&#8217;s
+<code>tdr_dbg_ctrl_clock_stop_en_i</code>, which gates the SMC CLA&#8217;s clock-stop request on
+<code>xtrig_clk_stop_req_i[0]</code>, so it decides whether the SMC CLA can halt the chiplet.</p>
 </dd>
 <dt class="hdlist1"><strong>CLA clock-stop indication</strong></dt>
 <dd>
 <p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> (CLA sources only, not
-<code>jtag_clock_stop</code>) to form the <code>cla_clock_stop</code> readback status. This status
-feeds back into the DEBUG_CONTROL readback so software or a debugger can
+<code>jtag_clock_stop</code>) to form the <code>cla_clock_stop</code> readback status. The OR is
+combinational, so the DEBUG_CONTROL TDR passes it through a two-flop TCK
+synchronizer before bit 4 captures it in Capture-DR. A debugger reads it there to
 observe whether any CLA clock-stop source is active.</p>
 </dd>
 </dl>
@@ -282,8 +291,10 @@ The <code>jtag_clock_stop</code> bit is routed to the CTN clock-stop controller;
 </li>
 <li>
 <p>The CTN OR-reduces <code>xtrig_clk_stop_req_i</code> to produce <code>cla_clock_stop</code>
-status, then OR-combines that aggregate with <code>jtag_clock_stop</code> to produce
-the registered <code>stop_clks_o</code> output.</p>
+status, then OR-combines that aggregate with <code>jtag_clock_stop</code>. The result
+passes a two-flop <code>clk_i</code> synchronizer and an output flop to produce
+<code>stop_clks_o</code>, which follows the requests three <code>clk_i</code> cycles later and is
+low while <code>rst_n_i</code> is asserted.</p>
 </li>
 <li>
 <p>The <code>cla_clock_stop</code> status is fed back into the DEBUG_CONTROL readback path
@@ -298,6 +309,18 @@ path, while either source can assert the functional chiplet halt through
 <code>stop_clks_o</code>.</p>
 </div>
 <div class="paragraph">
+<p>In the SMU, lane 0 of the <code>XTRIG_NUM_CLK_STOP_REQ</code> <code>xtrig_clk_stop_req_i</code> lanes
+carries the SMC DFD&#8217;s clocks-stopped output. That output is the CLA halt-clock
+action, masked by bit 0 of <code>xtrig_clk_halt_mask</code> in the SMC DFX CSRs and ANDed
+with <code>cla_clock_stop_en_o</code>; it also raises an SMC CPU interrupt. The remaining lanes,
+<code>xtrig_clk_stop_req_i[XTRIG_NUM_CLK_STOP_REQ-1:1]</code>, come from the SMU&#8217;s own
+<code>xtrig_clk_stop_req_i</code> ports. The same mask gates the CLA cross-trigger outputs,
+which reach the cross-trigger matrix through internal lanes 1 and 0
+(<code>xtrig_ctm_dst_req_i[1:0]</code>); <code>xtrig_ctm_src_req_o[1:0]</code> returns to the CLA. The
+SMU runs both SMC lanes in pulse-synchronization mode and ties their
+acknowledges low, and exports internal lanes 9 to 2.</p>
+</div>
+<div class="paragraph">
 <p>For the CTN clock-stop controller implementation and the <code>xtrig_clk_stop_req_i</code>
 input indexing, see
 <a href="../ip/cross_trigger_network/doc/index.html#cross-trigger-network" class="xref page">Cross-Trigger Network</a>.</p>
@@ -308,11 +331,21 @@ input indexing, see
 <h2 id="dtp-clock-distribution"><a class="anchor" href="#dtp-clock-distribution"></a><a class="link" href="#dtp-clock-distribution">3. Clock Distribution</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p><a href="#dtp-clock-tree">DTP system-clock and JTAG-clock distribution</a> shows which DTP blocks use the system clock and which use TCK.</p>
+<p><a href="#dtp-clock-tree">DTP system-clock and JTAG-clock distribution</a> shows which DTP blocks use the system clock and which use TCK.
+The DTP has two clocks and no clock gates. <code>clk_i</code>, the system clock (<code>clk_smu_i</code>
+in the SMU), clocks the whole cross-trigger network and the AXI side of the three
+JTAG2AXI bridges. TCK, from <code>jtag_ptap_client_tap_ctrl_i.tck</code>, clocks the rest of
+the JTAG interface unit. Each block is tinted by the clock that runs it, and each
+clock has one arrow into each hierarchy it reaches. CDC badges mark the blocks that
+synchronize a signal from another domain: the cross-trigger port input
+synchronizers, the clock-stop controller, the <code>dbg_disable_i</code> synchronizers, the
+DEBUG_CONTROL <code>cla_clock_stop</code> synchronizer and the JTAG2AXI bridges' <code>u_axi_cdc</code>.
+TCK leaves the DTP unchanged on the host TAP control of every STAP and on the host
+scan control of the boundary-scan, extended STAP, DFT and DFD ports.</p>
 </div>
 <div id="dtp-clock-tree" class="imageblock">
 <div class="content">
-<img src="_images/DTP_ClockingArchitecture_FIG021.png" alt="DTP system-clock and JTAG-clock distribution" width="100%">
+<img src="_images/dtp-clock-distribution.svg" alt="DTP clock distribution: clk_i to the cross-trigger network and the JTAG2AXI AXI side, TCK to the TAP, TDRs, STAPs and SIBs and out on every host TAP and scan port" width="100%">
 </div>
 <div class="title">Figure 2. DTP system-clock and JTAG-clock distribution</div>
 </div>
@@ -323,11 +356,49 @@ input indexing, see
 <div class="sectionbody">
 <div class="paragraph">
 <p><a href="#dtp-reset-tree">DTP system and JTAG reset distribution</a> shows the reset distribution for DTP system logic and the JTAG scan
-paths.</p>
+paths. Each reset has its own colour, and the input names below the DTP ports are
+the SMU nets that drive them. Gate and flop symbols show where resets are combined,
+and a reset ends on the bottom edge of the flop it resets.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rst_n_i</code> (<code>rst_primary_smc_clk_no</code> in the SMU) resets the cross-trigger network
+and the AXI side of the JTAG2AXI bridges.</p>
+</li>
+<li>
+<p><code>pwr_on_rst_ni</code> (<code>powergood_stable</code> in the SMU) sets the <code>dbg_disable_i</code>
+synchronizers to 1, disabling every debug path until the lifecycle value arrives.
+<code>u_trst_n_and</code> ANDs it with the TRST pin to form the combined TRST.</p>
+</li>
+<li>
+<p>The combined TRST resets the TAP controller, including its Test-Logic-Reset flop,
+the TMP controller and the TDO retiming flop. It also resets the hold flops of the
+3DCR and IC_RESET TDRs, the 3DCR scan register and the STAPs, and leaves unchanged
+on the host TAP control of every STAP.</p>
+</li>
+<li>
+<p>The TAP controller derives the scan reset <code>rst_n</code>, which is low in
+Test-Logic-Reset, and the scan channel reset <code>chrst_n</code>, which the TMP persistence
+mode holds released through Test-Logic-Reset. <code>rst_n</code> resets the instruction
+register, most TDRs, the TCK side of the JTAG2AXI bridges, the STAPs and the SIBs.
+The 3DCR TDR takes it only while its hold bit is clear, and the IC_RESET TDR only
+while its <code>reset_hold</code> bit is set. <code>chrst_n</code> is not used inside the DTP; both
+leave on the host scan control of the boundary-scan, extended STAP, DFT and DFD
+ports.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The two-flop <code>cla_clock_stop</code> synchronizer in the DEBUG_CONTROL TDR has no reset.
+<code>test_en_i</code> drives the test mode of the cross-trigger network and the JTAG2AXI
+bridges. <code>scan_rst_ni</code> is not connected inside the DTP, which has no reset
+synchronizer, so <code>rst_n_i</code> must arrive scan-controlled. A STAP whose enable
+parameter is 0 drives its host TRST low.</p>
 </div>
 <div id="dtp-reset-tree" class="imageblock">
 <div class="content">
-<img src="_images/DTP_ResetArchitecture_FIG022.png" alt="DTP system and JTAG reset distribution" width="100%">
+<img src="_images/dtp-reset-distribution.svg" alt="DTP reset distribution: rst_n_i to the cross-trigger network and JTAG2AXI AXI side, power-on reset ANDed with TRST into the TAP controller, which derives the scan resets for the TDRs, STAPs, SIBs and host scan ports" width="100%">
 </div>
 <div class="title">Figure 3. DTP system and JTAG reset distribution</div>
 </div>
