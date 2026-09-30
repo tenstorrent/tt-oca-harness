@@ -725,6 +725,9 @@ in `flows.total`, and such records share a `flow` name; the `framework` field
 on each normalized record — surfaced in `dut_status` rows, coverage-closure
 `by_dut` rows, and trend `per_dut` entries — is what disambiguates them.
 Parsers grouping by DUT must key on `(flow, framework)`, not `flow` alone.
+A `tests_detail` entry belongs to the framework view of the record that holds
+it and carries no `framework` of its own, so a parser that lists tests across
+records reads the framework from each test's record.
 
 No aggregate coverage average is computed, even when all inputs use one tool.
 Coverage remains per DUT because simulator, target, instrumentation, and policy
