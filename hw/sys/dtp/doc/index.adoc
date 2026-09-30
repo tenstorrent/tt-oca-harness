@@ -126,6 +126,7 @@ ifdef::backend-html5[]
 |[[cross-trigger-network]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network[Cross-Trigger Network]
 ([[cross-trigger-network-architecture]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-architecture[architecture],
 [[cross-trigger-network-interface]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-interface[interface],
+[[ctn-programming]] xref:ip:cross_trigger_network/doc/index.adoc#ctn-programming[programming],
 [[ctn-memory-map]] xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[register map])
 |CTN hub integrating CTMs and CTPs; owns the unified register map.
 

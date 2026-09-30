@@ -84,3 +84,19 @@ endif::ocah-trm[]
 ifndef::ocah-trm[]
 See the CTN Memory Map section for the CTN-internal address layout.
 endif::ocah-trm[]
+
+Firmware and an external debugger share this window. Whichever of them
+programs cross triggers configures every CTP before it opens any CTM route,
+following the sequence in the
+ifdef::ocah-trm+backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-programming[CTN Programming]
+endif::ocah-trm+backend-html5[]
+ifdef::ocah-trm[]
+ifdef::backend-pdf[]
+<<ctn-programming,CTN Programming>>
+endif::backend-pdf[]
+endif::ocah-trm[]
+ifndef::ocah-trm[]
+CTN Programming
+endif::ocah-trm[]
+section.
