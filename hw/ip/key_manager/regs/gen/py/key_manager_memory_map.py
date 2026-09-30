@@ -117,7 +117,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"},
+                "past_response": {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -132,7 +132,7 @@ VIEWS = {
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"}),),
                 "hole_notes": (),
-                "past_response": {"rresp": "FORWARD", "rdata": 0x0, "bresp": "FORWARD", "text": "Forwarded"},
+                "past_response": {"rresp": "SLVERR", "rdata": 0xBADCAB1E, "bresp": "SLVERR", "text": "SLVERR, 0xBADCAB1E / SLVERR"},
                 "past_note": "",
             },
             {
@@ -146,7 +146,7 @@ VIEWS = {
                 "count": 1,
                 "stride": 0x0,
                 "hole_responses": (("", {"rresp": "DECERR", "rdata": 0xBADCAB1E, "bresp": "DECERR", "text": "DECERR, 0xBADCAB1E / DECERR"}),),
-                "hole_notes": ("The OTP/eFuse pass-through forwards this range to SEP, so an access here is answered there rather than with DECERR.",),
+                "hole_notes": ("This range is inside the OTP/eFuse window, which answers every offset outside its register maps with SLVERR and read data 0xBADCAB1E rather than DECERR.",),
                 "past_response": None,
                 "past_note": "",
             },
