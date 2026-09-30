@@ -194,18 +194,18 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | R | 0x0 a| Reserved
-| 11 | `rom_access_violation` | RW | 0x0 a| KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
-| 10 | `exec_violation` | RW | 0x0 a| Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
-| 9 | `otp_sigint` | RW | 0x0 a| OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
-| 8 | `otp_change` | RW | 0x0 a| An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
-| 7 | `wipe_state` | RW | 0x0 a| Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
-| 6 | `drbg_err` | RW | 0x0 a| DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
-| 5 | `axi_decerr` | RW | 0x0 a| AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
-| 4 | `axi_slverr` | RW | 0x0 a| AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
-| 3 | `sram_write_lock_err` | RW | 0x0 a| SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
-| 2 | `rom_write_err` | RW | 0x0 a| ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
-| 1 | `sram_parity_err` | RW | 0x0 a| SRAM parity error detected. Sticky, write 1 to clear.
-| 0 | `rom_parity_err` | RW | 0x0 a| ROM parity error detected. Sticky, write 1 to clear.
+| 11 | `rom_access_violation` | RW1C | 0x0 a| KM ROM instruction fetch or data read attempted after the ROM lockout engaged. The lockout engages on the first committed instruction fetch from write-locked SRAM once SRAM_EXEC_MODE.enable is set, and clears only on warm or cold reset. Sticky, write 1 to clear.
+| 10 | `exec_violation` | RW1C | 0x0 a| Instruction fetch from a non-whitelisted (non-executable) memory region detected, excluding the KM ROM. Sticky, write 1 to clear.
+| 9 | `otp_sigint` | RW1C | 0x0 a| OTP dual-rail encoding integrity violation: value and complement are not complementary on at least one field. Sticky, write 1 to clear.
+| 8 | `otp_change` | RW1C | 0x0 a| An OTP readout field value changed (decoded value differs from prior cycle). Sticky, write 1 to clear. Check OTP_CHANGE_STATUS for the specific field(s).
+| 7 | `wipe_state` | RW1C | 0x0 a| Wipe state event (rising edge of wipe_state input). Sticky, write 1 to clear.
+| 6 | `drbg_err` | RW1C | 0x0 a| DRBG Sampler error (timeout or AXI-Stream error). Sticky, write 1 to clear.
+| 5 | `axi_decerr` | RW1C | 0x0 a| AXI DECERR (decode error) response detected on CPU bus transaction. Sticky, write 1 to clear.
+| 4 | `axi_slverr` | RW1C | 0x0 a| AXI SLVERR (slave error) response detected on CPU bus transaction. Sticky, write 1 to clear.
+| 3 | `sram_write_lock_err` | RW1C | 0x0 a| SRAM write attempt to a write-locked region detected. Sticky, write 1 to clear.
+| 2 | `rom_write_err` | RW1C | 0x0 a| ROM write attempt detected (ROM is read-only). Sticky, write 1 to clear.
+| 1 | `sram_parity_err` | RW1C | 0x0 a| SRAM parity error detected. Sticky, write 1 to clear.
+| 0 | `rom_parity_err` | RW1C | 0x0 a| ROM parity error detected. Sticky, write 1 to clear.
 |===
 
 [#reg-{regmap-instance}-km_csr-IRQ_ENABLE]
@@ -255,7 +255,7 @@ Control and status registers for the Key Manager subsystem
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `lock_bits` | RW | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
+| 31:0 | `lock_bits` | RW1S | 0x0 a| One bit per 1 KB SRAM region. Region 0 = 0x8000-0x83FF, region 31 = 0xFC00-0xFFFF. Write 1 to lock; 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
 [#reg-{regmap-instance}-km_csr-IRQ_SET]
@@ -265,18 +265,18 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:12 | `rsvd` | W | 0x0 a| Reserved (write-only; reads trigger SLVERR via err_if_bad_rw)
-| 11 | `rom_access_violation_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
-| 10 | `exec_violation_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
-| 9 | `otp_sigint_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
-| 8 | `otp_change_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
-| 7 | `wipe_state_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
-| 6 | `drbg_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
-| 5 | `axi_decerr_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
-| 4 | `axi_slverr_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
-| 3 | `sram_write_lock_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
-| 2 | `rom_write_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
-| 1 | `sram_parity_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
-| 0 | `rom_parity_err_set` | W | 0x0 a| Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
+| 11 | `rom_access_violation_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.ROM_ACCESS_VIOLATION (triggers ROM lockout violation interrupt for testing)
+| 10 | `exec_violation_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.EXEC_VIOLATION (triggers exec-permission violation interrupt for testing)
+| 9 | `otp_sigint_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.OTP_SIGINT (triggers OTP sigint interrupt for testing)
+| 8 | `otp_change_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.OTP_CHANGE (triggers OTP change interrupt for testing)
+| 7 | `wipe_state_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.WIPE_STATE (triggers wipe state interrupt for testing)
+| 6 | `drbg_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.DRBG_ERR (triggers DRBG Sampler interrupt for testing)
+| 5 | `axi_decerr_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.AXI_DECERR (triggers AXI DECERR interrupt for testing)
+| 4 | `axi_slverr_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.AXI_SLVERR (triggers AXI SLVERR interrupt for testing)
+| 3 | `sram_write_lock_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_WRITE_LOCK_ERR (triggers SRAM write-lock interrupt for testing)
+| 2 | `rom_write_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.ROM_WRITE_ERR (triggers ROM write interrupt for testing)
+| 1 | `sram_parity_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.SRAM_PARITY_ERR (triggers SRAM parity interrupt for testing)
+| 0 | `rom_parity_err_set` | W 1P | 0x0 a| Write 1 to set IRQ_STATUS.ROM_PARITY_ERR (triggers ROM parity interrupt for testing)
 |===
 
 [#reg-{regmap-instance}-km_csr-SRAM_WRITE_LOCK_VIOLATION]
@@ -285,7 +285,7 @@ Control and status registers for the Key Manager subsystem
 [cols="1,3,1,1,6", options="header"]
 |===
 | Bits | Field | Access | Reset | Description
-| 31:0 | `violation_bits` | RW | 0x0 a| Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
+| 31:0 | `violation_bits` | RW1C | 0x0 a| Bit[i]=1 if region i had attempted write while locked. Sticky, write 1 to clear each bit.
 |===
 
 [#reg-{regmap-instance}-km_csr-RECOVERABLE_ERR]
@@ -305,7 +305,7 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `cold_boot_done` | RW | 0x0 a| Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
+| 0 | `cold_boot_done` | RW1S | 0x0 a| Write-1-only: set by ROM firmware at end of cold boot. Reads 0 after cold reset; reads 1 after firmware sets it. Sticky until next cold reset (preserved across warm resets).
 |===
 
 [#reg-{regmap-instance}-km_csr-OTP_LIFE_CYCLE]
@@ -336,7 +336,7 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved
-| 0 | `enable` | RW | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
+| 0 | `enable` | RW1S | 0x0 a| Execute-permission mode: 0=ROM-only whitelist; 1=write-locked SRAM whitelist, arming the ROM lockout. Write 1 to set; write 0 has no effect. Warm reset domain: cleared by warm or cold reset.
 |===
 
 [#reg-{regmap-instance}-km_csr-IRQ_ENTRY_ADDR]
@@ -355,7 +355,7 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `rsvd` | R | 0x0 a| Reserved; reads as zero.
-| 0 | `lock` | RW | 0x0 a| Write 1 to set; write 0 has no effect; sticky until reset.
+| 0 | `lock` | RW1S | 0x0 a| Write 1 to set; write 0 has no effect; sticky until reset.
 |===
 
 [#reg-{regmap-instance}-km_csr-VUART_TX]
@@ -1056,15 +1056,15 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
-| 8 | `sep_sys_id` | RW | 0x0 a| Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
-| 7 | `sep_sip_id` | RW | 0x0 a| Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
-| 6 | `sep_chiplet_id` | RW | 0x0 a| Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
-| 5 | `class_key` | RW | 0x0 a| Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
-| 4 | `sys_uid` | RW | 0x0 a| Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
-| 3 | `sip_uid` | RW | 0x0 a| Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
-| 2 | `chiplet_uid` | RW | 0x0 a| Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
-| 1 | `demotion` | RW | 0x0 a| Lock OTP_DEMOTION_STATE reads (returns zero when locked)
-| 0 | `life_cycle` | RW | 0x0 a| Lock OTP_LIFE_CYCLE reads (returns zero when locked)
+| 8 | `sep_sys_id` | RW1S | 0x0 a| Lock OTP_SEP_SYS_ID_VAL/CPL reads (returns zero when locked)
+| 7 | `sep_sip_id` | RW1S | 0x0 a| Lock OTP_SEP_SIP_ID_VAL/CPL reads (returns zero when locked)
+| 6 | `sep_chiplet_id` | RW1S | 0x0 a| Lock OTP_SEP_CHIPLET_ID_VAL/CPL reads (returns zero when locked)
+| 5 | `class_key` | RW1S | 0x0 a| Lock OTP_CLASS_KEY_VAL/CPL reads (returns zero when locked)
+| 4 | `sys_uid` | RW1S | 0x0 a| Lock OTP_SYS_UID_VAL/CPL reads (returns zero when locked)
+| 3 | `sip_uid` | RW1S | 0x0 a| Lock OTP_SIP_UID_VAL/CPL reads (returns zero when locked)
+| 2 | `chiplet_uid` | RW1S | 0x0 a| Lock OTP_CHIPLET_UID_VAL/CPL reads (returns zero when locked)
+| 1 | `demotion` | RW1S | 0x0 a| Lock OTP_DEMOTION_STATE reads (returns zero when locked)
+| 0 | `life_cycle` | RW1S | 0x0 a| Lock OTP_LIFE_CYCLE reads (returns zero when locked)
 |===
 
 [#reg-{regmap-instance}-km_csr-OTP_CHANGE_STATUS]
@@ -1074,15 +1074,15 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
-| 8 | `sep_sys_id` | RW | 0x0 a| OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
-| 7 | `sep_sip_id` | RW | 0x0 a| OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
-| 6 | `sep_chiplet_id` | RW | 0x0 a| OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
-| 5 | `class_key` | RW | 0x0 a| OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
-| 4 | `sys_uid` | RW | 0x0 a| OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
-| 3 | `sip_uid` | RW | 0x0 a| OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
-| 2 | `chiplet_uid` | RW | 0x0 a| OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
-| 1 | `demotion` | RW | 0x0 a| OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
-| 0 | `life_cycle` | RW | 0x0 a| OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
+| 8 | `sep_sys_id` | RW1C | 0x0 a| OTP_SEP_SYS_ID value changed since last cycle. Sticky, write 1 to clear.
+| 7 | `sep_sip_id` | RW1C | 0x0 a| OTP_SEP_SIP_ID value changed since last cycle. Sticky, write 1 to clear.
+| 6 | `sep_chiplet_id` | RW1C | 0x0 a| OTP_SEP_CHIPLET_ID value changed since last cycle. Sticky, write 1 to clear.
+| 5 | `class_key` | RW1C | 0x0 a| OTP_CLASS_KEY value changed since last cycle. Sticky, write 1 to clear.
+| 4 | `sys_uid` | RW1C | 0x0 a| OTP_SYS_UID value changed since last cycle. Sticky, write 1 to clear.
+| 3 | `sip_uid` | RW1C | 0x0 a| OTP_SIP_UID value changed since last cycle. Sticky, write 1 to clear.
+| 2 | `chiplet_uid` | RW1C | 0x0 a| OTP_CHIPLET_UID value changed since last cycle. Sticky, write 1 to clear.
+| 1 | `demotion` | RW1C | 0x0 a| OTP_DEMOTION_STATE value changed since last cycle. Sticky, write 1 to clear.
+| 0 | `life_cycle` | RW1C | 0x0 a| OTP_LIFE_CYCLE value changed since last cycle. Sticky, write 1 to clear.
 |===
 
 [#reg-{regmap-instance}-km_csr-OTP_READ_LOCK_COLD]
@@ -1092,15 +1092,15 @@ Control and status registers for the Key Manager subsystem
 |===
 | Bits | Field | Access | Reset | Description
 | 31:9 | `rsvd` | R | 0x0 a| Reserved
-| 8 | `sep_sys_id` | RW | 0x0 a| Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id \| OTP_READ_LOCK_COLD.sep_sys_id.
-| 7 | `sep_sip_id` | RW | 0x0 a| Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id \| OTP_READ_LOCK_COLD.sep_sip_id.
-| 6 | `sep_chiplet_id` | RW | 0x0 a| Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id \| OTP_READ_LOCK_COLD.sep_chiplet_id.
-| 5 | `class_key` | RW | 0x0 a| Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key \| OTP_READ_LOCK_COLD.class_key.
-| 4 | `sys_uid` | RW | 0x0 a| Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid \| OTP_READ_LOCK_COLD.sys_uid.
-| 3 | `sip_uid` | RW | 0x0 a| Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid \| OTP_READ_LOCK_COLD.sip_uid.
-| 2 | `chiplet_uid` | RW | 0x0 a| Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid \| OTP_READ_LOCK_COLD.chiplet_uid.
-| 1 | `demotion` | RW | 0x0 a| Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion \| OTP_READ_LOCK_COLD.demotion.
-| 0 | `life_cycle` | RW | 0x0 a| Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle \| OTP_READ_LOCK_COLD.life_cycle.
+| 8 | `sep_sys_id` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SEP_SYS_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sys_id \| OTP_READ_LOCK_COLD.sep_sys_id.
+| 7 | `sep_sip_id` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SEP_SIP_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_sip_id \| OTP_READ_LOCK_COLD.sep_sip_id.
+| 6 | `sep_chiplet_id` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SEP_CHIPLET_ID_VAL/CPL. Effective lock = OTP_READ_LOCK.sep_chiplet_id \| OTP_READ_LOCK_COLD.sep_chiplet_id.
+| 5 | `class_key` | RW1S | 0x0 a| Cold-reset read-lock for OTP_CLASS_KEY_VAL/CPL. Effective lock = OTP_READ_LOCK.class_key \| OTP_READ_LOCK_COLD.class_key.
+| 4 | `sys_uid` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SYS_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sys_uid \| OTP_READ_LOCK_COLD.sys_uid.
+| 3 | `sip_uid` | RW1S | 0x0 a| Cold-reset read-lock for OTP_SIP_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.sip_uid \| OTP_READ_LOCK_COLD.sip_uid.
+| 2 | `chiplet_uid` | RW1S | 0x0 a| Cold-reset read-lock for OTP_CHIPLET_UID_VAL/CPL. Effective lock = OTP_READ_LOCK.chiplet_uid \| OTP_READ_LOCK_COLD.chiplet_uid.
+| 1 | `demotion` | RW1S | 0x0 a| Cold-reset read-lock for OTP_DEMOTION_STATE. Effective lock = OTP_READ_LOCK.demotion \| OTP_READ_LOCK_COLD.demotion.
+| 0 | `life_cycle` | RW1S | 0x0 a| Cold-reset read-lock for OTP_LIFE_CYCLE. Effective lock = OTP_READ_LOCK.life_cycle \| OTP_READ_LOCK_COLD.life_cycle.
 |===
 
 [#reg-{regmap-instance}-km_csr-OTP_SEP_CHIPLET_ID_VAL_0]

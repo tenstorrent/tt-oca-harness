@@ -88,12 +88,12 @@ $(call ocah_reg_svpkg_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UD
 	@echo "Regenerating SystemVerilog address package for $(1)"
 	@$(ocah_sh) '"$(OCAH_REG_PEAKRDL)" raw-header $(call ocah_reg_incdirs,$(1)) "$(OCAH_REGBLOCK_UDP)" "$(call ocah_reg_rdl,$(1))" --format svpkg --template "$(OCAH_SVPKG_TEMPLATE)" -o "$(call ocah_reg_svpkg_output,$(1))" $(call ocah_reg_rdl_params,$(1)) 2>&1 | tee "$(call ocah_reg_build,$(1))/raw_svpkg.log"$(call ocah_reg_stamp_after,"$(call ocah_reg_svpkg_output,$(1))")'
 
-$(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_py_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlpyhdr.py $(OCAH_ROOT)/tools/regs/common/regcollect.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/py" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating Python register header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_py,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_py_output,$(1)),$(call ocah_reg_py_bitfields,$(1)),$(call ocah_reg_build,$(1))/py.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_py_output,$(1))")'
 
-$(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlsvh.py $(OCAH_ROOT)/tools/regs/common/regcollect.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_svh_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlsvh.py $(OCAH_ROOT)/tools/regs/common/regcollect.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/svh" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating flattened SV header for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_svh,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_svh_output,$(1)),$(call ocah_reg_build,$(1))/svh.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_svh_output,$(1))")'
@@ -138,12 +138,12 @@ $(call ocah_reg_c_block_dir,$(1))/%.h: $(call ocah_reg_root,$(1))/regs/blocks/$$
 	@echo "Regenerating firmware C header for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_cheader,$(1),$$<,$$@,$$(if $$(filter $$*,$(OCAH_REG_NO_BITFIELDS)),none,ltoh),$(1)/regs/build/c_header_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
 
-$(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) tools/regs/rdladoc.py tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_adoc_block_dir,$(1))/%.adoc: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) tools/regs/rdladoc.py tools/regs/common/rdlview.py tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$$<,$$@,$(1)/regs/build/adoc_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
 
-$(call ocah_reg_html_block_dir,$(1))/%.html: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_html_block_dir,$(1))/%.html: $(call ocah_reg_root,$(1))/regs/blocks/$$$$*/$$$$*.rdl $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1) sub-block $$*"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$$<,$$@,$(1)/regs/build/html_$$*.log)$(call ocah_reg_stamp_after,"$$@")'
@@ -165,12 +165,12 @@ endef
 
 # Plain-leaf docs: RDL -> compact AsciiDoc (custom generator), plus a peakrdl html site.
 define ocah_reg_doc_plain_rule
-$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_adoc_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdladoc.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$(call ocah_reg_gen,$(1))/adoc" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating AsciiDoc register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_adoc,$(1),$(call ocah_reg_rdl,$(1)),$(call ocah_reg_adoc_output,$(1)),$(call ocah_reg_build,$(1))/adoc.log)$(call ocah_reg_stamp_after,"$(call ocah_reg_adoc_output,$(1))")'
 
-$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_html_output,$(1)): $(call ocah_reg_rdl,$(1)) $(call ocah_reg_doc_overrides,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdlhtml.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating HTML register docs for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_html,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/html.log)$(call ocah_reg_stamp_after,"$$@")'
@@ -187,7 +187,7 @@ endef
 
 # JSON register model for a whole top (composite or leaf), opt-in list only.
 define ocah_reg_json_rule
-$(call ocah_reg_json_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdljson.py | $(OCAH_REG_UV_PREREQ)
+$(call ocah_reg_json_output,$(1)): $(call ocah_reg_rdl,$(1)) $(OCAH_REGBLOCK_UDP) $(OCAH_ROOT)/tools/regs/rdljson.py $(OCAH_ROOT)/tools/regs/common/rdlview.py $(OCAH_ROOT)/tools/regs/common/fieldprops.py | $(OCAH_REG_UV_PREREQ)
 	@mkdir -p "$$(@D)" "$(call ocah_reg_build,$(1))"
 	@echo "Regenerating JSON register model for $(1)"
 	@$(ocah_sh) '$(call ocah_reg_run_json,$(1),$(call ocah_reg_rdl,$(1)),$$@,$(call ocah_reg_build,$(1))/json.log)$(call ocah_reg_stamp_after,"$$@")'

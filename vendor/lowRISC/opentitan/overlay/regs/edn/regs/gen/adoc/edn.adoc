@@ -38,8 +38,8 @@ Distributes random numbers produced by CSRNG to hardware blocks
 |===
 | Bits | Field | Access | Reset | Description
 | 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `edn_fatal_err` | RW | 0x0 a| Asserted when a FIFO error occurs.
-| 0 | `edn_cmd_req_done` | RW | 0x0 a| Asserted when a software CSRNG request has completed.
+| 1 | `edn_fatal_err` | RW1C | 0x0 a| Asserted when a FIFO error occurs.
+| 0 | `edn_cmd_req_done` | RW1C | 0x0 a| Asserted when a software CSRNG request has completed.
 |===
 
 [#reg-{regmap-instance}-edn-INTR_ENABLE]
@@ -82,7 +82,7 @@ Distributes random numbers produced by CSRNG to hardware blocks
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `REGWEN` | RW | 0x1 a| When true, the CTRL can be written by software.
+| 0 | `REGWEN` | RW0C | 0x1 a| When true, the CTRL can be written by software.
 When false, this field read-only. Defaults true, write zero to clear.
 Note that this needs to be cleared after initial configuration at boot in order to
 lock in the listed register settings.
@@ -271,22 +271,22 @@ Note that this value must be chosen smaller than or equal to the value configure
 |===
 | Bits | Field | Access | Reset | Description
 | 31:14 | `Reserved` | - | - a| Reserved
-| 13 | `CSRNG_ACK_ERR` | RW | 0x0 a| This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.
+| 13 | `CSRNG_ACK_ERR` | RW0C | 0x0 a| This bit is set when the CSRNG returns an acknowledgement where the status signal is non-zero.
 Writing a zero resets this status bit.
-| 12 | `EDN_BUS_CMP_ALERT` | RW | 0x0 a| This bit is set when the interal entropy bus value is equal to the prior
+| 12 | `EDN_BUS_CMP_ALERT` | RW0C | 0x0 a| This bit is set when the interal entropy bus value is equal to the prior
 valid value on the bus, indicating a possible attack.
 Writing a zero resets this status bit.
 | 11:4 | `Reserved` | - | - a| Reserved
-| 3 | `CMD_FIFO_RST_FIELD_ALERT` | RW | 0x0 a| This bit is set when the CMD_FIFO_RST field is set to an illegal value,
+| 3 | `CMD_FIFO_RST_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the CMD_FIFO_RST field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 2 | `AUTO_REQ_MODE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,
+| 2 | `AUTO_REQ_MODE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the !!CTRL.AUTO_REQ_MODE field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 1 | `BOOT_REQ_MODE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the BOOT_REQ_MODE field is set to an illegal value,
+| 1 | `BOOT_REQ_MODE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the BOOT_REQ_MODE field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
-| 0 | `EDN_ENABLE_FIELD_ALERT` | RW | 0x0 a| This bit is set when the EDN_ENABLE field is set to an illegal value,
+| 0 | `EDN_ENABLE_FIELD_ALERT` | RW0C | 0x0 a| This bit is set when the EDN_ENABLE field is set to an illegal value,
 something other than kMultiBitBool4True or kMultiBitBool4False.
 Writing a zero resets this status bit.
 |===

@@ -57,6 +57,10 @@ The hardware does not derive these CSR values from a chiplet ID: any
 chiplet-ID-based address assignment is a platform policy that firmware
 must implement.
 
+Register tables throughout this manual report each field's software access as a
+compact token in their *Access* column; xref:register-field-access.adoc#trm-register-field-access[Register Field Access Notation]
+decodes that notation.
+
 [[ocah-decode-response-codes]]
 == Decode Response Codes
 
