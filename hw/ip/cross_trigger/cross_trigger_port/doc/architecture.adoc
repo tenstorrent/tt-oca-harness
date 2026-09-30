@@ -17,10 +17,11 @@ interfaces.
 image::ctp-module-structure.svg["Gate-level structure of the Cross Trigger Port: the u_reg CSR block and the u_core pulse stretcher, handshake controller, synchronisers and pad-control muxes and registers",width=100%,pdfwidth=100%]
 
 The figure is read from the core side on the left to the four GPIO pads on the
-right. Each 2:1 mux passes its upper input in wire-OR mode, when
-`mode_wire_or_i` is high because `CONFIG.MODE` is 0, and its lower input in
-point-to-point mode. Italic names are nets driven by `u_reg` from the named CSR
-fields. Every pad control and both core-side outputs, `ct_dst_o` and `busy_o`,
+right. Every 2:1 mux is selected by `mode_wire_or_i`, and the numbers inside
+it mark which input each select value takes. Input 1, drawn upper, passes in
+wire-OR mode, when `mode_wire_or_i` is high because `CONFIG.MODE` is 0; input 0,
+drawn lower, passes in point-to-point mode. Italic names are nets driven by
+`u_reg` from the named CSR fields. Every pad control and both core-side outputs, `ct_dst_o` and `busy_o`,
 leave the port through a register on `clk_i`. Each pad input passes through two
 synchroniser registers and an XOR with `invert_i` before any logic uses it. The
 `STATUS` read-back from the core to `u_reg` is not drawn.

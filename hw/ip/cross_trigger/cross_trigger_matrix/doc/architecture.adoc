@@ -3,8 +3,13 @@
 
 [[ctm-architecture]]
 
-The Cross Trigger Matrix in this tree is configured for 26 source ports and 26
-destination ports, matching the DTP cross-trigger topology. The matrix
+The Cross Trigger Matrix has N source ports and N destination ports, one of
+each per CTM port of the Cross Trigger Network, so
+N = `XTRIG_NUM_CTP` + `XTRIG_NUM_INT_CT`. The `dtp_pkg` defaults of 16 external
+CTPs and 10 internal CTPs give N = 26. `cross_trigger_matrix_pkg` takes
+`NUM_CT_SRC` and `NUM_CT_DST` from the register map, and the CTN asserts at
+elaboration that both equal `NUM_CTP` + `NUM_INT_CT`, so resizing the matrix
+means regenerating `regs/cross_trigger_matrix.rdl` to match. The matrix
 implements a combinatorial AND-OR crossbar with registered outputs to route
 cross-trigger pulses between CTPs and internal cross-trigger sources.
 
@@ -15,8 +20,8 @@ registered destination.
 .CTM routing structure
 image::ctm-routing-structure.svg["Cross Trigger Matrix: the ct_dst_i bus and a CT_DST_SELECT field from u_reg feed the AND gates of each u_src_selector, whose OR-reduced result is registered as ct_src_o",width=720,pdfwidth=70%]
 
-The figure draws two of the 26 selectors, for `ct_src_o[0]` and `ct_src_o[25]`,
-and in each the AND gates for inputs 0, 1 and 25; the dots stand for the rest.
+The figure draws two of the N selectors, for `ct_src_o[0]` and `ct_src_o[N-1]`,
+and in each the AND gates for inputs 0, 1 and N-1; the dots stand for the rest.
 The thick lines are buses whose taps carry the bit index: the `ct_dst_i` bus
 fans out to every selector, and each selector reads its own
 `CT_SRC[j].CONFIG_0.CT_DST_SELECT` field from `u_reg`, the matrix CSR block
@@ -29,7 +34,7 @@ prevent loops in the SiP cross trigger network.
 === Routing Logic
 
 The CTM routing implements a two-stage combinatorial path followed by output
-registration. Each of the 26 CT_Src output ports is driven by a dedicated
+registration. Each of the N CT_Src output ports is driven by a dedicated
 `ctm_src_selector` module that performs the following operation:
 
 <<ctm-routing-stages-table>> describes the selection, combination, and register stages
@@ -79,9 +84,10 @@ clock-stop connections.
 .CTM port indices
 |===
 |Port Index |Description
-|0 to N-1 |External CTPs (NUM_CTP)
-|N to N+M-1 |Internal CTPs (NUM_INT_CT)
+|0 to NUM_CTP-1 |External CTPs (NUM_CTP)
+|NUM_CTP to N-1 |Internal CTPs (NUM_INT_CT)
 |===
 
-Where N = NUM_CTP and M = NUM_INT_CT. This indexing is used for CTM ct_dst_i and
+NUM_CTP and NUM_INT_CT are the CTN parameters that `XTRIG_NUM_CTP` and
+`XTRIG_NUM_INT_CT` set. This indexing is used for CTM ct_dst_i and
 ct_src_o port assignment and CTM routing configuration registers.

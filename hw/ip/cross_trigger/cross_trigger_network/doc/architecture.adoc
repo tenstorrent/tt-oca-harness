@@ -58,6 +58,17 @@ From the local CLAs to Chiplet 0.
 From the local CLAs to Chiplet 3.
 |===
 
+No route leads from a CTP back to itself, but a CTP in wire-OR mode also
+receives the falling edge that it drives onto the shared wire. A trigger that
+Chiplet 0 forwards to its wire-OR CTP therefore comes back from that CTP one
+wire-OR round trip later, and Chiplet 0's wire-OR rule forwards it again. For a
+trigger from Chiplet 3, the echo reaches Chiplet 0's local CLAs and Chiplets 3
+and 4 a second time, and Chiplet 3 passes it on to Chiplet 5. Triggers from
+Chiplet 4, Chiplet 5 and Chiplet 0's local CLAs echo in the same way; triggers
+that enter from Chiplets 1 and 2 do not. Any bridge between a wire-OR group and
+point-to-point links behaves like this, so a destination can see one trigger
+twice, the second copy one wire-OR round trip after the first.
+
 === Cross Trigger Port (CTP)
 
 OCAH supports a configurable number of CTPs, from 0 to 8, for a total number of
