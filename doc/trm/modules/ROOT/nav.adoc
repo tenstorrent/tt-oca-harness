@@ -139,4 +139,5 @@ endif::release[]
 * xref:ip-reference.adoc[IP Reference]
 * xref:dashboard.adoc[Verification Dashboard]
 * Appendices
+** xref:register-field-access.adoc[Register Field Access Notation]
 ** xref:referenced-documents.adoc[Referenced Documents]

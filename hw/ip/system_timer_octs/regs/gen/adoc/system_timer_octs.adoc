@@ -29,7 +29,7 @@ Open Chiplet Time Synchronization (OCTS) System Timer Registers
 |===
 | Bits | Field | Access | Reset | Description
 | 31:1 | `Reserved` | - | - a| Reserved
-| 0 | `START` | RW | 0x0 a| Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
+| 0 | `START` | RW 1P | 0x0 a| Start the system timer. Asserts the sync_load signal to start synchronization (only does anything if primary mode). Ensure
 both primary and secondary are out of reset.
 |===
 
