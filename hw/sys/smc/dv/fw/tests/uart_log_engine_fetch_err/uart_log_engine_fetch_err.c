@@ -424,8 +424,10 @@ int main(void) {
         for (uint32_t i = 0; i < RELATCH_POLLS; i++) {
             uint32_t r = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
             if (r != 0u) {
-                info_msg_hex32_s(0, "FAIL: LOG_FETCH_ERR re-latched with the engine stopped, "
-                                    "status=", r);
+                info_msg_hex32_s(0,
+                                 "FAIL: LOG_FETCH_ERR re-latched with the engine stopped, "
+                                 "status=",
+                                 r);
                 fail_at("FAIL: log_fetch_err is behaving as a level, not an event");
             }
         }

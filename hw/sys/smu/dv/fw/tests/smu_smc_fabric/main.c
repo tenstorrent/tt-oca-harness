@@ -9,9 +9,11 @@
 #include "smu_smc_fabric_protocol.h"
 
 #define SCRATCH(idx) \
-    ((volatile uint32_t *)(uintptr_t)(SMCFAB_SCRATCH_BASE + (idx) * SMCFAB_SCRATCH_STRIDE))
+    ((volatile uint32_t *)(uintptr_t)(SMCFAB_SCRATCH_BASE + (idx)*SMCFAB_SCRATCH_STRIDE))
 
-static inline void fence(void) { __asm__ volatile("fence iorw, iorw" ::: "memory"); }
+static inline void fence(void) {
+    __asm__ volatile("fence iorw, iorw" ::: "memory");
+}
 
 // Stores every word before the first load, so each hart has several
 // transfers in flight on the path, then reads each back.
