@@ -14,6 +14,8 @@ from typing import Iterable
 from systemrdl import RDLCompiler, RDLListener, RDLWalker
 from systemrdl.node import AddrmapNode, FieldNode, RegNode, RootNode, SignalNode
 
+from .fieldprops import extract_field_props
+
 
 @dataclass
 class Field:
@@ -131,6 +133,39 @@ def sw_access(node) -> str:
     return r + w or "-"
 
 
+# Write side effects that act on a single written bit render as the familiar
+# merged token (RW1C, W1S, RW0C); any-write and user-defined effects, read
+# effects and single-pulse render as a trailing flag so the base access stays
+# byte-identical for fields that have none.
+_ONWRITE_MERGE = {
+    "woclr": "1C",
+    "woset": "1S",
+    "wot": "1T",
+    "wzc": "0C",
+    "wzs": "0S",
+    "wzt": "0T",
+}
+_ONWRITE_FLAG = {"wclr": "WC", "wset": "WS", "wuser": "WMOD"}
+_ONREAD_FLAG = {"rclr": "RC", "rset": "RS", "ruser": "RMOD"}
+
+
+def field_access(node) -> str:
+    """Software access of a field, including its read/write side effects."""
+    base = sw_access(node)
+    if base == "-":
+        return base
+    props = extract_field_props(node)
+    token = base + _ONWRITE_MERGE.get(props.onwrite, "")
+    flags = [token]
+    if props.onwrite in _ONWRITE_FLAG:
+        flags.append(_ONWRITE_FLAG[props.onwrite])
+    if props.onread in _ONREAD_FLAG:
+        flags.append(_ONREAD_FLAG[props.onread])
+    if props.singlepulse:
+        flags.append("1P")
+    return " ".join(flags)
+
+
 def reset_value(node) -> str:
     value = node.get_property("reset")
     if value is None:
@@ -170,7 +205,9 @@ def bit_ranges(reg: RegNode) -> list[Field]:
             lsb, f = by_msb[bit]
             bits = f"{bit}:{lsb}" if bit != lsb else str(bit)
             out.append(
-                Field(bits, f.inst_name, sw_access(f), reset_value(f), f.get_property("desc") or "")
+                Field(
+                    bits, f.inst_name, field_access(f), reset_value(f), f.get_property("desc") or ""
+                )
             )
             bit = lsb - 1
             continue
