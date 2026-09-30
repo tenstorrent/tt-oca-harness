@@ -22,16 +22,21 @@ none, and that no other leaf probes:
 * the tail of every remap and filter array slot, where the slot stride is
   wider than the slot's registers, and the first word past each array.
 
-An array's aperture is ``SEP_TOP_<ARRAY>_TOTAL_SIZE`` from the generated
-``hw/sys/sep/regs/gen/c/sep_addr.h``, and must equal the aperture of the
-array's row in the map. The array's extent is that row's Decoded Extent. A slot
-tail below it is a hole in the extent; the last slot's tail lies past it.
+An array's extent is ``SEP_TOP_<ARRAY>_TOTAL_SIZE`` from the generated
+``hw/sys/sep/regs/gen/c/sep_addr.h``: the RDL allocates the whole stride to
+every slot, the last one included, so every slot tail is inside the extent and
+reads zero with OKAY. The array's aperture in the map must equal that size.
 
-Every probe and tail access carries the response the map states for it
+The map's Decoded Extent for these arrays ends at the last slot's registers,
+because ``sep.rdl`` does not set ``ocah_full_stride_extent`` on them, so the map
+lists the last slot's tail as Past Extent. Where the map and the RDL allocation
+disagree on a tail word, the word is graded by the extent rule only and is
+listed in ``SepUnmappedCfg.map_disagree``.
+
+Every other probe and tail access carries the response the map states for it
 (``SepUnmappedCfg.expect``). The config refuses to build if a refusal-group
-probe, or a tail past the extent, is not a refusal in the map, or if a tail in
-the extent is not OKAY with zero, so each refusal or zero-read checker grades a
-contract the map states.
+probe is not a refusal in the map, so each refusal checker grades a contract the
+map states.
 
 Every base, size and offset comes from the generated SystemRDL export
 (``hw/sys/sep/regs/gen/py/sep_reg.py`` through ``sep_reg_meta``). A dead
@@ -43,6 +48,14 @@ address bits would land. RTL decode tables are never read.
 The live words this module programs are the positive control: a write that
 lands and reads back proves the bus reaches that block, and a distinct value
 in each word is what makes a write alias or a read alias visible.
+
+A live word is read before its write, so the closing restore can write the
+pre-test value back. A word with a field that has no RDL reset (the eFuse token
+input words, ``hw/ip/efuse/regs/efuse_mmr.rdl`` RMA_TOKEN_I and
+SEC_DISABLE_TOKEN_I) has no value before its first write, so it is written
+first and is not restored. The generated IP-XACT states which fields carry a
+reset (``sep_reg_meta.word_has_unreset_field``); the generated ``_REG_DEFAULT``
+reads 0 for a field without one and is not used for this.
 """
 
 from __future__ import annotations
@@ -63,6 +76,7 @@ from sep_reg_meta import (
     indexed_block_count,
     sep_addr_define,
     sym,
+    word_has_unreset_field,
 )
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
@@ -194,10 +208,15 @@ class SepUnmappedCfg:
         self.live: list[LiveWord] = []
         self.probes: list[Probe] = []
         self.tails: list[TailWord] = []
-        # array name -> (base, Decoded Extent) from the map row
+        # array name -> (base, TOTAL_SIZE) from sep_addr.h
         self.array_extent: dict[str, tuple[int, int]] = {}
+        # tail word -> the map cell that disagrees with the RDL allocation
+        self.map_disagree: dict[int, str] = {}
         # (addr, op) -> the response the map states
         self.expect: dict[tuple[int, str], Expected] = {}
+        # Live words with a field that has no RDL reset: written before the
+        # first read, never pre-read or restored.
+        self.unreset: frozenset[int] = frozenset()
         self._build_arrays()
         self._build_syscsr()
         self._build_reserved_row()
@@ -231,10 +250,8 @@ class SepUnmappedCfg:
                     f"{name}: map row {row.unit} 0x{row.base:08x}-0x{row.end:08x} is not the "
                     f"array aperture base 0x{bases[0]:08x} + TOTAL_SIZE 0x{total:x}"
                 )
-            extent_end = bases[0] + row.extent
-            if extent_end < bases[-1] + sizes[-1]:
-                raise RuntimeError(f"{name}: Decoded Extent ends inside the last slot's registers")
-            self.array_extent[name] = (bases[0], row.extent)
+            extent_end = bases[0] + total
+            self.array_extent[name] = (bases[0], total)
             slot_words = [tuple(range(b, b + s, 4)) for b, s in zip(bases, sizes)]
             for i, base in enumerate(bases):
                 # One distinct, non-zero programmed word per slot. The alias
@@ -510,16 +527,27 @@ class SepUnmappedCfg:
                 )
         for t in self.tails:
             for op in ("r", "w"):
-                e = self.expect[(t.addr, op)] = expected_unbacked(t.addr, op)
+                e = expected_unbacked(t.addr, op)
                 ok_zero = e.resp == RESP_OKAY and not e.rdata
-                if t.in_extent != ok_zero:
+                if t.in_extent == ok_zero:
+                    self.expect[(t.addr, op)] = e
+                elif t.in_extent:
+                    self.map_disagree[t.addr] = f"{e.cell} ({e.row}, {e.column})"
+                else:
                     raise RuntimeError(
-                        f"{t.label} {op} 0x{t.addr:08x}: in_extent={t.in_extent} but the map "
-                        f"states {e.cell!r} ({e.row}, {e.column})"
+                        f"{t.label} {op} 0x{t.addr:08x} is past the RDL allocation but the "
+                        f"map states {e.cell!r} ({e.row}, {e.column})"
                     )
         addrs = [w.addr for w in self.live]
         if len(addrs) != len(set(addrs)):
             raise RuntimeError("a live word is listed twice")
+        self.unreset = frozenset(a for a in addrs if word_has_unreset_field(a))
+        for w in self.live:
+            if w.addr in self.unreset and w.value is None:
+                raise RuntimeError(
+                    f"{w.name} 0x{w.addr:08x}: a field has no RDL reset, so a "
+                    "snapshot-only read of it has no defined value"
+                )
         values = [w.value for w in self.live if w.value is not None]
         if any(v == 0 for v in values) or len(values) != len(set(values)):
             raise RuntimeError(
@@ -565,6 +593,7 @@ class SepUnmappedCfg:
         n_in = sum(1 for t in self.tails if t.in_extent)
         return (
             f"live={len(self.live)} programmed={len(self.programmed)} "
+            f"no-rdl-reset={len(self.unreset)} "
             f"probes={len(self.probes)} [{per}] tails={len(self.tails)} "
             f"(in-extent={n_in}, past-extent={len(self.tails) - n_in})"
         )
@@ -647,23 +676,36 @@ class SepUnmappedAccess:
     async def program_live(self) -> list[str]:
         """Write every programmed word, then snapshot every live word.
 
+        A word with an RDL reset is read first, for the restore. A word in
+        ``cfg.unreset`` is written with no read before it.
+
         Returns failure strings. A programmed word must read back its value
         exactly and with OKAY; a snapshot-only word must read OKAY.
         """
         fails: list[str] = []
+        reached: set[int] = set()
         for w in self.cfg.live:
-            resp, val, to = await self.access("r", w.addr, may_refuse=False)
-            if to or resp != RESP_OKAY:
-                fails.append(f"{w.name} 0x{w.addr:08x} pre-read resp={resp} timed_out={to}")
-                continue
-            self.pre[w.addr] = val
+            if w.addr in self.cfg.unreset:
+                self.log.info(
+                    "UNMAPPED-LIVE: %s 0x%08x has a field with no RDL reset; it is "
+                    "written before its first read and is not restored",
+                    w.name,
+                    w.addr,
+                )
+            else:
+                resp, val, to = await self.access("r", w.addr, may_refuse=False)
+                if to or resp != RESP_OKAY:
+                    fails.append(f"{w.name} 0x{w.addr:08x} pre-read resp={resp} timed_out={to}")
+                    continue
+                self.pre[w.addr] = val
             if w.value is not None:
                 resp, _d, to = await self.access("w", w.addr, wdata=w.value, may_refuse=False)
                 if to or resp != RESP_OKAY:
                     fails.append(f"{w.name} 0x{w.addr:08x} write resp={resp} timed_out={to}")
                     continue
+            reached.add(w.addr)
         for w in self.cfg.live:
-            if w.addr not in self.pre:
+            if w.addr not in reached:
                 continue
             resp, val, to = await self.access("r", w.addr, may_refuse=False)
             if to or resp != RESP_OKAY:
@@ -736,7 +778,10 @@ class SepUnmappedAccess:
         return resp, rdata, to, changed, reread
 
     async def restore(self) -> None:
-        """Write back the pre-test value of every programmed word."""
+        """Write back the pre-test value of every programmed word that has one.
+
+        A word in ``cfg.unreset`` has no pre-test value and is left as written.
+        """
         for w in self.cfg.programmed:
             if w.addr in self.pre:
                 await self.access("w", w.addr, wdata=self.pre[w.addr], may_refuse=False)

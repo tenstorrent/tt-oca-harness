@@ -21,16 +21,20 @@ meet, each through a strict pattern:
   <code>."
 
 The table carries the RDL read data exactly. ``rdata`` in ``sep.rdl`` is a
-64-bit value (``ocah_resp`` in ``hw/common/regs/regblock_udps.rdl``), and the
+64-bit field (``ocah_resp`` in ``hw/common/regs/regblock_udps.rdl``), and the
 renderer (``tools/regs/common/memorymap.py``, ``Response.adoc``) prints its low
-word and adds the bit-2 note exactly when the upper word is non-zero. A cell
-with no note therefore states an upper word of 0 in the RDL.
+word and adds the bit-2 note exactly when the upper word is non-zero. A 64-bit
+RDL rdata therefore states both words: the cell gives the low word and the note
+gives the word for address bit 2.
 
-For a read with address bit 2 set, a cell with no note and a non-zero low word
-is not graded on its data: the RDL states 0 there, while the Decode Response
-Codes definition of a cell gives one read word per 32-bit access. The two
-readings disagree, so ``Expected.rdata`` is None and ``rdata_note`` says why;
-the response code is still graded. Every other read has one stated word.
+A cell with no note and a non-zero low word comes from an RDL rdata that
+carries no upper word (a 32-bit value such as ``0xBADCAB1E``). The spec does not
+state the upper-half word there: the Decode Response Codes definition gives one
+read word per 32-bit access and does not say which word a read with address
+bit 2 set returns. Such a read is not graded on its data, so ``Expected.rdata``
+is None and ``rdata_note`` says why; the response code is still graded. Where
+the low word is 0 and no note is given, both words are 0, so every other read
+has one stated word.
 
 A lookup that meets any other note, or a cell that is not a bus response
 (``Forwarded``, ``Adopter-defined``), raises: the expectation is not modeled,
@@ -234,8 +238,8 @@ def expected_unbacked(addr: int, op: str) -> Expected:
             rdata = cell.rdata_hi
         else:
             note = (
-                f"sep.rdl states upper word 0x{cell.rdata_hi:08x}; the cell states one word "
-                f"0x{cell.rdata_lo:08x} for a 32-bit access"
+                f"the RDL rdata 0x{cell.rdata_lo:08x} carries no upper word, and the spec "
+                "does not state the upper-half word"
             )
             return Expected(RESP_CODE[cell.rresp], None, row.unit, column, cell.text, note)
         return Expected(RESP_CODE[cell.rresp], rdata, row.unit, column, cell.text)

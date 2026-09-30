@@ -15,7 +15,9 @@ probe the refusal checkers grade is not a refusal there.
 
 CHK-UNMAPPED-LIVE is the positive control. Every programmed live word next to a
 probed hole is written with a distinct value and must read it back OKAY, so the
-bus reaches each block and a write or read alias is visible.
+bus reaches each block and a write or read alias is visible. A live word whose
+RDL field has no reset (the generated IP-XACT gives it no reset element) has no
+value before its first write, so it is written before any read of it.
 
 CHK-SYSCSR-HOLE-REFUSE, CHK-SYS-RESERVED-REFUSE, CHK-MBOX-UPPER-REFUSE,
 CHK-EFUSE-CTRL-PAST-REFUSE, CHK-EFUSE-MMR-PAST-REFUSE and CHK-SPI-PAST-REFUSE:
@@ -26,21 +28,23 @@ eFuse token MMR, reads OKAY with its RDL reset, and the first word after it is
 refused. The extent therefore ends where the RDL ends it.
 
 CHK-ARRAY-TAIL: the tail of each remap / filter array slot (stride wider than
-the slot's registers) follows the map. The array extent is the Decoded Extent
-of the array's map row, whose aperture is base + SEP_TOP_<ARRAY>_TOTAL_SIZE. A
-tail inside it reads zero and accepts a write with OKAY; the last slot's tail
-lies past it and is refused, and so is the first word past the aperture where no
-other RDL block owns that word. A re-read of an in-extent tail after its write
-answers OKAY with zero, so the write was discarded. A tail write never moves a
-word of its own slot or of the next slot.
+the slot's registers) follows the extent rule. The array extent is base +
+SEP_TOP_<ARRAY>_TOTAL_SIZE, the size the RDL allocates. Every tail inside it,
+the last slot's tail included, reads zero and accepts a write with OKAY. The
+first word past it is refused where no other RDL block owns that word. A
+re-read of an in-extent tail after its write answers OKAY with zero, so the
+write was discarded. A tail write never moves a word of its own slot or of the
+next slot.
 
 CHK-UNMAPPED-CODE: every probe and tail access answers the response code the
-map states for that address and channel, and every read returns the stated read
-data (the word for address bit 2 where the map gives one). Where sep.rdl states
-an upper word of 0 under a non-zero low word, a bit-2 read is graded on its
-code only and its data is logged (UNMAPPED-RDATA-UNGRADED). Past the
-efuse_interface_ctrl and spi_controller extents, reads cover both 32-bit lanes
-of the bus. The monitor lane-checks the read data of every error response for
+map states for that address and channel, and every read returns the stated
+read data (the word for address bit 2 where the map gives one). The tail words
+where the map and the RDL allocation disagree are graded by CHK-ARRAY-TAIL
+only and logged as UNMAPPED-MAP-DISAGREE. Where the RDL rdata carries no upper
+word under a non-zero low word, the spec does not state the upper-half word,
+so a bit-2 read there is graded on its code only and its data is logged
+(UNMAPPED-RDATA-UNGRADED). Past the efuse_interface_ctrl and spi_controller
+extents, reads cover both 32-bit lanes of the bus. The monitor lane-checks the read data of every error response for
 X/Z, so an unknown payload fails instead of reading as zero; every such read
 must have been lane-checked.
 
@@ -129,8 +133,10 @@ class sep_unmapped_access_policy_test(sep_base_test):
         )
         self.logger.info(
             "CHK-UNMAPPED-LIVE PASS: %d programmed word(s) read back their distinct "
-            "value with OKAY; %d live word(s) snapshotted in total",
+            "value with OKAY (%d with no RDL reset, written before any read); %d "
+            "live word(s) snapshotted in total",
             len(cfg.programmed),
+            len(cfg.unreset),
             len(ua.snap),
         )
 
@@ -233,10 +239,19 @@ class sep_unmapped_access_policy_test(sep_base_test):
                 ext_base, ext_size = cfg.array_extent[t.array]
                 extent = (
                     f"array extent 0x{ext_base:08x}-0x{ext_base + ext_size - 1:08x} "
-                    f"(map Decoded Extent 0x{ext_size:x})"
+                    f"(base + TOTAL_SIZE 0x{ext_size:x})"
                 )
                 tail_codes[(t.in_extent, op, _code(resp))] += 1
-                if not to:
+                if not to and t.addr in cfg.map_disagree:
+                    self.logger.info(
+                        "UNMAPPED-MAP-DISAGREE: %s answered %s, 0x%08x; graded by "
+                        "CHK-ARRAY-TAIL only; the map states %s",
+                        where,
+                        _code(resp),
+                        rdata,
+                        cfg.map_disagree[t.addr],
+                    )
+                elif not to:
                     n_code += 1
                     f, u = _grade(cfg, where, t.addr, op, resp, rdata)
                     if f:
@@ -294,8 +309,8 @@ class sep_unmapped_access_policy_test(sep_base_test):
         verdict["CHK-ARRAY-TAIL"] = tail_fails
         if n_code == 0:
             code_fails.append("no probe or tail access completed, so no code was graded")
-        # Report, not a verdict: sep.rdl and the cell definition disagree on
-        # this read data, so only its response code is graded.
+        # Report, not a verdict: the spec does not state this upper-half read
+        # word, so only its response code is graded.
         for line in ungraded:
             self.logger.info("UNMAPPED-RDATA-UNGRADED: %s", line)
         if ua.err_reads == 0 or ua.err_reads_lane_checked != ua.err_reads:
