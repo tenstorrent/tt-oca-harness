@@ -171,10 +171,10 @@
 #define SEP_MBOX_IRQ_MBOX_FILTER_END \
     ((unsigned long long)(SEP_MBOX_IRQ_MBOX_INBOUND_BASE + 7 * SEP_MBOX_IRQ_MBOX_CH_STRIDE + \
                           SEP_MBOX_IRQ_MBOX_REG_BLOCK_SIZE - 1))
-#define SEP_MBOX_IRQ_MBOX_FILTER_CFG 0x0000000100030013ULL /* read/write/enable/src_id=3 */
+#define SEP_MBOX_IRQ_MBOX_FILTER_CFG 0x0000000100030013ULL    /* read/write/enable/src_id=3 */
 #define SEP_MBOX_IRQ_MBOX_FILTER_CFG_NS 0x0000000100030113ULL /* + allow_ns (non-secure) */
-#define SEP_MBOX_IRQ_MBOX_FILTER_CFG_WORD 0x00030013 /* field-based cfg (passive golden) */
-#define SEP_MBOX_IRQ_MBOX_FILTER_CFG_WORD_NS 0x00030113 /* + allow_ns (passive golden) */
+#define SEP_MBOX_IRQ_MBOX_FILTER_CFG_WORD 0x00030013          /* field-based cfg (passive golden) */
+#define SEP_MBOX_IRQ_MBOX_FILTER_CFG_WORD_NS 0x00030113       /* + allow_ns (passive golden) */
 
 /* Firmware poll bound (loop iterations) shared by both sides -- bounded so a missing peer times
  * out to a fail marker instead of hanging the simulation (mirrors sep_interop /
