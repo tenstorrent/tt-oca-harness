@@ -873,7 +873,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears.
 
 |eFuse per-spare write-lock slot numbering
-|`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE7`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
+|`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE8`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
 
 |Token comparator fail-closed at the lifecycle gate
 |`sep_lcc_lc_state_w1s_prod_test` (`CHK-GATE-SIP-FAULT`). A redundancy fault forces the reserved error code onto the token status, and the `LC_STATE` bit[1] advance must not land — the gate compares for equality with the match code, so a gate written as "not a mismatch" would let the fault code through. The cell that follows presents the same token with the fault removed and does advance, so the pair is a contrast rather than a lone negative.
@@ -5034,7 +5034,7 @@ per-IP clock gate.
 *Test Procedure*:
 
 [arabic]
-. Walk `SPARE0` through `SPARE7` in order. For each spare, program one seed-selected bit while unlocked; OTP readback and resense shadow match the independent image golden.
+. Walk `SPARE0` through `SPARE8` in order. For each spare, program one seed-selected bit while unlocked; OTP readback and resense shadow match the independent image golden.
 . Program that spare's own `LOCKS_SPARE` bit, then reject a second bit (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
 . Spare `k+1` is programmed only after spare `k` is locked, so a lock bit wired past its own slot fails the next spare's unlocked-program cell.
 . The seed selects only the bit offsets inside each spare. Slot coverage does not depend on reseed.
@@ -5049,7 +5049,7 @@ per-IP clock gate.
 |CHK-LOCK-REJECT
 |A write-locked spare rejects a later program; OTP and the post-resense shadow match the independent golden (lock bit set, rejected bit 0). Logged once per spare.
 |CHK-SPARE-LOCK-SLOTS
-|All eight spares ran both cells in one invocation. A lock of spare `k` must not block spare `k+1`.
+|All nine spares (`SPARE0..SPARE8`, lock slots 32-40 in `otp_fuse_controller.adoc`) ran both cells in one invocation. A lock of spare `k` must not block spare `k+1`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.

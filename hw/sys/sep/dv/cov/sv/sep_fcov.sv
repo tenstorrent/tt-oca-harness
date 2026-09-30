@@ -662,7 +662,7 @@ module sep_fcov (
   // Programming a write-locked field is a LEGAL software action with a
   // specified outcome (refused), not a fault injection -- the same class as a
   // read-only register. sep_efuse_program_lock_matrix_test walks
-  // unlocked-program then lock-then-reject on EACH of SPARE0..SPARE7 in order,
+  // unlocked-program then lock-then-reject on EACH of SPARE0..SPARE8 in order,
   // so the whole cross is filled by ONE seed; only the bit offset inside a
   // spare is seeded.
   //
@@ -670,7 +670,15 @@ module sep_fcov (
   // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
   // PROGRAM_DONE or PROGRAM_STATUS (the refusal).
   localparam logic [31:0] EfuseProgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
-  localparam int unsigned SpareCount = 8;
+  // Two lock bits per spare, and the assigned spare locks end where the RDL
+  // reserved field of LOCKS_SPARE starts: 9 spares, slots 32-40
+  // (otp_fuse_controller.adoc).
+  localparam int unsigned LockBitsPerSlot = 2;
+  localparam int unsigned SpareCount =
+      SEP_EFUSE_MAP_LOCKS_SPARE_SPARE_LOCK_RSVD_SHIFT / LockBitsPerSlot;
+  // Wide enough to index every spare; a narrower index would wrap the last
+  // spare onto spare 0 and fill its bins with the wrong field.
+  localparam int unsigned SpareIdxW = $clog2(SpareCount);
   // Spare k occupies SPARE_STRIDE bytes of the shadow map, so its OTP bit
   // range starts at (byte offset / 4) * 32 bits.
   localparam int unsigned SpareStrideB  = SEP_EFUSE_MAP_SPARE1_REG_OFFSET -
@@ -680,7 +688,6 @@ module sep_fcov (
   // Slot 32+k owns spare k's write lock at bit 2*(32+k) of the LOCKS vector,
   // which is where LOCKS_SPARE starts (otp_fuse_controller.adoc, sep_efuse_pkg).
   localparam int unsigned SpareLockBase = (SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4) * 32;
-  localparam int unsigned LockBitsPerSlot = 2;
 
   wire        efuse_prog_go = wr_ev && (aw_addr_q == EfuseProgCtrl) &&
       ((wr_data & EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_EFUSE_PROGRAM_GO_MASK) != 32'h0);
@@ -696,18 +703,18 @@ module sep_fcov (
   // Which spare a targeted OTP bit belongs to, and whether it is a lock bit.
   wire        prog_is_spare = (efuse_prog_bit >= SpareBitBase) &&
       (efuse_prog_bit < (SpareBitBase + SpareCount * SpareBitSpan));
-  wire [2:0]  prog_spare_idx = (efuse_prog_bit - SpareBitBase) / SpareBitSpan;
+  wire [SpareIdxW-1:0] prog_spare_idx = (efuse_prog_bit - SpareBitBase) / SpareBitSpan;
   wire        prog_is_lock = (efuse_prog_bit >= SpareLockBase) &&
       (efuse_prog_bit < (SpareLockBase + SpareCount * LockBitsPerSlot)) &&
       (((efuse_prog_bit - SpareLockBase) % LockBitsPerSlot) == 0);
-  wire [2:0]  prog_lock_idx = (efuse_prog_bit - SpareLockBase) / LockBitsPerSlot;
+  wire [SpareIdxW-1:0] prog_lock_idx = (efuse_prog_bit - SpareLockBase) / LockBitsPerSlot;
 
   // NOT cleared on reset: a programmed OTP lock bit is permanent, and the
   // owning test re-senses (which pulses reset) between programming spare k's
   // lock and proving the refusal. A reset-cleared latch would score every
   // post-resense attempt as unlocked.
   logic [SpareCount-1:0] spare_locked_q;   // write-lock programmed for spare k
-  logic [2:0]            prog_spare_q;     // spare targeted by the pending GO
+  logic [SpareIdxW-1:0]  prog_spare_q;     // spare targeted by the pending GO
   logic                  prog_pending_q;   // a data program is awaiting its outcome
   logic                  prog_locked_q;    // was that spare locked when it was issued
 
@@ -1598,17 +1605,17 @@ module sep_fcov (
   endgroup
 
   covergroup sep_efuse_program_lock_cg with function sample (
-      logic [2:0] spare, logic locked, logic rejected
+      logic [SpareIdxW-1:0] spare, logic locked, logic rejected
   );
     option.per_instance = 1;
     option.name = "sep_efuse_program_lock_cg";
     cp_field: coverpoint spare {bins spare[] = {[0 : SpareCount - 1]};}
     cp_lock: coverpoint locked {bins unlocked = {1'b0}; bins locked = {1'b1};}
-    // 16 cells, all walked by one seed: the owning test programs then locks
-    // then re-programs each of the eight spares in order.
+    // 18 cells, all walked by one seed: the owning test programs then locks
+    // then re-programs each of the nine spares in order.
     x_field_lock: cross cp_field, cp_lock;
     // The outcome is its own coverpoint, not a third cross dimension: crossing
-    // it would declare 16 cells that only a broken DUT could fill, and the
+    // it would declare 18 cells that only a broken DUT could fill, and the
     // program/reject contract belongs to the test's checker.
     cp_outcome: coverpoint rejected {
       bins programmed = {1'b0}; bins refused = {1'b1};

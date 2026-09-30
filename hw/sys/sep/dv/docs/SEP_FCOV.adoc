@@ -593,9 +593,9 @@ once its write-lock is set.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_field` |SPARE0..SPARE7
+|`cp_field` |SPARE0..SPARE8
 |`cp_lock` |The target's write-lock state when the program was issued: unlocked, locked
-|`x_field_lock` |16 cells
+|`x_field_lock` |18 cells
 |`cp_outcome` |`PROGRAM_DONE` (programmed) and `PROGRAM_STATUS` (refused)
 |===
 
@@ -603,22 +603,23 @@ Programming a write-locked field is a legal software action with a specified
 outcome, not a fault injection -- the same class as writing a read-only
 register -- so it is Phase 1 and not one of the Phase 2 error groups.
 
-All 16 cross cells are filled by a SINGLE seed:
+All 18 cross cells are filled by a SINGLE seed:
 `sep_efuse_program_lock_matrix_test` walks unlocked-program, then lock, then
-reject on each of SPARE0..SPARE7 in order, and only the bit offset inside a
+reject on each of SPARE0..SPARE8 in order, and only the bit offset inside a
 spare is seed-selected. Walking every spare is what makes the slot numbering
 falsifiable -- a lock bit wired to the wrong slot would otherwise be caught only
 on the seed that happened to draw that spare.
 
 The outcome is a separate coverpoint rather than a third cross dimension: a
-`field x lock x outcome` cross would declare 16 cells that only a broken DUT
+`field x lock x outcome` cross would declare 18 cells that only a broken DUT
 could fill, and the program-succeeds / lock-refuses contract belongs to the
 test's checker.
 
 Everything is decoded frontdoor from `EFUSE_PROGRAM_CTRL` -- `EFUSE_ADDR` plus
 `PROGRAM_GO` on the write, `PROGRAM_DONE` / `PROGRAM_STATUS` on the readback --
 and the spare index comes from the generated `SEP_EFUSE_MAP_SPARE*` offsets, not
-a literal.
+a literal. The spare count comes from the generated `LOCKS_SPARE` reserved-field
+shift.
 
 ==== `sep_efuse_fail_closed_cg`
 
