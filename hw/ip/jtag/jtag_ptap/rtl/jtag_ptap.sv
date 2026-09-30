@@ -170,6 +170,8 @@ module jtag_ptap
 
     input  logic                     clk_i,  // System clock for the JTAG2AXI bridges.
     input  logic                     rst_n_i,  // Active-low system reset for the JTAG2AXI bridges.
+    input  logic                     test_en_i,  // DFT test-mode enable, active-high, for the
+                                                 // JTAG2AXI bridges.
 
     input  logic                     pwr_on_rst_ni,  // Power-on reset (active low), ANDed with the
                                                      // client TRST.
@@ -947,6 +949,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
             .awid_o     (/* UNUSED */),
@@ -1038,6 +1041,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI-Lite Write Address Channel
             .awid_o     (/* UNUSED */),
@@ -1129,6 +1133,7 @@ module jtag_ptap
             // AXI Interface (ACLK Domain)
             .aclk_i    (clk_i),
             .arst_ni   (rst_n_i),
+            .test_en_i (test_en_i),
 
             // AXI Write Address Channel
             .awid_o     (axi_smc_dbg_req_o.aw.id),
