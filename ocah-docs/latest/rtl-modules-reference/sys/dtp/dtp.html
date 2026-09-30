@@ -750,8 +750,8 @@
 <tr><td><code>xtrig_ctp_ack_out_dout_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad output enable.</td></tr>
 <tr><td><code>xtrig_ctp_ack_out_din_i</code></td><td>input</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad input.</td></tr>
 <tr><td><code>xtrig_ctp_ack_out_din_en_o</code></td><td>output</td><td><code>logic [XTRIG_NUM_CTP-1:0]</code></td><td>CTP ack-out pad input enable.</td></tr>
-<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test enable; not connected inside DTP.</td></tr>
-<tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low; not connected inside DTP.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high, for the JTAG2AXI bridges and the CTN CSR crossbar.</td></tr>
+<tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low; unused. DTP has no reset synchronizer, so rst_n_i must arrive scan-controlled.</td></tr>
 </table>
 </div>
 </article>

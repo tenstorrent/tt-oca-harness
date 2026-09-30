@@ -1307,6 +1307,22 @@ connections.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTP ack-out input enable.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO pad ring</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>test_en_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT test-mode enable (active high) for the JTAG2AXI bridges and the cross trigger CSR crossbar. Default: 0 in functional mode.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT controller</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scan_rst_ni</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">In</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT scan reset (active low). Unused: DTP has no reset synchronizer, so <code>rst_n_i</code> must arrive scan-controlled.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DFT controller, or tie high</p></td>
+</tr>
 </tbody>
 </table>
 </div>

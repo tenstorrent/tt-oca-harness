@@ -1783,13 +1783,17 @@ region can never disagree.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>VROM (<code>0x1000_0000</code>) is a testbench-only virtual ROM used in the block TB.
-It is treated as always executable in both modes so that firmware running
-from VROM in simulation is not falsely faulted, and it is exempt from the ROM
-lockout for the same reason.  VROM does not exist in production silicon and
-so carries no security requirement.</p>
+<p>VROM is the virtual ROM window, <code>0x1000_0000</code>–<code>0x1000_FFFF</code>. Only a
+simulation build that defines <code>OCAH_KM_VROM</code> decodes it; there it is
+executable in both modes and exempt from the ROM lockout, and it carries no
+security requirement. Without the define the window is an unmapped address:
+a load or store answers DECERR, and a fetch pulses <code>EXEC_VIOLATION</code>.</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>For the define and the builds it is rejected in, see
+<a href="../../../../../ocah-integrator-guide/latest/defines.html#sep-defines-km" class="xref page">Key manager defines in the Integrator Guide</a>.</p>
 </div>
 <div class="paragraph">
 <p><code>SRAM_EXEC_MODE.enable</code> is set by the stack-less handover assembly
@@ -5680,9 +5684,11 @@ any sequence of writes. Only a warm or cold reset restores ROM access, and that
 restarts the ROM from its entry point rather than resuming it.</p>
 </div>
 <div class="paragraph">
-<p>The testbench virtual ROM (VROM, <code>0x1000_0000</code>) is exempt, because block-level
-firmware runs its <code>.text</code> from there. VROM does not exist in production silicon
-and carries no security requirement.</p>
+<p>The virtual ROM (VROM, <code>0x1000_0000</code>) is exempt only in a simulation build that
+defines <code>OCAH_KM_VROM</code>, and carries no security requirement. Without the define
+the window is an unmapped address, so a fetch from it pulses <code>EXEC_VIOLATION</code>
+like any other fetch outside the whitelist. See
+<a href="../../../../../ocah-integrator-guide/latest/defines.html#sep-defines-km" class="xref page">Key manager defines in the Integrator Guide</a>.</p>
 </div>
 </div>
 <div class="sect3">

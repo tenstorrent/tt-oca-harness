@@ -641,7 +641,7 @@
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock for the AXI-Lite CSRs and the routing logic.</td></tr>
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low asynchronous system reset.</td></tr>
-<tr><td><code>axil_req_i</code></td><td>input</td><td><code>axil_req_t</code></td><td>AXI-Lite CSR request that programs the per-source routing masks; only address bits [7:0] are decoded.</td></tr>
+<tr><td><code>axil_req_i</code></td><td>input</td><td><code>axil_req_t</code></td><td>AXI-Lite CSR request that programs the per-source routing masks; only the address bits the register map spans are decoded.</td></tr>
 <tr><td><code>axil_resp_o</code></td><td>output</td><td><code>axil_resp_t</code></td><td>AXI-Lite CSR response.</td></tr>
 <tr><td><code>ct_dst_i</code></td><td>input</td><td><code>logic [NUM_CT_DST-1:0]</code></td><td>Cross-trigger pulses into the routing matrix, one bit per CT_Dst port.</td></tr>
 <tr><td><code>ct_src_o</code></td><td>output</td><td><code>logic [NUM_CT_SRC-1:0]</code></td><td>Routed cross-trigger pulses, one registered bit per CT_Src port.</td></tr>

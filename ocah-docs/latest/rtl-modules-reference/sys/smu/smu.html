@@ -793,7 +793,7 @@
 <tr><td><code>trace_mem_req_o</code></td><td>output</td><td><code>trace_mem_pkg::SinkMemPktIn_s [tn_pkg::TRC_RAM_INSTANCES-1:0]</code></td><td>Trace-memory sink requests.</td></tr>
 <tr><td><code>trace_mem_resp_i</code></td><td>input</td><td><code>trace_mem_pkg::SinkMemPktOut_s [tn_pkg::TRC_RAM_INSTANCES-1:0]</code></td><td>Trace-memory sink responses.</td></tr>
 <tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>Scan test mode enable, active-high; forwarded to the DTP, the SMC, the SEP and the SMU AXI crossbar.</td></tr>
-<tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low, used in place of functional resets while test_en_i is high.</td></tr>
+<tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low; the SMC and the SEP use it in place of functional resets while test_en_i is high. The DTP does not use it.</td></tr>
 <tr><td><code>mem_repair_done_i</code></td><td>input</td><td><code>logic</code></td><td>Memory repair sequence done.</td></tr>
 <tr><td><code>mem_repair_success_i</code></td><td>input</td><td><code>logic</code></td><td>Memory repair sequence succeeded.</td></tr>
 <tr><td><code>mem_repair_abort_i</code></td><td>input</td><td><code>logic</code></td><td>Memory repair sequence aborted.</td></tr>

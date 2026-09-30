@@ -664,6 +664,7 @@
 <tr><td><code>security_disable_i</code></td><td>input</td><td><code>logic</code></td><td>Active-high bridge disable: blocks Update-DR, keeps the AXI FSM idle, and flushes queued requests once the FSM is idle.</td></tr>
 <tr><td><code>aclk_i</code></td><td>input</td><td><code>logic</code></td><td>AXI Clock.</td></tr>
 <tr><td><code>arst_ni</code></td><td>input</td><td><code>logic</code></td><td>AXI Reset (active low), for the CDC destination side and the ACLK output stage.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high, for the ACLK output stage fall-through registers.</td></tr>
 <tr><td><code>awid_o</code></td><td>output</td><td><code>logic [ID_WIDTH-1:0]</code></td><td>Write-address ID, always zero.</td></tr>
 <tr><td><code>awaddr_o</code></td><td>output</td><td><code>logic [ADDR_WIDTH-1:0]</code></td><td>Write address.</td></tr>
 <tr><td><code>awlen_o</code></td><td>output</td><td><code>logic [7:0]</code></td><td>Write burst length, always zero for a single beat.</td></tr>

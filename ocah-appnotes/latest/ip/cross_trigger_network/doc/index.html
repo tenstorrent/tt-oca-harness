@@ -272,19 +272,19 @@ chiplet programs for this topology.</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">From the wire-OR CTP (Chiplets 1 and 2) to the local CLAs and Chiplets 3 and 4.<br>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplets 1 and 2 through the wire-OR CTP to the local CLAs and Chiplets 3 and 4.<br>
 From Chiplet 3 to the local CLAs, the wire-OR CTP and Chiplet 4.<br>
 From Chiplet 4 to the local CLAs, the wire-OR CTP and Chiplet 3.<br>
 From the local CLAs to the wire-OR CTP and Chiplets 3 and 4.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">From the wire-OR CTP (Chiplets 0 and 2) to the local CLAs.<br>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplets 0 and 2 through the wire-OR CTP to the local CLAs.<br>
 From the local CLAs to the wire-OR CTP.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">From the wire-OR CTP (Chiplets 0 and 1) to the local CLAs.<br>
+<td class="tableblock halign-left valign-top"><p class="tableblock">From Chiplets 0 and 1 through the wire-OR CTP to the local CLAs.<br>
 From the local CLAs to the wire-OR CTP.</p></td>
 </tr>
 <tr>
@@ -1094,7 +1094,7 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Configuration registers for the cross trigger matrix</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OKAY, 0x0 / OKAY</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Aliases registers<sup><a href="#cross-trigger-network-note-1">[1]</a></sup></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DECERR, 0xBADCAB1E / DECERR</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x00000200</p></td>
@@ -1110,10 +1110,6 @@ keeps the CTP instance count and stride with the allocated apertures:</p>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<div class="title">Notes</div>
-<p><a id="cross-trigger-network-note-1"></a><sup>[1]</sup> 0x100-0x1CC aliases CT_SRC[k].CONFIG_0, because the matrix decodes only address bits [7:0]. The rest answers OKAY, 0x0 / OKAY.</p>
-</div>
 <div class="paragraph">
 <p>The CTN adds no CTN-specific registers; it decodes the AXI-Lite CSR interface
 onto the CTM and CTP blocks it instantiates. The composite SystemRDL top is the

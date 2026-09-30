@@ -673,6 +673,7 @@
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock for the JTAG2AXI bridges.</td></tr>
 <tr><td><code>rst_n_i</code></td><td>input</td><td><code>logic</code></td><td>Active-low system reset for the JTAG2AXI bridges.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high, for the JTAG2AXI bridges.</td></tr>
 <tr><td><code>pwr_on_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low power-on reset, ANDed with TRST for the PTAP and STAPs; sets the dbg_disable_i synchronizers to disabled.</td></tr>
 <tr><td><code>dbg_disable_i</code></td><td>input</td><td><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></td><td>Active-high per-path lifecycle disables, synchronized to TCK inside this module; all disabled out of reset.</td></tr>
 <tr><td><code>ptap_client_tap_ctrl_i</code></td><td>input</td><td><code>jtag_tap_ctrl_t</code></td><td>PTAP client TAP-control bundle: TCK, TMS, and active-low TRST.</td></tr>

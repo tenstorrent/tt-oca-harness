@@ -253,11 +253,12 @@ elaboration if that total disagrees with the generated <code>NUM_CT_SRC</code> a
 module parameters, which the CTN overrides to match its own crossbar.</p>
 </div>
 <div class="paragraph">
-<p>The current wrapper decodes only a 256-byte CSR window. With an 8-byte
-stride, at most 32 source registers are addressable: a source register at
-offset <code>0x100</code> aliases source 0. The default 26×26 matrix fits. Increasing
-the integrated matrix beyond 32 ports requires widening the wrapper decode
-as well as regenerating the register map; regeneration alone is insufficient.</p>
+<p>The wrapper passes the register block only the address bits its register
+map spans, and the CTN ends the matrix&#8217;s crossbar window at the end of that
+map. An access past the last CT_Src register completes with DECERR rather
+than reaching a register. The 512-byte CTM aperture holds 64 source
+registers at the 8-byte stride, so a matrix of up to 64 ports needs only the
+regenerated CTM and CTN register maps.</p>
 </div>
 <div class="paragraph">
 <p>Every CT_Src port occupies 8 bytes regardless of the port count. At or below

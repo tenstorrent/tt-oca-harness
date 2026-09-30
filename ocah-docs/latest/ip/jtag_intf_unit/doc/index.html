@@ -797,6 +797,10 @@ one TCK of latency to every scan through the STAP chain. The last STAP&#8217;s s
 output also drives <code>stap_host_scan_out_o</code>, which launches on the rising edge of
 TCK like the host scan outputs of the iJTAG SIBs.</p>
 </div>
+<div class="paragraph">
+<p><code>stap_host_scan_out_o</code> carries the scan bit of the last STAP&#8217;s SIB. That bit
+resets to 0 on TRST and in Test-Logic-Reset, so the port reads 0 from reset.</p>
+</div>
 <p class="block-references">Figures and tables: <a href="#jiu-stap-chain-hierarchy-table">Table 1</a>.</p>
 </div>
 <div class="sect3">
@@ -881,7 +885,10 @@ disable field.</p>
 <h3 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">3.2. iJTAG Network</a></h3>
 <div class="paragraph">
 <p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
-chains. Each SIB is gated by the corresponding synchronized debug-disable field.</p>
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.
+Each SIB&#8217;s scan bit and control bit reset to 0 on TRST and in Test-Logic-Reset,
+so <code>dft_secure_host_scan_out_o</code>, <code>dft_host_scan_out_o</code> and <code>dfd_host_scan_out_o</code>
+read 0 from reset, whether or not the SIB is disabled.</p>
 </div>
 <div class="sect3">
 <h4 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">3.2.1. DFT Secure Chain</a></h4>

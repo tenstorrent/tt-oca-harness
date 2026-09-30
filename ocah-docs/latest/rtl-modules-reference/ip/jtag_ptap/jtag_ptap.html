@@ -683,6 +683,7 @@
 <tr><td><code>boot_stall_o</code></td><td>output</td><td><code>logic</code></td><td>Boot-stall value applied while boot_stall_ovrd_o is high.</td></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock for the JTAG2AXI bridges.</td></tr>
 <tr><td><code>rst_n_i</code></td><td>input</td><td><code>logic</code></td><td>Active-low system reset for the JTAG2AXI bridges.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high, for the JTAG2AXI bridges.</td></tr>
 <tr><td><code>pwr_on_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Power-on reset (active low), ANDed with the client TRST.</td></tr>
 <tr><td><code>smc_jtag2axi_security_disable_i</code></td><td>input</td><td><code>logic</code></td><td>Active-high disable of the SMC fabric JTAG2AXI bridge; blocks its Update-DR and keeps its AXI side idle.</td></tr>
 <tr><td><code>smc_otp_jtag2axi_security_disable_i</code></td><td>input</td><td><code>logic</code></td><td>Active-high disable of the SMC OTP JTAG2AXI bridge; blocks its Update-DR and keeps its AXI side idle.</td></tr>

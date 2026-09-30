@@ -876,9 +876,9 @@ generate a simulation filelist with <code>-t dtp -t simulation</code>.</p>
 <div class="sect2">
 <h3 id="sep-defines"><a class="anchor" href="#sep-defines"></a><a class="link" href="#sep-defines">9.4. SEP</a></h3>
 <div class="paragraph">
-<p>The SEP graph adds four groups: the Adams Bridge block-selection defines, the
-VeeR EL2 core configuration, first-party view checks, and testbench-side DV
-names.</p>
+<p>The SEP graph adds five groups: the Adams Bridge block-selection defines, the
+VeeR EL2 core configuration, first-party view checks, the key manager&#8217;s
+defines, and testbench-side DV names.</p>
 </div>
 <div class="sect3">
 <h4 id="sep-defines-abr"><a class="anchor" href="#sep-defines-abr"></a><a class="link" href="#sep-defines-abr">9.4.1. Adams Bridge</a></h4>
@@ -983,6 +983,54 @@ entropy source oscillation.</p>
 </li>
 </ul>
 </div>
+</div>
+<div class="sect3">
+<h4 id="sep-defines-km"><a class="anchor" href="#sep-defines-km"></a><a class="link" href="#sep-defines-km">9.4.4. Key manager</a></h4>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 30%;">
+<col style="width: 70%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Define</th>
+<th class="tableblock halign-left valign-top">Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>OCAH_KM_VROM</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Decodes the virtual ROM window, <code>0x1000_0000</code>–<code>0x1000_FFFF</code>, in
+<code>picorv32_wrapper</code>. Key manager CPU accesses to the window leave on the
+<code>vrom_mem_*</code> nets instead of the AXI-Lite crossbar. The window is executable
+with <code>KMCSR.SRAM_EXEC_MODE</code> in either state and is exempt from the ROM
+lockout. An access completes only when the simulation drives
+<code>vrom_mem_ready</code>; otherwise the key manager CPU stalls. No OCAH flow sets it,
+SEP DV included.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>Without <code>OCAH_KM_VROM</code>, the window is an unmapped key manager address. A load
+or store answers DECERR and sets <code>KMCSR.IRQ_STATUS.AXI_DECERR</code>, and an
+instruction fetch sets <code>KMCSR.IRQ_STATUS.EXEC_VIOLATION</code>.</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code>OCAH_KM_VROM</code> is simulation-only. Elaboration fails with an <code>$error</code> when
+<code>SYNTHESIS</code> or <code>EMULATION</code> is also defined, because nothing outside a
+simulation drives <code>vrom_mem_ready</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>The key manager&#8217;s picorv32 core reads <code>FORMAL</code>, which compiles its embedded
 <code>assert</code> and <code>restrict</code> properties, and the riscv-formal names
@@ -993,7 +1041,7 @@ formal flow.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-defines-dv"><a class="anchor" href="#sep-defines-dv"></a><a class="link" href="#sep-defines-dv">9.4.4. DV testbench names</a></h4>
+<h4 id="sep-defines-dv"><a class="anchor" href="#sep-defines-dv"></a><a class="link" href="#sep-defines-dv">9.4.5. DV testbench names</a></h4>
 <div class="paragraph">
 <p>SEP DV sets these for <code>hw/sys/sep/dv/tb/tb_top.sv</code> and its CPU stub. No DUT
 file reads them.</p>

@@ -649,6 +649,7 @@
 <caption class="title"><a href="#trm-table-2">Table 2</a>. Ports</caption><tr><th>Name</th><th>Direction</th><th>Type</th><th>Description</th></tr>
 <tr><td><code>clk_i</code></td><td>input</td><td><code>logic</code></td><td>System clock; all CSRs, ports and the matrix run on it.</td></tr>
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Active-low asynchronous reset.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high, for the AXI-Lite CSR crossbar.</td></tr>
 <tr><td><code>axil_req_i</code></td><td>input</td><td><code>axil_req_t</code></td><td>AXI-Lite CSR subordinate request; the crossbar routes offset 0 to the CTM and the following windows to the external CTPs, one transaction at a time.</td></tr>
 <tr><td><code>axil_resp_o</code></td><td>output</td><td><code>axil_resp_t</code></td><td>AXI-Lite CSR subordinate response.</td></tr>
 <tr><td><code>clk_stop_req_i</code></td><td>input</td><td><code>logic [NUM_CLK_STOP_REQ-1:0]</code></td><td>Clock stop requests from CLAs, active-high and asynchronous to clk_i.</td></tr>

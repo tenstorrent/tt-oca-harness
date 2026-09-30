@@ -634,14 +634,14 @@
 </aside>
 <article class="doc">
 <h1 class="page">prim_jtag_scan_reg</h1>
-<p>Capture, shift, and update a JTAG scan register under scan_ctrl_i.</p><p>While select is high, capture data_in_i or shift toward the LSB on the rising edge of TCK, and load the update register on the falling edge when update_en is high. LOCKUP retimes scan_out_o through a falling-edge TCK flop (lockup stage). USE_CHRST resets from chrst_n inside scan_ctrl_i instead of rst_n for TMP-controlled reset. Only the update register is reset; the shift register is not. scan_out_o is the serial LSB of the shift flops.</p>
+<p>Capture, shift, and update a JTAG scan register under scan_ctrl_i.</p><p>While select is high, capture data_in_i or shift toward the LSB on the rising edge of TCK, and load the update register on the falling edge when update_en is high. LOCKUP retimes scan_out_o through a falling-edge TCK flop (lockup stage). The shift, update and lockup stages all reset to RESET_VAL from rst_n inside scan_ctrl_i, or from chrst_n when USE_CHRST is set for TMP-controlled reset. scan_out_o is the serial LSB of the shift flops.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
 <caption class="title"><a href="#trm-table-1">Table 1</a>. Parameters</caption><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr>
 <tr><td><code>LOCKUP</code></td><td><code>bit</code></td><td><code>0</code></td><td>Adds a falling-edge TCK lockup flop on scan_out_o.</td></tr>
 <tr><td><code>WIDTH</code></td><td><code>int unsigned</code></td><td><code>1</code></td><td>Parallel data width.</td></tr>
-<tr><td><code>RESET_VAL</code></td><td><code>logic [WIDTH-1:0]</code></td><td><code>&#x27;0</code></td><td>Value loaded into the update register on reset.</td></tr>
+<tr><td><code>RESET_VAL</code></td><td><code>logic [WIDTH-1:0]</code></td><td><code>&#x27;0</code></td><td>Reset value of the shift and update registers.</td></tr>
 </table>
 <h2>Ports</h2>
 <table id="trm-table-2">
