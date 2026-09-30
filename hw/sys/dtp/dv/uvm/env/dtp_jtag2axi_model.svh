@@ -17,10 +17,10 @@
 //                full beat), pipeline depth and address and restarts the
 //                read budget; the reset bit clears the sticky status.
 //                Capture-DR presents the sticky status: BUSY_OR_FULL while
-//                full, else the first series error since the reset bit or
-//                the last system reset, else SUCCESS; a system reset that
-//                discarded an operation leaves DECERR. SINGLE_OP
-//                completions do not reach it.
+//                full, else the first series error since the reset bit,
+//                else SUCCESS; a system reset that discarded a series
+//                operation counts as a DECERR error. SINGLE_OP completions
+//                do not reach it.
 //   SERIES_DATA  Update-DR launches one transaction at the series address
 //                on the byte lanes that address selects; a read is issued
 //                only within the budget of pipeline_depth + 1 per CTRL
@@ -104,26 +104,34 @@ class dtp_jtag2axi_model;
   endfunction
 
   // System reset: every operation launched and not yet completed is
-  // discarded and reported as DECERR, on SINGLE_OP when it was a single or
-  // with-status operation and on the sticky status in any case. The
-  // SERIES_CTRL configuration keeps its values. Called at the first scan
-  // or TAP event after the reset, so every queued completion precedes it.
+  // discarded. A discarded single or with-status operation reads DECERR on
+  // SINGLE_OP; a discarded series operation reads DECERR on the sticky
+  // status unless it already holds a series error. Every other status and
+  // the SERIES_CTRL configuration keep their values. Called at the first
+  // scan or TAP event after the reset, so every queued completion precedes
+  // it.
   function void abort_in_flight();
     foreach (m_bridge[n]) begin
       issued_t no_issued[$];
       bit      single_lost;
-      bit      any_lost;
+      bit      series_lost;
       apply_completions(n, $time);
       single_lost = m_bridge[n].single_pending;
-      foreach (m_issued_q[n][i]) if (m_issued_q[n][i].with_status) single_lost = 1'b1;
-      any_lost = single_lost || (m_issued_q[n].size() > 0);
+      series_lost = 1'b0;
+      foreach (m_issued_q[n][i]) begin
+        if (m_issued_q[n][i].with_status) single_lost = 1'b1;
+        if (!m_issued_q[n][i].single) series_lost = 1'b1;
+      end
       m_issued_q[n] = no_issued;
       m_bridge[n].single_pending      = 1'b0;
-      m_bridge[n].last_single_status  = single_lost ? DTP_J2A_DECERR : DTP_J2A_SUCCESS;
-      m_bridge[n].last_read_data      = '0;
-      m_bridge[n].sticky_status       = any_lost ? DTP_J2A_DECERR : DTP_J2A_SUCCESS;
-      m_bridge[n].sticky_full         = 1'b0;
       m_bridge[n].series_reads_pushed = 0;
+      if (single_lost) begin
+        m_bridge[n].last_single_status = DTP_J2A_DECERR;
+        m_bridge[n].last_read_data     = '0;
+      end
+      if (series_lost && m_bridge[n].sticky_status == DTP_J2A_SUCCESS) begin
+        m_bridge[n].sticky_status = DTP_J2A_DECERR;
+      end
     end
   endfunction
 
