@@ -467,7 +467,7 @@
 `SEP_TB_OUT(logic, hmac_host_isolated_probe_o)
 `SEP_TB_OUT(logic, hmac_km_isolated_probe_o)
 // Host-path isolate request, high from the software reset request until
-// release. See "Crypto isolate-request probes" in
+// release. See "Crypto reset-sequencer probes" in
 // hw/sys/sep/dv/docs/SEP_TB_ARCH.adoc.
 `SEP_TB_OUT(logic, hmac_host_isolate_req_probe_o)
 `SEP_TB_OUT(logic, kmac_gated_rst_n_probe_o)

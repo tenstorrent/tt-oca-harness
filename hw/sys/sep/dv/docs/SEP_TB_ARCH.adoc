@@ -138,7 +138,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto isolate-request probes (`*_host_isolate_req_probe_o`) — observation-only unless listed as an inject exception
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, KM mailbox SEP-side write-error probes (`km_mbox_sep_wr_err_*`), KM SRAM read-latency probes (`km_sram_rd_*`), KM SRAM scrambled-write probes (`km_sram_scr_wr_*`), entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o`, crypto reset-sequencer probes (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`, `*_host_isolate_req_probe_o`, `trng_reset_active_probe_o`), EDN and entropy-AXIS handshake probes (`crypto_edn_*`, `pool_edn_*`, `km_entropy_*`, `axis1_*`, `axis2_*`, `entropy_pool_packer_depth_o`), RMA-SIP token-digest latch probes (`token_digest_*`), KM OTP ID probes (`km_otp_sep_*_id_o`), SEP SRAM word probes (`sram_word0_probe_o` / `sram_payload_probe_o`), DMA/CPU SRAM overlap counter (`dma_cpu_sram_overlap_count_o`) — observation-only unless listed as an inject exception
 |===
 
 Exceptions (a closed set):
@@ -174,12 +174,14 @@ Exceptions (a closed set):
   mirror). The TB-owned `u_tbadp_vehicle` instance
   is idle and held in reset unless a port-arbitration leaf releases it;
   it is not a DUT XMR.
-* *Crypto isolate-request probes* — `hmac_host_isolate_req_probe_o`,
-  `kmac_host_isolate_req_probe_o` and `abr_host_isolate_req_probe_o` read
-  `isolate_req_i.host_*` at the crypto AXI interconnect. The drain-arrival
-  checkers use them to place one read inside the drain window. `SW_RESET_N`
-  holds the request but not the sequencer drain state, so the window has no
-  frontdoor. Owner: `sep_crypto_per_ip_reset_isolation_test`.
+* *Crypto reset-sequencer probes* — the per-domain gated resets, the
+  `isolated_o` completion bits and the host `isolate_req_i` bits at the crypto
+  AXI interconnect (`*_gated_rst_n_probe_o`, `*_isolated_probe_o`,
+  `*_host_isolate_req_probe_o`). Tests use them to order a domain reset against
+  isolation and to place a read inside the drain window. `SW_RESET_N` holds the
+  request but not the sequencer state, so none of these has a frontdoor. Used by
+  the crypto reset-isolation, TRNG reset-recovery, KM isolate-termination and
+  ABR tests.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.
