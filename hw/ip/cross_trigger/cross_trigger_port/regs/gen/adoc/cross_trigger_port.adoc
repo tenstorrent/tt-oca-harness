@@ -12,7 +12,7 @@ Configuration and status registers for the cross trigger port
 |===
 | Address | Name | Access | Description
 | 0x0 | <<reg-{regmap-instance}-cross_trigger_port-CONFIG,CONFIG>> | RW a| Cross Trigger Port Configuration
-| 0x4 | <<reg-{regmap-instance}-cross_trigger_port-STATUS,STATUS>> | R a| Cross Trigger Port Status
+| 0x4 | <<reg-{regmap-instance}-cross_trigger_port-STATUS,STATUS>> | R a| Cross Trigger Port Status. Writes complete with an OKAY response and leave the register unchanged.
 | 0x8 | <<reg-{regmap-instance}-cross_trigger_port-STRETCH_MULT,STRETCH_MULT>> | RW a| Pulse Stretch Multiplier
 |===
 

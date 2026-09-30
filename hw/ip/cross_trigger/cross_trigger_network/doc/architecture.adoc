@@ -174,7 +174,7 @@ endif::backend-html5[]
 |CTM
 |0x0000 - 0x01FF
 |512 bytes
-|Cross Trigger Matrix configuration registers (26 sources × 2 config registers)
+|Cross Trigger Matrix configuration registers (one 8-byte `CT_SRC[k].CONFIG_0` slot per CT_Src port, up to 64 ports)
 
 |CTP[0]
 |0x0200 - 0x020F
