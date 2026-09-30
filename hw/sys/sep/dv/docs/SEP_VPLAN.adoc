@@ -5569,7 +5569,7 @@ behaviour and the JTAG read are graded on
 
 [arabic]
 . Program one region to `0x8000_0000` and allow-list the remapped beat. CPU-LSU read of the window is OKAY.
-. A second region, left at offset 0, returns DECERR.
+. A second region, left invalid so its beat passes through untranslated, returns DECERR.
 
 *Checkers*:
 
@@ -5579,7 +5579,7 @@ behaviour and the JTAG read are graded on
 |CHK-REMAP-TRANSLATE
 |The programmed window completes OKAY at the remapped target. Identity would miss the allow window. The OKAY comes from `tb/sep_outbound_mbx.sv`, which answers any address, so the check shows that the beat passed the outbound filter, not which address it reached.
 |CHK-FILTER-DROP
-|A beat outside the remapped allow set is DECERR. One probe is the other region left at offset 0. A second probe is the next beat of the allowed region, which translates to a non-zero address outside the one-beat allow entry.
+|A beat outside the remapped allow set is DECERR. One probe is the other region, left invalid, whose beat passes through untranslated. A second probe is the next beat of the allowed region, which translates to a non-zero address outside the one-beat allow entry.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
