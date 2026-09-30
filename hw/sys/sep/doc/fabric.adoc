@@ -15,22 +15,13 @@ endif::backend-html5[]
 
 [[sep-interconnect]]
 
-The interconnect of SEP components and subsystems is done with a
-hierarchical AXI4 crossbar fabric. Masters drive traffic onto the
-interconnect fabric and receive responses from the addressed slave.
-Slave components are directly connected to the AXI4 fabric or via a
-bridging shim. The shim translates either AXI4-lite or the legacy
-Tilelink TL-UL used in OpenTitan. The goal is to eventually convert all
-TL-UL slaves into AXI4-lite slaves.
-
-AXI4-lite slave bridges will need to perform the following tasks in
-order to mate with AXI4:
-
-* Bursts are not supported: convert burst transactions to single
-transactions
-* Write strobe (WSTRB) for partial write is not supported: TBD how to
-handle
-* Transaction IDs (AxID) handling
+SEP uses a hierarchical AXI4 crossbar fabric. Masters initiate transactions;
+slaves connect directly or through bridges for AXI4-Lite and OpenTitan TL-UL
+interfaces. The `axi_to_axi_lite` bridge splits bursts into individual
+transactions and retains the AXI IDs needed for responses. Write strobes
+remain available on AXI4-Lite; `axi_lite_to_tlul` translates them into TL-UL
+byte masks. Each peripheral's register definition determines which writes
+are permitted.
 
 == Topology
 
@@ -198,22 +189,6 @@ To compute global addresses for external agents, firmware needs the
 chiplet ID or chiplet BAR for the integration. Both the chiplet ID and
 chiplet BAR are available in SMC as MMRs.
 
-SEPs outbound traffic to the main fabric serves the purposes of 1)
-providing services and 2) extending its protection to the rest of the
-system. For the former purpose, SEP’s outbound traffic goes through an
-AP-controlled remap logic. For the latter purpose, SEP’s outbound
-traffic directly goes to the NoC. SEP software shall differentiate these
-two purposes and choose/enforce the correct traffic path to be used.
-
-* When SEP accesses shared resources (e.g. shared memory) with the rest
-of the system, SEP’s traffic goes through the AP-controlled or
-STEE-controlled remap logic to get address translation. Such remap logic
-is supposed to be controlled by the rest of the system, like Ascalon.
-The inbound traffic filter ensures only STEE has access to the
-STEE-controlled remap logic.
-* When SEP accesses its external private memory or the system’s memory
-mapped IO, SEP’s traffic directly goes to the system fabric.
-
 [[sep-traffic-filter-decode]]
 == Filtering and Protection
 
@@ -252,61 +227,36 @@ as the SMN.
 [[transaction-routing]]
 === Transaction Routing
 
-Local resources can be addressed by SEP CPU direct internal addresses
-or by the SEP CPU local-alias view. Local resources include CSRs in SEP
-components and subsystems, SRAM, and the AP- and STEE-controlled
-remappers. The local-alias view is an internal CPU-side naming
-convention: for example, addresses in the high alias range can be
-translated back to the direct internal `0x1000_0000` and `0x2000_0000`
-regions. This high local-alias window has a fixed SEP-local size of
-768 MiB.
-
-External masters use chiplet-global addresses. The `SEP_GLOBAL_BASE_ADDR`
-and `SEP_REGION_SIZE` CSRs define the global SEP aperture used by the
-SMU crossbar and by SEP inbound global-to-local remap. The current `SEP_REGION_SIZE` reset is `0x0100_0000` (16 MiB); firmware may
-program a larger or different aperture during early boot to match the
-chiplet address assignment.
+Local SEP resources include peripheral CSRs, SRAM and the AP- and
+STEE-controlled remappers. SEP CPU direct addresses, the CPU local-alias view
+and the external global aperture are distinct views, as described in
+<<address-remapping,Address Remapping>>.
 
 Neighboring SMC resources are accessed through the SMC global aperture
 programmed by SMC firmware and supplied to SEP/SMU integration logic.
 That aperture is independent from the SEP CPU local-alias range.
 
-As stated earlier, any transaction which is not routed to local SEP
-resources or to neighboring SMC resources is directly routed out to the
-SMN system NoC.
+Traffic not routed to local SEP or neighboring SMC resources goes to the
+SMN system NoC. Firmware selects the outbound path according to the resource:
 
-SEP’s outbound traffic serves to:
-
-1.  Provide security services and
-2.  Extend its protection to the rest of the system
-
-Outbound security service traffic traverses the AP controlled remappers.
-When protecting the rest of the system, SEP traffic goes directly to the
-SMN system fabric. The SEP differentiates between these two cases and
-enforces that the correct path is used.
-
-When SEP accesses shared resources such as shared memory for example,
-the traffic goes through the AP or STEE controlled remappers to get the
-address translation service. These remappers are controlled by external
-resources such as Ascalon AP. The inbound traffic filter ensures that
-only STEE has access to the STEE address remapper.
-
-When SEP accesses external private memory or the system’s memory mapped
-IO, the SEP traffic is directly routed to SMN.
+* Shared resources use AP- or STEE-controlled remappers for address translation.
+  These remappers are controlled by external software, such as the Ascalon AP.
+  Inbound filter policy must restrict the STEE remapper to STEE access.
+* External private memory and system MMIO use the direct SMN path.
 
 SEP’s outbound traffic carries a source ID. Traffic destined to the SMN
 uses SEP’s unique source ID. Traffic that traverses through the AP
-controlled remapper uses the regular source ID termed ``others''.
+controlled remapper uses the regular source ID termed "others".
 Traffic then traverses the outbound filter after traversing the
 remapper. SEP works with M-mode software to program the outbound filters
-so that traffic with source ID ``others'' cannot access M-mode assets.
+so that traffic with source ID "others" cannot access M-mode assets.
 The outbound filter enables filtering based on address, NS and source
 ID.
 
 The SEP’s inbound traffic filter is configured by default to block all
 traffic from entering the SEP. Only the SEP CPU can program these
-filters. Again, these filters enable filtering based on address, NS and
-source ID.
+filters; their matching rules are described in
+<<sep-traffic-filter-decode,Filtering and Protection>>.
 
 ifdef::backend-html5[]
 [[mailboxes]]
