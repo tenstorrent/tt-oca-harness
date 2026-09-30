@@ -31,17 +31,17 @@ chiplet programs for this topology.
 |Chiplet |CTM forwarding
 
 |0
-|From the wire-OR CTP (Chiplets 1 and 2) to the local CLAs and Chiplets 3 and 4. +
+|From Chiplets 1 and 2 through the wire-OR CTP to the local CLAs and Chiplets 3 and 4. +
 From Chiplet 3 to the local CLAs, the wire-OR CTP and Chiplet 4. +
 From Chiplet 4 to the local CLAs, the wire-OR CTP and Chiplet 3. +
 From the local CLAs to the wire-OR CTP and Chiplets 3 and 4.
 
 |1
-|From the wire-OR CTP (Chiplets 0 and 2) to the local CLAs. +
+|From Chiplets 0 and 2 through the wire-OR CTP to the local CLAs. +
 From the local CLAs to the wire-OR CTP.
 
 |2
-|From the wire-OR CTP (Chiplets 0 and 1) to the local CLAs. +
+|From Chiplets 0 and 1 through the wire-OR CTP to the local CLAs. +
 From the local CLAs to the wire-OR CTP.
 
 |3

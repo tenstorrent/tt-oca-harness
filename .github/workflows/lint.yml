@@ -47,8 +47,6 @@ jobs:
   # bender (only lint-sv-slang) and reviewdog (via the shared
   # .github/actions/reviewdog-report composite action).
   setup-tools:
-    needs: [diff-class]
-    if: needs.diff-class.outputs.run_hardware_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Install bender
@@ -280,8 +278,7 @@ jobs:
   # Vale is a Go binary with no PyPI wheel; fetched here from a pinned
   # release the same way lint-make (checkmake) does (see flows/lint/vale.mk).
   lint-vale:
-    needs: [diff-class, setup-tools]
-    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    needs: [setup-tools]
     runs-on: ubuntu-latest
     permissions: { contents: read, checks: write, pull-requests: write }
     steps:
