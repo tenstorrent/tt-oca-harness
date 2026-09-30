@@ -29,7 +29,7 @@ regressions show up.
 ```bash
 make smc-vp                       # builds Whisper on first use, then smc-vp
 make smu-vp                       # same tree, adds smu-vp + its companion .so
-make smc-test                     # the model's SMC firmware suite  (15 tests)
+make smc-test                     # the model's SMC firmware suite  (16 tests)
 make smu-test                     # the model's SMU firmware suite  (5 tests)
 make smc-test SMC_ARGS=smc-wdt-test        # one test
 make smu-test SMU_ARGS=smu-link-test       # one test

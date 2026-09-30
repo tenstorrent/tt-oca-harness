@@ -85,7 +85,7 @@ to `[VP] SIMULATION OF THE TEST PASSED` / `... FAILED`.
 
 `sep-vp <ini> [<elf>]` is the only CLI — no arbitrary param overrides. The harness writes a
 per-run overlay `.ini` that `@include`s the staged base `accellera_config.ini` and then
-re-states straps, fuses, channel toggles, and absolute `targets`/`names_tsv`/`configFile`
+re-states straps, fuses, channel toggles, and absolute `targets`/`configFile`
 (the CSML parser chdir()s to the ini's dir, so those base-relative paths must be absolute).
 Straps are `och_sep_ss1.smc.*` bools; OTP is translated from a fuse-map into
 `och_sep_ss1.sep_efuse.*` (with the `lc_ctrl.lc_state` mirror); the SPI image is staged to
