@@ -222,7 +222,7 @@ depth and address-scramble function.
 
 == Integration in the Key Manager
 
-The Key Manager SRAM interface (`km_sram_interface`) instantiates two `scrambler_8192x32` instances with `BYTE_WISE` = 1, whose 13-bit address covers the 8192 words of the 32 KiB SRAM. The first instance (`u_req_scrambler`) scrambles the write data and address on the request path. The second instance (`u_rsp_descrambler`) descrambles read data on the response path using the address that was captured when the read was issued.
+The Key Manager SRAM interface (`km_sram_interface`) instantiates two `scrambler_8192x32` instances with `BYTE_WISE` = 1, whose 13-bit address covers the 8192 words of the 32 KiB SRAM. The first instance (`u_req_scrambler`) scrambles the write data and address on the request path. The second instance (`u_rsp_descrambler`) descrambles read data on the response path using the address captured when the SRAM accepts the read.
 
 The scrambler is controlled through the `SCRAMBLER_KEY` and `SCRAMBLER_CTRL` registers in the Key Manager CSR block (`km_csr`). The `SCRAMBLER_CTRL` register has two fields: `enable` at bit 0 and `lock` at bit 1. When `lock` is written to 1, the transition is permanent until the next reset. Once locked, the key register reads as zero, writes to it are ignored, and the scrambler is forced into the enabled state. This prevents firmware from disabling scrambling or reading back the key after provisioning.
 
