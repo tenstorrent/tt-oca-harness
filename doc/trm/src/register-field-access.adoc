@@ -1,0 +1,124 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[appendix]
+[[trm-register-field-access]]
+= Register Field Access Notation
+:description: How to read the Access column of the generated register and field tables.
+
+The register tables in this manual are generated from each block's SystemRDL
+description by the PeakRDL toolchain. Their *Access* column reports a field's
+software access together with any read or write side effect as one compact
+token, so a status bit that a write of 1 clears reads as `RW1C` rather than a
+bare `RW`. This appendix decodes that notation.
+
+An Access cell is built in three parts:
+
+. a *base access* token, giving whether software can read the field, write it,
+  or neither;
+. an optional *write side-effect suffix* joined directly to the base for an
+  effect that an individual written bit triggers (`RW1C`, `W1S`, `RW0C`);
+. optional *space-separated flags* for whole-field write effects, read effects,
+  and single-cycle pulses (`R RC`, `RW WS`, `W 1P`).
+
+A field with no side effect keeps the bare base token. The same base tokens
+appear in the per-register summary tables, where they aggregate the access of
+the register's fields.
+
+[[trm-register-field-access-table]]
+[cols="<12%,<58%,<30%",options="header"]
+.Register field access tokens
+|===
+|Token |Meaning |SystemRDL property
+
+3+|*Base access*
+
+|`R`
+|Software can read the field.
+|`sw = r`
+
+|`W`
+|Software can write the field.
+|`sw = w`
+
+|`RW`
+|Software can read and write the field.
+|`sw = rw`
+
+|`-`
+|Reserved, or no software access.
+|`sw = na`, or a reserved gap
+
+3+|*Write side-effect suffix* -- acts on the individual written bit
+
+|`1C`
+|Writing 1 to a bit clears it; writing 0 leaves it.
+|`onwrite = woclr`
+
+|`1S`
+|Writing 1 to a bit sets it.
+|`onwrite = woset`
+
+|`1T`
+|Writing 1 to a bit toggles it.
+|`onwrite = wot`
+
+|`0C`
+|Writing 0 to a bit clears it.
+|`onwrite = wzc`
+
+|`0S`
+|Writing 0 to a bit sets it.
+|`onwrite = wzs`
+
+|`0T`
+|Writing 0 to a bit toggles it.
+|`onwrite = wzt`
+
+3+|*Write flags* -- act on any write to the field
+
+|`WC`
+|Any write clears the whole field.
+|`onwrite = wclr`
+
+|`WS`
+|Any write sets the whole field.
+|`onwrite = wset`
+
+|`WMOD`
+|A write invokes a block-specific hardware function.
+|`onwrite = wuser`
+
+3+|*Read flags*
+
+|`RC`
+|Reading the field clears it.
+|`onread = rclr`
+
+|`RS`
+|Reading the field sets it.
+|`onread = rset`
+
+|`RMOD`
+|Reading the field invokes a block-specific hardware function.
+|`onread = ruser`
+
+3+|*Pulse*
+
+|`1P`
+|The field self-clears the cycle after it is written, producing a one-cycle
+pulse.
+|`singlepulse`
+|===
+
+== References
+
+<<trm-register-field-access-table>> follows the field-property semantics of the
+SystemRDL 2.0 register description language (Accellera), as rendered by the
+PeakRDL toolchain.
+
+* https://peakrdl.readthedocs.io/en/latest/[PeakRDL] -- the control and status
+  register generator toolchain that produces these register tables.
+* https://systemrdl-compiler.readthedocs.io/en/stable/properties.html[systemrdl-compiler
+  field properties] -- the `onwrite`, `onread` and `singlepulse` properties and
+  their `woclr` / `woset` / `rclr` / `rset` shorthand forms.

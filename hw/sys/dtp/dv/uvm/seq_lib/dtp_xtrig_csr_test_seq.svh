@@ -6,28 +6,30 @@
 // parameterized sequence, dispatched on `scenario`:
 //
 //   reg_stall        accepted-path CSR writes/reads with quiet cross-trigger
-//                    pins and nonzero request-activity counters (the local
-//                    regblock stall path is structurally unreachable)
+//                    pins and advancing request-activity counters (the local
+//                    regblock stall path is structurally unreachable), then
+//                    two control routes that move every quiet observable
 //   ctp_csr_sweep    full-word CTP config and stretch patterns (all-ones and
 //                    inverted patterns drive the reserved bits, which read
-//                    back 0), every byte strobe, a STATUS write, neighbour
-//                    readback, then one routed stretched pulse, on every CTP
+//                    back 0), every byte strobe over a nonzero base, a
+//                    STATUS write, and a preloaded neighbour that keeps its
+//                    words, on every CTP, then one routed stretched pulse
 //   ctm_csr_sweep    full-word CT_DST_SELECT patterns and every byte strobe
 //                    on every CTM source register, then two swept selects
 //                    routing a selected input and ignoring an unselected one
 //   ctm_all_source_select  per-source select masks with neighbor
 //                    no-aliasing reads
 //   axi_channel_skew                       AW-first and W-first skewed
-//                    writes, deferred BREADY, and an RREADY-hold read with
-//                    data-stability evidence
+//                    writes, each read back, deferred BREADY, and an
+//                    RREADY-hold read with data-stability evidence
 //   axi_channel_skew_demux_aw_lock_release two-outstanding skewed writes
 //                    judged against the crossbar demux state mirrors and
-//                    the bench AW stall counter, with response order proven
-//                    by distinguishable response codes
+//                    the bench AW stall and open-write counters, with
+//                    response order proven by distinguishable response codes
 //   axi_channel_skew_read_decode_backpressure two-outstanding unmapped
-//                    reads under an RREADY hold: the second AR meets the
-//                    busy demux, both return DECERR from the crossbar error
-//                    subordinate
+//                    reads under an RREADY hold: the second AR waits behind
+//                    the open first read (bench open-read counters), both
+//                    return DECERR from the crossbar error subordinate
 
 class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   `uvm_object_utils(dtp_xtrig_csr_test_seq)
@@ -51,27 +53,30 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     endcase
   endtask
 
-  // Accepted-path CSR accesses under an activity window: no request or
-  // acknowledge enable or CTP busy flop moves while an access is in flight,
-  // the crossbar's READY-low stall counters do not advance, and a routed
-  // pulse afterwards is the positive control of the same observables. The
-  // pad levels and the receive pulses stay out of the window because they
-  // follow the polarity CSR the accesses write.
+  // Accepted-path CSR accesses under an activity window: no internal-lane
+  // request, CTP request or acknowledge enable, or CTP busy flop moves while
+  // an access is in flight, the crossbar's READY-low stall counters do not
+  // advance while its AWVALID and ARVALID counters do, and two routes
+  // afterwards, one wire-OR and one point-to-point, are the positive control
+  // that moves each of those observables. The pad levels and the receive
+  // pulses stay out of the window because they follow the polarity CSR the
+  // accesses write.
   protected task run_reg_stall();
     bit [15:0] stretch = 16'($urandom);
     bit [31:0] select = $urandom_range(CtmSelectMask, 1);
     bit [31:0] aw_stall0 = xtrig_pin("xtrig_axil_aw_stall_count");
     bit [31:0] ar_stall0 = xtrig_pin("xtrig_axil_ar_stall_count");
-    int unsigned int_idx = $urandom_range(XtrigNumIntCt - 1);
-    int unsigned ctp_idx = $urandom_range(XtrigNumCtp - 1);
-    string in_flight[$];
+    bit [31:0] awvalid0 = xtrig_pin("xtrig_axil_awvalid_count");
+    bit [31:0] arvalid0 = xtrig_pin("xtrig_axil_arvalid_count");
+    int unsigned ints[$], ctps[$];
+    bit [31:0] control_outputs;
     `uvm_info(get_type_name(), "XTRIG accepted-path CSR access and stall rationale", UVM_LOW)
-    foreach (reset_signals[i])
-      if (!(reset_signals[i] inside {"xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout",
-                                     "xtrig_ctp_ct_dst", "xtrig_int_ct_dst"}))
-        in_flight.push_back(reset_signals[i]);
+    require_pulse_mode_lanes("run_reg_stall");
+    // Seeded per-pass control ports.
+    pick_distinct(XtrigNumIntCt, 3, ints);
+    pick_distinct(XtrigNumCtp, 2, ctps);
     idle_inputs();
-    start_activity_window_on(in_flight);
+    start_activity_window_on(in_flight_signals);
     write_read_check(ctp_config_addr(0), pack_ctp_config(.invert(1'b1)), pack_ctp_config(
                      .invert(1'b1)), 4'hF, CtpConfigMask, "regstall.ctp0.config");
     write_read_check(ctp_stretch_addr(0), 32'(stretch), 32'(stretch), 4'hF, CtpStretchMask,
@@ -79,24 +84,33 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     write_read_check(ctm_config_addr(0), select, select, 4'hF, CtmSelectMask, "regstall.ctm0");
     wait_sys_cycles(2);
     stop_activity_window();
-    foreach (in_flight[i])
-      check_evidence(ChkQuiet, $sformatf("regstall.in_flight.%s", in_flight[i]),
-                     64'(window_activity[in_flight[i]]), 64'd0, $sformatf(
+    foreach (in_flight_signals[i])
+      check_evidence(ChkQuiet, $sformatf("regstall.in_flight.%s", in_flight_signals[i]),
+                     64'(window_activity[in_flight_signals[i]]), 64'd0, $sformatf(
                      "cycles=%0d", window_cycles));
     check_quiet("reg_stall_accepted");
     check_evidence(ChkAxil, "regstall.aw_stall_count_delta", 64'(xtrig_pin(
                    "xtrig_axil_aw_stall_count") - aw_stall0), 64'd0);
+    check_evidence(ChkAxil, "regstall.awvalid_count_advanced", 64'(xtrig_pin(
+                   "xtrig_axil_awvalid_count") - awvalid0 > 0), 64'd1);
     check_evidence(ChkAxil, "regstall.ar_stall_count_delta", 64'(xtrig_pin(
                    "xtrig_axil_ar_stall_count") - ar_stall0), 64'd0);
-    check_evidence(ChkAxil, "regstall.awvalid_count_nonzero", 64'(xtrig_pin(
-                   "xtrig_axil_awvalid_count") > 0), 64'd1);
-    check_evidence(ChkAxil, "regstall.arvalid_count_nonzero", 64'(xtrig_pin(
-                   "xtrig_axil_arvalid_count") > 0), 64'd1);
-    // Positive control: the observables the quiet records judged move for a
-    // routed pulse in the same pass.
+    check_evidence(ChkAxil, "regstall.arvalid_count_advanced", 64'(xtrig_pin(
+                   "xtrig_axil_arvalid_count") - arvalid0 > 0), 64'd1);
+    // Positive control: a wire-OR route to a CTP and an internal CT and a
+    // point-to-point route to a second CTP move every observable the quiet
+    // records judged.
     clear_xtrig();
-    verify_route(internal_ct_port(int_idx), 32'd1 << external_ctp_port(ctp_idx), CtpModeWireOr,
-                 "regstall.control");
+    control_outputs = (32'd1 << external_ctp_port(ctps[0])) | (32'd1 << internal_ct_port(ints[1]));
+    start_live_window(in_flight_signals);
+    verify_route_mask(32'd1 << internal_ct_port(ints[0]), control_outputs, CtpModeWireOr,
+                      "regstall.control.wire_or");
+    verify_route(internal_ct_port(ints[2]), 32'd1 << external_ctp_port(ctps[1]), CtpModeP2p,
+                 "regstall.control.p2p");
+    stop_live_window();
+    foreach (in_flight_signals[i])
+      check_evidence(ChkSignal, $sformatf("regstall.control.%s.live", in_flight_signals[i]),
+                     64'(m_live_activity[in_flight_signals[i]] != 0), 64'd1);
     clear_xtrig();
   endtask
 
@@ -104,8 +118,9 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     bit [31:0] base[4];
     bit [31:0] config_patterns[$];
     bit [31:0] stretch_patterns[$];
-    bit [63:0] words_before, words_after;
+    bit [31:0] nbr_config, nbr_stretch, observed;
     int unsigned neighbor;
+    string nbr_ctx;
     `uvm_info(get_type_name(), "XTRIG CTP deterministic CSR and byte-strobe sweep", UVM_LOW)
     base[0] = pack_ctp_config(CtpModeWireOr);
     base[1] = pack_ctp_config(CtpModeWireOr, 1'b1);
@@ -129,12 +144,27 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       `uvm_info(get_type_name(), $sformatf(
                 "Iteration %0d/%0d: CTP[%0d] CSR sweep", ctp_idx + 1, XtrigNumCtp, ctp_idx),
                 UVM_LOW)
+      // The neighbour holds seeded nonzero words the sweep does not end on,
+      // so a write that also lands in the neighbour leaves another value
+      // there.
       neighbor = (ctp_idx + 1) % XtrigNumCtp;
-      read_ctp_words(neighbor, $sformatf("ctp%0d.neighbor_before", ctp_idx), words_before);
-      sweep_ctp_words(ctp_idx, config_patterns, stretch_patterns);
-      read_ctp_words(neighbor, $sformatf("ctp%0d.neighbor_after", ctp_idx), words_after);
-      check_evidence(ChkCsr, $sformatf("ctp%0d.neighbor_no_alias", ctp_idx), words_after,
-                     words_before, $sformatf("ctp=%0d", neighbor));
+      nbr_ctx = $sformatf("ctp=%0d", neighbor);
+      nbr_config = sweep_config_word();
+      nbr_stretch = 32'($urandom_range(16'hFFFF, 1));
+      write_read_check(ctp_config_addr(neighbor), nbr_config, nbr_config, 4'hF, CtpConfigMask,
+                       $sformatf("ctp%0d.neighbor_preload.config", ctp_idx));
+      write_read_check(ctp_stretch_addr(neighbor), nbr_stretch, nbr_stretch, 4'hF, CtpStretchMask,
+                       $sformatf("ctp%0d.neighbor_preload.stretch", ctp_idx));
+      sweep_ctp_words(ctp_idx, config_patterns, stretch_patterns, sweep_config_word(nbr_config),
+                      nbr_stretch ^ 32'($urandom_range(16'hFFFF, 1)));
+      csr_read(ctp_config_addr(neighbor), observed, $sformatf(
+               "ctp%0d.neighbor_after.config", ctp_idx));
+      check_evidence(ChkCsr, $sformatf("ctp%0d.neighbor_no_alias.config", ctp_idx),
+                     64'(observed & CtpConfigMask), 64'(nbr_config), nbr_ctx);
+      csr_read(ctp_stretch_addr(neighbor), observed, $sformatf(
+               "ctp%0d.neighbor_after.stretch", ctp_idx));
+      check_evidence(ChkCsr, $sformatf("ctp%0d.neighbor_no_alias.stretch", ctp_idx),
+                     64'(observed & CtpStretchMask), 64'(nbr_stretch), nbr_ctx);
     end
     `uvm_info(get_type_name(),
               "Step route: one programmed CTP routes a stretched pulse after the sweep", UVM_LOW)
@@ -144,17 +174,28 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     clear_xtrig();
   endtask
 
-  // CONFIG and STRETCH_MULT of one CTP packed as {stretch, config}.
-  protected task read_ctp_words(int unsigned ctp_idx, string label, output bit [63:0] words);
-    bit [31:0] cfg_word, stretch_word;
-    csr_read(ctp_config_addr(ctp_idx), cfg_word, {label, ".config"});
-    csr_read(ctp_stretch_addr(ctp_idx), stretch_word, {label, ".stretch"});
-    words = {stretch_word & CtpStretchMask, cfg_word & CtpConfigMask};
-  endtask
+  // One seeded nonzero CONFIG word other than `exclude`, for the CTP CSR
+  // sweep's byte-strobe bases, neighbour words, and final words. MODE|INVERT
+  // is left out: the sweep leaves the bench pads at their non-inverted idle
+  // levels, which an inverted point-to-point receiver reads as a request.
+  protected function bit [31:0] sweep_config_word(bit [31:0] exclude = FullWord);
+    bit [31:0] words[$] = '{
+        pack_ctp_config(CtpModeP2p),
+        pack_ctp_config(CtpModeWireOr, 1'b1),
+        pack_ctp_config(CtpModeWireOr, 1'b0, 1'b1),
+        pack_ctp_config(CtpModeP2p, 1'b0, 1'b1),
+        pack_ctp_config(CtpModeWireOr, 1'b1, 1'b1)
+    };
+    bit [31:0] pool[$];
+    foreach (words[i]) if (words[i] != exclude) pool.push_back(words[i]);
+    return pool[$urandom_range(pool.size()-1)];
+  endfunction
 
-  // Full-word patterns, every byte strobe, and a STATUS write on one CTP.
+  // Full-word patterns, every byte strobe, a STATUS write, then the final
+  // words, on one CTP.
   protected task sweep_ctp_words(int unsigned ctp_idx, bit [31:0] config_patterns[$],
-                                 bit [31:0] stretch_patterns[$]);
+                                 bit [31:0] stretch_patterns[$], bit [31:0] final_config,
+                                 bit [31:0] final_stretch);
     bit [63:0] config_addr = ctp_config_addr(ctp_idx);
     bit [63:0] stretch_addr = ctp_stretch_addr(ctp_idx);
     bit [3:0] strobes[4] = '{4'h1, 4'h2, 4'h4, 4'h8};
@@ -167,16 +208,16 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       write_read_check(stretch_addr, stretch_patterns[pat_idx],
                        stretch_patterns[pat_idx] & CtpStretchMask, 4'hF, FullWord, $sformatf(
                        "ctp%0d.stretch%0d", ctp_idx, pat_idx));
-    // Byte strobes: only the strobed lanes change, and a strobed reserved
-    // lane changes nothing.
+    // Byte strobes over a nonzero base: only the strobed lanes change, and a
+    // strobed reserved lane changes nothing.
     foreach (strobes[s]) begin
-      old_cfg = pack_ctp_config(CtpModeWireOr);
+      old_cfg = sweep_config_word();
       new_cfg = $urandom();
       csr_write(config_addr, old_cfg, 4'hF, $sformatf("ctp%0d.byte_base", ctp_idx));
       write_read_check(config_addr, new_cfg, apply_wstrb(old_cfg, new_cfg, strobes[s]
                        ) & CtpConfigMask, strobes[s], FullWord, $sformatf(
                        "ctp%0d.cfg_wstrb%0h", ctp_idx, strobes[s]));
-      old_stretch = 32'(16'($urandom));
+      old_stretch = 32'($urandom_range(16'hFFFF, 1));
       new_stretch = $urandom();
       csr_write(stretch_addr, old_stretch, 4'hF, $sformatf("ctp%0d.stretch_base", ctp_idx));
       write_read_check(stretch_addr, new_stretch, apply_wstrb(old_stretch, new_stretch, strobes[s]
@@ -186,6 +227,10 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     csr_read(ctp_status_addr(ctp_idx), status_before, $sformatf("ctp%0d.status", ctp_idx));
     write_read_check(ctp_status_addr(ctp_idx), FullWord, status_before, 4'hF, FullWord, $sformatf(
                      "ctp%0d.status_ro", ctp_idx));
+    write_read_check(config_addr, final_config, final_config, 4'hF, CtpConfigMask, $sformatf(
+                     "ctp%0d.cfg_final", ctp_idx));
+    write_read_check(stretch_addr, final_stretch, final_stretch, 4'hF, CtpStretchMask, $sformatf(
+                     "ctp%0d.stretch_final", ctp_idx));
   endtask
 
   protected task run_ctm_csr_sweep();
@@ -277,38 +322,49 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       write_read_check(ctm_config_addr(src_idx), masks[mask_idx], masks[mask_idx], 4'hF,
                        CtmSelectMask, $sformatf("allsrc%0d.mask%0d", src_idx, mask_idx));
       csr_read(neighbor, after_neighbor, $sformatf("allsrc%0d.neighbor_after", src_idx));
-      if ((after_neighbor & CtmSelectMask) !== (before_neighbor & CtmSelectMask))
-        `uvm_error("xtrig_csr_chk", $sformatf(
-                   "allsrc%0d.neighbor_no_alias: neighbor CT_SRC[%0d] moved 0x%0h -> 0x%0h",
-                   src_idx,
-                   nbr_idx,
-                   before_neighbor & CtmSelectMask,
-                   after_neighbor & CtmSelectMask
-                   ))
+      check_evidence(ChkCsr, $sformatf("allsrc%0d.neighbor_no_alias", src_idx),
+                     64'(after_neighbor & CtmSelectMask), 64'(before_neighbor & CtmSelectMask),
+                     $sformatf("ct_src=%0d", nbr_idx));
       // One routed pulse per source: its select decodes into the matrix.
       verify_route(src_idx, 32'd1 << nbr_idx, CtpModeWireOr, $sformatf("allsrc%0d.route", src_idx));
     end
   endtask
 
   protected task run_axi_channel_skew();
-    bit [15:0] d1 = 16'($urandom);
-    bit [15:0] d2 = 16'($urandom);
-    bit [15:0] d3 = 16'($urandom);
     bit [63:0] addr = ctp_stretch_addr($urandom_range(XtrigNumCtp - 1));
-    bit [31:0] observed;
+    bit [15:0] d1, d2, d3;
+    bit [31:0] observed, prior, w_stall_before, w_stall_delta;
+    int unsigned aw_delay;
     ocah_axi_item res;
     `uvm_info(get_type_name(), "XTRIG manual AXI-Lite AW/W and RREADY skew", UVM_LOW)
     // Seeded per-pass payloads and skew timing: each loop exercises the
-    // channel-skew paths with different data, gaps, and READY delays.
+    // channel-skew paths with different data, gaps, and READY delays. Each
+    // write replaces a different value, so a dropped write reads back the
+    // one before it.
+    csr_read(addr, prior, "axi_skew.prior");
+    d1 = prior[15:0] ^ 16'($urandom_range(16'hFFFF, 1));
+    d2 = d1 ^ 16'($urandom_range(16'hFFFF, 1));
+    d3 = d2 ^ 16'($urandom_range(16'hFFFF, 1));
     write_skewed_result(addr, 64'(d1), res, .w_valid_delay($urandom_range(7, 3)),
                         .b_ready_delay($urandom_range(4, 1)));
     check_evidence(ChkAxil, "axi_skew.aw_before_w.bresp", 64'(res.worst_resp()),
                    64'(OCAH_AXI_RESP_OKAY));
+    csr_read(addr, observed, "axi_skew.aw_before_w.readback");
+    check_evidence(ChkAxil, "axi_skew.aw_before_w.stretch", 64'(observed & CtpStretchMask),
+                   64'(d1));
     write_read_check(addr, 32'(d2), 32'(d2), 4'hF, CtpStretchMask, "axi_skew.normal_after_aw");
-    write_skewed_result(addr, 64'(d3), res, .aw_valid_delay($urandom_range(7, 3)),
+    w_stall_before = xtrig_pin("xtrig_axil_w_stall_count");
+    aw_delay = $urandom_range(7, 3);
+    write_skewed_result(addr, 64'(d3), res, .aw_valid_delay(aw_delay),
                         .b_ready_delay($urandom_range(4, 1)));
+    w_stall_delta = xtrig_pin("xtrig_axil_w_stall_count") - w_stall_before;
     check_evidence(ChkAxil, "axi_skew.w_before_aw.bresp", 64'(res.worst_resp()),
                    64'(OCAH_AXI_RESP_OKAY));
+    // The W beat waits with WREADY low until its AW arrives, so it stalls at
+    // least for the cycles the AW is held back, and the port's W stability
+    // rules see the stall.
+    check_evidence(ChkAxil, "axi_skew.w_before_aw.w_ready_low_seen", 64'(w_stall_delta >= aw_delay),
+                   64'd1, $sformatf("w_stall_cycles=%0d aw_delay=%0d", w_stall_delta, aw_delay));
     csr_read(addr, observed, "axi_skew.final_read");
     check_evidence(ChkAxil, "axi_skew.final_stretch", 64'(observed & CtpStretchMask), 64'(d3));
     read_hold_result(addr, $urandom_range(7, 3), res);
@@ -361,9 +417,11 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
   // Two outstanding skewed writes judged against the demux state mirrors.
   // The demux queues the first AW's port selection until its W passes
   // (xtrig_demux_w_pending) and holds the second AW with AWREADY low
-  // meanwhile; the AW lock flag, which needs a master port that refuses a
-  // fresh AW, stays clear. Both responses must complete and the bench stall
-  // counter must agree with the VIP's AW observation.
+  // meanwhile: the port's open-write counters see the second AW stall, and
+  // no AW accepted, while the first is owed its W. The AW lock flag, which
+  // needs a subordinate that refuses a presented AW, stays clear. Both
+  // responses must complete and the bench stall counter must agree with the
+  // VIP's AW observation.
   protected task run_write_pair(
       input bit [63:0] addr_a, input bit [31:0] data_a, input bit [63:0] addr_b,
       input bit [31:0] data_b, output ocah_axi_item first, output ocah_axi_item second,
@@ -371,12 +429,16 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
       input int unsigned b_ready_delay = 0, input string label = "",
       input bit check_response = 1'b1);
     bit [31:0] stall_before = xtrig_pin("xtrig_axil_aw_stall_count");
-    bit [31:0] stall_delta;
+    bit [31:0] open_stall_before = xtrig_pin("xtrig_axil_aw_open_stall_count");
+    bit [31:0] open_accept_before = xtrig_pin("xtrig_axil_aw_open_accept_count");
+    bit [31:0] stall_delta, open_stall_delta, open_accept_delta;
     start_activity_window_on(demux_signals);
     write_pair_skewed(addr_a, data_a, addr_b, data_b, first, second, aw_valid_delay, w_valid_delay,
                       b_ready_delay, check_response);
     stop_activity_window();
     stall_delta = xtrig_pin("xtrig_axil_aw_stall_count") - stall_before;
+    open_stall_delta = xtrig_pin("xtrig_axil_aw_open_stall_count") - open_stall_before;
+    open_accept_delta = xtrig_pin("xtrig_axil_aw_open_accept_count") - open_accept_before;
     `uvm_info(get_type_name(),
               $sformatf(
                   "%s aw_stall=%0d aw_stable=%0d w_pending_seen=%0d aw_lock_seen=%0d resp=%s/%s",
@@ -395,8 +457,9 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
                    64'(window_last["xtrig_demux_w_pending"]), 64'd0);
     check_evidence(ChkAwLock, {label, ".aw_lock_clear"},
                    64'(window_activity["xtrig_demux_aw_lock"]), 64'd0);
-    check_evidence(ChkAwLock, {label, ".second_aw_held"}, 64'(first.ax_stall_cycles > 0), 64'd1);
-    check_evidence(ChkAwLock, {label, ".aw_stable"}, 64'(first.ax_stable), 64'd1);
+    check_evidence(ChkAwLock, {label, ".second_aw_held_while_w_open"}, 64'(open_stall_delta > 0),
+                   64'd1, $sformatf("open_stall_cycles=%0d", open_stall_delta));
+    check_evidence(ChkAwLock, {label, ".no_aw_accept_while_w_open"}, 64'(open_accept_delta), 64'd0);
     check_evidence(ChkAwLock, {label, ".aw_stall_count"}, 64'(stall_delta),
                    64'(first.ax_stall_cycles));
   endtask
@@ -407,7 +470,9 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     int unsigned hold = $urandom_range(8, 4);
     bit [31:0] stall_before = xtrig_pin("xtrig_axil_ar_stall_count");
     bit [31:0] arvalid_before = xtrig_pin("xtrig_axil_arvalid_count");
-    bit [31:0] stall_delta, arvalid_delta;
+    bit [31:0] open_stall_before = xtrig_pin("xtrig_axil_ar_open_stall_count");
+    bit [31:0] open_accept_before = xtrig_pin("xtrig_axil_ar_open_accept_count");
+    bit [31:0] stall_delta, arvalid_delta, open_stall_delta, open_accept_delta;
     ocah_axi_item first, second;
     `uvm_info(get_type_name(), "XTRIG AXI-Lite read decode backpressure", UVM_LOW)
     // Seeded per-pass unmapped offsets and RREADY hold width.
@@ -418,6 +483,8 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     read_pair_hold(addr_a, addr_b, hold, first, second, .check_response(1'b0));
     stall_delta   = xtrig_pin("xtrig_axil_ar_stall_count") - stall_before;
     arvalid_delta = xtrig_pin("xtrig_axil_arvalid_count") - arvalid_before;
+    open_stall_delta = xtrig_pin("xtrig_axil_ar_open_stall_count") - open_stall_before;
+    open_accept_delta = xtrig_pin("xtrig_axil_ar_open_accept_count") - open_accept_before;
     `uvm_info(
         get_type_name(),
         $sformatf(
@@ -431,8 +498,13 @@ class dtp_xtrig_csr_test_seq extends dtp_xtrig_base_test_seq;
     check_evidence(ChkAxil, "read_decode.second.resp", 64'(second.worst_resp()),
                    64'(OCAH_AXI_RESP_DECERR));
     check_evidence(ChkAxil, "read_decode.first.hold_stable", 64'(first.hold_stable), 64'd1);
-    check_evidence(ChkArStall, "read_decode.second_ar_held", 64'(first.ax_stall_cycles > 0), 64'd1);
-    check_evidence(ChkArStall, "read_decode.ar_stable", 64'(first.ax_stable), 64'd1);
+    // The crossbar admits one read in flight: the second AR stalls, and no AR
+    // is accepted, while the first is owed its R beat.
+    check_evidence(ChkArStall, "read_decode.second_ar_held_while_read_open",
+                   64'(open_stall_delta > 0), 64'd1, $sformatf(
+                   "open_stall_cycles=%0d", open_stall_delta));
+    check_evidence(ChkArStall, "read_decode.no_ar_accept_while_read_open", 64'(open_accept_delta),
+                   64'd0);
     check_evidence(ChkArStall, "read_decode.ar_stall_count", 64'(stall_delta),
                    64'(first.ax_stall_cycles));
     check_evidence(ChkArStall, "read_decode.ar_accepted", 64'(arvalid_delta - stall_delta), 64'd2);

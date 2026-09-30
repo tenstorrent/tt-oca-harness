@@ -17,7 +17,14 @@ class dtp_jtag2axi_smc_otp_axi_series_write_incr_test extends dtp_base_test;
 
   virtual function void configure_test_cfg(dtp_test_cfg cfg);
     super.configure_test_cfg(cfg);
-    cfg.require_axi_ids("smc_otp", '{"CHK-AXI-RESP", "CHK-AXI-COMPLETION", "CHK-AXI-NONVAC"});
+    cfg.require_axi_ids("smc_otp",
+                        '{
+                            "CHK-AXI-RESP",
+                            "CHK-AXI-WMEM",
+                            "CHK-AXI-COMPLETION",
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ"
+                        });
   endfunction
 
   virtual function ocah_sequence create_scenario_seq();

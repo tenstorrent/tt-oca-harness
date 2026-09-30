@@ -472,10 +472,10 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>rsvd_31_4</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>3</td><td>seal</td><td>RW</td><td>0x0</td><td>Seals this key entry until warm reset. Read-any, write-1-only. Setting this<br>bit also sets lock_write in hardware, so a single write seals the slot: its<br>data can be read but not overwritten. Erase remains available, and erasing<br>a sealed slot retires it rather than freeing it (see ERASE), so a sealed<br>slot&#x27;s material can be destroyed but its slot never reused.</td></tr>
-<tr><td>2</td><td>erase</td><td>RW</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler). Hardware self-clears this bit when the<br>erase completes. Never blocked: neither lock_write, lock_use nor seal<br>prevents an erase. The slot&#x27;s seal state when the erase completes decides<br>the outcome. Unsealed, the slot CTRL register is cleared and the slot is<br>reusable. Sealed, lock_write stays set and lock_use is set, retiring the<br>slot: its data is destroyed and it can be neither read, rewritten nor<br>reused until warm reset. A seal taken while an erase is already in flight<br>therefore still retires the slot.</td></tr>
-<tr><td>1</td><td>lock_use</td><td>RW</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.<br>Hardware sets this bit when an erase of a sealed slot completes, retiring<br>the slot: its destroyed contents cannot be read back.</td></tr>
-<tr><td>0</td><td>lock_write</td><td>RW</td><td>0x0</td><td>Prevents KM write to this key entry data until reset; this register stays<br>writable so that a locked slot can still be read-locked and erased.<br>Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is<br>set, so sealing a slot write-locks it without a separate write here.</td></tr>
+<tr><td>3</td><td>seal</td><td>RW1S</td><td>0x0</td><td>Seals this key entry until warm reset. Read-any, write-1-only. Setting this<br>bit also sets lock_write in hardware, so a single write seals the slot: its<br>data can be read but not overwritten. Erase remains available, and erasing<br>a sealed slot retires it rather than freeing it (see ERASE), so a sealed<br>slot&#x27;s material can be destroyed but its slot never reused.</td></tr>
+<tr><td>2</td><td>erase</td><td>RW1S</td><td>0x0</td><td>Write-1 to start hardware erase of this slot: an LFSR fills all 16 key<br>words (through the KPV scrambler). Hardware self-clears this bit when the<br>erase completes. Never blocked: neither lock_write, lock_use nor seal<br>prevents an erase. The slot&#x27;s seal state when the erase completes decides<br>the outcome. Unsealed, the slot CTRL register is cleared and the slot is<br>reusable. Sealed, lock_write stays set and lock_use is set, retiring the<br>slot: its data is destroyed and it can be neither read, rewritten nor<br>reused until warm reset. A seal taken while an erase is already in flight<br>therefore still retires the slot.</td></tr>
+<tr><td>1</td><td>lock_use</td><td>RW1S</td><td>0x0</td><td>Prevents KM read of this key entry data until reset. Read-any, write-1-only.<br>Hardware sets this bit when an erase of a sealed slot completes, retiring<br>the slot: its destroyed contents cannot be read back.</td></tr>
+<tr><td>0</td><td>lock_write</td><td>RW1S</td><td>0x0</td><td>Prevents KM write to this key entry data until reset; this register stays<br>writable so that a locked slot can still be read-locked and erased.<br>Read-any, write-1-only. Hardware holds this bit set for as long as SEAL is<br>set, so sealing a slot write-locks it without a separate write here.</td></tr>
 </table>
 <h3 id="KPV_SCRAMBLER_KEY">KPV_SCRAMBLER_KEY</h3>
 <table>
@@ -486,7 +486,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
-<tr><td>1</td><td>lock</td><td>RW</td><td>0x0</td><td>Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.</td></tr>
+<tr><td>1</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Write-one-only. When 1, key and ENABLE cannot be modified until KM reset.</td></tr>
 <tr><td>0</td><td>enable</td><td>RW</td><td>0x0</td><td>1 = scramble key entry data on write, descramble on read; 0 = passthrough.</td></tr>
 </table>
 </div>

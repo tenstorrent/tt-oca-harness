@@ -62,6 +62,7 @@ endif::release[]
 * xref:ip-reference.adoc[IP Reference] - Reference documentation for reusable IP blocks
 * xref:dashboard.adoc[Verification Dashboard]
 * Appendices
+** xref:register-field-access.adoc[Register Field Access Notation] - How to read the Access column of the generated register and field tables
 ** xref:referenced-documents.adoc[Referenced Documents] - Specifications and external design documentation cited throughout this manual
 endif::backend-html5[]
 
@@ -147,5 +148,6 @@ include::smn.placeholder.adoc[leveloffset=+2]
 include::aou.adoc[leveloffset=+2]
 
 include::ip-reference.adoc[leveloffset=+1]
+include::register-field-access.adoc[leveloffset=+1]
 include::referenced-documents.adoc[leveloffset=+1]
 endif::backend-pdf[]

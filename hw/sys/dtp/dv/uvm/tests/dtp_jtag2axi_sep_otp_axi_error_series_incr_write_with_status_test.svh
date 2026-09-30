@@ -27,7 +27,11 @@ class dtp_jtag2axi_sep_otp_axi_error_series_incr_write_with_status_test extends 
                             "CHK-AXI-WDATA",
                             "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ",
+                            "CHK-J2A-FAULT-STATUS",
+                            "CHK-J2A-SERIES-ADDR",
+                            "CHK-J2A-STATUS-BIT"
                         });
   endfunction
 

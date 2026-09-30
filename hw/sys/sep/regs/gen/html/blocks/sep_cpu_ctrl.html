@@ -130,7 +130,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>reserved</td><td>W</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
+<tr><td>0</td><td>reserved</td><td>W 1P</td><td>0x0</td><td>Reserved - timeout monitors not yet implemented.</td></tr>
 </table>
 <h3 id="TIMEOUT_MODE">TIMEOUT_MODE</h3>
 <table>
@@ -208,7 +208,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock the NMI vector address. Once locked, the NMI vector address cannot be changed.<br>The NMI interrupt is used for the WDT Bark interrupt.</td></tr>
 </table>
 <h3 id="EXT_TRNG_SRC_SEL">EXT_TRNG_SRC_SEL</h3>
 <table>
@@ -220,7 +220,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>lock</td><td>RW</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
+<tr><td>0</td><td>lock</td><td>RW1S</td><td>0x0</td><td>Lock TRNG source selection. Once set, cannot be cleared by software.</td></tr>
 </table>
 <h3 id="KM_WIPE_CTRL">KM_WIPE_CTRL</h3>
 <table>
@@ -239,7 +239,7 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>0</td><td>clr</td><td>W</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
+<tr><td>0</td><td>clr</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</td></tr>
 </table>
 <h3 id="PERIPH_BUS_ERR_STATUS">PERIPH_BUS_ERR_STATUS</h3>
 <table>
@@ -257,13 +257,13 @@
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:7</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>6</td><td>wdt</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
-<tr><td>5</td><td>edn</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</td></tr>
-<tr><td>4</td><td>csrng</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</td></tr>
-<tr><td>3</td><td>otbn</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</td></tr>
-<tr><td>2</td><td>kmac</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</td></tr>
-<tr><td>1</td><td>hmac</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</td></tr>
-<tr><td>0</td><td>aes</td><td>W</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
+<tr><td>6</td><td>wdt</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</td></tr>
+<tr><td>5</td><td>edn</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</td></tr>
+<tr><td>4</td><td>csrng</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</td></tr>
+<tr><td>3</td><td>otbn</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</td></tr>
+<tr><td>2</td><td>kmac</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</td></tr>
+<tr><td>1</td><td>hmac</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</td></tr>
+<tr><td>0</td><td>aes</td><td>W 1P</td><td>0x0</td><td>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</td></tr>
 </table>
 <h3 id="SEP_VERSION_ID">SEP_VERSION_ID</h3>
 <table>

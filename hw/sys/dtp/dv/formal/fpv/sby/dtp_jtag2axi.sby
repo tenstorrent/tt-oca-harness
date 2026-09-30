@@ -20,7 +20,9 @@
 # generalizes over its state, while the free response side makes its clause set outgrow the
 # host's memory, and k-induction cannot close `$past` relations under explicit clocks, since an
 # induction window may hold a single tck edge. The cover depth must exceed the step at which the
-# deepest cov_ label is reached; the bmc depth matches it.
+# deepest cov_ label is reached; the bmc depth matches it. The bmc and prove engines keep going past
+# a failed assertion, and the prove engine solves each assertion on its own, so a failure leaves
+# every other assertion its own verdict.
 
 [tasks]
 j2a_ctrl_bmc    j2a_ctrl bmc free_resp
@@ -37,9 +39,9 @@ j2a_ctrl_cover: depth 40
 j2a_ctrl_prove: timeout 2400
 
 [engines]
-bmc:   smtbmc yices
+bmc:   smtbmc --keep-going yices
 cover: smtbmc yices
-prove: abc pdr
+prove: abc --keep-going pdr
 
 [script]
 plugin -i slang
