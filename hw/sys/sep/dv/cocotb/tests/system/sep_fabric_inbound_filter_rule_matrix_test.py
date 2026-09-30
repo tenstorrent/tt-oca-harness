@@ -64,8 +64,10 @@ CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
 cannot move. fabric.adoc specifies the lock as write-once, so the field must
 not change once set; it does not say how the refused write completes, so the
 cell requires only that the write completes (no timeout). The field reads back
-unchanged and the frozen bit still grants the widened page. The lock is sticky until reset,
-so this cell runs last on entry 15.
+unchanged, and a 2-beat INCR inside the widened page still passes OKAY as two
+Lite singles. A single beat would not do: START/END already hold the page, so a
+single beat inside it passes with allow_burst 0 or 1. The lock is sticky until
+reset, so this cell runs last on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
@@ -526,23 +528,32 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
             f"CHK-CONFIG-LOCK FAIL: locked cleared (hi 0x{hi_after:08x})"
         )
         # The frozen bit still drives the hardware, not just the CSR readback.
+        # START/END already hold the widened page, so a single beat inside it is
+        # granted whether allow_burst is 0 or 1. The probe is a 2-beat INCR: the
+        # filter passes it only while it still sees allow_burst=1, and a pass
+        # reaches the target as two Lite singles.
         probe_addr, probe_val = wcfg.staged[1]
-        probe_resp, data = await self._ext_read(probe_addr)
+        probe_resp, data, lite_ar = await self._ext_burst_read_watch(probe_addr)
         assert probe_resp == RESP_OKAY and data == probe_val, (
-            f"CHK-CONFIG-LOCK FAIL: frozen allow_burst stopped granting the page "
-            f"(0x{probe_addr:08x} resp={probe_resp} rdata=0x{data:08x}, staged "
-            f"0x{probe_val:08x})"
+            f"CHK-CONFIG-LOCK FAIL: 2-beat INCR read of 0x{probe_addr:08x} under the "
+            f"lock resp={probe_resp} rdata=0x{data:08x} (staged 0x{probe_val:08x}); "
+            "the filter refuses the burst, so the lock froze only the CSR "
+            "readback of allow_burst"
         )
+        self._expect_lite_split(lite_ar, start=probe_addr, nbeats=2, tag="CHK-CONFIG-LOCK burst AR")
         self.logger.info(
             "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d) "
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
-            "(resp=%d) leaves the bit set, and the frozen granule still grants 0x%08x",
+            "(resp=%d) leaves the bit set, and a 2-beat INCR at 0x%08x still "
+            "passes OKAY rdata=0x%08x as Lite AR %s",
             wcfg.entry,
             resp_lo,
             after,
             bool(after & F_ALLOW_BURST),
             resp_hi,
             probe_addr,
+            data,
+            [hex(a) for a in lite_ar],
         )
 
     async def _bring_up_prod_filter_active(self) -> None:
