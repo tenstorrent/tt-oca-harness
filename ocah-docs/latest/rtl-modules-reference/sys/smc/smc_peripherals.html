@@ -710,6 +710,7 @@
 <tr><td><code>efuse_shim_command_req_o</code></td><td>output</td><td><code>smc_efuse_pkg::fuse_command_req_t</code></td><td>Fuse sense and program command request to the shim state machine.</td></tr>
 <tr><td><code>efuse_shim_command_resp_i</code></td><td>input</td><td><code>smc_efuse_pkg::fuse_command_resp_t</code></td><td>Fuse command response from the shim state machine.</td></tr>
 <tr><td><code>ext_boot_seq_done_i</code></td><td>input</td><td><code>logic</code></td><td>External boot sequence done, active-high; the eFuse wrapper holds its released reset until it is set.</td></tr>
+<tr><td><code>ext_boot_seq_done_qual_o</code></td><td>output</td><td><code>logic</code></td><td>ext_boot_seq_done_i synchronized to clk_smc_i and held set until cold reset.</td></tr>
 <tr><td><code>sep_security_disable_i</code></td><td>input</td><td><code>logic</code></td><td>Security disable from the SEP eFuse controller, active-high; skips automatic fuse sensing and releases the shadow registers without it.</td></tr>
 <tr><td><code>fuse_reset_n_o</code></td><td>output</td><td><code>logic</code></td><td>Efuse Released Reset. Fuse sensing done &amp;&amp; external boot sequence done (includes memory repair and shadow reg override being complete) - the rest of SMC can now boot. Held low while the boot stall is set.</td></tr>
 <tr><td><code>fuse_reset_n_delayed_o</code></td><td>output</td><td><code>logic</code></td><td>fuse_reset_n_o after 16 SMC clock pipe stages reset by the primary reset.</td></tr>

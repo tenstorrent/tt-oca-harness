@@ -967,10 +967,10 @@ SMC isolation register), not directly by the strap. When asserted, external
 repair logic should skip operations and immediately assert completion status.</p>
 </li>
 <li>
-<p><code>ext_boot_seq_done_i</code>: External signal indicating the external boot sequence (memory
-repair and shadow register override) is complete. Held low to pause reset release until
-the external agent gives the go-ahead; required before the system can continue its boot
-sequence</p>
+<p><code>ext_boot_seq_done_i</code>: External input indicating the boot sequence (memory
+repair and shadow register override) is complete. Hold low to pause reset release
+until external logic gives the go-ahead; required before the system can continue
+its boot sequence.</p>
 </li>
 </ul>
 </div>
@@ -1032,6 +1032,10 @@ repair data from eFuse shadow registers, applies repair configuration to SRAM
 arrays, asserts <code>ext_boot_seq_done_i</code> and updates DFT Control Status registers
 with completion status. The controller operates independently of the SMC core
 and must complete before the CPU cluster accesses SRAM.</p>
+</div>
+<div class="paragraph">
+<p>Note: For a standalone SEP, the adopter must synchronize <code>ext_boot_seq_done_i</code> to
+the system clock and ensure the signal is held until next cold reset.</p>
 </div>
 <div class="paragraph">
 <p>For direct access to the eFuse besides from the shim, i.e. from a DFT fuse controller,
@@ -1651,8 +1655,8 @@ This table keeps each port&#8217;s connection and tie-off default.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External boot sequence completion input (memory repair and shadow register override done); gates reset release.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External boot/repair controller → eFuse controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Asynchronous external boot sequence completion (memory repair and shadow register override done). Qualified in <code>smc_peripherals</code> and routed to the SMC and SEP eFuse controllers.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External boot/repair controller → SMC peripherals</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>

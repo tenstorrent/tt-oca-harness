@@ -728,6 +728,7 @@
 <tr><td><code>smc_fuse_reset_n_delayed_o</code></td><td>output</td><td><code>logic</code></td><td>Fuse-released reset, active-low, delayed by 16 SMC clock pipeline stages; held low while boot stall is asserted.</td></tr>
 <tr><td><code>skip_mem_repair_o</code></td><td>output</td><td><code>logic</code></td><td>Asserted during a function-level reset to skip memory repair and MBIST.</td></tr>
 <tr><td><code>ext_boot_seq_done_i</code></td><td>input</td><td><code>logic</code></td><td>External boot sequence done, active-high; the fuse-released reset stays low until it is set.</td></tr>
+<tr><td><code>ext_boot_seq_done_qual_o</code></td><td>output</td><td><code>logic</code></td><td>ext_boot_seq_done_i synchronized to the SMC clock and held set until cold reset.</td></tr>
 <tr><td><code>sep_security_disable_i</code></td><td>input</td><td><code>logic</code></td><td>Security disable from the SEP eFuse controller, active-high; skips automatic fuse sensing and releases the shadow registers without it.</td></tr>
 <tr><td><code>lc_state_i</code></td><td>input</td><td><code>logic [2*smc_pkg::LC_STATE_WIDTH-1:0]</code></td><td>Differentially encoded lifecycle state, used by the eFuse JTAG access filter and reported in chip_config.</td></tr>
 <tr><td><code>lc_sigint_err_o</code></td><td>output</td><td><code>logic</code></td><td>Integrity error from the differential decode of lc_state_i, active-high.</td></tr>

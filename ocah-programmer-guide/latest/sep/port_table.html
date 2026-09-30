@@ -412,8 +412,8 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External boot sequence completion (memory repair and shadow register override done); gates reset release.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External boot/repair controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boot sequence completion qualified to <code>clk_i</code> (memory repair and shadow register override done); gates reset release. In SMU, driven from SMC-qualified logic. In standalone SEP, synchronize and qualify before this port.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC-qualified boot done or external synchronizer</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b1</p></td>
 </tr>
 <tr>
