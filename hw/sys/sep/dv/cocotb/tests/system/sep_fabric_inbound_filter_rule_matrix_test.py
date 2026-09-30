@@ -61,13 +61,14 @@ scratch-page grant, then the WDT page becomes the granted one, which answers
 that WDT probe and turns the scratch register DECERR. Each probe is therefore
 proven reachable, so neither DECERR can be an address-decode hole.
 CHK-CONFIG-LOCK sets FILTER_CONFIG.locked (bit 63) and proves allow_burst
-cannot move. fabric.adoc specifies the lock as write-once, so the field must
-not change once set; it does not say how the refused write completes, so the
-cell requires only that the write completes (no timeout). The field reads back
-unchanged, and a 2-beat INCR inside the widened page still passes OKAY as two
-Lite singles. A single beat would not do: START/END already hold the page, so a
-single beat inside it passes with allow_burst 0 or 1. The lock is sticky until
-reset, so this cell runs last on entry 15.
+cannot move. The lock is write-once, and every later write to the entry's
+FILTER_CONFIG completes DECERR (filter_ctrl.rdl locked;
+hw/ip/axi_filter/doc/index.adoc "Locking a Filter Entry"), so both refused
+writes must answer DECERR. The field reads back unchanged, and a 2-beat INCR
+inside the widened page still passes OKAY as two Lite singles. A single beat
+would not do: START/END already hold the page, so a single beat inside it passes
+with allow_burst 0 or 1. The lock is sticky until reset, so this cell runs last
+on entry 15.
 
 RUN-MODE: no_cpu + external SMN master. FUSE-MODE: real PROD fuse sense (sep_debug=0
 => filter active). RAND-REP (entry x window x R/W-allow x src-id class; window
@@ -527,6 +528,19 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         assert (hi_after >> FILTER_LOCKED_HI_BIT) & 1, (
             f"CHK-CONFIG-LOCK FAIL: locked cleared (hi 0x{hi_after:08x})"
         )
+        self.logger.info(
+            "CHK-CONFIG-LOCK entry %d locked FILTER_CONFIG writes: lo resp=%d, hi resp=%d "
+            "(spec DECERR=%d)",
+            wcfg.entry,
+            resp_lo,
+            resp_hi,
+            RESP_DECERR,
+        )
+        assert (resp_lo, resp_hi) == (RESP_DECERR, RESP_DECERR), (
+            f"CHK-CONFIG-LOCK FAIL: writes to locked FILTER_CONFIG answered lo resp={resp_lo}, "
+            f"hi resp={resp_hi}; a write to a locked entry goes to the AXI error subordinate "
+            f"and completes DECERR ({RESP_DECERR})"
+        )
         # The frozen bit still drives the hardware, not just the CSR readback.
         # START/END already hold the widened page, so a single beat inside it is
         # granted whether allow_burst is 0 or 1. The probe is a 2-beat INCR: the
@@ -542,9 +556,9 @@ class sep_fabric_inbound_filter_rule_matrix_test(sep_base_test):
         )
         self._expect_lite_split(lite_ar, start=probe_addr, nbeats=2, tag="CHK-CONFIG-LOCK burst AR")
         self.logger.info(
-            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d) "
+            "CHK-CONFIG-LOCK PASS: entry %d locked -- clearing allow_burst (resp=%d, DECERR) "
             "leaves FILTER_CONFIG lo 0x%08x (allow_burst=%d), clearing locked "
-            "(resp=%d) leaves the bit set, and a 2-beat INCR at 0x%08x still "
+            "(resp=%d, DECERR) leaves the bit set, and a 2-beat INCR at 0x%08x still "
             "passes OKAY rdata=0x%08x as Lite AR %s",
             wcfg.entry,
             resp_lo,

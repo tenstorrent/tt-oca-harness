@@ -4080,7 +4080,7 @@ recovery attempt.
 |CHK-PAGE-BOUND
 |The 4 KB grant stops at both page edges. Under a scratch-page grant an access one page below is refused; with that page granted instead it answers OKAY while the scratch address turns DECERR. Both probes are proven reachable first, so neither refusal can be a decode hole rather than a filter decision. This is the security contract: 4 KB is the block pitch for the DMA CSR, watchdog and scratch-bank blocks, so a page-crossing grant would reach a neighbouring block.
 |CHK-CONFIG-LOCK
-|`FILTER_CONFIG.locked` freezes `allow_burst`. `hw/sys/sep/doc/fabric.adoc` specifies the lock bit as write-once, so the field must not change once set. It does not state how a write to a locked entry completes, so the response code is not graded. With `allow_burst` set, a write of 1 to `locked` (the high word of `FILTER_CONFIG`) reads back set. Then a low-word write that clears `allow_burst` must complete (no timeout), and the low word reads back unchanged. A high-word write of 0 must complete, and `locked` reads back set. Last, an external 2-beat INCR read (AxLEN=1) inside the widened page but outside the programmed `START..END` answers OKAY, returns the staged value, and reaches the system-CSR bridge as two AXI-Lite singles. A single beat would not show this: `START`/`END` already hold the widened page, and a single beat inside that range passes with `allow_burst` 0 or 1. Only the burst depends on the bit, so the frozen bit still drives the filter and not only the CSR readback.
+|`FILTER_CONFIG.locked` freezes `allow_burst`. The lock bit is write-once, and every later write to the entry's `FILTER_CONFIG` completes DECERR (`hw/ip/axi_filter/regs/filter_ctrl.rdl` `locked`; `hw/ip/axi_filter/doc/index.adoc` "Locking a Filter Entry"). With `allow_burst` set, a write of 1 to `locked` (the high word of `FILTER_CONFIG`) reads back set. Then a low-word write that clears `allow_burst` must complete DECERR, and the low word reads back unchanged. A high-word write of 0 must complete DECERR, and `locked` reads back set. Last, an external 2-beat INCR read (AxLEN=1) inside the widened page but outside the programmed `START..END` answers OKAY, returns the staged value, and reaches the system-CSR bridge as two AXI-Lite singles. A single beat would not show this: `START`/`END` already hold the widened page, and a single beat inside that range passes with `allow_burst` 0 or 1. Only the burst depends on the bit, so the frozen bit still drives the filter and not only the CSR readback.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4139,7 +4139,7 @@ filter only ever sees `tx_len==0`.
 |CHK-VALID-RW
 |The region valid bit is read/write in both directions.
 |CHK-WOSET
-|The write-once-set lock *actively rejects* a clear attempt with SLVERR rather than silently ignoring it — the strongest check in this entry.
+|The write-once-set `FILTER_CONFIG.locked` bit holds, and while it is set every write to that entry's `FILTER_CONFIG`, `START_ADDR` and `END_ADDR` completes DECERR and leaves the word unchanged, on the inbound and the outbound bank. Source: `hw/ip/axi_filter/regs/filter_ctrl.rdl` (`locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry"). Every code is logged before it is graded.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
