@@ -23,8 +23,13 @@ class dtp_jtag2axi_smc_otp_axi_series_write_incr_with_error_test extends dtp_bas
                         '{
                             "CHK-AXI-RESP",
                             "CHK-AXI-ERR-INJ",
+                            "CHK-AXI-STRB",
+                            "CHK-AXI-WADDR",
+                            "CHK-AXI-WDATA",
+                            "CHK-AXI-WMEM",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ",
                             "CHK-J2A-STATUS-BIT"
                         });
   endfunction

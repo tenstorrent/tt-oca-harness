@@ -107,8 +107,12 @@ static uint32_t drain_uart_rx(uint8_t (*expect)(uint32_t), int *pattern_ok) {
     return count;
 }
 
-static uint8_t abort_pattern_a(uint32_t index) { return (uint8_t)(0xA0u + index); }
-static uint8_t abort_pattern_c(uint32_t index) { return (uint8_t)(0xC0u + (index & 0x3Fu)); }
+static uint8_t abort_pattern_a(uint32_t index) {
+    return (uint8_t)(0xA0u + index);
+}
+static uint8_t abort_pattern_c(uint32_t index) {
+    return (uint8_t)(0xC0u + (index & 0x3Fu));
+}
 
 // Abort check shared by scenarios A and C: the entry had started (at least one
 // byte reached the UART) and moved fewer bytes than it holds, the bytes it did
@@ -121,7 +125,8 @@ static void check_aborted_transfer(const char *tag, uint8_t (*expect)(uint32_t))
     info_msg_hex32_s(0, "bytes moved before the disable took effect=", moved);
     if (moved == 0u) {
         info_msg_s(0, tag);
-        info_msg_s(0, "FAIL: no byte reached the UART before the disable, so no transfer was halted");
+        info_msg_s(0,
+                   "FAIL: no byte reached the UART before the disable, so no transfer was halted");
         test_fail(0);
     }
     if (moved >= ABORT_ENTRY_BYTES) {

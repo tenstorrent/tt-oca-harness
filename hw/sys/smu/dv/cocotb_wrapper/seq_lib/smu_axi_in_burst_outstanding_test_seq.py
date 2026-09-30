@@ -268,6 +268,12 @@ class smu_axi_in_burst_outstanding_test_seq:
         if settled.timed_out:
             raise AssertionError(f"TIMEOUT s1 scratch readback: bound={AXI_TIMEOUT_NS}ns")
         sb.expect_eq(
+            "CHK-AXIIN-DEPTH-WR settled scratch readback is OKAY",
+            resp_name(settled.resp),
+            resp_name(RESP_OKAY),
+            evidence="CHK-AXIIN-DEPTH-ORDER",
+        )
+        sb.expect_eq(
             "CHK-AXIIN-DEPTH-WR same-ID train leaves the last value written",
             int(settled.data) & 0xFFFF_FFFF,
             payloads[-1],

@@ -260,7 +260,45 @@ class sep_mailbox_peer_rx_rirqt_test(sep_base_test):
             f"(STATUS=0x{st:08x}) -- the threshold cannot be shown to arm"
         )
 
-        for i in range(_RIRQT_FILL):
+        # IRQS.rtirq is sticky (stickybit, woclr), and the E0/E1 pushes above went
+        # over the reset RIRQT, so it can already be latched. Clear it and show it
+        # reads 0 in IRQS and IRQP; otherwise a later read of 1 would prove nothing
+        # about this fill.
+        await self.mb.wr_csr(IRQS, IRQ_RTIRQ)
+        irqs = await self.mb.rd_csr(IRQS)
+        irqp = await self.mb.rd_csr(IRQP)
+        assert not (irqs & IRQ_RTIRQ) and not (irqp & IRQ_RTIRQ), (
+            f"CHK-RIRQT FAIL: rtirq still set after write-1-clear on an empty RX "
+            f"(IRQS=0x{irqs:08x} IRQP=0x{irqp:08x}) -- a later raise cannot be "
+            "attributed to the fill"
+        )
+        self.logger.info(
+            "CHK-RIRQT-CLEAR PASS: rtirq cleared before the fill (IRQS=0x%08x IRQP=0x%08x)",
+            irqs,
+            irqp,
+        )
+
+        # Fill to exactly RIRQT: strict greater-than, so neither the level flag
+        # nor rtirq may rise yet. This pins the raise to the entry that crosses.
+        for i in range(_RIRQT):
+            rc = await self._peer_push64(_E0 + i)
+            assert rc == RESP_OKAY, f"peer push {i} for the RIRQT fill returned resp={rc}"
+        st = await self.mb.rd_csr(STATUS)
+        irqs = await self.mb.rd_csr(IRQS)
+        assert not (st & ST_RLVL_ABOVE) and not (irqs & IRQ_RTIRQ), (
+            f"CHK-RIRQT FAIL: at exactly RIRQT={_RIRQT} entries read_level_above or "
+            f"rtirq is already set (STATUS=0x{st:08x} IRQS=0x{irqs:08x}); the "
+            "threshold is strict greater-than"
+        )
+        self.logger.info(
+            "CHK-RIRQT-AT PASS: %d entries == RIRQT left read_level_above and rtirq "
+            "clear (STATUS=0x%08x IRQS=0x%08x)",
+            _RIRQT,
+            st,
+            irqs,
+        )
+
+        for i in range(_RIRQT, _RIRQT_FILL):
             rc = await self._peer_push64(_E0 + i)
             assert rc == RESP_OKAY, f"peer push {i} for the RIRQT fill returned resp={rc}"
 

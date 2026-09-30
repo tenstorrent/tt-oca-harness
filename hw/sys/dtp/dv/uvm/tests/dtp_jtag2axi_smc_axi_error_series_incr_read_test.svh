@@ -28,8 +28,10 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_test extends dtp_base_test;
                             "CHK-AXI-RDATA",
                             "CHK-AXI-COMPLETION",
                             "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ",
                             "CHK-J2A-SERIES-ADDR",
-                            "CHK-J2A-ERR-RDATA"
+                            "CHK-J2A-ERR-RDATA",
+                            "CHK-J2A-FAULT-STATUS"
                         });
   endfunction
 
@@ -58,7 +60,6 @@ class dtp_jtag2axi_smc_axi_error_series_incr_read_test extends dtp_base_test;
     err_seq.axi_cfg       = m_env.m_smc_axi_cfg;
     err_seq.axi_evidence  = m_env.m_smc_axi_env.m_checker;
     err_seq.axi_ref_model = m_env.m_smc_axi_env.m_ref_model;
-    err_seq.axi_reads     = m_env.m_axi_read_history["smc_axi"];
   endfunction
 
 endclass : dtp_jtag2axi_smc_axi_error_series_incr_read_test

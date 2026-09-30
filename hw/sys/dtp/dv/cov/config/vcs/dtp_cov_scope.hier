@@ -15,7 +15,7 @@
 +tree dtp_uvm_top.u_dut
 
 // Assertion coverage carries the DUT's own assertions, the `cover property`
-// points of the functional-coverage modules, and the shared protocol checkers
+// points of the functional-coverage modules, and the protocol checkers
 // under the bench top; the assertions of the UVM and AXI packages, which URG
 // lists as top-level scopes of their own, stay out. uvm_pkg exists in the
 // SV-UVM elaboration only, so the cocotb compile reports that line as
@@ -32,8 +32,16 @@ begin assert
 +tree dtp_uvm_top.u_dtp_scan_fcov
 +tree dtp_uvm_top.u_dtp_xtrig_fcov
 +tree dtp_uvm_top.u_jtag_ptap_sva
++tree dtp_uvm_top.u_stap_io_host_sva
++tree dtp_uvm_top.u_stap_smc_host_sva
++tree dtp_uvm_top.u_stap_sep_host_sva
++tree dtp_uvm_top.u_stap_extra0_host_sva
 +tree dtp_uvm_top.u_smc_otp_axil_sva
 +tree dtp_uvm_top.u_sep_otp_axil_sva
 +tree dtp_uvm_top.u_m_axi_sva
 +tree dtp_uvm_top.u_xtrig_axil_sva
++tree dtp_uvm_top.u_smc_otp_axil_data_sva
++tree dtp_uvm_top.u_sep_otp_axil_data_sva
++tree dtp_uvm_top.u_m_axi_data_sva
++tree dtp_uvm_top.u_xtrig_axil_data_sva
 end

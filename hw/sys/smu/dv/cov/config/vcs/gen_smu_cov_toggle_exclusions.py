@@ -755,7 +755,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "eight slots per channel: the crossbar's slave and master spill registers and "
         "its pipeline stage (smu_axi_xbar_pkg.sv 109-113, CUT_ALL_PORTS, PipelineStages "
         "1) and the bench's axi_cut in front of the responder (tb_wrapper_top.sv "
-        "1399-1413), so the port's ready does not fall on this bench.",
+        "1018-1032), so the port's ready does not fall on this bench.",
         "a deeper SEP issue window, or removal of the bench cut",
         ("smu", "smu_axi_xbar"),
         None,
@@ -843,7 +843,7 @@ CLASSES: list[tuple[str, re.Pattern[str], str, str, tuple[str, ...] | None, tupl
         "(hw/top/sep_ip_integration.sv 273, u_km_rom.req_i) X on a four-state simulator "
         "from the release on, and prim_rom's noXOnCsI assertion (prim_rom.sv 40), which "
         "the bench re-arms once the SMC primary reset has released "
-        "(tb_wrapper_top.sv 878-886), fails the run. The X is a design question about "
+        "(tb_wrapper_top.sv 498-506), fails the run. The X is a design question about "
         "the Key Manager's reset through the SEP reset controller (sep_reset_ctrl.sv "
         "280-297), not a limit of the bench.",
         "a Key Manager whose ROM request is defined after a JTAG override reset, when the "

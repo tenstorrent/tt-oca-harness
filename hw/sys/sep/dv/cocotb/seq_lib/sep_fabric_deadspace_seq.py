@@ -19,6 +19,16 @@ lifecycle, SPI). HMAC/KMAC fill their map window so they have no
 intra-window dead span here. Remap / filter arrays and scratch are
 owned elsewhere for live programming.
 
+The TRNG window is forwarded whole to an adopter endpoint on
+``ext_trng_axil``; SEP allocates no register in it. With no external TRNG
+connected, as in the reference integration, no offset owns a register, and
+both ``hw/sys/sep/doc/memory_map.adoc`` (SLVERR for an offset that owns no
+register) and ``doc/integrator/src/smu.adoc`` (a DECERR slave when no TRNG is
+connected) require the access to be refused. The two documents name
+different flavours, so the flavour is reported per probe and not graded.
+Its alias targets are the neighbouring ESRC registers, which an access
+that drops address bit 12 reaches.
+
 Known wrap offsets that alias onto live registers stay in the probe set
 every seed. The seed adds further dead offsets. Do not shrink the set to
 the addresses that already pass.
@@ -93,6 +103,12 @@ class DeadWindow:
     # status_reg / irq_status_reg. restore() runs only after a probe has failed,
     # so the corruption is confined to a run that is already reporting failure.
     write_destructive: frozenset[int] = frozenset()
+    # The window is forwarded whole to an adopter endpoint and allocates no SEP
+    # register. ``watch`` then holds the neighbouring registers an aliasing
+    # access reaches, named by ``watch_from``, and the caller reports the
+    # refusal flavour of every probe.
+    adopter: bool = False
+    watch_from: str = ""
 
     @property
     def dead_lo(self) -> int:
@@ -230,8 +246,31 @@ def dead_windows() -> tuple[DeadWindow, ...]:
                 block_size("SPI_CONTROLLER"),
             ),
         ),
+        DeadWindow(
+            "trng",
+            sym("TRNG_REG_MAP_BASE_ADDR"),
+            sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"),
+            0,
+            _ot_watch("entropy_source", esrc_base, ot_reg_map_size("entropy_source")),
+            hw_updating=_ot_named(
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_hw_updating("entropy_source"),
+            ),
+            write_destructive=_ot_named(
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_write_destructive("entropy_source"),
+            ),
+            adopter=True,
+            watch_from="entropy_src",
+        ),
     )
 
+
+_TRNG = sym("TRNG_REG_MAP_BASE_ADDR")
 
 # (window name, addr, "r"|"w") — directed dead-space anchors. Every seed probes all of them.
 DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
@@ -247,6 +286,13 @@ DEADSPACE_ANCHORS: tuple[tuple[str, int, str], ...] = (
     ("csrng", 0x1091_5248, "w"),
     ("entropy_src", 0x1091_651C, "w"),
     ("secure_dma", 0x1080_08A8, "w"),
+    # First, middle and last word of the adopter TRNG window, read and write.
+    ("trng", _TRNG + 0x000, "r"),
+    ("trng", _TRNG + 0x000, "w"),
+    ("trng", _TRNG + 0x800, "r"),
+    ("trng", _TRNG + 0x800, "w"),
+    ("trng", _TRNG + 0xFFC, "r"),
+    ("trng", _TRNG + 0xFFC, "w"),
 )
 
 
@@ -321,6 +367,8 @@ class SepDeadspace:
         # Refusals whose flavour is not the DECERR memory_map.adoc names.
         # Reported for the design owner, not failed.
         self.flavour_findings: list[str] = []
+        # Response of the last probe(); -1 when it timed out.
+        self.last_resp: int = -1
 
     async def _access(
         self,
@@ -415,7 +463,7 @@ class SepDeadspace:
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
         # Single-beat the same four addresses. Beats 0-1 are inside the extent
         # and must match; beats 2-3 are past it and are refused on their own, so
-        # a non-zero burst word there is data the single-beat path cannot reach.
+        # the test holds a burst word there to the single-beat no-alias rule.
         singles = []
         for i in range(beats):
             past = start + 4 * i >= win.dead_lo
@@ -511,6 +559,7 @@ class SepDeadspace:
                         break
         if timed_out or resp != RESP_DECERR:
             mon.release_expected_decerr(1)
+        self.last_resp = -1 if timed_out else resp
         if timed_out:
             fails.append(f"{win.name} {item.op} 0x{item.addr:08x} timed out")
             return fails
@@ -519,7 +568,7 @@ class SepDeadspace:
                 f"{win.name} {item.op} 0x{item.addr:08x} resp=OKAY, "
                 f"expected refuse (allocated ends at +0x{win.alloc:x})"
             )
-        elif resp != RESP_DECERR:
+        elif resp != RESP_DECERR and not win.adopter:
             # The contract asserted here is that the access is REFUSED, and any
             # error response satisfies it. `hw/sys/sep/doc/memory_map.adoc`
             # says such an access is refused but names no flavour, so a

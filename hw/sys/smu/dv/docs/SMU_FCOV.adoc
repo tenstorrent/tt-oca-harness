@@ -32,7 +32,7 @@ compares a golden.
 |Reference architecture |`SMU_TB_ARCH.adoc`
 |Framework |PyUVM on cocotb
 |Simulators |Verilator (`user`, line, expression) and VCS (the cover properties, the covergroups, and line, condition, branch and toggle over the SMU's own logic)
-|Coverage set |`--items all`, the 108-leaf package regression. The SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run; the weekly `--cov` in `regress.yml` grades the toolchain-free `hosted` subset
+|Coverage set |`--items all`, the 120-leaf package regression. The SEP firmware and lifecycle leaves need the RISC-V toolchain, so the run of record is a developer or self-hosted run: `python3 tools/dv/run_dv.py --dut smu --tool verilator --items all --cov` for the cover properties, then `tools/dv/fcov_owners.py` over its run directory (<<smu-fcov-owners>>); `python3 tools/dv/run_dv.py --dut smu --tool vcs --items all --cov` for the covergroups and the code and toggle families (`cov/config/vcs/README.md`). No `regress.yml` tier collects coverage: both `smu` rows carry `coverage: false`
 |Policy files |`cov/config/verilator/smu_wrapper_coverage_policy.toml`, `cov/config/vcs/smu_wrapper_coverage_policy.toml`
 |===
 
@@ -424,7 +424,7 @@ generator.
   alone reaches depends on that leaf.
 . *`smu_fcov.py` sources no coverage claim.*
 . *No CI gate is set on these numbers.* `SMU_COVERAGE_POLICY.adoc` states the
-  targets and how a floor would be set from a measured weekly database.
+  targets and how a floor would be set from a measured database.
 
 ==== Evidence
 

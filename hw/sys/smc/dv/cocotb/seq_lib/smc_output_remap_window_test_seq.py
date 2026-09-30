@@ -13,16 +13,19 @@ just above the SMC's own 16 MB aperture. So an inbound master that addresses
 them is sent out, and no leaf had sent anything there.
 
 `output_remap.rdl` describes an entry as an `offset` that replaces the upper bits
-of the address. The entry is selected by the 1 MB slot of the access within its
-window, and the low 20 bits are kept. The sequence programs M-mode entries 0 and
-1 and hypervisor entry 0 with distinct offsets in SYS_OUT memory. It then writes
-and reads a word through each window's local and global copy over the JTAG
-ingress, plus one address just past the hypervisor window. Each write must land
-in the SYS_OUT responder's memory at the address the entry predicts, and
-nowhere else:
+of the address when the entry's `valid` bit is set. The entry is selected by the
+1 MB slot of the access within its window, and the low 20 bits are kept. The
+sequence programs M-mode entries 0 and 1 and hypervisor entry 0 with distinct
+offsets in SYS_OUT memory and `valid` set, and M-mode entry 2 with an offset but
+`valid` clear. It then writes and reads a word through each window's local and
+global copy over the JTAG ingress, through M-mode slot 2, plus one address just
+past the hypervisor window. Each write must land in the SYS_OUT responder's
+memory at the address the entry predicts, and nowhere else:
 
 * the window address itself still holds its sentinel;
 * the address past the hypervisor window passes through unremapped;
+* the address in M-mode slot 2 passes through unremapped, and entry 2's offset
+  target still holds its sentinel;
 * a read through the same window returns the word.
 
 **Source-ID matching in the outbound filter.** `fabric.adoc` ("SMC Source ID by
@@ -70,6 +73,7 @@ from smc_reg import (  # noqa: E402
     OUTPUT_REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
     SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
     SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR,
+    SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR,
     SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
 )
 
@@ -85,15 +89,20 @@ _XVISOR_OFFSET = _XVISOR_BASE - _REG_WINDOW_BASE
 _SLOT_BITS = 20
 _SLOT = 1 << _SLOT_BITS
 _ADDR_MASK = (1 << 56) - 1
+_REMAP_H = _REPO / "hw" / "ip" / "output_remap" / "regs" / "gen" / "c" / "output_remap.h"
+_VALID = _field_mask(_REMAP_H, "OUTPUT_REMAP__OUTPUT_REMAP_REGION__REGION_ATTRS__VALID_bm")
 
 # Remap targets in SYS_OUT memory, one per programmed entry, 1 MB aligned.
 _MMODE0_TARGET = 0x0240_0000
 _MMODE1_TARGET = 0x0250_0000
 _XVISOR0_TARGET = 0x0260_0000
+_MMODE2_STALE_TARGET = 0x0270_0000
+# (label, ATTRS address, value written)
 _ENTRIES = (
-    ("MMODE0", SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR, _MMODE0_TARGET),
-    ("MMODE1", SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR, _MMODE1_TARGET),
-    ("XVISOR0", SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR, _XVISOR0_TARGET),
+    ("MMODE0", SMC_MMODE_REMAP_0__REGION_REGION_ATTRS_REG_ADDR, _VALID | _MMODE0_TARGET),
+    ("MMODE1", SMC_MMODE_REMAP_1__REGION_REGION_ATTRS_REG_ADDR, _VALID | _MMODE1_TARGET),
+    ("MMODE2", SMC_MMODE_REMAP_2__REGION_REGION_ATTRS_REG_ADDR, _MMODE2_STALE_TARGET),
+    ("XVISOR0", SMC_XVISOR_REMAP_0__REGION_REGION_ATTRS_REG_ADDR, _VALID | _XVISOR0_TARGET),
 )
 
 _WORD = 8
@@ -149,14 +158,22 @@ _SENTINEL = 0x5A5A_5A5A_5A5A_5A5A
 
 
 def _remapped(addr: int, region_base: int, targets: dict[int, int]) -> int:
-    """SYS_OUT address output_remap.rdl predicts for ``addr`` in a window at ``region_base``."""
+    """SYS_OUT address output_remap.rdl predicts for ``addr`` in a window at ``region_base``.
+
+    ``targets`` maps each valid slot to its offset; any other slot passes through.
+    """
     adjusted = (addr - region_base) & _ADDR_MASK
     slot = (adjusted >> _SLOT_BITS) & 0x7
+    if slot not in targets:
+        return addr
     return targets[slot] | (adjusted & (_SLOT - 1))
 
 
 _MMODE_TARGETS = {0: _MMODE0_TARGET, 1: _MMODE1_TARGET}
 _XVISOR_TARGETS = {0: _XVISOR0_TARGET}
+
+_MMODE2_ADDR = LOCAL_BASE_RESET + _MMODE_OFFSET + 2 * _SLOT + 0x1C0
+_MMODE2_STALE = _MMODE2_STALE_TARGET | ((_MMODE2_ADDR - _MMODE_BASE) & (_SLOT - 1))
 
 # (label, address the master uses, SYS_OUT address the word must land at)
 _LEGS = (
@@ -184,6 +201,11 @@ _LEGS = (
         "XVISOR_GLOBAL_SLOT0",
         GLOBAL_BASE_RESET + _XVISOR_OFFSET + 0x140,
         _remapped(GLOBAL_BASE_RESET + _XVISOR_OFFSET + 0x140, _XVISOR_BASE, _XVISOR_TARGETS),
+    ),
+    (
+        "MMODE_LOCAL_SLOT2_INVALID",
+        _MMODE2_ADDR,
+        _remapped(_MMODE2_ADDR, _MMODE_BASE, _MMODE_TARGETS),
     ),
     (
         "PAST_XVISOR_LOCAL",
@@ -264,6 +286,8 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             responder.write_int(target, _SENTINEL, _WORD)
             if target != addr:
                 responder.write_int(addr, _SENTINEL, _WORD)
+            if addr == _MMODE2_ADDR:
+                responder.write_int(_MMODE2_STALE, _SENTINEL, _WORD)
             await self._jtag(SmcSysAxiOp.WRITE, addr, word)
             landed = responder.read_int(target, _WORD)
             assert landed == word, (
@@ -275,6 +299,13 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
                 assert untouched == _SENTINEL, (
                     f"[{label}] SYS_OUT 0x{addr:x}, the unremapped address, changed to "
                     f"0x{untouched:016x}; the write should only have reached 0x{target:x}"
+                )
+            if addr == _MMODE2_ADDR:
+                stale = responder.read_int(_MMODE2_STALE, _WORD)
+                assert stale == _SENTINEL, (
+                    f"[{label}] SYS_OUT 0x{_MMODE2_STALE:x}, where M-mode entry 2's offset "
+                    f"points, changed to 0x{stale:016x}; entry 2 is not valid, so the write "
+                    f"should have passed through to 0x{addr:x}"
                 )
             got = await self._jtag(SmcSysAxiOp.READ, addr)
             assert got.rdata == word, (
@@ -317,7 +348,8 @@ class smc_output_remap_window_test_seq(SmcCsrSeq):
             "hypervisor windows at their LOCAL_BASE and GLOBAL_BASE copies and past the "
             "hypervisor window; each landed in SYS_OUT memory at the address the "
             "programmed entry predicts (%s), left the unremapped address alone, and read "
-            "back through the same window; outbound filter entries matching source 0x%x "
+            "back through the same window; the word through the M-mode entry with valid "
+            "clear passed through and left that entry's offset target alone; outbound filter entries matching source 0x%x "
             "(M-mode) allowed the M-mode words and did not catch the hypervisor words, which "
             "carry source 0x%x",
             self.legs_checked,

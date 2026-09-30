@@ -22,7 +22,8 @@ class dtp_jtag2axi_sep_otp_axi_read_random_ops_test extends dtp_base_test;
                             "CHK-AXI-RDATA",
                             "CHK-AXI-RADDR",
                             "CHK-AXI-COMPLETION",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            "CHK-J2A-BUS-REQ"
                         });
   endfunction
 

@@ -8,19 +8,25 @@ from random import Random
 from typing import ClassVar
 
 import cocotb
-from cocotb.triggers import ClockCycles, ReadOnly
+from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
+from env.dtp_dv_cfg import DTP_INT_CT_MODE
+from env.dtp_types import RESET_COUNT_CHECK_ID
 from env.dtp_xtrig_agent import DtpXtrigActivityWindow
 from env.dtp_xtrig_types import (
     XTRIG_CT_DST_LATENCY,
+    XTRIG_CTM_SELECT_DEFAULT,
     XTRIG_CTM_SELECT_MASK,
+    XTRIG_CTP_CONFIG_DEFAULT,
     XTRIG_CTP_CONFIG_MASK,
     XTRIG_CTP_MODE_P2P,
     XTRIG_CTP_MODE_WIRE_OR,
     XTRIG_CTP_STATUS_ACK_IN,
     XTRIG_CTP_STATUS_ACK_OUT,
     XTRIG_CTP_STATUS_BUSY,
+    XTRIG_CTP_STATUS_DEFAULT,
     XTRIG_CTP_STATUS_REQ_IN,
     XTRIG_CTP_STATUS_REQ_OUT,
+    XTRIG_CTP_STRETCH_DEFAULT,
     XTRIG_CTP_STRETCH_MASK,
     XTRIG_NUM_CTM_PORTS,
     XTRIG_NUM_CTP,
@@ -90,21 +96,35 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
     AXI_OKAY = 0
     AXI_DECERR = 3
+    # Nonzero CONFIG words the CTP CSR sweep writes as byte-strobe bases,
+    # neighbour words, and final words. MODE|INVERT is left out: the sweep
+    # leaves the bench pads at their non-inverted idle levels, which an
+    # inverted point-to-point receiver reads as a request.
+    CTP_SWEEP_CONFIGS = (
+        pack_ctp_config(mode=XTRIG_CTP_MODE_P2P),
+        pack_ctp_config(invert=1),
+        pack_ctp_config(reset=1),
+        pack_ctp_config(mode=XTRIG_CTP_MODE_P2P, reset=1),
+        pack_ctp_config(invert=1, reset=1),
+    )
+    # The internal-lane requests and the CTP request and acknowledge enables.
+    # The internal lanes run in pulse mode, where their acknowledge is unused.
     QUIET_GROUPS = (
         "xtrig_ctm_src_req",
-        "xtrig_ctm_dst_ack",
         "xtrig_ctp_req_out_dout_en",
         "xtrig_ctp_ack_out_dout_en",
     )
-    # Observables a routed pulse can reach, plus the wire pulls, internal
-    # requests, and receive pulses that date the receive edge; the activity
-    # window ORs them per cycle from before the input pulse until the drain
-    # tail ends.
+    # Observables a routed pulse can reach, plus the inputs the bench drives
+    # (the wire pulls, the point-to-point request pads, and the internal
+    # requests) and the receive pulses, which date each output against the
+    # window's first input and each receive edge; the activity window ORs
+    # them per cycle from before the input pulse until the drain tail ends.
     OUTPUT_SIGNALS = (
         "xtrig_ctm_src_req",
         "xtrig_ctp_req_out_dout",
         "xtrig_ctp_req_out_dout_en",
         "xtrig_ctp_wire_ext_assert",
+        "xtrig_ctp_req_in_din",
         "xtrig_ctm_dst_req",
         "xtrig_ctp_ct_dst",
         "xtrig_int_ct_dst",
@@ -112,28 +132,74 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # Observables that must show no activity from the first held cycle of a
     # system reset until after its release: every request and acknowledge
     # output, the CTP busy flops, and every port's receive pulse.
-    RESET_SIGNALS = QUIET_GROUPS + (
+    RESET_SIGNALS = (
+        "xtrig_ctm_src_req",
+        "xtrig_ctp_req_out_dout_en",
+        "xtrig_ctp_ack_out_dout_en",
         "xtrig_ctp_req_out_dout",
         "xtrig_ctp_ack_out_dout",
         "xtrig_ctp_busy",
         "xtrig_ctp_ct_dst",
         "xtrig_int_ct_dst",
     )
+    # The reset observables that move with every CTP in wire-OR mode, where
+    # the acknowledge pads are static.
+    RESET_SIGNALS_WIRE_OR = (
+        "xtrig_ctm_src_req",
+        "xtrig_ctp_req_out_dout_en",
+        "xtrig_ctp_req_out_dout",
+        "xtrig_ctp_busy",
+        "xtrig_ctp_ct_dst",
+        "xtrig_int_ct_dst",
+    )
     # Observables that must show no activity while a CSR access is in flight:
-    # the request and acknowledge enables and the CTP busy flops. The pad
-    # levels are left out because they follow the polarity CSR the accesses
-    # write.
+    # the internal-lane requests, the CTP request and acknowledge enables,
+    # and the CTP busy flops. The pad levels are left out because they follow
+    # the polarity CSR the accesses write.
     IN_FLIGHT_SIGNALS = QUIET_GROUPS + ("xtrig_ctp_busy",)
+    # The port observables that stay idle while CONFIG.RESET holds a
+    # point-to-point port and across its release.
+    CONFIG_RESET_SIGNALS = ("xtrig_ctp_req_out_dout", "xtrig_ctp_ack_out_dout", "xtrig_ctp_busy")
     # Crossbar demux state watched across a two-outstanding write.
     DEMUX_SIGNALS = ("xtrig_demux_aw_lock", "xtrig_demux_w_pending")
+    # CSR port counters judged as deltas across a two-outstanding write and
+    # a two-outstanding read.
+    AW_PAIR_COUNTERS = (
+        "xtrig_axil_aw_stall_count",
+        "xtrig_axil_aw_open_stall_count",
+        "xtrig_axil_aw_open_accept_count",
+    )
+    AR_PAIR_COUNTERS = (
+        "xtrig_axil_ar_stall_count",
+        "xtrig_axil_arvalid_count",
+        "xtrig_axil_ar_open_stall_count",
+        "xtrig_axil_ar_open_accept_count",
+    )
     # Cycles the window stays open after the last expected output, so a late
     # or stretched pulse on any port is inside it.
     ISOLATION_TAIL_CYCLES = 6
-    # Routes of a random mix not yet driven, as (source, destination) in a
-    # seeded order, kept across the passes of the test: each iteration starts
-    # from the first pending route, so every route of the mix's classes is
-    # driven within one test.
+    # Seeded range of the cycles the bench holds a point-to-point handshake
+    # phase, one draw per phase: an acknowledge withheld from a request, an
+    # acknowledge held after its request falls, and a request held after its
+    # acknowledge rises.
+    P2P_HOLD_MIN_CYCLES = 4
+    P2P_HOLD_MAX_CYCLES = 16
+    # Cycles within which a point-to-point pad or BUSY edge follows the peer
+    # edge that causes it. The bound is below the span of the seeded holds,
+    # so an edge timed from anything but the peer edge falls outside it on
+    # some draw.
+    P2P_PHASE_MAX_CYCLES = 8
+    # Pending routes of a random mix, as (source, destination) in a seeded
+    # order, kept across the passes of the test: each iteration starts from
+    # the first pending route, and only a window whose one input is a
+    # route's source retires that route.
     _route_pending: ClassVar[dict[str, list[tuple[int, int]]]] = {}
+    # The routes of a random mix that a single-source window has driven in
+    # the test.
+    _route_driven: ClassVar[dict[str, set[tuple[int, int]]]] = {}
+    # The random mixes whose last pass continues until every route of their
+    # class has been driven alone.
+    ROUTE_WALK_MIXES = ("cla_to_ctp", "ctp_to_cla")
     # STRETCH_MULT the route helpers program on every external CTP they use;
     # the internal CTPs carry the same multiplier (cross_trigger_network), so
     # every routed pulse is two cycles wide.
@@ -160,6 +226,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     CHK_AW_LOCK = "CHK-XTRIG-AW-LOCK"
     CHK_AR_STALL = "CHK-XTRIG-AR-STALL"
     CHK_WIRE = "CHK-XTRIG-WIRE"
+    CHK_RESET_COUNT = RESET_COUNT_CHECK_ID
 
     # DTP_XTRIG_NEGATIVE_CHECK=<n> is the per-check negative-validation hook:
     # every record of the evidence ID at index n is written with a corrupted
@@ -180,7 +247,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     _ROUTE_IDS = (CHK_CSR, CHK_SIGNAL, CHK_ROUTE_MODEL, CHK_ISOLATION)
     _WIRE_OR_ROUTE_IDS = _ROUTE_IDS + (CHK_STRETCH, CHK_WIRE)
     SCENARIO_REQUIRED_IDS = {
-        "reg_stall": (CHK_CSR, CHK_QUIET, CHK_AXIL),
+        "reg_stall": (CHK_CSR, CHK_SIGNAL, CHK_QUIET, CHK_AXIL),
         "axi_channel_skew": (CHK_CSR, CHK_AXIL),
         "axi_channel_skew_demux_aw_lock_release": (CHK_AXIL, CHK_AW_LOCK),
         "axi_channel_skew_read_decode_backpressure": (CHK_AXIL, CHK_AR_STALL),
@@ -191,7 +258,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "wire_or_bus": _ROUTE_IDS + (CHK_WIRE,),
         "p2p": (CHK_CSR, CHK_SIGNAL),
         "random": _ROUTE_IDS + (CHK_STRETCH,),
-        "reset": _ROUTE_IDS + (CHK_QUIET,),
+        "reset": _ROUTE_IDS + (CHK_QUIET, CHK_RESET_COUNT),
         "dst_port_sweep": _ROUTE_IDS,
         "ctm_wire_or_cla_to_ctp": _WIRE_OR_ROUTE_IDS,
         "ctm_wire_or_ctp_to_cla": _WIRE_OR_ROUTE_IDS,
@@ -201,9 +268,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         "ctm_p2p_ctp_to_cla": _ROUTE_IDS,
         "ctm_p2p_cla_to_cla": _ROUTE_IDS,
         "ctm_p2p_ctp_to_ctp": _ROUTE_IDS,
-        "ctm_reset_wire_or_mode": _ROUTE_IDS + (CHK_QUIET, CHK_WIRE),
-        "ctm_reset_p2p_mode": _ROUTE_IDS + (CHK_QUIET,),
-        "ctm_reset_all_modes": _ROUTE_IDS + (CHK_QUIET,),
+        "ctm_reset_wire_or_mode": _ROUTE_IDS + (CHK_QUIET, CHK_WIRE, CHK_RESET_COUNT),
+        "ctm_reset_p2p_mode": _ROUTE_IDS + (CHK_QUIET, CHK_RESET_COUNT),
+        "ctm_reset_all_modes": _ROUTE_IDS + (CHK_QUIET, CHK_RESET_COUNT),
         "ctm_rand_all_scenarios": _ROUTE_IDS,
         "ctm_rand_wire_or_only": _ROUTE_IDS + (CHK_WIRE,),
         "ctm_rand_p2p_only": _ROUTE_IDS,
@@ -216,10 +283,15 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         name: str = "dtp_xtrig_base_test_seq",
         *,
         scenario: str = "reg_stall",
+        total_passes: int = 0,
         **kwargs,
     ) -> None:
         super().__init__(name, **kwargs)
         self.scenario = scenario
+        # Passes the test runs; the random mixes of ROUTE_WALK_MIXES need it
+        # to find their last pass.
+        self.total_passes = total_passes
+        self._p2p_hold_rngs: dict[str, Random] = {}
         self.ctm_model = DtpCtmRefModel()
         # Named-evidence checker: every route observation, CSR readback, quiet
         # window, and stretch measurement lands one evidence record; body()
@@ -254,7 +326,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self, check_id: str, name: str, observed: int, expected: int, *, context: str = ""
     ) -> None:
         """Record one named evidence comparison (raises on mismatch)."""
-        if OcahKnobs.get_int("DTP_XTRIG_NEGATIVE_CHECK", 0) == self.NEGATIVE_CHECK_INDEX[check_id]:
+        negative = OcahKnobs.get_int("DTP_XTRIG_NEGATIVE_CHECK", 0)
+        if negative != 0 and negative == self.NEGATIVE_CHECK_INDEX.get(check_id, 0):
             self.log.warning(
                 "NEGATIVE VALIDATION: %s observed 0x%x recorded as 0x%x",
                 check_id,
@@ -263,6 +336,24 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             observed ^= 1
         self.checker.expect_equal(check_id, observed, expected, context=f"{name} {context}".strip())
+
+    def check_reset_counted(self, counter: str, before: int, after: int, context: str) -> None:
+        """``CHK-RESET-COUNT`` under the cross-trigger checker."""
+        self.checker.expect_equal(
+            self.CHK_RESET_COUNT,
+            after - before,
+            1,
+            context=f"{counter} before={before} after={after} {context}",
+        )
+
+    @staticmethod
+    def require_pulse_mode_lanes(where: str) -> None:
+        """The quiet and reset observable lists leave out the internal-lane acknowledge, which only a pulse-mode lane leaves unused."""
+        if DTP_INT_CT_MODE != 0:
+            raise ValueError(
+                f"{where}: handshake-mode internal lanes (INT_CT_MODE=0x{DTP_INT_CT_MODE:x}) "
+                "need their acknowledge watched"
+            )
 
     # ------------------------------------------------------------------
     # CSR helpers
@@ -405,23 +496,40 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
         await self.clear_ctm_routes()
 
-    async def pulse_reset(self, cycles: int = 3) -> None:
-        """System reset with idle inputs; every XTRIG CSR returns to its reset value."""
-        await self.xtrig.pulse_reset(cycles=cycles)
-        self.ctm_model = DtpCtmRefModel()
-        self.cfg.xtrig_ctp_shadow.clear()
-
-    async def reset_window(self, label: str, *, cycles: int = 3) -> None:
+    async def reset_window(
+        self,
+        label: str,
+        *,
+        watched: tuple[str, ...],
+        live: DtpXtrigActivityWindow,
+        cycles: int = 3,
+    ) -> None:
         """System reset watched from its first held cycle until after release.
 
-        Every request and acknowledge output and every CTP busy flop must
-        show zero activity while the reset holds and for ``cycles + 2`` cycles
-        after release (CHK-XTRIG-QUIET); the CSR shadows reset with the DUT.
+        ``live`` is a window over ``watched`` that the scenario started before
+        the traffic the reset lands on: every watched observable is active in
+        it (CHK-XTRIG-SIGNAL), and none of them moves while the reset holds or
+        for ``cycles + 2`` cycles after release (CHK-XTRIG-QUIET). The reset
+        is counted (CHK-RESET-COUNT) and the CSR shadows reset with the DUT.
         """
+        self.require_pulse_mode_lanes("reset_window")
+        missing = set(watched) - set(live.names)
+        if missing:
+            raise ValueError(f"reset_window {label}: the live window does not sample {missing}")
+        activity, _hold, _last = await live.stop()
+        for name in watched:
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"reset_window.{label}.{name}.live_before",
+                int(activity[name] != 0),
+                1,
+                context=f"cycles={live.cycles}",
+            )
+        before = self.cfg.tb_if.sample("sys_rst_assert_count")
         self.xtrig.init_signals()
         self.xtrig.set_sys_reset(active=True)
         await ClockCycles(self.xtrig.clk, 1)
-        window = self.xtrig.activity_window(self.RESET_SIGNALS)
+        window = self.xtrig.activity_window(watched)
         window.start()
         await ClockCycles(self.xtrig.clk, cycles - 1)
         self.xtrig.set_sys_reset(active=False)
@@ -429,7 +537,13 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.cfg.xtrig_ctp_shadow.clear()
         await ClockCycles(self.xtrig.clk, cycles + 2)
         activity, _hold, _last = await window.stop()
-        for name in self.RESET_SIGNALS:
+        self.check_reset_counted(
+            "sys_rst_assert_count",
+            before,
+            self.cfg.tb_if.sample("sys_rst_assert_count"),
+            f"reset_window.{label} cycles={cycles}",
+        )
+        for name in watched:
             self.check_evidence(
                 self.CHK_QUIET,
                 f"reset_window.{label}.{name}",
@@ -440,18 +554,20 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
     async def check_ctp_defaults(self, label: str) -> None:
         """Every CTP CONFIG, STRETCH_MULT, and STATUS reads its reset value."""
+        registers = (
+            ("config", ctp_config_addr, XTRIG_CTP_CONFIG_MASK, XTRIG_CTP_CONFIG_DEFAULT),
+            ("stretch", ctp_stretch_addr, XTRIG_CTP_STRETCH_MASK, XTRIG_CTP_STRETCH_DEFAULT),
+            ("status", ctp_status_addr, XTRIG_CTP_STATUS_MASK, XTRIG_CTP_STATUS_DEFAULT),
+        )
         for ctp_idx in range(XTRIG_NUM_CTP):
-            for name, addr, mask in (
-                ("config", ctp_config_addr(ctp_idx), XTRIG_CTP_CONFIG_MASK),
-                ("stretch", ctp_stretch_addr(ctp_idx), XTRIG_CTP_STRETCH_MASK),
-                ("status", ctp_status_addr(ctp_idx), XTRIG_CTP_STATUS_MASK),
-            ):
+            for name, register_addr, mask, default in registers:
+                addr = register_addr(ctp_idx)
                 observed = await self.csr_read(addr, label=f"{label}.ctp{ctp_idx}.{name}")
                 self.check_evidence(
                     self.CHK_CSR,
                     f"{label}.ctp{ctp_idx}.{name}.default",
                     observed & mask,
-                    0,
+                    default & mask,
                     context=f"addr=0x{addr:03x}",
                 )
 
@@ -489,9 +605,15 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.xtrig.set_ctp_wire_pull(self.cfg.xtrig_ctp_shadow.wire_pull_mask)
 
     async def idle_inputs(self) -> None:
-        """Return every driven cross-trigger input to its idle level."""
-        await self.xtrig.clear_inputs()
+        """Return every driven cross-trigger input to its idle level.
+
+        The idle levels are written in the same time step as the quiesce, so
+        an inverted point-to-point pad never passes through its asserted low
+        level.
+        """
+        self.xtrig.init_signals()
         self.apply_idle_levels()
+        await ClockCycles(self.xtrig.clk, 1)
 
     async def drive_p2p_req_in(self, ctp_idx: int, *, asserted: bool) -> None:
         level = self.pad_level(1 << ctp_idx, asserted=asserted) >> ctp_idx
@@ -592,19 +714,70 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def drive_input_port(self, input_port: int, mode: int, *, cycles: int = 2) -> None:
         await self.drive_input_mask(1 << input_port, mode, cycles=cycles)
 
-    async def drive_input_mask(self, input_mask: int, mode: int, *, cycles: int = 2) -> None:
+    async def drive_input_mask(
+        self, input_mask: int, mode: int, *, cycles: int = 2, label: str = ""
+    ) -> None:
         """Pulse every input of ``input_mask`` in the same cycles; a P2P CTP source raises its request pad.
 
         A wire-OR CTP source has its shared wire pulled by the chiplet on it;
-        internal sources request through a pulse in every mode.
+        internal sources request through a pulse in every mode. The bench is
+        the four-phase sender of a P2P CTP source: CT_Ack_out is idle before
+        the request and asserts within ``P2P_PHASE_MAX_CYCLES`` of it, the
+        request stays up for ``cycles`` and for a seeded
+        ``p2p_hold_cycles()`` after CT_Ack_out asserts, and CT_Ack_out stays
+        asserted until the release and drops within ``P2P_PHASE_MAX_CYCLES``
+        of it.
         """
         ctp_bits = project_ctp_mask(input_mask)
         if mode == XTRIG_CTP_MODE_P2P and ctp_bits:
             ports = self.port_bits(ctp_bits)
             assert len(ports) == 1 and input_mask == ctp_bits, "a P2P request is one CTP source"
+            invert = self._ctp_invert_mask()
+            await ReadOnly()
+            ack_before = self.xtrig.sample_signal("xtrig_ctp_ack_out_dout") & ctp_bits
+            await NextTimeStep()
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.src_ack_idle_before",
+                ack_before,
+                self.pad_level(ctp_bits, asserted=False),
+            )
             await self.drive_p2p_req_in(ports[0], asserted=True)
-            await ClockCycles(self.xtrig.clk, cycles)
+            ack, rose_at = await self.wait_p2p_phase(
+                "xtrig_ctp_ack_out_dout", ctp_bits, ctp_bits, invert=invert
+            )
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.src_ack",
+                ack,
+                ctp_bits,
+                context=f"CT_Ack_out asserted {rose_at} cycles after CT_Req_in",
+            )
+            hold = max(self.p2p_hold_cycles("req_hold"), cycles - rose_at)
+            held = ack
+            for _ in range(hold):
+                await ClockCycles(self.xtrig.clk, 1)
+                await ReadOnly()
+                held &= self.xtrig.sample_signal("xtrig_ctp_ack_out_dout") ^ invert
+            await NextTimeStep()
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.src_ack_held",
+                held,
+                ctp_bits,
+                context=f"CT_Req_in held {hold} cycles after CT_Ack_out asserted",
+            )
             await self.drive_p2p_req_in(ports[0], asserted=False)
+            ack, fell_at = await self.wait_p2p_phase(
+                "xtrig_ctp_ack_out_dout", ctp_bits, 0, invert=invert
+            )
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.src_ack_idle",
+                ack,
+                0,
+                context=f"CT_Ack_out fell {fell_at} cycles after CT_Req_in released",
+            )
             return
         await self.xtrig.pulse_input_mask(
             project_ctp_mask(input_mask), project_internal_mask(input_mask), cycles=cycles
@@ -697,6 +870,21 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         int_level = sample.get("xtrig_ctm_src_req", 0) & ((1 << XTRIG_NUM_INT_CT) - 1)
         return ((p2p_level | wire_or_level) & all_ctp) | (int_level << XTRIG_NUM_CTP)
 
+    def input_vector(self, sample: dict[str, int]) -> int:
+        """CTM-port vector of every input the bench asserts in one sample.
+
+        A wire-OR CTP input is its chiplet's pull of the wire, a P2P CTP input
+        its request pad at the port's polarity, and an internal input its CLA
+        request.
+        """
+        all_ctp = (1 << XTRIG_NUM_CTP) - 1
+        p2p = self._ctp_p2p_mask()
+        inverted = self._ctp_invert_mask()
+        wire_or_input = sample.get("xtrig_ctp_wire_ext_assert", 0) & ~p2p
+        p2p_input = (sample.get("xtrig_ctp_req_in_din", 0) ^ inverted) & p2p
+        int_input = sample.get("xtrig_ctm_dst_req", 0) & ((1 << XTRIG_NUM_INT_CT) - 1)
+        return ((wire_or_input | p2p_input) & all_ctp) | (int_input << XTRIG_NUM_CTP)
+
     async def wait_window_fired(
         self,
         name: str,
@@ -724,6 +912,32 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.check_evidence(self.CHK_SIGNAL, f"{name}.mask", observed, mask, context=label)
         return observed
 
+    def p2p_hold_cycles(self, phase: str) -> int:
+        """Seeded cycles the bench holds one point-to-point handshake phase, from that phase's stream."""
+        rng = self._p2p_hold_rngs.get(phase)
+        if rng is None:
+            rng = self._p2p_hold_rngs[phase] = self.rng(f"p2p_{phase}")
+        return rng.randint(self.P2P_HOLD_MIN_CYCLES, self.P2P_HOLD_MAX_CYCLES)
+
+    async def wait_p2p_phase(
+        self, name: str, mask: int, expected: int, *, invert: int = 0
+    ) -> tuple[int, int]:
+        """Sample ``name`` from the current clock on until its ``mask`` bits, XOR ``invert``, read ``expected``.
+
+        One sample per clock for up to ``P2P_PHASE_MAX_CYCLES`` clocks.
+        Returns the last such sample and the clock it matched at: 1 for the
+        current clock, -1 for none.
+        """
+        level = 0
+        for cycle in range(1, self.P2P_PHASE_MAX_CYCLES + 1):
+            await ReadOnly()
+            level = (self.xtrig.sample_signal(name) ^ invert) & mask
+            if level == expected:
+                await NextTimeStep()
+                return level, cycle
+            await ClockCycles(self.xtrig.clk, 1)
+        return level, -1
+
     async def await_selected_outputs(
         self,
         output_mask: int,
@@ -732,21 +946,75 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         label: str,
         window: DtpXtrigActivityWindow | None = None,
     ) -> None:
-        """Wait for every selected output to request; acknowledge P2P CTP outputs and see them idle."""
+        """Wait for every selected output to request; acknowledge P2P CTP outputs and see them idle.
+
+        The bench is the four-phase responder of a P2P CTP output. The
+        request holds while CT_Ack_in is withheld for a seeded
+        ``p2p_hold_cycles()`` and drops within ``P2P_PHASE_MAX_CYCLES`` of
+        CT_Ack_in. CT_Ack_in stays asserted for a further seeded hold, through
+        which BUSY stays set and the request stays released, and BUSY clears
+        within ``P2P_PHASE_MAX_CYCLES`` of the CT_Ack_in release.
+        """
         ctp_outputs = project_ctp_mask(output_mask)
         int_outputs = project_internal_mask(output_mask)
         if ctp_outputs and mode == XTRIG_CTP_MODE_P2P:
             active = self.pad_level(ctp_outputs, asserted=True)
-            idle = self.pad_level(ctp_outputs, asserted=False)
             await self.wait_signal_mask(
                 "xtrig_ctp_req_out_dout", ctp_outputs, active, label=f"{label}.ctp"
             )
             all_idle = self._ctp_invert_mask()
+            held = ctp_outputs
+            holdoff = self.p2p_hold_cycles("ack_holdoff")
+            for _ in range(holdoff):
+                await ClockCycles(self.xtrig.clk, 1)
+                await ReadOnly()
+                held &= self.xtrig.sample_signal("xtrig_ctp_req_out_dout") ^ all_idle
+            await NextTimeStep()
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.ctp_held",
+                held,
+                ctp_outputs,
+                context=f"acknowledge withheld {holdoff} cycles",
+            )
             self.xtrig.set_ctp_ack_in_din((all_idle & ~ctp_outputs) | active)
-            await ClockCycles(self.xtrig.clk, 3)
+            await ClockCycles(self.xtrig.clk, 1)
+            requested, fell_at = await self.wait_p2p_phase(
+                "xtrig_ctp_req_out_dout", ctp_outputs, 0, invert=all_idle
+            )
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.ctp_released_on_ack",
+                ctp_outputs & ~requested,
+                ctp_outputs,
+                context=f"fell {fell_at} cycles after CT_Ack_in",
+            )
+            ack_hold = self.p2p_hold_cycles("ack_hold")
+            busy = ctp_outputs
+            for _ in range(ack_hold):
+                await ClockCycles(self.xtrig.clk, 1)
+                await ReadOnly()
+                busy &= self.xtrig.sample_signal("xtrig_ctp_busy")
+                level = self.xtrig.sample_signal("xtrig_ctp_req_out_dout") ^ all_idle
+                requested |= level & ctp_outputs
+            await NextTimeStep()
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.ctp_busy_under_ack",
+                busy & ~requested,
+                ctp_outputs,
+                context=f"CT_Ack_in held {ack_hold} cycles after the fall busy=0x{busy:x} "
+                f"requested=0x{requested:x}",
+            )
             self.xtrig.set_ctp_ack_in_din(all_idle)
-            await self.wait_signal_mask(
-                "xtrig_ctp_req_out_dout", ctp_outputs, idle, label=f"{label}.ctp_idle"
+            await ClockCycles(self.xtrig.clk, 1)
+            busy, cleared_at = await self.wait_p2p_phase("xtrig_ctp_busy", ctp_outputs, 0)
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.ctp_done",
+                busy,
+                0,
+                context=f"BUSY cleared {cleared_at} cycles after CT_Ack_in released",
             )
         elif ctp_outputs:
             await self.wait_window_fired(
@@ -771,11 +1039,13 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     ) -> None:
         """Judge one route: selected outputs fire, the window matches the model, nothing else moves.
 
-        The wire-OR sources of ``input_mask`` (every internal source, and the
-        CTP sources unless ``mode`` is point-to-point) also receive their own
-        assertion once, at the receive latency. With ``await_outputs`` false
-        the selected outputs have already fired inside the window and only the
-        drain tail is waited for.
+        Every predicted output starts requesting once, after the window's
+        first input, and no other output requests. The wire-OR sources of
+        ``input_mask`` (every internal source, and the CTP sources unless
+        ``mode`` is point-to-point) also receive their own assertion once, at
+        the receive latency. With ``await_outputs`` false the selected outputs
+        have already fired inside the window and only the drain tail is
+        waited for.
         """
         if await_outputs:
             await self.await_selected_outputs(output_mask, mode, label=label, window=window)
@@ -810,6 +1080,27 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             predicted & XTRIG_CTM_SELECT_MASK,
             context=f"mode={mode}",
         )
+        # One group of inputs pulsed in the same cycles reaches each output a
+        # window predicts, so the output asserts once, and only after the
+        # window's first input.
+        input_at = min(window.first_seen["ctm_port_input"].values(), default=-1)
+        for port in self.port_bits((predicted | fired) & XTRIG_CTM_SELECT_MASK):
+            self.check_evidence(
+                self.CHK_ROUTE_MODEL,
+                f"{label}.port{port}.asserts",
+                window.rises["ctm_port_request"].get(port, 0),
+                (predicted >> port) & 1,
+                context=f"mode={mode}",
+            )
+            if (fired >> port) & 1:
+                request_at = window.first_seen["ctm_port_request"].get(port, -1)
+                self.check_evidence(
+                    self.CHK_ROUTE_MODEL,
+                    f"{label}.port{port}.after_input",
+                    int(0 <= input_at < request_at),
+                    1,
+                    context=f"input@{input_at} request@{request_at}",
+                )
         # Isolation: no unselected output fired anywhere in the window, and the
         # selected outputs are idle again at its end.
         self.check_evidence(
@@ -837,21 +1128,19 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         drain_cycles: int = ISOLATION_TAIL_CYCLES,
         pulse_cycles: int = 2,
         lead_cycles: int = 0,
-    ) -> None:
+    ) -> DtpXtrigActivityWindow:
         """Pulse ``input_mask`` through the programmed routes and judge the output window.
 
         The model programmed alongside the CSRs predicts the DUT output vector
         of this pulse; under the negative-validation knob the model is
-        corrupted, so the comparison against the DUT must fail.
+        corrupted, so the comparison against the DUT must fail. Returns the
+        stopped window.
         """
         predicted = self.ctm_model.route(input_mask)
-        await self.idle_inputs()
-        await ClockCycles(self.xtrig.clk, 2)
-        window = self.xtrig.activity_window(self.OUTPUT_SIGNALS)
-        window.start()
+        window = await self._open_route_window()
         if lead_cycles:
             await ClockCycles(self.xtrig.clk, lead_cycles)
-        await self.drive_input_mask(input_mask, mode, cycles=pulse_cycles)
+        await self.drive_input_mask(input_mask, mode, cycles=pulse_cycles, label=label)
         await self.check_output_mask(
             intent_mask,
             mode,
@@ -861,6 +1150,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             drain_cycles=drain_cycles,
             input_mask=input_mask,
         )
+        return window
 
     async def verify_route(
         self, input_port: int, output_mask: int, mode: int, *, label: str
@@ -902,7 +1192,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def verify_wire_or_pulse(
         self, ctp_idx: int, int_idx: int, *, stretch: int, invert: int = 0, label: str
     ) -> None:
-        """Route one internal CT to a wire-OR CTP: window, model, isolation, and width stretch+1."""
+        """Route one internal CT to a wire-OR CTP: window, model, isolation, one pulse of width stretch+1.
+
+        The data pad holds the level the port pulls its wire to (INVERT) at
+        every cycle of the window, the enable pulse included.
+        """
         await self.program_ctp(ctp_idx, mode=XTRIG_CTP_MODE_WIRE_OR, invert=invert, stretch=stretch)
         await self.program_route(
             internal_ct_port(int_idx), 1 << external_ctp_port(ctp_idx), label=label
@@ -912,22 +1206,41 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 "xtrig_ctp_req_out_dout_en", 1 << ctp_idx, timeout_cycles=stretch + 60
             )
         )
-        await self.run_route_window(
+        window = await self.run_route_window(
             1 << internal_ct_port(int_idx),
             1 << external_ctp_port(ctp_idx),
             XTRIG_CTP_MODE_WIRE_OR,
             label=label,
             drain_cycles=self.ISOLATION_TAIL_CYCLES + stretch,
         )
-        width = await width_task
+        pulse = await width_task
         self.check_evidence(
-            self.CHK_STRETCH, f"{label}.width", width, stretch + 1, context=f"ctp={ctp_idx}"
+            self.CHK_STRETCH, f"{label}.width", pulse.width, stretch + 1, context=f"ctp={ctp_idx}"
         )
+        self.check_evidence(
+            self.CHK_STRETCH, f"{label}.pulses", pulse.pulses, 1, context=f"ctp={ctp_idx}"
+        )
+        for tag, levels in (("any", window.activity), ("all", window.hold)):
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"{label}.wire_polarity_{tag}",
+                (levels["xtrig_ctp_req_out_dout"] >> ctp_idx) & 1,
+                XTRIG_WIRE_OR_ASSERT[invert],
+                context=f"ctp={ctp_idx} invert={invert}",
+            )
 
     async def check_all_ctm_cleared(self, label: str) -> None:
+        """Every CT_SRC select reads its reset value."""
         for src_idx in range(XTRIG_NUM_CTM_PORTS):
-            observed = await self.csr_read(ctm_config_addr(src_idx), label=f"{label}.ctm{src_idx}")
-            self.assert_equal(f"{label}.ctm{src_idx}.default", observed & XTRIG_CTM_SELECT_MASK, 0)
+            addr = ctm_config_addr(src_idx)
+            observed = await self.csr_read(addr, label=f"{label}.ctm{src_idx}")
+            self.check_evidence(
+                self.CHK_CSR,
+                f"{label}.ctm{src_idx}.default",
+                observed & XTRIG_CTM_SELECT_MASK,
+                XTRIG_CTM_SELECT_DEFAULT & XTRIG_CTM_SELECT_MASK,
+                context=f"addr=0x{addr:03x}",
+            )
 
     # ------------------------------------------------------------------
     # CTP scenarios
@@ -971,11 +1284,13 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_summary("wire_or", ctp=ctp_idx, internal=int_idx, checked_stretches="15,0,random")
 
     async def run_wire_or_pulse(self, ctp_idx: int, int_idx: int, *, stretch: int) -> None:
-        """One stretched pulse: enable and busy widths, aligned rise, BUSY over the CSR, then clear."""
+        """One stretched pulse after the internal request: enable and busy widths, aligned rise, BUSY over the CSR, then clear."""
         label = f"wire_or.stretch{stretch}"
         mask = 1 << ctp_idx
         await self.idle_inputs()
-        window = self.xtrig.activity_window(("xtrig_ctp_req_out_dout_en", "xtrig_ctp_busy"))
+        window = self.xtrig.activity_window(
+            ("xtrig_ctp_req_out_dout_en", "xtrig_ctp_busy", "xtrig_ctm_dst_req")
+        )
         window.start()
         width_task = cocotb.start_soon(
             self.xtrig.measure_mask_width("xtrig_ctp_req_out_dout_en", mask)
@@ -987,16 +1302,33 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         )
         if stretch >= self.BUSY_READ_MIN_STRETCH:
             await self.check_status(ctp_idx, f"{label}.active", busy=1)
-        width = await width_task
-        busy_width = await busy_task
+        pulse = await width_task
+        busy = await busy_task
         await window.stop()
-        self.check_evidence(self.CHK_STRETCH, f"{label}.width", width, stretch + 1)
-        self.check_evidence(self.CHK_STRETCH, f"{label}.busy_width", busy_width, stretch + 1)
+        self.check_evidence(self.CHK_STRETCH, f"{label}.width", pulse.width, stretch + 1)
+        self.check_evidence(self.CHK_STRETCH, f"{label}.pulses", pulse.pulses, 1)
+        self.check_evidence(self.CHK_STRETCH, f"{label}.busy_width", busy.width, stretch + 1)
+        self.check_evidence(self.CHK_STRETCH, f"{label}.busy_pulses", busy.pulses, 1)
+        requested_at = window.first_seen["xtrig_ctm_dst_req"].get(int_idx, -1)
+        enabled_at = window.first_seen["xtrig_ctp_req_out_dout_en"].get(ctp_idx, -1)
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            f"{label}.after_input",
+            int(0 <= requested_at < enabled_at),
+            1,
+            context=f"request@{requested_at} enable@{enabled_at}",
+        )
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            f"{label}.enable_seen",
+            int(ctp_idx in window.first_seen["xtrig_ctp_req_out_dout_en"]),
+            1,
+        )
         self.check_evidence(
             self.CHK_SIGNAL,
             f"{label}.busy_rise",
             window.first_seen["xtrig_ctp_busy"].get(ctp_idx, -1),
-            window.first_seen["xtrig_ctp_req_out_dout_en"].get(ctp_idx, -1),
+            enabled_at,
             context="busy rises with the output enable",
         )
         await self.check_status(ctp_idx, f"{label}.cleared", busy=0)
@@ -1124,10 +1456,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_summary("wire_or_bus", members=members, invert=invert, stretch=stretch)
 
     async def _open_route_window(self) -> DtpXtrigActivityWindow:
-        """Idle the inputs and start an activity window over the route observables."""
+        """Idle the inputs and start an activity window over the route observables.
+
+        The window also tracks the per-port request levels (``ctm_port_request``)
+        and the inputs the bench asserts (``ctm_port_input``).
+        """
         await self.idle_inputs()
         await ClockCycles(self.xtrig.clk, 2)
-        window = self.xtrig.activity_window(self.OUTPUT_SIGNALS)
+        window = self.xtrig.activity_window(
+            self.OUTPUT_SIGNALS,
+            derived={"ctm_port_request": self.level_vector, "ctm_port_input": self.input_vector},
+        )
         window.start()
         return window
 
@@ -1167,25 +1506,76 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_step(1, "Internal trigger asserts CT_Req_out and BUSY until CT_Ack_in")
         await self.program_route(int_port, 1 << ctp_port, label="p2p.internal_to_ctp")
         await self.idle_inputs()
+        before = await self.sample_xtrig("p2p.before_request")
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "p2p.req_out_idle_before",
+            before["xtrig_ctp_req_out_dout"] & mask,
+            self.pad_level(mask, asserted=False),
+        )
         await self.xtrig.pulse_ctm_dst_req(1 << int_idx, cycles=2)
         await self.wait_signal_mask(
             "xtrig_ctp_req_out_dout", mask, self.pad_level(mask, asserted=True), label="p2p.req_out"
         )
-        await self.check_status(ctp_idx, "p2p.request", busy=1, req_out=1)
+        await self.check_status(
+            ctp_idx, "p2p.request", busy=1, req_out=1, ack_in=0, req_in=0, ack_out=0
+        )
         await self.drive_p2p_ack_in(ctp_idx, asserted=True)
         await self.wait_signal_mask(
             "xtrig_ctp_req_out_dout",
             mask,
             self.pad_level(mask, asserted=False),
+            cycles=self.P2P_PHASE_MAX_CYCLES,
             label="p2p.req_out_clear",
         )
-        await self.check_status(ctp_idx, "p2p.acknowledged", ack_in=1, req_out=0, busy=1)
+        await self.check_status(
+            ctp_idx, "p2p.acknowledged", busy=1, req_out=0, ack_in=1, req_in=0, ack_out=0
+        )
+        # CT_Req_out stays idle from the acknowledge release until STATUS reads the port idle.
+        released = self.xtrig.activity_window(("xtrig_ctp_req_out_dout",))
+        released.start()
         await self.drive_p2p_ack_in(ctp_idx, asserted=False)
         await self.wait_signal_mask("xtrig_ctp_busy", mask, 0, label="p2p.request_done")
-        await self.check_status(ctp_idx, "p2p.request_done", busy=0, ack_in=0)
+        await self.wait_signal_mask(
+            "xtrig_ctp_req_out_dout",
+            mask,
+            self.pad_level(mask, asserted=False),
+            label="p2p.req_out_idle",
+        )
+        await self.check_status(
+            ctp_idx, "p2p.request_done", busy=0, req_out=0, ack_in=0, req_in=0, ack_out=0
+        )
+        activity, hold, _last = await released.stop()
+        inverted = self._ctp_invert_mask()
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "p2p.request_done.req_out_idle",
+            (
+                (activity["xtrig_ctp_req_out_dout"] & ~inverted)
+                | (~hold["xtrig_ctp_req_out_dout"] & inverted)
+            )
+            & mask,
+            0,
+            context=f"cycles={released.cycles}",
+        )
 
         self.log_step(2, "External CT_Req_in asserts CT_Ack_out, delivers the trigger, then idles")
         await self.program_route(ctp_port, 1 << int_port, label="p2p.ctp_to_internal")
+        before = await self.sample_xtrig("p2p.before_response")
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "p2p.internal_idle_before",
+            before["xtrig_ctm_src_req"] & (1 << int_idx),
+            0,
+        )
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "p2p.ack_out_idle_before",
+            before["xtrig_ctp_ack_out_dout"] & mask,
+            self.pad_level(mask, asserted=False),
+        )
+        delivery = self.xtrig.activity_window(("xtrig_ctm_src_req",))
+        delivery.start()
         await self.drive_p2p_req_in(ctp_idx, asserted=True)
         await self.wait_signal_mask(
             "xtrig_ctp_ack_out_dout", mask, self.pad_level(mask, asserted=True), label="p2p.ack_out"
@@ -1193,16 +1583,40 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         await self.wait_signal_mask(
             "xtrig_ctm_src_req", 1 << int_idx, 1 << int_idx, label="p2p.internal_delivery"
         )
-        await self.check_status(ctp_idx, "p2p.response", req_in=1, ack_out=1, busy=1)
+        await self.wait_signal_mask(
+            "xtrig_ctm_src_req", 1 << int_idx, 0, label="p2p.internal_released"
+        )
+        await self.check_status(
+            ctp_idx, "p2p.response", busy=1, req_out=0, ack_in=0, req_in=1, ack_out=1
+        )
         await self.drive_p2p_req_in(ctp_idx, asserted=False)
         await self.wait_signal_mask(
             "xtrig_ctp_ack_out_dout",
             mask,
             self.pad_level(mask, asserted=False),
+            cycles=self.P2P_PHASE_MAX_CYCLES,
             label="p2p.ack_out_clear",
         )
         await self.wait_signal_mask("xtrig_ctp_busy", mask, 0, label="p2p.response_done")
-        await self.check_status(ctp_idx, "p2p.response_done", busy=0, req_in=0, ack_out=0)
+        await self.check_status(
+            ctp_idx, "p2p.response_done", busy=0, req_out=0, ack_in=0, req_in=0, ack_out=0
+        )
+        # One CT_Req_in assertion delivers one pulse, to the routed destination only.
+        activity, _hold, _last = await delivery.stop()
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "p2p.internal_delivery.pulses",
+            delivery.rises["xtrig_ctm_src_req"].get(int_idx, 0),
+            1,
+            context=f"cycles={delivery.cycles}",
+        )
+        self.check_evidence(
+            self.CHK_SIGNAL,
+            "p2p.internal_delivery.isolated",
+            activity["xtrig_ctm_src_req"] & ~(1 << int_idx),
+            0,
+            context=f"cycles={delivery.cycles}",
+        )
         self.log_summary("p2p", ctp=ctp_idx)
 
     async def run_reset(self) -> None:
@@ -1214,6 +1628,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         int_idx = rng.randrange(XTRIG_NUM_INT_CT)
         ctp_b = rng.choice([c for c in range(XTRIG_NUM_CTP) if c != ctp_idx])
         int_b = rng.choice([i for i in range(XTRIG_NUM_INT_CT) if i != int_idx])
+        int_c = rng.choice([i for i in range(XTRIG_NUM_INT_CT) if i not in (int_idx, int_b)])
         ctp_port = external_ctp_port(ctp_idx)
         int_port = internal_ct_port(int_idx)
         mask = 1 << ctp_idx
@@ -1240,22 +1655,53 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             label="reset.config_reset_clear",
         )
         await self.check_status(ctp_idx, "reset.config_reset", busy=0, req_out=0)
+        # The window opens once STATUS has read BUSY=0, because the registered
+        # busy flop clears a cycle after RESET forces the sender idle.
+        held = self.xtrig.activity_window(self.CONFIG_RESET_SIGNALS)
+        held.start()
         await self.program_ctp(ctp_idx, mode=XTRIG_CTP_MODE_P2P, reset=0)
+        await ClockCycles(self.xtrig.clk, self.ISOLATION_TAIL_CYCLES)
+        activity, _hold, _last = await held.stop()
+        for name in self.CONFIG_RESET_SIGNALS:
+            self.check_evidence(
+                self.CHK_QUIET,
+                f"reset.config_reset.{name}",
+                (activity[name] >> ctp_idx) & 1,
+                0,
+                context=f"cycles={held.cycles}",
+            )
         await self.verify_route(
             int_port, 1 << ctp_port, XTRIG_CTP_MODE_P2P, label="reset.post_config_reset"
         )
 
-        self.log_step(2, "System reset while an inverted wire-OR pulse is active on a second CTP")
+        self.log_step(
+            2,
+            "System reset while an inverted wire-OR pulse and a P2P receive are active on "
+            "two CTPs and an internal CT has pulsed",
+        )
+        live = self.xtrig.activity_window(self.RESET_SIGNALS)
+        live.start()
         await self.program_ctp(
             ctp_b, mode=XTRIG_CTP_MODE_WIRE_OR, invert=1, stretch=self.RESET_HOLD_STRETCH
         )
         await self.program_ctm_src(ctp_b, 1 << internal_ct_port(int_b))
+        await self.program_ctm_src(internal_ct_port(int_c), 1 << internal_ct_port(int_b))
         await self.idle_inputs()
         await self.xtrig.pulse_ctm_dst_req(1 << int_b, cycles=1)
         await self.wait_signal_mask(
             "xtrig_ctp_req_out_dout_en", 1 << ctp_b, 1 << ctp_b, label="reset.active_before"
         )
-        await self.reset_window("xtrig_reset")
+        await self.wait_window_fired(
+            "xtrig_ctm_src_req", 1 << int_c, live, label="reset.internal_active"
+        )
+        await self.drive_p2p_req_in(ctp_idx, asserted=True)
+        await self.wait_signal_mask(
+            "xtrig_ctp_ack_out_dout",
+            mask,
+            self.pad_level(mask, asserted=True),
+            label="reset.rx_ack_held",
+        )
+        await self.reset_window("xtrig_reset", watched=self.RESET_SIGNALS, live=live)
         await self.check_ctp_defaults("reset.system")
         await self.check_all_ctm_cleared("reset.system")
         await self.verify_route(
@@ -1292,14 +1738,6 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             if mode == XTRIG_CTP_MODE_WIRE_OR:
                 await self.verify_wire_or_pulse(
                     ctp_idx, int_idx, stretch=stretch, invert=invert, label=label
-                )
-                # The pad data of a wire-OR port rests at the level the port
-                # pulls the wire to.
-                await self.wait_signal_mask(
-                    "xtrig_ctp_req_out_dout",
-                    1 << ctp_idx,
-                    XTRIG_WIRE_OR_ASSERT[invert] << ctp_idx,
-                    label=f"{label}.wire_polarity",
                 )
                 continue
             await self.csr_write(
@@ -1345,17 +1783,46 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         ]
         for ctp_idx in range(XTRIG_NUM_CTP):
             self.log_iteration(ctp_idx + 1, XTRIG_NUM_CTP, "CTP[%d] CSR sweep", ctp_idx)
+            # The neighbour holds seeded nonzero words the sweep does not end
+            # on, so a write that also lands in the neighbour leaves another
+            # value there.
             neighbor = (ctp_idx + 1) % XTRIG_NUM_CTP
-            before = await self.read_ctp_words(neighbor, f"ctp{ctp_idx}.neighbor_before")
-            await self.sweep_ctp_words(ctp_idx, config_patterns, stretch_patterns, rng)
-            after = await self.read_ctp_words(neighbor, f"ctp{ctp_idx}.neighbor_after")
-            self.check_evidence(
-                self.CHK_CSR,
-                f"ctp{ctp_idx}.neighbor_no_alias",
-                after,
-                before,
-                context=f"ctp={neighbor}",
+            nbr_config = self.sweep_config_word(rng)
+            nbr_stretch = rng.randrange(1, 1 << 16)
+            await self.write_read_check(
+                ctp_config_addr(neighbor),
+                nbr_config,
+                nbr_config,
+                mask=XTRIG_CTP_CONFIG_MASK,
+                label=f"ctp{ctp_idx}.neighbor_preload.config",
             )
+            await self.write_read_check(
+                ctp_stretch_addr(neighbor),
+                nbr_stretch,
+                nbr_stretch,
+                mask=XTRIG_CTP_STRETCH_MASK,
+                label=f"ctp{ctp_idx}.neighbor_preload.stretch",
+            )
+            await self.sweep_ctp_words(
+                ctp_idx,
+                config_patterns,
+                stretch_patterns,
+                rng,
+                final_config=self.sweep_config_word(rng, exclude=nbr_config),
+                final_stretch=nbr_stretch ^ rng.randrange(1, 1 << 16),
+            )
+            for name, addr, mask, expected in (
+                ("config", ctp_config_addr(neighbor), XTRIG_CTP_CONFIG_MASK, nbr_config),
+                ("stretch", ctp_stretch_addr(neighbor), XTRIG_CTP_STRETCH_MASK, nbr_stretch),
+            ):
+                observed = await self.csr_read(addr, label=f"ctp{ctp_idx}.neighbor_after.{name}")
+                self.check_evidence(
+                    self.CHK_CSR,
+                    f"ctp{ctp_idx}.neighbor_no_alias.{name}",
+                    observed & mask,
+                    expected,
+                    context=f"ctp={neighbor}",
+                )
         self.log_step("route", "One programmed CTP routes a stretched pulse after the sweep")
         await self.clear_xtrig()
         stretch = rng.randint(1, 14)
@@ -1368,16 +1835,21 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         await self.clear_xtrig()
         self.log_summary("ctp_csr_sweep", ctp_count=XTRIG_NUM_CTP)
 
-    async def read_ctp_words(self, ctp_idx: int, label: str) -> int:
-        """CONFIG and STRETCH_MULT of one CTP packed as ``stretch << 32 | config``."""
-        config = await self.csr_read(ctp_config_addr(ctp_idx), label=f"{label}.config")
-        stretch = await self.csr_read(ctp_stretch_addr(ctp_idx), label=f"{label}.stretch")
-        return ((stretch & XTRIG_CTP_STRETCH_MASK) << 32) | (config & XTRIG_CTP_CONFIG_MASK)
+    def sweep_config_word(self, rng: Random, *, exclude: int | None = None) -> int:
+        """One seeded word of ``CTP_SWEEP_CONFIGS`` other than ``exclude``."""
+        return rng.choice([word for word in self.CTP_SWEEP_CONFIGS if word != exclude])
 
     async def sweep_ctp_words(
-        self, ctp_idx: int, config_patterns: list[int], stretch_patterns: list[int], rng: Random
+        self,
+        ctp_idx: int,
+        config_patterns: list[int],
+        stretch_patterns: list[int],
+        rng: Random,
+        *,
+        final_config: int,
+        final_stretch: int,
     ) -> None:
-        """Full-word patterns, every byte strobe, and a STATUS write on one CTP."""
+        """Full-word patterns, every byte strobe, a STATUS write, then the final words, on one CTP."""
         config = ctp_config_addr(ctp_idx)
         stretch = ctp_stretch_addr(ctp_idx)
         for pat_idx, word in enumerate(config_patterns):
@@ -1388,10 +1860,10 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             await self.write_read_check(
                 stretch, word, word & XTRIG_CTP_STRETCH_MASK, label=f"ctp{ctp_idx}.stretch{pat_idx}"
             )
-        # Byte strobes: only the strobed lanes change, and a strobed reserved
-        # lane changes nothing.
+        # Byte strobes over a nonzero base: only the strobed lanes change, and
+        # a strobed reserved lane changes nothing.
         for wstrb in (0x1, 0x2, 0x4, 0x8):
-            old_cfg = pack_ctp_config(mode=XTRIG_CTP_MODE_WIRE_OR)
+            old_cfg = self.sweep_config_word(rng)
             new_cfg = rng.getrandbits(32)
             await self.csr_write(config, old_cfg, label=f"ctp{ctp_idx}.byte_base")
             await self.write_read_check(
@@ -1401,7 +1873,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 wstrb=wstrb,
                 label=f"ctp{ctp_idx}.cfg_wstrb{wstrb:x}",
             )
-            old_stretch = rng.getrandbits(16)
+            old_stretch = rng.randrange(1, 1 << 16)
             new_stretch = rng.getrandbits(32)
             await self.csr_write(stretch, old_stretch, label=f"ctp{ctp_idx}.stretch_base")
             await self.write_read_check(
@@ -1414,6 +1886,20 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         status_before = await self.csr_read(ctp_status_addr(ctp_idx), label=f"ctp{ctp_idx}.status")
         await self.write_read_check(
             ctp_status_addr(ctp_idx), FULL_WORD, status_before, label=f"ctp{ctp_idx}.status_ro"
+        )
+        await self.write_read_check(
+            config,
+            final_config,
+            final_config,
+            mask=XTRIG_CTP_CONFIG_MASK,
+            label=f"ctp{ctp_idx}.cfg_final",
+        )
+        await self.write_read_check(
+            stretch,
+            final_stretch,
+            final_stretch,
+            mask=XTRIG_CTP_STRETCH_MASK,
+            label=f"ctp{ctp_idx}.stretch_final",
         )
 
     async def run_dst_port_sweep(self) -> None:
@@ -1429,11 +1915,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 input_port,
                 output_port,
             )
-            mode = (
-                XTRIG_CTP_MODE_WIRE_OR if self.is_ctp_port(output_port) else XTRIG_CTP_MODE_WIRE_OR
-            )
             await self.verify_route(
-                input_port, 1 << output_port, mode, label=f"dst_sweep.port{output_port}"
+                input_port,
+                1 << output_port,
+                XTRIG_CTP_MODE_WIRE_OR,
+                label=f"dst_sweep.port{output_port}",
             )
             if not self.is_ctp_port(output_port):
                 ack_mask = 1 << self.int_idx_from_port(output_port)
@@ -1448,19 +1934,21 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     async def run_reg_stall(self) -> None:
         """Accepted-path CSR accesses under an activity window.
 
-        No request or acknowledge enable or CTP busy flop moves while an
-        access is in flight, the crossbar's READY-low stall counters do not
-        advance, and a routed pulse afterwards is the positive control of the
-        same observables.
+        No internal-lane request, CTP request or acknowledge enable, or CTP
+        busy flop moves while an access is in flight, the crossbar's READY-low
+        stall counters do not advance while its AWVALID and ARVALID counters
+        do, and two routes afterwards, one wire-OR and one point-to-point, are
+        the positive control that moves each of those observables.
         """
+        self.require_pulse_mode_lanes("run_reg_stall")
         self.log_banner("DTP XTRIG accepted-path CSR access and stall rationale")
-        # Seeded per-pass CSR payloads: each loop writes different values down
-        # the accepted path.
+        # Seeded per-pass CSR payloads and control ports: each loop writes
+        # different values down the accepted path.
         rng = self.rng("reg_stall")
         stretch = rng.getrandbits(16)
         select = rng.randint(1, XTRIG_CTM_SELECT_MASK)
-        int_idx = rng.randrange(XTRIG_NUM_INT_CT)
-        ctp_idx = rng.randrange(XTRIG_NUM_CTP)
+        int_idx, int_out, int_p2p = rng.sample(range(XTRIG_NUM_INT_CT), 3)
+        ctp_idx, ctp_p2p = rng.sample(range(XTRIG_NUM_CTP), 2)
         before = await self.sample_xtrig("accepted_path.before")
         await self.idle_inputs()
         window = self.xtrig.activity_window(self.IN_FLIGHT_SIGNALS)
@@ -1502,27 +1990,43 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                 - before[f"xtrig_axil_{channel}_stall_count"],
                 0,
             )
-        self.check_evidence(
-            self.CHK_AXIL,
-            "regstall.awvalid_count_nonzero",
-            int(sample["xtrig_axil_awvalid_count"] > 0),
-            1,
-        )
-        self.check_evidence(
-            self.CHK_AXIL,
-            "regstall.arvalid_count_nonzero",
-            int(sample["xtrig_axil_arvalid_count"] > 0),
-            1,
-        )
-        # Positive control: the observables the quiet records judged move for
-        # a routed pulse in the same pass.
+            self.check_evidence(
+                self.CHK_AXIL,
+                f"regstall.{channel}valid_count_advanced",
+                int(
+                    sample[f"xtrig_axil_{channel}valid_count"]
+                    - before[f"xtrig_axil_{channel}valid_count"]
+                    > 0
+                ),
+                1,
+            )
+        # Positive control: a wire-OR route to a CTP and an internal CT and a
+        # point-to-point route to a second CTP move every observable the
+        # quiet records judged.
         await self.clear_xtrig()
-        await self.verify_route(
-            internal_ct_port(int_idx),
-            1 << external_ctp_port(ctp_idx),
+        control = self.xtrig.activity_window(self.IN_FLIGHT_SIGNALS)
+        control.start()
+        await self.verify_route_mask(
+            1 << internal_ct_port(int_idx),
+            (1 << external_ctp_port(ctp_idx)) | (1 << internal_ct_port(int_out)),
             XTRIG_CTP_MODE_WIRE_OR,
-            label="regstall.control",
+            label="regstall.control.wire_or",
         )
+        await self.verify_route(
+            internal_ct_port(int_p2p),
+            1 << external_ctp_port(ctp_p2p),
+            XTRIG_CTP_MODE_P2P,
+            label="regstall.control.p2p",
+        )
+        activity, _hold, _last = await control.stop()
+        for name in self.IN_FLIGHT_SIGNALS:
+            self.check_evidence(
+                self.CHK_SIGNAL,
+                f"regstall.control.{name}.live",
+                int(activity[name] != 0),
+                1,
+                context=f"cycles={control.cycles}",
+            )
         await self.clear_xtrig()
         self.log_summary(
             "reg_stall",
@@ -1534,22 +2038,45 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # Seeded per-pass payloads and skew timing: each loop exercises the
         # channel-skew paths with different data, gaps, and READY delays.
         rng = self.rng("axi_channel_skew")
-        d1, d2, d3 = (rng.getrandbits(16) for _ in range(3))
         addr = ctp_stretch_addr(rng.randrange(XTRIG_NUM_CTP))
+        # Each write replaces a different value, so a dropped write reads back
+        # the one before it.
+        prior = await self.csr_read(addr, label="axi_skew.prior") & XTRIG_CTP_STRETCH_MASK
+        d1 = prior ^ rng.randrange(1, 1 << 16)
+        d2 = d1 ^ rng.randrange(1, 1 << 16)
+        d3 = d2 ^ rng.randrange(1, 1 << 16)
         result = await self.axil.write_skewed_result(
             addr, d1, w_valid_delay=rng.randint(3, 7), b_ready_delay=rng.randint(1, 4)
         )
         self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", result.resp, self.AXI_OKAY)
+        observed = await self.csr_read(addr, label="axi_skew.aw_before_w.readback")
+        self.check_evidence(
+            self.CHK_AXIL, "axi_skew.aw_before_w.stretch", observed & XTRIG_CTP_STRETCH_MASK, d1
+        )
         await self.write_read_check(
             addr, d2, d2, mask=XTRIG_CTP_STRETCH_MASK, label="axi_skew.normal_after_aw"
         )
+        before = await self.sample_xtrig("axi_skew.w_before_aw.before")
+        aw_delay = rng.randint(3, 7)
         result = await self.axil.write_skewed_result(
             addr,
             d3,
-            aw_valid_delay=rng.randint(3, 7),
+            aw_valid_delay=aw_delay,
             b_ready_delay=rng.randint(1, 4),
         )
+        after = await self.sample_xtrig("axi_skew.w_before_aw.after")
+        w_stall_delta = after["xtrig_axil_w_stall_count"] - before["xtrig_axil_w_stall_count"]
         self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", result.resp, self.AXI_OKAY)
+        # The W beat waits with WREADY low until its AW arrives, so it stalls
+        # at least for the cycles the AW is held back, and the port's W
+        # stability rules see the stall.
+        self.check_evidence(
+            self.CHK_AXIL,
+            "axi_skew.w_before_aw.w_ready_low_seen",
+            int(w_stall_delta >= aw_delay),
+            1,
+            context=f"w_stall_cycles={w_stall_delta} aw_delay={aw_delay}",
+        )
         observed = await self.csr_read(addr, label="axi_skew.final_read")
         self.check_evidence(
             self.CHK_AXIL, "axi_skew.final_stretch", observed & XTRIG_CTP_STRETCH_MASK, d3
@@ -1634,9 +2161,11 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
 
         The demux queues the first AW's port selection until its W passes
         (``xtrig_demux_w_pending``) and holds the second AW with AWREADY low
-        meanwhile; the AW lock flag, which needs a master port that refuses a
-        fresh AW, stays clear. Both responses must complete and the bench stall
-        counter must agree with the VIP's AW observation.
+        meanwhile: the port's open-write counters see the second AW stall, and
+        no AW accepted, while the first is owed its W. The AW lock flag, which
+        needs a subordinate that refuses a presented AW, stays clear. Both
+        responses must complete and the bench stall counter must agree with
+        the VIP's AW observation.
         """
         before = await self.sample_xtrig(f"{label}.before")
         window = self.xtrig.activity_window(self.DEMUX_SIGNALS)
@@ -1670,7 +2199,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             self.check_evidence(
                 self.CHK_AXIL, f"{label}.second_bresp", result.second.resp, self.AXI_OKAY
             )
-        stall_delta = after["xtrig_axil_aw_stall_count"] - before["xtrig_axil_aw_stall_count"]
+        delta = {name: after[name] - before[name] for name in self.AW_PAIR_COUNTERS}
         self.check_evidence(
             self.CHK_AW_LOCK, f"{label}.w_pending_engaged", activity["xtrig_demux_w_pending"], 1
         )
@@ -1681,11 +2210,23 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             self.CHK_AW_LOCK, f"{label}.aw_lock_clear", activity["xtrig_demux_aw_lock"], 0
         )
         self.check_evidence(
-            self.CHK_AW_LOCK, f"{label}.second_aw_held", int(result.aw_stall_cycles > 0), 1
+            self.CHK_AW_LOCK,
+            f"{label}.second_aw_held_while_w_open",
+            int(delta["xtrig_axil_aw_open_stall_count"] > 0),
+            1,
+            context=f"open_stall_cycles={delta['xtrig_axil_aw_open_stall_count']}",
         )
-        self.check_evidence(self.CHK_AW_LOCK, f"{label}.aw_stable", int(result.aw_stable), 1)
         self.check_evidence(
-            self.CHK_AW_LOCK, f"{label}.aw_stall_count", stall_delta, result.aw_stall_cycles
+            self.CHK_AW_LOCK,
+            f"{label}.no_aw_accept_while_w_open",
+            delta["xtrig_axil_aw_open_accept_count"],
+            0,
+        )
+        self.check_evidence(
+            self.CHK_AW_LOCK,
+            f"{label}.aw_stall_count",
+            delta["xtrig_axil_aw_stall_count"],
+            result.aw_stall_cycles,
         )
         return result
 
@@ -1721,17 +2262,31 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.check_evidence(
             self.CHK_AXIL, "read_decode.first.hold_stable", int(result.first.hold_stable), 1
         )
-        stall_delta = after["xtrig_axil_ar_stall_count"] - before["xtrig_axil_ar_stall_count"]
-        arvalid_delta = after["xtrig_axil_arvalid_count"] - before["xtrig_axil_arvalid_count"]
+        delta = {name: after[name] - before[name] for name in self.AR_PAIR_COUNTERS}
+        stall_delta = delta["xtrig_axil_ar_stall_count"]
+        # The crossbar admits one read in flight: the second AR stalls, and no
+        # AR is accepted, while the first is owed its R beat.
         self.check_evidence(
-            self.CHK_AR_STALL, "read_decode.second_ar_held", int(result.ar_stall_cycles > 0), 1
+            self.CHK_AR_STALL,
+            "read_decode.second_ar_held_while_read_open",
+            int(delta["xtrig_axil_ar_open_stall_count"] > 0),
+            1,
+            context=f"open_stall_cycles={delta['xtrig_axil_ar_open_stall_count']}",
         )
-        self.check_evidence(self.CHK_AR_STALL, "read_decode.ar_stable", int(result.ar_stable), 1)
+        self.check_evidence(
+            self.CHK_AR_STALL,
+            "read_decode.no_ar_accept_while_read_open",
+            delta["xtrig_axil_ar_open_accept_count"],
+            0,
+        )
         self.check_evidence(
             self.CHK_AR_STALL, "read_decode.ar_stall_count", stall_delta, result.ar_stall_cycles
         )
         self.check_evidence(
-            self.CHK_AR_STALL, "read_decode.ar_accepted", arvalid_delta - stall_delta, 2
+            self.CHK_AR_STALL,
+            "read_decode.ar_accepted",
+            delta["xtrig_axil_arvalid_count"] - stall_delta,
+            2,
         )
         self.log_summary(
             "axi_channel_skew_read_decode_backpressure", unmapped_base=f"0x{XTRIG_UNMAPPED_BASE:x}"
@@ -1829,12 +2384,19 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             XTRIG_CTP_MODE_WIRE_OR,
             label=f"wire_or.{name}.overlap_merged",
         )
-        width = await width_task
+        pulse = await width_task
         self.check_evidence(
             self.CHK_STRETCH,
             f"wire_or.{name}.merged_width",
-            width,
+            pulse.width,
             self.ROUTE_STRETCH_MULT + 1,
+            context=f"output={overlap_output} sources=0x{both:x}",
+        )
+        self.check_evidence(
+            self.CHK_STRETCH,
+            f"wire_or.{name}.merged_pulses",
+            pulse.pulses,
+            1,
             context=f"output={overlap_output} sources=0x{both:x}",
         )
         self.log_summary(f"ctm_wire_or_{name}", input=input_port, outputs=f"0x{output_mask:x}")
@@ -1897,22 +2459,43 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_banner("DTP CTM reset in wire-OR mode")
         # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_wire_or")
-        int_a, int_b = rng.sample(range(XTRIG_NUM_INT_CT), 2)
+        int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
         ctps = rng.sample(range(XTRIG_NUM_CTP), 5)
+        inverted = rng.randrange(2)
         active = ctp_mask(ctps[0], ctps[1])
-        self.log_step(1, "Two outputs hold a long stretched pulse when the reset lands")
-        for ctp_idx in ctps[:2]:
+        self.log_step(
+            1,
+            "Two outputs, CTP[%d] inverted, hold a long stretched pulse when the reset lands",
+            ctps[inverted],
+        )
+        for k, ctp_idx in enumerate(ctps[:2]):
             await self.program_ctp(
-                ctp_idx, mode=XTRIG_CTP_MODE_WIRE_OR, stretch=self.RESET_HOLD_STRETCH
+                ctp_idx,
+                mode=XTRIG_CTP_MODE_WIRE_OR,
+                invert=int(k == inverted),
+                stretch=self.RESET_HOLD_STRETCH,
             )
-        await self.program_routes(1 << internal_ct_port(int_a), active, label="reset_wire_or.pre")
+        await self.program_routes(
+            1 << internal_ct_port(int_a),
+            active | (1 << internal_ct_port(int_c)),
+            label="reset_wire_or.pre",
+        )
+        live = self.xtrig.activity_window(self.RESET_SIGNALS_WIRE_OR)
+        live.start()
         await self.idle_inputs()
         await self.xtrig.pulse_ctm_dst_req(1 << int_a, cycles=1)
         await self.wait_signal_mask(
             "xtrig_ctp_req_out_dout_en", active, active, label="reset_wire_or.active_before"
         )
+        await self.wait_window_fired(
+            "xtrig_ctm_src_req", 1 << int_c, live, label="reset_wire_or.internal_active"
+        )
+        # Each output drives its own wire, so each receives its own pull.
+        await self.wait_window_fired(
+            "xtrig_ctp_ct_dst", active, live, label="reset_wire_or.self_receive"
+        )
         await self.check_status(ctps[0], "reset_wire_or.active_before", busy=1)
-        await self.reset_window("ctm_reset_wire_or")
+        await self.reset_window("ctm_reset_wire_or", watched=self.RESET_SIGNALS_WIRE_OR, live=live)
         self.log_step(2, "Routing and CTP state read their defaults, then fresh routes recover")
         await self.check_all_ctm_cleared("reset_wire_or")
         await self.check_ctp_defaults("reset_wire_or")
@@ -1928,12 +2511,21 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         self.log_banner("DTP CTM reset in P2P mode")
         # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_p2p")
-        int_a, int_b = rng.sample(range(XTRIG_NUM_INT_CT), 2)
+        int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
         ctps = rng.sample(range(XTRIG_NUM_CTP), 3)
         mask = 1 << ctps[0]
-        self.log_step(1, "A P2P request stays pending without its acknowledge when the reset lands")
+        rx = 1 << ctps[1]
+        self.log_step(
+            1,
+            "A P2P request stays pending without its acknowledge, and a second P2P port holds "
+            "a received request, when the reset lands",
+        )
         await self.configure_ctp_mode_for_port(ctps[0], XTRIG_CTP_MODE_P2P)
         await self.program_route(internal_ct_port(int_a), mask, label="reset_p2p.pre")
+        await self.configure_ctp_mode_for_port(ctps[1], XTRIG_CTP_MODE_P2P)
+        await self.program_ctm_src(internal_ct_port(int_c), rx)
+        live = self.xtrig.activity_window(self.RESET_SIGNALS)
+        live.start()
         await self.idle_inputs()
         await self.xtrig.pulse_ctm_dst_req(1 << int_a, cycles=2)
         await self.wait_signal_mask(
@@ -1943,7 +2535,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             label="reset_p2p.stuck_req",
         )
         await self.check_status(ctps[0], "reset_p2p.before", busy=1, req_out=1)
-        await self.reset_window("ctm_reset_p2p")
+        await self.drive_p2p_req_in(ctps[1], asserted=True)
+        await self.wait_signal_mask(
+            "xtrig_ctp_ack_out_dout",
+            rx,
+            self.pad_level(rx, asserted=True),
+            label="reset_p2p.rx_ack_held",
+        )
+        await self.wait_window_fired(
+            "xtrig_ctm_src_req", 1 << int_c, live, label="reset_p2p.rx_delivered"
+        )
+        await self.reset_window("ctm_reset_p2p", watched=self.RESET_SIGNALS, live=live)
         self.log_step(
             2,
             "The handshake, routing, and CTP state read their defaults, then a fresh route completes",
@@ -1964,11 +2566,12 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # Seeded per-pass ports: each loop resets and recovers different routes.
         rng = self.rng("ctm_reset_all_modes")
         int_a, int_b, int_c = rng.sample(range(XTRIG_NUM_INT_CT), 3)
-        ctps = rng.sample(range(XTRIG_NUM_CTP), 4)
+        ctps = rng.sample(range(XTRIG_NUM_CTP), 5)
         # Both classes programmed together and each pulsed, so the reset lands
         # on live routing state of both kinds: one wire-OR source to two CTPs
         # and one internal CT (so the internal request outputs are a live
-        # observable of this test), and one P2P source to a third CTP.
+        # observable of this test), one P2P source to a third CTP, and a fifth
+        # CTP in P2P mode that receives a request.
         wire_in = 1 << internal_ct_port(int_a)
         wire_outputs = (
             external_ctp_port(ctps[0]),
@@ -1978,17 +2581,25 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         wire_mask = sum(1 << port for port in wire_outputs)
         p2p_in = 1 << internal_ct_port(int_b)
         p2p_mask = 1 << external_ctp_port(ctps[2])
+        rx = 1 << external_ctp_port(ctps[4])
         await self.configure_ctp_modes_for_route_mask(wire_in, wire_mask, XTRIG_CTP_MODE_WIRE_OR)
         await self.configure_ctp_modes_for_route_mask(p2p_in, p2p_mask, XTRIG_CTP_MODE_P2P)
+        await self.configure_ctp_mode_for_port(external_ctp_port(ctps[4]), XTRIG_CTP_MODE_P2P)
         await self.clear_ctm_routes()
         for port in wire_outputs:
             await self.program_ctm_src(port, wire_in)
         await self.program_ctm_src(external_ctp_port(ctps[2]), p2p_in)
+        live = self.xtrig.activity_window(self.RESET_SIGNALS)
+        live.start()
         await self.run_route_window(
             wire_in, wire_mask, XTRIG_CTP_MODE_WIRE_OR, label="reset_all.pre_wire"
         )
         await self.run_route_window(p2p_in, p2p_mask, XTRIG_CTP_MODE_P2P, label="reset_all.pre_p2p")
-        self.log_step(2, "A P2P request stays pending without its acknowledge when the reset lands")
+        self.log_step(
+            2,
+            "A P2P request stays pending without its acknowledge, and a second P2P port holds "
+            "a received request, when the reset lands",
+        )
         await self.idle_inputs()
         await self.drive_input_mask(p2p_in, XTRIG_CTP_MODE_P2P)
         await self.wait_signal_mask(
@@ -1998,7 +2609,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             label="reset_all.stuck_req",
         )
         await self.check_status(ctps[2], "reset_all.before", busy=1, req_out=1)
-        await self.reset_window("ctm_reset_all")
+        await self.drive_p2p_req_in(ctps[4], asserted=True)
+        await self.wait_signal_mask(
+            "xtrig_ctp_ack_out_dout",
+            rx,
+            self.pad_level(rx, asserted=True),
+            label="reset_all.rx_ack_held",
+        )
+        await self.reset_window("ctm_reset_all", watched=self.RESET_SIGNALS, live=live)
         await self.check_status(ctps[2], "reset_all.after", busy=0, req_out=0)
         await self.check_all_ctm_cleared("reset_all")
         await self.check_ctp_defaults("reset_all")
@@ -2079,6 +2697,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             out2 = rng.choice(free_dst)
         if (in2, out2) in pending:
             pending.remove((in2, out2))
+        self._route_driven.setdefault(name, set()).add((in2, out2))
         self.log.info("%s: second P2P route input=%d output=%d alongside", label, in2, out2)
         await self.configure_ctp_modes_for_route_mask(1 << in2, 1 << out2, XTRIG_CTP_MODE_P2P)
         await self.program_ctm_src(out2, 1 << in2)
@@ -2099,77 +2718,147 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         own and pulses each alone. Each iteration starts from the first pending
         route of the mix, adds a second source that shares its destination and
         further outputs of its source that are still pending, and draws its
-        trigger timing: the pulse width and the idle lead before it. The floor
-        of two cycles keeps a P2P request held into its handshake.
+        trigger timing: the pulse width and the idle lead before it. A
+        point-to-point CTP source holds its request for the drawn width and
+        until its acknowledge. The last pass of a ``ROUTE_WALK_MIXES`` mix
+        continues with single-source iterations until every route of the mix
+        has been driven alone, and counts those routes.
         """
         self.log_banner(f"DTP CTM seeded random routing {name}")
         rng = self.rng(f"ctm_random_{name}")
         source_pool = self.port_pool(source_class)
         dest_pool = self.port_pool(dest_class)
+        walk = [(s, d) for s in source_pool for d in dest_pool if s != d]
+        closes_walk = name in self.ROUTE_WALK_MIXES
+        if closes_walk and self.total_passes == 0:
+            raise ValueError(
+                f"ctm_rand_{name} needs total_passes to find the pass that closes its walk"
+            )
         for idx in range(self.random_count):
-            mode = (
-                XTRIG_CTP_MODE_P2P
-                if (p2p and (not multicast or rng.randrange(2)))
-                else XTRIG_CTP_MODE_WIRE_OR
-            )
-            n_inputs = 2 if mode == XTRIG_CTP_MODE_WIRE_OR and rng.randrange(2) else 1
-            pulse_cycles = rng.randint(2, CTM_RAND_PULSE_MAX_CYCLES)
-            lead_cycles = rng.randint(0, CTM_RAND_LEAD_MAX_CYCLES)
-            pending = self._route_pending.get(name)
-            if not pending:
-                pending = [(s, d) for s in source_pool for d in dest_pool if s != d]
-                rng.shuffle(pending)
-                self._route_pending[name] = pending
-            head_src, head_dst = pending[0]
-            inputs = [head_src]
-            if n_inputs == 2:
-                others = [s for s in source_pool if s not in (head_src, head_dst)]
-                partners = [s for s in others if (s, head_dst) in pending]
-                if partners or others:
-                    inputs.append(rng.choice(partners or others))
-            input_mask = sum(1 << port for port in inputs)
-            selected = [head_dst]
-            if mode == XTRIG_CTP_MODE_WIRE_OR:
-                rest = [d for d in dest_pool if d != head_dst and d not in inputs]
-                pending_dst = [d for d in rest if (head_src, d) in pending]
-                other_dst = [d for d in rest if (head_src, d) not in pending]
-                rng.shuffle(pending_dst)
-                rng.shuffle(other_dst)
-                extra = pending_dst + other_dst
-                k = min(4, len(extra) + 1)
-                selected += extra[: rng.randint(min(2, k), k) - 1]
-            output_mask = sum(1 << port for port in selected)
-            driven = {(s, d) for s in inputs for d in selected}
-            pending[:] = [route for route in pending if route not in driven]
-            self.log_iteration(
-                idx + 1,
+            await self._ctm_random_iteration(
+                rng,
+                name,
+                idx,
                 self.random_count,
-                "inputs=0x%x mode=%d outputs=0x%x pulse=%d lead=%d",
-                input_mask,
-                mode,
-                output_mask,
-                pulse_cycles,
-                lead_cycles,
+                walk=walk,
+                source_pool=source_pool,
+                dest_pool=dest_pool,
+                multicast=multicast,
+                p2p=p2p,
             )
-            await self.verify_route_mask(
-                input_mask,
-                output_mask,
-                mode,
-                label=f"rand.{name}.{idx}",
-                pulse_cycles=pulse_cycles,
-                lead_cycles=lead_cycles,
-            )
-            if mode == XTRIG_CTP_MODE_P2P:
-                await self.run_p2p_pair_isolation(
+        iterations = self.random_count
+        driven = self._route_driven.setdefault(name, set())
+        if closes_walk and self.loop_index == self.total_passes - 1:
+            # Every single-source iteration retires at least its head route,
+            # so the walk closes within this many iterations.
+            bound = iterations + len(walk) - len(driven)
+            while len(driven) < len(walk) and iterations < bound:
+                await self._ctm_random_iteration(
                     rng,
                     name,
-                    input_mask,
-                    output_mask,
+                    iterations,
+                    bound,
+                    walk=walk,
                     source_pool=source_pool,
                     dest_pool=dest_pool,
-                    label=f"rand.{name}.{idx}",
+                    multicast=multicast,
+                    p2p=p2p,
+                    single_source=True,
                 )
-        self.log_summary(f"ctm_rand_{name}", iterations=self.random_count)
+                iterations += 1
+            self.check_evidence(
+                self.CHK_ROUTE_MODEL,
+                f"rand.{name}.routes_driven",
+                len(driven),
+                len(walk),
+                context=f"iterations={iterations}",
+            )
+        self.log_summary(f"ctm_rand_{name}", iterations=iterations)
+
+    async def _ctm_random_iteration(
+        self,
+        rng: Random,
+        name: str,
+        idx: int,
+        total: int,
+        *,
+        walk: list[tuple[int, int]],
+        source_pool: list[int],
+        dest_pool: list[int],
+        multicast: bool,
+        p2p: bool,
+        single_source: bool = False,
+    ) -> None:
+        """One route-mix iteration from the head of the walk; a single-source window retires the routes it drives."""
+        mode = (
+            XTRIG_CTP_MODE_P2P
+            if (p2p and (not multicast or rng.randrange(2)))
+            else XTRIG_CTP_MODE_WIRE_OR
+        )
+        n_inputs = (
+            2 if not single_source and mode == XTRIG_CTP_MODE_WIRE_OR and rng.randrange(2) else 1
+        )
+        pulse_cycles = rng.randint(2, CTM_RAND_PULSE_MAX_CYCLES)
+        lead_cycles = rng.randint(0, CTM_RAND_LEAD_MAX_CYCLES)
+        pending = self._route_pending.get(name)
+        if not pending:
+            pending = list(walk)
+            rng.shuffle(pending)
+            self._route_pending[name] = pending
+        head_src, head_dst = pending[0]
+        inputs = [head_src]
+        if n_inputs == 2:
+            others = [s for s in source_pool if s not in (head_src, head_dst)]
+            partners = [s for s in others if (s, head_dst) in pending]
+            if partners or others:
+                inputs.append(rng.choice(partners or others))
+        input_mask = sum(1 << port for port in inputs)
+        selected = [head_dst]
+        if mode == XTRIG_CTP_MODE_WIRE_OR:
+            rest = [d for d in dest_pool if d != head_dst and d not in inputs]
+            pending_dst = [d for d in rest if (head_src, d) in pending]
+            other_dst = [d for d in rest if (head_src, d) not in pending]
+            rng.shuffle(pending_dst)
+            rng.shuffle(other_dst)
+            extra = pending_dst + other_dst
+            k = min(4, len(extra) + 1)
+            selected += extra[: rng.randint(min(2, k), k) - 1]
+        output_mask = sum(1 << port for port in selected)
+        # With two sources selected on every output a missing select bit of
+        # either source goes unseen, so only a single-source window retires
+        # the routes it drives.
+        if len(inputs) == 1:
+            retired = {(head_src, d) for d in selected}
+            pending[:] = [route for route in pending if route not in retired]
+            self._route_driven.setdefault(name, set()).update(retired)
+        self.log_iteration(
+            idx + 1,
+            total,
+            "inputs=0x%x mode=%d outputs=0x%x pulse=%d lead=%d",
+            input_mask,
+            mode,
+            output_mask,
+            pulse_cycles,
+            lead_cycles,
+        )
+        await self.verify_route_mask(
+            input_mask,
+            output_mask,
+            mode,
+            label=f"rand.{name}.{idx}",
+            pulse_cycles=pulse_cycles,
+            lead_cycles=lead_cycles,
+        )
+        if mode == XTRIG_CTP_MODE_P2P:
+            await self.run_p2p_pair_isolation(
+                rng,
+                name,
+                input_mask,
+                output_mask,
+                source_pool=source_pool,
+                dest_pool=dest_pool,
+                label=f"rand.{name}.{idx}",
+            )
 
     @staticmethod
     def port_pool(port_class: str) -> list[int]:
@@ -2278,12 +2967,13 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
                     label=f"allsrc{src_idx}.mask{mask_idx}",
                 )
             after_neighbor = await self.csr_read(neighbor, label=f"allsrc{src_idx}.neighbor_after")
-            if ((src_idx + 1) % XTRIG_NUM_CTM_PORTS) != src_idx:
-                self.assert_equal(
-                    f"allsrc{src_idx}.neighbor_no_alias",
-                    after_neighbor & XTRIG_CTM_SELECT_MASK,
-                    before_neighbor & XTRIG_CTM_SELECT_MASK,
-                )
+            self.check_evidence(
+                self.CHK_CSR,
+                f"allsrc{src_idx}.neighbor_no_alias",
+                after_neighbor & XTRIG_CTM_SELECT_MASK,
+                before_neighbor & XTRIG_CTM_SELECT_MASK,
+                context=f"ct_src={(src_idx + 1) % XTRIG_NUM_CTM_PORTS}",
+            )
             # One routed pulse per source: its select decodes into the matrix.
             await self.verify_route(
                 src_idx,

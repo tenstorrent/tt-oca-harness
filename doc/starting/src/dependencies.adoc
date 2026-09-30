@@ -7,9 +7,6 @@
 [WARNING]
 ====
 This document is currently under development.
-
-- Check license requirements of external IPs
-- Add Dependencies of `tt-oca-harness-model`
 ====
 
 This section outlines the system requirements and dependencies for the
@@ -65,5 +62,5 @@ dependencies, but installs and manages them itself unless configured otherwise:
 * *Open Source Tools*: No additional licenses required
 * *Commercial Tools*: Valid licenses for VCS, Design Compiler,
 etc are optional, these may be used for alternate workflows.
-* *Dependencies*: Some external IPs may have specific license
-requirements
+* *Dependencies*: All External IPs used within the project are distributed
+under open-source licenses (Mostly Apache/MIT).

@@ -73,7 +73,7 @@ their output positions.
 .SRAM scrambler permutation for bits 31 to 16
 |=================================================================
 |i |31 |30 |29 |28 |27 |26 |25 |24 |23 |22 |21 |20 |19 |18 |17 |16
-|*P(i)* |0 |8 |16 |24 |1 |9 |17 |25 |2 |10 |18 |26 |3 |11 |19 |27
+|*P(i)* |0 |4 |8 |12 |16 |20 |24 |28 |1 |5 |9 |13 |17 |21 |25 |29
 |=================================================================
 
 <<sram-scrambler-permutation-for-bits-15-to-0-table>> maps input bits 15 through 0 to
@@ -84,26 +84,26 @@ their output positions.
 .SRAM scrambler permutation for bits 15 to 0
 |==================================================================
 |i |15 |14 |13 |12 |11 |10 |9 |8 |7 |6 |5 |4 |3 |2 |1 |0
-|*P(i)* |4 |12 |20 |28 |5 |13 |21 |29 |6 |14 |22 |30 |7 |15 |23 |31
+|*P(i)* |2 |6 |10 |14 |18 |22 |26 |30 |3 |7 |11 |15 |19 |23 |27 |31
 |==================================================================
 
 [[scrambling-procedure]]
 *Scrambling Procedure*
 
 First the tweaked key is xor'ed with the input write data. The output is
-split into 8 4-bit nibble lanes and which are fed into 16 sbox
-functions. The resulting values are concatenated and fed into the player
-permutation function to form the final scrambled data value which is
-written to memory.
+split into 8 4-bit nibble lanes and each is fed into an sbox function.
+The resulting values are concatenated and fed into the player permutation
+function to form the final scrambled data value which is written to memory.
 
 [[descrambling-procedure]]
 *Descrambling Procedure*
 
 The descrambling process is exactly the reverse as scrambling. The
-scrambled data value is read from memory and then we first perform the
-iplayer inverse permutation operation. This is followed by 8 inverse
-sbox functions and the outputs are concatenated. This word is then
-xor'ed with the tweaked key to recover the unscrambled read data.
+scrambled data value is read from memory and we first perform the
+iplayer inverse permutation operation. This is followed by inverse sbox
+functions applied to each 4-bit lane, with the outputs concatenated.
+This word is then xor'ed with the tweaked key to recover the unscrambled
+read data.
 
 *Address Tweaking:*
 
