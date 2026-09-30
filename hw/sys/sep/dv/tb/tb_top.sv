@@ -687,28 +687,41 @@ module sep_uvm_top
     // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
     // -- the testbench seeds the wrong address too and every test stays
     // green. This checker supplies the one property a flat memory lacks: an
-    // access outside a register window that exists is an ERROR. The windows
-    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
-    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; when the
-    // ROM needs a new block, add its authoritative base/size here rather than
-    // widening an existing window.
+    // access outside a register window that exists is an ERROR. Block bases
+    // and sizes come from the generated SMC address map (smc_top_addrmap_pkg,
+    // hw/sys/smc/regs/gen/sv/smc_addrmap_pkg.sv). The package gives SMC-local
+    // addresses (0xC000_XXXX); SEP sees them at 0x4000_XXXX, the identity
+    // mapping this tb configures via smc_global_base_addr_i. When the ROM needs
+    // a new block, add its generated base/size here rather than widening an
+    // existing window.
+    localparam logic [63:0] SmcLocalBase = 64'hC000_0000;
+    localparam logic [63:0] SmcSepViewBase = 64'h4000_0000;
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
-        56'h4000_2000,  // SMC_RESET_UNIT
-        56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
-        56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
-        56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
-        56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
-        56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
-        SmcStrapsLoAddr // SMC_EXTERNAL straps      (STRAPS_LO/HI)
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_MISC_WRAP_CHIP_CONFIG: CHIP_ID, LC_STATE
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR - SmcLocalBase +
+            SmcSepViewBase),
+        // SMC_EFUSE_MAP: chiplet/package ID
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // DFX_CTRL: STATUS_SMU
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SMC_CPU_CTRL: scratch[0..15] at +0x80
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        // SPM_MEMORY: manifest + BL1
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_BASE_ADDR - SmcLocalBase + SmcSepViewBase),
+        SmcStrapsLoAddr  // SMC_EXTERNAL straps (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
-        56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
-        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000,
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_RESET_UNIT_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_DFX_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_SIZE),
+        56'(smc_top_addrmap_pkg::SMC_TOP_SPM_MEMORY_SIZE),
         56'h0000_0008
     };
 
