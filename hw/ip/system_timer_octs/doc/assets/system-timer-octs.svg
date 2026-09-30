@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="736" viewBox="0 0 1040 736" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="766" viewBox="0 0 1040 766" role="img" aria-labelledby="title desc">
 <title id="title">System Timer OCTS</title>
-<desc id="desc">The system_timer_octs block holds the timer core u_timer_core and its register block u_reg. The inbound timer_sync_load_i and timer_cnt_credit_i pulses are each flopped in clk_i and pass through a prim_edge_detector, u_sync_load_detector and u_credit_cnt_detector, which synchronizes them with two flops and detects the rising edge; the resulting pulses are masked while is_primary_i selects PRIMARY mode. In SECONDARY mode the sync-load pulse sets the sticky enable, and both pulses reset the credit tracking, which accumulates cur_credits by STEP, keeps the expected count and counts credit-starved cycles as credit_expired_o. The 64-bit count timer_count_q loads the preset, advances by one in PRIMARY mode, and in SECONDARY mode advances by STEP while credits are left or jumps to the expected count plus CREDIT_VAL on a credit pulse; it drives timer_count_o. In PRIMARY mode the credit counter runs from 0 to CREDIT_VAL-1 and the pulse state machine drives timer_sync_load_o after START and timer_cnt_credit_o at each credit period, each for PULSE_WIDTH cycles. The wrapper keeps the largest credit_expired_o value for CREDIT_EXPIRED. The AXI-Lite register block supplies START, CTRL and the preset, reads back mode, running and count, and drives timer_gpio_enable_o.</desc>
+<desc id="desc">The system_timer_octs block holds the timer core u_timer_core and its register block u_reg. The inbound timer_sync_load_i and timer_cnt_credit_i pulses are each flopped in clk_i and pass through a prim_edge_detector, u_sync_load_detector and u_credit_cnt_detector, which synchronizes them with two flops and detects the rising edge; an AND gate with is_primary_i on an inverted input masks each resulting pulse in PRIMARY mode. The sticky enable flop is set through an OR gate by START or the sync-load pulse and holds itself set. In SECONDARY mode both pulses reset the credit tracking, which holds cur_credits and the expected count and reports credits_left, the expected count and credit_expired_o. The 64-bit count timer_count_q loads the preset, advances by one in PRIMARY mode, and in SECONDARY mode advances by STEP while credits are left or jumps to the expected count plus CREDIT_VAL on a credit pulse; it drives timer_count_o. In PRIMARY mode the credit counter runs from 0 to CREDIT_VAL-1 and the pulse state machine drives timer_sync_load_o after START and timer_cnt_credit_o at each credit period, each for PULSE_WIDTH cycles. In the wrapper a flop loads the maximum of its own value and credit_expired_o for CREDIT_EXPIRED. The AXI-Lite register block supplies START, CTRL and the preset, reads back mode, running and count, and drives timer_gpio_enable_o.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -82,7 +82,7 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .axiln { fill: none; stroke: #103525; stroke-width: 1.5; }
 </style>
 </defs>
-<rect width="1040" height="736" fill="#ffffff"/>
+<rect width="1040" height="766" fill="#ffffff"/>
 <rect class="smu" x="150" y="20" width="740" height="640" rx="6"/>
 <text class="b" x="162" y="648" text-anchor="start">system_timer_octs</text>
 <rect class="smu" x="170" y="40" width="700" height="440" rx="6"/>
@@ -91,42 +91,52 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="bs" x="202" y="440" text-anchor="start">SECONDARY only</text>
 <rect class="smu opt" x="590" y="256" width="260" height="196" rx="6"/>
 <text class="bs" x="602" y="440" text-anchor="start">PRIMARY only</text>
-<path class="sigo" d="M10,88 L202,88"/>
+<path class="sigo" d="M10,88 L203,88"/>
 <text class="s" x="14" y="80" text-anchor="start">timer_sync_load_i</text>
-<rect class="core" x="206" y="72" width="50" height="32" rx="4"/>
-<text class="s" x="231" y="93" text-anchor="middle">flop</text>
-<path class="sigo" d="M256,88 L276,88"/>
-<rect class="core" x="280" y="64" width="220" height="48" rx="6"/>
-<text class="t" x="390" y="84.5" text-anchor="middle">u_sync_load_detector</text>
-<text class="s" x="390" y="101.5" text-anchor="middle">2-flop sync, rising edge</text>
-<path class="sigo" d="M10,168 L202,168"/>
+<rect class="fabric" x="206" y="70" width="40" height="36" rx="2"/>
+<path class="sigplain" d="M206,92 L214,98 L206,104"/>
+<path class="sigo" d="M246,88 L277,88"/>
+<rect class="core" x="280" y="64" width="180" height="48" rx="6"/>
+<text class="t" x="370" y="84.5" text-anchor="middle">u_sync_load_detector</text>
+<text class="s" x="370" y="101.5" text-anchor="middle">2-flop sync, rising edge</text>
+<path class="sigo" d="M460,81 L483,81"/>
+<path class="fabric" d="M486,73 L496.5,73 A15,15 0 0 1 496.5,103 L486,103 Z"/>
+<circle class="fabric" cx="482.5" cy="95" r="3.5"/>
+<path class="sigo" d="M10,168 L203,168"/>
 <text class="s" x="14" y="160" text-anchor="start">timer_cnt_credit_i</text>
-<rect class="core" x="206" y="152" width="50" height="32" rx="4"/>
-<text class="s" x="231" y="173" text-anchor="middle">flop</text>
-<path class="sigo" d="M256,168 L276,168"/>
-<rect class="core" x="280" y="144" width="220" height="48" rx="6"/>
-<text class="t" x="390" y="164.5" text-anchor="middle">u_credit_cnt_detector</text>
-<text class="s" x="390" y="181.5" text-anchor="middle">2-flop sync, rising edge</text>
-<path class="sigo" d="M10,240 L166,240"/>
+<rect class="fabric" x="206" y="150" width="40" height="36" rx="2"/>
+<path class="sigplain" d="M206,172 L214,178 L206,184"/>
+<path class="sigo" d="M246,168 L277,168"/>
+<rect class="core" x="280" y="144" width="180" height="48" rx="6"/>
+<text class="t" x="370" y="164.5" text-anchor="middle">u_credit_cnt_detector</text>
+<text class="s" x="370" y="181.5" text-anchor="middle">2-flop sync, rising edge</text>
+<path class="sigo" d="M460,161 L483,161"/>
+<path class="fabric" d="M486,153 L496.5,153 A15,15 0 0 1 496.5,183 L486,183 Z"/>
+<circle class="fabric" cx="482.5" cy="175" r="3.5"/>
+<path class="sigplain" d="M10,240 L468,240 L468,166 M468,156 L468,95 L479,95 M468,175 L479,175"/>
+<circle cx="468" cy="175" r="3.5" fill="#5b6670"/>
 <text class="s" x="14" y="232" text-anchor="start">is_primary_i</text>
 <rect class="core" x="206" y="290" width="264" height="130" rx="6"/>
-<text class="t" x="338" y="324" text-anchor="middle">Credit tracking</text>
-<text class="s" x="338" y="342" text-anchor="middle">cur_credits += STEP</text>
-<text class="s" x="338" y="360" text-anchor="middle">credits_left, expected count</text>
-<text class="s" x="338" y="378" text-anchor="middle">u_adder_expected_credit</text>
-<text class="s" x="338" y="396" text-anchor="middle">credit_expired_o</text>
-<path class="sigo" d="M500,88 L596,88"/>
+<text class="t" x="338" y="350" text-anchor="middle">Credit tracking</text>
+<text class="s" x="338" y="370" text-anchor="middle">cur_credits, expected count</text>
+<path class="sigo" d="M511.5,88 L653.75,88"/>
 <circle cx="540" cy="88" r="3.5" fill="#5b6670"/>
 <path class="sigo" d="M540,88 L540,320 L474,320"/>
-<text class="s" x="510" y="80" text-anchor="start">sync_load</text>
-<path class="sigo" d="M500,168 L533,168 M547,168 L596,168"/>
+<text class="s" x="566" y="80" text-anchor="start">sync_load</text>
+<path class="sigo" d="M511.5,168 L533,168 M547,168 L596,168"/>
 <circle cx="525" cy="168" r="3.5" fill="#5b6670"/>
 <path class="sigo" d="M525,168 L525,346 L474,346"/>
 <text class="s" x="568" y="160" text-anchor="middle">credit</text>
-<rect class="core" x="600" y="68" width="120" height="40" rx="6"/>
-<text class="t" x="660" y="85.5" text-anchor="middle">enable</text>
-<text class="s" x="660" y="100.5" text-anchor="middle">sticky</text>
-<path class="sigo" d="M660,108 L660,146"/>
+<path class="fabric" d="M652,68 Q672.9,68 690,88 Q672.9,108 652,108 Q661.5,88 652,68 Z"/>
+<rect class="fabric" x="706" y="70" width="62" height="36" rx="2"/>
+<path class="sigplain" d="M706,92 L714,98 L706,104"/>
+<text class="s" x="740" y="92.5" text-anchor="middle">enable</text>
+<path class="sigo" d="M690,88 L703,88"/>
+<path class="sigo" d="M640,50 L640,78 L652.562,78"/>
+<text class="s" x="646" y="58" text-anchor="start">START</text>
+<path class="sigo" d="M768,88 L788,88 L788,146"/>
+<circle cx="788" cy="122" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M788,122 L626,122 L626,98 L652.562,98"/>
 <rect class="core" x="600" y="150" width="240" height="80" rx="6"/>
 <text class="t" x="720" y="171" text-anchor="middle">64-bit count</text>
 <text class="s" x="720" y="187" text-anchor="middle">timer_count_q</text>
@@ -149,11 +159,16 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="1030" y="370" text-anchor="end">timer_sync_load_o</text>
 <path class="sigo" d="M830,402 L1030,402"/>
 <text class="s" x="1030" y="396" text-anchor="end">timer_cnt_credit_o</text>
-<path class="sigo" d="M420,420 L420,491"/>
+<path class="sigo" d="M420,420 L420,493"/>
 <text class="s" x="428" y="468" text-anchor="start">credit_expired_o</text>
-<rect class="core" x="325" y="495" width="190" height="36" rx="4"/>
-<text class="s" x="420" y="518" text-anchor="middle">CREDIT_EXPIRED max hold</text>
-<path class="sigo" d="M420,531 L420,551"/>
+<rect class="fabric" x="385" y="496" width="70" height="34" rx="4"/>
+<text class="s" x="420" y="518" text-anchor="middle">max</text>
+<rect class="fabric" x="480" y="495" width="40" height="36" rx="2"/>
+<path class="sigplain" d="M480,517 L488,523 L480,529"/>
+<path class="sigo" d="M455,513 L477,513"/>
+<path class="sigo" d="M520,513 L545,513 L545,551"/>
+<circle cx="545" cy="541" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M545,541 L370,541 L370,513 L382,513"/>
 <rect class="core" x="170" y="555" width="700" height="70" rx="6"/>
 <text class="t" x="520" y="577" text-anchor="middle">u_reg</text>
 <text class="s" x="520" y="595" text-anchor="middle">TIMER_START, CTRL, TIMER_PRESET_LO/HI, STATUS, TIMER_COUNT_LO/HI,</text>
@@ -181,6 +196,19 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="sigplain" d="M460.1,718 L490.1,718 M475.1,718 L475.1,727"/>
 <circle cx="475.1" cy="718" r="3.5" fill="#5b6670"/>
 <text class="s" x="498.1" y="722.5" text-anchor="start">Fan-out</text>
+<path class="fabric" d="M14,736 L21,736 A10,10 0 0 1 21,756 L14,756 Z"/>
+<path class="fabric" d="M40,736 Q50.45,736 59,746 Q50.45,756 40,756 Q44.75,746 40,736 Z"/>
+<text class="s" x="72" y="750.5" text-anchor="start">AND, OR gate</text>
+<path class="sigplain" d="M190,746 L208,746"/>
+<circle class="fabric" cx="211.5" cy="746" r="3.5"/>
+<text class="s" x="223" y="750.5" text-anchor="start">Inverted input</text>
+<rect class="fabric" x="340" y="735" width="30" height="22" rx="2"/>
+<path class="sigplain" d="M340,743 L348,749 L340,755"/>
+<text class="s" x="378" y="750.5" text-anchor="start">Flop</text>
+<rect class="fabric" x="440" y="737" width="36" height="18" rx="4"/>
+<text class="s" x="484" y="750.5" text-anchor="start">Logic</text>
+<path class="sigplain" d="M560,746 L600,746 M580,734 L580,741 M580,751 L580,758"/>
+<text class="s" x="610" y="750.5" text-anchor="start">Crossing, not connected</text>
 <rect class="pc" x="134.6" y="79.0" width="30.8" height="18" rx="4"/>
 <text class="pct" x="150" y="92.5" text-anchor="middle">CDC</text>
 <rect class="pc" x="134.6" y="159.0" width="30.8" height="18" rx="4"/>

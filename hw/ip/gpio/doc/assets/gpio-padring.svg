@@ -94,13 +94,13 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="306" y="110" text-anchor="start">other peripheral targets</text>
 <rect class="smu" x="110" y="160" width="860" height="290" rx="6"/>
 <text class="bs" x="122" y="438" text-anchor="start">u_smc_padring</text>
-<path class="axil" d="M200,130 L200,184"/>
 <path class="fabric" d="M192.8,180 L327.2,180 L380,225 L140,225 Z"/>
+<path class="axil" d="M225,130 L225,177"/>
 <text class="s" x="390" y="208" text-anchor="start">u_gpio_intf_demux, one 16-byte slot per pad</text>
-<path class="axil" d="M170,225 L170,290"/>
-<path class="axil" d="M230,225 L230,260 L380,260 L380,290"/>
-<path class="axil" d="M290,225 L290,250 L620,250 L620,290"/>
-<path class="axil" d="M350,225 L350,240 L875,240 L875,290"/>
+<path class="axil" d="M170,228 L170,287"/>
+<path class="axil" d="M230,228 L230,268 L380,268 L380,287"/>
+<path class="axil" d="M290,228 L290,254 L620,254 L620,287"/>
+<path class="axil" d="M350,228 L350,240 L875,240 L875,287"/>
 <rect class="core" x="140" y="290" width="170" height="50" rx="6"/>
 <text class="t" x="225" y="311.5" text-anchor="middle">u_gpio_interface</text>
 <text class="s" x="225" y="328.5" text-anchor="middle">gen_gpio_intf[0]</text>
@@ -118,53 +118,53 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="t" x="875" y="392.5" text-anchor="middle">LSIO pad map</text>
 <text class="s" x="875" y="409.5" text-anchor="middle">combinational</text>
 <path class="n-slate" d="M170,396 L253,396 M267,396 L463,396 M477,396 L703,396 M717,396 L800,396"/>
-<path class="sig" d="M170,396 L170,344"/>
+<path class="sig" d="M170,396 L170,343"/>
 <circle cx="170" cy="396" r="3.5" fill="#5b6670"/>
-<path class="sig" d="M380,396 L380,344"/>
+<path class="sig" d="M380,396 L380,343"/>
 <circle cx="380" cy="396" r="3.5" fill="#5b6670"/>
-<path class="sig" d="M620,396 L620,344"/>
+<path class="sig" d="M620,396 L620,343"/>
 <circle cx="620" cy="396" r="3.5" fill="#5b6670"/>
 <text class="s" x="178" y="414" text-anchor="start">lsio_*[64:0]</text>
-<path class="sig" d="M995,60 L995,396 L954,396"/>
+<path class="sig" d="M995,60 L995,396 L953,396"/>
 <text class="s" x="985" y="76" text-anchor="end">peripheral pad functions</text>
 <rect class="external" x="20" y="510" width="1000" height="290" rx="6"/>
-<path class="sig" d="M260,340 L260,560"/>
-<path class="sig" d="M470,340 L470,560"/>
-<path class="sig" d="M710,340 L710,560"/>
+<path class="sig" d="M260,343 L260,557"/>
+<path class="sig" d="M470,343 L470,557"/>
+<path class="sig" d="M710,343 L710,557"/>
 <text class="s" x="480" y="491.5" text-anchor="start">core2pad, core2pad_en,</text>
 <text class="s" x="480" y="506.5" text-anchor="start">pad2core, pad2core_en</text>
 <text class="bs" x="32" y="788" text-anchor="start">Adopter pad integration</text>
-<path class="axil" d="M50,115 L36,115 L36,720 L60,720"/>
+<path class="axil" d="M53,115 L36,115 L36,715 L57,715"/>
 <text class="s" x="44" y="148" text-anchor="start">smc_external</text>
-<path class="fabric" d="M60,696 L100,680 L100,760 L60,744 Z"/>
-<text class="s" x="48" y="670" text-anchor="start">window decode</text>
-<path class="axil" d="M100,690 L140,690 L140,580 L160,580"/>
+<path class="fabric" d="M60,686.8 L100,668 L100,762 L60,743.2 Z"/>
+<text class="s" x="48" y="658" text-anchor="start">window decode</text>
 <rect class="core" x="160" y="560" width="150" height="40" rx="6"/>
 <text class="t" x="235" y="577" text-anchor="middle">gpio_shim</text>
 <text class="s" x="235" y="593" text-anchor="middle">pad 0</text>
-<path class="sig" d="M235,600 L235,630"/>
-<rect class="external" x="160" y="630" width="150" height="40" rx="4"/>
-<text class="t" x="235" y="647" text-anchor="middle">Pad macro</text>
-<text class="s" x="235" y="663" text-anchor="middle">GPIO_PAD[0]</text>
-<path class="axil" d="M100,710 L350,710 L350,580 L370,580"/>
+<rect class="external" x="160" y="645" width="150" height="40" rx="4"/>
+<text class="t" x="235" y="662" text-anchor="middle">Pad macro</text>
+<text class="s" x="235" y="678" text-anchor="middle">GPIO_PAD[0]</text>
+<path class="axil" d="M103,683 L140,683 L140,580 L157,580"/>
+<path class="sig" d="M235,603 L235,642"/>
 <rect class="core" x="370" y="560" width="150" height="40" rx="6"/>
 <text class="t" x="445" y="577" text-anchor="middle">gpio_shim</text>
 <text class="s" x="445" y="593" text-anchor="middle">pad 1</text>
-<path class="sig" d="M445,600 L445,630"/>
-<rect class="external" x="370" y="630" width="150" height="40" rx="4"/>
-<text class="t" x="445" y="647" text-anchor="middle">Pad macro</text>
-<text class="s" x="445" y="663" text-anchor="middle">GPIO_PAD[1]</text>
-<path class="axil" d="M100,730 L590,730 L590,580 L610,580"/>
+<rect class="external" x="370" y="645" width="150" height="40" rx="4"/>
+<text class="t" x="445" y="662" text-anchor="middle">Pad macro</text>
+<text class="s" x="445" y="678" text-anchor="middle">GPIO_PAD[1]</text>
+<path class="axil" d="M103,703 L350,703 L350,580 L367,580"/>
+<path class="sig" d="M445,603 L445,642"/>
 <rect class="core" x="610" y="560" width="150" height="40" rx="6"/>
 <text class="t" x="685" y="577" text-anchor="middle">gpio_shim</text>
 <text class="s" x="685" y="593" text-anchor="middle">pad 64</text>
-<path class="sig" d="M685,600 L685,630"/>
-<rect class="external" x="610" y="630" width="150" height="40" rx="4"/>
-<text class="t" x="685" y="647" text-anchor="middle">Pad macro</text>
-<text class="s" x="685" y="663" text-anchor="middle">GPIO_PAD[64]</text>
-<text class="b" x="560" y="620" text-anchor="middle">...</text>
-<path class="axil" d="M100,750 L790,750"/>
-<text class="s" x="798" y="755" text-anchor="start">PLL, PVT, straps</text>
+<rect class="external" x="610" y="645" width="150" height="40" rx="4"/>
+<text class="t" x="685" y="662" text-anchor="middle">Pad macro</text>
+<text class="s" x="685" y="678" text-anchor="middle">GPIO_PAD[64]</text>
+<path class="axil" d="M103,723 L590,723 L590,580 L607,580"/>
+<path class="sig" d="M685,603 L685,642"/>
+<text class="b" x="560" y="625" text-anchor="middle">...</text>
+<path class="axil" d="M103,743 L790,743"/>
+<text class="s" x="798" y="748" text-anchor="start">PLL, PVT, straps</text>
 <rect class="fabric" x="14" y="821" width="36" height="18" rx="4"/>
 <text class="s" x="58" y="834.5" text-anchor="start">Crossbar, pad map</text>
 <path class="fabric" d="M201.3,825 L223.3,820 L223.3,840 L201.3,835 Z"/>

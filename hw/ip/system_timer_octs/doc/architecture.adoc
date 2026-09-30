@@ -27,18 +27,26 @@ synchronization information. The dashed groups hold the logic that acts in only 
 as `is_primary_i` selects it; the enable and the 64-bit count serve both. The inbound
 sync-load and credit pulses cross into `clk_i` through a flop and a `prim_edge_detector`,
 which synchronizes them with two flops and turns each rising edge into a one-cycle pulse;
-the pulses are masked in PRIMARY mode. In SECONDARY mode, the sync-load pulse sets the
-sticky enable and loads the preset, a credit pulse moves the count to the expected count
-plus CREDIT_VAL, and between pulses the count advances by `CTRL.STEP`, which drives the
-core's `timer_cnt_step_i`, while credits are left. In PRIMARY mode, the count advances by
-one, and the credit counter and pulse state machine drive the outbound pulses. The wrapper
-keeps the longest credit-starved run reported by the core for `CREDIT_EXPIRED`. In the
+an AND gate with `is_primary_i` on its inverted input masks each pulse in PRIMARY mode.
+The enable flop is sticky: an OR gate holds it set once `TIMER_START.START` or a
+sync-load pulse has set it. In SECONDARY mode, the sync-load pulse loads the preset, a
+credit pulse moves the count to the expected count plus CREDIT_VAL, and between pulses
+the count advances by `CTRL.STEP`, which drives the core's `timer_cnt_step_i`, while
+credits are left. The credit tracking block holds the `cur_credits` accumulator, which
+adds STEP each cycle while it is below CREDIT_VAL (`credits_left`); the expected count,
+which `u_adder_expected_credit` advances by CREDIT_VAL on each credit pulse; and the
+`credit_expired_o` counter of cycles spent without credits. Both inbound pulses reset
+`cur_credits` and `credit_expired_o`. In PRIMARY mode, the count advances by one, and the
+credit counter and pulse state machine drive the outbound pulses. The wrapper keeps the
+longest credit-starved run reported by the core in a flop that loads the larger of its
+own value and `credit_expired_o`, and reads it back as `CREDIT_EXPIRED`; a write to
+`CREDIT_EXPIRED` clears both. In the
 SMC, the timer pulses use GPIO pads 55 and 56, which drive them on the primary chiplet and
 sample them on a secondary one.
 
 [[system-timer-octs-diagram]]
 .System Timer OCTS primary/secondary synchronization and credit CDC
-image::system-timer-octs.svg[alt="System Timer OCTS with synchronized sync-load and credit inputs, secondary credit tracking, the shared enable and 64-bit count, primary credit counter and pulse state machine, and the AXI-Lite register block",width=100%,pdfwidth=100%]
+image::system-timer-octs.svg[alt="System Timer OCTS with synchronized sync-load and credit inputs masked in primary mode, secondary credit tracking, the sticky enable flop and 64-bit count, primary credit counter and pulse state machine, the CREDIT_EXPIRED maximum-hold flop, and the AXI-Lite register block",width=100%,pdfwidth=100%]
 
 === Timer Core Processing
 
