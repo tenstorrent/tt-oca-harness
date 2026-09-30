@@ -72,9 +72,6 @@ KMAC_INTR_KMAC_ERR = KMAC.field_mask("INTR_STATE", "kmac_err")
 KMAC_KEYED_PREFIX = encode_string(b"KMAC") + encode_string(b"")
 KMAC_KEYED_OUT_BITS = 256
 
-# right_encode(256) appended after the message -> spec-correct KMAC.
-KMAC_RIGHT_ENCODE_256 = 0x0002_0001
-
 # CFG_SHADOWED write map. kmac.adoc names mode[5:4] and kstrength[3:1];
 # the RDL fields have no enum. These are the DV-owned programming values.
 # Keyed KMAC is mode=cSHAKE with kmac_en=1: PREFIX is absorbed only in
@@ -209,9 +206,10 @@ class SepKmac(SepAxiRegDriver):
         await self._wait_idle("pre-start")
 
         await self._wr(KMAC_CMD, KMAC_CMD_START)
-        for word in msg_words:
-            await self._wr(KMAC_MSG_FIFO, word & 0xFFFF_FFFF)
-        await self._wr(KMAC_MSG_FIFO, KMAC_RIGHT_ENCODE_256)  # spec-correct KMAC
+        # Message words, then the 3-byte right_encode(256) tail as an exact byte
+        # string: a full 32-bit beat would absorb a stray 0x00 into the message.
+        msg = b"".join((w & 0xFFFF_FFFF).to_bytes(4, "little") for w in msg_words)
+        await self._push_msg_bytes(msg + right_encode(KMAC_KEYED_OUT_BITS))
         await self._wr(KMAC_CMD, KMAC_CMD_PROCESS)
         await self._wait_squeeze()
 
@@ -377,6 +375,7 @@ def _selftest() -> None:
     # NIST SP 800-185 section 2.3: encode_string("KMAC") = 01 20 'K' 'M' 'A' 'C',
     # encode_string("") = 01 00, right_encode(256) = 01 00 02.
     assert KMAC_KEYED_PREFIX == bytes.fromhex("01204b4d41430100"), KMAC_KEYED_PREFIX.hex()
+    assert right_encode(KMAC_KEYED_OUT_BITS) == bytes.fromhex("010002")
     assert KMAC_KEYED_OUT_BITS == KMAC_DIGEST_WORDS * 32
 
 

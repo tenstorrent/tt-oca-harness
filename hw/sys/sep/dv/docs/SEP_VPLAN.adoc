@@ -2264,6 +2264,8 @@ the golden-checked KMAC walk is `sep_kmac_mode_strength_rand_test`.
 |The sideload digest differs from the decoy-key digest.
 |CHK-MAC
 |The sideload digest equals the software-key digest for the same known key.
+|CHK-MAC-GOLDEN
+|The software-key digest equals KMAC256(K, X, L=256, S="") from `env/sep_kmac_golden.py` (NIST SP 800-185). The sequence programs `PREFIX` as `encode_string("KMAC") \|\| encode_string("")` and ends the message with the 3-byte `right_encode(256)`, so a wrong encoding fails here and not only in a comparison of the engine with itself.
 |CHK-ENT
 |The engine draws real masking entropy. Alive-mode beat count. Bit-exact per-sink compare is the small KM ROM tests, not `rom_main`. The scoreboard reports it as `CHK5_km` / `CHK5_kmac`.
 |CHK0
