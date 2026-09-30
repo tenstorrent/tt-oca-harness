@@ -703,7 +703,7 @@ relationship between the subsystems described above.</p>
 </div>
 <div id="ocah-top-level-diagram" class="imageblock">
 <div class="content">
-<img src="_images/ocah_top.png" alt="OCAH Top-Level Block Diagram">
+<img src="_images/ocah_top.svg" alt="OCAH Top-Level Block Diagram">
 </div>
 <div class="title">Figure 1. OCAH Top-Level Block Diagram</div>
 </div>
@@ -711,6 +711,11 @@ relationship between the subsystems described above.</p>
 <p>The SMU crossbar permits each initiator to reach the other two targets;
 self-directed paths are not connected. The detailed connectivity is shown in
 <a href="smu/index.html#smu-axi-crossbar" class="xref page">SMU AXI Crossbar</a>.</p>
+</div>
+<div class="paragraph">
+<p>Hatched blocks are future: the SMN, the safety bus and the safety monitor. The
+crossbar ports that would connect the safety monitor are proposed and are not
+part of the implemented crossbar.</p>
 </div>
 <p class="block-references">Figures and tables: <a href="#ocah-top-level-diagram">Figure 1</a>.</p>
 </div>

@@ -1,1 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="590" viewBox="0 0 1000 590" role="img" aria-labelledby="title desc"> <!-- SPDX-License-Identifier: CC-BY-4.0 --> <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --> <title id="title">SMU aperture decode and routing</title><desc id="desc">Read and write addresses are compared against independent SEP and SMC half-open ranges. Only SEP and SMC initiators have an external default route.</desc> <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#405469"/></marker></defs> <rect width="1000" height="590" fill="white"/> <g font-family="DejaVu Sans, sans-serif" fill="#182c40"> <text x="24" y="34" font-size="22" font-weight="700" text-anchor="start"> <tspan x="24" dy="0">SMU aperture decode and routing</tspan> </text> <text x="24" y="66" font-size="17" font-weight="400" text-anchor="start"> <tspan x="24" dy="0">The same comparisons apply independently to AWADDR and ARADDR.</tspan> </text> <rect x="24" y="96" width="255" height="105" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/> <text x="151.5" y="142.805" font-size="17" font-weight="400" text-anchor="middle"> <tspan x="151.5" dy="0">SEP base (56 bits)</tspan> <tspan x="151.5" dy="22.950000000000003">SEP size (32 bits)</tspan> </text> <path d="M279 148 L314 148" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/> <rect x="319" y="96" width="352" height="105" rx="6" fill="#fff3de" stroke="#a27938" stroke-width="1.5"/> <text x="495.0" y="130.32" font-size="18" font-weight="400" text-anchor="middle"> <tspan x="495.0" dy="0">57-bit end = base + size</tspan> <tspan x="495.0" dy="24.3">base ≤ address</tspan> <tspan x="495.0" dy="24.3">AND address &lt; end</tspan> </text> <path d="M671 148 L706 148" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/> <rect x="711" y="96" width="265" height="105" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/> <text x="843.5" y="142.47" font-size="18" font-weight="400" text-anchor="middle"> <tspan x="843.5" dy="0">sep_in when matched</tspan> <tspan x="843.5" dy="24.3">and connected</tspan> </text> <rect x="24" y="266" width="255" height="105" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/> <text x="151.5" y="312.80499999999995" font-size="17" font-weight="400" text-anchor="middle"> <tspan x="151.5" dy="0">SMC base (56 bits)</tspan> <tspan x="151.5" dy="22.950000000000003">SMC size (32 bits)</tspan> </text> <path d="M279 318 L314 318" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/> <rect x="319" y="266" width="352" height="105" rx="6" fill="#fff3de" stroke="#a27938" stroke-width="1.5"/> <text x="495.0" y="300.32" font-size="18" font-weight="400" text-anchor="middle"> <tspan x="495.0" dy="0">57-bit end = base + size</tspan> <tspan x="495.0" dy="24.3">base ≤ address</tspan> <tspan x="495.0" dy="24.3">AND address &lt; end</tspan> </text> <path d="M671 318 L706 318" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/> <rect x="711" y="266" width="265" height="105" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/> <text x="843.5" y="312.47" font-size="18" font-weight="400" text-anchor="middle"> <tspan x="843.5" dy="0">smc_in when matched</tspan> <tspan x="843.5" dy="24.3">and connected</tspan> </text> <text x="24" y="239" font-size="17" font-weight="400" text-anchor="start"> <tspan x="24" dy="0">Address is zero-extended to 57 bits. SEP and SMC ranges must not overlap.</tspan> </text> <rect x="24" y="415" width="952" height="143" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/> <text x="500.0" y="456.17" font-size="18" font-weight="400" text-anchor="middle"> <tspan x="500.0" dy="0">If neither range matches:</tspan> <tspan x="500.0" dy="24.3">SEP or SMC initiator → ext_out</tspan> <tspan x="500.0" dy="24.3">External initiator (ext_in) → DECERR</tspan> <tspan x="500.0" dy="24.3">Connectivity also prevents each initiator from accessing its own inbound port.</tspan> </text> </g></svg> 
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="590" viewBox="0 0 1000 590" role="img" aria-labelledby="title desc">
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<title id="title">SMU aperture decode and routing</title><desc id="desc">Read and write addresses are compared against independent SEP and SMC half-open ranges. Only SEP and SMC initiators have an external default route.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 Z" fill="#405469"/></marker></defs>
+<rect width="1000" height="590" fill="white"/>
+<g font-family="DejaVu Sans, sans-serif" fill="#182c40">
+<text x="24" y="34" font-size="22" font-weight="700" text-anchor="start">
+<tspan x="24" dy="0">SMU aperture decode and routing</tspan>
+</text>
+<text x="24" y="66" font-size="17" font-weight="400" text-anchor="start">
+<tspan x="24" dy="0">The same comparisons apply independently to AWADDR and ARADDR.</tspan>
+</text>
+<rect x="24" y="96" width="255" height="105" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
+<text x="151.5" y="142.805" font-size="17" font-weight="400" text-anchor="middle">
+<tspan x="151.5" dy="0">SEP base (56 bits)</tspan>
+<tspan x="151.5" dy="22.950000000000003">SEP size (32 bits)</tspan>
+</text>
+<path d="M279 148 L314 148" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="319" y="96" width="352" height="105" rx="6" fill="#fff3de" stroke="#a27938" stroke-width="1.5"/>
+<text x="495.0" y="130.32" font-size="18" font-weight="400" text-anchor="middle">
+<tspan x="495.0" dy="0">57-bit end = base + size</tspan>
+<tspan x="495.0" dy="24.3">base ≤ address</tspan>
+<tspan x="495.0" dy="24.3">AND address &lt; end</tspan>
+</text>
+<path d="M671 148 L706 148" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="711" y="96" width="265" height="105" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
+<text x="843.5" y="142.47" font-size="18" font-weight="400" text-anchor="middle">
+<tspan x="843.5" dy="0">sep_in when matched</tspan>
+<tspan x="843.5" dy="24.3">and connected</tspan>
+</text>
+<rect x="24" y="266" width="255" height="105" rx="6" fill="#e8f3ff" stroke="#42759b" stroke-width="1.5"/>
+<text x="151.5" y="312.80499999999995" font-size="17" font-weight="400" text-anchor="middle">
+<tspan x="151.5" dy="0">SMC base (56 bits)</tspan>
+<tspan x="151.5" dy="22.950000000000003">SMC size (32 bits)</tspan>
+</text>
+<path d="M279 318 L314 318" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="319" y="266" width="352" height="105" rx="6" fill="#fff3de" stroke="#a27938" stroke-width="1.5"/>
+<text x="495.0" y="300.32" font-size="18" font-weight="400" text-anchor="middle">
+<tspan x="495.0" dy="0">57-bit end = base + size</tspan>
+<tspan x="495.0" dy="24.3">base ≤ address</tspan>
+<tspan x="495.0" dy="24.3">AND address &lt; end</tspan>
+</text>
+<path d="M671 318 L706 318" fill="none" stroke="#405469" stroke-width="2" marker-end="url(#arrow)"/>
+<rect x="711" y="266" width="265" height="105" rx="6" fill="#eaf5ed" stroke="#548265" stroke-width="1.5"/>
+<text x="843.5" y="312.47" font-size="18" font-weight="400" text-anchor="middle">
+<tspan x="843.5" dy="0">smc_in when matched</tspan>
+<tspan x="843.5" dy="24.3">and connected</tspan>
+</text>
+<text x="24" y="239" font-size="17" font-weight="400" text-anchor="start">
+<tspan x="24" dy="0">Address is zero-extended to 57 bits. SEP and SMC ranges must not overlap.</tspan>
+</text>
+<rect x="24" y="415" width="952" height="143" rx="6" fill="#f1f3f5" stroke="#687889" stroke-width="1.5"/>
+<text x="500.0" y="456.17" font-size="18" font-weight="400" text-anchor="middle">
+<tspan x="500.0" dy="0">If neither range matches:</tspan>
+<tspan x="500.0" dy="24.3">SEP or SMC initiator → ext_out</tspan>
+<tspan x="500.0" dy="24.3">External initiator (ext_in) → DECERR</tspan>
+<tspan x="500.0" dy="24.3">Connectivity also prevents each initiator from accessing its own inbound port.</tspan>
+</text>
+</g></svg>

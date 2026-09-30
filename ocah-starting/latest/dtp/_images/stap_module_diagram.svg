@@ -1,1 +1,118 @@
-<?xml version="1.0" encoding="UTF-8"?> <!-- SPDX-License-Identifier: CC-BY-4.0 --> <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --> <svg xmlns="http://www.w3.org/2000/svg" version="1.1"      width="1160" height="940" viewBox="0 0 1160 940"      role="img" aria-labelledby="stap-title stap-desc">   <title id="stap-title">STAP — Secondary TAP architecture</title>   <desc id="stap-desc">One jtag_stap instance, shown as scan data, host TDO,     and control logic. stap_sel chooses stap_scan_in or stap_tdi for the SIB.     The SIB inserts or bypasses the 3-bit 3DCR before client_scan_out_o.     The same stap_scan_in signal feeds a falling-edge TDO flop.     security_disable_i forces host TDO and stap_sel low and blocks 3DCR updates.     Host output enable and TAP control are separate combinational outputs.     Optional input stages and detailed clock and reset wiring are omitted.</desc>   <defs>     <style>       text { font-family: sans-serif; fill: #263445; font-size: 17px; }       .title { font-size: 25px; font-weight: bold; }       .heading { font-size: 19px; font-weight: bold; }       .small { font-size: 15px; fill: #465568; }       .signal { font-family: monospace; font-size: 16px; }       .formula { font-family: monospace; font-size: 15px; }       .panel { fill: #f8fafc; stroke: #c7d2de; stroke-width: 1.5; }       .block { fill: #e5eff9; stroke: #4a7baa; stroke-width: 1.5; }       .wire { fill: none; stroke: #416c96; stroke-width: 2; marker-end: url(#arrow); }       .control { fill: none; stroke: #985050; stroke-width: 1.5; stroke-dasharray: 6 4; marker-end: url(#control-arrow); }     </style>     <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4"             orient="auto" markerUnits="userSpaceOnUse">       <path d="M0,0 L8,4 L0,8 Z" fill="#416c96"/>     </marker>     <marker id="control-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4"             orient="auto" markerUnits="userSpaceOnUse">       <path d="M0,0 L8,4 L0,8 Z" fill="#985050"/>     </marker>   </defs>    <rect width="1160" height="940" fill="#ffffff"/>   <text x="24" y="35" class="title">STAP — Secondary TAP architecture</text>   <text x="24" y="61" class="small">One jtag_stap instance · named signals connect the sections below</text>    <rect x="20" y="80" width="1120" height="378" rx="8" class="panel"/>   <text x="40" y="111" class="heading">Scan data and 3DCR segment</text>    <rect x="300" y="168" width="150" height="116" rx="6" class="block"/>   <text x="375" y="212" text-anchor="middle">Scan-in mux</text>   <text x="316" y="192" class="small">0</text>   <text x="316" y="266" class="small">1</text>   <text x="375" y="238" text-anchor="middle" class="small">stap_sel</text>   <text x="375" y="143" text-anchor="middle" class="signal">stap_sel</text>   <path d="M375,149 V168" class="control"/>    <text x="40" y="159" class="signal">client_scan_in_i</text>   <text x="40" y="180" class="small">→ stap_scan_in</text>   <path d="M40,192 H300" class="wire"/>   <text x="40" y="229" class="signal">host_tdi_i</text>   <text x="40" y="250" class="small">→ stap_tdi</text>   <path d="M40,262 H300" class="wire"/>    <rect x="540" y="168" width="230" height="116" rx="6" class="block"/>   <text x="655" y="193" text-anchor="middle" class="heading">SIB</text>   <text x="655" y="217" text-anchor="middle" class="small">Segment Insertion Bit</text>   <text x="655" y="240" text-anchor="middle" class="small">Inserts / bypasses 3DCR</text>   <text x="655" y="264" text-anchor="middle" class="small">Optional SCAN_OUT_LOCKUP</text>   <path d="M450,215 H540" class="wire"/>   <path d="M770,200 H1110" class="wire"/>   <text x="935" y="187" text-anchor="middle" class="signal">client_scan_out_o</text>    <rect x="540" y="340" width="230" height="92" rx="6" class="block"/>   <text x="655" y="361" text-anchor="middle" class="heading">3DCR · 3 bits</text>   <text x="655" y="383" text-anchor="middle" class="signal">[2] tms_hold</text>   <text x="655" y="403" text-anchor="middle" class="signal">[1] stap_sel_int</text>   <text x="655" y="423" text-anchor="middle" class="signal">[0] config_hold</text>   <path d="M565,284 V309 H490 V386 H540" class="wire"/>   <text x="465" y="337" text-anchor="end" class="signal">host_sib_scan_out</text>   <text x="465" y="359" text-anchor="end" class="small">→ 3DCR scan_in_i</text>   <path d="M770,386 H820 V309 H745 V284" class="wire"/>   <text x="844" y="337" class="signal">client_reg_scan_out</text>   <text x="844" y="359" class="small">→ host_sib_scan_in</text>   <text x="40" y="414" class="small">SIB ↔ 3DCR: direct serial connections.</text>   <text x="40" y="436" class="small">The SIB remains in the client scan path.</text>    <rect x="20" y="476" width="1120" height="147" rx="8" class="panel"/>   <text x="40" y="507" class="heading">Host TDO path</text>   <text x="40" y="548" class="signal">stap_scan_in</text>   <text x="40" y="593" class="small">Same signal as above</text>   <path d="M40,563 H300" class="wire"/>   <rect x="300" y="532" width="225" height="68" rx="6" class="block"/>   <text x="412" y="558" text-anchor="middle">TDO lockup flop</text>   <text x="412" y="581" text-anchor="middle" class="small">Falling edge of TCK</text>   <path d="M525,563 H730" class="wire"/>   <text x="627" y="549" text-anchor="middle" class="signal">host_tdo_int</text>   <rect x="730" y="532" width="170" height="68" rx="6" fill="#fceeee" stroke="#985050" stroke-width="1.5"/>   <text x="815" y="558" text-anchor="middle">TDO mask</text>   <text x="815" y="581" text-anchor="middle" class="small">Disable → 0</text>   <text x="815" y="507" text-anchor="middle" class="signal">security_disable_i</text>   <path d="M815,514 V532" class="control"/>   <path d="M900,563 H1110" class="wire"/>   <text x="1005" y="549" text-anchor="middle" class="signal">host_tdo_o</text>    <rect x="20" y="641" width="1120" height="214" rx="8" class="panel"/>   <text x="40" y="672" class="heading">Control logic</text>   <text x="1118" y="672" text-anchor="end" class="small">Combinational relationships · disable is active-high</text>   <path d="M40,687 H1120 M40,725 H1120 M40,763 H1120 M40,801 H1120" stroke="#d8e0e8" fill="none"/>   <text x="40" y="712" class="signal">stap_sel</text>   <text x="330" y="712" class="formula">stap_sel_int &amp;&amp; !security_disable_i</text>   <text x="40" y="750">3DCR update enable</text>   <text x="330" y="750" class="formula">host_sib_scan_ctrl.update_en &amp;&amp; !security_disable_i</text>   <text x="40" y="788" class="signal">host_tdo_oen_o</text>   <text x="330" y="788" class="formula">stap_sel &amp;&amp; client_scan_ctrl_i.shift_en</text>   <text x="40" y="826" class="signal">host_tap_ctrl_o</text>   <text x="330" y="826" class="formula">tms = stap_sel ? client_tap_ctrl_i.tms : tms_hold</text>   <text x="330" y="846" class="small">All other TAP control fields pass through from client_tap_ctrl_i.</text>    <text x="24" y="881" class="small">Optional input stages: SCAN_IN_PIPE on client_scan_in_i (rising TCK, shift enabled); TDI_LOCKUP on host_tdi_i (falling TCK).</text>   <text x="24" y="903" class="small">These stages default to 0; the DTP I/O STAP enables TDI_LOCKUP. Clock and reset distribution are omitted.</text>   <text x="24" y="925" class="small">3DCR reset uses config_hold_sticky (config_hold sampled on falling TCK); client_tap_ctrl_i.trst_n always resets the 3DCR.</text> </svg> 
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     width="1160" height="940" viewBox="0 0 1160 940"
+     role="img" aria-labelledby="stap-title stap-desc">
+  <title id="stap-title">STAP — Secondary TAP architecture</title>
+  <desc id="stap-desc">One jtag_stap instance, shown as scan data, host TDO,
+    and control logic. stap_sel chooses stap_scan_in or stap_tdi for the SIB.
+    The SIB inserts or bypasses the 3-bit 3DCR before client_scan_out_o.
+    The same stap_scan_in signal feeds a falling-edge TDO flop.
+    security_disable_i forces host TDO and stap_sel low and blocks 3DCR updates.
+    Host output enable and TAP control are separate combinational outputs.
+    Optional input stages and detailed clock and reset wiring are omitted.</desc>
+  <defs>
+    <style>
+      text { font-family: sans-serif; fill: #263445; font-size: 17px; }
+      .title { font-size: 25px; font-weight: bold; }
+      .heading { font-size: 19px; font-weight: bold; }
+      .small { font-size: 15px; fill: #465568; }
+      .signal { font-family: monospace; font-size: 16px; }
+      .formula { font-family: monospace; font-size: 15px; }
+      .panel { fill: #f8fafc; stroke: #c7d2de; stroke-width: 1.5; }
+      .block { fill: #e5eff9; stroke: #4a7baa; stroke-width: 1.5; }
+      .wire { fill: none; stroke: #416c96; stroke-width: 2; marker-end: url(#arrow); }
+      .control { fill: none; stroke: #985050; stroke-width: 1.5; stroke-dasharray: 6 4; marker-end: url(#control-arrow); }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="4"
+            orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#416c96"/>
+    </marker>
+    <marker id="control-arrow" markerWidth="8" markerHeight="8" refX="8" refY="4"
+            orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#985050"/>
+    </marker>
+  </defs>
+
+  <rect width="1160" height="940" fill="#ffffff"/>
+  <text x="24" y="35" class="title">STAP — Secondary TAP architecture</text>
+  <text x="24" y="61" class="small">One jtag_stap instance · named signals connect the sections below</text>
+
+  <rect x="20" y="80" width="1120" height="378" rx="8" class="panel"/>
+  <text x="40" y="111" class="heading">Scan data and 3DCR segment</text>
+
+  <rect x="300" y="168" width="150" height="116" rx="6" class="block"/>
+  <text x="375" y="212" text-anchor="middle">Scan-in mux</text>
+  <text x="316" y="192" class="small">0</text>
+  <text x="316" y="266" class="small">1</text>
+  <text x="375" y="238" text-anchor="middle" class="small">stap_sel</text>
+  <text x="375" y="143" text-anchor="middle" class="signal">stap_sel</text>
+  <path d="M375,149 V168" class="control"/>
+
+  <text x="40" y="159" class="signal">client_scan_in_i</text>
+  <text x="40" y="180" class="small">→ stap_scan_in</text>
+  <path d="M40,192 H300" class="wire"/>
+  <text x="40" y="229" class="signal">host_tdi_i</text>
+  <text x="40" y="250" class="small">→ stap_tdi</text>
+  <path d="M40,262 H300" class="wire"/>
+
+  <rect x="540" y="168" width="230" height="116" rx="6" class="block"/>
+  <text x="655" y="193" text-anchor="middle" class="heading">SIB</text>
+  <text x="655" y="217" text-anchor="middle" class="small">Segment Insertion Bit</text>
+  <text x="655" y="240" text-anchor="middle" class="small">Inserts / bypasses 3DCR</text>
+  <text x="655" y="264" text-anchor="middle" class="small">Optional SCAN_OUT_LOCKUP</text>
+  <path d="M450,215 H540" class="wire"/>
+  <path d="M770,200 H1110" class="wire"/>
+  <text x="935" y="187" text-anchor="middle" class="signal">client_scan_out_o</text>
+
+  <rect x="540" y="340" width="230" height="92" rx="6" class="block"/>
+  <text x="655" y="361" text-anchor="middle" class="heading">3DCR · 3 bits</text>
+  <text x="655" y="383" text-anchor="middle" class="signal">[2] tms_hold</text>
+  <text x="655" y="403" text-anchor="middle" class="signal">[1] stap_sel_int</text>
+  <text x="655" y="423" text-anchor="middle" class="signal">[0] config_hold</text>
+  <path d="M565,284 V309 H490 V386 H540" class="wire"/>
+  <text x="465" y="337" text-anchor="end" class="signal">host_sib_scan_out</text>
+  <text x="465" y="359" text-anchor="end" class="small">→ 3DCR scan_in_i</text>
+  <path d="M770,386 H820 V309 H745 V284" class="wire"/>
+  <text x="844" y="337" class="signal">client_reg_scan_out</text>
+  <text x="844" y="359" class="small">→ host_sib_scan_in</text>
+  <text x="40" y="414" class="small">SIB ↔ 3DCR: direct serial connections.</text>
+  <text x="40" y="436" class="small">The SIB remains in the client scan path.</text>
+
+  <rect x="20" y="476" width="1120" height="147" rx="8" class="panel"/>
+  <text x="40" y="507" class="heading">Host TDO path</text>
+  <text x="40" y="548" class="signal">stap_scan_in</text>
+  <text x="40" y="593" class="small">Same signal as above</text>
+  <path d="M40,563 H300" class="wire"/>
+  <rect x="300" y="532" width="225" height="68" rx="6" class="block"/>
+  <text x="412" y="558" text-anchor="middle">TDO lockup flop</text>
+  <text x="412" y="581" text-anchor="middle" class="small">Falling edge of TCK</text>
+  <path d="M525,563 H730" class="wire"/>
+  <text x="627" y="549" text-anchor="middle" class="signal">host_tdo_int</text>
+  <rect x="730" y="532" width="170" height="68" rx="6" fill="#fceeee" stroke="#985050" stroke-width="1.5"/>
+  <text x="815" y="558" text-anchor="middle">TDO mask</text>
+  <text x="815" y="581" text-anchor="middle" class="small">Disable → 0</text>
+  <text x="815" y="507" text-anchor="middle" class="signal">security_disable_i</text>
+  <path d="M815,514 V532" class="control"/>
+  <path d="M900,563 H1110" class="wire"/>
+  <text x="1005" y="549" text-anchor="middle" class="signal">host_tdo_o</text>
+
+  <rect x="20" y="641" width="1120" height="214" rx="8" class="panel"/>
+  <text x="40" y="672" class="heading">Control logic</text>
+  <text x="1118" y="672" text-anchor="end" class="small">Combinational relationships · disable is active-high</text>
+  <path d="M40,687 H1120 M40,725 H1120 M40,763 H1120 M40,801 H1120" stroke="#d8e0e8" fill="none"/>
+  <text x="40" y="712" class="signal">stap_sel</text>
+  <text x="330" y="712" class="formula">stap_sel_int &amp;&amp; !security_disable_i</text>
+  <text x="40" y="750">3DCR update enable</text>
+  <text x="330" y="750" class="formula">host_sib_scan_ctrl.update_en &amp;&amp; !security_disable_i</text>
+  <text x="40" y="788" class="signal">host_tdo_oen_o</text>
+  <text x="330" y="788" class="formula">stap_sel &amp;&amp; client_scan_ctrl_i.shift_en</text>
+  <text x="40" y="826" class="signal">host_tap_ctrl_o</text>
+  <text x="330" y="826" class="formula">tms = stap_sel ? client_tap_ctrl_i.tms : tms_hold</text>
+  <text x="330" y="846" class="small">All other TAP control fields pass through from client_tap_ctrl_i.</text>
+
+  <text x="24" y="881" class="small">Optional input stages: SCAN_IN_PIPE on client_scan_in_i (rising TCK, shift enabled); TDI_LOCKUP on host_tdi_i (falling TCK).</text>
+  <text x="24" y="903" class="small">These stages default to 0; the DTP I/O STAP enables TDI_LOCKUP. Clock and reset distribution are omitted.</text>
+  <text x="24" y="925" class="small">3DCR reset uses config_hold_sticky (config_hold sampled on falling TCK); client_tap_ctrl_i.trst_n always resets the 3DCR.</text>
+</svg>

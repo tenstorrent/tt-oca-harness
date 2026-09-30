@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="962" viewBox="0 0 1040 962" role="img" aria-labelledby="title desc">
+<title id="title">OCAH top-level block diagram</title>
+<desc id="desc">The OCA Harness sits beside the user subsystem. The user subsystem reaches peer chiplets through AXI over UCIe (AoU) bridges and their die-to-die transceiver macros, and reaches a future System Management Network (SMN) through a clock-domain crossing. The SMN reaches each AoU bridge through its APB register port, which the bridge synchronizes to its core clock. The SMN connects to the OCAH SMU, whose AXI4 crossbar has three initiators and three targets (SEP, SMC and the SMN), with no self-directed paths. Proposed ports, drawn apart from the crossbar, would connect a future safety monitor. DTP bridges external JTAG to the SMC AXI port and to the SEP and SMC TAPs. The SEP to SMC direct port gives the SEP unfettered access to the SMC, the SEP and SMC each have an external AXI manager port, and a future safety bus links the safety monitor to the SEP and SMC. Hatched blocks with dashed outlines are future; the SEP has a dashed outline without hatching because a parameter can leave it out.</desc>
+<defs>
+<marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
+<marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
+<marker id="ge" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#5b6670"/></marker>
+<marker id="gs" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#5b6670"/></marker>
+<marker id="je" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="5" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7 Z" fill="#42759b"/></marker>
+<marker id="js" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="7" refX="3" refY="3.5" orient="auto"><path d="M8,0 L0,3.5 L8,7 Z" fill="#42759b"/></marker>
+<style>
+text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
+.t { fill: #484848; }
+.b { font-size: 17px; font-weight: bold; fill: #103525; }
+.bs { font-size: 15px; font-weight: bold; fill: #103525; }
+.h { font-size: 22px; font-weight: bold; fill: #103525; }
+.s { font-size: 13px; fill: #484848; }
+.si { font-size: 13px; font-style: italic; fill: #484848; }
+.pmt { font-size: 12px; font-weight: bold; fill: #ffffff; }
+.pst { font-size: 12px; font-weight: bold; fill: #103525; }
+.pjt { font-size: 12px; font-weight: bold; fill: #1d4b6e; }
+.pct { font-size: 12px; font-weight: bold; fill: #1f5c57; }
+.pm { fill: #103525; stroke: #103525; stroke-width: 1.2; }
+.ps { fill: #ffffff; stroke: #103525; stroke-width: 1.2; }
+.pj { fill: #e8f3ff; stroke: #42759b; stroke-width: 1.2; }
+.pc { fill: #d9f0ee; stroke: #2f7f79; stroke-width: 1.2; }
+.harness { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; }
+.smu { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+.user { fill: #f0e8f8; stroke: #664488; stroke-width: 2; }
+.network { fill: #e8f0e8; stroke: #336633; stroke-width: 2; }
+.fabric { fill: #fff0cc; stroke: #937027; stroke-width: 2; }
+.core { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.future { fill: #ffffff; stroke: #937027; stroke-width: 2; }
+.nostroke { stroke: none; }
+.fut { fill: none; stroke-dasharray: 7 5; }
+.opt { stroke-dasharray: 7 5; }
+.hatch { fill: none; stroke: #103525; stroke-opacity: 0.16; stroke-width: 1.2; }
+.external { fill: #f2f2f2; stroke: #77736b; stroke-width: 1.5; }
+.axi { fill: none; stroke: #103525; stroke-width: 2.5; marker-start: url(#as); marker-end: url(#ae); }
+.axio { fill: none; stroke: #103525; stroke-width: 2.5; stroke-dasharray: 8 5; marker-start: url(#as); marker-end: url(#ae); }
+.sig { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-start: url(#gs); marker-end: url(#ge); }
+.sigf { fill: none; stroke: #5b6670; stroke-width: 1.5; stroke-dasharray: 5 4; marker-start: url(#gs); marker-end: url(#ge); }
+.sigo { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+.jtag { fill: none; stroke: #42759b; stroke-width: 1.8; marker-end: url(#je); }
+.jtagb { fill: none; stroke: #42759b; stroke-width: 1.8; marker-start: url(#js); marker-end: url(#je); }
+.sigplain { fill: none; stroke: #5b6670; stroke-width: 1.5; }
+.clk { fill: none; stroke: #5b6670; stroke-width: 1.5; marker-end: url(#ge); }
+</style>
+</defs>
+<rect width="1040" height="962" fill="#ffffff"/>
+<path class="harness" d="M540,10 H700 V300 H1000 V768 H84 V300 H540 Z"/>
+<text class="h" x="986" y="752" text-anchor="end">OCA Harness</text>
+<rect class="user" x="84" y="16" width="386" height="250" rx="6"/>
+<text class="h" x="277.0" y="147.0" text-anchor="middle">User subsystem</text>
+<path class="sig" d="M17,72 L81,72"/>
+<path class="sig" d="M17,104 L81,104"/>
+<path class="sig" d="M17,136 L81,136"/>
+<path class="sig" d="M17,214 L81,214"/>
+<text class="t" x="14" y="60" text-anchor="start">User I/O</text>
+<circle cx="42" cy="167" r="2.2" fill="#103525"/>
+<circle cx="42" cy="175" r="2.2" fill="#103525"/>
+<circle cx="42" cy="183" r="2.2" fill="#103525"/>
+<rect class="core" x="562" y="26" width="100" height="100" rx="6"/>
+<text class="b" x="618.0" y="54" text-anchor="middle">AoU</text>
+<text class="s" x="618.0" y="72" text-anchor="middle">AXI over</text>
+<text class="s" x="618.0" y="90" text-anchor="middle">UCIe</text>
+<path class="axio" d="M485,50 L547,50"/>
+<path class="axio" d="M485,102 L547,102"/>
+<rect class="external" x="716" y="26" width="124" height="100" rx="6"/>
+<text class="bs" x="778.0" y="52" text-anchor="middle">D2D</text>
+<text class="s" x="778.0" y="70" text-anchor="middle">transceiver</text>
+<text class="s" x="778.0" y="88" text-anchor="middle">technology-</text>
+<text class="s" x="778.0" y="106" text-anchor="middle">dependent macro</text>
+<path class="sig" d="M665,76 L713,76"/>
+<path class="sigo" d="M850,56 L897,56"/>
+<text class="t" x="908" y="61" text-anchor="start">D2D outbound</text>
+<path class="sigo" d="M900,96 L853,96"/>
+<text class="t" x="908" y="101" text-anchor="start">D2D inbound</text>
+<rect class="core" x="562" y="170" width="100" height="100" rx="6"/>
+<text class="b" x="618.0" y="198" text-anchor="middle">AoU</text>
+<text class="s" x="618.0" y="216" text-anchor="middle">AXI over</text>
+<text class="s" x="618.0" y="234" text-anchor="middle">UCIe</text>
+<path class="axio" d="M485,194 L547,194"/>
+<path class="axio" d="M485,246 L547,246"/>
+<rect class="external" x="716" y="170" width="124" height="100" rx="6"/>
+<text class="bs" x="778.0" y="196" text-anchor="middle">D2D</text>
+<text class="s" x="778.0" y="214" text-anchor="middle">transceiver</text>
+<text class="s" x="778.0" y="232" text-anchor="middle">technology-</text>
+<text class="s" x="778.0" y="250" text-anchor="middle">dependent macro</text>
+<path class="sig" d="M665,220 L713,220"/>
+<path class="sigo" d="M850,200 L897,200"/>
+<text class="t" x="908" y="205" text-anchor="start">D2D outbound</text>
+<path class="sigo" d="M900,240 L853,240"/>
+<text class="t" x="908" y="245" text-anchor="start">D2D inbound</text>
+<circle cx="590.0" cy="148" r="2.2" fill="#103525"/>
+<circle cx="598.0" cy="148" r="2.2" fill="#103525"/>
+<circle cx="606.0" cy="148" r="2.2" fill="#103525"/>
+<circle cx="770.0" cy="148" r="2.2" fill="#103525"/>
+<circle cx="778.0" cy="148" r="2.2" fill="#103525"/>
+<circle cx="786.0" cy="148" r="2.2" fill="#103525"/>
+<path class="sigf" d="M612,283 L612,317"/>
+<text class="s" x="618" y="305" text-anchor="start">APB</text>
+<path class="sigf" d="M640,139 L640,156 L684,156 L684,317"/>
+<text class="s" x="662" y="151" text-anchor="middle">APB</text>
+<path class="clk" d="M562,558 L562,394 L452,394 L452,270"/>
+<text class="s" x="458" y="320" text-anchor="start">clock &amp; reset</text>
+<rect class="network nostroke" x="104" y="330" width="776" height="40" rx="5"/>
+<path class="hatch" d="M105.5,340.5 L114.5,331.5 M105.5,349.5 L123.5,331.5 M105.5,358.5 L132.5,331.5 M106.1,366.9 L141.5,331.5 M113.5,368.5 L150.5,331.5 M122.5,368.5 L159.5,331.5 M131.5,368.5 L168.5,331.5 M140.5,368.5 L177.5,331.5 M149.5,368.5 L186.5,331.5 M158.5,368.5 L195.5,331.5 M167.5,368.5 L204.5,331.5 M176.5,368.5 L213.5,331.5 M185.5,368.5 L222.5,331.5 M194.5,368.5 L231.5,331.5 M203.5,368.5 L240.5,331.5 M212.5,368.5 L249.5,331.5 M221.5,368.5 L258.5,331.5 M230.5,368.5 L267.5,331.5 M239.5,368.5 L276.5,331.5 M248.5,368.5 L285.5,331.5 M257.5,368.5 L294.5,331.5 M266.5,368.5 L303.5,331.5 M275.5,368.5 L312.5,331.5 M284.5,368.5 L321.5,331.5 M293.5,368.5 L330.5,331.5 M302.5,368.5 L339.5,331.5 M311.5,368.5 L348.5,331.5 M320.5,368.5 L357.5,331.5 M329.5,368.5 L366.5,331.5 M338.5,368.5 L375.5,331.5 M347.5,368.5 L384.5,331.5 M356.5,368.5 L393.5,331.5 M365.5,368.5 L402.5,331.5 M374.5,368.5 L411.5,331.5 M383.5,368.5 L420.5,331.5 M392.5,368.5 L429.5,331.5 M401.5,368.5 L438.5,331.5 M410.5,368.5 L447.5,331.5 M419.5,368.5 L456.5,331.5 M428.5,368.5 L465.5,331.5 M437.5,368.5 L474.5,331.5 M446.5,368.5 L483.5,331.5 M455.5,368.5 L492.5,331.5 M464.5,368.5 L501.5,331.5 M473.5,368.5 L510.5,331.5 M482.5,368.5 L519.5,331.5 M491.5,368.5 L528.5,331.5 M500.5,368.5 L537.5,331.5 M509.5,368.5 L546.5,331.5 M518.5,368.5 L555.5,331.5 M527.5,368.5 L564.5,331.5 M536.5,368.5 L573.5,331.5 M545.5,368.5 L582.5,331.5 M554.5,368.5 L591.5,331.5 M563.5,368.5 L600.5,331.5 M572.5,368.5 L609.5,331.5 M581.5,368.5 L618.5,331.5 M590.5,368.5 L627.5,331.5 M599.5,368.5 L636.5,331.5 M608.5,368.5 L645.5,331.5 M617.5,368.5 L654.5,331.5 M626.5,368.5 L663.5,331.5 M635.5,368.5 L672.5,331.5 M644.5,368.5 L681.5,331.5 M653.5,368.5 L690.5,331.5 M662.5,368.5 L699.5,331.5 M671.5,368.5 L708.5,331.5 M680.5,368.5 L717.5,331.5 M689.5,368.5 L726.5,331.5 M698.5,368.5 L735.5,331.5 M707.5,368.5 L744.5,331.5 M716.5,368.5 L753.5,331.5 M725.5,368.5 L762.5,331.5 M734.5,368.5 L771.5,331.5 M743.5,368.5 L780.5,331.5 M752.5,368.5 L789.5,331.5 M761.5,368.5 L798.5,331.5 M770.5,368.5 L807.5,331.5 M779.5,368.5 L816.5,331.5 M788.5,368.5 L825.5,331.5 M797.5,368.5 L834.5,331.5 M806.5,368.5 L843.5,331.5 M815.5,368.5 L852.5,331.5 M824.5,368.5 L861.5,331.5 M833.5,368.5 L870.5,331.5 M842.5,368.5 L877.9,333.1 M851.5,368.5 L878.5,341.5 M860.5,368.5 L878.5,350.5 M869.5,368.5 L878.5,359.5"/>
+<rect class="network fut" x="104" y="330" width="776" height="40" rx="5"/>
+<text class="b" x="540" y="356" text-anchor="middle">System Management Network (SMN)</text>
+<text class="si" x="870" y="355" text-anchor="end">(future)</text>
+<path class="axi" d="M262,279 L262,317"/>
+<rect class="smu" x="98" y="416" width="698" height="332" rx="8"/>
+<text class="b" x="110" y="736" text-anchor="start">OCAH SMU</text>
+<rect class="fabric" x="114" y="432" width="572" height="58" rx="5"/>
+<text class="bs" x="400.0" y="456" text-anchor="middle">SMU AXI4 crossbar</text>
+<text class="s" x="400.0" y="475" text-anchor="middle">3 initiators × 3 targets, no self-directed paths</text>
+<rect class="fabric nostroke" x="694" y="432" width="90" height="58" rx="5"/>
+<path class="hatch" d="M695.5,442.5 L704.5,433.5 M695.5,451.5 L713.5,433.5 M695.5,460.5 L722.5,433.5 M695.5,469.5 L731.5,433.5 M695.5,478.5 L740.5,433.5 M696.1,486.9 L749.5,433.5 M703.5,488.5 L758.5,433.5 M712.5,488.5 L767.5,433.5 M721.5,488.5 L776.5,433.5 M730.5,488.5 L782.4,436.6 M739.5,488.5 L782.5,445.5 M748.5,488.5 L782.5,454.5 M757.5,488.5 L782.5,463.5 M766.5,488.5 L782.5,472.5 M775.5,488.5 L782.5,481.5"/>
+<rect class="fabric fut" x="694" y="432" width="90" height="58" rx="5"/>
+<text class="si" x="733.5" y="457" text-anchor="middle">proposed</text>
+<text class="si" x="733.5" y="474" text-anchor="middle">ports</text>
+<path class="axi" d="M330,383 L330,419"/>
+<path class="axi" d="M380,383 L380,419"/>
+<rect class="core" x="110" y="570" width="76" height="96" rx="6"/>
+<text class="b" x="120" y="592" text-anchor="start">DTP</text>
+<rect class="core opt" x="214" y="558" width="222" height="140" rx="6"/>
+<text class="b" x="339.0" y="622" text-anchor="middle">SEP</text>
+<text class="t" x="339.0" y="642" text-anchor="middle">Security processor</text>
+<rect class="core" x="502" y="558" width="278" height="140" rx="6"/>
+<text class="b" x="647.0" y="622" text-anchor="middle">SMC</text>
+<text class="t" x="647.0" y="642" text-anchor="middle">System management</text>
+<text class="t" x="647.0" y="662" text-anchor="middle">controller</text>
+<path class="axi" d="M236,503 L236,545"/>
+<path class="axi" d="M276,503 L276,545"/>
+<path class="axi" d="M604,503 L604,545"/>
+<path class="axi" d="M644,503 L644,545"/>
+<path class="axi" d="M172,557 L172,524 L472,524 L472,578 L487,578"/>
+<path class="jtag" d="M186,622 L200,622 L200,532 L456,532 L456,614 L498,614"/>
+<path class="jtag" d="M186,648 L210,648"/>
+<path class="axi" d="M451,680 L487,680"/>
+<text class="s" x="467" y="716" text-anchor="middle">SEP to SMC direct port</text>
+<text class="si" x="467" y="732" text-anchor="middle">(unfettered SMC access)</text>
+<path class="network nostroke" d="M830,566 L854,580 L854,644 L830,658 Z"/>
+<path class="hatch" d="M830.7,568.8 L830.7,568.8 M830.7,577.8 L836.4,572.1 M830.7,586.8 L842.1,575.4 M830.7,595.8 L847.8,578.7 M830.7,604.8 L853.3,582.2 M830.7,613.8 L853.3,591.2 M830.7,622.8 L853.3,600.2 M830.7,631.8 L853.3,609.2 M830.7,640.8 L853.3,618.2 M830.7,649.8 L853.3,627.2 M839.2,650.3 L853.3,636.2"/>
+<path class="network fut" d="M830,566 L854,580 L854,644 L830,658 Z"/>
+<text class="s" x="850" y="556" text-anchor="middle">Safety bus</text>
+<path class="axio" d="M408,545 L408,516 L804,516 L804,584 L815,584"/>
+<path class="axio" d="M815,640 L795,640"/>
+<rect class="future nostroke" x="906" y="563" width="88" height="100" rx="6"/>
+<path class="hatch" d="M907.5,573.5 L916.5,564.5 M907.5,582.5 L925.5,564.5 M907.5,591.5 L934.5,564.5 M907.5,600.5 L943.5,564.5 M907.5,609.5 L952.5,564.5 M907.5,618.5 L961.5,564.5 M907.5,627.5 L970.5,564.5 M907.5,636.5 L979.5,564.5 M907.5,645.5 L988.4,564.6 M907.5,654.5 L992.5,569.5 M910.0,661.0 L992.5,578.5 M918.5,661.5 L992.5,587.5 M927.5,661.5 L992.5,596.5 M936.5,661.5 L992.5,605.5 M945.5,661.5 L992.5,614.5 M954.5,661.5 L992.5,623.5 M963.5,661.5 L992.5,632.5 M972.5,661.5 L992.5,641.5 M981.5,661.5 L992.5,650.5"/>
+<rect class="future fut" x="906" y="563" width="88" height="100" rx="6"/>
+<text class="bs" x="954.0" y="607" text-anchor="middle">Safety</text>
+<text class="bs" x="954.0" y="625" text-anchor="middle">monitor</text>
+<text class="si" x="954.0" y="643" text-anchor="middle">(future auto)</text>
+<path class="axio" d="M891,612 L869,612"/>
+<path class="axio" d="M799,446 L970,446 L970,550"/>
+<path class="axio" d="M799,476 L928,476 L928,550"/>
+<path class="jtagb" d="M17,618 L107,618"/>
+<text class="t" x="14" y="608" text-anchor="start">JTAG</text>
+<path class="sig" d="M17,690 L211,690"/>
+<text class="t" x="14" y="680" text-anchor="start">QSPI</text>
+<path class="sigf" d="M997,620 L1031,620"/>
+<text class="t" x="1032" y="612" text-anchor="end">I3C</text>
+<path class="sig" d="M783,686 L1031,686"/>
+<text class="t" x="1032" y="678" text-anchor="end">I3C</text>
+<rect class="external" x="257.0" y="800" width="136" height="58" rx="6"/>
+<text class="s" x="325.0" y="825" text-anchor="middle">Technology-</text>
+<text class="s" x="325.0" y="842" text-anchor="middle">dependent macros</text>
+<path class="sig" d="M295,701 L295,797"/>
+<path class="sig" d="M325,701 L325,797"/>
+<path class="sig" d="M355,701 L355,797"/>
+<rect class="external" x="520" y="800" width="120" height="58" rx="6"/>
+<text class="s" x="580" y="825" text-anchor="middle">Technology-</text>
+<text class="s" x="580" y="842" text-anchor="middle">dependent macros</text>
+<path class="sig" d="M550,701 L550,797"/>
+<path class="sig" d="M580,701 L580,797"/>
+<path class="sig" d="M610,701 L610,797"/>
+<path class="axi" d="M240,711 L240,857"/>
+<text class="s" x="240" y="876" text-anchor="middle">SEP external AXI4</text>
+<path class="axi" d="M656,711 L656,857"/>
+<text class="s" x="656" y="876" text-anchor="middle">SMC external AXI-Lite</text>
+<path class="sig" d="M680,701 L680,855"/>
+<path class="sig" d="M708,701 L708,855"/>
+<path class="sig" d="M736,701 L736,855"/>
+<path class="sig" d="M764,701 L764,855"/>
+<text class="t" x="776" y="834" text-anchor="start">Peripheral I/O</text>
+<text class="s" x="42" y="915" text-anchor="start">Manager port</text>
+<text class="s" x="166" y="915" text-anchor="start">Subordinate port</text>
+<text class="s" x="328" y="915" text-anchor="start">Clock-domain crossing</text>
+<rect class="future nostroke" x="474" y="901" width="40" height="18" rx="4"/>
+<path class="hatch" d="M475.5,911.5 L484.5,902.5 M478.5,917.5 L493.5,902.5 M487.5,917.5 L502.5,902.5 M496.5,917.5 L511.2,902.8 M505.5,917.5 L512.5,910.5"/>
+<rect class="future fut" x="474" y="901" width="40" height="18" rx="4"/>
+<text class="s" x="522" y="915" text-anchor="start">Future block</text>
+<rect class="core opt" x="640" y="901" width="40" height="18" rx="4"/>
+<text class="s" x="688" y="915" text-anchor="start">Optional (parameter)</text>
+<path class="axi" d="M17,936 L51,936"/>
+<text class="s" x="62" y="941" text-anchor="start">AXI4</text>
+<path class="axio" d="M113,936 L147,936"/>
+<text class="s" x="158" y="941" text-anchor="start">Replicated or future</text>
+<path class="jtag" d="M294,936 L331,936"/>
+<text class="s" x="342" y="941" text-anchor="start">JTAG</text>
+<path class="sig" d="M393,936 L427,936"/>
+<text class="s" x="438" y="941" text-anchor="start">Signals</text>
+<rect class="pm" x="459.0" y="41.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="470" y="54.5" text-anchor="middle">M</text>
+<rect class="ps" x="459.0" y="93.0" width="22" height="18" rx="4"/>
+<text class="pst" x="470" y="106.5" text-anchor="middle">S</text>
+<rect class="ps" x="551.0" y="41.0" width="22" height="18" rx="4"/>
+<text class="pst" x="562" y="54.5" text-anchor="middle">S</text>
+<rect class="pm" x="551.0" y="93.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="562" y="106.5" text-anchor="middle">M</text>
+<rect class="pm" x="459.0" y="185.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="470" y="198.5" text-anchor="middle">M</text>
+<rect class="ps" x="459.0" y="237.0" width="22" height="18" rx="4"/>
+<text class="pst" x="470" y="250.5" text-anchor="middle">S</text>
+<rect class="ps" x="551.0" y="185.0" width="22" height="18" rx="4"/>
+<text class="pst" x="562" y="198.5" text-anchor="middle">S</text>
+<rect class="pm" x="551.0" y="237.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="562" y="250.5" text-anchor="middle">M</text>
+<rect class="ps" x="601.0" y="261.0" width="22" height="18" rx="4"/>
+<text class="pst" x="612" y="274.5" text-anchor="middle">S</text>
+<rect class="pm" x="601.0" y="321.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="612" y="334.5" text-anchor="middle">M</text>
+<rect class="ps" x="629.0" y="117.0" width="22" height="18" rx="4"/>
+<text class="pst" x="640" y="130.5" text-anchor="middle">S</text>
+<rect class="pm" x="673.0" y="321.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="684" y="334.5" text-anchor="middle">M</text>
+<rect class="ps" x="251.0" y="257.0" width="22" height="18" rx="4"/>
+<text class="pst" x="262" y="270.5" text-anchor="middle">S</text>
+<rect class="pm" x="251.0" y="321.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="262" y="334.5" text-anchor="middle">M</text>
+<rect class="pc" x="241.0" y="289.0" width="42" height="18" rx="4"/>
+<text class="pct" x="262" y="302.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="619.0" y="97.0" width="42" height="18" rx="4"/>
+<text class="pct" x="640" y="110.5" text-anchor="middle">CDC</text>
+<rect class="pc" x="591.0" y="241.0" width="42" height="18" rx="4"/>
+<text class="pct" x="612" y="254.5" text-anchor="middle">CDC</text>
+<rect class="ps" x="319.0" y="361.0" width="22" height="18" rx="4"/>
+<text class="pst" x="330" y="374.5" text-anchor="middle">S</text>
+<rect class="pm" x="319.0" y="423.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="330" y="436.5" text-anchor="middle">M</text>
+<rect class="pc" x="309.0" y="392.0" width="42" height="18" rx="4"/>
+<text class="pct" x="330" y="405.5" text-anchor="middle">CDC</text>
+<rect class="pm" x="369.0" y="361.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="380" y="374.5" text-anchor="middle">M</text>
+<rect class="ps" x="369.0" y="423.0" width="22" height="18" rx="4"/>
+<text class="pst" x="380" y="436.5" text-anchor="middle">S</text>
+<rect class="pc" x="359.0" y="392.0" width="42" height="18" rx="4"/>
+<text class="pct" x="380" y="405.5" text-anchor="middle">CDC</text>
+<rect class="pm" x="161.0" y="561.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="172" y="574.5" text-anchor="middle">M</text>
+<rect class="pj" x="140.0" y="613.0" width="46" height="18" rx="4"/>
+<text class="pjt" x="163" y="626.5" text-anchor="middle">STAP</text>
+<rect class="pj" x="140.0" y="639.0" width="46" height="18" rx="4"/>
+<text class="pjt" x="163" y="652.5" text-anchor="middle">STAP</text>
+<rect class="ps" x="225.0" y="481.0" width="22" height="18" rx="4"/>
+<text class="pst" x="236" y="494.5" text-anchor="middle">S</text>
+<rect class="pm" x="225.0" y="549.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="236" y="562.5" text-anchor="middle">M</text>
+<rect class="pm" x="265.0" y="481.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="276" y="494.5" text-anchor="middle">M</text>
+<rect class="ps" x="265.0" y="549.0" width="22" height="18" rx="4"/>
+<text class="pst" x="276" y="562.5" text-anchor="middle">S</text>
+<rect class="ps" x="593.0" y="481.0" width="22" height="18" rx="4"/>
+<text class="pst" x="604" y="494.5" text-anchor="middle">S</text>
+<rect class="pm" x="593.0" y="549.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="604" y="562.5" text-anchor="middle">M</text>
+<rect class="pm" x="633.0" y="481.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="644" y="494.5" text-anchor="middle">M</text>
+<rect class="ps" x="633.0" y="549.0" width="22" height="18" rx="4"/>
+<text class="pst" x="644" y="562.5" text-anchor="middle">S</text>
+<rect class="ps" x="491.0" y="569.0" width="22" height="18" rx="4"/>
+<text class="pst" x="502" y="582.5" text-anchor="middle">S</text>
+<rect class="pj" x="502.0" y="605.0" width="38" height="18" rx="4"/>
+<text class="pjt" x="521" y="618.5" text-anchor="middle">TAP</text>
+<rect class="pj" x="214.0" y="639.0" width="38" height="18" rx="4"/>
+<text class="pjt" x="233" y="652.5" text-anchor="middle">TAP</text>
+<rect class="pm" x="425.0" y="671.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="436" y="684.5" text-anchor="middle">M</text>
+<rect class="ps" x="491.0" y="671.0" width="22" height="18" rx="4"/>
+<text class="pst" x="502" y="684.5" text-anchor="middle">S</text>
+<rect class="ps" x="397.0" y="549.0" width="22" height="18" rx="4"/>
+<text class="pst" x="408" y="562.5" text-anchor="middle">S</text>
+<rect class="pm" x="819.0" y="575.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="588.5" text-anchor="middle">M</text>
+<rect class="pm" x="819.0" y="631.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="830" y="644.5" text-anchor="middle">M</text>
+<rect class="ps" x="769.0" y="631.0" width="22" height="18" rx="4"/>
+<text class="pst" x="780" y="644.5" text-anchor="middle">S</text>
+<rect class="pm" x="895.0" y="603.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="906" y="616.5" text-anchor="middle">M</text>
+<rect class="ps" x="843.0" y="603.0" width="22" height="18" rx="4"/>
+<text class="pst" x="854" y="616.5" text-anchor="middle">S</text>
+<rect class="pm" x="773.0" y="437.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="784" y="450.5" text-anchor="middle">M</text>
+<rect class="ps" x="959.0" y="554.0" width="22" height="18" rx="4"/>
+<text class="pst" x="970" y="567.5" text-anchor="middle">S</text>
+<rect class="ps" x="773.0" y="467.0" width="22" height="18" rx="4"/>
+<text class="pst" x="784" y="480.5" text-anchor="middle">S</text>
+<rect class="pm" x="917.0" y="554.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="928" y="567.5" text-anchor="middle">M</text>
+<rect class="pm" x="229.0" y="689.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="240" y="702.5" text-anchor="middle">M</text>
+<rect class="pm" x="645.0" y="689.0" width="22" height="18" rx="4"/>
+<text class="pmt" x="656" y="702.5" text-anchor="middle">M</text>
+<rect class="pm" x="14.0" y="901" width="22" height="18" rx="4"/>
+<text class="pmt" x="25" y="914.5" text-anchor="middle">M</text>
+<rect class="ps" x="138.0" y="901" width="22" height="18" rx="4"/>
+<text class="pst" x="149" y="914.5" text-anchor="middle">S</text>
+<rect class="pc" x="280.0" y="901" width="42" height="18" rx="4"/>
+<text class="pct" x="301" y="914.5" text-anchor="middle">CDC</text>
+</svg>

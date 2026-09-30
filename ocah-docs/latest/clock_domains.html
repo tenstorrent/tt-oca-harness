@@ -648,8 +648,25 @@ are asynchronous, CDCs at this boundary are an integration responsibility.
 OCAH does not supply synchronizer cells at the SMN interface.</p>
 </div>
 <div class="paragraph">
-<p>The boundary is shown in the
-<a href="overview.html#ocah-top-block-diagram" class="xref page">OCAH top-level block diagram</a>.</p>
+<p><a href="#ocah-clock-domain-diagram">Figure 1</a> overlays the clock domains on the
+<a href="overview.html#ocah-top-block-diagram" class="xref page">OCAH top-level block diagram</a>.
+Each zone boundary runs through the CDCs that separate the domains. The AoU
+bridges, the D2D macros and the future safety monitor are not assigned a zone.
+The SMN reaches each AoU through its APB register port, whose clock is
+asynchronous to the AoU core clock; the CDC marker inside each AoU is the
+bridge&#8217;s own APB synchroniser.
+The SMU zone marks <code>clk_smu_i</code>, which clocks the DTP, the crossbar, the SEP and
+the SMC. Pills inside the SEP and SMC list their clock inputs: both also use
+<code>clk_ref_i</code>. The SMC uses <code>clk_periph_i</code> for its peripherals and
+<code>clk_telemetry_i</code> for ATB telemetry. The SEP uses <code>entropy_rosc_sample_clk_i</code>,
+shown as "entropy rosc", for its entropy source and <code>clk_sep_wdt_i</code> for its
+watchdog.</p>
+</div>
+<div id="ocah-clock-domain-diagram" class="imageblock">
+<div class="content">
+<img src="_images/ocah_top_clocks.svg" alt="OCAH Clock-Domain Zones">
+</div>
+<div class="title">Figure 1. OCAH Clock-Domain Zones</div>
 </div>
 <div class="paragraph">
 <p><a href="#ocah-clock-domain-table">Table 1</a> summarises the clock domains present in OCAH.</p>
@@ -728,7 +745,7 @@ asynchronous to <code>clk_i</code> and typically runs between 100 and 400 MHz.</
 </table>
 </div>
 </div>
-<p class="block-references">Figures and tables: <a href="#ocah-clock-domain-table">Table 1</a>.</p>
+<p class="block-references">Figures and tables: <a href="#ocah-clock-domain-diagram">Figure 1</a>; <a href="#ocah-clock-domain-table">Table 1</a>.</p>
 <div class="sect1">
 <h2 id="ocah-reference-counter"><a class="anchor" href="#ocah-reference-counter"></a><a class="link" href="#ocah-reference-counter">1. Reference Counter</a></h2>
 <div class="sectionbody">

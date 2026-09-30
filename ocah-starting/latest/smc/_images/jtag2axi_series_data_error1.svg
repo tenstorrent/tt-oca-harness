@@ -1,1 +1,15 @@
-<!-- SPDX-License-Identifier: CC-BY-4.0 --> <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. --> <svg xmlns="http://www.w3.org/2000/svg" width="900" height="190" viewBox="0 0 900 190" role="img" aria-labelledby="title desc"> <title id="title">AXI_SERIES_DATA_WITH_ERROR_STATUS (size=1)</title> <desc id="desc">17 scan bits. increment/status: bits 16:16; data: bits 15:0. Fields are not drawn to scale.</desc> <rect width="900" height="190" fill="white"/> <text x="20" y="27" font-family="sans-serif" font-size="19" fill="#173b2c">AXI_SERIES_DATA_WITH_ERROR_STATUS (size=1) — 17 bits</text> <rect x="20" y="67" width="240" height="66" fill="#e5f0ea" stroke="#49685a"/> <text x="140.0" y="55" text-anchor="middle" font-family="monospace" font-size="16">16</text> <text x="140.0" y="105" text-anchor="middle" font-family="monospace" font-size="17">increment/status</text> <rect x="260" y="67" width="620" height="66" fill="#e5f0ea" stroke="#49685a"/> <text x="570.0" y="55" text-anchor="middle" font-family="monospace" font-size="16">15:0</text> <text x="570.0" y="105" text-anchor="middle" font-family="monospace" font-size="17">data</text> <text x="20" y="166" font-family="sans-serif" font-size="15" fill="#555">MSB at left; bit 0 shifts out first. Field widths are not to scale.</text> </svg> 
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="190" viewBox="0 0 900 190" role="img" aria-labelledby="title desc">
+<title id="title">AXI_SERIES_DATA_WITH_ERROR_STATUS (size=1)</title>
+<desc id="desc">17 scan bits. increment/status: bits 16:16; data: bits 15:0. Fields are not drawn to scale.</desc>
+<rect width="900" height="190" fill="white"/>
+<text x="20" y="27" font-family="sans-serif" font-size="19" fill="#173b2c">AXI_SERIES_DATA_WITH_ERROR_STATUS (size=1) — 17 bits</text>
+<rect x="20" y="67" width="240" height="66" fill="#e5f0ea" stroke="#49685a"/>
+<text x="140.0" y="55" text-anchor="middle" font-family="monospace" font-size="16">16</text>
+<text x="140.0" y="105" text-anchor="middle" font-family="monospace" font-size="17">increment/status</text>
+<rect x="260" y="67" width="620" height="66" fill="#e5f0ea" stroke="#49685a"/>
+<text x="570.0" y="55" text-anchor="middle" font-family="monospace" font-size="16">15:0</text>
+<text x="570.0" y="105" text-anchor="middle" font-family="monospace" font-size="17">data</text>
+<text x="20" y="166" font-family="sans-serif" font-size="15" fill="#555">MSB at left; bit 0 shifts out first. Field widths are not to scale.</text>
+</svg>
