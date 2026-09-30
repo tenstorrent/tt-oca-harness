@@ -15,7 +15,7 @@ through the PTAP.
 
 [[ptap-module-architecture-figure]]
 .PTAP module architecture
-image::ptap-architecture.svg[alt="PTAP module diagram showing the TAP controller, TMP controller, the instruction register and test data registers with the IR opcodes that select each one, the JTAG2AXI bridges, and the TDR, zero-length-bypass, STAP and retimer-bypass multiplexers on the TDO path",width=100%,pdfwidth=100%]
+image::ptap-architecture.svg[alt="PTAP module diagram showing the TRST and power-on reset AND gate, the TAP controller, TMP controller, the instruction register and test data registers with the IR opcodes that select each one, the JTAG2AXI bridges, the TDR multiplexer that takes every register output, and the zero-length-bypass, STAP and retimer-bypass multiplexers on the TDO path with their selects",width=100%,pdfwidth=100%]
 
 Blue lines carry scan data and grey lines carry control. `client_tdi_i` feeds the
 instruction register and every register in the scan-register group, whose last
@@ -28,18 +28,28 @@ are present only when their parameter enables them
 lie outside the PTAP: `client_tdi_i` is forwarded to them, and their returns enter
 the TDR multiplexer.
 
-`tdr_mux` selects the instruction register during an IR scan and the selected
-register otherwise. `u_zlb_tdr_mux` substitutes `client_tdi_i` for
-ZERO_LENGTH_BYPASS during a DR scan, and its output also leaves on
-`stap_host_scan_out_o` toward the STAP chain. `u_tdo_mux` selects the chain return
-`stap_host_scan_in_i` while the TAP_3DCR select bit is set. The retimer registers
-the result on the falling TCK edge, and `u_tdo_bypass_mux` bypasses the retimer
-for ZERO_LENGTH_BYPASS. The TAP controller forwards TCK, TMS and TRST on
-`host_tap_ctrl_o`, and the IR and DR scan controls, ORed together, on
-`stap_host_scan_ctrl_o`. `pwr_on_rst_ni` is ANDed with the client TRST before it
-reaches the PTAP logic. The AXI side of each JTAG2AXI bridge runs on `clk_i` and
-`rst_n_i`, which the figure omits, and each bridge has its own
-`*_security_disable_i` input (<<ptap-debug-disable-inputs-table>>).
+`tdr_mux` takes the output of every register in the group and the boundary-scan
+and iJTAG returns. It selects the instruction register while `ir_scan_ctrl.select`
+is set, and otherwise the register that `inst_decoded_o` selects. The numbers on
+the inputs of each 2:1 multiplexer are the select values that pass them.
+`u_zlb_tdr_mux` passes `client_tdi_i` instead of `tdr_mux` during a
+ZERO_LENGTH_BYPASS DR scan, and its output also leaves on `stap_host_scan_out_o`
+toward the STAP chain. `u_tdo_mux` passes the chain return `stap_host_scan_in_i`
+while `stap_select`, the TAP_3DCR select bit, is set. The retimer registers the
+result on the falling TCK edge, and `u_tdo_bypass_mux` bypasses the retimer during
+a ZERO_LENGTH_BYPASS DR scan. Both ZERO_LENGTH_BYPASS multiplexers take their
+select from `inst_decoded_o[3D]` ANDed with `dr_scan_select_reg`, the DR scan
+select registered on the falling TCK edge.
+
+`pwr_on_rst_ni` is ANDed with the client TRST in `u_trst_n_and`. The result,
+`jtag_trst_n`, resets the TAP controller and the retimer, and the controller
+forwards it with TCK and TMS on `host_tap_ctrl_o`. The controller also drives the
+IR and DR scan controls, ORed together, on `stap_host_scan_ctrl_o`. The TMP
+controller takes the decoded CLAMP_HOLD, CLAMP_RELEASE and BYPASS instructions and
+the TMP_STATUS `bypass_escape_bit`, and returns `persistence_mode` to the TAP
+controller. The AXI side of each JTAG2AXI bridge runs on `clk_i` and `rst_n_i`,
+which the figure omits, and each bridge has its own `*_security_disable_i` input
+(<<ptap-debug-disable-inputs-table>>).
 
 === Module Hierarchy
 

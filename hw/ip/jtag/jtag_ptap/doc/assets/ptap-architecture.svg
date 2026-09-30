@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1108" viewBox="0 0 1040 1108" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="1096" viewBox="0 0 1040 1096" role="img" aria-labelledby="title desc">
 <title id="title">PTAP architecture and instruction routing</title>
-<desc id="desc">The jtag_ptap module. client_tap_ctrl_i clocks the TAP controller u_jtag_tap_ctrlr, whose TRST is ANDed with pwr_on_rst_ni in u_trst_n_and; the controller forwards TCK, TMS and the combined TRST on host_tap_ctrl_o, drives client_tdo_oen_o, and passes IR and DR scan control to the scan registers and, ORed together, to stap_host_scan_ctrl_o. The optional TMP controller u_jtag_tmp returns persistence_mode to the TAP controller. client_tdi_i feeds the 6-bit instruction register u_jtag_inst_reg and every test data register. The instruction register captures 000001, decodes its opcode one-hot onto inst_decoded_o[63:0], and the decoded opcode selects one register: BYPASS for 00, 07, 08, 0A, 0B, 3F and every opcode without its own register, INV_BYPASS for 3E, IDCODE for 01, TAP_3DCR for 0E, TMP_STATUS for 0C, IC_RESET for 0D, DEBUG_CONTROL for 18, JTAG_CAPS for 19, the three JTAG2AXI_CAPS registers for 1B, 21 and 27, the SMC OTP, SEP OTP and SMC fabric jtag2axi bridges for 1C to 20, 22 to 26 and 28 to 2C, the external boundary-scan chain for 03 to 06 and 09 and the external iJTAG network for 1A and 02. Optional registers and bridges are dashed. The bridges drive AXI-Lite to the SMC and SEP OTP and AXI4 to the SMC fabric, each blocked by its own security_disable_i input. tdr_mux selects the instruction register during an IR scan and the selected register otherwise. u_zlb_tdr_mux substitutes client_tdi_i for ZERO_LENGTH_BYPASS (3D) during a DR scan; its output leaves as stap_host_scan_out_o. u_tdo_mux substitutes the STAP chain return stap_host_scan_in_i while the 3DCR select bit is set. The result is retimed on the falling TCK edge, and u_tdo_bypass_mux bypasses the retimer for ZERO_LENGTH_BYPASS before client_tdo_o.</desc>
+<desc id="desc">The jtag_ptap module. The .tck and .tms of client_tap_ctrl_i reach the TAP controller u_jtag_tap_ctrlr directly; its .trst_n is ANDed with pwr_on_rst_ni into jtag_trst_n, the TRST of the controller and of the retimer. The controller forwards TCK, TMS and jtag_trst_n on host_tap_ctrl_o, drives stap_host_scan_ctrl_o with the IR and DR scan controls ORed together, current_state_o and client_tdo_oen_o, and passes the IR and DR scan controls to the scan registers. The optional TMP controller u_jtag_tmp takes inst_decoded_o and bypass_escape_bit and returns persistence_mode to the TAP controller. client_tdi_i feeds the 6-bit instruction register u_jtag_inst_reg and every test data register. The instruction register decodes its opcode one-hot onto inst_decoded_o[63:0], and the decoded opcode selects one register: BYPASS for 00, 07, 08, 0A, 0B, 3F and every opcode without its own register, INV_BYPASS for 3E, IDCODE for 01, TAP_3DCR for 0E, TMP_STATUS for 0C, IC_RESET for 0D, DEBUG_CONTROL for 18, JTAG_CAPS for 19, the three JTAG2AXI_CAPS registers for 1B, 21 and 27, the SMC OTP, SEP OTP and SMC fabric jtag2axi bridges for 1C to 20, 22 to 26 and 28 to 2C, the external boundary-scan chain for 03 to 06 and 09 and the external iJTAG network for 1A and 02. Optional registers and bridges are dashed. The bridges drive AXI-Lite to the SMC and SEP OTP and AXI4 to the SMC fabric, each blocked by its own security_disable_i input. Every register output, and the boundary-scan and iJTAG returns, enter tdr_mux, which ir_scan_ctrl.select and inst_decoded_o steer. u_zlb_tdr_mux passes tdr_mux on input 0 and client_tdi_i on input 1; its output leaves as stap_host_scan_out_o. u_tdo_mux passes that on input 0 and stap_host_scan_in_i on input 1, selected by stap_select from TAP_3DCR. The result is retimed on the falling TCK edge, and u_tdo_bypass_mux passes the retimed value on input 0 and the unretimed value on input 1 to client_tdo_o. u_zlb_tdr_mux and u_tdo_bypass_mux share one select: inst_decoded_o for ZERO_LENGTH_BYPASS (3D) ANDed with dr_scan_select_reg.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -85,197 +85,234 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .nofill { fill: none; }
 </style>
 </defs>
-<rect width="1040" height="1108" fill="#ffffff"/>
-<rect class="core" x="190" y="86" width="120" height="90" rx="6"/>
-<text class="t" x="250" y="118" text-anchor="middle">TAP controller</text>
-<text class="s" x="250" y="136" text-anchor="middle">u_jtag_tap_ctrlr</text>
-<text class="s" x="250" y="154" text-anchor="middle">16-state FSM</text>
-<path class="sigo" d="M10,100 L186,100"/>
-<text class="s" x="14" y="92" text-anchor="start">client_tap_ctrl_i</text>
-<circle cx="140" cy="100" r="3.5" fill="#5b6670"/>
-<path class="sigplain" d="M140,100 L140,122 L150,122"/>
-<path class="sigplain" d="M10,148 L150,148"/>
-<text class="s" x="14" y="140" text-anchor="start">pwr_on_rst_ni</text>
-<path class="fabric" d="M150,114 L155.0,114 A21.0,21.0 0 0 1 155.0,156 L150,156 Z"/>
-<path class="sigo" d="M176,135 L186,135"/>
-<path class="sigo" d="M190,162 L10,162"/>
-<text class="s" x="14" y="178" text-anchor="start">client_tdo_oen_o</text>
-<path class="sigo" d="M300,86 L300,40 L1030,40"/>
-<text class="s" x="1030" y="33" text-anchor="end">host_tap_ctrl_o</text>
-<path class="sigo" d="M280,86 L280,58 L1030,58"/>
-<text class="s" x="1030" y="74" text-anchor="end">stap_host_scan_ctrl_o</text>
-<rect class="core opt" x="190" y="210" width="120" height="52" rx="6"/>
-<text class="t" x="250" y="232" text-anchor="middle">TMP controller</text>
-<text class="s" x="250" y="250" text-anchor="middle">u_jtag_tmp</text>
-<path class="sigo" d="M250,210 L250,180"/>
-<text class="s" x="244" y="198" text-anchor="end">persistence_mode</text>
-<rect class="smu" x="370" y="86" width="390" height="688" rx="6"/>
-<text class="bs" x="380" y="764" text-anchor="start">Scan registers</text>
-<text class="si" x="390" y="112" text-anchor="start">Register, instance</text>
-<text class="si" x="590" y="112" text-anchor="middle">Bits</text>
-<text class="si" x="670" y="112" text-anchor="middle">IR opcode (hex)</text>
-<rect class="core" x="380" y="122" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="139" text-anchor="start">IR</text>
-<text class="s" x="390" y="154" text-anchor="start">u_jtag_inst_reg</text>
-<text class="t" x="590" y="145" text-anchor="middle">6</text>
-<text class="s" x="670" y="145" text-anchor="middle">Shift-IR</text>
-<rect class="core" x="380" y="164" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="181" text-anchor="start">BYPASS</text>
-<text class="s" x="390" y="196" text-anchor="start">u_jtag_byp_reg</text>
-<text class="t" x="590" y="187" text-anchor="middle">1</text>
-<text class="s" x="670" y="180" text-anchor="middle">00 07 08 0A 0B 3F</text>
-<text class="s" x="670" y="195" text-anchor="middle">and all others</text>
-<rect class="core" x="380" y="206" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="223" text-anchor="start">INV_BYPASS</text>
-<text class="s" x="390" y="238" text-anchor="start">u_jtag_inv_byp_reg</text>
-<text class="t" x="590" y="229" text-anchor="middle">1</text>
-<text class="s" x="670" y="229" text-anchor="middle">3E</text>
-<rect class="core" x="380" y="248" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="265" text-anchor="start">IDCODE</text>
-<text class="s" x="390" y="280" text-anchor="start">u_jtag_idcode_reg</text>
-<text class="t" x="590" y="271" text-anchor="middle">32</text>
-<text class="s" x="670" y="271" text-anchor="middle">01</text>
-<rect class="core opt" x="380" y="290" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="307" text-anchor="start">TAP_3DCR</text>
-<text class="s" x="390" y="322" text-anchor="start">u_jtag_3dcr_reg</text>
-<text class="t" x="590" y="313" text-anchor="middle">2</text>
-<text class="s" x="670" y="313" text-anchor="middle">0E</text>
-<rect class="core opt" x="380" y="332" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="349" text-anchor="start">TMP_STATUS</text>
-<text class="s" x="390" y="364" text-anchor="start">u_jtag_tmp_status_reg</text>
-<text class="t" x="590" y="355" text-anchor="middle">2</text>
-<text class="s" x="670" y="355" text-anchor="middle">0C</text>
-<rect class="core opt" x="380" y="374" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="391" text-anchor="start">IC_RESET</text>
-<text class="s" x="390" y="406" text-anchor="start">u_jtag_ic_reset_reg</text>
-<text class="t" x="590" y="397" text-anchor="middle">2n+1</text>
-<text class="s" x="670" y="397" text-anchor="middle">0D</text>
-<rect class="core" x="380" y="416" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="433" text-anchor="start">DEBUG_CONTROL</text>
-<text class="s" x="390" y="448" text-anchor="start">u_jtag_debug_ctrl_reg</text>
-<text class="t" x="590" y="439" text-anchor="middle">5</text>
-<text class="s" x="670" y="439" text-anchor="middle">18</text>
-<rect class="core" x="380" y="458" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="475" text-anchor="start">JTAG_CAPS</text>
-<text class="s" x="390" y="490" text-anchor="start">u_jtag_caps_reg</text>
-<text class="t" x="590" y="481" text-anchor="middle">60</text>
-<text class="s" x="670" y="481" text-anchor="middle">19</text>
-<rect class="core" x="380" y="500" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="517" text-anchor="start">JTAG2AXI_CAPS (3)</text>
-<text class="s" x="390" y="532" text-anchor="start">u_*_2axi_caps_reg</text>
-<text class="t" x="590" y="523" text-anchor="middle">14</text>
-<text class="s" x="670" y="523" text-anchor="middle">1B 21 27</text>
-<rect class="core opt" x="380" y="542" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="559" text-anchor="start">SMC OTP bridge</text>
-<text class="s" x="390" y="574" text-anchor="start">u_smc_otp_jtag2axi</text>
-<text class="t" x="590" y="565" text-anchor="middle">var</text>
-<text class="s" x="670" y="565" text-anchor="middle">1C to 20</text>
-<rect class="core opt" x="380" y="584" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="601" text-anchor="start">SEP OTP bridge</text>
-<text class="s" x="390" y="616" text-anchor="start">u_sep_otp_jtag2axi</text>
-<text class="t" x="590" y="607" text-anchor="middle">var</text>
-<text class="s" x="670" y="607" text-anchor="middle">22 to 26</text>
-<rect class="core opt" x="380" y="626" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="643" text-anchor="start">SMC fabric bridge</text>
-<text class="s" x="390" y="658" text-anchor="start">u_smc_jtag2axi</text>
-<text class="t" x="590" y="649" text-anchor="middle">var</text>
-<text class="s" x="670" y="649" text-anchor="middle">28 to 2C</text>
-<rect class="external" x="380" y="668" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="685" text-anchor="start">Boundary scan</text>
-<text class="s" x="390" y="700" text-anchor="start">external chain</text>
-<text class="t" x="590" y="691" text-anchor="middle"></text>
-<text class="s" x="670" y="691" text-anchor="middle">03 04 05 06 09</text>
-<rect class="external" x="380" y="710" width="370" height="37" rx="4"/>
-<text class="t" x="390" y="727" text-anchor="start">iJTAG</text>
-<text class="s" x="390" y="742" text-anchor="start">external network</text>
-<text class="t" x="590" y="733" text-anchor="middle"></text>
-<text class="s" x="670" y="733" text-anchor="middle">1A 02</text>
-<path class="sigo" d="M310,120 L366,120"/>
-<text class="s" x="316" y="112" text-anchor="start">scan ctrl</text>
-<path class="sigo" d="M370,236 L314,236"/>
-<text class="s" x="366" y="228" text-anchor="end">decode</text>
-<path class="sigo" d="M750,140.5 L1030,140.5"/>
-<text class="s" x="1030" y="133.5" text-anchor="end">inst_decoded_o[63:0]</text>
-<path class="sigo" d="M750,392.5 L1030,392.5"/>
-<text class="s" x="1030" y="388.5" text-anchor="end">ic_reset_smc_o, _sep_o, _ext_o</text>
-<path class="sigo" d="M750,424 L1030,424"/>
-<text class="s" x="1030" y="420" text-anchor="end">jtag_clock_stop_o, boot_stall_o, ...</text>
-<path class="sigo" d="M1030,445 L754,445"/>
-<text class="s" x="1030" y="441" text-anchor="end">cla_clock_stop_i</text>
-<path class="axil" d="M750,550 L1030,550"/>
-<text class="s" x="1030" y="546" text-anchor="end">axil_smc_otp_jtag</text>
-<path class="sigo" d="M1030,571 L754,571"/>
-<text class="s" x="1030" y="567" text-anchor="end">smc_otp_jtag2axi_security_disable_i</text>
-<path class="axil" d="M750,592 L1030,592"/>
-<text class="s" x="1030" y="588" text-anchor="end">axil_sep_otp_jtag</text>
-<path class="sigo" d="M1030,613 L754,613"/>
-<text class="s" x="1030" y="609" text-anchor="end">sep_otp_jtag2axi_security_disable_i</text>
-<path class="axi" d="M750,634 L1030,634"/>
-<text class="s" x="1030" y="630" text-anchor="end">axi_smc_dbg</text>
-<path class="sigo" d="M1030,655 L754,655"/>
-<text class="s" x="1030" y="651" text-anchor="end">smc_jtag2axi_security_disable_i</text>
-<path class="jtag" d="M750,676 L1030,676"/>
-<text class="s" x="1030" y="672" text-anchor="end">bsr_host_scan_out_o, _ctrl_o</text>
-<path class="jtag" d="M1030,697 L754,697"/>
-<text class="s" x="1030" y="693" text-anchor="end">bsr_host_scan_in_i</text>
-<path class="jtag" d="M750,718 L1030,718"/>
-<text class="s" x="1030" y="714" text-anchor="end">ijtag_host_scan_out_o, _ctrl_o</text>
-<path class="jtag" d="M1030,739 L754,739"/>
-<text class="s" x="1030" y="735" text-anchor="end">ijtag_host_scan_in_i</text>
-<path class="jtag" d="M10,300 L366,300"/>
-<text class="s" x="14" y="292" text-anchor="start">client_tdi_i</text>
-<circle cx="170" cy="300" r="3.5" fill="#42759b"/>
-<path class="jtag" d="M370,370 L290,370 L290,396"/>
-<path class="fabric" d="M230,400 L310,400 L300,430 L240,430 Z"/>
-<text class="s" x="316" y="420" text-anchor="start">tdr_mux</text>
-<path class="jtag" d="M170,300 L170,794"/>
-<path class="jtag" d="M270.0,430 L270.0,794"/>
-<path class="fabric" d="M150,798 L300,798 L288,828 L162,828 Z"/>
-<text class="s" x="306" y="818" text-anchor="start">u_zlb_tdr_mux: client_tdi_i for ZERO_LENGTH_BYPASS (3D)</text>
-<circle cx="225" cy="842" r="3.5" fill="#42759b"/>
-<path class="jtagplain" d="M225.0,828 L225.0,842"/>
-<path class="jtag" d="M225.0,842 L1030,842"/>
-<text class="s" x="1030" y="836" text-anchor="end">stap_host_scan_out_o</text>
-<path class="jtag" d="M225.0,842 L225.0,868"/>
-<path class="jtag" d="M1030,858 L270.0,858 L270.0,868"/>
-<text class="s" x="1030" y="874" text-anchor="end">stap_host_scan_in_i</text>
-<path class="fabric" d="M180,872 L300,872 L288,902 L192,902 Z"/>
-<text class="s" x="306" y="892" text-anchor="start">u_tdo_mux: STAP chain return while stap_select (TAP_3DCR)</text>
-<circle cx="240" cy="914" r="3.5" fill="#42759b"/>
-<path class="jtag" d="M240.0,902 L240.0,920"/>
-<rect class="core" x="180" y="924" width="120" height="30" rx="6"/>
-<text class="s" x="240" y="944" text-anchor="middle">retimer, falling TCK</text>
-<path class="jtag" d="M240.0,914 L330,914 L330,964"/>
-<path class="jtag" d="M240.0,954 L240.0,964"/>
-<path class="fabric" d="M190,968 L350,968 L338,998 L202,998 Z"/>
-<text class="s" x="356" y="988" text-anchor="start">u_tdo_bypass_mux: skips the retimer for ZERO_LENGTH_BYPASS</text>
-<path class="jtag" d="M270.0,998 L270.0,1012 L10,1012"/>
-<text class="s" x="14" y="1004" text-anchor="start">client_tdo_o</text>
-<rect class="smu nofill" x="130" y="20" width="660" height="1012" rx="6"/>
-<text class="b" x="380" y="1020" text-anchor="start">jtag_ptap</text>
-<rect class="core" x="14" y="1053" width="36" height="18" rx="4"/>
-<text class="s" x="58" y="1066.5" text-anchor="start">RTL block</text>
-<rect class="external" x="146.1" y="1053" width="36" height="18" rx="4"/>
-<text class="s" x="190.1" y="1066.5" text-anchor="start">Outside the PTAP</text>
-<rect class="core opt" x="326.5" y="1053" width="36" height="18" rx="4"/>
-<text class="s" x="370.5" y="1066.5" text-anchor="start">Optional (parameter)</text>
-<path class="fabric" d="M534.5,1053 L564.5,1053 L558.5,1071 L540.5,1071 Z"/>
-<text class="s" x="572.5" y="1066.5" text-anchor="start">Multiplexer</text>
-<path class="jtag" d="M17,1090 L59,1090"/>
-<text class="s" x="70" y="1094.5" text-anchor="start">Scan data</text>
-<path class="sigo" d="M161.1,1090 L203.1,1090"/>
-<text class="s" x="214.1" y="1094.5" text-anchor="start">Control signal</text>
-<path class="axi" d="M339.70000000000005,1090 L381.70000000000005,1090"/>
-<text class="s" x="392.7" y="1094.5" text-anchor="start">AXI4</text>
-<path class="axil" d="M449.30000000000007,1090 L491.30000000000007,1090"/>
-<text class="s" x="502.3" y="1094.5" text-anchor="start">AXI-Lite</text>
-<text class="s" x="613.5" y="1094.5" text-anchor="start">Manager port</text>
-<rect class="pm" x="779.0" y="541.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="790" y="554.5" text-anchor="middle">M</text>
-<rect class="pm" x="779.0" y="583.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="790" y="596.5" text-anchor="middle">M</text>
-<rect class="pm" x="779.0" y="625.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="790" y="638.5" text-anchor="middle">M</text>
-<rect class="pm" x="583.5" y="1081.0" width="22" height="18" rx="4"/>
-<text class="pmt" x="594.5" y="1094.5" text-anchor="middle">M</text>
+<rect width="1040" height="1096" fill="#ffffff"/>
+<rect class="core" x="300" y="80" width="120" height="80" rx="6"/>
+<text class="t" x="360" y="107" text-anchor="middle">TAP controller</text>
+<text class="s" x="360" y="125" text-anchor="middle">u_jtag_tap_ctrlr</text>
+<text class="s" x="360" y="143" text-anchor="middle">16-state FSM</text>
+<path class="sigo" d="M10,96 L296,96"/>
+<text class="s" x="14" y="88" text-anchor="start">client_tap_ctrl_i</text>
+<text class="s" x="226" y="90" text-anchor="start">.tck, .tms</text>
+<circle cx="170" cy="96" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M170,96 L170,116 L190,116"/>
+<text class="s" x="166" y="112" text-anchor="end">.trst_n</text>
+<path class="sigplain" d="M10,132 L190,132"/>
+<text class="s" x="14" y="126" text-anchor="start">pwr_on_rst_ni</text>
+<path class="fabric" d="M190,109 L203.0,109 A15.0,15.0 0 0 1 203.0,139 L190,139 Z"/>
+<path class="sigo" d="M218,124 L296,124"/>
+<text class="s" x="226" y="118" text-anchor="start">jtag_trst_n</text>
+<path class="sigo" d="M300,150 L10,150"/>
+<text class="s" x="14" y="166" text-anchor="start">client_tdo_oen_o</text>
+<path class="sigo" d="M360,80 L360,30 L1030,30"/>
+<text class="s" x="1030" y="25" text-anchor="end">host_tap_ctrl_o</text>
+<path class="sigo" d="M380,80 L380,49 L1030,49"/>
+<text class="s" x="1030" y="44" text-anchor="end">stap_host_scan_ctrl_o</text>
+<path class="sigo" d="M400,80 L400,68 L1030,68"/>
+<text class="s" x="1030" y="63" text-anchor="end">current_state_o</text>
+<rect class="core opt" x="540" y="88" width="110" height="60" rx="6"/>
+<text class="t" x="595" y="114" text-anchor="middle">TMP controller</text>
+<text class="s" x="595" y="132" text-anchor="middle">u_jtag_tmp</text>
+<path class="sigo" d="M540,118 L424,118"/>
+<text class="s" x="426" y="111" text-anchor="start">persistence_mode</text>
+<path class="sigo" d="M760,104 L654,104"/>
+<text class="s" x="658" y="99" text-anchor="start">inst_decoded_o</text>
+<path class="sigo" d="M760,132 L654,132"/>
+<text class="s" x="658" y="127" text-anchor="start">bypass_escape_bit</text>
+<text class="si" x="220" y="208" text-anchor="start">Register</text>
+<text class="si" x="380" y="208" text-anchor="start">Instance</text>
+<text class="si" x="560" y="208" text-anchor="middle">Bits</text>
+<text class="si" x="665" y="208" text-anchor="middle">IR opcode (hex)</text>
+<rect class="core" x="210" y="218" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="235" text-anchor="start">IR</text>
+<text class="s" x="380" y="235" text-anchor="start">u_jtag_inst_reg</text>
+<text class="t" x="560" y="235" text-anchor="middle">6</text>
+<text class="s" x="665" y="235" text-anchor="middle">Shift-IR</text>
+<rect class="core" x="210" y="245" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="262" text-anchor="start">BYPASS</text>
+<text class="s" x="380" y="262" text-anchor="start">u_jtag_byp_reg</text>
+<text class="t" x="560" y="262" text-anchor="middle">1</text>
+<text class="s" x="665" y="262" text-anchor="middle">00 07 08 0A 0B 3F</text>
+<rect class="core" x="210" y="272" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="289" text-anchor="start">INV_BYPASS</text>
+<text class="s" x="380" y="289" text-anchor="start">u_jtag_inv_byp_reg</text>
+<text class="t" x="560" y="289" text-anchor="middle">1</text>
+<text class="s" x="665" y="289" text-anchor="middle">3E</text>
+<rect class="core" x="210" y="299" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="316" text-anchor="start">IDCODE</text>
+<text class="s" x="380" y="316" text-anchor="start">u_jtag_idcode_reg</text>
+<text class="t" x="560" y="316" text-anchor="middle">32</text>
+<text class="s" x="665" y="316" text-anchor="middle">01</text>
+<rect class="core opt" x="210" y="326" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="343" text-anchor="start">TAP_3DCR</text>
+<text class="s" x="380" y="343" text-anchor="start">u_jtag_3dcr_reg</text>
+<text class="t" x="560" y="343" text-anchor="middle">2</text>
+<text class="s" x="665" y="343" text-anchor="middle">0E</text>
+<rect class="core opt" x="210" y="353" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="370" text-anchor="start">TMP_STATUS</text>
+<text class="s" x="380" y="370" text-anchor="start">u_jtag_tmp_status_reg</text>
+<text class="t" x="560" y="370" text-anchor="middle">2</text>
+<text class="s" x="665" y="370" text-anchor="middle">0C</text>
+<rect class="core opt" x="210" y="380" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="397" text-anchor="start">IC_RESET</text>
+<text class="s" x="380" y="397" text-anchor="start">u_jtag_ic_reset_reg</text>
+<text class="t" x="560" y="397" text-anchor="middle">2n+1</text>
+<text class="s" x="665" y="397" text-anchor="middle">0D</text>
+<rect class="core" x="210" y="407" width="540" height="36" rx="4"/>
+<text class="t" x="220" y="430" text-anchor="start">DEBUG_CONTROL</text>
+<text class="s" x="380" y="430" text-anchor="start">u_jtag_debug_ctrl_reg</text>
+<text class="t" x="560" y="430" text-anchor="middle">5</text>
+<text class="s" x="665" y="430" text-anchor="middle">18</text>
+<rect class="core" x="210" y="446" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="463" text-anchor="start">JTAG_CAPS</text>
+<text class="s" x="380" y="463" text-anchor="start">u_jtag_caps_reg</text>
+<text class="t" x="560" y="463" text-anchor="middle">60</text>
+<text class="s" x="665" y="463" text-anchor="middle">19</text>
+<rect class="core" x="210" y="473" width="540" height="24" rx="4"/>
+<text class="t" x="220" y="490" text-anchor="start">JTAG2AXI_CAPS (3)</text>
+<text class="s" x="380" y="490" text-anchor="start">u_*_2axi_caps_reg</text>
+<text class="t" x="560" y="490" text-anchor="middle">14</text>
+<text class="s" x="665" y="490" text-anchor="middle">1B 21 27</text>
+<rect class="core opt" x="210" y="500" width="540" height="36" rx="4"/>
+<text class="t" x="220" y="523" text-anchor="start">SMC OTP bridge</text>
+<text class="s" x="380" y="523" text-anchor="start">u_smc_otp_jtag2axi</text>
+<text class="t" x="560" y="523" text-anchor="middle">var</text>
+<text class="s" x="665" y="523" text-anchor="middle">1C to 20</text>
+<rect class="core opt" x="210" y="539" width="540" height="36" rx="4"/>
+<text class="t" x="220" y="562" text-anchor="start">SEP OTP bridge</text>
+<text class="s" x="380" y="562" text-anchor="start">u_sep_otp_jtag2axi</text>
+<text class="t" x="560" y="562" text-anchor="middle">var</text>
+<text class="s" x="665" y="562" text-anchor="middle">22 to 26</text>
+<rect class="core opt" x="210" y="578" width="540" height="36" rx="4"/>
+<text class="t" x="220" y="601" text-anchor="start">SMC fabric bridge</text>
+<text class="s" x="380" y="601" text-anchor="start">u_smc_jtag2axi</text>
+<text class="t" x="560" y="601" text-anchor="middle">var</text>
+<text class="s" x="665" y="601" text-anchor="middle">28 to 2C</text>
+<rect class="external" x="210" y="617" width="540" height="36" rx="4"/>
+<text class="t" x="220" y="640" text-anchor="start">Boundary scan</text>
+<text class="s" x="380" y="640" text-anchor="start">external chain</text>
+<text class="t" x="560" y="640" text-anchor="middle"></text>
+<text class="s" x="665" y="640" text-anchor="middle">03 04 05 06 09</text>
+<rect class="external" x="210" y="656" width="540" height="36" rx="4"/>
+<text class="t" x="220" y="679" text-anchor="start">iJTAG</text>
+<text class="s" x="380" y="679" text-anchor="start">external network</text>
+<text class="t" x="560" y="679" text-anchor="middle"></text>
+<text class="s" x="665" y="679" text-anchor="middle">1A 02</text>
+<rect class="smu nofill" x="200" y="186" width="560" height="532" rx="6"/>
+<text class="bs" x="210" y="709" text-anchor="start">Scan registers</text>
+<path class="sigo" d="M360,160 L360,182"/>
+<text class="s" x="366" y="178" text-anchor="start">IR, DR scan ctrl</text>
+<path class="sigo" d="M750,230.0 L1030,230.0"/>
+<text class="s" x="1030" y="226" text-anchor="end">inst_decoded_o[63:0]</text>
+<path class="sigo" d="M750,392.0 L1030,392.0"/>
+<text class="s" x="1030" y="388" text-anchor="end">ic_reset_smc_o, _sep_o, _ext_o</text>
+<path class="sigo" d="M750,415 L1030,415"/>
+<text class="s" x="1030" y="411" text-anchor="end">jtag_clock_stop_o, boot_stall_o, ...</text>
+<path class="sigo" d="M1030,435 L754,435"/>
+<text class="s" x="1030" y="431" text-anchor="end">cla_clock_stop_i</text>
+<path class="axil" d="M750,508 L1030,508"/>
+<text class="s" x="1030" y="504" text-anchor="end">axil_smc_otp_jtag</text>
+<path class="sigo" d="M1030,528 L754,528"/>
+<text class="s" x="1030" y="524" text-anchor="end">smc_otp_jtag2axi_security_disable_i</text>
+<path class="axil" d="M750,547 L1030,547"/>
+<text class="s" x="1030" y="543" text-anchor="end">axil_sep_otp_jtag</text>
+<path class="sigo" d="M1030,567 L754,567"/>
+<text class="s" x="1030" y="563" text-anchor="end">sep_otp_jtag2axi_security_disable_i</text>
+<path class="axi" d="M750,586 L1030,586"/>
+<text class="s" x="1030" y="582" text-anchor="end">axi_smc_dbg</text>
+<path class="sigo" d="M1030,606 L754,606"/>
+<text class="s" x="1030" y="602" text-anchor="end">smc_jtag2axi_security_disable_i</text>
+<path class="jtag" d="M750,625 L1030,625"/>
+<text class="s" x="1030" y="621" text-anchor="end">bsr_host_scan_out_o, _ctrl_o</text>
+<path class="jtag" d="M1030,645 L754,645"/>
+<text class="s" x="1030" y="641" text-anchor="end">bsr_host_scan_in_i</text>
+<path class="jtag" d="M750,664 L1030,664"/>
+<text class="s" x="1030" y="660" text-anchor="end">ijtag_host_scan_out_o, _ctrl_o</text>
+<path class="jtag" d="M1030,684 L754,684"/>
+<text class="s" x="1030" y="680" text-anchor="end">ijtag_host_scan_in_i</text>
+<path class="jtag" d="M10,198 L196,198"/>
+<text class="s" x="14" y="190" text-anchor="start">client_tdi_i</text>
+<circle cx="138" cy="198" r="3.5" fill="#42759b"/>
+<path class="fabric" d="M162,232 L188,218 L188,692 L162,678 Z"/>
+<path class="jtag" d="M210,230.0 L192,230.0"/>
+<path class="jtag" d="M210,257.0 L192,257.0"/>
+<path class="jtag" d="M210,284.0 L192,284.0"/>
+<path class="jtag" d="M210,311.0 L192,311.0"/>
+<path class="jtag" d="M210,338.0 L192,338.0"/>
+<path class="jtag" d="M210,365.0 L192,365.0"/>
+<path class="jtag" d="M210,392.0 L192,392.0"/>
+<path class="jtag" d="M210,425.0 L192,425.0"/>
+<path class="jtag" d="M210,458.0 L192,458.0"/>
+<path class="jtag" d="M210,485.0 L192,485.0"/>
+<path class="jtag" d="M210,518.0 L192,518.0"/>
+<path class="jtag" d="M210,557.0 L192,557.0"/>
+<path class="jtag" d="M210,596.0 L192,596.0"/>
+<path class="jtag" d="M210,635.0 L192,635.0"/>
+<path class="jtag" d="M210,674.0 L192,674.0"/>
+<path class="jtagplain" d="M162,455.0 L150,455.0"/>
+<path class="sigo" d="M175.0,760 L175.0,689"/>
+<text class="s" x="183" y="736" text-anchor="start">tdr_mux</text>
+<text class="s" x="183" y="752" text-anchor="start">select: ir_scan_ctrl.select, inst_decoded_o</text>
+<path class="jtag" d="M150,455.0 L150,770 L400,770 L400,798"/>
+<path class="jtag" d="M138,198 L138,784 L350,784 L350,798"/>
+<path class="fabric" d="M320,802 L430,802 L420,830 L330,830 Z"/>
+<text class="s" x="400" y="818" text-anchor="middle">0</text>
+<text class="s" x="350" y="818" text-anchor="middle">1</text>
+<text class="s" x="438" y="821" text-anchor="start">u_zlb_tdr_mux</text>
+<circle cx="375" cy="844" r="3.5" fill="#42759b"/>
+<path class="jtagplain" d="M375.0,830 L375.0,844"/>
+<path class="jtag" d="M375.0,844 L1030,844"/>
+<text class="s" x="1030" y="839" text-anchor="end">stap_host_scan_out_o</text>
+<path class="jtag" d="M1030,860 L405,860 L405,872"/>
+<text class="s" x="1030" y="875" text-anchor="end">stap_host_scan_in_i</text>
+<path class="jtag" d="M375.0,844 L375.0,872"/>
+<path class="fabric" d="M320,876 L430,876 L420,904 L330,904 Z"/>
+<text class="s" x="375" y="892" text-anchor="middle">0</text>
+<text class="s" x="405" y="892" text-anchor="middle">1</text>
+<text class="s" x="438" y="887" text-anchor="start">u_tdo_mux</text>
+<path class="sigo" d="M560,896 L424,896"/>
+<text class="s" x="566" y="901" text-anchor="start">stap_select, from TAP_3DCR</text>
+<circle cx="375" cy="916" r="3.5" fill="#42759b"/>
+<path class="jtag" d="M375.0,904 L375.0,922"/>
+<rect class="core" x="315" y="926" width="120" height="26" rx="6"/>
+<text class="s" x="375" y="944" text-anchor="middle">retimer, falling TCK</text>
+<path class="jtag" d="M375.0,916 L455,916 L455,966"/>
+<path class="jtag" d="M375.0,952 L375.0,966"/>
+<path class="fabric" d="M320,970 L480,970 L470,998 L330,998 Z"/>
+<text class="s" x="375" y="986" text-anchor="middle">0</text>
+<text class="s" x="455" y="986" text-anchor="middle">1</text>
+<text class="s" x="488" y="989" text-anchor="start">u_tdo_bypass_mux</text>
+<path class="jtag" d="M400.0,998 L400.0,1010 L10,1010"/>
+<text class="s" x="14" y="1003" text-anchor="start">client_tdo_o</text>
+<path class="sigo" d="M126,892.0 L258,892.0"/>
+<text class="s" x="128" y="886" text-anchor="start">inst_decoded_o[3D]</text>
+<path class="sigo" d="M126,910.0 L258,910.0"/>
+<text class="s" x="128" y="905" text-anchor="start">dr_scan_select_reg</text>
+<path class="fabric" d="M262,882.0 L270.0,882.0 A18.0,18.0 0 0 1 270.0,918.0 L262,918.0 Z"/>
+<path class="sigplain" d="M288,900.0 L298,900.0"/>
+<circle cx="298" cy="900" r="3.5" fill="#5b6670"/>
+<path class="sigo" d="M298,900.0 L298,816 L321,816"/>
+<path class="sigo" d="M298,900.0 L298,984 L321,984"/>
+<rect class="smu nofill" x="120" y="20" width="655" height="1004" rx="6"/>
+<text class="b" x="560" y="1012" text-anchor="start">jtag_ptap</text>
+<rect class="core" x="14" y="1041" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="1054.5" text-anchor="start">RTL block</text>
+<rect class="external" x="146.1" y="1041" width="36" height="18" rx="4"/>
+<text class="s" x="190.1" y="1054.5" text-anchor="start">Outside the PTAP</text>
+<rect class="core opt" x="326.5" y="1041" width="36" height="18" rx="4"/>
+<text class="s" x="370.5" y="1054.5" text-anchor="start">Optional (parameter)</text>
+<path class="fabric" d="M534.5,1041 L564.5,1041 L558.5,1059 L540.5,1059 Z"/>
+<text class="s" x="572.5" y="1054.5" text-anchor="start">Multiplexer</text>
+<path class="fabric" d="M674.4,1041 L689.4,1041 A9.0,9.0 0 0 1 689.4,1059 L674.4,1059 Z"/>
+<text class="s" x="706.4" y="1054.5" text-anchor="start">AND gate</text>
+<path class="jtag" d="M17,1078 L59,1078"/>
+<text class="s" x="70" y="1082.5" text-anchor="start">Scan data</text>
+<path class="sigo" d="M161.1,1078 L203.1,1078"/>
+<text class="s" x="214.1" y="1082.5" text-anchor="start">Control signal</text>
+<path class="axi" d="M339.70000000000005,1078 L381.70000000000005,1078"/>
+<text class="s" x="392.7" y="1082.5" text-anchor="start">AXI4</text>
+<path class="axil" d="M449.30000000000007,1078 L491.30000000000007,1078"/>
+<text class="s" x="502.3" y="1082.5" text-anchor="start">AXI-Lite</text>
+<path class="sigplain" d="M583.5,1078 L613.5,1078 M598.5,1078 L598.5,1087"/>
+<circle cx="598.5" cy="1078" r="3.5" fill="#5b6670"/>
+<text class="s" x="621.5" y="1082.5" text-anchor="start">Fan-out</text>
 </svg>

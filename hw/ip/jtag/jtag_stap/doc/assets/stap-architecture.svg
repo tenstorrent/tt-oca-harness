@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="818" viewBox="0 0 1040 818" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="862" viewBox="0 0 1040 862" role="img" aria-labelledby="title desc">
 <title id="title">STAP architecture and gating</title>
-<desc id="desc">The jtag_stap module. client_scan_in_i, optionally through the SCAN_IN_PIPE stage, becomes stap_scan_in, which passes through the falling-edge TDO lockup flop u_tdo_lockup_flop and an AND gate that forces it low while security_disable_i is high, to host_tdo_o and the secondary TAP. The secondary TAP returns host_tdi_i, optionally through the falling-edge TDI_LOCKUP stage. The scan-in mux passes that return while stap_sel is set and stap_scan_in otherwise, into the SIB u_sib_mux_pre. The SIB inserts the 3-bit 3DCR u_3dcr_scan_reg (tms_hold, stap_sel_int, config_hold) into the chain through host_sib_scan_out and client_reg_scan_out, and its one-bit register drives client_scan_out_o. The 3DCR update enable is the SIB's update_en ANDed with NOT security_disable_i. The 3DCR reset is client TRST ANDed with config_hold_sticky, a falling-edge copy of config_hold, ORed with the scan reset. stap_sel is stap_sel_int ANDed with NOT security_disable_i; it selects the scan-in mux, selects the host TMS between the client TMS and tms_hold, and with the client shift enable drives host_tdo_oen_o. TCK and TRST pass from client_tap_ctrl_i to host_tap_ctrl_o unchanged.</desc>
+<desc id="desc">The jtag_stap module. client_scan_in_i, optionally through the SCAN_IN_PIPE stage, becomes stap_scan_in, which passes through the falling-edge TDO lockup flop u_tdo_lockup_flop and an AND gate that forces it low while security_disable_i is high, to host_tdo_o and the secondary TAP. The secondary TAP returns host_tdi_i, optionally through the falling-edge TDI_LOCKUP stage. The scan-in mux passes that return while stap_sel is set and stap_scan_in otherwise, into the SIB u_sib_mux_pre. The SIB inserts the 3-bit 3DCR u_3dcr_scan_reg (tms_hold, stap_sel_int, config_hold) into the chain through host_sib_scan_out and client_reg_scan_out, and its one-bit register drives client_scan_out_o. The 3DCR update enable is the SIB's update_en ANDed with NOT security_disable_i. The 3DCR reset is client TRST ANDed with config_hold_sticky, a falling-edge copy of config_hold, ORed with the scan reset. stap_sel is stap_sel_int ANDed with NOT security_disable_i; it selects the scan-in mux, selects host_tap_ctrl_o.tms between client_tap_ctrl_i.tms on input 1 and tms_hold on input 0, and with the client shift enable drives host_tdo_oen_o. The .tck and .trst_n of client_tap_ctrl_i bypass the mux and pass to host_tap_ctrl_o unchanged.</desc>
 <defs>
 <marker id="ae" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L10,4.5 L0,9 Z" fill="#103525"/></marker>
 <marker id="as" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="9" refX="3" refY="4.5" orient="auto"><path d="M10,0 L0,4.5 L10,9 Z" fill="#103525"/></marker>
@@ -85,8 +85,8 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 .nofill { fill: none; }
 </style>
 </defs>
-<rect width="1040" height="818" fill="#ffffff"/>
-<rect class="smu" x="150" y="20" width="740" height="720" rx="6"/>
+<rect width="1040" height="862" fill="#ffffff"/>
+<rect class="smu" x="150" y="20" width="740" height="764" rx="6"/>
 <path class="jtag" d="M10,80 L166,80"/>
 <text class="s" x="14" y="72" text-anchor="start">client_scan_in_i</text>
 <rect class="core opt" x="170" y="58" width="130" height="44" rx="6"/>
@@ -134,20 +134,20 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <path class="jtag" d="M510,302 L636,302"/>
 <text class="s" x="575" y="294" text-anchor="middle">host_sib_scan_out</text>
 <path class="jtag" d="M640,326 L514,326"/>
-<text class="s" x="575" y="344" text-anchor="middle">client_reg_scan_out</text>
+<text class="s" x="575" y="319" text-anchor="middle">client_reg_scan_out</text>
 <path class="sigo" d="M510,364 L564,364"/>
 <path class="fabric" d="M568,356 L578.0,356 A16.0,16.0 0 0 1 578.0,388 L568,388 Z"/>
 <circle class="bub" cx="564" cy="380" r="4"/>
+<text class="s" x="516" y="353" text-anchor="start">update_en</text>
 <path class="sigo" d="M594,372 L636,372"/>
 <text class="s" x="680" y="382" text-anchor="middle">[1]</text>
 <text class="s" x="730" y="382" text-anchor="middle">[2]</text>
-<text class="s" x="840" y="382" text-anchor="middle">[0]</text>
+<text class="s" x="852" y="382" text-anchor="end">config_hold [0]</text>
 <rect class="core" x="765" y="440" width="115" height="60" rx="6"/>
 <text class="t" x="822.5" y="459" text-anchor="middle">3DCR reset</text>
 <text class="s" x="822.5" y="475" text-anchor="middle">trst_n AND</text>
 <text class="s" x="822.5" y="491" text-anchor="middle">(sticky OR rst_n)</text>
 <path class="sigo" d="M840,392 L840,436"/>
-<text class="s" x="846" y="424" text-anchor="start">config_hold</text>
 <path class="sigo" d="M780,440 L780,396"/>
 <path class="sigo" d="M680,392 L680,598 L696,598"/>
 <text class="s" x="674" y="440" text-anchor="end">stap_sel_int</text>
@@ -163,35 +163,41 @@ text { font-family: Arial, sans-serif; font-size: 15px; fill: #484848; }
 <text class="s" x="840" y="549" text-anchor="middle">0</text>
 <text class="s" x="840" y="581" text-anchor="middle">1</text>
 <path class="sigo" d="M866,560 L1030,560"/>
-<text class="s" x="1030" y="552" text-anchor="end">host_tap_ctrl_o</text>
+<text class="s" x="1030" y="552" text-anchor="end">host_tap_ctrl_o.tms</text>
 <path class="sigo" d="M726,606 L848,606 L848,582"/>
 <text class="s" x="732" y="599" text-anchor="start">stap_sel</text>
 <circle cx="820" cy="606" r="3.5" fill="#5b6670"/>
 <path class="sigo" d="M820,606 L820,648 L846,648"/>
 <path class="fabric" d="M850,640 L860.0,640 A16.0,16.0 0 0 1 860.0,672 L850,672 Z"/>
-<path class="sigo" d="M838,702 L838,664 L846,664"/>
-<text class="s" x="880" y="718" text-anchor="end">client_scan_ctrl_i.shift_en</text>
+<path class="sigplain" d="M838,736 L838,706"/>
+<path class="sigo" d="M838,694 L838,664 L846,664"/>
+<text class="s" x="880" y="752" text-anchor="end">client_scan_ctrl_i.shift_en</text>
 <path class="sigo" d="M876,656 L1030,656"/>
 <text class="s" x="1030" y="648" text-anchor="end">host_tdo_oen_o</text>
-<path class="sigplain" d="M10,680 L796,680 L796,612"/>
+<path class="sigo" d="M10,700 L1030,700"/>
+<circle cx="796" cy="700" r="3.5" fill="#5b6670"/>
+<path class="sigplain" d="M796,700 L796,612"/>
 <path class="sigo" d="M796,600 L796,576 L826,576"/>
-<text class="s" x="14" y="672" text-anchor="start">client_tap_ctrl_i</text>
-<text class="b" x="162" y="728" text-anchor="start">jtag_stap</text>
-<rect class="core" x="14" y="763" width="36" height="18" rx="4"/>
-<text class="s" x="58" y="776.5" text-anchor="start">RTL block</text>
-<rect class="core opt" x="146.1" y="763" width="36" height="18" rx="4"/>
-<text class="s" x="190.1" y="776.5" text-anchor="start">Optional (parameter)</text>
-<path class="fabric" d="M354.1,763 L384.1,763 L378.1,781 L360.1,781 Z"/>
-<text class="s" x="392.1" y="776.5" text-anchor="start">Multiplexer</text>
-<path class="fabric" d="M494.0,763 L509.0,763 A9.0,9.0 0 0 1 509.0,781 L494.0,781 Z"/>
-<text class="s" x="526" y="776.5" text-anchor="start">AND gate</text>
-<circle class="bub" cx="611.2" cy="772" r="4"/>
-<text class="s" x="623.2" y="776.5" text-anchor="start">Inverted input</text>
-<path class="jtag" d="M17,800 L59,800"/>
-<text class="s" x="70" y="804.5" text-anchor="start">Scan data</text>
-<path class="sigo" d="M161.1,800 L203.1,800"/>
-<text class="s" x="214.1" y="804.5" text-anchor="start">Control signal</text>
-<path class="sigplain" d="M336.70000000000005,800 L366.70000000000005,800 M351.70000000000005,800 L351.70000000000005,809"/>
-<circle cx="351.7" cy="800" r="3.5" fill="#5b6670"/>
-<text class="s" x="374.7" y="804.5" text-anchor="start">Fan-out</text>
+<text class="s" x="791" y="670" text-anchor="end">.tms</text>
+<text class="s" x="14" y="692" text-anchor="start">client_tap_ctrl_i</text>
+<text class="s" x="1030" y="692" text-anchor="end">host_tap_ctrl_o</text>
+<text class="s" x="1030" y="717" text-anchor="end">.tck, .trst_n</text>
+<text class="b" x="162" y="772" text-anchor="start">jtag_stap</text>
+<rect class="core" x="14" y="807" width="36" height="18" rx="4"/>
+<text class="s" x="58" y="820.5" text-anchor="start">RTL block</text>
+<rect class="core opt" x="146.1" y="807" width="36" height="18" rx="4"/>
+<text class="s" x="190.1" y="820.5" text-anchor="start">Optional (parameter)</text>
+<path class="fabric" d="M354.1,807 L384.1,807 L378.1,825 L360.1,825 Z"/>
+<text class="s" x="392.1" y="820.5" text-anchor="start">Multiplexer</text>
+<path class="fabric" d="M494.0,807 L509.0,807 A9.0,9.0 0 0 1 509.0,825 L494.0,825 Z"/>
+<text class="s" x="526" y="820.5" text-anchor="start">AND gate</text>
+<circle class="bub" cx="611.2" cy="816" r="4"/>
+<text class="s" x="623.2" y="820.5" text-anchor="start">Inverted input</text>
+<path class="jtag" d="M17,844 L59,844"/>
+<text class="s" x="70" y="848.5" text-anchor="start">Scan data</text>
+<path class="sigo" d="M161.1,844 L203.1,844"/>
+<text class="s" x="214.1" y="848.5" text-anchor="start">Control signal</text>
+<path class="sigplain" d="M336.70000000000005,844 L366.70000000000005,844 M351.70000000000005,844 L351.70000000000005,853"/>
+<circle cx="351.7" cy="844" r="3.5" fill="#5b6670"/>
+<text class="s" x="374.7" y="848.5" text-anchor="start">Fan-out</text>
 </svg>

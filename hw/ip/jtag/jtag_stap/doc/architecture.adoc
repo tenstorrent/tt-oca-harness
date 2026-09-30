@@ -63,14 +63,16 @@ the I/O STAP (`gen_stap_io`) to provide timing margin for the die boundary cross
 
 [[stap-scan-and-control-paths-figure]]
 .STAP scan and control paths
-image::stap-architecture.svg[alt="STAP with the optional input pipeline, the TDO lockup flop and security mask to host_tdo_o, the optional TDI lockup on host_tdi_i, the scan-in mux into the SIB and 3DCR, the security-gated stap_sel and 3DCR update enable, the 3DCR reset, and the host TMS mux and TDO output enable",width=100%,pdfwidth=100%]
+image::stap-architecture.svg[alt="STAP with the optional input pipeline, the TDO lockup flop and security mask to host_tdo_o, the optional TDI lockup on host_tdi_i, the scan-in mux into the SIB and 3DCR, the security-gated stap_sel and 3DCR update enable, the 3DCR reset, the host TMS mux that switches only client TMS while TCK and TRST bypass it, and the TDO output enable",width=100%,pdfwidth=100%]
 
 `security_disable_i` gates three signals through AND gates with an inverted input:
 `stap_sel`, from the 3DCR `stap_sel_int` bit; the 3DCR update enable, from the SIB's
-scan control; and `host_tdo_o`. Because the TMS mux and the TDO output enable take
+`update_en`; and `host_tdo_o`. Because the TMS mux and the TDO output enable take
 the gated `stap_sel`, a disabled STAP also parks the host TMS at `tms_hold` and holds
 `host_tdo_oen_o` low. `host_tap_ctrl_o` carries TCK and TRST from
-`client_tap_ctrl_i` unchanged; only its TMS passes through the mux. The SIB itself is
+`client_tap_ctrl_i` unchanged; only its TMS passes through the mux. Where the TCK
+and TRST line crosses the shift-enable input, the gap in the shift-enable line marks
+that the two do not connect. The SIB itself is
 not gated. The 3DCR reset combines the client TRST, `config_hold_sticky` and the scan
 reset as <<stap-3dcr-fields-table>> describes.
 
