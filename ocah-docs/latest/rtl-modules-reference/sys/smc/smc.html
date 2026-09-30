@@ -709,7 +709,7 @@
 <tr><td><code>spi_mem_rebar_iepad_i</code></td><td>input</td><td><code>logic</code></td><td>Input enable for the SPI DQS loopback pad, active-high.</td></tr>
 <tr><td><code>spi_mem_rebar_ipad_o</code></td><td>output</td><td><code>logic</code></td><td>Value sampled from the SPI DQS loopback pad.</td></tr>
 <tr><td><code>clk_telemetry_i</code></td><td>input</td><td><code>logic</code></td><td>Telemetry clock for the ATB inputs, gated by the telemetry clock-gate enable.</td></tr>
-<tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>Telemetry-domain reset, active-low, passed to the telemetry receivers without synchronization.</td></tr>
+<tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>Telemetry-domain reset, active-low, for the telemetry receivers&#x27; ATB FIFOs.</td></tr>
 <tr><td><code>telemetry_atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB telemetry data, one word per receiver, on the telemetry clock.</td></tr>
 <tr><td><code>telemetry_atid_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::atb_id_t [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB source ID accompanying each telemetry data word.</td></tr>
 <tr><td><code>telemetry_atready_o</code></td><td>output</td><td><code>logic [smc_config_pkg::NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>ATB ready from each telemetry receiver to its source.</td></tr>

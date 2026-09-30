@@ -651,7 +651,7 @@
 <tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>DFT test-mode enable, active-high; bypasses the peripheral clock gates and selects the scan reset.</td></tr>
 <tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>DFT scan reset, active-low, used in place of functional resets while test_en_i is high.</td></tr>
 <tr><td><code>clk_telemetry_i</code></td><td>input</td><td><code>logic</code></td><td>Telemetry clock, gated by tel_cg_en_i before it reaches the telemetry receivers.</td></tr>
-<tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>Telemetry-domain reset, active-low, passed to the telemetry receivers without synchronization.</td></tr>
+<tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>Telemetry-domain reset, active-low, for the telemetry receivers&#x27; ATB FIFOs.</td></tr>
 <tr><td><code>i3c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I3C peripheral clock when high; synchronized to the peripheral clock.</td></tr>
 <tr><td><code>avs_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the AVSBus controller peripheral and reference clocks when high.</td></tr>
 <tr><td><code>i2c_cg_en_i</code></td><td>input</td><td><code>logic</code></td><td>Stops the I2C peripheral clock when high.</td></tr>

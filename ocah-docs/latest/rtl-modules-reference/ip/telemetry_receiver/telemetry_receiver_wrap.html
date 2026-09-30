@@ -634,7 +634,7 @@
 </aside>
 <article class="doc">
 <h1 class="page">telemetry_receiver_wrap</h1>
-<p>Demux one AXI-Lite slave onto NUM_TELEMETRY_RECEIVERS with dual clocks.</p><p>Register accesses and the receivers use clk_i / rst_ni; ATB streams use clk_telemetry_i / rst_telemetry_ni. Receiver i decodes at TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E. The demux allows one outstanding transaction per channel. Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one clocked by clk_i. NUM_TELEMETRY_RECEIVERS must be between 1 and MAX_NUM_TELEMETRY_RECEIVERS. TELEMETRY_RECEIVER_BUFFER_DEPTH must be greater than or equal to 2. NUM_REG_MAPS is NUM_TELEMETRY_RECEIVERS plus one for the error slave. Each receiver&#x27;s debug nibble matches telemetry_receiver&#x27;s four-bit debug bus.</p>
+<p>Demux one AXI-Lite slave onto NUM_TELEMETRY_RECEIVERS with dual clocks.</p><p>Register accesses and the receivers use clk_i / rst_ni; ATB streams use clk_telemetry_i / rst_telemetry_ni. Receiver i decodes at TELEMETRY_RECEIVER_0__REG_MAP_BASE_ADDR plus i times TELEMETRY_RECEIVER_0__REG_MAP_SIZE; other addresses get DECERR with read data 0xBADCAB1E. The demux allows one outstanding transaction per channel. Each ATB stream crosses into clk_i through an 8-entry prim_fifo_async. afready_i passes through a 2-flop synchronizer clocked by clk_telemetry_i, and afvalid_o through one clocked by clk_i. Either reset clears both sides of every ATB FIFO; atready_o stays high while the write side is in reset, so beats offered then are dropped. NUM_TELEMETRY_RECEIVERS must be between 1 and MAX_NUM_TELEMETRY_RECEIVERS. TELEMETRY_RECEIVER_BUFFER_DEPTH must be greater than or equal to 2. NUM_REG_MAPS is NUM_TELEMETRY_RECEIVERS plus one for the error slave. Each receiver&#x27;s debug nibble matches telemetry_receiver&#x27;s four-bit debug bus.</p>
 <div class="ocah-reg-html">
 <h2>Parameters</h2>
 <table id="trm-table-1">
@@ -654,6 +654,8 @@
 <tr><td><code>rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Register-domain async reset, active-low.</td></tr>
 <tr><td><code>clk_telemetry_i</code></td><td>input</td><td><code>logic</code></td><td>ATB-domain clock.</td></tr>
 <tr><td><code>rst_telemetry_ni</code></td><td>input</td><td><code>logic</code></td><td>ATB-domain async reset, active-low.</td></tr>
+<tr><td><code>test_en_i</code></td><td>input</td><td><code>logic</code></td><td>Scan test mode, active-high; selects scan_rst_ni for the ATB FIFO resets.</td></tr>
+<tr><td><code>scan_rst_ni</code></td><td>input</td><td><code>logic</code></td><td>Scan reset, active-low.</td></tr>
 <tr><td><code>axil_req_i</code></td><td>input</td><td><code>telemetry_receiver_wrap_pkg::axil_req_t</code></td><td>Shared AXI-Lite request.</td></tr>
 <tr><td><code>axil_resp_o</code></td><td>output</td><td><code>telemetry_receiver_wrap_pkg::axil_resp_t</code></td><td>Shared AXI-Lite response.</td></tr>
 <tr><td><code>atdata_i</code></td><td>input</td><td><code>telemetry_receiver_pkg::telemetry_data_t [NUM_TELEMETRY_RECEIVERS-1:0]</code></td><td>Per-receiver ATB data, in the clk_telemetry_i domain.</td></tr>
