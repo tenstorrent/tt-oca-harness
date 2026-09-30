@@ -710,10 +710,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
 |KPV scrambler: stored word and address mapping both transform while enabled, and the vault passes through while disabled.
-|`sep_km_rom_write_slverr_test`
+|`sep_km_rom_write_err_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
-|A KM CPU store to KM ROM leaves the ROM word unchanged and sets `IRQ_STATUS.ROM_WRITE_ERR`. `CHK-KM-ROM-WRITE-SLVERR` requires the store to return SLVERR (`IRQ_STATUS.AXI_SLVERR`), as `key_manager.rdl` states for a ROM write. The ROM answers the store at once with no error, so the leaf fails there.
+|A KM CPU store to KM ROM leaves the ROM word unchanged, sets `IRQ_STATUS.ROM_WRITE_ERR`, and leaves `IRQ_STATUS.AXI_SLVERR` and `AXI_DECERR` clear, as `key_manager.rdl` states for a ROM write.
 |`sep_km_otp_shim_unreachable_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM CPU image
@@ -7790,8 +7790,8 @@ the wipe security contract.
 
 '''''
 
-[[sep_km_rom_write_slverr_test]]
-===== `sep_km_rom_write_slverr_test`
+[[sep_km_rom_write_err_test]]
+===== `sep_km_rom_write_err_test`
 
 *Phase*: 2
 
@@ -7799,7 +7799,7 @@ the wipe security contract.
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_bus_err.parhex`
 
-*Source Module*: `sep_km_rom_write_slverr_test`
+*Source Module*: `sep_km_rom_write_err_test`
 
 *BFM / Model*: ocah_axi_vip, KM CPU image
 
@@ -7807,7 +7807,7 @@ the wipe security contract.
 
 *Randomization*: RAND-NONE — one directed store.
 
-*Objective*: `hw/ip/key_manager/regs/key_manager.rdl` (memory-map Access Notes) says the KM ROM is read-only and "returns SLVERR on write attempts". The KM CPU observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` bit (`km_csr.rdl`); `IRQ_STATUS.ROM_WRITE_ERR` is a separate bit that reports a detected ROM write. The KM ROM answers a store at once with no error response, so the store completes as if it succeeded and `CHK-KM-ROM-WRITE-SLVERR` fails.
+*Objective*: `hw/ip/key_manager/regs/key_manager.rdl` (memory-map Access Notes) says the KM ROM is read-only and is accessed through the PicoRV32 native memory interface, not AXI-Lite. A write completes with no error response, leaves the ROM unchanged and sets `IRQ_STATUS.ROM_WRITE_ERR`. The KM CPU observes an AXI error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits (`km_csr.rdl`), so a ROM write leaves both clear.
 
 *Test Coverage*: KM ROM write refusal, ROM content after a write, and the error the KM CPU observes.
 
@@ -7833,13 +7833,13 @@ the wipe security contract.
 |The ROM word reads the image constant before the store and after a store of its complement.
 |CHK-KM-ROM-WRITE-ERR
 |The store sets `IRQ_STATUS.ROM_WRITE_ERR`.
-|CHK-KM-ROM-WRITE-SLVERR
-|The store sets `IRQ_STATUS.AXI_SLVERR`: `key_manager.rdl` says a ROM write attempt returns SLVERR. The ROM answers the store with no error, so this checker fails.
+|CHK-KM-ROM-WRITE-NO-AXI-ERR
+|The store leaves `IRQ_STATUS.AXI_SLVERR` and `AXI_DECERR` clear: `key_manager.rdl` says a ROM write completes with no error response and is reported only as `ROM_WRITE_ERR`. `CHK-KM-SLVERR-LIVE` shows the `AXI_SLVERR` bit sets on an erroring store, so a clear bit here is evidence.
 |===
 
 *Pass Criteria*: Every named checker PASSes. `UVM_ERROR` is 0.
 
-*Current status*: red on the current RTL. `CHK-KM-ROM-WRITE-SLVERR` fails, and every other named checker PASSes. See <<known-limitations>>.
+*Current status*: green. Every named checker PASSes.
 
 '''''
 
@@ -7868,7 +7868,7 @@ the wipe security contract.
 
 [arabic]
 . The host reads `EFUSE_BANK_INIT_TIME` on its SEP-side window (`SEP_EXTERNAL_EFUSE_SHIM_CTRL`) and requires its RDL reset, writes the seeded value, and reads it back.
-. The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_slverr_test>> for the clear-then-poll rule of each row).
+. The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_err_test>> for the clear-then-poll rule of each row).
 . Control: a KM load from the Reserved ROM-growth row (ROM base + ROM size) of the `key_manager.rdl` memory-map summary.
 . The image loads from, then stores a fixed value to, the first word after the MMR aperture.
 . Control: the image loads from the mapped `OTP_EFUSE_MMR` `SEC_DISABLE_TOKEN_MATCH` register in the same OTP window.
@@ -7923,7 +7923,7 @@ the wipe security contract.
 *Test Procedure*:
 
 [arabic]
-. The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_slverr_test>> for the clear-then-poll rule of each row). The virtual ROM load is the image's last access.
+. The host releases the KM into `km_rom_bus_err` (see <<sep_km_rom_write_err_test>> for the clear-then-poll rule of each row). The virtual ROM load is the image's last access.
 . Control: a KM load from the Reserved ROM-growth row, as in <<sep_km_otp_shim_unreachable_test>>.
 . The image stores a pre-load marker to KM SRAM word 0, loads from the virtual ROM base, stores the data and the polled `IRQ_STATUS`, then stores a post-load marker.
 . The host waits for the post-load marker for a fixed bound after the pre-load marker.
@@ -7981,7 +7981,7 @@ constraint is not an open defect.
 |Every leaf that boots `rom_main` (`sep_drbg_real_sink_multi_km_aes_test`, `sep_km_otbn_sideload_kat_test`, `sep_km_aes_sideload_kat_test`, `sep_km_hmac_sideload_kat_test`, `sep_km_kmac_sideload_kat_test`, `sep_km_command_set_rand_test`, `sep_km_wipe_reset_test`, `sep_km_handover_test`, `sep_km_abr_seed_sideload_test`, `sep_km_abr_mlkem_sideload_test`) boots the KM application ROM from `hw/ip/key_manager/approm/prod` built with `KM_BOOT_WIPE=0 KM_UNREC_WIPE=0` (`cocotb/tests/km_fw/Makefile`). The production default wipes KM SRAM at boot and on an unrecoverable fault; on this bench the boot wipe halts before `RESP_KM_READY`. The boot-time and fault-time SRAM shred of the shipped ROM is therefore not exercised by these leaves, and no claim here covers it.
 
 |KM CPU bus responses outside the RDL (hardware)
-|Three KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A store to KM ROM completes with no error response and sets only `IRQ_STATUS.ROM_WRITE_ERR`, where the RDL says it returns SLVERR (`sep_km_rom_write_slverr_test`). A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the VROM base never completes: the KM CPU wrapper routes that range to a testbench-only port whose ready the RTL ties to 0, and the RDL memory-map summary does not list the window and maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
+|Two KM CPU addresses answer differently from `hw/ip/key_manager/regs/key_manager.rdl`, and each has a leaf that fails on its own checker until the RTL or the RDL changes. A load or store past the `OTP_EFUSE_MMR` aperture reaches the eFuse shim register, which the RDL excludes from the KM path (`sep_km_otp_shim_unreachable_test`). A load from the VROM base never completes: the KM CPU wrapper routes that range to a testbench-only port whose ready the RTL ties to 0, and the RDL memory-map summary does not list the window and maps it to DECERR (`sep_km_vrom_decerr_test`). The KM CPU has no bus-error input, so it observes an error response only as the sticky `IRQ_STATUS.AXI_SLVERR` / `AXI_DECERR` bits; `sep_km_key_policy_vault_test` CHK-EXTENT and CHK-LOCKUSE show those bits set on an erroring store and load while the image runs on.
 
 |Locked filter entry write response (hardware)
 |`hw/ip/axi_filter/regs/filter_ctrl.rdl` (`FILTER_CONFIG.locked`) and `hw/ip/axi_filter/doc/index.adoc` ("Locking a Filter Entry") say that a write to a locked entry's `FILTER_CONFIG`, `START_ADDR` or `END_ADDR` goes to the AXI error subordinate and completes DECERR. On SEP the write completes SLVERR, on the inbound and the outbound bank, and the word keeps its value. `CHK-WOSET` in `sep_fabric_remap_filter_csr_bank_test` and `CHK-CONFIG-LOCK` in `sep_fabric_inbound_filter_rule_matrix_test` grade DECERR and fail until the RTL or the specification changes. `CHK-CONFIG-LOCK` grades the response code after its 2-beat `allow_burst` read, so that read still runs on the current RTL.

@@ -1,23 +1,24 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""A KM CPU store to KM ROM returns SLVERR; the ROM keeps its content.
+"""A KM CPU store to KM ROM is dropped and reported as ROM_WRITE_ERR alone.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_bus_err.parhex. Not
 ``rom_main``: only code on the KM CPU can store to the KM ROM.
 
 Contract. ``hw/ip/key_manager/regs/key_manager.rdl`` (memory-map Access Notes)
-says of the KM ROM: "Read-only, returns SLVERR on write attempts" and "ROM
-write attempts return SLVERR response". The KM CPU observes an error response
-only as the sticky ``IRQ_STATUS.AXI_SLVERR`` bit ("AXI SLVERR (slave error)
-response detected on CPU bus transaction", ``km_csr.rdl``). ``ROM_WRITE_ERR``
-is a separate bit: it reports that a ROM write was detected.
+says the KM ROM is read-only and is accessed through the PicoRV32 native
+memory interface, not AXI-Lite: "A write completes with no error response,
+leaves the ROM unchanged and sets KMCSR IRQ_STATUS.ROM_WRITE_ERR". The KM CPU
+observes an AXI error response only as the sticky ``IRQ_STATUS.AXI_SLVERR`` /
+``AXI_DECERR`` bits (``km_csr.rdl``), so a ROM write leaves both clear.
 
-  CHK-KM-SLVERR-LIVE      control: a store past the KPV register map sets
-                          AXI_SLVERR, so the bit and the image's poll work.
-  CHK-KM-ROM-UNCHANGED    the ROM word reads ROM_PROBE_WORD before the store
-                          and after it.
-  CHK-KM-ROM-WRITE-ERR    the store sets IRQ_STATUS.ROM_WRITE_ERR.
-  CHK-KM-ROM-WRITE-SLVERR the store sets IRQ_STATUS.AXI_SLVERR.
+  CHK-KM-SLVERR-LIVE          control: a store past the KPV register map sets
+                              AXI_SLVERR, so the bit and the image's poll work.
+  CHK-KM-ROM-UNCHANGED        the ROM word reads ROM_PROBE_WORD before the
+                              store and after it.
+  CHK-KM-ROM-WRITE-ERR        the store sets IRQ_STATUS.ROM_WRITE_ERR.
+  CHK-KM-ROM-WRITE-NO-AXI-ERR the store leaves IRQ_STATUS.AXI_SLVERR and
+                              AXI_DECERR clear.
 
 Each row starts from a write-1-to-clear whose readback must show the watched
 bits clear, so a bit that a row reports belongs to that row's access.
@@ -28,6 +29,7 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_bus_err_seq import (
+    IRQ_AXI_ERR,
     IRQ_AXI_SLVERR,
     IRQ_ROM_WRITE_ERR,
     ROM_PROBE_WORD,
@@ -44,14 +46,14 @@ from seq_lib.sep_km_bus_err_seq import (
 
 
 @pyuvm.test()
-class sep_km_rom_write_slverr_test(sep_base_test):
-    """KM ROM store: content unchanged, ROM_WRITE_ERR set, AXI_SLVERR returned."""
+class sep_km_rom_write_err_test(sep_base_test):
+    """KM ROM store: content unchanged, ROM_WRITE_ERR set, no AXI error bit."""
 
     required_evidence = (
         "CHK-KM-SLVERR-LIVE",
         "CHK-KM-ROM-UNCHANGED",
         "CHK-KM-ROM-WRITE-ERR",
-        "CHK-KM-ROM-WRITE-SLVERR",
+        "CHK-KM-ROM-WRITE-NO-AXI-ERR",
     )
 
     async def run_scenario(self) -> None:
@@ -102,15 +104,14 @@ class sep_km_rom_write_slverr_test(sep_base_test):
             rom_irq,
         )
 
-        assert rom_irq & IRQ_AXI_SLVERR, (
-            f"CHK-KM-ROM-WRITE-SLVERR FAIL: IRQ_STATUS=0x{rom_irq:08x} "
+        assert rom_irq & IRQ_AXI_ERR == 0, (
+            f"CHK-KM-ROM-WRITE-NO-AXI-ERR FAIL: IRQ_STATUS=0x{rom_irq:08x} "
             f"({irq_names(rom_irq)}) after a KM ROM store; key_manager.rdl says a ROM "
-            "write attempt returns SLVERR, and the KM CPU sees a SLVERR response only "
-            "as IRQ_STATUS.AXI_SLVERR, which did not set. The store completed as if "
-            "it succeeded"
+            "write completes with no error response and is reported only as "
+            "ROM_WRITE_ERR, but an AXI error bit set"
         )
         self.logger.info(
-            "CHK-KM-ROM-WRITE-SLVERR PASS: KM ROM store returned SLVERR "
-            "(IRQ_STATUS.AXI_SLVERR set, IRQ_STATUS=0x%08x)",
+            "CHK-KM-ROM-WRITE-NO-AXI-ERR PASS: KM ROM store left IRQ_STATUS.AXI_SLVERR "
+            "and AXI_DECERR clear (IRQ_STATUS=0x%08x)",
             rom_irq,
         )
