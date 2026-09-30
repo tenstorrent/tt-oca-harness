@@ -49,8 +49,9 @@ IR and DR scan controls, ORed together and gated by `stap_select`, on
 The TMP controller takes the decoded CLAMP_HOLD, CLAMP_RELEASE and BYPASS
 instructions and the TMP_STATUS `bypass_escape_bit`, and returns `persistence_mode`
 to the TAP controller. The AXI side of each JTAG2AXI bridge runs on `clk_i` and
-`rst_n_i`, which the figure omits, and each bridge has its own
-`*_security_disable_i` input (<<ptap-debug-disable-inputs-table>>).
+`rst_n_i` and takes the DFT test-mode enable `test_en_i`; the figure omits all
+three. Each bridge has its own `*_security_disable_i` input
+(<<ptap-debug-disable-inputs-table>>).
 
 === Module Hierarchy
 

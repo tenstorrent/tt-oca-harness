@@ -129,7 +129,9 @@ and a reset ends on the bottom edge of the flop it resets.
   ports.
 
 The two-flop `cla_clock_stop` synchronizer in the DEBUG_CONTROL TDR has no reset.
-`test_en_i` and `scan_rst_ni` are not connected inside the DTP. A STAP whose enable
+`test_en_i` drives the test mode of the cross-trigger network and the JTAG2AXI
+bridges. `scan_rst_ni` is not connected inside the DTP, which has no reset
+synchronizer, so `rst_n_i` must arrive scan-controlled. A STAP whose enable
 parameter is 0 drives its host TRST low.
 
 [[dtp-reset-tree]]
