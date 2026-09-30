@@ -3,10 +3,10 @@
 """Whole-map response expectation for sep_axi_map_refuse_test.
 
 Every probe address is classified by ``env/sep_axi_decode_map.py``. A
-reserved address must not answer OKAY. The generated memory map
-(``hw/sys/sep/regs/gen/adoc/memory_map.adoc``) names a response code for each
-reserved span, but those codes were taken from the RTL, so they are not an
-expected value here: any refusal is accepted and the code is logged.
+reserved address must not answer OKAY. This walk grades refusal only: any
+refusal is accepted and the code is logged. The code ``sep.rdl`` states for a
+reserved span (``ocah_resp``) is graded by ``sep_unmapped_access_policy_test``
+at the points that test probes.
 ``sep_fabric_deadspace_decode_test`` owns the dead tail inside a window.
 This sequence owns the gaps between windows.
 
@@ -66,9 +66,8 @@ _PROBE_EXCLUDE: dict[tuple[int, int], str] = {
     # is the testbench, so a refusal there is a TB property.
     (0x0000_0000, 0x0FFF_FFFF): "external chiplet aperture, TB-terminated",
     (0x4000_0000, 0xBFFF_FFFF): "external SMU aperture, TB-terminated",
-    # Reserved in the map and excluded from this walk. The generated memory map
-    # names a code for them, but those codes were taken from the RTL and are
-    # not an expected value; the system-bus span is graded for refusal by
+    # Reserved in the map and excluded from this walk. The system-bus span is
+    # graded for refusal and for its sep.rdl code by
     # sep_unmapped_access_policy_test.
     (0x1091_4000, 0x1091_4FFF): "reserved crypto gap, excluded",
     (0x1092_1000, 0x1092_FFFF): "reserved KM gap, excluded",

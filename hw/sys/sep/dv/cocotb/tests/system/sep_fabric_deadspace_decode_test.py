@@ -6,8 +6,7 @@ no_cpu / +skip_fuse_sense. RANDCFG: known wrap-offset anchors every seed,
 plus seed-selected dead offsets inside each block window.
 
 A write or read past a block's allocated size must be refused (DECERR
-or SLVERR; the generated memory map names a code, but its codes were taken
-from the RTL and are not an expected value here), and no live
+or SLVERR; this test grades refusal only, not the code), and no live
 register in that block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
@@ -236,8 +235,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 )
 
             # CHK-DEADSPACE-BURST: any non-OKAY single-beat refusal, not
-            # DECERR-only. The map's per-block codes come from the RTL and are
-            # not an expected value.
+            # DECERR-only. This test grades refusal only, not the code.
             # A window whose past-extent single beat answers SLVERR must still
             # fail an OKAY burst to the same address.
             worst = max(resps) if resps else RESP_OKAY
@@ -292,9 +290,7 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(DEADSPACE_ANCHORS),
             cfg.seed,
         )
-        # Reported, not asserted: the generated memory map names a code, but its
-        # codes were taken from the RTL, so which error response is correct is a
-        # question for the design owner.
+        # Reported, not asserted: this test grades refusal only, not the code.
         for line in dead.flavour_findings:
             self.logger.info("DEADSPACE-FLAVOUR: %s", line)
         if dead.flavour_findings:
