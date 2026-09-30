@@ -37,11 +37,15 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
   protected task check_stored_sib_across_gate(
       int unsigned sib, bit [DtpIjtagSibCount-1:0] open_pattern,
       sep_lifecycle_ctrl_pkg::dbg_disable_t gate_mask, string context_s);
+    string gated_controls[$];
     // Baseline: everything enabled, all SIBs closed.
     check_ijtag_pattern(3'b000, '0, {context_s, ".baseline"});
-    // Attempt to open the target SIB while its disable is asserted.
+    // Attempt to open the target SIB while its disable is asserted: its
+    // four scan controls stay quiet across the whole attempt.
     set_dbg_disable_full(gate_mask);
-    program_ijtag_sibs(open_pattern, gate_mask, {context_s, ".gated_open_attempt"});
+    ijtag_gated_controls(gate_mask, gated_controls);
+    program_ijtag_sibs_quiet(open_pattern, gate_mask, gated_controls, {
+                             context_s, ".gated_open_attempt"});
     // Release the disable without any reset: the gated open attempt must
     // not have stuck (a pre-staged open activating on release would be a
     // delayed-replay hazard).

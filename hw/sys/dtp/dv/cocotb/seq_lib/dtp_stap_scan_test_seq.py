@@ -20,13 +20,16 @@ TAP_3DCR chain scans and judge the chain readback against the model:
 ``config_hold`` proves which fields survive Test-Logic-Reset per CONFIG_HOLD
 polarity (and that TRST clears them all), ``tms_hold`` proves the parked host
 TMS polarity of a deselected STAP through the host-port window.
-``ext_stap_scan`` exercises the extended STAP host scan interface.
+``ext_stap_scan`` proves the extended STAP host scan interface against the
+host segment the bench places behind it: the host scan controls and the PTAP
+chain return follow the PTAP 3DCR select and ``stap_host``, and recover
+without reset.
 """
 
 from __future__ import annotations
 
 from env.dtp_dbg_disable import STAP_DISABLE
-from env.dtp_scan_ref_model import SCAN_MARKER_WIDTH, STAP_ORDER
+from env.dtp_scan_ref_model import SCAN_MARKER_WIDTH, STAP_HOST_SEGMENT_WIDTH, STAP_ORDER
 from env.dtp_stap_ds_agent import STAP_DS_TDR_NAME
 from ocah_jtag_vip import OcahJtagState
 
@@ -59,7 +62,9 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         }
     )
     SCENARIO_REQUIRED_IDS = {
-        "ext_stap_scan": frozenset({"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN"}),
+        "ext_stap_scan": frozenset(
+            {"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"}
+        ),
         "config_hold": frozenset({"CHK-TAP-RESET-TLR", "CHK-SCAN-CHAIN", "CHK-SCAN-OBS"}),
         "tms_hold": frozenset({"CHK-TAP-RESET-TLR", "CHK-SCAN-WIN", "CHK-SCAN-CHAIN"}),
     }
@@ -104,54 +109,10 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
 
     SELECTED_PAYLOAD = {"config_hold": 1, "stap_sel": 1, "tms_hold": 1}
 
-    def check_stap_forwarding(
-        self,
-        edges: int,
-        counts: dict[str, int],
-        *,
-        stap: str,
-        forwarding: bool,
-        context: str,
-    ) -> None:
-        """A selected STAP forwards: tdo_oen pulses during shifts and tms
-        follows the live TMS (mixed samples). A deselected or gated STAP
-        never drives tdo_oen and parks its tms at the stored tms_hold, high
-        or low for the whole window."""
-        prefix = self.stap_signal_prefix(stap)
-        tdo_oen = counts[f"{prefix}_tdo_oen"]
-        tms = counts[f"{prefix}_tms"]
-        if forwarding:
-            self.family_check(
-                "CHK-SCAN-WIN",
-                f"{prefix}_tdo_oen forwarding",
-                int(tdo_oen > 0),
-                1,
-                context=f"{context} count={tdo_oen}/{edges}",
-            )
-            self.family_check(
-                "CHK-SCAN-WIN",
-                f"{prefix}_tms follows live TMS",
-                int(0 < tms < edges),
-                1,
-                context=f"{context} count={tms}/{edges}",
-            )
-        else:
-            tms_hold = self.stap_model.staps[stap].tms_hold
-            self.family_check(
-                "CHK-SCAN-WIN", f"{prefix}_tdo_oen quiet", tdo_oen, 0, context=context
-            )
-            self.family_check(
-                "CHK-SCAN-WIN",
-                f"{prefix}_tms parked at tms_hold={tms_hold}",
-                tms,
-                edges * tms_hold,
-                context=f"{context} edges={edges}",
-            )
-
     async def run_stap_select(self, stap: str) -> None:
         self.log_banner(f"STAP selection: {stap}")
         prefix = self.stap_signal_prefix(stap)
-        watch = (f"{prefix}_tdo_oen", f"{prefix}_tms")
+        watch = self.stap_forwarding_watch(stap)
         disable_field = STAP_DISABLE[stap]
         rng = self.rng(f"stap_gate_{stap}")
         neighbor = STAP_ORDER[(STAP_ORDER.index(stap) + 1) % len(STAP_ORDER)]
@@ -219,29 +180,57 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         self.log_step(
             2, "Assert exactly %s: forwarding stops, gated update is ignored", disable_field
         )
+        if downstream:
+            # Step 1 leaves the device in Run-Test/Idle, in lockstep with the
+            # PTAP, so the park has to move it into Test-Logic-Reset.
+            ds_seq.check_state(
+                OcahJtagState.RUN_TEST_IDLE,
+                check_id="CHK-DS-PARKED-TLR",
+                context=f"{stap}.pre_gate",
+            )
+        trst_n = f"{prefix}_trst_n"
+        trst_count = f"{prefix}_trst_assert_count"
+        trst_before = self.cfg.tb_if.sample(trst_count)
         await self.disable_debug_bits(disable_field)
         # A randomized deselecting payload attempted while gated must be ignored.
         attempt = {"config_hold": rng.randrange(0, 2), "stap_sel": 0, "tms_hold": 0}
         self.log.info("%s gated 3DCR update attempt %s", stap, attempt)
         if downstream:
             ds_seq.clear_updates()
-        window = self.start_scan_window(watch)
+        window = self.start_scan_window(watch + (trst_n,))
         captured = await self.stap_chain_write(
             payloads={stap: attempt},
             dbg_disable={disable_field: 1},
             context=f"{stap}.gated_update_attempt",
         )
         edges, counts = self.check_scan_window(window, context=f"{stap}.gated_window")
+        trst_asserts = self.cfg.tb_if.sample(trst_count) - trst_before
         self.check_stap_forwarding(
             edges, counts, stap=stap, forwarding=False, context=f"{stap}.gated"
+        )
+        self.family_check(
+            "CHK-SCAN-WIN",
+            f"{trst_n} deasserted",
+            counts[trst_n],
+            edges,
+            context=f"{stap}.gated edges={edges}",
+        )
+        self.family_check(
+            "CHK-SCAN-WIN",
+            f"{trst_n} not asserted across the gate",
+            trst_asserts,
+            0,
+            context=f"{stap}.gated asserts={trst_asserts}",
         )
         self.check_stap_chain_readback(
             captured, dbg_disable={disable_field: 1}, context=f"{stap}.gated_readback"
         )
         if downstream:
-            # The gated port parks its host TMS high: the downstream TAP sits
-            # in Test-Logic-Reset (checked after the scan, which supplies the
-            # five parked TCKs), latched nothing, and still holds the value.
+            # The gated port parks its host TMS high with TRST deasserted. The
+            # disable settle and the gated scan clock the parked TMS, walking
+            # the downstream TAP from Run-Test/Idle into Test-Logic-Reset,
+            # checked after the scan; it latches nothing and keeps the written
+            # value.
             ds_seq.check_update_count(0, reg_name=tdr, context=f"{stap}.gated")
             ds_seq.check_register(
                 tdr, v_select, check_id="CHK-DS-TDR-HOLD", context=f"{stap}.gated"
@@ -341,67 +330,71 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
             ds_tdr_values=(v_select, v_recover) if downstream else None,
         )
 
-    HOST_SCAN_CONTROLS = (
-        "jtag_stap_host_select",
-        "jtag_stap_host_shift_en",
-        "jtag_stap_host_capture_en",
-        "jtag_stap_host_update_en",
-    )
-
     async def run_ext_stap_scan(self) -> None:
+        """Four legs of composed TAP_3DCR scans, each back in Run-Test/Idle
+        and none followed by a reset once the chain is flushed. Ungated, the
+        host segment is the chain return at the TDO end; gated, the last
+        STAP's scan-out returns instead and the segment holds its value. The
+        segment value is non-zero, so a gated scan that reached the segment
+        would latch the zeros composed at its position and fail the release
+        leg."""
         self.log_banner("extended STAP scan interface")
-        await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.enable")
-        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
-        _, enabled = await self.shift_dr_observe(0x2, 2, context="ext.enabled_shift")
-        self.check_scan_window(
-            window,
-            active=("jtag_stap_host_select", "jtag_stap_host_shift_en"),
-            context="ext.enabled_window",
-        )
-        self.check_observable(enabled, "jtag_stap_host_select", 1, context="ext.enabled")
-
-        # With the PTAP select clear the host scan strobes still follow every
-        # PTAP scan (they are the TAP's; the select routes the scan data), so
-        # the deselected scan is judged for pulsing strobes, not for silence.
-        await self.write_ptap_3dcr(config_hold=0, select=0, context="ext.disable")
-        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
-        _, deselected = await self.shift_dr_observe(0x0, 2, context="ext.deselected_shift")
-        self.check_scan_window(
-            window, active=("jtag_stap_host_shift_en",), context="ext.deselected_window"
-        )
+        assert self.stap_model.host_segment_attached, "the bench has no host segment attached"
+        rng = self.rng("ext_stap")
+        segment = rng.randrange(1, 1 << STAP_HOST_SEGMENT_WIDTH)
+        marker = rng.getrandbits(SCAN_MARKER_WIDTH) | (1 << (SCAN_MARKER_WIDTH - 1))
+        gate_hold = rng.randrange(2)
+        gate = {"stap_host": 1}
+        controls = self.HOST_SCAN_CONTROLS
         self.log.info(
-            "ext.deselected sampled jtag_stap_host_select=%d",
-            deselected["jtag_stap_host_select"],
+            "ext host segment=0x%02x marker=0x%04x gate config_hold=%d", segment, marker, gate_hold
         )
 
-        await self.write_ptap_3dcr(config_hold=1, select=1, context="ext.gate_enable")
+        self.log_step(1, "PTAP_3DCR.SELECT=1: the host segment returns the chain")
+        await self.stap_chain_flush(context="ext.flush")
+        await self.stap_chain_write(
+            ptap_select=1, ptap_config_hold=1, host_segment=segment, context="ext.enable"
+        )
+        window = self.start_scan_window(controls)
+        captured = await self.stap_chain_maintain(marker=marker, context="ext.enabled_observe")
+        self.check_scan_window(window, active=controls, context="ext.enabled_window")
+        self.check_stap_chain_readback(captured, context="ext.enabled_readback")
+        self.check_stap_chain_marker(captured, marker, context="ext.enabled_marker")
+
+        # The host scan strobes follow every PTAP scan whatever the PTAP
+        # select (they are the TAP's; the select routes the scan data), so the
+        # deselected scan is judged for pulsing strobes, not for silence.
+        self.log_step(2, "PTAP_3DCR.SELECT=0: TDO carries the PTAP 3DCR")
+        await self.stap_chain_write(ptap_select=0, context="ext.deselect")
+        window = self.start_scan_window(controls)
+        await self.read_ptap_3dcr_deselected(marker=marker, context="ext.deselected_readback")
+        self.check_scan_window(window, active=controls, context="ext.deselected_window")
+
+        self.log_step(3, "stap_host gated: the controls stay quiet and scan-in is bypassed")
+        await self.stap_chain_write(
+            ptap_select=1, ptap_config_hold=gate_hold, context="ext.gate_enable"
+        )
         await self.disable_debug_bits("stap_host")
-        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
-        # Seeded per-pass gated attempt: any value with the select bit set is
-        # an equally valid attempt that must be ignored while gated.
-        gated_attempt = self.rng("ext_stap_gate").choice([0x2, 0x3])
-        _, gated = await self.shift_dr_observe(gated_attempt, 2, context="ext.host_gated_shift")
-        self.check_scan_window(
-            window,
-            quiet=self.HOST_SCAN_CONTROLS,
-            context="ext.host_gated_window",
+        window = self.start_scan_window(controls)
+        captured = await self.stap_chain_maintain(
+            dbg_disable=gate, marker=marker, context="ext.gated_observe"
         )
-        self.check_observable(gated, "jtag_stap_host_select", 0, context="ext.host_gated")
+        self.check_scan_window(window, quiet=controls, context="ext.gated_window")
+        self.check_stap_chain_readback(captured, dbg_disable=gate, context="ext.gated_readback")
+        self.check_stap_chain_marker(captured, marker, dbg_disable=gate, context="ext.gated_marker")
 
-        # Recovery without reset: normal host scan control resumes once the
-        # disable clears.
+        self.log_step(4, "stap_host released without reset: the segment returns its value")
         await self.enable_all_debug()
-        window = self.start_scan_window(self.HOST_SCAN_CONTROLS)
-        _, recovered = await self.shift_dr_observe(0x2, 2, context="ext.recover_shift")
-        self.check_scan_window(
-            window,
-            active=("jtag_stap_host_select", "jtag_stap_host_shift_en"),
-            context="ext.recover_window",
-        )
-        self.check_observable(recovered, "jtag_stap_host_select", 1, context="ext.recover")
+        window = self.start_scan_window(controls)
+        captured = await self.stap_chain_maintain(marker=marker, context="ext.recover_observe")
+        self.check_scan_window(window, active=controls, context="ext.recover_window")
+        self.check_stap_chain_readback(captured, context="ext.recover_readback")
+        self.check_stap_chain_marker(captured, marker, context="ext.recover_marker")
         self.log_summary(
             "extended STAP scan",
-            checked=("enable", "deselect", "stap_host gate window", "recover without reset"),
+            host_segment=f"0x{segment:02x}",
+            gate_config_hold=gate_hold,
+            checked=("enable", "deselect", "stap_host gate", "recover without reset"),
         )
 
     # --- CONFIG_HOLD across Test-Logic-Reset and TRST --------------------------
@@ -476,13 +469,13 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         drives its host TMS at that polarity for the whole maintain scan while
         tdo_oen stays quiet, and that the 3DCR reads back as written."""
         ctx = f"tms_hold.{stap}.hold{hold}"
-        prefix = self.stap_signal_prefix(stap)
+        watch = self.stap_forwarding_watch(stap)
         await self.stap_chain_flush(context=f"{ctx}.flush")
         await self.stap_chain_write(ptap_select=1, sib_en={stap: 1}, context=f"{ctx}.open_sib")
         await self.stap_chain_write(
             payloads={stap: {"stap_sel": 1, "tms_hold": hold}}, context=f"{ctx}.select"
         )
-        window = self.start_scan_window((f"{prefix}_tdo_oen", f"{prefix}_tms"))
+        window = self.start_scan_window(watch)
         captured = await self.stap_chain_maintain(context=f"{ctx}.selected_observe")
         edges, counts = self.check_scan_window(window, context=f"{ctx}.selected_window")
         self.check_stap_forwarding(
@@ -492,7 +485,7 @@ class dtp_stap_scan_test_seq(dtp_scan_base_test_seq):
         await self.stap_chain_write(
             payloads={stap: {"stap_sel": 0, "tms_hold": hold}}, context=f"{ctx}.deselect"
         )
-        window = self.start_scan_window((f"{prefix}_tdo_oen", f"{prefix}_tms"))
+        window = self.start_scan_window(watch)
         captured = await self.stap_chain_maintain(context=f"{ctx}.observe")
         edges, counts = self.check_scan_window(window, context=f"{ctx}.window")
         self.check_stap_forwarding(

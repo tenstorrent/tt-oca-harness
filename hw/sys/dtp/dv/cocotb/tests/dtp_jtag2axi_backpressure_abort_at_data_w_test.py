@@ -17,8 +17,14 @@ class dtp_jtag2axi_backpressure_abort_at_data_w_test(dtp_base_test):
     use_axi_scoreboard = True
     axi_checker_required_ids = (
         "CHK-AXI-RESP",
+        "CHK-AXI-STRB",
+        "CHK-AXI-WMEM",
         "CHK-AXI-COMPLETION",
+        "CHK-AXI-CREDITS",
         "CHK-AXI-STREAM-MIN",
+        "CHK-RESET-COUNT",
+    )
+    axi_checker_target_required_ids = (
         "CHK-J2A-ABORT-MIDFLIGHT",
         "CHK-J2A-ABORT-FSM",
         "CHK-J2A-CDC-CLEAR",

@@ -7,7 +7,8 @@
 // generates no request activity (pulse counters), leaves the sentinel-
 // preloaded memory untouched (including after release — the delayed-replay
 // leak), and that exactly one sanctioned restore write completes per pass
-// (responder burst counts).
+// (responder burst counts). A fixed-address series write with beats queued
+// behind one held on the bus then proves the disable drops the queued beats.
 
 class dtp_jtag2axi_smc_axi_write_security_gating_test extends dtp_base_test;
   `uvm_component_utils(dtp_jtag2axi_smc_axi_write_security_gating_test)
@@ -23,6 +24,7 @@ class dtp_jtag2axi_smc_axi_write_security_gating_test extends dtp_base_test;
                         '{
                             "CHK-AXI-RESP",
                             "CHK-AXI-STRB",
+                            "CHK-AXI-WMEM",
                             "CHK-AXI-WADDR",
                             "CHK-AXI-WDATA",
                             "CHK-AXI-COMPLETION",
@@ -30,7 +32,8 @@ class dtp_jtag2axi_smc_axi_write_security_gating_test extends dtp_base_test;
                             "CHK-AXI-GATE-W",
                             "CHK-AXI-GATE-AR",
                             "CHK-AXI-GATE-EXACT",
-                            "CHK-AXI-NONVAC"
+                            "CHK-AXI-NONVAC",
+                            DtpJ2aGateTdrCheckId
                         });
   endfunction
 

@@ -3,7 +3,10 @@
 """Sequence for dtp_jtag_clamp_release_test.
 
 Like CLAMP_HOLD, CLAMP_RELEASE scans the one-bit bypass register
-(``CHK-BYPASS-DELAY``); the 2-bit register is TMP_STATUS.
+(``CHK-BYPASS-DELAY``); the 2-bit register is TMP_STATUS. The looped-back
+pattern is also the one-bit bypass register's TDO, so SAMPLE/PRELOAD shows it
+selects the chain by the chain's select, high across each DR scan before a
+hold and after the release (``CHK-BSR-SELECT``).
 """
 
 from __future__ import annotations
@@ -23,12 +26,11 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
                 "CHK-TAP-RESET-TLR",
                 "CHK-IR-DECODE",
                 "CHK-BSR-LOOPBACK",
+                "CHK-BSR-SELECT",
+                "CHK-BSR-SCAN-CTRL",
                 "CHK-BYPASS-DELAY",
                 "CHK-TMP-PERSIST",
             },
-            # TMP_STATUS reads go through driver-level TDR ops the sequence
-            # cannot count, so the pin-level scan monitor stays off.
-            use_monitor=False,
         )
 
         self.log_step(1, "Reset TAP and confirm release is harmless without a prior hold")
@@ -49,7 +51,7 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(2, "Loop through hold/release patterns")
         for idx, pattern in enumerate(patterns, start=1):
             self.log_iteration(idx, len(patterns), "SAMPLE_PRELOAD pattern=0x%02x", pattern)
-            await self.check_loopback_scan(DtpJtagInstr.SAMPLE_PRELOAD, pattern, 8)
+            await self.check_bsr_scan_ctrl(DtpJtagInstr.SAMPLE_PRELOAD, pattern, 8)
 
             await self.load_ir(DtpJtagInstr.CLAMP_HOLD)
             held = await self.read_tmp_status()
@@ -99,7 +101,7 @@ class dtp_jtag_clamp_release_test_seq(dtp_debug_tdr_base_test_seq):
         self.log_step(
             4, "SAMPLE/PRELOAD after the release selects the chain and loops the pattern back"
         )
-        await self.check_loopback_scan(DtpJtagInstr.SAMPLE_PRELOAD, patterns[-1], 8)
+        await self.check_bsr_scan_ctrl(DtpJtagInstr.SAMPLE_PRELOAD, patterns[-1], 8)
 
         self.log_summary("CLAMP_RELEASE TMP persistence complete", patterns=len(patterns))
         await self.finalize_family_checker()

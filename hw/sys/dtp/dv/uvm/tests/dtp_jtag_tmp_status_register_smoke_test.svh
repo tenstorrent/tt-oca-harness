@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // dtp_jtag_tmp_status_register_smoke_test — TMP_STATUS reset/read smoke with shuffled shift-value sweep,
-// CLAMP_HOLD persistence entry, and IDCODE routing proof
+// CLAMP_HOLD persistence entry, and a final IDCODE read that returns the configured IDCODE
 // (looped runner with per-pass family evidence, 16-pass floor).
 
 class dtp_jtag_tmp_status_register_smoke_test extends dtp_base_test;

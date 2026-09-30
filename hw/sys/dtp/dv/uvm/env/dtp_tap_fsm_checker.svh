@@ -5,16 +5,19 @@
 // subscriber on the shared JTAG agent's monitor event stream. On every
 // completed TCK cycle it checks the DUT-produced one-hot TAP state
 // (dtp_tb_if.tap_state, a DUT top-level output) against the VIP's IEEE
-// 1149.1 next-state reference model, and accumulates state/edge closure;
-// scenario tests that require closure (VPLAN 0.1) call check_fsm_closure()
-// after their stimulus completes. report_evidence() turns the run into one
+// 1149.1 next-state reference model, and accumulates the closure of the
+// states and legal edges the DUT took;
+// scenario tests that require closure (VPLAN 0.1) call check_fsm_closure(),
+// which records CHK-TAP-VISIT-ALL, at the end of each pass and
+// clear_closure() before the next. report_evidence() turns the run into one
 // aggregate CHK-TAP-STATE record through the env's evidence recorder.
 //
 // Events arrive on the TCK falling edge (monitor contract), when the
 // rising-edge state transition has settled, so sampling tb_vif.tap_state
 // inside write() is race-free. The DUT one-hot encoding's bit index equals
-// the VIP enum value (IEEE state numbering 0..15). The cocotb twin is
-// env/dtp_tap_fsm_checker.py.
+// the VIP enum value (IEEE state numbering 0..15). The cocotb counterparts
+// are the per-step CHK-TAP-STATE of the checker dtp_jtag_base_test_seq
+// attaches (tms_expect) and CHK-TAP-VISIT-ALL in seq_lib/dtp_sanity_test_seq.py.
 
 class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
   `uvm_component_utils(dtp_tap_fsm_checker)
@@ -53,26 +56,17 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
 
     if (t.kind == OCAH_JTAG_EV_TRST) begin
       // Asynchronous TAP reset: re-baseline the model (reset-aware flush).
-      if (t.trst_asserted) begin
-        m_model = OCAH_JTAG_TEST_LOGIC_RESET;
-        m_state_seen[OCAH_JTAG_TEST_LOGIC_RESET] = 1'b1;
-      end
+      if (t.trst_asserted) m_model = OCAH_JTAG_TEST_LOGIC_RESET;
       return;
     end
 
     if (tb_vif.por_assert_count !== m_por_count) begin
       m_por_count = tb_vif.por_assert_count;
       m_model = OCAH_JTAG_TEST_LOGIC_RESET;
-      m_state_seen[OCAH_JTAG_TEST_LOGIC_RESET] = 1'b1;
     end
 
-    if (t.trst_n === 1'b0) begin
-      expected = OCAH_JTAG_TEST_LOGIC_RESET;
-    end else begin
-      expected = ocah_jtag_next_state(m_model, t.tms);
-      // Record the legal edge taken (deterministic closure bookkeeping).
-      m_edge_seen[int'(m_model)][t.tms] = 1'b1;
-    end
+    if (t.trst_n === 1'b0) expected = OCAH_JTAG_TEST_LOGIC_RESET;
+    else expected = ocah_jtag_next_state(m_model, t.tms);
     expected_onehot = 16'h1 << int'(expected);
     m_cycles++;
 
@@ -90,10 +84,13 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
           $sformatf(
               "step %0d: illegal TAP transition: from %s with tms=%0b expected %s (0x%04h), got 0x%04h",
               t.index, m_model.name(), t.tms, expected.name(), expected_onehot, tb_vif.tap_state))
+    end else begin
+      // Closure counts a state or a legal edge only once the DUT took it.
+      m_state_seen[int'(expected)] = 1'b1;
+      if (t.trst_n !== 1'b0) m_edge_seen[int'(m_model)][t.tms] = 1'b1;
     end
 
     m_model = expected;
-    m_state_seen[int'(m_model)] = 1'b1;
   endfunction
 
   // One aggregate named-evidence record for the always-on per-cycle
@@ -111,26 +108,59 @@ class dtp_tap_fsm_checker extends ocah_subscriber #(ocah_jtag_event);
   endfunction
 
   // Scenario-invoked closure gate: all 16 states visited AND all 32 legal
-  // edges taken. Only VPLAN 0.1-style scenarios demand full closure.
-  function void check_fsm_closure();
+  // edges taken since the last clear_closure(), recorded as
+  // CHK-TAP-VISIT-ALL. Only VPLAN 0.1-style scenarios demand full closure.
+  function void check_fsm_closure(string context_s = "");
     int unsigned states_hit = 0, edges_hit = 0;
     ocah_jtag_tap_state_e state;
+    string missing_states = "", missing_edges = "";
     foreach (m_state_seen[s]) begin
       state = ocah_jtag_tap_state_e'(s);
       if (m_state_seen[s]) states_hit++;
-      else
+      else begin
         `uvm_error("sanity_fsm_visit_chk", $sformatf("TAP state never visited: %s", state.name()))
+        missing_states = {missing_states, missing_states.len() ? "," : "", state.name()};
+      end
     end
     foreach (m_edge_seen[s, t]) begin
       state = ocah_jtag_tap_state_e'(s);
       if (m_edge_seen[s][t]) edges_hit++;
-      else
+      else begin
         `uvm_error("sanity_fsm_visit_chk", $sformatf(
                    "legal TAP transition never taken: %s with tms=%0d", state.name(), t))
+        missing_edges = {
+          missing_edges, missing_edges.len() ? "," : "", $sformatf("%s/tms=%0d", state.name(), t)
+        };
+      end
     end
     `uvm_info("sanity_fsm_visit_chk", $sformatf(
               "FSM closure: %0d/16 states visited, %0d/32 legal edges taken", states_hit, edges_hit
               ), UVM_LOW)
+    if (evidence == null) return;
+    void'(evidence.expect_equal(
+        "CHK-TAP-VISIT-ALL",
+        64'(states_hit),
+        64'd16,
+        $sformatf(
+            "IEEE 1149.1 TAP states visited missing=%s %s",
+            missing_states.len() ? missing_states : "none",
+            context_s)
+    ));
+    void'(evidence.expect_equal(
+        "CHK-TAP-VISIT-ALL",
+        64'(edges_hit),
+        64'd32,
+        $sformatf(
+            "IEEE 1149.1 legal TAP transitions taken missing=%s %s",
+            missing_edges.len() ? missing_edges : "none",
+            context_s)
+    ));
+  endfunction
+
+  // Start a new closure window; the reference model keeps tracking the DUT.
+  function void clear_closure();
+    foreach (m_state_seen[s]) m_state_seen[s] = 1'b0;
+    foreach (m_edge_seen[s, t]) m_edge_seen[s][t] = 1'b0;
   endfunction
 
 endclass : dtp_tap_fsm_checker

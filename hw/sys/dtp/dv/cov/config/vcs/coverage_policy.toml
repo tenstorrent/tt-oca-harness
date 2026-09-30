@@ -64,8 +64,8 @@ population = "effective"
 minimum_percent = 98.0
 
 # Every assertion in scope attempted and every cover directive hit: the DUT's
-# own assertions, the coverage modules' cover properties, and the shared
-# protocol checkers.
+# own assertions, the coverage modules' cover properties, and the protocol
+# checkers under the bench top.
 [[thresholds]]
 id = "assertion"
 tool = "vcs"
